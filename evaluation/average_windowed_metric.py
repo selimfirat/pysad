@@ -4,9 +4,10 @@ from stats.mean_meter import MeanMeter
 
 class WindowedMetric(BaseMetric):
 
-    def __init__(self, metric_cls, window_size, **kwargs):
+    def __init__(self, metric_cls, window_size, ignore_nonempty_last=True, **kwargs):
         super().__init__(**kwargs)
 
+        self.ignore_nonempty_last = ignore_nonempty_last
         self.window_size = window_size
         self.metric_cls = metric_cls
 
@@ -15,6 +16,8 @@ class WindowedMetric(BaseMetric):
         self.score_meter = MeanMeter()
 
         self.step = 0
+
+        self.num_windows = 0
 
     def init_metric(self):
 
@@ -26,6 +29,7 @@ class WindowedMetric(BaseMetric):
         self.metric.update(y_true, y_pred)
 
         if self.step % self.window_size == 0:
+            self.num_windows += 1
             score = self.metric.get()
             self.score_meter.update(score)
             self.metric = self.init_metric()
@@ -34,4 +38,7 @@ class WindowedMetric(BaseMetric):
 
     def get(self):
 
-        return self.score_meter.get()
+        if self.ignore_nonempty_last:
+            return self.score_meter.get()
+        else:
+            return (self.metric.get() + self.score_meter.get()*self.num_windows) / (self.num_windows + 1)

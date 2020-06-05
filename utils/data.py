@@ -6,10 +6,11 @@ from streaming.array_iterator import ArrayIterator
 
 class Data:
 
-    def __init__(self, data_base_path):
+    def __init__(self, data_base_path="../data"):
         self.data_base_path = data_base_path
 
     def get_data_files(self):
+
         return [
             'arrhythmia.mat',
             'cardio.mat',
@@ -19,13 +20,13 @@ class Data:
             'lympho.mat',
             'mnist.mat',
             'musk.mat',
-            # 'optdigits.mat',
+            'optdigits.mat',
             'pendigits.mat',
             'pima.mat',
             'satellite.mat',
             'satimage-2.mat',
             'shuttle.mat',
-            # 'vertebral.mat',
+            'vertebral.mat',
             'vowels.mat',
             'wbc.mat',
             "gisette_sampled.txt",

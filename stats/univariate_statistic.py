@@ -12,3 +12,7 @@ class UnivariateStatistic(BaseStatistic):
     @abstractmethod
     def get(self):
         pass
+
+    @abstractmethod
+    def remove(self, num):
+        pass

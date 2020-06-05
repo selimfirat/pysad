@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 
-class BaseEvaluator:
+class BaseMetric:
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs

@@ -4,10 +4,10 @@ from streaming.base_iterator import BaseIterator
 
 class PandasIterator(BaseIterator):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, shuffle=False, **kwargs):
+        super().__init__(shuffle=shuffle, **kwargs)
 
-        self.array_iterator = ArrayIterator(**kwargs)
+        self.array_iterator = ArrayIterator(shuffle=shuffle, **kwargs)
 
     def iter(self, X, y=None):
 

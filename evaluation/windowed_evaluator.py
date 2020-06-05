@@ -1,5 +1,5 @@
 from evaluation.base_evaluator import BaseEvaluator
-from utils.mean_meter import MeanMeter
+from stats.mean_meter import MeanMeter
 
 
 class WindowedEvaluator(BaseEvaluator):
@@ -17,6 +17,7 @@ class WindowedEvaluator(BaseEvaluator):
         self.step = 0
 
     def init_evaluator(self):
+
         return self.evaluator_cls(**self.kwargs)
 
     def update(self, y_true, y_pred):

@@ -3,14 +3,15 @@ from abc import ABC
 from models.base_model import BaseModel
 
 
-class PYODModel(ABC, BaseModel):
+class PYODModel(BaseModel, ABC):
 
     def __init__(self, model_cls, **kwargs):
         super().__init__(**kwargs)
 
         self.model_cls = model_cls
-        self.model = self.reset_model()
+        self.model = None
 
     def reset_model(self):
 
-        return self.model_cls(self.kwargs)
+        self.model = self.model_cls(**self.kwargs)
+

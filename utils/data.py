@@ -6,7 +6,7 @@ from streaming.array_iterator import ArrayIterator
 
 class Data:
 
-    def __init__(self, data_base_path="../data"):
+    def __init__(self, data_base_path):
         self.data_base_path = data_base_path
 
     def get_data_files(self):

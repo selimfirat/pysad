@@ -1,7 +1,7 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 
-class BaseMetric:
+class BaseMetric(ABC):
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs

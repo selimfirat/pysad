@@ -1,9 +1,9 @@
-from abc import abstractproperty, abstractmethod
+from abc import abstractproperty, abstractmethod, ABC
 
 from sklearn.metrics import roc_auc_score
 from evaluation.base_metric import BaseMetric
 
-class BaseSKLearnMetric(BaseMetric):
+class BaseSKLearnMetric(ABC, BaseMetric):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

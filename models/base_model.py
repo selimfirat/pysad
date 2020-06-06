@@ -1,9 +1,9 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 from streaming.array_iterator import ArrayIterator
 
 
-class BaseModel:
+class BaseModel(ABC):
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
@@ -24,9 +24,7 @@ class BaseModel:
 
     def score(self, X):
         for xi, _ in self._iterate(X):
-            self.score_partial(xi)
-
-        return self
+            yield self.score_partial(xi)
 
     def _iterate(self, X, y=None):
         iterator = ArrayIterator(shuffle=False)

@@ -1,9 +1,9 @@
-from abc import abstractmethod
+from abc import ABC
 
 from models.base_model import BaseModel
 
 
-class PYODModel(BaseModel):
+class PYODModel(ABC, BaseModel):
 
     def __init__(self, model_cls, **kwargs):
         super().__init__(**kwargs)

@@ -3,6 +3,10 @@ from models.pyod_model import PYODModel
 
 
 class ReferenceWindowModel(BaseModel, PYODModel):
+    """
+
+    Reference: https://www.andrew.cmu.edu/user/lakoglu/pubs/18-kdd-xstream.pdf
+    """
 
     def __init__(self, model_cls, window_size, sliding_size, **kwargs):
         super().__init__(**kwargs)

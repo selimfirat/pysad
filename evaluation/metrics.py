@@ -4,19 +4,23 @@ from evaluation.base_sklearn_metric import BaseSKLearnMetric
 
 class PrecisionMetric(BaseSKLearnMetric):
 
-    score_method = precision_score
+    def evaluate(self, y_true, y_pred):
+        return precision_score(y_true, y_pred)
 
 
 class RecallMetric(BaseSKLearnMetric):
 
-    score_method = recall_score
+    def evaluate(self, y_true, y_pred):
+        return recall_score(y_true, y_pred)
 
 
 class AUROCMetric(BaseSKLearnMetric):
 
-    score_method = roc_auc_score
+    def evaluate(self, y_true, y_pred):
+        return roc_auc_score(y_true, y_pred)
 
 
 class AUPRMetric(BaseSKLearnMetric):
 
-    score_method = average_precision_score
+    def evaluate(self, y_true, y_pred):
+        return average_precision_score(y_true, y_pred)

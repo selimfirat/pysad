@@ -1,9 +1,8 @@
-from abc import abstractproperty, abstractmethod, ABC
-
-from sklearn.metrics import roc_auc_score
+from abc import abstractmethod, ABCMeta
 from evaluation.base_metric import BaseMetric
 
-class BaseSKLearnMetric(ABC, BaseMetric):
+
+class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -18,11 +17,10 @@ class BaseSKLearnMetric(ABC, BaseMetric):
 
     def get(self):
 
-        score = self.score_method(self.y_true, self.y_pred)
+        score = self.evaluate(self.y_true, self.y_pred)
 
         return score
 
-    @property
     @abstractmethod
-    def score_method(self):
+    def evaluate(self, y_true, y_pred):
         pass

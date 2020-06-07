@@ -12,3 +12,7 @@ class Window:
         self.window.append(num)
         if len(self.window) > self.window_size:
             self.window = self.window[1:]
+
+    def get(self):
+
+        return self.window

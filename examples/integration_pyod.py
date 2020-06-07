@@ -3,16 +3,17 @@ from sklearn.utils import shuffle
 from evaluation.metrics import AUROCMetric
 from models.exact_storm import ExactStorm
 from models.reference_window_model import ReferenceWindowModel
+from models.xstream import xStream
 from streaming.array_iterator import ArrayIterator
 from utils.data import Data
 from tqdm import tqdm
 
 data = Data("data")
 
-X_all, y_all = data.get_data("arrhythmia.mat")
+X_all, y_all = data.get_data("breast-cancer-wisconsin_sampled.txt")
 X_all, y_all = shuffle(X_all, y_all)
 
-model = ReferenceWindowModel(model_cls=pyod.models.iforest.IForest, window_size=240, sliding_size=30, initial_window_X=X_all[:100])
+model = xStream() #ReferenceWindowModel(model_cls=pyod.models.iforest.IForest, window_size=240, sliding_size=30, initial_window_X=X_all[:100])
 
 iterator = ArrayIterator(shuffle=False)
 

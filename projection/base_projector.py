@@ -22,9 +22,18 @@ class BaseProjector(ABC):
 
         return self
 
+    def fit_transform_partial(self, X):
+        self.fit_partial(X)
+
+        return self.transform_partial(X)
+
     def transform(self, X):
         for xi, _ in self._iterate(X):
             yield self.transform_partial(xi)
+
+    def fit_transform(self, X):
+        for xi, _ in self._iterate(X):
+            yield self.fit_transform_partial(xi)
 
     def _iterate(self, X):
         iterator = ArrayIterator(shuffle=False)

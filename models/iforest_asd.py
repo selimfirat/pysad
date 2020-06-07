@@ -1,6 +1,6 @@
-from models.base_model import BaseModel
 from models.reference_window_model import ReferenceWindowModel
 from pyod.models.iforest import IForest
+
 
 class IForestASD(ReferenceWindowModel):
 

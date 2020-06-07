@@ -10,7 +10,7 @@ class xStream(BaseModel):
 
     Reference: https://github.com/cmuxstream/cmuxstream-core
     """
-    def __init__(self, n_components=100, n_chains=100, depth=25, window_size=2500, **kwargs):
+    def __init__(self, n_components=100, n_chains=100, depth=25, window_size=25, **kwargs):
         super().__init__(**kwargs)
 
         self.streamhash = StreamhashProjector(n_components=n_components)

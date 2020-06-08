@@ -3,6 +3,7 @@ from abc import abstractmethod
 from ensemble.base_ensembler import BaseEnsembler
 from pyod.models.combination import average, maximization, median, moa, aom
 
+
 class PYODEnsembler(BaseEnsembler):
 
     @abstractmethod
@@ -26,7 +27,7 @@ class AverageEnsembler(PYODEnsembler):
         return average(scores, estimator_weights=self.estimator_weights)
 
 
-class MaximumEnsembler(PYODEnsembler):
+class MaxEnsembler(PYODEnsembler):
 
     def combine(self, scores):
 
@@ -39,9 +40,10 @@ class MedianEnsembler(PYODEnsembler):
 
         return median(scores)
 
+
 class AverageOfMaximumEnsembler(PYODEnsembler):
 
-    def __init__(self, n_buckets=5, method='static', bootstrap_estimators=False, **kwargs)
+    def __init__(self, n_buckets=5, method='static', bootstrap_estimators=False, **kwargs):
         super().__init__(**kwargs)
         self.method = method
         self.n_buckets = n_buckets
@@ -54,8 +56,7 @@ class AverageOfMaximumEnsembler(PYODEnsembler):
 
 class MaximumOfAverageEnsembler(PYODEnsembler):
 
-
-    def __init__(self, n_buckets=5, method='static', bootstrap_estimators=False, **kwargs)
+    def __init__(self, n_buckets=5, method='static', bootstrap_estimators=False, **kwargs):
         super().__init__(**kwargs)
         self.method = method
         self.n_buckets = n_buckets

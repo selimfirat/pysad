@@ -1,7 +1,7 @@
 from stats.univariate_statistic import UnivariateStatistic
 
 
-class MeanMeter(UnivariateStatistic):
+class AverageMeter(UnivariateStatistic):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

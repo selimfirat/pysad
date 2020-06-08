@@ -21,6 +21,8 @@ class ExactStorm(BaseModel):
     def fit_partial(self, X, y=None):
         self.window.update(X)
 
+        return self
+
     def score_partial(self, X):
 
         dists = scipy.spatial.distance.cdist(self.window.get(), [X])

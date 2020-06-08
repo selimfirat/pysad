@@ -86,6 +86,8 @@ class HalfSpaceTrees(BaseModel):
             for root in self.roots:
                 self._update_model(root)
 
+        return self
+
     def _score_tree(self, X, node):
         if node is None:
             return 0.0

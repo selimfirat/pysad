@@ -46,6 +46,8 @@ class ReferenceWindowModel(PYODModel):
             self.cur_window = []
             self._fit_model()
 
+        return self
+
     def _fit_model(self):
 
         self.reset_model()

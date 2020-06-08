@@ -6,6 +6,7 @@ from streaming.array_iterator import ArrayIterator
 class BaseProjector(ABC):
 
     def __init__(self, n_components, **kwargs):
+        self.kwargs = kwargs
         self.n_components = n_components
 
     @abstractmethod

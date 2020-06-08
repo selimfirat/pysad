@@ -48,6 +48,7 @@ class AverageOfMaximumEnsembler(PYODEnsembler):
         self.bootstrap_estimators = bootstrap_estimators
 
     def combine(self, scores):
+
         return aom(scores, n_buckets=self.n_buckets, method=self.method, bootstrap_estimators=self.bootstrap_estimators)
 
 
@@ -61,5 +62,6 @@ class MaximumOfAverageEnsembler(PYODEnsembler):
         self.bootstrap_estimators = bootstrap_estimators
 
     def combine(self, scores):
+
         return moa(scores, n_buckets=self.n_buckets, method=self.method, bootstrap_estimators=self.bootstrap_estimators)
 

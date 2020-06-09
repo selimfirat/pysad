@@ -2,17 +2,15 @@ from postprocessing.base_postprocessor import BasePostProcessor
 from stats.average_meter import AverageMeter
 from stats.max_meter import MaxMeter
 from stats.median_meter import MedianMeter
-from stats.running_statistic import RunningStatistic
 from stats.variance_meter import VarianceMeter
 import numpy as np
 
 
-class RunningAveragePostprocessor(BasePostProcessor):
+class AveragePostprocessor(BasePostProcessor):
 
-    def __init__(self, window_size, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self.meter = RunningStatistic(statistic_cls=AverageMeter, window_size=window_size)
+        self.meter = AverageMeter()
 
     def fit_partial(self, score):
 
@@ -25,12 +23,11 @@ class RunningAveragePostprocessor(BasePostProcessor):
         return self.meter.get()
 
 
-class RunningMaxPostprocessor(BasePostProcessor):
+class MaxPostprocessor(BasePostProcessor):
 
-    def __init__(self, window_size, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self.meter = RunningStatistic(statistic_cls=MaxMeter, window_size=window_size)
+        self.meter = MaxMeter()
 
     def fit_partial(self, score):
         self.meter.update(score)
@@ -41,12 +38,11 @@ class RunningMaxPostprocessor(BasePostProcessor):
         return self.meter.get()
 
 
-class RunningMedianPostprocessor(BasePostProcessor):
+class MedianPostprocessor(BasePostProcessor):
 
-    def __init__(self, window_size, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self.meter = RunningStatistic(statistic_cls=MedianMeter, window_size=window_size)
+        self.meter = MedianMeter()
 
     def fit_partial(self, score):
         self.meter.update(score)
@@ -58,13 +54,12 @@ class RunningMedianPostprocessor(BasePostProcessor):
         return self.meter.get()
 
 
-class RunningZScorePostprocessor(BasePostProcessor):
+class ZScorePostprocessor(BasePostProcessor):
 
-    def __init__(self, window_size, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self.variance_meter = RunningStatistic(statistic_cls=VarianceMeter, window_size=window_size)
-        self.average_meter = RunningStatistic(statistic_cls=AverageMeter, window_size=window_size)
+        self.variance_meter = VarianceMeter()
+        self.average_meter = AverageMeter()
 
     def fit_partial(self, score):
         self.variance_meter.update(score)

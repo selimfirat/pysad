@@ -1,16 +1,26 @@
 import os
 import numpy as np
-
 from pysad.streaming.array_iterator import ArrayIterator
 
 
 class Data:
+    """A helper class to load various data.
+
+    Args:
+        data_base_path: Base path that contains the data files.
+    """
 
     def __init__(self, data_base_path):
         self.data_base_path = data_base_path
 
-    def get_data_files(self):
+    def _get_data_files(self):
+        """ Helper method to return the names of the data files.
 
+        Returns:
+            file_names: list[str]
+                List of data file names.
+
+        """
         return [
             'arrhythmia.mat',
             'cardio.mat',
@@ -36,14 +46,32 @@ class Data:
             "magic-telescope_sampled.txt",
         ]
 
-    def load_via_txt(self, path):
+    def _load_via_txt(self, path):
+        """Loads the data file from .txt file.
 
+        Args:
+            path: The path of data.
+
+        Returns:
+            X: np.float array of shape (num_instances, num_features)
+                Feature vectors.
+        """
         X = np.loadtxt(path, delimiter=",")
 
         return X
 
     def get_data(self, data_file):
+        """Loads the data given the path.
 
+        Args:
+            data_file: Path of the data.
+
+        Returns:
+            X: np.float array of shape (num_instances, num_features)
+                Feature vectors.
+            y: np.float array of shape (num_instances,)
+                Labels.
+        """
         data_path = os.path.join(self.data_base_path, data_file)
 
         if ".mat" in data_file:
@@ -54,7 +82,7 @@ class Data:
             X = f['X']
             y = f['y'].ravel()
         else:
-            X = self.load_via_txt(data_path)
+            X = self._load_via_txt(data_path)
 
             y = X[:, -1].ravel()
             X = X[:, :-1]
@@ -62,7 +90,17 @@ class Data:
         return X, y
 
     def get_iterator(self, data_file, shuffle=True, seed=None):
+        """The iterator function
 
+        Args:
+            data_file: Path of data.
+            shuffle: Whether to shuffle.
+            seed: Random seed.
+
+        Returns:
+            iterator: ArrayIterator.iter method applied with (X, y), where X is the variable containing feature vectors and y is the variable containing labels.
+
+        """
         if seed is not None:
             np.random.seed(seed)
 

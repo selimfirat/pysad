@@ -1,5 +1,5 @@
-from evaluation.base_metric import BaseMetric
-from stats.mean_meter import MeanMeter
+from pysad.evaluation.base_metric import BaseMetric
+from pysad.stats.average_meter import AverageMeter
 
 
 class WindowedMetric(BaseMetric):
@@ -13,7 +13,7 @@ class WindowedMetric(BaseMetric):
 
         self.metric = self.init_metric()
 
-        self.score_meter = MeanMeter()
+        self.score_meter = AverageMeter()
 
         self.step = 0
 

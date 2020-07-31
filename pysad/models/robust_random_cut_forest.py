@@ -1,4 +1,4 @@
-from models.base_model import BaseModel
+from pysad.models.base_model import BaseModel
 
 
 class RobustRandomCutForest(BaseModel):

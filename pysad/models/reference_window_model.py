@@ -1,5 +1,5 @@
-from models.base_model import BaseModel
-from models.pyod_model import PYODModel
+from pysad.models.base_model import BaseModel
+from pysad.models.pyod_model import PYODModel
 import numpy as np
 
 

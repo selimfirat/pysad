@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABCMeta
-from evaluation.base_metric import BaseMetric
+from pysad.evaluation.base_metric import BaseMetric
 
 
 class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):

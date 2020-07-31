@@ -1,7 +1,7 @@
-from models.base_model import BaseModel
-from stats.average_meter import AverageMeter
-from stats.median_meter import MedianMeter
-from stats.variance_meter import VarianceMeter
+from pysad.models.base_model import BaseModel
+from pysad.stats.average_meter import AverageMeter
+from pysad.stats.median_meter import MedianMeter
+from pysad.stats.variance_meter import VarianceMeter
 
 
 class MedianAbsoluteDeviation(BaseModel):

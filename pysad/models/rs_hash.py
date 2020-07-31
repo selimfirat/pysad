@@ -1,5 +1,6 @@
-from models.base_model import BaseModel
+from pysad.models.base_model import BaseModel
 import numpy as np
+
 
 class RSHash(BaseModel):
     """

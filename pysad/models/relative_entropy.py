@@ -1,4 +1,4 @@
-from models.base_model import BaseModel
+from pysad.models.base_model import BaseModel
 import math
 import numpy as np
 

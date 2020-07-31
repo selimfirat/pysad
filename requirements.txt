@@ -2,3 +2,5 @@ numpy
 pandas
 scipy
 pyod
+rrcf
+PyNomaly

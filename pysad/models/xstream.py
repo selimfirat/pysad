@@ -1,7 +1,7 @@
 import numpy as np
 
-from models.base_model import BaseModel
-from projection.streamhash_projector import StreamhashProjector
+from pysad.models.base_model import BaseModel
+from pysad.projection.streamhash_projector import StreamhashProjector
 
 
 class xStream(BaseModel):

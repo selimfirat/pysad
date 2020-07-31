@@ -1,8 +1,8 @@
 import pyod.models.iforest
 from sklearn.utils import shuffle
 from evaluation.metrics import AUROCMetric
-from models.half_space_trees import HalfSpaceTrees
-from models.reference_window_model import ReferenceWindowModel
+from pysad.models.half_space_trees import HalfSpaceTrees
+from pysad.models.reference_window_model import ReferenceWindowModel
 from streaming.array_iterator import ArrayIterator
 from utils.data import Data
 from tqdm import tqdm

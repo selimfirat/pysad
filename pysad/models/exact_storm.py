@@ -1,18 +1,12 @@
 import scipy
 import numpy as np
-from models.base_model import BaseModel
-from windowing.window import Window
+from pysad.models.base_model import BaseModel
+from pysad.utils.window import Window
 
 
 class ExactStorm(BaseModel):
 
     def __init__(self, W=10000, R=0.1, **kwargs):
-        """
-
-        :param W: window_size
-        :param R: radius
-        :param kwargs:
-        """
         super().__init__(**kwargs)
 
         self.R = R

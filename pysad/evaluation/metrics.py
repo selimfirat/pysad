@@ -1,5 +1,5 @@
 from sklearn.metrics import recall_score, precision_score, roc_auc_score, average_precision_score
-from evaluation.base_sklearn_metric import BaseSKLearnMetric
+from pysad.evaluation.base_sklearn_metric import BaseSKLearnMetric
 
 
 class PrecisionMetric(BaseSKLearnMetric):

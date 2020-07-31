@@ -1,6 +1,5 @@
 from abc import abstractmethod, ABC
-
-from streaming.array_iterator import ArrayIterator
+from pysad.utils import _iterate
 
 
 class BaseModel(ABC):
@@ -17,21 +16,11 @@ class BaseModel(ABC):
         pass
 
     def fit(self, X, y=None):
-        for xi, yi in self._iterate(X, y):
+        for xi, yi in _iterate(X, y):
             self.fit_partial(xi, yi)
 
         return self
 
     def score(self, X):
-        for xi, _ in self._iterate(X):
+        for xi, _ in _iterate(X):
             yield self.score_partial(xi)
-
-    def _iterate(self, X, y=None):
-        iterator = ArrayIterator(shuffle=False)
-
-        if y is None:
-            for xi in iterator.iter(X):
-                yield xi, None
-        else:
-            for xi, yi in iterator.iter(X, y):
-                yield xi, yi

@@ -1,7 +1,7 @@
 import math
 from heapq import heappush
 
-from stats.univariate_statistic import UnivariateStatistic
+from pysad.stats.univariate_statistic import UnivariateStatistic
 
 
 class MinMeter(UnivariateStatistic):

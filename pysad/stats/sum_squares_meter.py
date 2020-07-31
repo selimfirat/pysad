@@ -1,6 +1,6 @@
 
 
-from stats.univariate_statistic import UnivariateStatistic
+from pysad.stats.univariate_statistic import UnivariateStatistic
 
 
 class SumSquaresMeter(UnivariateStatistic):

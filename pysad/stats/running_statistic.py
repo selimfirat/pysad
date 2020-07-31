@@ -1,4 +1,4 @@
-from stats.base_statistic import BaseStatistic
+from pysad.stats.base_statistic import BaseStatistic
 
 
 class RunningStatistic(BaseStatistic):

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from stats.base_statistic import BaseStatistic
+from pysad.stats.base_statistic import BaseStatistic
 
 
 class UnivariateStatistic(BaseStatistic):

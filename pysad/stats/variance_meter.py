@@ -1,7 +1,7 @@
-from stats.count_meter import CountMeter
-from stats.sum_meter import SumMeter
-from stats.sum_squares_meter import SumSquaresMeter
-from stats.univariate_statistic import UnivariateStatistic
+from pysad.stats.count_meter import CountMeter
+from pysad.stats.sum_meter import SumMeter
+from pysad.stats.sum_squares_meter import SumSquaresMeter
+from pysad.stats.univariate_statistic import UnivariateStatistic
 
 
 class VarianceMeter(UnivariateStatistic):

@@ -4,7 +4,7 @@ from pysad.stats.base_statistic import BaseStatistic
 class RunningStatistic(BaseStatistic):
 
     def __init__(self, statistic_cls, window_size, **kwargs):
-        """The rınning statistic that wraps any other statistics to track statistics with a fixed window size.
+        """The running statistic that wraps any other statistics to track statistics with a fixed window size.
 
         Args:
             statistic_cls: The class to be instiantiated and to be windowed.

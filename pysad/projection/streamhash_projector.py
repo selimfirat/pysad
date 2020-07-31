@@ -1,31 +1,45 @@
-#!/usr/bin/env python
-
-import math
 import numpy as np
-import random
 import mmh3
-
 from pysad.projection.base_projector import BaseProjector
 
 
 class StreamhashProjector(BaseProjector):
+    """Streamhash projection method  from Manzoor et. al.that is similar (or equivalent) to SparseRandomProjection. :cite:`xstream` The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
 
+        Args:
+            num_components: The number of dimensions that the target will be projected into.
+            density: Density parameter of the streamhash projection.
     """
-
-    Reference: https://github.com/cmuxstream/cmuxstream-core
-    """
-    def __init__(self, n_components, density=1 / 3.0, **kwargs):
-        super().__init__(n_components, **kwargs)
-        self.keys = np.arange(0, n_components, 1)
-        self.constant = np.sqrt(1. / density) / np.sqrt(n_components)
+    def __init__(self, num_components, density=1 / 3.0):
+        super().__init__(num_components)
+        self.keys = np.arange(0, num_components, 1)
+        self.constant = np.sqrt(1. / density) / np.sqrt(num_components)
         self.density = density
-        self.n_components = n_components
+        self.n_components = num_components
 
     def fit_partial(self, X):
+        """Fits particular (next) timestep's features to train the projector.
 
+        Args:
+            X: np.float array of shape (n_components,).
+                Input feature vector.
+        Returns:
+            self: object
+                The fitted projector.
+        """
         return self
 
     def transform_partial(self, X):
+        """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
+
+        Args:
+            X: np.float array of shape (num_features,)
+                Input feature vector.
+
+        Returns:
+            projected_X: np.float array of shape (num_components,)
+                Projected feature vector.
+        """
         X = X.reshape(1, -1)
 
         ndim = X.shape[1]

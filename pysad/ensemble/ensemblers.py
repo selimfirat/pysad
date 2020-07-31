@@ -13,7 +13,7 @@ class PYODScoreEnsembler(BaseScoreEnsembler):
         """
         Abstract method that directly uses  of our framework to be filled.
         Args:
-            scores: Numpy array of type np.float32 and shape (1, num_scores)
+            scores: Numpy array of type np.float and shape (1, num_scores)
 
         Returns:
             score: float
@@ -26,7 +26,7 @@ class PYODScoreEnsembler(BaseScoreEnsembler):
         """Combines anomaly scores from multiple anomaly detectors for a particular timestep.
 
         Args:
-            scores: np.float32 array of shape (num_anomaly_detectors, )
+            scores: np.float array of shape (num_anomaly_detectors, )
                 List of scores from multiple anomaly detectors.
 
         Returns:
@@ -54,7 +54,7 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
         """
         Wrapping for PyOD the ensembler.
         Args:
-            scores: np.float32 array of shape (num_anomaly_detectors, )
+            scores: np.float array of shape (num_anomaly_detectors, )
                 List of scores from multiple anomaly detectors.
 
         Returns:
@@ -70,7 +70,7 @@ class MaxScoreEnsembler(PYODScoreEnsembler):
         """
         Wrapping for PyOD the ensembler.
         Args:
-            scores: np.float32 array of shape (num_anomaly_detectors, )
+            scores: np.float array of shape (num_anomaly_detectors, )
                 List of scores from multiple anomaly detectors.
 
         Returns:
@@ -86,7 +86,7 @@ class MedianScoreEnsembler(PYODScoreEnsembler):
         """
         Wrapping for PyOD the ensembler.
         Args:
-            scores: np.float32 array of shape (num_anomaly_detectors, )
+            scores: np.float array of shape (num_anomaly_detectors, )
                 List of scores from multiple anomaly detectors.
 
         Returns:
@@ -124,7 +124,7 @@ class AverageOfMaximumEnsembler(PYODScoreEnsembler):
         """
         Wrapping for PyOD the ensembler.
         Args:
-            scores: np.float32 array of shape (num_anomaly_detectors, )
+            scores: np.float array of shape (num_anomaly_detectors, )
                 List of scores from multiple anomaly detectors.
 
         Returns:
@@ -162,7 +162,7 @@ class MaximumOfAverageEnsembler(PYODScoreEnsembler):
         """
         Wrapping for PyOD the ensembler.
         Args:
-            scores: np.float32 array of shape (num_anomaly_detectors, )
+            scores: np.float array of shape (num_anomaly_detectors, )
                 List of scores from multiple anomaly detectors.
 
         Returns:

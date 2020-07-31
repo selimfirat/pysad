@@ -11,7 +11,7 @@ class BaseScoreEnsembler(ABC):
         """Fits ensembler to the list of scores for the next timestep.
 
         Args:
-            scores: numpy array of type np.float32 and shape (num_models,)
+            scores: numpy array of type np.float and shape (num_models,)
                 List of scores from various anomaly detectors.
 
         Returns:

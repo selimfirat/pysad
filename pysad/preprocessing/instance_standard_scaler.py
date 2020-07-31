@@ -1,4 +1,4 @@
-from seqad.preprocessing.base_scaler import BaseScaler
+from pysad.preprocessing.base_scaler import BaseScaler
 
 
 class InstanceStandardScaler(BaseScaler):

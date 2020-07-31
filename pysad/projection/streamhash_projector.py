@@ -5,7 +5,7 @@ import numpy as np
 import random
 import mmh3
 
-from projection.base_projector import BaseProjector
+from pysad.projection.base_projector import BaseProjector
 
 
 class StreamhashProjector(BaseProjector):

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from streaming.array_iterator import ArrayIterator
+from pysad.streaming.array_iterator import ArrayIterator
 
 
 class BaseProjector(ABC):

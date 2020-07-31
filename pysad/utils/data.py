@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-from streaming.array_iterator import ArrayIterator
+from pysad.streaming.array_iterator import ArrayIterator
 
 
 class Data:

@@ -25,25 +25,6 @@ This repository is currently under development.
    :alt: Binder
 
 
-.. image:: https://img.shields.io/github/stars/selimfirat/pysad.svg
-   :target: https://github.com/selimfirat/pysad/stargazers
-   :alt: GitHub stars
-
-
-.. image:: https://img.shields.io/github/forks/selimfirat/pysad.svg?color=blue
-   :target: https://github.com/selimfirat/pysad/network
-   :alt: GitHub forks
-
-
-.. image:: https://pepy.tech/badge/pysad
-   :target: https://pepy.tech/project/pysad
-   :alt: Downloads
-
-
-.. image:: https://pepy.tech/badge/pysad/month
-   :target: https://pepy.tech/project/pysad
-   :alt: Downloads
-
 -----
 
 

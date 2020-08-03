@@ -15,6 +15,10 @@ class BaseModel(ABC):
                 The instance to fit.
             y: int (Default=None)
                 The label of the instance (Optional for unsupervised models)
+
+        Returns:
+            self: object
+                Returns the self.
         """
         pass
 

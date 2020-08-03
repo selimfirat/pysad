@@ -1,19 +1,24 @@
+from scipy import stats
 from pysad.core.base_model import BaseModel
 import math
 import numpy as np
 
 
 class RelativeEntropy(BaseModel):
+    """Relative entropy based anomaly detection model on univariate stream :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_.
+
+        Args:
+            min_val: float
+                Minimum value of the univariate stream.
+            max_val: float
+                Maximum value of the univariate stream.
+            num_bins: int (Default=5)
+                Number of bins
+            window_size: int (Default=52)
+                The size of the window.
     """
-    "Statistical Techniques for Online Anomaly Detection in Data Centers",
-    http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.377.4916&rep=rep1&type=pdf
-    https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py
-    """
 
-    def __init__(self, min_val, max_val):
-
-        from scipy import stats
-
+    def __init__(self, min_val, max_val, num_bins=5, window_size=52):
         self.min_val = min_val
         self.max_val = max_val
 
@@ -21,18 +26,15 @@ class RelativeEntropy(BaseModel):
         self.util = []
 
         # Number of bins into which util is to be quantized
-        self.N_bins = 5
+        self.N_bins = num_bins
 
         # Window size
-        self.W = 52
+        self.W = window_size
 
         # Threshold against which the test statistic is compared. It is set to
         # the point in the chi-squared cdf with N-bins -1 degrees of freedom that
         #  corresponds to 0.99.
         self.T = stats.chi2.isf(0.01, self.N_bins - 1)
-
-        # Threshold to determine if hypothesis has occured frequently enough
-        self.c_th = 1
 
         # Tracks the current number of null hypothesis
         self.m = 0
@@ -49,10 +51,20 @@ class RelativeEntropy(BaseModel):
 
         self.P_hat = None
 
+    def fit_partial(self, X, y=None):
+        """Fits the model to next instance.
 
+        Args:
+            X: float
+                The instance to fit. Note that this model is univariate.
+            y: int (Default=None)
+                Ignored since the model is unsupervised.
 
-    def fit_partial(self, x, y=None):
-        self.util.append(x)
+        Returns:
+            self: object
+                Returns the self.
+        """
+        self.util.append(X)
         if len(self.util) >= self.W:
 
             # Extracting current window
@@ -76,20 +88,25 @@ class RelativeEntropy(BaseModel):
 
         return self
 
-    def score_partial(self, x):
-        """
-        This function must be called just after fit_partial for this model.
-        :param x:
-        :return:
+    def score_partial(self, X):
+        """Scores the anomalousness of the next instance. Note that this method should be called after the fit_partial method.
+
+        Args:
+            X: any (Ignored)
+                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+
+        Returns:
+            score: float
+                The anomalousness score of the input instance.
         """
         score = 0.0
 
         if len(self.util) >= self.W and self.m > 0 and self.P_hat is not None:
-            score = self.get_aggreement_hypothesis(self.P_hat)
+            score = self._get_aggreement_hypothesis(self.P_hat)
 
         return score
 
-    def get_aggreement_hypothesis(self, P_hat):
+    def _get_aggreement_hypothesis(self, P_hat):
         """This function computes multinomial goodness-of-fit test. It calculates
         the relative entropy test statistic between P_hat and all `m` null
         hypothesis and compares it against the threshold `T` based on cdf of

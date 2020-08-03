@@ -32,16 +32,20 @@ class KNNCAD(BaseModel):
 
         return np.sum(np.partition(arr, self.k+item_in_array)[:self.k+item_in_array])
 
-    def fit_partial(self, x, y=None):
+    def fit_partial(self, X, y=None):
         """Fits the model to next instance.
 
         Args:
             X: np.float array of shape (num_features,)
                 The instance to fit.
             y: int (Default=None)
-                The label of the instance (Optional for unsupervised models)
+                Ignored since the model is unsupervised.
+
+        Returns:
+            self: object
+                Returns the self.
         """
-        self.buf.append(x)
+        self.buf.append(X)
         self.record_count += 1
         if len(self.buf) < self.dim:
             return self
@@ -71,7 +75,7 @@ class KNNCAD(BaseModel):
 
         return self
 
-    def score_partial(self, x):
+    def score_partial(self, X):
         """Scores the anomalousness of the next instance.
 
         Args:

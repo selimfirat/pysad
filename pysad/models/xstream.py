@@ -4,14 +4,20 @@ from pysad.transform.projection.streamhash_projector import StreamhashProjector
 
 
 class xStream(BaseModel):
+    """The xStream model for row-streaming data :cite:`xstream`. It first projects the data via streamhash projection. It then fits half space chains by reference windowing. It scores the instances using the window fitted to the reference window.
 
+    Args:
+        n_components: int (Default=100)
+            The number of components for streamhash projection.
+        n_chains: int (Default=100)
+            The number of half-space chains.
+        depth: int (Default=25)
+            The maximum depth for the chains.
+        window_size:
+            The size (and the sliding length) of the reference window.
     """
 
-    Reference: https://github.com/cmuxstream/cmuxstream-core
-    """
     def __init__(self, n_components=100, n_chains=100, depth=25, window_size=25):
-
-
         self.streamhash = StreamhashProjector(n_components=n_components)
         deltamax = np.ones(n_components) * 0.5
         deltamax[np.abs(deltamax) <= 0.0001] = 1.0
@@ -23,6 +29,18 @@ class xStream(BaseModel):
         self.ref_window = None
 
     def fit_partial(self, X, y=None):
+        """Fits the model to next instance.
+
+        Args:
+            X: np.float array of shape (num_features,)
+                The instance to fit.
+            y: int (Default=None)
+                Ignored since the model is unsupervised.
+
+        Returns:
+            self: object
+                Returns the self.
+        """
         self.step += 1
 
         X = self.streamhash.fit_transform_partial(X)
@@ -42,6 +60,16 @@ class xStream(BaseModel):
         return self
 
     def score_partial(self, X):
+        """Scores the anomalousness of the next instance.
+
+        Args:
+            X: np.float array of shape (num_features,)
+                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+
+        Returns:
+            score: float
+                The anomalousness score of the input instance.
+        """
         X = self.streamhash.fit_transform_partial(X)
         X = X.reshape(1, -1)
         score = self.hs_chains.score(X).flatten()

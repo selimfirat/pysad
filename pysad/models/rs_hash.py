@@ -3,13 +3,24 @@ import numpy as np
 
 
 class RSHash(BaseModel):
-    """
-    fit_partial must be followed by score_partial directly on the same instance.
-    Reference: Adapted from https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py. RS-Hash Paper
+    """Subspace outlier detection in linear time with randomized hashing :cite:`sathe2016subspace`. This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_.
+
+        Args:
+            feature_mins: np.float array of shape (num_features,)
+                Minimum boundary of the features.
+            feature_maxes: np.float array of shape (num_features,)
+                Maximum boundary of the features.
+            sampling_points: int (Default=1000)
+                The number of sampling points.
+            decay: float (Default=0.015)
+                The decay hyperparameter.
+            num_components: int (Default=100)
+                The number of ensemble components.
+            num_hash_fns: int (Default=1)
+                The number of hashing functions
     """
 
-    def __init__(self, feature_mins, feature_maxes, sampling_points=1000, decay=0.015, num_components= 00, num_hash_fns=1):
-
+    def __init__(self, feature_mins, feature_maxes, sampling_points=1000, decay=0.015, num_components= 100, num_hash_fns=1):
         self.minimum = feature_mins
         self.maximum = feature_maxes
 
@@ -36,13 +47,24 @@ class RSHash(BaseModel):
 
         self.last_score = None
 
-    def fit_partial(self, x, y=None):
+    def fit_partial(self, X, y=None):
+        """Fits the model to next instance.
 
+        Args:
+            X: np.float array of shape (num_features,)
+                The instance to fit.
+            y: int (Default=None)
+                Ignored since the model is unsupervised.
+
+        Returns:
+            self: object
+                Returns the self.
+        """
         score_instance = 0
         for r in range(self.m):
             Y = -1 * np.ones(len(self.V[r]))
             Y[range(len(self.V[r]))] = np.floor(
-                (x[np.array(self.V[r])] + np.array(self.alpha[r])) / float(self.f[r]))
+                (X[np.array(self.V[r])] + np.array(self.alpha[r])) / float(self.f[r]))
 
             mod_entry = np.insert(Y, 0, r)
             mod_entry = tuple(mod_entry.astype(np.int))
@@ -74,8 +96,15 @@ class RSHash(BaseModel):
 
         return self
 
-    def score_partial(self, x):
+    def score_partial(self, X):
+        """Scores the anomalousness of the next instance. Outputs the last score. Note that this method must be called after the fit_partial
 
+        Args:
+            X: any (Ignored)
+        Returns:
+            score: float
+                The anomalousness score of the last fitted instance.
+        """
         return self.last_score
 
     def _sample_shifts(self):
@@ -103,7 +132,7 @@ class RSHash(BaseModel):
             sel_V = np.random.choice(choice_feats, size=self.r[i], replace=False)
             self.V.append(sel_V)
 
-    def score_update_instance(self, x, index):
+    def _score_update_instance(self, x, index):
         score_instance = 0
         for r in range(self.m):
             Y = -1 * np.ones(len(self.V[r]))

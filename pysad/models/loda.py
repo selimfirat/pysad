@@ -10,7 +10,6 @@ class LODA(BaseModel):
 
     def __init__(self, num_features, num_bins=10, num_random_cuts=100):
 
-
         self.num_features = num_features
         self.n_bins = num_bins
         self.n_random_cuts = num_random_cuts
@@ -23,6 +22,18 @@ class LODA(BaseModel):
         self.n_zero_components = self.num_features - np.int(n_nonzero_components)
 
     def fit_partial(self, X, y=None):
+        """Fits the model to next instance.
+
+        Args:
+            X: np.float array of shape (num_features,)
+                The instance to fit.
+            y: int (Default=None)
+                Ignored since the model is unsupervised.
+
+        Returns:
+            self: object
+                Returns the self.
+        """
         X = X.reshape(1, -1)
 
         for i in range(self.n_random_cuts):
@@ -37,6 +48,16 @@ class LODA(BaseModel):
         return self
 
     def score_partial(self, X):
+        """Scores the anomalousness of the next instance.
+
+        Args:
+            X: np.float array of shape (num_features,)
+                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+
+        Returns:
+            score: float
+                The anomalousness score of the input instance.
+        """
         X = X.reshape(1, -1)
 
         pred_scores = np.zeros([X.shape[0], 1])

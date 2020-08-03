@@ -5,13 +5,15 @@ from pysad.stats.variance_meter import VarianceMeter
 
 
 class StandardAbsoluteDeviation(BaseModel):
+    """The model that assigns the deviation from the mean (or median) and divides with the standard deviation. This model is based on the 3-Sigma rule described in :cite:`hochenbaum2017automatic`.
+
+        substracted_statistic: str (Default="mean")
+            The statistic to be substracted for scoring. It is either "mean" or "median".
+        absolute: bool (Default=True)
+            Whether to output score's absolute value.
+    """
 
     def __init__(self, substracted_statistic="mean", absolute=True):
-        """
-        3-Sigma rule described in https://arxiv.org/pdf/1704.07706.pdf
-        :param kwargs:
-        """
-
         self.absolute = absolute
         self.variance_meter = VarianceMeter()
 
@@ -22,16 +24,28 @@ class StandardAbsoluteDeviation(BaseModel):
         else:
             raise ValueError("Unknown substracted_statistic value! Please choose median or mean.")
 
-    def fit_partial(self, x, y=None):
-        assert len(x) == 1 # Only for time series
+    def fit_partial(self, X, y=None):
+        """Fits the model to next instance.
 
-        self.variance_meter.update(x)
-        self.sub_meter.update(x)
+        Args:
+            X: np.float array of shape (1,)
+                The instance to fit. Note that this model is univariate.
+            y: int (Default=None)
+                Ignored since the model is unsupervised.
 
-    def score_partial(self, x):
+        Returns:
+            self: object
+                Returns the self.
+        """
+        assert len(X) == 1 # Only for time series
+
+        self.variance_meter.update(X)
+        self.sub_meter.update(X)
+
+    def score_partial(self, X):
         sub = self.sub_meter.get()
         dev = self.variance_meter.get()**0.5
 
-        score = (x - sub) / dev
+        score = (X - sub) / dev
 
         return abs(score) if self.absolute else score

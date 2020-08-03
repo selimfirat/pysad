@@ -25,7 +25,11 @@ class ExactStorm(BaseModel):
             X: np.float array of shape (num_features,)
                 The instance to fit.
             y: int (Default=None)
-                The label of the instance (Optional for unsupervised models)
+                Ignored since the model is unsupervised.
+
+        Returns:
+            self: object
+                Returns the self.
         """
         self.window.update(X)
 

@@ -2,13 +2,22 @@ from pysad.core.base_model import BaseModel
 
 
 class PerfectModel(BaseModel):
-
+    """This model directly outputs the ground truth labels. This method is added for testing and pipelining conveience purposes.
+    """
     def __init__(self):
-
-
         self.labels = []
 
-    def fit_partial(self, x, y=None):
+    def fit_partial(self, X, y):
+        """Fits the model to the ground truth label. Adds the label to the self.label queue.
+
+        Args:
+            X: any (Ignored)
+            y: int
+
+        Returns:
+            self: object
+                Returns the self.
+        """
         if y is None:
             raise ValueError("y should be the true score")
 
@@ -16,8 +25,16 @@ class PerfectModel(BaseModel):
 
         return self
 
-    def score_partial(self, x):
+    def score_partial(self, X):
+        """Pops the score from the self.label queue.
 
+        Args:
+            X: any (Ignored)
+
+        Returns:
+            score: float
+                The true label.
+        """
         score = self.labels[0]
         self.labels = self.labels[1:]
 

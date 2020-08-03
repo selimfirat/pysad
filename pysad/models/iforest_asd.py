@@ -3,7 +3,7 @@ from pyod.models.iforest import IForest
 
 
 class IForestASD(ReferenceWindowModel):
-    """An Anomaly Detection Approach Based on Isolation Forest Algorithm for Streaming Data using Sliding Window :cite:`ding2013anomaly`. Note that concept drift is not implemented since it is a part of the simulation. See Algorithm 2 in "An Anomaly Detection Approach Based on Isolation Forest Algorithm for Streaming Data using Sliding Window" paper.
+    """An Anomaly Detection Approach Based on Isolation Forest Algorithm for Streaming Data using Sliding Window :cite:`ding2013anomaly`. Note that concept drift is not implemented since it is a part of the simulation. See Algorithm 2 in "An Anomaly Detection Approach Based on Isolation Forest Algorithm for Streaming Data using Sliding Window" paper. This method is unsupervised so it is not needed to give y as parameter.
 
     Args:
         window_size: int (Default=2048)

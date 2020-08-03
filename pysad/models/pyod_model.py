@@ -1,6 +1,6 @@
 from abc import ABC
 
-from pysad.models.base_model import BaseModel
+from pysad.core.base_model import BaseModel
 
 
 class PYODModel(BaseModel, ABC):

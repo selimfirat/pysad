@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from pyod.models.combination import average, maximization, median, moa, aom
-from pysad.models.base_model import BaseModel
+from pysad.core.base_model import BaseModel
 
 
 class PYODScoreEnsembler(BaseModel):

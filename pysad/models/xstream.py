@@ -1,6 +1,6 @@
 import numpy as np
 
-from pysad.models.base_model import BaseModel
+from pysad.core.base_model import BaseModel
 from pysad.transform.projection import StreamhashProjector
 
 

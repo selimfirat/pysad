@@ -4,26 +4,18 @@ pysad.streaming package
 Submodules
 ----------
 
-pysad.streaming.array\_iterator module
+pysad.streaming.array\_streamer module
 --------------------------------------
 
-.. automodule:: pysad.streaming.array_iterator
+.. automodule:: pysad.streaming.array_streamer
    :members:
    :undoc-members:
    :show-inheritance:
 
-pysad.streaming.base\_iterator module
--------------------------------------
-
-.. automodule:: pysad.streaming.base_iterator
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysad.streaming.pandas\_iterator module
+pysad.streaming.pandas\_streamer module
 ---------------------------------------
 
-.. automodule:: pysad.streaming.pandas_iterator
+.. automodule:: pysad.streaming.pandas_streamer
    :members:
    :undoc-members:
    :show-inheritance:

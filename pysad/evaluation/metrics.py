@@ -1,7 +1,5 @@
-from abc import ABCMeta
-
+from abc import ABCMeta, abstractmethod
 from sklearn.metrics import recall_score, precision_score, roc_auc_score, average_precision_score
-
 from pysad.core.base_metric import BaseMetric
 
 
@@ -47,6 +45,7 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
                 Predicted classes.
         """
         pass
+
 
 class PrecisionMetric(BaseSKLearnMetric):
     """Precision wrapper class for sklearn.

@@ -1,10 +1,9 @@
-from abc import abstractmethod, ABC
-
-from pysad.transform.ensemble.base_ensembler import BaseScoreEnsembler
+from abc import abstractmethod
 from pyod.models.combination import average, maximization, median, moa, aom
+from pysad.models.base_model import BaseModel
 
 
-class PYODScoreEnsembler(BaseScoreEnsembler, metaclass=ABC):
+class PYODScoreEnsembler(BaseModel):
     """Abstract base class for the scoring ensembling methods for the scoring based ensemblers of the `PyOD <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_.
     """
 
@@ -22,7 +21,7 @@ class PYODScoreEnsembler(BaseScoreEnsembler, metaclass=ABC):
         """
         pass
 
-    def transform_partial(self, scores):
+    def score_partial(self, scores):
         """Combines anomaly scores from multiple anomaly detectors for a particular timestep.
 
         Args:

@@ -12,22 +12,6 @@ pysad.evaluation.average\_windowed\_metric module
    :undoc-members:
    :show-inheritance:
 
-pysad.evaluation.base\_metric module
-------------------------------------
-
-.. automodule:: pysad.evaluation.base_metric
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysad.evaluation.base\_sklearn\_metric module
----------------------------------------------
-
-.. automodule:: pysad.evaluation.base_sklearn_metric
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysad.evaluation.metrics module
 -------------------------------
 

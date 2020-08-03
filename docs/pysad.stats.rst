@@ -20,14 +20,6 @@ pysad.stats.average\_meter module
    :undoc-members:
    :show-inheritance:
 
-pysad.stats.base\_statistic module
-----------------------------------
-
-.. automodule:: pysad.stats.base_statistic
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysad.stats.count\_meter module
 -------------------------------
 

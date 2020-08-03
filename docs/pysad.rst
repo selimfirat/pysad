@@ -7,14 +7,12 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   pysad.ensemble
+   pysad.core
    pysad.evaluation
    pysad.models
-   pysad.postprocessing
-   pysad.preprocessing
-   pysad.projection
    pysad.stats
    pysad.streaming
+   pysad.transform
    pysad.utils
 
 Module contents

@@ -1,6 +1,6 @@
 import numpy as np
 import mmh3
-from pysad.projection.base_projector import BaseProjector
+from pysad.transform.projection import BaseProjector
 
 
 class StreamhashProjector(BaseProjector):

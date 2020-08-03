@@ -1,4 +1,4 @@
-from pysad.stats.base_statistic import UnivariateStatistic
+from pysad.core.base_statistic import UnivariateStatistic
 
 
 class AverageMeter(UnivariateStatistic):

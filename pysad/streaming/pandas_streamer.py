@@ -1,8 +1,8 @@
-from pysad.streaming.array_iterator import ArrayIterator
-from pysad.streaming.base_iterator import BaseIterator
+from pysad.streaming.array_streamer import ArrayStreamer
+from pysad.core.base_streamer import BaseStreamer
 
 
-class PandasIterator(BaseIterator):
+class PandasStreamer(BaseStreamer):
     """Simulator class to iterate dataframe(s).
 
     Args:
@@ -12,7 +12,7 @@ class PandasIterator(BaseIterator):
     def __init__(self, shuffle=False):
         super().__init__(shuffle=shuffle)
 
-        self.array_iterator = ArrayIterator(shuffle=shuffle)
+        self.array_iterator = ArrayStreamer(shuffle=shuffle)
 
     def iter(self, X, y=None):
         """Iterates pandas dataframes of of features and possibly labels.

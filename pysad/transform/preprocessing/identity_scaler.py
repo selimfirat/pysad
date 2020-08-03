@@ -1,7 +1,7 @@
-from pysad.preprocessing.base_scaler import BaseScaler
+from pysad.core.base_transformer import BaseTransformer
 
 
-class IdentityScaler(BaseScaler):
+class IdentityScaler(BaseTransformer):
     """A scaler that does not modify the input, which is added for convenience.
     """
 

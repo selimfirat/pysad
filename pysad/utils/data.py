@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from pysad.streaming.array_iterator import ArrayIterator
+from pysad.streaming.array_streamer import ArrayStreamer
 
 
 class Data:
@@ -98,13 +98,13 @@ class Data:
             seed: Random seed.
 
         Returns:
-            iterator: ArrayIterator.iter method applied with (X, y), where X is the variable containing feature vectors and y is the variable containing labels.
+            iterator: ArrayStreamer.iter method applied with (X, y), where X is the variable containing feature vectors and y is the variable containing labels.
 
         """
         if seed is not None:
             np.random.seed(seed)
 
-        iterator = ArrayIterator(shuffle=shuffle)
+        iterator = ArrayStreamer(shuffle=shuffle)
 
         X, y = self.get_data(data_file)
 

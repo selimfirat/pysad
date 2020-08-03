@@ -2,7 +2,7 @@ import abc
 from abc import abstractmethod
 
 
-class BaseIterator(abc.ABC):
+class BaseStreamer(abc.ABC):
     """Abstract base class to simulate the streaming data
 
     Args:

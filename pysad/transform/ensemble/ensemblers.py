@@ -1,10 +1,10 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
-from pysad.ensemble.base_ensembler import BaseScoreEnsembler
+from pysad.transform.ensemble.base_ensembler import BaseScoreEnsembler
 from pyod.models.combination import average, maximization, median, moa, aom
 
 
-class PYODScoreEnsembler(BaseScoreEnsembler):
+class PYODScoreEnsembler(BaseScoreEnsembler, metaclass=ABC):
     """Abstract base class for the scoring ensembling methods for the scoring based ensemblers of the `PyOD <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_.
     """
 

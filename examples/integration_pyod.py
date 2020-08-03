@@ -2,7 +2,7 @@ import pyod.models.iforest
 from sklearn.utils import shuffle
 from pysad.evaluation.metrics import AUROCMetric
 from pysad.models.reference_window_model import ReferenceWindowModel
-from pysad.streaming.array_iterator import ArrayIterator
+from pysad.streaming.array_streamer import ArrayStreamer
 from pysad.utils.data import Data
 from tqdm import tqdm
 
@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     model = ReferenceWindowModel(model_cls=pyod.models.iforest.IForest, window_size=240, sliding_size=30, initial_window_X=X_all[:100])
 
-    iterator = ArrayIterator(shuffle=False)
+    iterator = ArrayStreamer(shuffle=False)
 
     auroc = AUROCMetric()
 

@@ -1,8 +1,8 @@
-from pysad.streaming.base_iterator import BaseIterator
+from pysad.core.base_streamer import BaseStreamer
 import numpy as np
 
 
-class ArrayIterator(BaseIterator):
+class ArrayStreamer(BaseStreamer):
     """Simulator class to iterate array(s).
 
     Args:

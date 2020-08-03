@@ -1,4 +1,4 @@
-from pysad.evaluation.base_metric import BaseMetric
+from pysad.core.base_metric import BaseMetric
 from pysad.stats.average_meter import AverageMeter
 
 

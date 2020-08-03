@@ -3,34 +3,34 @@ from abc import ABC, abstractmethod
 from pysad.utils import _iterate
 
 
-class BasePostProcessor(ABC):
-    """Base class for postprocessing methods.
+class BaseTransformer(ABC):
+    """Base class for transforming methods.
     """
 
     @abstractmethod
     def fit_partial(self, score):
-        """Fits particular (next) timestep's score to train the postprocessor.
+        """Fits particular (next) timestep's score to train the transformer.
 
         Args:
             score: float
                 Input score.
         Returns:
             self: object
-                The fitted postprocessor.
+                The fitted transformer.
         """
         pass
 
     @abstractmethod
     def transform_partial(self, score):
-        """Processes given score.
+        """Transforms given score.
 
         Args:
             score: float
                 Input score.
 
         Returns:
-            postprocessed_score: float
-                Postprocessed score.
+            transformed_score: float
+                transformed score.
         """
         pass
 
@@ -42,8 +42,8 @@ class BasePostProcessor(ABC):
                 Input score.
 
         Returns:
-            postprocessed_score: float
-                Postprocessed score.
+            transformed_score: float
+                transformed score.
         """
         self.fit_partial(score)
 
@@ -57,8 +57,8 @@ class BasePostProcessor(ABC):
                 Input scores.
 
         Returns:
-            postprocessed_scores: np.float array of shape (num_instances,)
-                Postprocessed scores.
+            transformed_scores: np.float array of shape (num_instances,)
+                transformed scores.
         """
         for score, _ in _iterate(scores):
             yield self.transform_partial(score)
@@ -71,8 +71,8 @@ class BasePostProcessor(ABC):
                 Input scores.
 
         Returns:
-            postprocessed_scores: np.float array of shape (num_instances,)
-                Postprocessed scores.
+            transformed_scores: np.float array of shape (num_instances,)
+                transformed scores.
         """
         for score, _ in _iterate(scores):
             yield self.fit_transform_partial(score)

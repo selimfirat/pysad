@@ -1,4 +1,4 @@
-from pysad.streaming.array_iterator import ArrayIterator
+from pysad.streaming.array_streamer import ArrayStreamer
 import random
 import numpy as np
 
@@ -49,6 +49,6 @@ def get_minmax_scalar(x):
 
 
 def _iterate(X):
-    iterator = ArrayIterator(shuffle=False)
+    iterator = ArrayStreamer(shuffle=False)
     for xi in iterator.iter(X):
         yield xi, None

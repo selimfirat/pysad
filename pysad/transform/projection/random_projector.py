@@ -1,6 +1,6 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 import sklearn
-from pysad.projection.base_projector import BaseProjector
+from pysad.transform.projection import BaseProjector
 
 
 class BaseSKLearnProjector(BaseProjector):

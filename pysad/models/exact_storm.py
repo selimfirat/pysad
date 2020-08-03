@@ -6,8 +6,8 @@ from pysad.utils.window import Window
 
 class ExactStorm(BaseModel):
 
-    def __init__(self, W=10000, R=0.1, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, W=10000, R=0.1):
+        super().__init__()
 
         self.R = R
         self.window = Window(window_size=W)

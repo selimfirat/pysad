@@ -7,7 +7,7 @@ class OneFitModel(PYODModel):
     Reference: https://www.andrew.cmu.edu/user/lakoglu/pubs/18-kdd-xstream.pdf
     """
 
-    def __init__(self, model_cls, initial_X, initial_y=None, **kwargs):
+    def __init__(self, model_cls, initial_X, initial_y=None):
         super().__init__(model_cls, **kwargs)
 
         self.initial_y = initial_y

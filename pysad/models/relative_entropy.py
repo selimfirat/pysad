@@ -2,6 +2,7 @@ from pysad.core.base_model import BaseModel
 import math
 import numpy as np
 
+
 class RelativeEntropy(BaseModel):
     """
     "Statistical Techniques for Online Anomaly Detection in Data Centers",
@@ -9,8 +10,8 @@ class RelativeEntropy(BaseModel):
     https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py
     """
 
-    def __init__(self, min_val, max_val, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, min_val, max_val):
+        super().__init__()
         from scipy import stats
 
         self.min_val = min_val

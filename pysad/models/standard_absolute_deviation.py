@@ -6,12 +6,12 @@ from pysad.stats.variance_meter import VarianceMeter
 
 class StandardAbsoluteDeviation(BaseModel):
 
-    def __init__(self, substracted_statistic="mean", absolute=True, **kwargs):
+    def __init__(self, substracted_statistic="mean", absolute=True):
         """
         3-Sigma rule described in https://arxiv.org/pdf/1704.07706.pdf
         :param kwargs:
         """
-        super().__init__(**kwargs)
+        super().__init__()
 
         self.absolute = absolute
         self.variance_meter = VarianceMeter()

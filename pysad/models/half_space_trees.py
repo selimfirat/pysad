@@ -1,7 +1,6 @@
 import copy
-
-from pysad.models.base_model import BaseModel
 import numpy as np
+from pysad.core.base_model import BaseModel
 
 
 class Node:
@@ -17,8 +16,8 @@ class Node:
 
 class HalfSpaceTrees(BaseModel):
 
-    def __init__(self, feature_mins, feature_maxes, window_size=100, num_trees=25, max_depth=15, initial_window_X=None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, feature_mins, feature_maxes, window_size=100, num_trees=25, max_depth=15, initial_window_X=None):
+        super().__init__()
 
         self.window_size = window_size
         self.max_depth = max_depth

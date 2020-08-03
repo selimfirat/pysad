@@ -4,13 +4,13 @@ from pysad.stats.median_meter import MedianMeter
 
 class MedianAbsoluteDeviation(BaseModel):
 
-    def __init__(self, absolute=True, b=1.4826, **kwargs):
+    def __init__(self, absolute=True, b=1.4826):
         """
         Mean Absolute deviation described in https://en.wikipedia.org/wiki/Median_absolute_deviation and https://arxiv.org/pdf/1704.07706.pdf
         See https://arxiv.org/pdf/1704.07706.pdf for b parameter selection. b does not affect scores.
         :param kwargs:
         """
-        super().__init__(**kwargs)
+        super().__init__()
 
         self.b = b
         self.absolute = absolute

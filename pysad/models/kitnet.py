@@ -3,8 +3,8 @@ from pysad.core.base_model import BaseModel
 
 class KitNet(BaseModel):
 
-    def __init__(self, num_features, max_size_ae=10, grace_feature_mapping=5000, grace_anomaly_detector=50000, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, num_features, max_size_ae=10, grace_feature_mapping=5000, grace_anomaly_detector=50000):
+        super().__init__()
         from pysad.models.kitnet_model import KitNET as kit
 
         self.model = kit.KitNET(num_features, max_size_ae, grace_feature_mapping, grace_anomaly_detector)

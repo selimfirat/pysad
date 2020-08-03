@@ -8,7 +8,7 @@ class ReferenceWindowModel(PYODModel):
     Reference: https://www.andrew.cmu.edu/user/lakoglu/pubs/18-kdd-xstream.pdf
     """
 
-    def __init__(self, model_cls, window_size, sliding_size, initial_window_X=None, initial_window_y=None, **kwargs):
+    def __init__(self, model_cls, window_size, sliding_size, initial_window_X=None, initial_window_y=None):
         super().__init__(model_cls, **kwargs)
 
         self.window_size = window_size

@@ -1,7 +1,6 @@
 import numpy as np
-
 from pysad.core.base_model import BaseModel
-from pysad.transform.projection import StreamhashProjector
+from pysad.transform.projection.streamhash_projector import StreamhashProjector
 
 
 class xStream(BaseModel):
@@ -10,8 +9,8 @@ class xStream(BaseModel):
 
     Reference: https://github.com/cmuxstream/cmuxstream-core
     """
-    def __init__(self, n_components=100, n_chains=100, depth=25, window_size=25, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, n_components=100, n_chains=100, depth=25, window_size=25):
+        super().__init__()
 
         self.streamhash = StreamhashProjector(n_components=n_components)
         deltamax = np.ones(n_components) * 0.5

@@ -8,8 +8,8 @@ class LODA(BaseModel):
         Reference: https://pyod.readthedocs.io/en/latest/_modules/pyod/models/loda.html#LODA
     """
 
-    def __init__(self, num_features, num_bins=10, num_random_cuts=100, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, num_features, num_bins=10, num_random_cuts=100):
+        super().__init__()
 
         self.num_features = num_features
         self.n_bins = num_bins

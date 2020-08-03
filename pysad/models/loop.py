@@ -1,10 +1,10 @@
-from pysad.models.base_model import BaseModel
+from pysad.core.base_model import BaseModel
 
 
 class StreamLocalOutlierProbability(BaseModel):
 
-    def __init__(self, initial_X, num_neighbors=10, extent=3, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, initial_X, num_neighbors=10, extent=3):
+        super().__init__()
         from PyNomaly import loop
 
         self.model = loop.LocalOutlierProbability(data=initial_X, extent=extent, n_neighbors=num_neighbors)

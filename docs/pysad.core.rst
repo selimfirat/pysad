@@ -12,6 +12,14 @@ pysad.core.base\_metric module
    :undoc-members:
    :show-inheritance:
 
+pysad.core.base\_model module
+-----------------------------
+
+.. automodule:: pysad.core.base_model
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysad.core.base\_statistic module
 ---------------------------------
 

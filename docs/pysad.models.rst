@@ -12,14 +12,6 @@ Subpackages
 Submodules
 ----------
 
-pysad.models.base\_model module
--------------------------------
-
-.. automodule:: pysad.models.base_model
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysad.models.exact\_storm module
 --------------------------------
 

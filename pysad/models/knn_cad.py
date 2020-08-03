@@ -8,8 +8,8 @@ class KNNCAD(BaseModel):
     https://arxiv.org/abs/1608.04585
     Implementation at https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py
     """
-    def __init__(self, probationary_period, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, probationary_period):
+        super().__init__()
 
         self.buf = []
         self.training = []

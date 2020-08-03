@@ -8,8 +8,8 @@ class RSHash(BaseModel):
     Reference: Adapted from https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py. RS-Hash Paper
     """
 
-    def __init__(self, feature_mins, feature_maxes, sampling_points=1000, decay=0.015, num_components= 00, num_hash_fns=1, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, feature_mins, feature_maxes, sampling_points=1000, decay=0.015, num_components= 00, num_hash_fns=1):
+        super().__init__()
         self.minimum = feature_mins
         self.maximum = feature_maxes
 

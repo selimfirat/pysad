@@ -58,3 +58,23 @@ This repository is currently under development.
 .. image:: https://img.shields.io/github/license/selimfirat/pysad.svg
    :target: https://github.com/selimfirat/pysad/blob/master/LICENSE
    :alt: License
+
+-----
+
+** Useful Links **
+* `Installation <http://TODO_installation>`_
+* `Getting Started <http://TODO_gettingstarted>`_
+
+** Installation **
+The PySAD library can be installed via:
+.. code-block:: bash
+
+    pip install pysad
+
+Alternatively, you can install the library directly using the source code in this repository by:
+
+.. code-block:: bash
+
+    git clone https://github.com/selimfirat/pysad.git
+    cd pysad
+    pip install .

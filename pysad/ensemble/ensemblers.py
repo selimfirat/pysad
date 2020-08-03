@@ -10,15 +10,15 @@ class PYODScoreEnsembler(BaseScoreEnsembler):
 
     @abstractmethod
     def _combine(self, scores):
-        """
-        Abstract method that directly uses  of our framework to be filled.
+        """Abstract method that directly uses  of our framework to be filled.
+
         Args:
             scores: Numpy array of type np.float and shape (1, num_scores)
+                List of scores from multiple anomaly detectors.
 
         Returns:
             score: float
             Resulting anomaly score.
-
         """
         pass
 
@@ -65,6 +65,8 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
 
 
 class MaxScoreEnsembler(PYODScoreEnsembler):
+    """An ensembler that results the maximum of the previous scores.
+    """
 
     def _combine(self, scores):
         """
@@ -81,10 +83,12 @@ class MaxScoreEnsembler(PYODScoreEnsembler):
 
 
 class MedianScoreEnsembler(PYODScoreEnsembler):
+    """An ensembler that results the median of the previous scores.
+    """
 
     def _combine(self, scores):
         """
-        Wrapping for PyOD the ensembler.
+        Helper method to wrap the PyOD ensembler.
         Args:
             scores: np.float array of shape (num_anomaly_detectors, )
                 List of scores from multiple anomaly detectors.
@@ -97,22 +101,21 @@ class MedianScoreEnsembler(PYODScoreEnsembler):
 
 
 class AverageOfMaximumEnsembler(PYODScoreEnsembler):
-    """
-    Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_
-    The ensembler firt divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
+    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
+
     Args:
-    scores : numpy array of shape (n_samples, n_estimators)
-        The score matrix outputted from various estimators
+        scores : numpy array of shape (n_samples, n_estimators)
+            The score matrix outputted from various estimators
 
-    n_buckets : int, optional (default=5)
-        The number of subgroups to build
+        n_buckets : int, optional (default=5)
+            The number of subgroups to build
 
-    method : str, optional (default='static')
-        {'static', 'dynamic'}, if 'dynamic', build subgroups
-        randomly with dynamic bucket size.
+        method : str, optional (default='static')
+            {'static', 'dynamic'}, if 'dynamic', build subgroups
+            randomly with dynamic bucket size.
 
-    bootstrap_estimators : bool, optional (default=False)
-        Whether estimators are drawn with replacement.
+        bootstrap_estimators : bool, optional (default=False)
+            Whether estimators are drawn with replacement.
     """
 
     def __init__(self, n_buckets=5, method='static', bootstrap_estimators=False):
@@ -121,8 +124,8 @@ class AverageOfMaximumEnsembler(PYODScoreEnsembler):
         self.bootstrap_estimators = bootstrap_estimators
 
     def _combine(self, scores):
-        """
-        Wrapping for PyOD the ensembler.
+        """Wrapping for PyOD the ensembler.
+
         Args:
             scores: np.float array of shape (num_anomaly_detectors, )
                 List of scores from multiple anomaly detectors.
@@ -135,22 +138,21 @@ class AverageOfMaximumEnsembler(PYODScoreEnsembler):
 
 
 class MaximumOfAverageEnsembler(PYODScoreEnsembler):
-    """
-    Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_
-    The ensembler firt divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
+    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
+
     Args:
-    scores : numpy array of shape (n_samples, n_estimators)
-        The score matrix outputted from various estimators
+        scores : numpy array of shape (n_samples, n_estimators)
+            The score matrix outputted from various estimators
 
-    n_buckets : int, optional (default=5)
-        The number of subgroups to build
+        n_buckets : int, optional (default=5)
+            The number of subgroups to build
 
-    method : str, optional (default='static')
-        {'static', 'dynamic'}, if 'dynamic', build subgroups
-        randomly with dynamic bucket size.
+        method : str, optional (default='static')
+            {'static', 'dynamic'}, if 'dynamic', build subgroups
+            randomly with dynamic bucket size.
 
-    bootstrap_estimators : bool, optional (default=False)
-        Whether estimators are drawn with replacement.
+        bootstrap_estimators : bool, optional (default=False)
+            Whether estimators are drawn with replacement.
     """
 
     def __init__(self, n_buckets=5, method='static', bootstrap_estimators=False):

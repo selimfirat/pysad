@@ -3,10 +3,10 @@ import sklearn
 from pysad.projection.base_projector import BaseProjector
 
 
-class BaseSKLearnProjector(ABC, BaseProjector):
+class BaseSKLearnProjector(BaseProjector):
 
     def __init__(self, num_components):
-        """Base projector to wrap the random sklearn projectors.
+        """Abstract base projector class to wrap the random sklearn projectors.
 
         Args:
             num_components: The number of dimensions that the target will be projected into.
@@ -51,7 +51,7 @@ class BaseSKLearnProjector(ABC, BaseProjector):
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):
-    """Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / n_components). This text is taken from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.GaussianRandomProjection.html#sklearn.random_projection.GaussianRandomProjection>`_.
+    """Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / n_components). This text is taken from the `Sklearn documentation`_.
 
     Args:
         n_components : int or 'auto', optional (default = 'auto')

@@ -6,10 +6,10 @@ class MedianMeter(UnivariateStatistic):
     """The statistic that keeps track of the median.
 
         Attrs:
-        num_items: int
-            The number of items that are used to update the statistic.
-        lst: list<float>
-            The list of values that are used to update the statistic.
+            num_items: int
+                The number of items that are used to update the statistic.
+            lst: list<float>
+                The list of values that are used to update the statistic.
 
     """
     def __init__(self):

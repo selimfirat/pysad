@@ -65,12 +65,17 @@ This repository is currently under development.
 
 
 ** Useful Links **
+
 * `Installation <http://TODO_installation>`_
+
 * `Getting Started <http://TODO_gettingstarted>`_
 
 
 ** Installation **
+
+
 The PySAD library can be installed via:
+
 
 .. code-block:: bash
 
@@ -78,6 +83,7 @@ The PySAD library can be installed via:
 
 
 Alternatively, you can install the library directly using the source code in this repository by:
+
 
 .. code-block:: bash
 

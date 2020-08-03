@@ -64,14 +64,14 @@ This repository is currently under development.
 -----
 
 
-** Useful Links **
+**Useful Links**
 
 * `Installation <http://TODO_installation>`_
 
 * `Getting Started <http://TODO_gettingstarted>`_
 
 
-** Installation **
+**Installation**
 
 
 The PySAD library can be installed via:

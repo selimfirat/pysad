@@ -3,7 +3,9 @@ Python Streaming Anomaly Detection (PySAD)
 
 This repository is currently under development.
 
+
 **Deployment & Documentation & Stats**
+
 
 .. image:: https://img.shields.io/pypi/v/pysad.svg?color=brightgreen
    :target: https://pypi.org/project/pysad/
@@ -61,15 +63,19 @@ This repository is currently under development.
 
 -----
 
+
 ** Useful Links **
 * `Installation <http://TODO_installation>`_
 * `Getting Started <http://TODO_gettingstarted>`_
 
+
 ** Installation **
 The PySAD library can be installed via:
+
 .. code-block:: bash
 
     pip install pysad
+
 
 Alternatively, you can install the library directly using the source code in this repository by:
 

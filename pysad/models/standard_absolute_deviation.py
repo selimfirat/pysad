@@ -11,7 +11,6 @@ class StandardAbsoluteDeviation(BaseModel):
         3-Sigma rule described in https://arxiv.org/pdf/1704.07706.pdf
         :param kwargs:
         """
-        super().__init__()
 
         self.absolute = absolute
         self.variance_meter = VarianceMeter()

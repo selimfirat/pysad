@@ -4,7 +4,7 @@ from pysad.core.base_model import BaseModel
 class PerfectModel(BaseModel):
 
     def __init__(self):
-        super().__init__()
+
 
         self.labels = []
 

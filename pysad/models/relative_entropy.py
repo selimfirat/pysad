@@ -11,7 +11,7 @@ class RelativeEntropy(BaseModel):
     """
 
     def __init__(self, min_val, max_val):
-        super().__init__()
+
         from scipy import stats
 
         self.min_val = min_val

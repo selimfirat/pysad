@@ -5,7 +5,7 @@ import numpy as np
 class RandomModel(BaseModel):
 
     def __init__(self):
-        super().__init__()
+
 
         self.labels = []
 

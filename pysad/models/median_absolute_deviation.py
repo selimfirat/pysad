@@ -10,7 +10,7 @@ class MedianAbsoluteDeviation(BaseModel):
         See https://arxiv.org/pdf/1704.07706.pdf for b parameter selection. b does not affect scores.
         :param kwargs:
         """
-        super().__init__()
+
 
         self.b = b
         self.absolute = absolute

@@ -9,7 +9,7 @@ class ReferenceWindowModel(PYODModel):
     """
 
     def __init__(self, model_cls, window_size, sliding_size, initial_window_X=None, initial_window_y=None):
-        super().__init__(model_cls, **kwargs)
+        super().__init__(model_cls)
 
         self.window_size = window_size
         self.sliding_size = sliding_size

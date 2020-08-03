@@ -9,7 +9,7 @@ class RSHash(BaseModel):
     """
 
     def __init__(self, feature_mins, feature_maxes, sampling_points=1000, decay=0.015, num_components= 00, num_hash_fns=1):
-        super().__init__()
+
         self.minimum = feature_mins
         self.maximum = feature_maxes
 

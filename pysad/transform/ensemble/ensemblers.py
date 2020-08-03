@@ -46,7 +46,7 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
     """
 
     def __init__(self, estimator_weights=None):
-        super().__init__()
+
         self.estimator_weights = estimator_weights
 
     def _combine(self, scores):

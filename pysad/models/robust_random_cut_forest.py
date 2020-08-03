@@ -5,7 +5,7 @@ class RobustRandomCutForest(BaseModel):
 
     def __init__(self, num_trees=4, shingle_size=4, tree_size=256):
         import rrcf
-        super().__init__()
+
 
         self.tree_size = tree_size
         self.shingle_size = shingle_size

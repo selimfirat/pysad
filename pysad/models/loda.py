@@ -9,7 +9,7 @@ class LODA(BaseModel):
     """
 
     def __init__(self, num_features, num_bins=10, num_random_cuts=100):
-        super().__init__()
+
 
         self.num_features = num_features
         self.n_bins = num_bins

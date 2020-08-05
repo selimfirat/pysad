@@ -15,25 +15,24 @@ class WindowedMetric(BaseMetric):
 
     """
 
-    def __init__(self, metric_cls, window_size, ignore_nonempty_last=True):
+    def __init__(self, metric_cls, window_size, ignore_nonempty_last=True, **kwargs):
+        super().__init__()
         self.ignore_nonempty_last = ignore_nonempty_last
         self.window_size = window_size
         self.metric_cls = metric_cls
 
-        self.metric = self.init_metric()
+        self.metric = self._init_metric(**kwargs)
 
         self.score_meter = AverageMeter()
-
         self.step = 0
+        self.num_windows = 1
 
-        self.num_windows = 0
+    def _init_metric(self, **kwargs):
 
-    def _init_metric(self):
-
-        return self.metric_cls()
+        return self.metric_cls(**kwargs)
 
     def update(self, y_true, y_pred):
-        """
+        """Updates the score with new true label and predicted score/label.
 
         Args:
             y_true: float
@@ -63,7 +62,9 @@ class WindowedMetric(BaseMetric):
             current_score: float
                 The average score of the windows.
         """
-        if self.ignore_nonempty_last:
-            return self.score_meter.get()
+        if self.num_windows == 1:
+            return self.metric.get()
+        elif not self.ignore_nonempty_last and self.step % self.window_size != 0:
+            return (self.metric.get() + self.score_meter.get()*(self.num_windows - 1)) / self.num_windows
         else:
-            return (self.metric.get() + self.score_meter.get()*self.num_windows) / (self.num_windows + 1)
+            return self.score_meter.get()

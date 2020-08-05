@@ -1,3 +1,6 @@
+from pysad.stats.abs_statistic import AbsStatistic
+from pysad.stats.running_statistic import RunningStatistic
+
 
 def test_all_zero_stats():
     import numpy as np
@@ -77,18 +80,28 @@ def test_stats_with_batch_numpy():
 
     for stat_cls, val in stat_classes.items():
         stat = stat_cls()
+        abs_stat = AbsStatistic(stat_cls)
+        window_size = 25
+        running_stat = RunningStatistic(stat_cls, window_size=window_size)
 
         arr = np.random.rand(num_items)
         prev_value = 0.0
         for i in range(arr.shape[0]):
             num = arr[i]
             stat.update(num)
+            abs_stat.update(num)
+            running_stat.update(num)
 
             if i > 1: # for variance meter.
                 assert np.isclose(stat.get(), val(arr[:i+1]))
+                assert np.isclose(running_stat.get(), val(arr[max(0, i-window_size+1):i+1]))
+                assert np.isclose(abs(stat.get()), abs_stat.get())
 
                 stat.remove(num)
+                abs_stat.remove(num)
                 assert np.isclose(stat.get(), prev_value)
+                assert np.isclose(abs_stat.get(), abs(prev_value))
                 stat.update(num)
+                abs_stat.update(num)
 
             prev_value = stat.get()

@@ -5,7 +5,7 @@ from pysad.stats.sum_squares_meter import SumSquaresMeter
 
 
 class VarianceMeter(UnivariateStatistic):
-    """The statistic that keeps track of the variance of the values.
+    """The statistic that keeps track of the variance of the values. The variance formula is: (sum_squares - (sum**2)/count)/count.
 
     Attrs:
         sum_meter: SumMeter object
@@ -36,7 +36,7 @@ class VarianceMeter(UnivariateStatistic):
         return self
 
     def remove(self, num):
-        """Updates the statistic by removing particular value. This method
+        """Updates the statistic by removing particular value.
 
         Args:
             num: The value to be removed.
@@ -63,6 +63,6 @@ class VarianceMeter(UnivariateStatistic):
         sum = self.sum_meter.get()
         count = self.count_meter.get()
 
-        var = (sum_squares - (sum**2)/count)/(count - 1)
+        var = (sum_squares - (sum**2)/count)/count
 
         return var

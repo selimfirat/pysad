@@ -46,7 +46,6 @@ class MedianMeter(UnivariateStatistic):
         self.lst.remove(num)
         self.num_items -= 1
 
-
         return self
 
     def get(self):
@@ -56,6 +55,7 @@ class MedianMeter(UnivariateStatistic):
             statistic: float
                 The statistic.
         """
+        self.lst = sorted(self.lst)
         if self.num_items % 2 == 0:
             return (self.lst[self.num_items // 2] + self.lst[self.num_items//2 - 1]) / 2
         else:

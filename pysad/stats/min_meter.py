@@ -1,6 +1,7 @@
 import math
 from heapq import heappush
 from pysad.core.base_statistic import UnivariateStatistic
+import numpy as np
 
 
 class MinMeter(UnivariateStatistic):
@@ -52,7 +53,7 @@ class MinMeter(UnivariateStatistic):
         self.lst.remove(num)
 
         if len(self.lst) > 0:
-            self.min = self.lst[0]
+            self.min = np.min(self.lst)
         else:
             self.min = math.inf
 

@@ -1,6 +1,7 @@
 import math
 from heapq import heappush
 from pysad.core.base_statistic import UnivariateStatistic
+import numpy as np
 
 
 class MaxMeter(UnivariateStatistic):
@@ -50,7 +51,7 @@ class MaxMeter(UnivariateStatistic):
         self.lst.remove(num)
 
         if len(self.lst) > 0:
-            self.max = self.lst[-1]
+            self.max = np.max(self.lst)
         else:
             self.max = -math.inf
 

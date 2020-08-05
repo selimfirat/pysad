@@ -16,7 +16,7 @@ class MinMeter(UnivariateStatistic):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.min = -math.inf
+        self.min = math.inf
 
         self.lst = []
 

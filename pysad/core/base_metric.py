@@ -3,7 +3,6 @@ from abc import abstractmethod, ABC
 
 class BaseMetric(ABC):
     """Abstract base class for metrics.
-
     """
 
     def __init__(self):
@@ -23,7 +22,7 @@ class BaseMetric(ABC):
 
     @abstractmethod
     def get(self):
-        """Gets the current value of the score.
+        """Gets the current value of the score. Note that some methods such as AUPR and AUROC gives exception when used with only one class exist in the list of previous y_trues.
 
         Returns:
             score: float

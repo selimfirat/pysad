@@ -58,6 +58,7 @@ This repository is currently under development.
    :target: https://github.com/selimfirat/pysad/blob/master/LICENSE
    :alt: License
 
+
 -----
 
 
@@ -66,6 +67,9 @@ This repository is currently under development.
 * `Installation <http://TODO_installation>`_
 
 * `Getting Started <http://TODO_gettingstarted>`_
+
+
+-----
 
 
 **Installation**
@@ -87,3 +91,18 @@ Alternatively, you can install the library directly using the source code in thi
     git clone https://github.com/selimfirat/pysad.git
     cd pysad
     pip install .
+
+
+-----
+
+
+**Versioning**
+`Semantic versioning <http://semver.org/>`_ is used for this project. If contributing, please conform to semantic versioning guidelines when submitting a pull request.
+
+
+-----
+
+
+**License**
+This project is licensed under the `3-Clause BSD License <LICENSE>`_.
+

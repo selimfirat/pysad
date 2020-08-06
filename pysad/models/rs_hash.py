@@ -127,8 +127,9 @@ class RSHash(BaseModel):
                 self.r[i] = 1
             else:
                 self.r[i] = min(np.random.randint(low=low_value[i], high=high_value[i]), self.dim)
-            all_feats = np.array(range(self.dim))
-            choice_feats = all_feats[np.where(self.minimum[all_feats] != self.maximum[all_feats])]
+            all_feats = np.array(list(range(self.dim)), dtype=np.int)
+
+            choice_feats = all_feats[np.where(self.minimum != self.maximum)]
             sel_V = np.random.choice(choice_feats, size=self.r[i], replace=False)
             self.V.append(sel_V)
 

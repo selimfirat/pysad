@@ -17,9 +17,9 @@ class xStream(BaseModel):
             The size (and the sliding length) of the reference window.
     """
 
-    def __init__(self, n_components=100, n_chains=100, depth=25, window_size=25):
-        self.streamhash = StreamhashProjector(n_components=n_components)
-        deltamax = np.ones(n_components) * 0.5
+    def __init__(self, num_components=100, n_chains=100, depth=25, window_size=25):
+        self.streamhash = StreamhashProjector(num_components=num_components)
+        deltamax = np.ones(num_components) * 0.5
         deltamax[np.abs(deltamax) <= 0.0001] = 1.0
         self.window_size = window_size
         self.hs_chains = HSChains(deltamax=deltamax, n_chains=n_chains, depth=depth)

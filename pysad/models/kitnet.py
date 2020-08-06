@@ -18,10 +18,15 @@ class KitNet(BaseModel):
         hidden_ratio: float (Default=0.75)
             the default ratio of hidden to visible neurons. E.g., 0.75 will cause roughly a 25% compression in the hidden layer.
     """
-    def __init__(self, num_features, max_size_ae=10, grace_feature_mapping=None, grace_anomaly_detector=50000, learning_rate=0.1, hidden_ratio=0.75):
+    def __init__(self, max_size_ae=10, grace_feature_mapping=None, grace_anomaly_detector=50000, learning_rate=0.1, hidden_ratio=0.75):
+        self.grace_feature_mapping = grace_feature_mapping
+        self.hidden_ratio = hidden_ratio
+        self.learning_rate = learning_rate
+        self.max_size_ae = max_size_ae
+        self.grace_anomaly_detector = grace_anomaly_detector
+        self.to_init = True
         from pysad.models.kitnet_model import KitNET as kit
 
-        self.model = kit.KitNET(num_features, max_size_ae, grace_feature_mapping, grace_anomaly_detector, learning_rate, hidden_ratio)
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance. Simply, adds the instance to the window.
@@ -36,6 +41,10 @@ class KitNet(BaseModel):
             self: object
                 Returns the self.
         """
+        if self.to_init:
+            self.model = kit.KitNET(self.num_features, self.max_size_ae, self.grace_feature_mapping, self.grace_anomaly_detector,
+                                    self.learning_rate, self.hidden_ratio)
+            self.to_init = False
         self.model.train(X)
 
         return self

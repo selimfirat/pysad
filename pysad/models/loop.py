@@ -4,9 +4,21 @@ from pysad.core.base_model import BaseModel
 class StreamLocalOutlierProbability(BaseModel):
 
     def __init__(self, initial_X, num_neighbors=10, extent=3):
+        """The implementation of streaming Local Outlier Probabilities method :cite:`kriegel2009loop`, which uses the implementation of PyNomaly library :cite:`constantinou2018pynomaly`.
+
+        Args:
+            initial_X: Initial training data to calibrate the model.
+            num_neighbors:
+            extent: int
+            an integer value that controls the statistical
+            extent, e.g. lambda times the standard deviation from the mean (optional,
+            default 3)
+            :param n_neighbors: the total number of neighbors to consider w.r.t. each
+            sample (optional, default 10)
+        """
         from PyNomaly import loop
 
-        self.model = loop.LocalOutlierProbability(data=initial_X, extent=extent, n_neighbors=num_neighbors)
+        self.model = loop.LocalOutlierProbability(initial_X, extent=extent, n_neighbors=num_neighbors).fit()
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.

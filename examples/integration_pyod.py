@@ -1,4 +1,4 @@
-import pyod.models.iforest
+from pyod.models.iforest import IForest
 from sklearn.utils import shuffle
 from pysad.evaluation.metrics import AUROCMetric
 from pysad.models.reference_window_model import ReferenceWindowModel
@@ -12,7 +12,7 @@ if __name__ == "__main__":
     X_all, y_all = data.get_data("arrhythmia.mat")
     X_all, y_all = shuffle(X_all, y_all)
 
-    model = ReferenceWindowModel(model_cls=pyod.models.iforest.IForest, window_size=240, sliding_size=30, initial_window_X=X_all[:100])
+    model = ReferenceWindowModel(model_cls=IForest, window_size=240, sliding_size=30, initial_window_X=X_all[:100])
 
     iterator = ArrayStreamer(shuffle=False)
 

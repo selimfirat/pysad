@@ -59,7 +59,7 @@ This repository is currently under development.
    :alt: License
 
 
------
+===============================
 
 
 **Useful Links**
@@ -69,7 +69,7 @@ This repository is currently under development.
 * `Getting Started <http://TODO_gettingstarted>`_
 
 
------
+===============================
 
 
 **Installation**
@@ -93,14 +93,14 @@ Alternatively, you can install the library directly using the source code in thi
     pip install .
 
 
------
+===============================
 
 
 **Versioning**
 `Semantic versioning <http://semver.org/>`_ is used for this project. If contributing, please conform to semantic versioning guidelines when submitting a pull request.
 
 
------
+===============================
 
 
 **License**

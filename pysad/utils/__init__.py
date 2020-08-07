@@ -48,7 +48,12 @@ def get_minmax_scalar(x):
     return min, max
 
 
-def _iterate(X):
+def _iterate(X, y=None):
     iterator = ArrayStreamer(shuffle=False)
-    for xi in iterator.iter(X):
-        yield xi, None
+
+    if y is None:
+        for xi in iterator.iter(X):
+            yield xi, None
+    else:
+        for xi, yi in iterator.iter(X, y):
+            yield xi, yi

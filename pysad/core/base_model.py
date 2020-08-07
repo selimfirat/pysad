@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pysad.utils import _iterate
-
+import numpy as np
 
 class BaseModel(ABC):
     """Abstract base class for the models.
@@ -94,5 +94,8 @@ class BaseModel(ABC):
             scores: np.float array of shape (num_instances,)
                 The anomalousness scores of the instances in order.
         """
-        for xi, yi in _iterate(X, y):
-            yield self.fit_score_partial(xi, yi)
+        y_pred = np.zeros(y.shape, dtype=np.float)
+        for i, (xi, yi) in enumerate(_iterate(X, y)):
+            y_pred[i] = self.fit_score_partial(xi, yi)
+
+        return y_pred

@@ -1,5 +1,5 @@
 
-def test_unsupervised_models(test_path):
+def test_unsupervised_models():
     from pysad.models.exact_storm import ExactStorm
     from pysad.models.half_space_trees import HalfSpaceTrees
     from pysad.models.iforest_asd import IForestASD
@@ -9,7 +9,6 @@ def test_unsupervised_models(test_path):
     from pysad.models.loop import StreamLocalOutlierProbability
     from pysad.models.median_absolute_deviation import MedianAbsoluteDeviation
     from pysad.models.null_model import NullModel
-    from pysad.models.perfect_model import PerfectModel
     from pysad.models.random_model import RandomModel
     from pysad.models.relative_entropy import RelativeEntropy
     from pysad.models.rs_hash import RSHash
@@ -30,7 +29,6 @@ def test_unsupervised_models(test_path):
         StreamLocalOutlierProbability: { "initial_X": True },
         MedianAbsoluteDeviation: {},
         NullModel: {},
-        PerfectModel: {},
         RandomModel: {},
         RelativeEntropy: { "min_val": 0.0, "max_val": 1.0 },
         RSHash: {"feature_mins": [0.0], "feature_maxes": [1.0]},

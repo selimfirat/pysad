@@ -80,7 +80,7 @@ class BaseModel(ABC):
             scores: np.float array of shape (num_instances,)
                 The anomalousness scores of the instances in order.
         """
-        y_pred = np.zeros(X.shape[0], dtype=np.float)
+        y_pred = np.empty(X.shape[0], dtype=np.float)
         for i, (xi, _) in enumerate(_iterate(X)):
             y_pred[i] = self.score_partial(xi)
 

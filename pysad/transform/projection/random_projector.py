@@ -1,5 +1,7 @@
 from abc import abstractmethod
 import sklearn
+from sklearn.random_projection import SparseRandomProjection, GaussianRandomProjection
+
 from pysad.transform.projection.base_projector import BaseProjector
 
 
@@ -13,7 +15,6 @@ class BaseSKLearnProjector(BaseProjector):
         """
         super().__init__(num_components)
 
-
     @property
     @abstractmethod
     def _projector(self):
@@ -26,7 +27,7 @@ class BaseSKLearnProjector(BaseProjector):
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
-            X: np.float array of shape (n_components,).
+            X: np.float array of shape (num_components,).
                 Input feature vector.
         Returns:
             self: object
@@ -47,7 +48,7 @@ class BaseSKLearnProjector(BaseProjector):
         """
         x = X.reshape(1, -1)
 
-        return self._projector.fit_transform(x).reshape(-1)
+        return self._projector().fit_transform(x).reshape(-1)
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):
@@ -76,10 +77,13 @@ class GaussianRandomProjector(BaseSKLearnProjector):
 
     """
 
-    def __init__(self, n_components='auto', *, eps=0.1):
-        super().__init__(n_components)
+    def __init__(self, num_components='auto', *, eps=0.1):
+        super().__init__(num_components)
+        self.eps = eps
+        self.num_components = num_components
 
-        self.projector = sklearn.random_projection.GaussianRandomProjection(n_components=n_components, eps=eps)
+    def _projector(self):
+        return GaussianRandomProjection(n_components=self.num_components, eps=self.eps)
 
 
 class SparseRandomProjector(BaseSKLearnProjector):
@@ -108,7 +112,11 @@ class SparseRandomProjector(BaseSKLearnProjector):
 
     """
 
-    def __init__(self, n_components='auto', density="auto", eps=0.1, **kwargs):
-        super().__init__(n_components, **kwargs)
+    def __init__(self, num_components='auto', density="auto", eps=0.1):
+        super().__init__(num_components)
+        self.eps = eps
+        self.density = density
+        self.num_components = num_components
 
-        self.projector = sklearn.random_projection.SparseRandomProjection(n_components=n_components, density=density, eps=eps, dense_output=True)
+    def _projector(self):
+        return SparseRandomProjection(n_components=self.num_components, density=self.density, eps=self.eps, dense_output=True)

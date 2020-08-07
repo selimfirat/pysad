@@ -45,9 +45,7 @@ class BaseTransformer(ABC):
             transformed_score: float
                 transformed score.
         """
-        self.fit_partial(score)
-
-        return self.transform_partial(score)
+        return self.fit_partial(score).self.transform_partial(score)
 
     def transform(self, scores):
         """Shortcut method that iteratively applies transform_partial to all instances in order.

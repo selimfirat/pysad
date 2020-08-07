@@ -1,7 +1,7 @@
-from pysad.models.robust_random_cut_forest import RobustRandomCutForest
 
 
 def test_unsupervised_models():
+    from pysad.models.robust_random_cut_forest import RobustRandomCutForest
     from pysad.models.exact_storm import ExactStorm
     from pysad.models.half_space_trees import HalfSpaceTrees
     from pysad.models.iforest_asd import IForestASD
@@ -57,7 +57,8 @@ def helper_test_model(X, model_cls, params_dict):
         train_X = X
         model = model_cls(**params_dict)
 
-    model.fit_score(train_X)
+    y_pred = model.fit_score(train_X)
+    assert y_pred.shape == (train_X.shape[0],)
 
 
 def test_fit_and_score_separately():
@@ -68,5 +69,6 @@ def test_fit_and_score_separately():
 
     model = xStream()
 
-    model.fit(X)
+    model = model.fit(X)
     y_pred = model.score(X)
+    assert y_pred.shape == (X.shape[0],)

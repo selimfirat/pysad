@@ -36,6 +36,8 @@ class MedianAbsoluteDeviation(BaseModel):
         self.median_meter.update(X)
         self.mad_meter.update(X)
 
+        return self
+
     def score_partial(self, X):
         """Scores the anomalousness of the next instance.
 

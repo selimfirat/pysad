@@ -1,4 +1,5 @@
 from pysad.core.base_model import BaseModel
+from pysad.models.kitnet_model import KitNET as kit
 
 
 class KitNet(BaseModel):
@@ -25,8 +26,6 @@ class KitNet(BaseModel):
         self.max_size_ae = max_size_ae
         self.grace_anomaly_detector = grace_anomaly_detector
         self.to_init = True
-        from pysad.models.kitnet_model import KitNET as kit
-
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance. Simply, adds the instance to the window.
@@ -42,10 +41,11 @@ class KitNet(BaseModel):
                 Returns the self.
         """
         if self.to_init:
+            self.num_features = X.shape[0]
             self.model = kit.KitNET(self.num_features, self.max_size_ae, self.grace_feature_mapping, self.grace_anomaly_detector,
                                     self.learning_rate, self.hidden_ratio)
             self.to_init = False
-        self.model.train(X)
+        self.model.process(X)
 
         return self
 
@@ -60,4 +60,7 @@ class KitNet(BaseModel):
             score: float
                 The anomalousness score of the input instance.
         """
-        return self.model.execute(X)
+        if self.model.v is None:
+            return 0.0 # The feature map is not discovered (i.e., still the grace period), thus, KitNet gives an error.
+        else:
+            return self.model.execute(X)

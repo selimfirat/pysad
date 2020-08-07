@@ -42,6 +42,8 @@ class StandardAbsoluteDeviation(BaseModel):
         self.variance_meter.update(X)
         self.sub_meter.update(X)
 
+        return self
+
     def score_partial(self, X):
         sub = self.sub_meter.get()
         dev = self.variance_meter.get()**0.5

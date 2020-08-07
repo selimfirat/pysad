@@ -3,7 +3,7 @@ import numpy as np
 
 
 class KNNCAD(BaseModel):
-    """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_.
+    """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate.
 
         Args:
             probationary_period: int
@@ -17,8 +17,7 @@ class KNNCAD(BaseModel):
         self.record_count = 0
         self.pred = -1
         self.k = 27
-        self.dim = 19
-        self.sigma = np.diag(np.ones(self.dim))
+        self.to_init = True
 
         self.probationaryPeriod = probationary_period
 
@@ -33,10 +32,10 @@ class KNNCAD(BaseModel):
         return np.sum(np.partition(arr, self.k+item_in_array)[:self.k+item_in_array])
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Fits the model to next instance. Note that this model is univariate.
 
         Args:
-            X: np.float array of shape (num_features,)
+            X: np.float array of shape (1,)
                 The instance to fit.
             y: int (Default=None)
                 Ignored since the model is unsupervised.
@@ -45,12 +44,18 @@ class KNNCAD(BaseModel):
             self: object
                 Returns the self.
         """
-        self.buf.append(X)
+        if self.to_init:
+            self.dim = 19#X.shape[0]
+            self.sigma = np.diag(np.ones(self.dim))
+            self.to_init = False
+
+        self.buf.append(X[0])
         self.record_count += 1
         if len(self.buf) < self.dim:
             return self
 
         new_item = self.buf[-self.dim:]
+
         if self.record_count < self.probationaryPeriod:
             self.training.append(new_item)
         else:
@@ -79,7 +84,7 @@ class KNNCAD(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
+            X: np.float array of shape (1,)
                 The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:

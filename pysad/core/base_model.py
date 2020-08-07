@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from pysad.utils import _iterate
 import numpy as np
 
+
 class BaseModel(ABC):
     """Abstract base class for the models.
     """
@@ -43,7 +44,7 @@ class BaseModel(ABC):
             X: np.float array of shape (num_features,)
                 The instance to fit and score.
             y: int (Default=None)
-                The label of the instance (Optional for unsupervised models)
+                The label of the instance (Ignored for unsupervised models)
 
         Returns:
             score: float
@@ -79,8 +80,11 @@ class BaseModel(ABC):
             scores: np.float array of shape (num_instances,)
                 The anomalousness scores of the instances in order.
         """
-        for xi, _ in _iterate(X):
-            yield self.score_partial(xi)
+        y_pred = np.zeros(X.shape[0], dtype=np.float)
+        for i, (xi, _) in enumerate(_iterate(X)):
+            y_pred[i] = self.score_partial(xi)
+
+        return y_pred
 
     def fit_score(self, X, y=None):
         """This helper method applies fit_score_partial to all instances in order.
@@ -94,7 +98,7 @@ class BaseModel(ABC):
             scores: np.float array of shape (num_instances,)
                 The anomalousness scores of the instances in order.
         """
-        y_pred = np.zeros(y.shape, dtype=np.float)
+        y_pred = np.zeros(X.shape[0], dtype=np.float)
         for i, (xi, yi) in enumerate(_iterate(X, y)):
             y_pred[i] = self.fit_score_partial(xi, yi)
 

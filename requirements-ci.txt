@@ -5,3 +5,4 @@ pyod
 rrcf
 PyNomaly
 mmh3
+sklearn

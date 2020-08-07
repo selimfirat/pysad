@@ -97,6 +97,7 @@ Alternatively, you can install the library directly using the source code in thi
 
 
 **Versioning**
+
 `Semantic versioning <http://semver.org/>`_ is used for this project. If contributing, please conform to semantic versioning guidelines when submitting a pull request.
 
 
@@ -104,5 +105,6 @@ Alternatively, you can install the library directly using the source code in thi
 
 
 **License**
+
 This project is licensed under the `3-Clause BSD License <LICENSE>`_.
 

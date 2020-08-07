@@ -48,6 +48,6 @@ class StandardAbsoluteDeviation(BaseModel):
         sub = self.sub_meter.get()
         dev = self.variance_meter.get()**0.5
 
-        score = (X - sub) / dev
+        score = (X - sub) / (dev+1e-10)
 
         return abs(score) if self.absolute else score

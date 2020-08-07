@@ -1,4 +1,5 @@
 from pysad.core.base_model import BaseModel
+from rrcf import rrcf
 
 
 class RobustRandomCutForest(BaseModel):
@@ -13,7 +14,6 @@ class RobustRandomCutForest(BaseModel):
                 The tree size.
     """
     def __init__(self, num_trees=4, shingle_size=4, tree_size=256):
-        import rrcf
 
         self.tree_size = tree_size
         self.shingle_size = shingle_size
@@ -60,10 +60,10 @@ class RobustRandomCutForest(BaseModel):
             score: float
                 The anomalousness score of the input instance.
         """
-        leaf = rrcf.find_duplicate(X)
 
         score = 0.0
         for tree in self.forest:
+            leaf = tree.find_duplicate(X)
             if leaf is None:
                 tree.insert_point(X, index="test_point")
                 score += 1.0 * tree.codisp("test_point") / self.num_trees

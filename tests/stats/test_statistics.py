@@ -99,11 +99,14 @@ def test_stats_with_batch_numpy():
                 assert np.isclose(running_stat.get(), val(arr[max(0, i-window_size+1):i+1]))
                 assert np.isclose(abs(stat.get()), abs_stat.get())
 
-                stat.remove(num)
-                abs_stat.remove(num)
+            stat.remove(num)
+            abs_stat.remove(num)
+
+            if i > 1:
                 assert np.isclose(stat.get(), prev_value)
                 assert np.isclose(abs_stat.get(), abs(prev_value))
-                stat.update(num)
-                abs_stat.update(num)
+
+            stat.update(num)
+            abs_stat.update(num)
 
             prev_value = stat.get()

@@ -51,6 +51,6 @@ class MedianAbsoluteDeviation(BaseModel):
         """
         median = self.median_meter.get()
         mad = self.b*self.mad_meter.get()
-        score = (X - median)/mad
+        score = (X - median)/(mad+1e-10)
 
         return abs(score) if self.absolute else score

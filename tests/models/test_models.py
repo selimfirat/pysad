@@ -48,14 +48,25 @@ def test_unsupervised_models():
 
 
 def helper_test_model(X, model_cls, params_dict):
+    print(str(model_cls))
     if "initial_X" in params_dict and params_dict["initial_X"]:
-        print(str(model_cls))
-        if "initial_X" in params_dict and params_dict["initial_X"]:
-            params_dict["initial_X"] = X[:25, :]
-            model = model_cls(params_dict["initial_X"])
-            train_X = X[25:, :]
-        else:
-            train_X = X
-            model = model_cls(**params_dict)
+        params_dict["initial_X"] = X[:25, :]
+        model = model_cls(params_dict["initial_X"])
+        train_X = X[25:, :]
+    else:
+        train_X = X
+        model = model_cls(**params_dict)
 
-        model.fit_score(train_X)
+    model.fit_score(train_X)
+
+
+def test_fit_and_score_separately():
+    from pysad.models.xstream import xStream
+    import numpy as np
+    np.random.seed(61)
+    X = np.random.rand(150, 1)
+
+    model = xStream()
+
+    model.fit(X)
+    y_pred = model.score(X)

@@ -1,5 +1,5 @@
 from pysad.core.base_transformer import BaseTransformer
-
+import numpy as  np
 
 class InstanceUnitNormScaler(BaseTransformer):
     """A scaler that makes the instance feature vector's norm equal to 1, i.e., the unit vector.
@@ -9,6 +9,7 @@ class InstanceUnitNormScaler(BaseTransformer):
     """
 
     def __init__(self, pow=2):
+        super().__init__(-1)
         self.pow = pow
 
     def fit_partial(self, X):
@@ -34,7 +35,6 @@ class InstanceUnitNormScaler(BaseTransformer):
             scaled_X: np.float array of shape (features,)
                 Scaled feature vector.
         """
-        self.output_dims = X.shape[0]
-        X_norm = X.norm(p=self.pow, dim=1, keepdim=True)
+        X_norm = np.linalg.norm(X, ord=self.pow)
 
-        return X / X_norm.expand_as(X)
+        return X / X_norm

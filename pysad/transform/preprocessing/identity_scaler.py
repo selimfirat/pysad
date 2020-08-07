@@ -31,6 +31,4 @@ class IdentityScaler(BaseTransformer):
             X: np.float array of shape (features,)
                 The exact same input feature vector.
         """
-        self.output_dims = X.shape[0]
-
         return X

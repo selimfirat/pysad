@@ -1,13 +1,15 @@
 from pysad.core.base_transformer import BaseTransformer
 
 
-class InstanceStandardScaler(BaseTransformer):
-    """Standard deviation scaling per instance. Not that the variance and mean is calculated per instance, for which the scaling is done with.
-    The method substracts mean and divides with the standard deviation of the features, separately for each instance.
+class InstanceUnitNormScaler(BaseTransformer):
+    """A scaler that makes the instance feature vector's norm equal to 1, i.e., the unit vector.
+
+    Args:
+        pow: The power, for which the norm is calculated. pow=2 is equivalent to the euclidean distance.
     """
 
-    def __init__(self):
-        super().__init__(-1)
+    def __init__(self, pow=2):
+        self.pow = pow
 
     def fit_partial(self, X):
         """Fits particular (next) timestep's features to train the scaler.
@@ -32,8 +34,7 @@ class InstanceStandardScaler(BaseTransformer):
             scaled_X: np.float array of shape (features,)
                 Scaled feature vector.
         """
+        self.output_dims = X.shape[0]
+        X_norm = X.norm(p=self.pow, dim=1, keepdim=True)
 
-        X_mean = X.mean()
-        X_std = X.std()
-
-        return (X - X_mean) / X_std
+        return X / X_norm.expand_as(X)

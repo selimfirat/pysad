@@ -19,7 +19,7 @@ install:
 
 # command to run tests
 script:
-   pytest --cov=pyod
+   pytest --cov=pysad
 
 after_success:
   - coveralls

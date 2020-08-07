@@ -1,6 +1,5 @@
 from abc import abstractmethod, ABC
 import numpy as np
-from pysad.core.base_transformer import BaseTransformer
 from pysad.utils import _iterate
 
 

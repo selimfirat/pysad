@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+import numpy as np
 from pysad.utils import _iterate
 
 
@@ -7,70 +7,79 @@ class BaseTransformer(ABC):
     """Base class for transforming methods.
     """
 
+    def __init__(self, output_dims):
+        self.output_dims = output_dims
+
     @abstractmethod
-    def fit_partial(self, score):
-        """Fits particular (next) timestep's score to train the transformer.
+    def fit_partial(self, X):
+        """Fits particular (next) timestep's features to train the transformer.
 
         Args:
-            score: float
-                Input score.
+            X: np.float array of shape (num_components,).
+                Input feature vector.
         Returns:
             self: object
-                The fitted transformer.
+                The fitted projector.
         """
         pass
 
     @abstractmethod
-    def transform_partial(self, score):
-        """Transforms given score.
+    def transform_partial(self, X):
+        """Transforms particular (next) timestep's vector.
 
         Args:
-            score: float
-                Input score.
+            X: np.float array of shape (num_features,)
+                Input feature vector.
 
         Returns:
-            transformed_score: float
-                transformed score.
+            transformed_X: np.float array of shape (num_components,)
+                Projected feature vector.
         """
         pass
 
-    def fit_transform_partial(self, score):
+    def fit_transform_partial(self, X):
         """Shortcut method that iteratively applies fit_partial and transform_partial, respectively.
 
         Args:
-            score: float
-                Input score.
+            X: np.float array of shape (num_components,).
+                Input feature vector.
 
         Returns:
-            transformed_score: float
-                transformed score.
+            transformed_X: np.float array of shape (num_components,)
+                Projected feature vector.
         """
-        return self.fit_partial(score).self.transform_partial(score)
+        return self.fit_partial(X).transform_partial(X)
 
-    def transform(self, scores):
+    def transform(self, X):
         """Shortcut method that iteratively applies transform_partial to all instances in order.
 
         Args:
-            scores: np.float array of shape (num_instances,)
-                Input scores.
+            X: np.float array of shape (num_instances, num_features).
+                Input feature vectors.
 
         Returns:
-            transformed_scores: np.float array of shape (num_instances,)
-                transformed scores.
+            transformed_X: np.float array of shape (num_instances, num_components)
+                Projected feature vectors.
         """
-        for score, _ in _iterate(scores):
-            yield self.transform_partial(score)
+        transformed_X = np.empty((X.shape[0], self.output_dims), dtype=np.float)
+        for i, (xi, _) in enumerate(_iterate(X)):
+            transformed_X[i] = self.transform_partial(xi)
 
-    def fit_transform(self, scores):
+        return transformed_X
+
+    def fit_transform(self, X):
         """Shortcut method that iteratively applies fit_transform_partial to all instances in order.
 
         Args:
-            scores: np.float array of shape (num_instances,)
-                Input scores.
+            X: np.float array of shape (num_instances, num_components).
+                Input feature vectors.
 
         Returns:
-            transformed_scores: np.float array of shape (num_instances,)
-                transformed scores.
+            transformed_X: np.float array of shape (num_instances, num_components)
+                Projected feature vectors.
         """
-        for score, _ in _iterate(scores):
-            yield self.fit_transform_partial(score)
+        transformed_X = np.empty((X.shape[0], self.output_dims), dtype=np.float)
+        for i, (xi, _) in enumerate(_iterate(X)):
+            transformed_X[i] = self.fit_transform_partial(xi)
+
+        return transformed_X

@@ -1,9 +1,9 @@
 import numpy as np
 import mmh3
-from pysad.transform.projection.base_projector import BaseProjector
+from pysad.core.base_transformer import BaseTransformer
 
 
-class StreamhashProjector(BaseProjector):
+class StreamhashProjector(BaseTransformer):
     """Streamhash projection method  from Manzoor et. al.that is similar (or equivalent) to SparseRandomProjection. :cite:`xstream` The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
 
         Args:

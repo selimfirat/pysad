@@ -1,11 +1,9 @@
 from abc import abstractmethod
-import sklearn
 from sklearn.random_projection import SparseRandomProjection, GaussianRandomProjection
+from pysad.core.base_transformer import BaseTransformer
 
-from pysad.transform.projection.base_projector import BaseProjector
 
-
-class BaseSKLearnProjector(BaseProjector):
+class BaseSKLearnProjector(BaseTransformer):
 
     def __init__(self, num_components):
         """Abstract base projector class to wrap the random sklearn projectors.

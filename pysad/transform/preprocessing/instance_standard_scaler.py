@@ -6,6 +6,9 @@ class InstanceStandardScaler(BaseTransformer):
     The method substracts mean and divides with the standard deviation of the features, separately for each instance.
     """
 
+    def __init__(self):
+        super().__init__(-1)
+
     def fit_partial(self, X):
         """Fits particular (next) timestep's features to train the scaler.
 
@@ -29,6 +32,8 @@ class InstanceStandardScaler(BaseTransformer):
             scaled_X: np.float array of shape (features,)
                 Scaled feature vector.
         """
+        self.output_dims = X.shape[0]
+
         X_mean = X.mean(dim=1, keepdim=True)
         X_std = X.std(dim=1, keepdim=True)
 

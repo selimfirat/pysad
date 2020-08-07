@@ -5,6 +5,9 @@ class IdentityScaler(BaseTransformer):
     """A scaler that does not modify the input, which is added for convenience.
     """
 
+    def __init__(self):
+        super().__init__(-1)
+
     def fit_partial(self, X):
         """Convenience method that does not modify the input or the scaler.
 
@@ -28,4 +31,6 @@ class IdentityScaler(BaseTransformer):
             X: np.float array of shape (features,)
                 The exact same input feature vector.
         """
+        self.output_dims = X.shape[0]
+
         return X

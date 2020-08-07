@@ -1,8 +1,8 @@
 from pysad.core.base_transformer import BaseTransformer
-from pysad.stats.average_meter import AverageMeter
-from pysad.stats.max_meter import MaxMeter
-from pysad.stats.median_meter import MedianMeter
-from pysad.stats.variance_meter import VarianceMeter
+from pysad.statistics.average_meter import AverageMeter
+from pysad.statistics.max_meter import MaxMeter
+from pysad.statistics.median_meter import MedianMeter
+from pysad.statistics.variance_meter import VarianceMeter
 import numpy as np
 
 

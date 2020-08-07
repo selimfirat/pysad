@@ -2,7 +2,7 @@
 def test_standard_absolute_deviation():
     from pysad.models.standard_absolute_deviation import StandardAbsoluteDeviation
     import numpy as np
-    from sklearn.utils.testing import assert_raises
+    from numpy.testing import assert_raises
 
     np.random.seed(61)
     X = np.random.rand(150, 1)

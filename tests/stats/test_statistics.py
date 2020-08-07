@@ -1,19 +1,19 @@
-from pysad.stats.abs_statistic import AbsStatistic
-from pysad.stats.running_statistic import RunningStatistic
+from pysad.statistics.abs_statistic import AbsStatistic
+from pysad.statistics.running_statistic import RunningStatistic
 
 
 def test_all_zero_stats():
     import numpy as np
-    from pysad.stats.abs_statistic import AbsStatistic
-    from pysad.stats.running_statistic import RunningStatistic
-    from pysad.stats.average_meter import AverageMeter
-    from pysad.stats.count_meter import CountMeter
-    from pysad.stats.max_meter import MaxMeter
-    from pysad.stats.median_meter import MedianMeter
-    from pysad.stats.min_meter import MinMeter
-    from pysad.stats.sum_meter import SumMeter
-    from pysad.stats.sum_squares_meter import SumSquaresMeter
-    from pysad.stats.variance_meter import VarianceMeter
+    from pysad.statistics.abs_statistic import AbsStatistic
+    from pysad.statistics.running_statistic import RunningStatistic
+    from pysad.statistics.average_meter import AverageMeter
+    from pysad.statistics.count_meter import CountMeter
+    from pysad.statistics.max_meter import MaxMeter
+    from pysad.statistics.median_meter import MedianMeter
+    from pysad.statistics.min_meter import MinMeter
+    from pysad.statistics.sum_meter import SumMeter
+    from pysad.statistics.sum_squares_meter import SumSquaresMeter
+    from pysad.statistics.variance_meter import VarianceMeter
     np.random.seed(61)
 
     num_items = 100
@@ -57,14 +57,14 @@ def test_all_zero_stats():
 
 def test_stats_with_batch_numpy():
 
-    from pysad.stats.average_meter import AverageMeter
-    from pysad.stats.count_meter import CountMeter
-    from pysad.stats.max_meter import MaxMeter
-    from pysad.stats.median_meter import MedianMeter
-    from pysad.stats.min_meter import MinMeter
-    from pysad.stats.sum_meter import SumMeter
-    from pysad.stats.sum_squares_meter import SumSquaresMeter
-    from pysad.stats.variance_meter import VarianceMeter
+    from pysad.statistics.average_meter import AverageMeter
+    from pysad.statistics.count_meter import CountMeter
+    from pysad.statistics.max_meter import MaxMeter
+    from pysad.statistics.median_meter import MedianMeter
+    from pysad.statistics.min_meter import MinMeter
+    from pysad.statistics.sum_meter import SumMeter
+    from pysad.statistics.sum_squares_meter import SumSquaresMeter
+    from pysad.statistics.variance_meter import VarianceMeter
     import numpy as np
     np.random.seed(61)
 

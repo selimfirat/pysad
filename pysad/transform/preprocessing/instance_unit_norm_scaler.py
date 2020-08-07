@@ -34,6 +34,7 @@ class InstanceUnitNormScaler(BaseTransformer):
             scaled_X: np.float array of shape (features,)
                 Scaled feature vector.
         """
+        self.output_dims = X.shape[0]
         X_norm = X.norm(p=self.pow, dim=1, keepdim=True)
 
         return X / X_norm.expand_as(X)

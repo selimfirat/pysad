@@ -1,5 +1,5 @@
 from pysad.core.base_model import BaseModel
-from pysad.stats.median_meter import MedianMeter
+from pysad.statistics.median_meter import MedianMeter
 
 
 class MedianAbsoluteDeviation(BaseModel):

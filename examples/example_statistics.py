@@ -15,3 +15,4 @@ if __name__ == '__main__':
         var_meter.update(X[i])
 
     print(f"Average: {avg_meter.get()}, Standard deviation: {np.sqrt(var_meter.get())}")
+    # It is close to random normal distribution with mean 0 and std 1 as we init the array via np.random.rand.

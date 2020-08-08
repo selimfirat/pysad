@@ -20,6 +20,14 @@ pysad.core.base\_model module
    :undoc-members:
    :show-inheritance:
 
+pysad.core.base\_postprocessor module
+-------------------------------------
+
+.. automodule:: pysad.core.base_postprocessor
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysad.core.base\_statistic module
 ---------------------------------
 

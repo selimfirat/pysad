@@ -10,6 +10,7 @@ Subpackages
    pysad.transform.ensemble
    pysad.transform.postprocessing
    pysad.transform.preprocessing
+   pysad.transform.probability_calibration
    pysad.transform.projection
 
 Module contents

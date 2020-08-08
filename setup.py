@@ -8,7 +8,7 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'requirements
           encoding='utf-8') as f:
     requirements = f.read().splitlines()
 
-ver_file = os.path.join('src/skmultiflow', '_version.py')
+ver_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'pysad', 'version.py')
 with open(ver_file) as f:
     exec(f.read())
 VERSION = __version__

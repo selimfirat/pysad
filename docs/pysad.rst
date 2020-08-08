@@ -10,10 +10,22 @@ Subpackages
    pysad.core
    pysad.evaluation
    pysad.models
-   pysad.stats
+   pysad.statistics
    pysad.streaming
    pysad.transform
    pysad.utils
+
+Submodules
+----------
+
+pysad.version module
+--------------------
+
+.. automodule:: pysad.version
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Module contents
 ---------------

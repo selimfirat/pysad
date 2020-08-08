@@ -4,14 +4,6 @@ pysad.transform.projection package
 Submodules
 ----------
 
-pysad.transform.projection.base\_projector module
--------------------------------------------------
-
-.. automodule:: pysad.transform.projection.base_projector
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysad.transform.projection.random\_projector module
 ---------------------------------------------------
 

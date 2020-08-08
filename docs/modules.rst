@@ -5,3 +5,5 @@ PySAD
    :maxdepth: 4
 
    pysad
+   setup
+   tests

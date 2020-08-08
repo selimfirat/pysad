@@ -8,6 +8,7 @@ from pysad.transform.ensemble.ensemblers import AverageScoreEnsembler
 from pysad.utils.data import Data
 import numpy as np
 
+# This example demonstrates the usage of an ensembling method.
 if __name__ == '__main__':
     np.random.seed(61)
 

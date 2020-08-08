@@ -5,10 +5,12 @@ from pysad.models.reference_window_model import ReferenceWindowModel
 from pysad.streaming.array_streamer import ArrayStreamer
 from pysad.utils.data import Data
 from tqdm import tqdm
+import numpy as np
 
+# This example demonstrates the integration of a PYOD model via ReferenceWindowModel.
 if __name__ == "__main__":
+    np.random.seed(61)
     data = Data("data")
-
     X_all, y_all = data.get_data("arrhythmia.mat")
     X_all, y_all = shuffle(X_all, y_all)
 

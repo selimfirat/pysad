@@ -1,2 +1,2 @@
 [run]
-omit = models/kitnet_model/*
+omit = pysad/models/kitnet_model/*

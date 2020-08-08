@@ -1,4 +1,4 @@
-from pysad.core.base_transformer import BaseTransformer
+from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.max_meter import MaxMeter
 from pysad.statistics.median_meter import MedianMeter
@@ -7,7 +7,7 @@ from pysad.statistics.variance_meter import VarianceMeter
 import numpy as np
 
 
-class RunningAveragePostprocessor(BaseTransformer):
+class RunningAveragePostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the average of of all previous scores in the window.
         Args:
             window_size: Length of the window
@@ -46,7 +46,7 @@ class RunningAveragePostprocessor(BaseTransformer):
         return self.meter.get()
 
 
-class RunningMaxPostprocessor(BaseTransformer):
+class RunningMaxPostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the maximum of of all previous scores in the window.
         Args:
             window_size: Length of the window
@@ -85,7 +85,7 @@ class RunningMaxPostprocessor(BaseTransformer):
         return self.meter.get()
 
 
-class RunningMedianPostprocessor(BaseTransformer):
+class RunningMedianPostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the median of of all previous scores in the window.
         Args:
             window_size: Length of the window
@@ -124,7 +124,7 @@ class RunningMedianPostprocessor(BaseTransformer):
         return self.meter.get()
 
 
-class RunningZScorePostprocessor(BaseTransformer):
+class RunningZScorePostprocessor(BasePostprocessor):
     """A postprocessor that normalizes score using Z-score normalization with the statistics of the window.
         Args:
             window_size: Length of the window

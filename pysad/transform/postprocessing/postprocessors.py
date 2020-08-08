@@ -1,4 +1,4 @@
-from pysad.core.base_transformer import BaseTransformer
+from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.max_meter import MaxMeter
 from pysad.statistics.median_meter import MedianMeter
@@ -6,7 +6,7 @@ from pysad.statistics.variance_meter import VarianceMeter
 import numpy as np
 
 
-class AveragePostprocessor(BaseTransformer):
+class AveragePostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the average of of all previous scores.
     """
     def __init__(self):
@@ -42,7 +42,7 @@ class AveragePostprocessor(BaseTransformer):
         return self.meter.get()
 
 
-class MaxPostprocessor(BaseTransformer):
+class MaxPostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the maximum of of all previous scores.
     """
 
@@ -78,7 +78,7 @@ class MaxPostprocessor(BaseTransformer):
         return self.meter.get()
 
 
-class MedianPostprocessor(BaseTransformer):
+class MedianPostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the median of of all previous scores.
     """
 
@@ -114,7 +114,7 @@ class MedianPostprocessor(BaseTransformer):
         return self.meter.get()
 
 
-class ZScorePostprocessor(BaseTransformer):
+class ZScorePostprocessor(BasePostprocessor):
     """A postprocessor that normalize the score via Z-score normalization.
     """
 

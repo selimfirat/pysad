@@ -132,38 +132,3 @@ class RSHash(BaseModel):
             choice_feats = all_feats[np.where(self.minimum != self.maximum)]
             sel_V = np.random.choice(choice_feats, size=self.r[i], replace=False)
             self.V.append(sel_V)
-
-    def _score_update_instance(self, x, index):
-        score_instance = 0
-        for r in range(self.m):
-            Y = -1 * np.ones(len(self.V[r]))
-            Y[range(len(self.V[r]))] = np.floor(
-                (x[np.array(self.V[r])] + np.array(self.alpha[r])) / float(self.f[r]))
-
-            mod_entry = np.insert(Y, 0, r)
-            mod_entry = tuple(mod_entry.astype(np.int))
-
-            c = []
-            for w in range(len(self.cmsketches)):
-                try:
-                    value = self.cmsketches[w][mod_entry]
-                except KeyError as e:
-                    value = (index, 0)
-
-                # Scoring the Instance
-                tstamp = value[0]
-                wt = value[1]
-                new_wt = wt * np.power(2, -self.decay * (index - tstamp))
-                c.append(new_wt)
-
-                # Update the instance
-                new_tstamp = index
-                self.cmsketches[w][mod_entry] = (new_tstamp, new_wt + 1)
-
-            min_c = min(c)
-            c = np.log(1 + min_c)
-            score_instance = score_instance + c
-
-        score = score_instance / self.m
-
-        return score

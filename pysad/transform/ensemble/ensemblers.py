@@ -1,9 +1,9 @@
 from abc import abstractmethod
 from pyod.models.combination import average, maximization, median, moa, aom
-from pysad.core.base_model import BaseModel
+from pysad.core.base_postprocessor import BasePostprocessor
 
 
-class PYODScoreEnsembler(BaseModel):
+class PYODScoreEnsembler(BasePostprocessor):
     """Abstract base class for the scoring ensembling methods for the scoring based ensemblers of the `PyOD <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_.
     """
 
@@ -21,7 +21,19 @@ class PYODScoreEnsembler(BaseModel):
         """
         pass
 
-    def score_partial(self, scores):
+    def fit_partial(self, scores):
+        """Fits particular (next) timestep's score to train the ensembler. For PYOD based ensemblers, this method does not affect anything and returns self directly.
+
+        Args:
+            scores: np.float array of shape (num_anomaly_detectors, )
+                List of scores from multiple anomaly detectors.
+        Returns:
+            self: object
+                The fitted ensembler.
+        """
+        return self
+
+    def transform_partial(self, scores):
         """Combines anomaly scores from multiple anomaly detectors for a particular timestep.
 
         Args:
@@ -63,7 +75,7 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
         return average(scores, estimator_weights=self.estimator_weights)
 
 
-class MaxScoreEnsembler(PYODScoreEnsembler):
+class MaximumScoreEnsembler(PYODScoreEnsembler):
     """An ensembler that results the maximum of the previous scores.
     """
 
@@ -99,7 +111,7 @@ class MedianScoreEnsembler(PYODScoreEnsembler):
         return median(scores)
 
 
-class AverageOfMaximumEnsembler(PYODScoreEnsembler):
+class AverageOfMaximumScoreEnsembler(PYODScoreEnsembler):
     """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
 
     Args:
@@ -136,7 +148,7 @@ class AverageOfMaximumEnsembler(PYODScoreEnsembler):
         return aom(scores, n_buckets=self.n_buckets, method=self.method, bootstrap_estimators=self.bootstrap_estimators)
 
 
-class MaximumOfAverageEnsembler(PYODScoreEnsembler):
+class MaximumOfAverageScoreEnsembler(PYODScoreEnsembler):
     """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
 
     Args:

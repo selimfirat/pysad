@@ -6,8 +6,10 @@ class LODA(BaseModel):
     """The LODA model :cite:`pevny2016loda` The implemnetation is adapted to the steraming framework from the `PyOD framework <https://pyod.readthedocs.io/en/latest/_modules/pyod/models/loda.html#LODA>`_.
 
         Args:
-        num_bins:
-        num_random_cuts:
+            num_bins: int
+                The number of bins of the histogram.
+            num_random_cuts: int
+                The number of random cuts.
     """
 
     def __init__(self, num_bins=10, num_random_cuts=100):

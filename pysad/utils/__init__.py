@@ -1,4 +1,4 @@
-from pysad.streaming.array_streamer import ArrayStreamer
+from pysad.utils.array_streamer import ArrayStreamer
 import random
 import numpy as np
 

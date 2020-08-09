@@ -3,7 +3,7 @@ from tqdm import tqdm
 from pysad.evaluation.metrics import AUROCMetric
 from pysad.models.loda import LODA
 from pysad.models.xstream import xStream
-from pysad.streaming.array_streamer import ArrayStreamer
+from pysad.utils.array_streamer import ArrayStreamer
 from pysad.transform.ensemble.ensemblers import AverageScoreEnsembler
 from pysad.utils.data import Data
 import numpy as np

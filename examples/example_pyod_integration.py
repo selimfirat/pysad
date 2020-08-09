@@ -2,7 +2,7 @@ from pyod.models.iforest import IForest
 from sklearn.utils import shuffle
 from pysad.evaluation.metrics import AUROCMetric
 from pysad.models.reference_window_model import ReferenceWindowModel
-from pysad.streaming.array_streamer import ArrayStreamer
+from pysad.utils.array_streamer import ArrayStreamer
 from pysad.utils.data import Data
 from tqdm import tqdm
 import numpy as np

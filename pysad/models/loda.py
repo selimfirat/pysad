@@ -3,9 +3,11 @@ import numpy as np
 
 
 class LODA(BaseModel):
-    """
+    """The LODA model :cite:`pevny2016loda` The implemnetation is adapted to the steraming framework from the `PyOD framework <https://pyod.readthedocs.io/en/latest/_modules/pyod/models/loda.html#LODA>`_.
 
-        Reference: https://pyod.readthedocs.io/en/latest/_modules/pyod/models/loda.html#LODA
+        Args:
+        num_bins:
+        num_random_cuts:
     """
 
     def __init__(self, num_bins=10, num_random_cuts=100):

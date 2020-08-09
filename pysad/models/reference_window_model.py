@@ -43,6 +43,9 @@ class ReferenceWindowModel(PYODModel):
 
         if self.reference_window_X is not None:
             self._fit_model()
+            self.initial_ref_window = True
+        else:
+            self.initial_ref_window = False
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.
@@ -62,7 +65,7 @@ class ReferenceWindowModel(PYODModel):
         if y is not None:
             self.cur_window_y.append(y)
 
-        if self.reference_window_X is None:
+        if not self.initial_ref_window and len(self.cur_window_X) < self.window_size:
             self.reference_window_X = self.cur_window_X
             self.reference_window_y = self.cur_window_y if y is not None else None
             self._fit_model()

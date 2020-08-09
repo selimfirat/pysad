@@ -7,7 +7,7 @@ class RunningStatistic(BaseStatistic):
         """The running statistic that wraps any other statistics to track statistics with a fixed window size.
 
         Args:
-            statistic_cls: The class to be instiantiated and to be windowed.
+            statistic_cls: The class to be instantiated and to be windowed.
             window_size: The window size.
             **kwargs: The keyword arguments that is input to the statistic_cls.
         """

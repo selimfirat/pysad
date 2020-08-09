@@ -5,4 +5,4 @@ pyod==0.7.7.1
 rrcf==0.4.3
 PyNomaly==0.3.3
 mmh3==2.5.1
-scikit-learn=0.21.1
+scikit-learn==0.21.1

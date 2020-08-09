@@ -1,6 +1,6 @@
-sphinx_rtd_theme
-sphinx
-sphinxcontrib-fulltoc
-pytest
-pytest-cov
-coveralls
+sphinx_rtd_theme==0.5.0
+sphinx==3.1.2
+sphinxcontrib-fulltoc==1.2.0
+pytest==5.2.1
+pytest-cov==2.10.0
+coveralls==2.1.1

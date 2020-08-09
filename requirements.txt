@@ -1,8 +1,8 @@
-numpy
-pandas
-scipy
-pyod
-rrcf
-PyNomaly
-mmh3
-sklearn
+numpy==1.18.5
+pandas==0.23.3
+scipy==1.4.1
+pyod==0.7.7.1
+rrcf==0.4.3
+PyNomaly==0.3.3
+mmh3==2.5.1
+scikit-learn=0.21.1

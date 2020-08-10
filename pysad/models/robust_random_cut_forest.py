@@ -13,6 +13,7 @@ class RobustRandomCutForest(BaseModel):
             tree_size: The tree size
                 The tree size.
     """
+
     def __init__(self, num_trees=4, shingle_size=4, tree_size=256):
 
         self.tree_size = tree_size

@@ -32,20 +32,25 @@ class LODA(BaseModel):
         """
         if self.to_init:
             self.num_features = X.shape[0]
-            self.weights = np.ones(self.n_random_cuts, dtype=np.float) / self.n_random_cuts
-            self.projections_ = np.random.randn(self.n_random_cuts, self.num_features)
+            self.weights = np.ones(
+                self.n_random_cuts,
+                dtype=np.float) / self.n_random_cuts
+            self.projections_ = np.random.randn(
+                self.n_random_cuts, self.num_features)
             self.histograms_ = np.zeros((self.n_random_cuts, self.n_bins))
             self.limits_ = np.zeros((self.n_random_cuts, self.n_bins + 1))
 
             n_nonzero_components = np.sqrt(self.num_features)
-            self.n_zero_components = self.num_features - np.int(n_nonzero_components)
+            self.n_zero_components = self.num_features - \
+                np.int(n_nonzero_components)
 
             self.to_init = False
 
         X = X.reshape(1, -1)
 
         for i in range(self.n_random_cuts):
-            rands = np.random.permutation(self.num_features)[:self.n_zero_components]
+            rands = np.random.permutation(self.num_features)[
+                :self.n_zero_components]
             self.projections_[i, rands] = 0.
             projected_data = self.projections_[i, :].dot(X.T)
             self.histograms_[i, :], self.limits_[i, :] = np.histogram(

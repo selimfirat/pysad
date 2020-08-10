@@ -11,7 +11,8 @@ class MaxMeter(UnivariateStatistic):
             max: float
                 The maximum value
             lst: list<float>
-                The list of values that are used to update the statistic. It is necessary for windowing operations.
+                The list of values that are used to update the statistic.
+                It is necessary for windowing operations.
     """
 
     def __init__(self):

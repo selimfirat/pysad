@@ -63,6 +63,6 @@ class VarianceMeter(UnivariateStatistic):
         sum = self.sum_meter.get()
         count = self.count_meter.get()
 
-        var = (sum_squares - (sum**2)/count)/count
+        var = (sum_squares - (sum**2) / count) / count
 
         return var

@@ -15,7 +15,12 @@ class WindowedMetric(BaseMetric):
 
     """
 
-    def __init__(self, metric_cls, window_size, ignore_nonempty_last=True, **kwargs):
+    def __init__(
+            self,
+            metric_cls,
+            window_size,
+            ignore_nonempty_last=True,
+            **kwargs):
         super().__init__()
         self.ignore_nonempty_last = ignore_nonempty_last
         self.window_size = window_size
@@ -65,6 +70,6 @@ class WindowedMetric(BaseMetric):
         if self.num_windows == 1:
             return self.metric.get()
         elif not self.ignore_nonempty_last and self.step % self.window_size != 0:
-            return (self.metric.get() + self.score_meter.get()*(self.num_windows - 1)) / self.num_windows
+            return (self.metric.get() + self.score_meter.get() * (self.num_windows - 1)) / self.num_windows
         else:
             return self.score_meter.get()

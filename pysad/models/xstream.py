@@ -17,12 +17,20 @@ class xStream(BaseModel):
             The size (and the sliding length) of the reference window.
     """
 
-    def __init__(self, num_components=100, n_chains=100, depth=25, window_size=25):
+    def __init__(
+            self,
+            num_components=100,
+            n_chains=100,
+            depth=25,
+            window_size=25):
         self.streamhash = StreamhashProjector(num_components=num_components)
         deltamax = np.ones(num_components) * 0.5
         deltamax[np.abs(deltamax) <= 0.0001] = 1.0
         self.window_size = window_size
-        self.hs_chains = HSChains(deltamax=deltamax, n_chains=n_chains, depth=depth)
+        self.hs_chains = HSChains(
+            deltamax=deltamax,
+            n_chains=n_chains,
+            depth=depth)
 
         self.step = 0
         self.cur_window = []
@@ -80,7 +88,7 @@ class xStream(BaseModel):
         mx = np.max(np.concatenate(self.ref_window, axis=0), axis=0)
         mn = np.min(np.concatenate(self.ref_window, axis=0), axis=0)
 
-        deltamax = (mx - mn)/2.0
+        deltamax = (mx - mn) / 2.0
         deltamax[np.abs(deltamax) <= 0.0001] = 1.0
 
         return deltamax
@@ -96,7 +104,7 @@ class Chain:
         self.cmsketches = [{} for i in range(depth)] * depth
         self.cmsketches_cur = [{} for i in range(depth)] * depth
 
-        self.deltamax = deltamax # feature ranges
+        self.deltamax = deltamax  # feature ranges
         self.rand_arr = np.random.rand(k)
         self.shift = self.rand_arr * deltamax
 
@@ -110,17 +118,18 @@ class Chain:
             depthcount[f] += 1
 
             if depthcount[f] == 1:
-                prebins[:,f] = (X[:,f] + self.shift[f])/self.deltamax[f]
+                prebins[:, f] = (X[:, f] + self.shift[f]) / self.deltamax[f]
             else:
-                prebins[:,f] = 2.0*prebins[:,f] - self.shift[f]/self.deltamax[f]
+                prebins[:, f] = 2.0 * prebins[:, f] - \
+                    self.shift[f] / self.deltamax[f]
 
             if self.is_first_window:
                 cmsketch = self.cmsketches[depth]
                 for prebin in prebins:
-                    l = tuple(np.floor(prebin).astype(np.int))
-                    if not l in cmsketch:
-                        cmsketch[l] = 0
-                    cmsketch[l] += 1
+                    l_index = tuple(np.floor(prebin).astype(np.int))
+                    if l_index not in cmsketch:
+                        cmsketch[l_index] = 0
+                    cmsketch[l_index] += 1
 
                 self.cmsketches[depth] = cmsketch
 
@@ -130,10 +139,10 @@ class Chain:
                 cmsketch = self.cmsketches_cur[depth]
 
                 for prebin in prebins:
-                    l = tuple(np.floor(prebin).astype(np.int))
-                    if not l in cmsketch:
-                        cmsketch[l] = 0
-                    cmsketch[l] += 1
+                    l_index = tuple(np.floor(prebin).astype(np.int))
+                    if l_index not in cmsketch:
+                        cmsketch[l_index] = 0
+                    cmsketch[l_index] += 1
 
                 self.cmsketches_cur[depth] = cmsketch
 
@@ -148,17 +157,18 @@ class Chain:
             depthcount[f] += 1
 
             if depthcount[f] == 1:
-                prebins[:,f] = (X[:,f] + self.shift[f])/self.deltamax[f]
+                prebins[:, f] = (X[:, f] + self.shift[f]) / self.deltamax[f]
             else:
-                prebins[:,f] = 2.0*prebins[:,f] - self.shift[f]/self.deltamax[f]
+                prebins[:, f] = 2.0 * prebins[:, f] - \
+                    self.shift[f] / self.deltamax[f]
 
             cmsketch = self.cmsketches[depth]
             for i, prebin in enumerate(prebins):
-                l = tuple(np.floor(prebin).astype(np.int))
-                if not l in cmsketch:
-                    scores[i,depth] = 0.0
+                l_index = tuple(np.floor(prebin).astype(np.int))
+                if l_index not in cmsketch:
+                    scores[i, depth] = 0.0
                 else:
-                    scores[i,depth] = cmsketch[l]
+                    scores[i, depth] = cmsketch[l_index]
 
         return scores
 
@@ -166,8 +176,8 @@ class Chain:
         # scale score logarithmically to avoid overflow:
         #    score = min_d [ log2(bincount x 2^d) = log2(bincount) + d ]
         scores = self.bincount(X)
-        depths = np.array([d for d in range(1, self.depth+1)])
-        scores = np.log2(1.0 + scores) + depths # add 1 to avoid log(0)
+        depths = np.array([d for d in range(1, self.depth + 1)])
+        scores = np.log2(1.0 + scores) + depths  # add 1 to avoid log(0)
         return -np.min(scores, axis=1)
 
     def next_window(self):

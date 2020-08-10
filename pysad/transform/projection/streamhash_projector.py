@@ -10,6 +10,7 @@ class StreamhashProjector(BaseTransformer):
             num_components: The number of dimensions that the target will be projected into.
             density: Density parameter of the streamhash projection.
     """
+
     def __init__(self, num_components, density=1 / 3.0):
         super().__init__(num_components)
         self.keys = np.arange(0, num_components, 1)

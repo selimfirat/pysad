@@ -20,7 +20,14 @@ class ReferenceWindowModel(PYODModel):
                 Keyword arguments that is passed to the `model_cls`.
     """
 
-    def __init__(self, model_cls, window_size, sliding_size, initial_window_X=None, initial_window_y=None, **kwargs):
+    def __init__(
+            self,
+            model_cls,
+            window_size,
+            sliding_size,
+            initial_window_X=None,
+            initial_window_y=None,
+            **kwargs):
         """
 
         Args:
@@ -65,17 +72,22 @@ class ReferenceWindowModel(PYODModel):
         if y is not None:
             self.cur_window_y.append(y)
 
-        if not self.initial_ref_window and len(self.cur_window_X) < self.window_size:
+        if not self.initial_ref_window and len(
+                self.cur_window_X) < self.window_size:
             self.reference_window_X = self.cur_window_X
             self.reference_window_y = self.cur_window_y if y is not None else None
             self._fit_model()
         elif len(self.cur_window_X) % self.sliding_size == 0:
-            self.reference_window_X = np.concatenate([self.reference_window_X, self.cur_window_X], axis=0)
-            self.reference_window_X = self.reference_window_X[max(0, len(self.reference_window_X) - self.window_size):]
+            self.reference_window_X = np.concatenate(
+                [self.reference_window_X, self.cur_window_X], axis=0)
+            self.reference_window_X = self.reference_window_X[max(
+                0, len(self.reference_window_X) - self.window_size):]
 
             if y is not None:
-                self.reference_window_y = self.reference_window_y[max(0, len(self.reference_window_y) - self.window_size):]
-                self.reference_window_y = np.concatenate([self.reference_window_y, self.cur_window_y], axis=0)
+                self.reference_window_y = self.reference_window_y[max(
+                    0, len(self.reference_window_y) - self.window_size):]
+                self.reference_window_y = np.concatenate(
+                    [self.reference_window_y, self.cur_window_y], axis=0)
 
             self.cur_window = []
             self._fit_model()

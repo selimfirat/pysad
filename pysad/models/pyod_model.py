@@ -20,4 +20,3 @@ class PYODModel(BaseModel):
         """Removes the old model from the memory and instantiates a new one.
         """
         self.model = self.model_cls(**self.kwargs)
-

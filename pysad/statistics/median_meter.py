@@ -12,6 +12,7 @@ class MedianMeter(UnivariateStatistic):
                 The list of values that are used to update the statistic.
 
     """
+
     def __init__(self):
         self.lst = []
         self.num_items = 0
@@ -57,6 +58,6 @@ class MedianMeter(UnivariateStatistic):
         """
         self.lst = sorted(self.lst)
         if self.num_items % 2 == 0:
-            return (self.lst[self.num_items // 2] + self.lst[self.num_items//2 - 1]) / 2
+            return (self.lst[self.num_items // 2] + self.lst[self.num_items // 2 - 1]) / 2
         else:
-            return self.lst[self.num_items//2]
+            return self.lst[self.num_items // 2]

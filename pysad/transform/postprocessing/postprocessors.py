@@ -9,6 +9,7 @@ import numpy as np
 class AveragePostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the average of of all previous scores.
     """
+
     def __init__(self):
         self.meter = AverageMeter()
 
@@ -149,6 +150,7 @@ class ZScorePostprocessor(BasePostprocessor):
             result_score: float
                 Transformed score.
         """
-        zscore = (score - self.average_meter.get()) / np.sqrt(self.variance_meter.get())
+        zscore = (score - self.average_meter.get()) / \
+            np.sqrt(self.variance_meter.get())
 
         return zscore

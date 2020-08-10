@@ -19,7 +19,14 @@ class KitNet(BaseModel):
         hidden_ratio: float (Default=0.75)
             the default ratio of hidden to visible neurons. E.g., 0.75 will cause roughly a 25% compression in the hidden layer.
     """
-    def __init__(self, max_size_ae=10, grace_feature_mapping=None, grace_anomaly_detector=50000, learning_rate=0.1, hidden_ratio=0.75):
+
+    def __init__(
+            self,
+            max_size_ae=10,
+            grace_feature_mapping=None,
+            grace_anomaly_detector=50000,
+            learning_rate=0.1,
+            hidden_ratio=0.75):
         self.grace_feature_mapping = grace_feature_mapping
         self.hidden_ratio = hidden_ratio
         self.learning_rate = learning_rate
@@ -42,8 +49,13 @@ class KitNet(BaseModel):
         """
         if self.to_init:
             self.num_features = X.shape[0]
-            self.model = kit.KitNET(self.num_features, self.max_size_ae, self.grace_feature_mapping, self.grace_anomaly_detector,
-                                    self.learning_rate, self.hidden_ratio)
+            self.model = kit.KitNET(
+                self.num_features,
+                self.max_size_ae,
+                self.grace_feature_mapping,
+                self.grace_anomaly_detector,
+                self.learning_rate,
+                self.hidden_ratio)
             self.to_init = False
         self.model.process(X)
 
@@ -61,6 +73,8 @@ class KitNet(BaseModel):
                 The anomalousness score of the input instance.
         """
         if self.model.v is None:
-            return 0.0 # The feature map is not discovered (i.e., still the grace period), thus, KitNet gives an error.
+            # The feature map is not discovered (i.e., still the grace period),
+            # thus, KitNet gives an error.
+            return 0.0
         else:
             return self.model.execute(X)

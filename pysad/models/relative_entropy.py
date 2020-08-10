@@ -77,9 +77,9 @@ class RelativeEntropy(BaseModel):
             # Create a histogram of empirical frequencies for the current window
             # using B_current
             self.P_hat = np.histogram(B_current,
-                                    bins=self.N_bins,
-                                    range=(0, self.N_bins),
-                                    density=True)[0]
+                                      bins=self.N_bins,
+                                      range=(0, self.N_bins),
+                                      density=True)[0]
 
             if self.m == 0:
                 self.P.append(self.P_hat)

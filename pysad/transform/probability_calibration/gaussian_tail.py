@@ -63,6 +63,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         """
 
         # Calculate the Q function with the complementary error function, explained
-        # here: http://www.gaussianwaves.com/2012/07/q-function-and-error-functions
+        # here:
+        # http://www.gaussianwaves.com/2012/07/q-function-and-error-functions
         z = (x - mean) / std
         return 0.5 * math.erfc(z / math.sqrt(2))

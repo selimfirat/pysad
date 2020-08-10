@@ -4,6 +4,7 @@ from pysad.core.base_model import BaseModel
 class PerfectModel(BaseModel):
     """This model directly outputs the ground truth labels. This method is added for testing and pipelining conveience purposes.
     """
+
     def __init__(self):
         self.labels = []
 

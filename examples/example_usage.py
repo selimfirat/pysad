@@ -13,7 +13,7 @@ if __name__ == "__main__":
     np.random.seed(61)
     data = Data("data")
 
-    X_all, y_all = data.get_data("arrhythmia.mat")
+    X_all, y_all = data.get_data("arrhythmia.mat", shuffle=True)
     X_all, y_all = shuffle(X_all, y_all)
 
     iterator = ArrayStreamer(shuffle=False)

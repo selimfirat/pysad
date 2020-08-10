@@ -129,7 +129,11 @@ class AverageOfMaximumScoreEnsembler(PYODScoreEnsembler):
             Whether estimators are drawn with replacement.
     """
 
-    def __init__(self, n_buckets=5, method='static', bootstrap_estimators=False):
+    def __init__(
+            self,
+            n_buckets=5,
+            method='static',
+            bootstrap_estimators=False):
         self.method = method
         self.n_buckets = n_buckets
         self.bootstrap_estimators = bootstrap_estimators
@@ -145,7 +149,11 @@ class AverageOfMaximumScoreEnsembler(PYODScoreEnsembler):
             score: float
                 Resulting anomaly score.
         """
-        return aom(scores, n_buckets=self.n_buckets, method=self.method, bootstrap_estimators=self.bootstrap_estimators)
+        return aom(
+            scores,
+            n_buckets=self.n_buckets,
+            method=self.method,
+            bootstrap_estimators=self.bootstrap_estimators)
 
 
 class MaximumOfAverageScoreEnsembler(PYODScoreEnsembler):
@@ -166,7 +174,11 @@ class MaximumOfAverageScoreEnsembler(PYODScoreEnsembler):
             Whether estimators are drawn with replacement.
     """
 
-    def __init__(self, n_buckets=5, method='static', bootstrap_estimators=False):
+    def __init__(
+            self,
+            n_buckets=5,
+            method='static',
+            bootstrap_estimators=False):
         self.method = method
         self.n_buckets = n_buckets
         self.bootstrap_estimators = bootstrap_estimators
@@ -182,5 +194,8 @@ class MaximumOfAverageScoreEnsembler(PYODScoreEnsembler):
             score: float
                 Resulting anomaly score.
         """
-        return moa(scores, n_buckets=self.n_buckets, method=self.method, bootstrap_estimators=self.bootstrap_estimators)
-
+        return moa(
+            scores,
+            n_buckets=self.n_buckets,
+            method=self.method,
+            bootstrap_estimators=self.bootstrap_estimators)

@@ -15,7 +15,9 @@ class RunningAveragePostprocessor(BasePostprocessor):
 
     def __init__(self, window_size):
 
-        self.meter = RunningStatistic(statistic_cls=AverageMeter, window_size=window_size)
+        self.meter = RunningStatistic(
+            statistic_cls=AverageMeter,
+            window_size=window_size)
 
     def fit_partial(self, score):
         """Fits the windowed postprocessor to the (next) timestep's score.
@@ -54,7 +56,9 @@ class RunningMaxPostprocessor(BasePostprocessor):
 
     def __init__(self, window_size):
 
-        self.meter = RunningStatistic(statistic_cls=MaxMeter, window_size=window_size)
+        self.meter = RunningStatistic(
+            statistic_cls=MaxMeter,
+            window_size=window_size)
 
     def fit_partial(self, score):
         """Fits the windowed postprocessor to the (next) timestep's score.
@@ -93,7 +97,9 @@ class RunningMedianPostprocessor(BasePostprocessor):
 
     def __init__(self, window_size):
 
-        self.meter = RunningStatistic(statistic_cls=MedianMeter, window_size=window_size)
+        self.meter = RunningStatistic(
+            statistic_cls=MedianMeter,
+            window_size=window_size)
 
     def fit_partial(self, score):
         """Fits the windowed postprocessor to the (next) timestep's score.
@@ -132,8 +138,10 @@ class RunningZScorePostprocessor(BasePostprocessor):
 
     def __init__(self, window_size):
 
-        self.variance_meter = RunningStatistic(statistic_cls=VarianceMeter, window_size=window_size)
-        self.average_meter = RunningStatistic(statistic_cls=AverageMeter, window_size=window_size)
+        self.variance_meter = RunningStatistic(
+            statistic_cls=VarianceMeter, window_size=window_size)
+        self.average_meter = RunningStatistic(
+            statistic_cls=AverageMeter, window_size=window_size)
 
     def fit_partial(self, score):
         """Fits the windowed postprocessor to the (next) timestep's score.
@@ -162,6 +170,7 @@ class RunningZScorePostprocessor(BasePostprocessor):
             result_score: float
                 Transformed score.
         """
-        zscore = (score - self.average_meter.get()) / np.sqrt(self.variance_meter.get())
+        zscore = (score - self.average_meter.get()) / \
+            np.sqrt(self.variance_meter.get())
 
         return zscore

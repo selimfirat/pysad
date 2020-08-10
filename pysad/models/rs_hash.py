@@ -20,7 +20,14 @@ class RSHash(BaseModel):
                 The number of hashing functions
     """
 
-    def __init__(self, feature_mins, feature_maxes, sampling_points=1000, decay=0.015, num_components= 100, num_hash_fns=1):
+    def __init__(
+            self,
+            feature_mins,
+            feature_maxes,
+            sampling_points=1000,
+            decay=0.015,
+            num_components=100,
+            num_hash_fns=1):
         self.minimum = feature_mins
         self.maximum = feature_maxes
 
@@ -32,9 +39,10 @@ class RSHash(BaseModel):
         self.scores = []
         self.num_hash = num_hash_fns
         self.cmsketches = []
-        self.effS = max(1000, 1.0/(1 - np.power(2, -self.decay)))
+        self.effS = max(1000, 1.0 / (1 - np.power(2, -self.decay)))
 
-        self.f = np.random.uniform(low=1.0 / np.sqrt(self.effS), high=1 - (1.0 / np.sqrt(self.effS)), size=self.m)
+        self.f = np.random.uniform(
+            low=1.0 / np.sqrt(self.effS), high=1 - (1.0 / np.sqrt(self.effS)), size=self.m)
 
         for i in range(self.num_hash):
             self.cmsketches.append({})
@@ -73,7 +81,7 @@ class RSHash(BaseModel):
             for w in range(len(self.cmsketches)):
                 try:
                     value = self.cmsketches[w][mod_entry]
-                except KeyError as e:
+                except KeyError:
                     value = (self.index, 0)
 
                 # Scoring the Instance
@@ -110,7 +118,11 @@ class RSHash(BaseModel):
     def _sample_shifts(self):
         alpha = []
         for r in range(self.m):
-            alpha.append(np.random.uniform(low=0, high=self.f[r], size=len(self.V[r])))
+            alpha.append(
+                np.random.uniform(
+                    low=0,
+                    high=self.f[r],
+                    size=len(self.V[r])))
 
         return alpha
 
@@ -126,9 +138,14 @@ class RSHash(BaseModel):
             if np.floor(low_value[i]) == np.floor(high_value[i]):
                 self.r[i] = 1
             else:
-                self.r[i] = min(np.random.randint(low=low_value[i], high=high_value[i]), self.dim)
+                self.r[i] = min(
+                    np.random.randint(
+                        low=low_value[i],
+                        high=high_value[i]),
+                    self.dim)
             all_feats = np.array(list(range(self.dim)), dtype=np.int)
 
             choice_feats = all_feats[np.where(self.minimum != self.maximum)]
-            sel_V = np.random.choice(choice_feats, size=self.r[i], replace=False)
+            sel_V = np.random.choice(
+                choice_feats, size=self.r[i], replace=False)
             self.V.append(sel_V)

@@ -9,6 +9,7 @@ class KNNCAD(BaseModel):
             probationary_period: int
                 Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`.
     """
+
     def __init__(self, probationary_period):
         self.buf = []
         self.training = []
@@ -21,15 +22,15 @@ class KNNCAD(BaseModel):
 
         self.probationaryPeriod = probationary_period
 
-    def _metric(self,a,b):
-        diff = a-np.array(b)
+    def _metric(self, a, b):
+        diff = a - np.array(b)
 
-        return np.dot(np.dot(diff,self.sigma),diff.T)
+        return np.dot(np.dot(diff, self.sigma), diff.T)
 
-    def _ncm(self,item, item_in_array=False):
-        arr = [self._metric(x,item) for x in self.training]
+    def _ncm(self, item, item_in_array=False):
+        arr = [self._metric(x, item) for x in self.training]
 
-        return np.sum(np.partition(arr, self.k+item_in_array)[:self.k+item_in_array])
+        return np.sum(np.partition(arr, self.k + item_in_array)[:self.k + item_in_array])
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance. Note that this model is univariate.
@@ -45,7 +46,7 @@ class KNNCAD(BaseModel):
                 Returns the self.
         """
         if self.to_init:
-            self.dim = 19#X.shape[0]
+            self.dim = 19  # X.shape[0]
             self.sigma = np.diag(np.ones(self.dim))
             self.to_init = False
 
@@ -62,7 +63,8 @@ class KNNCAD(BaseModel):
             ost = self.record_count % self.probationaryPeriod
             if ost == 0 or ost == int(self.probationaryPeriod / 2):
                 try:
-                    self.sigma = np.linalg.inv(np.dot(np.array(self.training).T, self.training))
+                    self.sigma = np.linalg.inv(
+                        np.dot(np.array(self.training).T, self.training))
                 except np.linalg.linalg.LinAlgError:
                     print('Singular Matrix at record', self.record_count)
             if len(self.scores) == 0:

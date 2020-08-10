@@ -15,4 +15,3 @@ class IForestASD(ReferenceWindowModel):
     def __init__(self, initial_window_X=None, window_size=2048):
         super().__init__(IForest, window_size, window_size, initial_window_X)
         # TODO: implement concept drit method
-

@@ -81,7 +81,8 @@ class GaussianRandomProjector(BaseSKLearnProjector):
         self.num_components = num_components
 
     def _projector(self):
-        return GaussianRandomProjection(n_components=self.num_components, eps=self.eps)
+        return GaussianRandomProjection(
+            n_components=self.num_components, eps=self.eps)
 
 
 class SparseRandomProjector(BaseSKLearnProjector):
@@ -117,4 +118,8 @@ class SparseRandomProjector(BaseSKLearnProjector):
         self.num_components = num_components
 
     def _projector(self):
-        return SparseRandomProjection(n_components=self.num_components, density=self.density, eps=self.eps, dense_output=True)
+        return SparseRandomProjection(
+            n_components=self.num_components,
+            density=self.density,
+            eps=self.eps,
+            dense_output=True)

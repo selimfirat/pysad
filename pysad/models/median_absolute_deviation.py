@@ -31,7 +31,7 @@ class MedianAbsoluteDeviation(BaseModel):
             self: object
                 Returns the self.
         """
-        assert len(X) == 1 # Only for time series
+        assert len(X) == 1  # Only for time series
 
         self.median_meter.update(X)
         self.mad_meter.update(X)
@@ -50,7 +50,7 @@ class MedianAbsoluteDeviation(BaseModel):
                 The anomalousness score of the input instance.
         """
         median = self.median_meter.get()
-        mad = self.b*self.mad_meter.get()
-        score = (X - median)/(mad+1e-10)
+        mad = self.b * self.mad_meter.get()
+        score = (X - median) / (mad + 1e-10)
 
         return abs(score) if self.absolute else score

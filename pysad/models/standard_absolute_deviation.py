@@ -22,7 +22,8 @@ class StandardAbsoluteDeviation(BaseModel):
         elif substracted_statistic == "mean":
             self.sub_meter = AverageMeter()
         else:
-            raise ValueError("Unknown substracted_statistic value! Please choose median or mean.")
+            raise ValueError(
+                "Unknown substracted_statistic value! Please choose median or mean.")
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.
@@ -37,7 +38,7 @@ class StandardAbsoluteDeviation(BaseModel):
             self: object
                 Returns the self.
         """
-        assert len(X) == 1 # Only for time series
+        assert len(X) == 1  # Only for time series
 
         self.variance_meter.update(X)
         self.sub_meter.update(X)
@@ -48,6 +49,6 @@ class StandardAbsoluteDeviation(BaseModel):
         sub = self.sub_meter.get()
         dev = self.variance_meter.get()**0.5
 
-        score = (X - sub) / (dev+1e-10)
+        score = (X - sub) / (dev + 1e-10)
 
         return abs(score) if self.absolute else score

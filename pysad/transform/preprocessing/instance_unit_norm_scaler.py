@@ -1,5 +1,6 @@
 from pysad.core.base_transformer import BaseTransformer
-import numpy as  np
+import numpy as np
+
 
 class InstanceUnitNormScaler(BaseTransformer):
     """A scaler that makes the instance feature vector's norm equal to 1, i.e., the unit vector.

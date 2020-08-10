@@ -87,3 +87,12 @@ autodoc_default_options = {'members': True,
                            }
 autodoc_typehints = "none"
 numpydoc_show_class_members = False
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/{.major}'.format(
+        sys.version_info), None),
+    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
+    # 'matplotlib': ('https://matplotlib.org/', None),
+    'sklearn': ('https://scikit-learn.org/stable', None)
+}

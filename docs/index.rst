@@ -136,4 +136,7 @@ This project is licensed under the `3-Clause BSD License <LICENSE>`_.
    :hidden:
    :caption: Other
 
+   faq
+   contributing
+   inclusion_criteria
    references

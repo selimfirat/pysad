@@ -56,8 +56,8 @@ class HalfSpaceTrees(BaseModel):
             return self._Node(
                 left=None,
                 right=None,
-                r=0,
-                l=0,
+                r_mass=0,
+                l_mass=0,
                 split_att=0,
                 split_value=0.0,
                 k=current_depth)
@@ -81,8 +81,8 @@ class HalfSpaceTrees(BaseModel):
         return self._Node(
             left=left,
             right=right,
-            r=0,
-            l=0,
+            r_mass=0,
+            l_mass=0,
             split_att=q,
             split_value=p,
             k=current_depth)

@@ -1,13 +1,13 @@
 
 
 class Window:
+    """Window to limit the instances in list and keep the size fixed when full.
+
+    Args:
+        window_size: The size of the window.
+    """
 
     def __init__(self, window_size):
-        """Window to limit the instances in list and keep the size fixed when full.
-
-        Args:
-            window_size: The size of the window.
-        """
         self.window_size = window_size
         self.window = []
 

@@ -11,7 +11,6 @@ Subpackages
    pysad.evaluation
    pysad.models
    pysad.statistics
-   pysad.streaming
    pysad.transform
    pysad.utils
 

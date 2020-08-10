@@ -1,14 +1,6 @@
 pysad.models package
 ====================
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   pysad.models.kitnet_model
-
 Submodules
 ----------
 

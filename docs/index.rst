@@ -11,7 +11,6 @@ Welcome to PySAD's documentation!
    :caption: Contents:
 
 
-
 Indices and tables
 ==================
 
@@ -21,6 +20,34 @@ Indices and tables
 
 ----
 
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Getting Started
+
+   pysad
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: User Guide
+
+   pysad
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: API Reference
+
+   pysad
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Contributing
+
+   pysad
 
 .. rubric:: References
 

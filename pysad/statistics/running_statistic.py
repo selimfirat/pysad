@@ -2,15 +2,15 @@ from pysad.core.base_statistic import BaseStatistic
 
 
 class RunningStatistic(BaseStatistic):
+    """The running statistic that wraps any other statistics to track statistics with a fixed window size.
+
+    Args:
+        statistic_cls: The class to be instantiated and to be windowed.
+        window_size: The window size.
+        **kwargs: The keyword arguments that is input to the statistic_cls.
+    """
 
     def __init__(self, statistic_cls, window_size, **kwargs):
-        """The running statistic that wraps any other statistics to track statistics with a fixed window size.
-
-        Args:
-            statistic_cls: The class to be instantiated and to be windowed.
-            window_size: The window size.
-            **kwargs: The keyword arguments that is input to the statistic_cls.
-        """
         super().__init__(**kwargs)
         self.statistic_cls = statistic_cls
         self.statistic = self.statistic_cls()

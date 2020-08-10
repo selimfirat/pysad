@@ -4,7 +4,6 @@ Python Streaming Anomaly Detection (PySAD)
 This repository is currently under development.
 
 
-
 .. image:: https://img.shields.io/pypi/v/pysad.svg?color=brightgreen
    :target: https://pypi.org/project/pysad/
    :alt: PyPI version

@@ -14,18 +14,6 @@ Subpackages
    pysad.transform
    pysad.utils
 
-Submodules
-----------
-
-pysad.version module
---------------------
-
-.. automodule:: pysad.version
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
 Module contents
 ---------------
 

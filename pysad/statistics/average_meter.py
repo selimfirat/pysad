@@ -2,16 +2,16 @@ from pysad.core.base_statistic import UnivariateStatistic
 
 
 class AverageMeter(UnivariateStatistic):
+    """The average of the values.
+
+    Attrs:
+        sum: float
+            The summation of values.
+        num_items: int
+            The number of items that are used to update the statistic.
+    """
 
     def __init__(self):
-        """The average of the values.
-
-        Attrs:
-            sum: float
-                The summation of values.
-            num_items: int
-                The number of items that are used to update the statistic.
-        """
         self.sum = 0.0
         self.num_items = 0
 

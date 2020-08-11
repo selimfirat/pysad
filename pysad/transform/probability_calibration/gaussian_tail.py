@@ -7,7 +7,7 @@ import numpy as np
 
 
 class GaussianTailProbabilityCalibrator(BasePostprocessor):
-    """Assuming that the scores follow normal distribution, this class provides an interface to convert the scores into probabilities.
+    """Assuming that the scores follow normal distribution, this class provides an interface to convert the scores into probabilities via Q-function, i.e., the tail function of Gaussian distribution :cite:`ahmad2017unsupervised`.
 
         Args:
             running_statistics: bool

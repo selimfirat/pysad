@@ -30,3 +30,19 @@ class Window:
 
         """
         return self.window
+
+
+class UnlimitedWindow(Window):
+    """Unlimited window implemented for convenience. This class only provides a list with unlimited size. Note that this does not fit to the memory for streaming data.
+    """
+
+    def __init__(self):
+        super().__init__(None)
+
+    def update(self, num):
+        """Adds new item to the window. Removes the tail if size exceeds the self.window_size.
+
+        Args:
+            num: item to be added to the window.
+        """
+        self.window.append(num)

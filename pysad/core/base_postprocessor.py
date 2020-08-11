@@ -6,6 +6,7 @@ from pysad.utils import _iterate
 class BasePostprocessor(ABC):
     """Base class for postprocessing methods.
     """
+
     @abstractmethod
     def fit_partial(self, score):
         """Fits particular (next) timestep's score to train the postprocessor.

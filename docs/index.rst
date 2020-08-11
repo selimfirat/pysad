@@ -99,7 +99,7 @@ This project is licensed under the `3-Clause BSD License <LICENSE>`_.
    examples
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :hidden:
    :caption: API Reference
 

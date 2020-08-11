@@ -5,7 +5,7 @@ from pysad.utils.window import Window, UnlimitedWindow
 
 
 class ConformalProbabilityCalibrator(BasePostprocessor):
-    """This class provides an interface to convert the scores into probabilities through conformal prediction. Note that :cite:`laxhammar2013online` fits conformal calibration to already fitted samples' scores by the model whereas :cite:`` fits the conformal calibration to some window of previous samples that are just before the target instance.
+    """This class provides an interface to convert the scores into probabilities through conformal prediction. Note that :cite:`laxhammar2013online` fits conformal calibration to already fitted samples' scores by the model whereas :cite:`ishimtsev2017conformal` fits the conformal calibration to some window of previous samples that are just before the target instance.
     This calibrator transforms by providing target score divided by the number of instances that are fitted before to this calibrator as transformation result.
 
         Args:
@@ -44,5 +44,5 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
                 Processed score.
         """
 
-        return score / (np.sum(np.array(self.window.get()) >= score))
+        return (np.sum(np.array(self.window.get()) >= score))/ (len(self.window.get()))
 

@@ -2,14 +2,14 @@ from pysad.core.base_statistic import UnivariateStatistic
 
 
 class AbsStatistic(UnivariateStatistic):
+    """The absolute value of the statistic that is tracked.
+
+    Args:
+        statistic_cls: The class of the statistic to be instiantiated.
+        **kwargs: The keyword arguments that is input to the statistic_cls.
+    """
 
     def __init__(self, statistic_cls, **kwargs):
-        """The absolute value of the statistic that is tracked.
-
-        Args:
-            statistic_cls: The class of the statistic to be instiantiated.
-            **kwargs: The keyword arguments that is input to the statistic_cls.
-        """
         self.statistic_cls = statistic_cls
 
         self.statistic = self.statistic_cls(**kwargs)

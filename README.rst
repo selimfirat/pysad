@@ -9,19 +9,9 @@ This repository is currently under development.
    :alt: PyPI version
 
 
-.. image:: https://anaconda.org/conda-forge/pysad/badges/version.svg
-   :target: https://anaconda.org/conda-forge/pysad
-   :alt: Anaconda version
-
-
 .. image:: https://readthedocs.org/projects/pysad/badge/?version=latest
    :target: https://pysad.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation status
-
-
-.. image:: https://mybinder.org/badge_logo.svg
-   :target: https://mybinder.org/v2/gh/selimfirat/pysad/master
-   :alt: Binder
 
 
 .. image:: https://ci.appveyor.com/api/projects/status/<API_KEY>/branch/master?svg=true

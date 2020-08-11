@@ -70,27 +70,7 @@ This repository is currently under development.
 
 ===============================
 
-
-**Installation**
-
-
-The PySAD library can be installed via:
-
-
-.. code-block:: bash
-
-    pip install pysad
-
-
-Alternatively, you can install the library directly using the source code in this repository by:
-
-
-.. code-block:: bash
-
-    git clone https://github.com/selimfirat/pysad.git
-    cd pysad
-    pip install .
-
+.. include:: installation.rst
 
 ===============================
 
@@ -115,14 +95,8 @@ This project is licensed under the `3-Clause BSD License <LICENSE>`_.
    :hidden:
    :caption: Getting Started
 
-   modules
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: User Guide
-
-   modules
+   installation
+   examples
 
 .. toctree::
    :maxdepth: 2

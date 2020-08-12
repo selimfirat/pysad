@@ -49,7 +49,7 @@ def test_unsupervised_models():
 
 
 def helper_test_model(X, model_cls, params_dict):
-    print(str(model_cls))
+
     if "initial_X" in params_dict and params_dict["initial_X"]:
         params_dict["initial_X"] = X[:25, :]
         model = model_cls(params_dict["initial_X"])

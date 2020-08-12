@@ -24,7 +24,7 @@ class xStream(BaseModel):
         deltamax = np.ones(num_components) * 0.5
         deltamax[np.abs(deltamax) <= 0.0001] = 1.0
         self.window_size = window_size
-        self.hs_chains = HSChains(
+        self.hs_chains = _HSChains(
             deltamax=deltamax,
             n_chains=n_chains,
             depth=depth)
@@ -87,7 +87,7 @@ class xStream(BaseModel):
         return deltamax
 
 
-class Chain:
+class _Chain:
 
     def __init__(self, deltamax, depth):
         k = len(deltamax)
@@ -179,7 +179,7 @@ class Chain:
         self.cmsketches_cur = [{} for _ in range(self.depth)] * self.depth
 
 
-class HSChains:
+class _HSChains:
     def __init__(self, deltamax, n_chains=100, depth=25):
         self.nchains = n_chains
         self.depth = depth
@@ -187,7 +187,7 @@ class HSChains:
 
         for i in range(self.nchains):
 
-            c = Chain(deltamax=deltamax, depth=self.depth)
+            c = _Chain(deltamax=deltamax, depth=self.depth)
             self.chains.append(c)
 
     def score(self, X):

@@ -1,3 +1,5 @@
+from os.path import dirname, abspath
+
 import sphinx_rtd_theme
 import os
 import sys
@@ -21,10 +23,20 @@ sys.path.insert(0, os.path.abspath('../'))
 
 
 # -- Project information -----------------------------------------------------
+sys.path.insert(0, abspath('..'))
+pysad_dir = dirname(dirname(abspath(__file__)))
+
+version_path = os.path.join(pysad_dir, 'pysad', 'version.py')
+exec(open(version_path).read())
 
 project = 'PySAD'
 copyright = '2020, Selim Firat Yilmaz'
 author = 'Selim Firat Yilmaz'
+
+#version = __version__
+#release = __version__
+
+version = "latest"
 
 master_doc = 'index'
 pygments_style = 'sphinx'
@@ -75,7 +87,7 @@ html_theme_options = {
     'sticky_navigation': True,
     'navigation_depth': 7,
     'includehidden': True,
-    'titles_only': False
+    'titles_only': False,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

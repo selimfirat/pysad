@@ -14,7 +14,8 @@ def test_all_zero_stats():
     from pysad.statistics.sum_meter import SumMeter
     from pysad.statistics.sum_squares_meter import SumSquaresMeter
     from pysad.statistics.variance_meter import VarianceMeter
-    np.random.seed(61)
+    from pysad.utils import fix_seed
+    fix_seed(61)
 
     num_items = 100
     stat_classes = {
@@ -66,7 +67,8 @@ def test_stats_with_batch_numpy():
     from pysad.statistics.sum_squares_meter import SumSquaresMeter
     from pysad.statistics.variance_meter import VarianceMeter
     import numpy as np
-    np.random.seed(61)
+    from pysad.utils import fix_seed
+    fix_seed(61)
 
     num_items = 100
     stat_classes = {

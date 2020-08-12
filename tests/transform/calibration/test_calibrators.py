@@ -3,8 +3,9 @@ def test_calibrators():
     from pysad.transform.probability_calibration.gaussian_tail import GaussianTailProbabilityCalibrator
     import numpy as np
     from pysad.transform.probability_calibration.conformal_prediction import ConformalProbabilityCalibrator
+    from pysad.utils import fix_seed
+    fix_seed(61)
 
-    np.random.seed(61)
     scores = np.random.rand(100)
 
     calibrators = {

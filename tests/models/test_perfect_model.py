@@ -1,7 +1,9 @@
 def test_perfect_model():
     import numpy as np
     from pysad.models.perfect_model import PerfectModel
-    np.random.seed(61)
+    from pysad.utils import fix_seed
+    fix_seed(61)
+
     model = PerfectModel()
     y1 = np.random.randint(0, 2, 100)
     y = np.random.randint(0, 2, 100)

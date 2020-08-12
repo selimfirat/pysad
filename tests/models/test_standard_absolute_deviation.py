@@ -3,8 +3,9 @@ def test_standard_absolute_deviation():
     from pysad.models.standard_absolute_deviation import StandardAbsoluteDeviation
     import numpy as np
     from numpy.testing import assert_raises
+    from pysad.utils import fix_seed
 
-    np.random.seed(61)
+    fix_seed(61)
     X = np.random.rand(150, 1)
 
     model = StandardAbsoluteDeviation(substracted_statistic="mean")

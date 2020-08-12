@@ -17,7 +17,8 @@ def test_unsupervised_models():
     from pysad.models.standard_absolute_deviation import StandardAbsoluteDeviation
     from pysad.models.xstream import xStream
     import numpy as np
-    np.random.seed(61)
+    from pysad.utils import fix_seed
+    fix_seed(61)
 
     X = np.random.rand(150, 1)
 
@@ -64,7 +65,9 @@ def helper_test_model(X, model_cls, params_dict):
 def test_fit_and_score_separately():
     from pysad.models.xstream import xStream
     import numpy as np
-    np.random.seed(61)
+    from pysad.utils import fix_seed
+    fix_seed(61)
+
     X = np.random.rand(150, 1)
 
     model = xStream()

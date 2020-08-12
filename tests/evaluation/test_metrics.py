@@ -14,7 +14,8 @@ def helper_test_all_metrics(metric_classes, y_true, y_pred):
 def test_all_correct():
     from pysad.evaluation.metrics import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
     import numpy as np
-    np.random.seed(61)
+    from pysad.utils import fix_seed
+    fix_seed(61)
 
     metric_classes = [
         PrecisionMetric,
@@ -34,7 +35,8 @@ def test_all_correct():
 def test_none_correct():
     from pysad.evaluation.metrics import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
     import numpy as np
-    np.random.seed(61)
+    from pysad.utils import fix_seed
+    fix_seed(61)
 
     metric_classes = {
         PrecisionMetric: 0.0,

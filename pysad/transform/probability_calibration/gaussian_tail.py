@@ -10,10 +10,8 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
     """Assuming that the scores follow normal distribution, this class provides an interface to convert the scores into probabilities via Q-function, i.e., the tail function of Gaussian distribution :cite:`ahmad2017unsupervised`.
 
         Args:
-            running_statistics: bool
-                Whether to calculate the mean and variance through running window. The window size is defined by the `window_size` parameter.
-            window_size: int
-                The size of window for running average and std. Ignored if `running_statistics` parameter is False.
+            running_statistics (bool): Whether to calculate the mean and variance through running window. The window size is defined by the `window_size` parameter.
+            window_size (int): The size of window for running average and std. Ignored if `running_statistics` parameter is False.
     """
 
     def __init__(self, running_statistics=True, window_size=6400):
@@ -31,11 +29,9 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         """Fits particular (next) timestep's score to train the postprocessor.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
         Returns:
-            self: object
-                The fitted postprocessor.
+            object: self.
         """
         self.avg_meter.update(score)
         self.var_meter.update(score)
@@ -46,12 +42,10 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         """Transforms given score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            processed_score: float
-                Processed score.
+            float: Processed score.
         """
         mean = self.avg_meter.get()
         var = self.var_meter.get()

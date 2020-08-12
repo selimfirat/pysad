@@ -12,12 +12,11 @@ class PYODScoreEnsembler(BasePostprocessor):
         """Abstract method that directly uses  of our framework to be filled.
 
         Args:
-            scores: Numpy array of type np.float and shape (1, num_scores)
+            scores: np.float array of shape (1, num_scores)
                 List of scores from multiple anomaly detectors.
 
         Returns:
-            score: float
-            Resulting anomaly score.
+            float: Resulting anomaly score.
         """
         pass
 
@@ -27,9 +26,9 @@ class PYODScoreEnsembler(BasePostprocessor):
         Args:
             scores: np.float array of shape (num_anomaly_detectors, )
                 List of scores from multiple anomaly detectors.
+
         Returns:
-            self: object
-                The fitted ensembler.
+            object: The fitted ensembler.
         """
         return self
 
@@ -41,8 +40,7 @@ class PYODScoreEnsembler(BasePostprocessor):
                 List of scores from multiple anomaly detectors.
 
         Returns:
-            score: float
-                Resulting anomaly score.
+            float: Resulting anomaly score.
         """
         scores = scores.reshape(1, -1)
 
@@ -53,7 +51,7 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
     """An wrapper class that results in the weighted average of the anomaly scores from multiple anomaly detectors. For more details, see `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_.
 
         Args:
-            estimator_weights: np array of shape (1, num_anomaly_detectors), if None, assigns uniform weights.
+            estimator_weights (np array of shape (1, num_anomaly_detectors)): The weights for detectors. If None, uniform weights are assigned.
 
     """
 
@@ -62,15 +60,13 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
         self.estimator_weights = estimator_weights
 
     def _combine(self, scores):
-        """
-        Wrapping for PyOD the ensembler.
+        """Wrapping for PyOD the ensembler.
+
         Args:
-            scores: np.float array of shape (num_anomaly_detectors, )
-                List of scores from multiple anomaly detectors.
+            scores (np.float array of shape (num_anomaly_detectors, )): List of scores from multiple anomaly detectors.
 
         Returns:
-            score: float
-                Resulting anomaly score.
+            float: Resulting anomaly score.
         """
         return average(scores, estimator_weights=self.estimator_weights)
 
@@ -83,12 +79,10 @@ class MaximumScoreEnsembler(PYODScoreEnsembler):
         """
         Wrapping for PyOD the ensembler.
         Args:
-            scores: np.float array of shape (num_anomaly_detectors, )
-                List of scores from multiple anomaly detectors.
+            scores (np.float array of shape (num_anomaly_detectors, )) List of scores from multiple anomaly detectors.
 
         Returns:
-            score: float
-                Resulting anomaly score.
+            float: Resulting anomaly score.
         """
         return maximization(scores)
 
@@ -101,12 +95,10 @@ class MedianScoreEnsembler(PYODScoreEnsembler):
         """
         Helper method to wrap the PyOD ensembler.
         Args:
-            scores: np.float array of shape (num_anomaly_detectors, )
-                List of scores from multiple anomaly detectors.
+            scores (np.float array of shape (num_anomaly_detectors, )) : List of scores from multiple anomaly detectors.
 
         Returns:
-            score: float
-                Resulting anomaly score.
+            float: Resulting anomaly score.
         """
         return median(scores)
 
@@ -115,18 +107,9 @@ class AverageOfMaximumScoreEnsembler(PYODScoreEnsembler):
     """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
 
     Args:
-        scores : numpy array of shape (n_samples, n_estimators)
-            The score matrix outputted from various estimators
-
-        n_buckets : int, optional (default=5)
-            The number of subgroups to build
-
-        method : str, optional (default='static')
-            {'static', 'dynamic'}, if 'dynamic', build subgroups
-            randomly with dynamic bucket size.
-
-        bootstrap_estimators : bool, optional (default=False)
-            Whether estimators are drawn with replacement.
+        n_buckets (int): The number of subgroups to build (Default=5).
+        method (str):  {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (Default='static').
+        bootstrap_estimators (bool) Whether estimators are drawn with replacement (Default=False).
     """
 
     def __init__(
@@ -142,12 +125,10 @@ class AverageOfMaximumScoreEnsembler(PYODScoreEnsembler):
         """Wrapping for PyOD the ensembler.
 
         Args:
-            scores: np.float array of shape (num_anomaly_detectors, )
-                List of scores from multiple anomaly detectors.
+            scores (np.float array of shape (num_anomaly_detectors, )): List of scores from multiple anomaly detectors.
 
         Returns:
-            score: float
-                Resulting anomaly score.
+            float: Resulting anomaly score.
         """
         return aom(
             scores,
@@ -160,18 +141,10 @@ class MaximumOfAverageScoreEnsembler(PYODScoreEnsembler):
     """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
 
     Args:
-        scores : numpy array of shape (n_samples, n_estimators)
-            The score matrix outputted from various estimators
-
-        n_buckets : int, optional (default=5)
+        n_buckets  : int, optional (default=5)
             The number of subgroups to build
-
-        method : str, optional (default='static')
-            {'static', 'dynamic'}, if 'dynamic', build subgroups
-            randomly with dynamic bucket size.
-
-        bootstrap_estimators : bool, optional (default=False)
-            Whether estimators are drawn with replacement.
+        method (str): {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (default='static').
+        bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 
     def __init__(
@@ -191,8 +164,7 @@ class MaximumOfAverageScoreEnsembler(PYODScoreEnsembler):
                 List of scores from multiple anomaly detectors.
 
         Returns:
-            score: float
-                Resulting anomaly score.
+            float: Resulting anomaly score.
         """
         return moa(
             scores,

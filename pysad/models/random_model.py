@@ -12,8 +12,7 @@ class RandomModel(BaseModel):
             y: any
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         return self
 
@@ -24,7 +23,6 @@ class RandomModel(BaseModel):
             X: any (Ignored)
 
         Returns:
-            score: float
-                Uniform random between [0,1).
+            float: Uniform random between [0,1).
         """
         return np.random.uniform()

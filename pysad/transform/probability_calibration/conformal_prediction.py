@@ -9,10 +9,8 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
     This calibrator transforms by providing target score divided by the number of instances that are fitted before to this calibrator as transformation result.
 
         Args:
-            windowed: bool
-                Whether the probability calibrator is windowed so that forget scores that are older than `window_size`.
-            window_size: int
-                The size of window for running average and std. Ignored if `running_statistics` parameter is False.
+            windowed (bool): Whether the probability calibrator is windowed so that forget scores that are older than `window_size`.
+            window_size (int): The size of window for running average and std. Ignored if `running_statistics` parameter is False.
     """
 
     def __init__(self, windowed=True, window_size=300):
@@ -24,11 +22,9 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         """Fits particular (next) timestep's score to train the postprocessor.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
         Returns:
-            self: object
-                The fitted postprocessor.
+            object: self.
         """
         self.window.update(score)
 
@@ -38,12 +34,10 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         """Transforms given score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            processed_score: float
-                Processed score.
+            float: Processed score.
         """
 
         return (np.sum(np.array(self.window.get()) <= score))/ (len(self.window.get()))

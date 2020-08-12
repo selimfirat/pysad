@@ -3,10 +3,10 @@ from abc import abstractmethod
 
 
 class BaseStreamer(abc.ABC):
-    """Abstract base class to simulate the streaming data
+    """Abstract base class to simulate the streaming data.
 
     Args:
-        shuffle: Whether shuffle the data initially.
+        shuffle (bool): Whether shuffle the data initially (Optional, default=False).
     """
 
     def __init__(self, shuffle=False):
@@ -14,10 +14,10 @@ class BaseStreamer(abc.ABC):
 
     @abstractmethod
     def iter(self, X, y=None):
-        """Method that iterates array of data and labels
+        """Method that iterates array of data and (optionally) labels.
 
         Args:
-            X: The features.
+            X (np.array of shape (num_instances, num_features)): The features of instances to iterate.
             y: (Optional, default=None) If not None, iterates labels with the same order.
         """
         pass

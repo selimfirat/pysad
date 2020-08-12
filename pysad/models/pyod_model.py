@@ -7,10 +7,8 @@ class PYODModel(BaseModel):
         """Abstract base class for PYOD models.
 
         Args:
-            model_cls: class
-                The model class to be instantiated.
-            **kwargs: Keyword arguments.
-                Keyword arguments that is passed to the `model_cls`.
+            model_cls (class): The model class to be instantiated.
+            **kwargs (Keyword arguments): Keyword arguments that is passed to the `model_cls`.
         """
         self.model_cls = model_cls
         self.kwargs = kwargs

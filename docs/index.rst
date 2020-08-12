@@ -60,13 +60,7 @@ This repository is currently under development.
 
 ===============================
 
-
-**Useful Links**
-
-* `Installation <http://TODO_installation>`_
-
-* `Getting Started <http://TODO_gettingstarted>`_
-
+.. include:: useful_links.rst
 
 ===============================
 
@@ -74,18 +68,11 @@ This repository is currently under development.
 
 ===============================
 
-
-**Versioning**
-
-`Semantic versioning <http://semver.org/>`_ is used for this project. If contributing, please conform to semantic versioning guidelines when submitting a pull request.
-
+.. include:: versioning.rst
 
 ===============================
 
-
-**License**
-
-This project is licensed under the `3-Clause BSD License <LICENSE>`_.
+.. include:: license.rst
 
 ----
 
@@ -96,6 +83,7 @@ This project is licensed under the `3-Clause BSD License <LICENSE>`_.
    :caption: Getting Started
 
    installation
+   useful_links
    examples
 
 .. toctree::
@@ -113,4 +101,6 @@ This project is licensed under the `3-Clause BSD License <LICENSE>`_.
    faq
    inclusion_criteria
    contributing
+   versioning
+   license
    references

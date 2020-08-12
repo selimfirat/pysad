@@ -5,8 +5,8 @@ class AbsStatistic(UnivariateStatistic):
     """The absolute value of the statistic that is tracked.
 
     Args:
-        statistic_cls: The class of the statistic to be instiantiated.
-        **kwargs: The keyword arguments that is input to the statistic_cls.
+        statistic_cls (class): The class of the statistic to be instiantiated.
+        **kwargs (Keyword arguments): The keyword arguments that is input to the statistic_cls.
     """
 
     def __init__(self, statistic_cls, **kwargs):
@@ -18,11 +18,10 @@ class AbsStatistic(UnivariateStatistic):
         """Updates the statistic with the value for a timestep.
 
         Args:
-            num: The incoming value, for which the statistic is used.
+            num (float):  The incoming value, for which the statistic is used.
 
         Returns:
-            self: object
-                Returns the fitted statistic.
+            object: self.
 
         """
         self.statistic.update(num)
@@ -33,11 +32,10 @@ class AbsStatistic(UnivariateStatistic):
         """Updates the statistic by removing particular value. This method
 
         Args:
-            num: The value to be removed.
+            num (float):  The value to be removed.
 
         Returns:
-            self: object
-                Returns the fitted statistic.
+            object: self.
 
         """
         self.statistic.remove(num)
@@ -45,10 +43,9 @@ class AbsStatistic(UnivariateStatistic):
         return self
 
     def get(self):
-        """ Method to obtain the tracked statistic.
+        """Method to obtain the tracked statistic.
 
         Returns:
-            statistic: float
-                The statistic.
+            float: The statistic.
         """
         return abs(self.statistic.get())

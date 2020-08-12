@@ -12,11 +12,10 @@ class BasePostprocessor(ABC):
         """Fits particular (next) timestep's score to train the postprocessor.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
+
         Returns:
-            self: object
-                The fitted postprocessor.
+            object: self.
         """
         pass
 
@@ -25,12 +24,10 @@ class BasePostprocessor(ABC):
         """Transforms given score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            processed_score: float
-                Processed score.
+            float: Processed score.
         """
         pass
 
@@ -38,12 +35,10 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies fit_partial and transform_partial, respectively.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            processed_score: float
-                Processed score.
+            float: Processed score.
         """
         return self.fit_partial(score).transform_partial(score)
 
@@ -51,12 +46,10 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies transform_partial to all instances in order.
 
         Args:
-            scores: np.float array of shape (num_instances,)
-                Input scores.
+            np.float array of shape (num_instances,): Input scores.
 
         Returns:
-            processed_scores: np.float array of shape (num_instances,)
-                Processed scores.
+            np.float array of shape (num_instances,): Processed scores.
         """
         processed_scores = np.empty(scores.shape[0], dtype=np.float)
         for i, (score, _) in enumerate(_iterate(scores)):
@@ -68,12 +61,10 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies fit_partial to all instances in order.
 
         Args:
-            scores: np.float array of shape (num_instances,)
-                Input scores.
+            np.float array of shape (num_instances,): Input scores.
 
         Returns:
-            self: object
-                The fitted postprocessor.
+            object: self.
         """
         for i, (score, _) in enumerate(_iterate(scores)):
             self.fit_partial(score)
@@ -84,12 +75,10 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies fit_transform_partial to all instances in order.
 
         Args:
-            scores: np.float array of shape (num_instances,)
-                Input scores.
+            np.float array of shape (num_instances,): Input scores.
 
         Returns:
-            processed_scores: np.float array of shape (num_instances,)
-                Processed scores.
+            np.float array of shape (num_instances,): Processed scores.
         """
         processed_scores = np.empty(scores.shape[0], dtype=np.float)
         for i, (score, _) in enumerate(_iterate(scores)):

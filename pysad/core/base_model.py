@@ -12,14 +12,11 @@ class BaseModel(ABC):
         """Fits the model to next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to fit.
-            y: int (Default=None)
-                The label of the instance (Optional for unsupervised models)
+            X (np.float array of shape (num_features,)): The instance to fit.
+            y (int): The label of the instance (Optional for unsupervised models, default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         pass
 
@@ -28,12 +25,10 @@ class BaseModel(ABC):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
         pass
 
@@ -41,14 +36,11 @@ class BaseModel(ABC):
         """Applies fit_partial and score_partial to the next instance, respectively.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to fit and score.
-            y: int (Default=None)
-                The label of the instance (Ignored for unsupervised models)
+            X (np.float array of shape (num_features,)): The instance to fit and score.
+            y (int): The label of the instance (Optional for unsupervised models, default=None).
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
         return self.fit_partial(X, y).score_partial(X)
 
@@ -56,13 +48,11 @@ class BaseModel(ABC):
         """Fits the model to all instances in order.
 
         Args:
-            X: np.float array of shape (num_instances, num_features)
-                The instances in order to fit.
-            y: np.int array of shape (num_instances, )  (Default=None)
-                The labels of the instances in order to fit (Optional for unsupervised models)
+            X (np.float array of shape (num_instances, num_features)): The instances in order to fit.
+            y (int): The labels of the instances in order to fit (Optional for unsupervised models, default=None).
+
         Returns:
-            self: object
-                Fitted model.
+            object: Fitted model.
         """
         for xi, yi in _iterate(X, y):
             self.fit_partial(xi, yi)
@@ -73,12 +63,10 @@ class BaseModel(ABC):
         """Scores all instaces via score_partial iteratively.
 
         Args:
-            X: np.float array of shape (num_instances, num_features)
-                The instances in order to score.
+            X (np.float array of shape (num_instances, num_features)): The instances in order to score.
 
         Returns:
-            scores: np.float array of shape (num_instances,)
-                The anomalousness scores of the instances in order.
+            np.float array of shape (num_instances,): The anomalousness scores of the instances in order.
         """
         y_pred = np.empty(X.shape[0], dtype=np.float)
         for i, (xi, _) in enumerate(_iterate(X)):
@@ -90,13 +78,11 @@ class BaseModel(ABC):
         """This helper method applies fit_score_partial to all instances in order.
 
         Args:
-            X: np.float array of shape (num_instances, num_features)
-                The instances in order to fit.
-            y: np.int array of shape (num_instances, )  (Default=None)
-                The labels of the instances in order to fit (Optional for unsupervised models)
+            X (np.float array of shape (num_instances, num_features)): The instances in order to fit.
+            y (np.int array of shape (num_instances, )): The labels of the instances in order to fit (Optional for unsupervised models, default=None).
+
         Returns:
-            scores: np.float array of shape (num_instances,)
-                The anomalousness scores of the instances in order.
+            np.float array of shape (num_instances,): The anomalousness scores of the instances in order.
         """
         y_pred = np.zeros(X.shape[0], dtype=np.float)
         for i, (xi, yi) in enumerate(_iterate(X, y)):

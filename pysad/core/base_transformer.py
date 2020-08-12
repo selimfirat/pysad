@@ -15,11 +15,9 @@ class BaseTransformer(ABC):
         """Fits particular (next) timestep's features to train the transformer.
 
         Args:
-            X: np.float array of shape (num_components,).
-                Input feature vector.
+            X (np.float array of shape (num_components,)): Input feature vector.
         Returns:
-            self: object
-                The fitted projector.
+            object: self.
         """
         pass
 
@@ -28,12 +26,10 @@ class BaseTransformer(ABC):
         """Transforms particular (next) timestep's vector.
 
         Args:
-            X: np.float array of shape (num_features,)
-                Input feature vector.
+            X (np.float array of shape (num_features,)): Input feature vector.
 
         Returns:
-            transformed_X: np.float array of shape (num_components,)
-                Projected feature vector.
+            transformed_X (np.float array of shape (num_components,)): Projected feature vector.
         """
         pass
 
@@ -41,12 +37,10 @@ class BaseTransformer(ABC):
         """Shortcut method that iteratively applies fit_partial and transform_partial, respectively.
 
         Args:
-            X: np.float array of shape (num_components,).
-                Input feature vector.
+            X (np.float array of shape (num_components,)): Input feature vector.
 
         Returns:
-            transformed_X: np.float array of shape (num_components,)
-                Projected feature vector.
+            transformed_X (np.float array of shape (num_components,)): Projected feature vector.
         """
         return self.fit_partial(X).transform_partial(X)
 
@@ -54,12 +48,10 @@ class BaseTransformer(ABC):
         """Shortcut method that iteratively applies transform_partial to all instances in order.
 
         Args:
-            X: np.float array of shape (num_instances, num_features).
-                Input feature vectors.
+            X (np.float array of shape (num_instances, num_features)): Input feature vectors.
 
         Returns:
-            transformed_X: np.float array of shape (num_instances, num_components)
-                Projected feature vectors.
+            np.float array of shape (num_instances, num_components): Projected feature vectors.
         """
         output_dims = self.output_dims if self.output_dims > 0 else X.shape[1]
         transformed_X = np.empty((X.shape[0], output_dims), dtype=np.float)
@@ -72,12 +64,10 @@ class BaseTransformer(ABC):
         """Shortcut method that iteratively applies fit_partial to all instances in order.
 
         Args:
-            X: np.float array of shape (num_instances, num_features).
-                Input feature vectors.
+            X (np.float array of shape (num_instances, num_features)): Input feature vectors.
 
         Returns:
-            self: object
-                The fitted transformer
+            object: The fitted transformer
         """
         for xi in _iterate(X):
             self.fit_partial(xi)
@@ -88,12 +78,10 @@ class BaseTransformer(ABC):
         """Shortcut method that iteratively applies fit_transform_partial to all instances in order.
 
         Args:
-            X: np.float array of shape (num_instances, num_components).
-                Input feature vectors.
+            X (np.float array of shape (num_instances, num_components)): Input feature vectors.
 
         Returns:
-            transformed_X: np.float array of shape (num_instances, num_components)
-                Projected feature vectors.
+            np.float array of shape (num_instances, num_components): Projected feature vectors.
         """
         output_dims = self.output_dims if self.output_dims > 0 else X.shape[1]
         transformed_X = np.empty((X.shape[0], output_dims), dtype=np.float)

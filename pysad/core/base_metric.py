@@ -13,10 +13,8 @@ class BaseMetric(ABC):
         """Updates the metric with given true and predicted value for a timestep.
 
         Args:
-            y_true: int
-                Ground truth class. Either 1 or 0.
-            y_pred: int
-                Predicted class. Either 1 or 0.
+            y_true (int): Ground truth class. Either 1 or 0.
+            y_pred (int): Predicted class. Either 1 or 0.
         """
         pass
 
@@ -25,7 +23,6 @@ class BaseMetric(ABC):
         """Gets the current value of the score. Note that some methods such as AUPR and AUROC gives exception when used with only one class exist in the list of previous y_trues.
 
         Returns:
-            score: float
-                The current score.
+            float: The current score.
         """
         return self.score

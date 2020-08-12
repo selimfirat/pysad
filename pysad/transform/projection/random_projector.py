@@ -9,7 +9,7 @@ class BaseSKLearnProjector(BaseTransformer):
         """Abstract base projector class to wrap the random sklearn projectors.
 
         Args:
-            num_components: The number of dimensions that the target will be projected into.
+            num_components (int): The number of dimensions that the target will be projected into.
         """
         super().__init__(num_components)
 
@@ -25,11 +25,9 @@ class BaseSKLearnProjector(BaseTransformer):
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
-            X: np.float array of shape (num_components,).
-                Input feature vector.
+            X (np.float array of shape (num_components,)): Input feature vector.
         Returns:
-            self: object
-                The fitted projector.
+            object: self.
         """
         return self
 
@@ -37,8 +35,7 @@ class BaseSKLearnProjector(BaseTransformer):
         """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
 
         Args:
-            X: np.float array of shape (num_features,)
-                Input feature vector.
+            X (np.float array of shape (num_features,)): Input feature vector.
 
         Returns:
             projected_X: np.float array of shape (num_components,)
@@ -53,8 +50,7 @@ class GaussianRandomProjector(BaseSKLearnProjector):
     """Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / n_components). This text is taken from the `Sklearn documentation`_.
 
     Args:
-        n_components : int or 'auto', optional (default = 'auto')
-            Dimensionality of the target projection space.
+        n_components (int or 'auto'): Dimensionality of the target projection space, optional (default = 'auto').
 
             n_components can be automatically adjusted according to the
             number of samples in the dataset and the bound given by the
@@ -65,7 +61,7 @@ class GaussianRandomProjector(BaseSKLearnProjector):
             very conservative estimated of the required number of components
             as it makes no assumption on the structure of the dataset.
 
-        eps : strictly positive float, optional (default=0.1)
+        eps (strictly positive float, optional): (default=0.1)
             Parameter to control the quality of the embedding according to
             the Johnson-Lindenstrauss lemma when n_components is set to
             'auto'.
@@ -89,7 +85,7 @@ class SparseRandomProjector(BaseSKLearnProjector):
     """The wrapper method for Sklearn's SparseRandomProjection. Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / n_components). This text is taken from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.SparseRandomProjection.html#sklearn.random_projection.SparseRandomProjection>`_.
 
     Parameters
-        n_components : int or 'auto', optional (default = 'auto')
+        n_components (int or 'auto'): Optional (default = 'auto')
             Dimensionality of the target projection space.
 
             n_components can be automatically adjusted according to the
@@ -101,7 +97,7 @@ class SparseRandomProjector(BaseSKLearnProjector):
             very conservative estimated of the required number of components
             as it makes no assumption on the structure of the dataset.
 
-        eps : strictly positive float, optional (default=0.1)
+        eps (strictly positive float): Optional (default=0.1)
             Parameter to control the quality of the embedding according to
             the Johnson-Lindenstrauss lemma when n_components is set to
             'auto'.

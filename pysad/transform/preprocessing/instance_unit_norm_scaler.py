@@ -6,7 +6,7 @@ class InstanceUnitNormScaler(BaseTransformer):
     """A scaler that makes the instance feature vector's norm equal to 1, i.e., the unit vector.
 
     Args:
-        pow: The power, for which the norm is calculated. pow=2 is equivalent to the euclidean distance.
+        pow (float): The power, for which the norm is calculated. pow=2 is equivalent to the euclidean distance.
     """
 
     def __init__(self, pow=2):
@@ -17,11 +17,10 @@ class InstanceUnitNormScaler(BaseTransformer):
         """Fits particular (next) timestep's features to train the scaler.
 
         Args:
-            X: np.float array of shape (num_features,).
-                Input feature vector.
+            X (np.float array of shape (num_features,)): Input feature vector.
+
         Returns:
-            self: object
-                The fitted scaler.
+            object: self.
         """
         return self
 
@@ -29,12 +28,10 @@ class InstanceUnitNormScaler(BaseTransformer):
         """Scales particular (next) timestep's vector.
 
         Args:
-            X: np.float array of shape (num_features,)
-                Input feature vector.
+            X (np.float array of shape (num_features,)): Input feature vector.
 
         Returns:
-            scaled_X: np.float array of shape (features,)
-                Scaled feature vector.
+            scaled_X (np.float array of shape (features,)): Scaled feature vector.
         """
         X_norm = np.linalg.norm(X, ord=self.pow)
 

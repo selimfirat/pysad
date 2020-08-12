@@ -15,10 +15,8 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         """Updates the metric with given true and predicted value for a timestep.
 
         Args:
-            y_true: int
-                Ground truth class. Either 1 or 0.
-            y_pred: int
-                Predicted class. Either 1 or 0.
+            y_true (int): Ground truth class. Either 1 or 0.
+            y_pred (int): Predicted class. Either 1 or 0.
         """
         self.y_true.append(y_true)
         self.y_pred.append(y_pred)
@@ -27,8 +25,7 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         """Gets the current value of the score.
 
         Returns:
-            score: float
-                The current score.
+            float: The current score.
         """
         score = self._evaluate(self.y_true, self.y_pred)
 
@@ -39,10 +36,8 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         """Abstract method to be filled with the sklearn metric.
 
         Args:
-            y_true: list[int]
-                Ground truth classes.
-            y_pred: list[int]
-                Predicted classes.
+            y_true (list[int]): Ground truth classes.
+            y_pred (list[int]): Predicted classes.
         """
         pass
 

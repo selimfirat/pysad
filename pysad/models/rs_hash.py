@@ -6,18 +6,12 @@ class RSHash(BaseModel):
     """Subspace outlier detection in linear time with randomized hashing :cite:`sathe2016subspace`. This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_.
 
         Args:
-            feature_mins: np.float array of shape (num_features,)
-                Minimum boundary of the features.
-            feature_maxes: np.float array of shape (num_features,)
-                Maximum boundary of the features.
-            sampling_points: int (Default=1000)
-                The number of sampling points.
-            decay: float (Default=0.015)
-                The decay hyperparameter.
-            num_components: int (Default=100)
-                The number of ensemble components.
-            num_hash_fns: int (Default=1)
-                The number of hashing functions
+            feature_mins (np.float array of shape (num_features,)): Minimum boundary of the features.
+            feature_maxes (np.float array of shape (num_features,)): Maximum boundary of the features.
+            sampling_points (int): The number of sampling points (Default=1000).
+            decay (float): The decay hyperparameter (Default=0.015).
+            num_components (int): The number of ensemble components (Default=100).
+            num_hash_fns (int): The number of hashing functions (Default=1).
     """
 
     def __init__(
@@ -59,14 +53,11 @@ class RSHash(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to fit.
-            y: int (Default=None)
-                Ignored since the model is unsupervised.
+            X (np.float array of shape (num_features,)): The instance to fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         score_instance = 0
         for r in range(self.m):
@@ -108,10 +99,9 @@ class RSHash(BaseModel):
         """Scores the anomalousness of the next instance. Outputs the last score. Note that this method must be called after the fit_partial
 
         Args:
-            X: any (Ignored)
+            X (any): Ignored.
         Returns:
-            score: float
-                The anomalousness score of the last fitted instance.
+            float: The anomalousness score of the last fitted instance.
         """
         return self.last_score
 

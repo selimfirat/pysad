@@ -8,11 +8,8 @@ class MaxMeter(UnivariateStatistic):
     """The statistic that keeps track of the maximum value.
 
         Attrs:
-            max: float
-                The maximum value
-            lst: list<float>
-                The list of values that are used to update the statistic.
-                It is necessary for windowing operations.
+            max (float): The maximum value.
+            lst (list[float]): The list of values that are used to update the statistic. It is necessary for windowing operations.
     """
 
     def __init__(self):
@@ -24,11 +21,10 @@ class MaxMeter(UnivariateStatistic):
         """Updates the statistic with the value for a timestep.
 
         Args:
-            num: The incoming value, for which the statistic is used.
+            num (float): The incoming value, for which the statistic is used.
 
         Returns:
-            self: object
-                Returns the fitted statistic.
+            object: self.
 
         """
         if num > self.max:
@@ -42,11 +38,10 @@ class MaxMeter(UnivariateStatistic):
         """Updates the statistic by removing particular value. This method
 
         Args:
-            num: The value to be removed.
+            num (float): The value to be removed.
 
         Returns:
-            self: object
-                Returns the fitted statistic.
+            object: self.
 
         """
         self.lst.remove(num)
@@ -62,7 +57,6 @@ class MaxMeter(UnivariateStatistic):
         """ Method to obtain the tracked statistic.
 
         Returns:
-            statistic: float
-                The statistic.
+            float: The statistic.
         """
         return self.max

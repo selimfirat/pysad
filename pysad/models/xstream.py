@@ -8,14 +8,10 @@ class xStream(BaseModel):
     """The xStream model for row-streaming data :cite:`xstream`. It first projects the data via streamhash projection. It then fits half space chains by reference windowing. It scores the instances using the window fitted to the reference window.
 
     Args:
-        n_components: int (Default=100)
-            The number of components for streamhash projection.
-        n_chains: int (Default=100)
-            The number of half-space chains.
-        depth: int (Default=25)
-            The maximum depth for the chains.
-        window_size:
-            The size (and the sliding length) of the reference window.
+        n_components (int): The number of components for streamhash projection (Default=100).
+        n_chains (int): The number of half-space chains (Default=100).
+        depth (int): The maximum depth for the chains (Default=25).
+        window_size (int): The size (and the sliding length) of the reference window (Default=25).
     """
 
     def __init__(
@@ -41,14 +37,11 @@ class xStream(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to fit.
-            y: int (Default=None)
-                Ignored since the model is unsupervised.
+            X (np.float array of shape (num_features,)): The instance to fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         self.step += 1
 
@@ -72,12 +65,10 @@ class xStream(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            score (float): The anomalousness score of the input instance.
         """
         X = self.streamhash.fit_transform_partial(X)
         X = X.reshape(1, -1)

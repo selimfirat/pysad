@@ -6,8 +6,7 @@ class KNNCAD(BaseModel):
     """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate.
 
         Args:
-            probationary_period: int
-                Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`.
+            probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`.
     """
 
     def __init__(self, probationary_period):
@@ -36,14 +35,11 @@ class KNNCAD(BaseModel):
         """Fits the model to next instance. Note that this model is univariate.
 
         Args:
-            X: np.float array of shape (1,)
-                The instance to fit.
-            y: int (Default=None)
-                Ignored since the model is unsupervised.
+            X (np.float array of shape (1,)): The instance to fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         if self.to_init:
             self.dim = 19  # X.shape[0]
@@ -86,12 +82,10 @@ class KNNCAD(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X: np.float array of shape (1,)
-                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float array of shape (1,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
         if len(self.buf) < self.dim or self.record_count < self.probationaryPeriod:
             return 0.0

@@ -7,8 +7,8 @@ class StreamhashProjector(BaseTransformer):
     """Streamhash projection method  from Manzoor et. al.that is similar (or equivalent) to SparseRandomProjection. :cite:`xstream` The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
 
         Args:
-            num_components: The number of dimensions that the target will be projected into.
-            density: Density parameter of the streamhash projection.
+            num_components (int): The number of dimensions that the target will be projected into.
+            density (float): Density parameter of the streamhash projection.
     """
 
     def __init__(self, num_components, density=1 / 3.0):
@@ -22,11 +22,10 @@ class StreamhashProjector(BaseTransformer):
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
-            X: np.float array of shape (n_components,).
-                Input feature vector.
+            X (np.float array of shape (n_components,)): Input feature vector.
+
         Returns:
-            self: object
-                The fitted projector.
+            object: self.
         """
         return self
 
@@ -34,12 +33,10 @@ class StreamhashProjector(BaseTransformer):
         """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
 
         Args:
-            X: np.float array of shape (num_features,)
-                Input feature vector.
+            X (np.float array of shape (num_features,)): Input feature vector.
 
         Returns:
-            projected_X: np.float array of shape (num_components,)
-                Projected feature vector.
+            projected_X (np.float array of shape (num_components,)): Projected feature vector.
         """
         X = X.reshape(1, -1)
 

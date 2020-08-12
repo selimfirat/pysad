@@ -16,18 +16,12 @@ class HalfSpaceTrees(BaseModel):
         """Half-Space Trees method :cite:`tan2011fast`.
 
         Args:
-            feature_mins: np.float array of shape (num_features,)
-                Minimum boundary of the features.
-            feature_maxes: np.float array of shape (num_features,)
-                Maximum boundary of the features.
-            window_size: int  (Default=100)
-                The size of the window.
-            num_trees: int (Default=25)
-                The number of trees.
-            max_depth: int (Default=15)
-                Maximum depth of the trees.
-            initial_window_X: np.float array of shape (num_initial_instances,num_features) (Default=None)
-                The initial window to fit for initial calibration period. If not `None`, we simply apply fit to these instances.
+            feature_mins (np.float array of shape (num_features,)): Minimum boundary of the features.
+            feature_maxes (np.float array of shape (num_features,)): Maximum boundary of the features.
+            window_size (int): The size of the window (Default=100).
+            num_trees (int): The number of treesint (Default=25).
+            max_depth (int): Maximum depth of the trees (Default=15).
+            initial_window_X (np.float array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. If not `None`, we simply apply fit to these instances (Default=None).
         """
         self.window_size = window_size
         self.max_depth = max_depth
@@ -115,14 +109,11 @@ class HalfSpaceTrees(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to fit.
-            y: int (Default=None)
-                Ignored since the model is unsupervised.
+            X (np.float array of shape (num_features,)): The instance to fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         self.step += 1
 
@@ -147,12 +138,10 @@ class HalfSpaceTrees(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
         s = 0.0
 

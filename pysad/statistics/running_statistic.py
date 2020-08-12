@@ -5,9 +5,9 @@ class RunningStatistic(BaseStatistic):
     """The running statistic that wraps any other statistics to track statistics with a fixed window size.
 
     Args:
-        statistic_cls: The class to be instantiated and to be windowed.
-        window_size: The window size.
-        **kwargs: The keyword arguments that is input to the statistic_cls.
+        statistic_cls (class): The class to be instantiated and to be windowed.
+        window_size (int): The window size.
+        **kwargs (Keyword arguments): The keyword arguments that is input to the statistic_cls.
     """
 
     def __init__(self, statistic_cls, window_size, **kwargs):
@@ -22,12 +22,10 @@ class RunningStatistic(BaseStatistic):
         """Updates the statistic with the value for a timestep.
 
         Args:
-            num: The incoming value, for which the statistic is used.
+            num (float): The incoming value, for which the statistic is used.
 
         Returns:
-            self: object
-                Returns the fitted statistic.
-
+            object: self.
         """
         self.window.append(num)
 
@@ -43,7 +41,6 @@ class RunningStatistic(BaseStatistic):
         """ Method to obtain the tracked statistic.
 
         Returns:
-            statistic: float
-                The statistic.
+            float: The statistic.
         """
         return self.statistic.get()

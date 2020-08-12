@@ -6,10 +6,8 @@ class LODA(BaseModel):
     """The LODA model :cite:`pevny2016loda` The implemnetation is adapted to the steraming framework from the `PyOD framework <https://pyod.readthedocs.io/en/latest/_modules/pyod/models/loda.html#LODA>`_.
 
         Args:
-            num_bins: int
-                The number of bins of the histogram.
-            num_random_cuts: int
-                The number of random cuts.
+            num_bins (int): The number of bins of the histogram.
+            num_random_cuts (int): The number of random cuts.
     """
 
     def __init__(self, num_bins=10, num_random_cuts=100):
@@ -21,14 +19,11 @@ class LODA(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to fit.
-            y: int (Default=None)
-                Ignored since the model is unsupervised.
+            X (np.float array of shape (num_features,)): The instance to fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         if self.to_init:
             self.num_features = X.shape[0]
@@ -64,12 +59,10 @@ class LODA(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
         X = X.reshape(1, -1)
 

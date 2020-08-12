@@ -5,8 +5,7 @@ class CountMeter(UnivariateStatistic):
     """A simple counter statistic.
 
     Attrs:
-        count: int
-            The number of items that are used to update the statistic.
+        count (int): The number of items that are used to update the statistic.
     """
 
     def __init__(self):
@@ -16,12 +15,10 @@ class CountMeter(UnivariateStatistic):
         """Updates the statistic with the value for a timestep.
 
         Args:
-            num: The incoming value, for which the statistic is used.
+            num (float): The incoming value, for which the statistic is used.
 
         Returns:
-            self: object
-                Returns the fitted statistic.
-
+            object: self.
         """
         self.count += 1
 
@@ -31,12 +28,10 @@ class CountMeter(UnivariateStatistic):
         """Updates the statistic by removing particular value. This method
 
         Args:
-            num: The value to be removed.
+            num (float): The value to be removed.
 
         Returns:
-            self: object
-                Returns the fitted statistic.
-
+            object: self.
         """
         self.count -= 1
 
@@ -46,7 +41,6 @@ class CountMeter(UnivariateStatistic):
         """ Method to obtain the tracked statistic.
 
         Returns:
-            statistic: float
-                The statistic.
+            float: The statistic.
         """
         return self.count

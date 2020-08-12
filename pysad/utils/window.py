@@ -4,7 +4,7 @@ class Window:
     """Window to limit the instances in list and keep the size fixed when full.
 
     Args:
-        window_size: The size of the window.
+        window_size (int): The size of the window.
     """
 
     def __init__(self, window_size):
@@ -15,7 +15,7 @@ class Window:
         """Adds new item to the window. Removes the tail if size exceeds the self.window_size.
 
         Args:
-            num: item to be added to the window.
+            num (float): item to be added to the window.
         """
         self.window.append(num)
         if len(self.window) > self.window_size:
@@ -25,9 +25,7 @@ class Window:
         """Method to obtain the window list.
 
         Returns:
-            window: list
-                list containing the items in window
-
+            window (list): List containing the items in window
         """
         return self.window
 
@@ -43,6 +41,6 @@ class UnlimitedWindow(Window):
         """Adds new item to the window. Removes the tail if size exceeds the self.window_size.
 
         Args:
-            num: item to be added to the window.
+            num (float): item to be added to the window.
         """
         self.window.append(num)

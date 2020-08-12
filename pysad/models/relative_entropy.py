@@ -8,14 +8,10 @@ class RelativeEntropy(BaseModel):
     """Relative entropy based anomaly detection model on univariate stream :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_.
 
         Args:
-            min_val: float
-                Minimum value of the univariate stream.
-            max_val: float
-                Maximum value of the univariate stream.
-            num_bins: int (Default=5)
-                Number of bins
-            window_size: int (Default=52)
-                The size of the window.
+            min_val (float): Minimum value of the univariate stream.
+            max_val (float): Maximum value of the univariate stream.
+            num_bins (int): Number of bins (Default=5).
+            window_size (int): The size of the window (Default=52).
     """
 
     def __init__(self, min_val, max_val, num_bins=5, window_size=52):
@@ -55,14 +51,11 @@ class RelativeEntropy(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X: float
-                The instance to fit. Note that this model is univariate.
-            y: int (Default=None)
-                Ignored since the model is unsupervised.
+            X (float): The instance to fit. Note that this model is univariate.
+            y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         self.util.append(X)
         if len(self.util) >= self.W:
@@ -92,12 +85,10 @@ class RelativeEntropy(BaseModel):
         """Scores the anomalousness of the next instance. Note that this method should be called after the fit_partial method.
 
         Args:
-            X: any (Ignored)
-                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (any): (Ignored) The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
         score = 0.0
 

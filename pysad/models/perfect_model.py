@@ -13,11 +13,10 @@ class PerfectModel(BaseModel):
 
         Args:
             X: any (Ignored)
-            y: int
+            y (int): The true label.
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         if y is None:
             raise ValueError("y should be the true score")
@@ -33,8 +32,7 @@ class PerfectModel(BaseModel):
             X: any (Ignored)
 
         Returns:
-            score: float
-                The true label.
+            float: The true label.
         """
         score = self.labels[0]
         self.labels = self.labels[1:]

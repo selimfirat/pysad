@@ -8,9 +8,9 @@ class ExactStorm(BaseModel):
     """The Exact-STORM method :cite:`angiulli2007detecting`. This method assigns anomaly score that is the mean of distances to the instances in window of length `window_size` with distnaces less than `max_radius`. Note that the decision making in :cite:`angiulli2007detecting` is not implemented.
 
             Args:
-                window_size: int
+                window_size : int (Default=10000)
                     The number of instances in the window to score.
-                max_radius: float
+                max_radius : float (Default=0.1)
                     Maximum radius for the near instance selection.
     """
 
@@ -22,14 +22,11 @@ class ExactStorm(BaseModel):
         """Fits the model to next instance. Simply, adds the instance to the window.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to fit.
-            y: int (Default=None)
-                Ignored since the model is unsupervised.
+            X (np.float array of shape (num_features,)): The instance to fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: self.
         """
         self.window.update(X)
 
@@ -39,12 +36,10 @@ class ExactStorm(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
         window = self.window.get()[:-1]
         if len(window) == 0:

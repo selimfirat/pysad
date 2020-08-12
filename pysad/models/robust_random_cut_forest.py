@@ -6,12 +6,9 @@ class RobustRandomCutForest(BaseModel):
     """Robust Random Cut Forest model :cite:`guha2016robust`. The implementation uses `rrcf library <https://github.com/kLabUM/rrcf>`_ :cite:`bartos_2019_rrcf`.
 
         Args:
-            num_trees: int
-                The number of trees.
-            shingle_size: int (Default=4)
-                The shingle size.
-            tree_size: The tree size
-                The tree size.
+            num_trees (int): The number of trees.
+            shingle_size (int): The shingle size (Default=4).
+            tree_size (int): The tree size (Default=256).
     """
 
     def __init__(self, num_trees=4, shingle_size=4, tree_size=256):
@@ -31,14 +28,11 @@ class RobustRandomCutForest(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to fit.
-            y: int (Default=None)
-                Ignored since the model is unsupervised.
+            X (np.float array of shape (num_features,)): The instance to fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         for tree in self.forest:
             if len(tree.leaves) > self.tree_size:
@@ -54,12 +48,10 @@ class RobustRandomCutForest(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
 
         score = 0.0

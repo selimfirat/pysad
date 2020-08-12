@@ -6,7 +6,7 @@ class PandasStreamer(BaseStreamer):
     """Simulator class to iterate dataframe(s).
 
     Args:
-        shuffle: Whether shuffle the data initially.
+        shuffle (bool): Whether shuffle the data initially (Default=False).
     """
 
     def __init__(self, shuffle=False):

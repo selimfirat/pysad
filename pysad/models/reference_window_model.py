@@ -6,18 +6,12 @@ class ReferenceWindowModel(PYODModel):
     """This PyOD model wrapper wraps the batch anomaly detectors. This wrapper keeps track of the reference window of size `window_length`. For every `sliding_size` instnaces, it resets the model by training new `model_cls` instance with the reference window. This implementation is based on the reference windowing described in :cite:`xstream`.
 
         Args:
-            model_cls: class
-                The model class to be instantiated.
-            window_size: int
-                The size of each window.
-            sliding_size: int
-                The sliding length of the windows.
-            initial_X: np.float array of shape (num_initial_instances, num_features)
-                Initial instances to fit.
-            initial_y: np.int array of shape (num_initial_instances,)
-                Initial window's ground truth labels. Used if not None. Needs to be `None` for the unsupervised `model_cls` models.
-            **kwargs: Keyword arguments.
-                Keyword arguments that is passed to the `model_cls`.
+            model_cls (class): The model class to be instantiated.
+            window_size (int): The size of each window.
+            sliding_size (int): The sliding length of the windows.
+            initial_X (np.float array of shape (num_initial_instances, num_features)): Initial instances to fit.
+            initial_y (np.int array of shape (num_initial_instances,)): Initial window's ground truth labels. Used if not None. Needs to be `None` for the unsupervised `model_cls` models. (Default=None).
+            **kwargs (Keyword arguments): Keyword arguments that is passed to the `model_cls`.
     """
 
     def __init__(
@@ -58,14 +52,11 @@ class ReferenceWindowModel(PYODModel):
         """Fits the model to next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to fit.
-            y: int (Default=None)
-                The label of the instance (Optional for unsupervised models)
+            X (np.float array of shape (num_features,)): The instance to fit.
+            y (int): The label of the instance (Optional for unsupervised models, default=None).
 
         Returns:
-            self: object
-                Returns the self.
+            object: self.
         """
         self.cur_window_X.append(X)
 
@@ -106,12 +97,10 @@ class ReferenceWindowModel(PYODModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X: np.float array of shape (num_features,)
-                The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score: float
-                The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
         score = self.model.decision_function([X])[0]
 

@@ -7,7 +7,7 @@ class Data:
     """A helper class to load various data.
 
     Args:
-        data_base_path: Base path that contains the data files.
+        data_base_path (str): Base path that contains the data files.
     """
 
     def __init__(self, data_base_path="data"):
@@ -17,9 +17,7 @@ class Data:
         """ Helper method to return the names of the data files.
 
         Returns:
-            file_names: list[str]
-                List of data file names.
-
+            file_names (list[str]): List of data file names.
         """
         return [
             'arrhythmia.mat',
@@ -50,11 +48,10 @@ class Data:
         """Loads the data file from .txt file.
 
         Args:
-            path: The path of data.
+            path (str): The path of data.
 
         Returns:
-            X: np.float array of shape (num_instances, num_features)
-                Feature vectors.
+            X (np.float array of shape (num_instances, num_features)): Feature vectors.
         """
         X = np.loadtxt(path, delimiter=",")
 
@@ -67,10 +64,8 @@ class Data:
             data_file: Path of the data.
 
         Returns:
-            X: np.float array of shape (num_instances, num_features)
-                Feature vectors.
-            y: np.float array of shape (num_instances,)
-                Labels.
+            X (np.array of shape (num_instances, num_features)): Feature vectors.
+            y (np.array of shape (num_instances,)): Labels.
         """
         data_path = os.path.join(self.data_base_path, data_file)
 
@@ -93,12 +88,12 @@ class Data:
         """The iterator function
 
         Args:
-            data_file: Path of data.
-            shuffle: Whether to shuffle.
-            seed: Random seed.
+            data_file (str): Path of data.
+            shuffle (bool): Whether to shuffle (Default=True).
+            seed (int): Random seed (Default=None).
 
         Returns:
-            iterator: ArrayStreamer.iter method applied with (X, y), where X is the variable containing feature vectors and y is the variable containing labels.
+            iterator (The iterator): pysad.utils.array_streamer.ArrayStreamer.iter method applied with (X, y), where X is the variable containing feature vectors and y is the variable containing labels.
 
         """
         if seed is not None:

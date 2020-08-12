@@ -6,7 +6,7 @@ class ArrayStreamer(BaseStreamer):
     """Simulator class to iterate array(s).
 
     Args:
-        shuffle: Whether shuffle the data initially.
+        shuffle (bool): Whether shuffle the data initially (Default=False).
     """
 
     def __init__(self, shuffle=False):
@@ -16,8 +16,8 @@ class ArrayStreamer(BaseStreamer):
         """Iterates array of features and possibly labels.
 
         Args:
-            X: The features array, which can also be a numpy array
-            y: The array containing labels.
+            X (np.array of shape (num_instances, num_features)): The features array.
+            y (np.array of shape (num_instances, ): The array containing labels (Default=None).
         """
         indices = list(range(len(X)))
         if self.shuffle:

@@ -17,12 +17,10 @@ class AveragePostprocessor(BasePostprocessor):
         """Fits the postprocessor to the (next) timestep's score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            self: object
-                Fitted postprocessor.
+            object: self.
         """
 
         self.meter.update(score)
@@ -33,12 +31,10 @@ class AveragePostprocessor(BasePostprocessor):
         """Gets the current average. This method should be used immediately after the fit_partial method with same score.
 
         Args:
-            score: float
-                The input score.
+            score (float): The input score.
 
         Returns:
-            result_score: float
-                Transformed score.
+            float: Transformed score.
         """
         return self.meter.get()
 
@@ -54,12 +50,10 @@ class MaxPostprocessor(BasePostprocessor):
         """Fits the postprocessor to the (next) timestep's score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            self: object
-                Fitted postprocessor.
+            object: self.
         """
         self.meter.update(score)
 
@@ -69,12 +63,10 @@ class MaxPostprocessor(BasePostprocessor):
         """Applies postprocessing to the score. This method should be used immediately after the fit_partial method with same score.
 
         Args:
-            score: float
-                The input score.
+            score (float): The input score.
 
         Returns:
-            result_score: float
-                Transformed score.
+            float: Transformed score.
         """
         return self.meter.get()
 
@@ -90,12 +82,10 @@ class MedianPostprocessor(BasePostprocessor):
         """Fits the postprocessor to the (next) timestep's score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            self: object
-                Fitted postprocessor.
+            object: self.
         """
         self.meter.update(score)
 
@@ -105,12 +95,10 @@ class MedianPostprocessor(BasePostprocessor):
         """Applies postprocessing to the score.
 
         Args:
-            score: float
-                The input score.
+            score (float): The input score.
 
         Returns:
-            result_score: float
-                Transformed score.
+            float: Transformed score.
         """
         return self.meter.get()
 
@@ -127,12 +115,10 @@ class ZScorePostprocessor(BasePostprocessor):
         """Fits the postprocessor to the (next) timestep's score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            self: object
-                Fitted postprocessor.
+            object: self.
         """
         self.variance_meter.update(score)
         self.average_meter.update(score)
@@ -143,12 +129,10 @@ class ZScorePostprocessor(BasePostprocessor):
         """Applies postprocessing to the score.
 
         Args:
-            score: float
-                The input score.
+            score (float): The input score.
 
         Returns:
-            result_score: float
-                Transformed score.
+            float: Transformed score.
         """
         zscore = (score - self.average_meter.get()) / \
             np.sqrt(self.variance_meter.get())

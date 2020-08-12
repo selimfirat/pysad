@@ -8,9 +8,9 @@ class VarianceMeter(UnivariateStatistic):
     """The statistic that keeps track of the variance of the values. The variance formula is: (sum_squares - (sum**2)/count)/count.
 
     Attrs:
-        sum_meter: SumMeter object
-        sum_squares_meter: SumSquaresMeter object
-        count_meter: CountMeter
+        sum_meter (pyod.statistics.SumMeter object): SumMeter object.
+        sum_squares_meter (pyod.statistics.SumSquaresMeter object): SumSquaresMeter object.
+        count_meter (pyod.statistics.CountMeter object): CountMeter object.
     """
 
     def __init__(self):
@@ -22,11 +22,10 @@ class VarianceMeter(UnivariateStatistic):
         """Updates the statistic with the value for a timestep.
 
         Args:
-            num: The incoming value, for which the statistic is used.
+            num (float): The incoming value, for which the statistic is used.
 
         Returns:
-            self: object
-                Returns the fitted statistic.
+            object: self.
 
         """
         self.sum_squares_meter.update(num)
@@ -39,11 +38,10 @@ class VarianceMeter(UnivariateStatistic):
         """Updates the statistic by removing particular value.
 
         Args:
-            num: The value to be removed.
+            num (float): The value to be removed.
 
         Returns:
-            self: object
-                Returns the fitted statistic.
+            object: self.
 
         """
         self.sum_squares_meter.remove(num)
@@ -56,8 +54,7 @@ class VarianceMeter(UnivariateStatistic):
         """ Method to obtain the tracked statistic.
 
         Returns:
-            statistic: float
-                The statistic.
+            float: The statistic.
         """
         sum_squares = self.sum_squares_meter.get()
         sum = self.sum_meter.get()

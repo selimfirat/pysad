@@ -9,8 +9,9 @@ import numpy as np
 
 class RunningAveragePostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the average of of all previous scores in the window.
+
         Args:
-            window_size: Length of the window
+            window_size (int): Length of the window
     """
 
     def __init__(self, window_size):
@@ -23,12 +24,10 @@ class RunningAveragePostprocessor(BasePostprocessor):
         """Fits the windowed postprocessor to the (next) timestep's score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            self: object
-                Fitted postprocessor.
+            object: self.
         """
         self.meter.update(score)
 
@@ -38,12 +37,10 @@ class RunningAveragePostprocessor(BasePostprocessor):
         """Applies postprocessing to the score using the window.
 
         Args:
-            score: float
-                The input score.
+            score (float): The input score.
 
         Returns:
-            result_score: float
-                Transformed score.
+            float: Transformed score.
         """
         return self.meter.get()
 
@@ -51,7 +48,7 @@ class RunningAveragePostprocessor(BasePostprocessor):
 class RunningMaxPostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the maximum of of all previous scores in the window.
         Args:
-            window_size: Length of the window
+            window_size (int): Length of the window
     """
 
     def __init__(self, window_size):
@@ -64,12 +61,10 @@ class RunningMaxPostprocessor(BasePostprocessor):
         """Fits the windowed postprocessor to the (next) timestep's score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            self: object
-                Fitted postprocessor.
+            object: self.
         """
         self.meter.update(score)
 
@@ -79,12 +74,10 @@ class RunningMaxPostprocessor(BasePostprocessor):
         """Applies postprocessing to the score using the window.
 
         Args:
-            score: float
-                The input score.
+            score (float): The input score.
 
         Returns:
-            result_score: float
-                Transformed score.
+            float: Transformed score.
         """
         return self.meter.get()
 
@@ -92,7 +85,7 @@ class RunningMaxPostprocessor(BasePostprocessor):
 class RunningMedianPostprocessor(BasePostprocessor):
     """A postprocessor that convert a score to the median of of all previous scores in the window.
         Args:
-            window_size: Length of the window
+            window_size (int): Length of the window
     """
 
     def __init__(self, window_size):
@@ -105,12 +98,10 @@ class RunningMedianPostprocessor(BasePostprocessor):
         """Fits the windowed postprocessor to the (next) timestep's score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            self: object
-                Fitted postprocessor.
+            object: self.
         """
         self.meter.update(score)
 
@@ -120,20 +111,19 @@ class RunningMedianPostprocessor(BasePostprocessor):
         """Applies postprocessing to the score using the window.
 
         Args:
-            score: float
-                The input score.
+            score (float): The input score.
 
         Returns:
-            result_score: float
-                Transformed score.
+            float: Transformed score.
         """
         return self.meter.get()
 
 
 class RunningZScorePostprocessor(BasePostprocessor):
     """A postprocessor that normalizes score using Z-score normalization with the statistics of the window.
+
         Args:
-            window_size: Length of the window
+            window_size (int): Length of the window
     """
 
     def __init__(self, window_size):
@@ -147,12 +137,10 @@ class RunningZScorePostprocessor(BasePostprocessor):
         """Fits the windowed postprocessor to the (next) timestep's score.
 
         Args:
-            score: float
-                Input score.
+            score (float): Input score.
 
         Returns:
-            self: object
-                Fitted postprocessor.
+            object: self.
         """
         self.variance_meter.update(score)
         self.average_meter.update(score)
@@ -163,12 +151,10 @@ class RunningZScorePostprocessor(BasePostprocessor):
         """Applies postprocessing to the score using the window.
 
         Args:
-            score: float
-                The input score.
+            score (float): The input score.
 
         Returns:
-            result_score: float
-                Transformed score.
+            float: Transformed score.
         """
         zscore = (score - self.average_meter.get()) / \
             np.sqrt(self.variance_meter.get())

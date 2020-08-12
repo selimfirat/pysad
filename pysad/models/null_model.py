@@ -16,8 +16,7 @@ class NullModel(BaseModel):
             y: any
 
         Returns:
-            self: object
-                Returns the self.
+            object: Returns the self.
         """
         return self
 
@@ -28,7 +27,6 @@ class NullModel(BaseModel):
             X: any (Ignored)
 
         Returns:
-            score: float
-                Equal to `0.5`.
+            float: Equal to `0.5`.
         """
         return 0.5

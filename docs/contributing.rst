@@ -30,4 +30,18 @@ Pull Request Checklist
 * Does your submission passes tests, Travis CI?
 * Have you checked the active `pull requests <https://github.com/selimfirat/pysad/pulls>`_ and `issues <https://github.com/selimfirat/pysad/issues>`_ so that your contribution does not overlap significantly with these?
 * **For new features** Have you implemented tests so that your new code has more than 95% test coverage and the tests are reasonable?.
-* **For new features** Have you implemneted examples demonstrating the usage of your new feature?
+* **For new features** Have you implemented examples demonstrating the usage of your new feature?
+
+Development Instructions
+^^^^^^^^^^^^^^^^^^^^^^^^
+To install requirements of development environment, run the following bash code:
+
+.. code-block:: bash
+    pip install -r requirements-dev.txt
+
+After you have done writing code, run the following bash code for checking:
+
+.. code-block:: bash
+    bash build_docs.sh # Building docs.
+    bash lint.sh # Checking for PEP8 style.
+    pytest --cov=pysad --cov-config=.coveragerc # Running tests.

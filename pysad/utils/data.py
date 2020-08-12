@@ -10,7 +10,7 @@ class Data:
         data_base_path: Base path that contains the data files.
     """
 
-    def __init__(self, data_base_path):
+    def __init__(self, data_base_path="data"):
         self.data_base_path = data_base_path
 
     def _get_data_files(self):

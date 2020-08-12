@@ -15,7 +15,7 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
                 The size of window for running average and std. Ignored if `running_statistics` parameter is False.
     """
 
-    def __init__(self, windowed=True, window_size=300, ):
+    def __init__(self, windowed=True, window_size=300):
         self.windowed = windowed
         self.window_size = window_size
         self.window = Window(window_size=self.window_size) if self.windowed else UnlimitedWindow()
@@ -32,6 +32,8 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         """
         self.window.update(score)
 
+        return self
+
     def transform_partial(self, score):
         """Transforms given score.
 
@@ -44,5 +46,5 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
                 Processed score.
         """
 
-        return (np.sum(np.array(self.window.get()) >= score))/ (len(self.window.get()))
+        return (np.sum(np.array(self.window.get()) <= score))/ (len(self.window.get()))
 

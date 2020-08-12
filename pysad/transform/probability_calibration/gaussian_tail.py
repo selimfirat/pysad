@@ -20,7 +20,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         self.running_statistics = running_statistics
         self.window_size = window_size
 
-        if self.running_average:
+        if self.running_statistics:
             self.avg_meter = RunningStatistic(AverageMeter, self.window_size)
             self.var_meter = RunningStatistic(VarianceMeter, self.window_size)
         else:
@@ -40,6 +40,8 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         self.avg_meter.update(score)
         self.var_meter.update(score)
 
+        return self
+
     def transform_partial(self, score):
         """Transforms given score.
 
@@ -52,7 +54,11 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
                 Processed score.
         """
         mean = self.avg_meter.get()
-        std = np.sqrt(self.avg_meter.get())
+        var = self.var_meter.get()
+        if var > 0:
+            std = np.sqrt(var)
+        else:
+            std = 1.0
 
         return self._qfunction(score, mean, std)
 

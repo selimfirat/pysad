@@ -23,6 +23,12 @@ Example Ensembler Usage
    :language: python
 
 
+Example Probability Calibrator Usage
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../examples/example_probability_calibration.py
+   :language: python
+
 Example PyOD Integration
 ^^^^^^^^^^^^^^^^^^^^^^^^
 

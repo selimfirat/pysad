@@ -37,10 +37,12 @@ pygments_style = 'sphinx'
 extensions = [
     "sphinx_rtd_theme",
     "sphinx.ext.autodoc",
-    'sphinx.ext.napoleon',
-    "sphinxcontrib.bibtex",
     'sphinx.ext.intersphinx',
-    'sphinx_copybutton'
+    'sphinx.ext.coverage',
+    'sphinx.ext.viewcode',
+    "sphinxcontrib.bibtex",
+    'sphinx_copybutton',
+    'sphinx.ext.napoleon'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -62,7 +64,7 @@ html_theme = 'sphinx_rtd_theme'
 html_theme_options = {
     'canonical_url': '',
     'analytics_id': 'UA-XXXXXXX-1',  #  Provided by Google in your dashboard
-    'logo_only': False,
+    'logo_only': True,
     'display_version': True,
     'prev_next_buttons_location': 'bottom',
     'style_external_links': False,
@@ -71,7 +73,7 @@ html_theme_options = {
     # Toc options
     'collapse_navigation': True,
     'sticky_navigation': True,
-    'navigation_depth': 4,
+    'navigation_depth': 7,
     'includehidden': True,
     'titles_only': False
 }
@@ -86,13 +88,12 @@ autodoc_default_options = {'members': True,
                            'inherited-members': True,
                            }
 autodoc_typehints = "none"
-numpydoc_show_class_members = False
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/{.major}'.format(
         sys.version_info), None),
-    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
+    #'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    #'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
     # 'matplotlib': ('https://matplotlib.org/', None),
-    'sklearn': ('https://scikit-learn.org/stable', None)
+    #'sklearn': ('https://scikit-learn.org/stable', None)
 }

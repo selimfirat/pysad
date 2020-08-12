@@ -1,4 +1,4 @@
-from pysad.models.reference_window_model import ReferenceWindowModel
+from pysad.models.integrations.reference_window_model import ReferenceWindowModel
 from pyod.models.iforest import IForest
 
 

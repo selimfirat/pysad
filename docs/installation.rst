@@ -31,7 +31,7 @@ Alternatively, you can install the library directly using the source code in Git
 **Optional Dependencies:**
 
 
-* rrcf==0.4.3 (Only required for :class:`pysad.models.RobustRandomCutForest`)
-* PyNomaly==0.3.3 (Only required for :class:`pysad.models.LocalOutlierProbability`)
-* mmh3==2.5.1 (Only required for :class:`pysad.models.xStream`)
-* pandas>=0.23.3 (Only required for :class:`pysad.utils.PandasStreamer`)
+* rrcf==0.4.3 (Only required for :class:`pysad.models.robust_random_cut_forest.RobustRandomCutForest`)
+* PyNomaly==0.3.3 (Only required for :class:`pysad.models.loop.StreamLocalOutlierProbability`)
+* mmh3==2.5.1 (Only required for :class:`pysad.models.xstream.xStream`)
+* pandas>=0.23.3 (Only required for :class:`pysad.utils.pandas_streamer.PandasStreamer`)

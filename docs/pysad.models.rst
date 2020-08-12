@@ -1,6 +1,14 @@
 pysad.models package
 ====================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   pysad.models.integrations
+
 Submodules
 ----------
 
@@ -76,14 +84,6 @@ pysad.models.null\_model module
    :undoc-members:
    :show-inheritance:
 
-pysad.models.one\_fit\_model module
------------------------------------
-
-.. automodule:: pysad.models.one_fit_model
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysad.models.perfect\_model module
 ----------------------------------
 
@@ -92,26 +92,10 @@ pysad.models.perfect\_model module
    :undoc-members:
    :show-inheritance:
 
-pysad.models.pyod\_model module
--------------------------------
-
-.. automodule:: pysad.models.pyod_model
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysad.models.random\_model module
 ---------------------------------
 
 .. automodule:: pysad.models.random_model
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysad.models.reference\_window\_model module
---------------------------------------------
-
-.. automodule:: pysad.models.reference_window_model
    :members:
    :undoc-members:
    :show-inheritance:

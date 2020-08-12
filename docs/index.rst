@@ -58,13 +58,14 @@ This repository is currently under development.
    :alt: License
 
 
-===============================
-
-.. include:: useful_links.rst
 
 ===============================
 
 .. include:: installation.rst
+
+===============================
+
+.. include:: useful_links.rst
 
 ===============================
 
@@ -78,7 +79,6 @@ This repository is currently under development.
 
 
 .. toctree::
-   :maxdepth: 2
    :hidden:
    :caption: Getting Started
 
@@ -87,14 +87,13 @@ This repository is currently under development.
    examples
 
 .. toctree::
-   :maxdepth: 4
    :hidden:
    :caption: API Reference
 
+   cheatsheet
    modules
 
 .. toctree::
-   :maxdepth: 2
    :hidden:
    :caption: Other
 

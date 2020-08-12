@@ -1,4 +1,4 @@
-from pysad.models.pyod_model import PYODModel
+from pysad.models.integrations.pyod_model import PYODModel
 import numpy as np
 
 

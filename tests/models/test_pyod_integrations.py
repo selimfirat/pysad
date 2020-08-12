@@ -1,9 +1,9 @@
-from pysad.models.one_fit_model import OneFitModel
+from pysad.models.integrations.one_fit_model import OneFitModel
 
 
 def test_reference_window(test_path):
     from sklearn.utils import shuffle
-    from pysad.models.reference_window_model import ReferenceWindowModel
+    from pysad.models.integrations.reference_window_model import ReferenceWindowModel
     from pysad.utils.data import Data
     from pysad.evaluation.metrics import AUROCMetric
     from pysad.utils.array_streamer import ArrayStreamer

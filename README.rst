@@ -19,9 +19,9 @@ This repository is currently under development. Not ready for usage yet.
    :alt: Appveyor Build status
 
 
-.. image:: https://img.shields.io/pypi/v/pysad.svg?color=brightgreen
-   :target: https://pypi.org/project/pysad/
-   :alt: PyPI version
+.. image:: https://circleci.com/gh/selimfirat/pysad.svg?style=svg
+   :target: https://circleci.com/gh/selimfirat/pysad
+   :alt: Circle CI
 
 
 .. image:: https://readthedocs.org/projects/pysad/badge/?version=latest
@@ -29,9 +29,9 @@ This repository is currently under development. Not ready for usage yet.
    :alt: Documentation status
 
 
-.. image:: https://circleci.com/gh/selimfirat/pysad.svg?style=svg
-   :target: https://circleci.com/gh/selimfirat/pysad
-   :alt: Circle CI
+.. image:: https://img.shields.io/pypi/v/pysad.svg?color=brightgreen
+   :target: https://pypi.org/project/pysad/
+   :alt: PyPI version
 
 
 .. image:: https://coveralls.io/repos/github/selimfirat/pysad/badge.svg

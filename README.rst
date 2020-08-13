@@ -34,50 +34,16 @@ This repository is currently under development. Not ready for usage yet.
 
 ===============================
 
-
-**Useful Links**
-
-* `Installation <http://TODO_installation>`_
-
-* `Getting Started <http://TODO_gettingstarted>`_
-
+.. include:: installation.rst
 
 ===============================
 
-
-**Installation**
-
-
-The PySAD library can be installed via:
-
-
-.. code-block:: bash
-
-    pip install pysad
-
-
-Alternatively, you can install the library directly using the source code in this repository by:
-
-
-.. code-block:: bash
-
-    git clone https://github.com/selimfirat/pysad.git
-    cd pysad
-    pip install .
-
+.. include:: useful_links.rst
 
 ===============================
 
-
-**Versioning**
-
-`Semantic versioning <http://semver.org/>`_ is used for this project. If contributing, please conform to semantic versioning guidelines when submitting a pull request.
-
+.. include:: versioning.rst
 
 ===============================
 
-
-**License**
-
-This project is licensed under the `3-Clause BSD License <LICENSE>`_.
-
+.. include:: license.rst

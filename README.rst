@@ -32,8 +32,6 @@ This repository is curerntly under development.
    :target: https://github.com/selimfirat/pysad/blob/master/LICENSE
    :alt: License
 
-===============================
-
 Installation
 ============
 
@@ -72,8 +70,6 @@ Alternatively, you can install the library directly using the source code in Git
 * mmh3==2.5.1 (Only required for :class:`pysad.models.xstream.xStream`)
 * pandas>=0.23.3 (Only required for :class:`pysad.utils.pandas_streamer.PandasStreamer`)
 
-===============================
-
 Quick Links
 ============
 
@@ -87,14 +83,10 @@ Quick Links
 
 * `Azure Pipelines <https://dev.azure.com/selimfirat/pysad/>`_
 
-===============================
-
 Versioning
 ==========
 
 `Semantic versioning <http://semver.org/>`_ is used for this project.
-
-===============================
 
 License
 =======

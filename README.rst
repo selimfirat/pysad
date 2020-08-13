@@ -11,7 +11,12 @@ This repository is currently under development. Not ready for usage yet.
 
 .. image:: https://travis-ci.org/selimfirat/pysad.svg?branch=master
    :target: https://travis-ci.org/selimfirat/pysad
-   :alt: Build Status
+   :alt: Travis CI Build Status
+
+
+.. image:: https://ci.appveyor.com/api/projects/status/<API_KEY>/branch/master?svg=true
+   :target: https://ci.appveyor.com/project/selimfirat/pysad/branch/master
+   :alt: Appveyor Build status
 
 
 .. image:: https://img.shields.io/pypi/v/pysad.svg?color=brightgreen
@@ -22,11 +27,6 @@ This repository is currently under development. Not ready for usage yet.
 .. image:: https://readthedocs.org/projects/pysad/badge/?version=latest
    :target: https://pysad.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation status
-
-
-.. image:: https://ci.appveyor.com/api/projects/status/<API_KEY>/branch/master?svg=true
-   :target: https://ci.appveyor.com/project/selimfirat/pysad/branch/master
-   :alt: Build status
 
 
 .. image:: https://circleci.com/gh/selimfirat/pysad.svg?style=svg

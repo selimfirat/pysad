@@ -1,3 +1,8 @@
+.. image:: logo.png
+    :align: center
+
+==========================================
+
 Python Streaming Anomaly Detection (PySAD)
 ==========================================
 

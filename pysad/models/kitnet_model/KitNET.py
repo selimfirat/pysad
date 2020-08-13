@@ -1,6 +1,6 @@
 import numpy as np
-import pysad.models.kitnet_model.dA as AE
-import pysad.models.kitnet_model.corClust as CC
+from . import dA as AE
+from . import corClust as CC
 
 # This class represents a KitNET machine learner.
 # KitNET is a lightweight online anomaly detection algorithm based on an ensemble of autoencoders.

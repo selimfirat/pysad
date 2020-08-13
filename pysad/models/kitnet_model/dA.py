@@ -25,7 +25,7 @@
 
 import sys
 import numpy
-from pysad.models.kitnet_model.utils import *
+from .utils import *
 import json
 
 class dA_params:

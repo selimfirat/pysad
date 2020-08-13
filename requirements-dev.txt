@@ -6,4 +6,3 @@ pytest-cov==2.10.0
 coveralls==2.1.1
 sphinx-copybutton==0.3.0
 sphinxcontrib-bibtex==1.0.0
-rst-include==2.1.0

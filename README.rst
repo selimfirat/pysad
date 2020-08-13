@@ -6,6 +6,11 @@ This repository is currently under development. Not ready for usage yet.
 
 .. image:: https://dev.azure.com/selimfirat/pysad/_apis/build/status/selimfirat.pysad?branchName=master
    :target: https://dev.azure.com/selimfirat/pysad/_build/latest?definitionId=2&branchName=master
+   :alt: Azure Pipelines Build Status
+
+
+.. image:: https://travis-ci.org/selimfirat/pysad.svg?branch=master
+   :target: https://travis-ci.org/selimfirat/pysad
    :alt: Build Status
 
 
@@ -22,11 +27,6 @@ This repository is currently under development. Not ready for usage yet.
 .. image:: https://ci.appveyor.com/api/projects/status/<API_KEY>/branch/master?svg=true
    :target: https://ci.appveyor.com/project/selimfirat/pysad/branch/master
    :alt: Build status
-
-
-.. image:: https://travis-ci.org/selimfirat/pysad.svg?branch=master
-   :target: https://travis-ci.org/selimfirat/pysad
-   :alt: Build Status
 
 
 .. image:: https://circleci.com/gh/selimfirat/pysad.svg?style=svg

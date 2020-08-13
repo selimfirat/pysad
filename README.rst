@@ -14,7 +14,7 @@ This repository is currently under development. Not ready for usage yet.
    :alt: Travis CI Build Status
 
 
-.. image:: https://ci.appveyor.com/api/projects/status/<API_KEY>/branch/master?svg=true
+.. image:: https://ci.appveyor.com/api/projects/status/ceghuv517ghqgjce/branch/master?svg=true
    :target: https://ci.appveyor.com/project/selimfirat/pysad/branch/master
    :alt: Appveyor Build status
 

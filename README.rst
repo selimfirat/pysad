@@ -14,11 +14,9 @@ This repository is currently under development. Not ready for usage yet.
    :target: https://pysad.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation status
 
-
 .. image:: https://coveralls.io/repos/github/selimfirat/pysad/badge.svg?branch=master
     :target: https://coveralls.io/github/selimfirat/pysad?branch=master
    :alt: Coverage Status
-
 
 .. image:: https://img.shields.io/github/license/selimfirat/pysad.svg
    :target: https://github.com/selimfirat/pysad/blob/master/LICENSE

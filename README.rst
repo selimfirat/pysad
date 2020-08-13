@@ -4,6 +4,28 @@ Python Streaming Anomaly Detection (PySAD)
 This repository is currently under development. Not ready for usage yet.
 
 
+.. image:: https://img.shields.io/pypi/v/pysad.svg?color=brightgreen
+   :target: https://pypi.org/project/pysad/
+   :alt: PyPI version
+
+
+
+.. image:: https://readthedocs.org/projects/pysad/badge/?version=latest
+   :target: https://pysad.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation status
+
+
+.. image:: https://coveralls.io/repos/github/selimfirat/pysad/badge.svg?branch=master
+    :target: https://coveralls.io/github/selimfirat/pysad?branch=master
+   :alt: Coverage Status
+
+
+.. image:: https://img.shields.io/github/license/selimfirat/pysad.svg
+   :target: https://github.com/selimfirat/pysad/blob/master/LICENSE
+   :alt: License
+
+
+
 .. image:: https://dev.azure.com/selimfirat/pysad/_apis/build/status/selimfirat.pysad?branchName=master
    :target: https://dev.azure.com/selimfirat/pysad/_build/latest?definitionId=2&branchName=master
    :alt: Azure Pipelines Build Status
@@ -23,30 +45,6 @@ This repository is currently under development. Not ready for usage yet.
    :target: https://circleci.com/gh/selimfirat/pysad
    :alt: Circle CI
 
-
-.. image:: https://readthedocs.org/projects/pysad/badge/?version=latest
-   :target: https://pysad.readthedocs.io/en/latest/?badge=latest
-   :alt: Documentation status
-
-
-.. image:: https://img.shields.io/pypi/v/pysad.svg?color=brightgreen
-   :target: https://pypi.org/project/pysad/
-   :alt: PyPI version
-
-
-.. image:: https://coveralls.io/repos/github/selimfirat/pysad/badge.svg
-   :target: https://coveralls.io/github/selimfirat/pysad
-   :alt: Coverage Status
-
-
-.. image:: https://api.codeclimate.com/v1/badges/<API_KEY>/maintainability
-   :target: https://codeclimate.com/github/selimfirat/pysad/maintainability
-   :alt: Maintainability
-
-
-.. image:: https://img.shields.io/github/license/selimfirat/pysad.svg
-   :target: https://github.com/selimfirat/pysad/blob/master/LICENSE
-   :alt: License
 
 
 ===============================

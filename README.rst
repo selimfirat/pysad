@@ -34,16 +34,16 @@ This repository is currently under development. Not ready for usage yet.
 
 ===============================
 
-.. include:: installation.rst
+.. include:: docs/installation.rst
 
 ===============================
 
-.. include:: useful_links.rst
+.. include:: docs/useful_links.rst
 
 ===============================
 
-.. include:: versioning.rst
+.. include:: docs/versioning.rst
 
 ===============================
 
-.. include:: license.rst
+.. include:: docs/license.rst

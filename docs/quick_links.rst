@@ -1,4 +1,4 @@
-Useful Links
+Quick Links
 ============
 
 * `Github Repository <https://github.com/selimfirat/pysad/>`_

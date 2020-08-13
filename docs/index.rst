@@ -70,7 +70,7 @@ This repository is currently under development.
 
 ===============================
 
-.. include:: useful_links.rst
+.. include:: quick_links.rst
 
 ===============================
 
@@ -88,7 +88,7 @@ This repository is currently under development.
    :caption: Getting Started
 
    installation
-   useful_links
+   quick_links
    examples
 
 .. toctree::

@@ -4,16 +4,16 @@ from pysad.statistics.running_statistic import RunningStatistic
 
 def test_all_zero_stats():
     import numpy as np
-    from pysad.statistics.abs_statistic import AbsStatistic
-    from pysad.statistics.running_statistic import RunningStatistic
-    from pysad.statistics.average_meter import AverageMeter
-    from pysad.statistics.count_meter import CountMeter
-    from pysad.statistics.max_meter import MaxMeter
-    from pysad.statistics.median_meter import MedianMeter
-    from pysad.statistics.min_meter import MinMeter
-    from pysad.statistics.sum_meter import SumMeter
-    from pysad.statistics.sum_squares_meter import SumSquaresMeter
-    from pysad.statistics.variance_meter import VarianceMeter
+    from pysad.statistics import AbsStatistic
+    from pysad.statistics import RunningStatistic
+    from pysad.statistics import AverageMeter
+    from pysad.statistics import CountMeter
+    from pysad.statistics import MaxMeter
+    from pysad.statistics import MedianMeter
+    from pysad.statistics import MinMeter
+    from pysad.statistics import SumMeter
+    from pysad.statistics import SumSquaresMeter
+    from pysad.statistics import VarianceMeter
     from pysad.utils import fix_seed
     fix_seed(61)
 
@@ -58,14 +58,14 @@ def test_all_zero_stats():
 
 def test_stats_with_batch_numpy():
 
-    from pysad.statistics.average_meter import AverageMeter
-    from pysad.statistics.count_meter import CountMeter
-    from pysad.statistics.max_meter import MaxMeter
-    from pysad.statistics.median_meter import MedianMeter
-    from pysad.statistics.min_meter import MinMeter
-    from pysad.statistics.sum_meter import SumMeter
-    from pysad.statistics.sum_squares_meter import SumSquaresMeter
-    from pysad.statistics.variance_meter import VarianceMeter
+    from pysad.statistics import AverageMeter
+    from pysad.statistics import CountMeter
+    from pysad.statistics import MaxMeter
+    from pysad.statistics import MedianMeter
+    from pysad.statistics import MinMeter
+    from pysad.statistics import SumMeter
+    from pysad.statistics import SumSquaresMeter
+    from pysad.statistics import VarianceMeter
     import numpy as np
     from pysad.utils import fix_seed
     fix_seed(61)

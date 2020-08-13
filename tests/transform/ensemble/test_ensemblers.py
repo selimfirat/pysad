@@ -1,9 +1,9 @@
-from pysad.transform.ensemble.ensemblers import AverageScoreEnsembler, MaximumScoreEnsembler, MedianScoreEnsembler, \
-    AverageOfMaximumScoreEnsembler, MaximumOfAverageScoreEnsembler
-
 
 def test_ensemblers():
     import numpy as np
+    from pysad.transform.ensemble import AverageScoreEnsembler, MaximumScoreEnsembler, MedianScoreEnsembler, \
+    AverageOfMaximumScoreEnsembler, MaximumOfAverageScoreEnsembler
+
     scores = np.random.rand(100, 10)
 
     ensemblers = {

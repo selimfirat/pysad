@@ -1,6 +1,6 @@
-from pysad.models.xstream import xStream
-from pysad.transform.probability_calibration.conformal_prediction import ConformalProbabilityCalibrator
-from pysad.utils.data import Data
+from pysad.models import xStream
+from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+from pysad.utils import Data
 
 # This example demonstrates the usage of the probability calibrators.
 if __name__ == "__main__":

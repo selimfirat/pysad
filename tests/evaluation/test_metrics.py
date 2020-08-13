@@ -12,7 +12,7 @@ def helper_test_all_metrics(metric_classes, y_true, y_pred):
 
 
 def test_all_correct():
-    from pysad.evaluation.metrics import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
+    from pysad.evaluation import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
     import numpy as np
     from pysad.utils import fix_seed
     fix_seed(61)
@@ -33,7 +33,7 @@ def test_all_correct():
 
 
 def test_none_correct():
-    from pysad.evaluation.metrics import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
+    from pysad.evaluation import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
     import numpy as np
     from pysad.utils import fix_seed
     fix_seed(61)

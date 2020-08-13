@@ -4,48 +4,36 @@ pysad.core package
 Submodules
 ----------
 
-pysad.core.base\_metric module
-------------------------------
 
 .. automodule:: pysad.core.base_metric
    :members:
    :undoc-members:
    :show-inheritance:
 
-pysad.core.base\_model module
------------------------------
 
 .. automodule:: pysad.core.base_model
    :members:
    :undoc-members:
    :show-inheritance:
 
-pysad.core.base\_postprocessor module
--------------------------------------
 
 .. automodule:: pysad.core.base_postprocessor
    :members:
    :undoc-members:
    :show-inheritance:
 
-pysad.core.base\_statistic module
----------------------------------
 
 .. automodule:: pysad.core.base_statistic
    :members:
    :undoc-members:
    :show-inheritance:
 
-pysad.core.base\_streamer module
---------------------------------
 
 .. automodule:: pysad.core.base_streamer
    :members:
    :undoc-members:
    :show-inheritance:
 
-pysad.core.base\_transformer module
------------------------------------
 
 .. automodule:: pysad.core.base_transformer
    :members:

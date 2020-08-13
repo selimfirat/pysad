@@ -1,10 +1,10 @@
 from sklearn.utils import shuffle
-from pysad.evaluation.metrics import AUROCMetric
-from pysad.models.xstream import xStream
-from pysad.utils.array_streamer import ArrayStreamer
-from pysad.transform.postprocessing.running_postprocessors import RunningAveragePostprocessor
-from pysad.transform.preprocessing.instance_unit_norm_scaler import InstanceUnitNormScaler
-from pysad.utils.data import Data
+from pysad.evaluation import AUROCMetric
+from pysad.models import xStream
+from pysad.utils import ArrayStreamer
+from pysad.transform.postprocessing import RunningAveragePostprocessor
+from pysad.transform.preprocessing import InstanceUnitNormScaler
+from pysad.utils import Data
 from tqdm import tqdm
 import numpy as np
 
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     np.random.seed(61)
     data = Data("data")
 
-    X_all, y_all = data.get_data("arrhythmia.mat", shuffle=True)
+    X_all, y_all = data.get_data("arrhythmia.mat")
     X_all, y_all = shuffle(X_all, y_all)
 
     iterator = ArrayStreamer(shuffle=False)

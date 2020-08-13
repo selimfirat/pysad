@@ -4,8 +4,6 @@ pysad.transform.ensemble package
 Submodules
 ----------
 
-pysad.transform.ensemble.ensemblers module
-------------------------------------------
 
 .. automodule:: pysad.transform.ensemble.ensemblers
    :members:

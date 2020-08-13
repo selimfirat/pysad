@@ -1,6 +1,6 @@
 def test_perfect_model():
     import numpy as np
-    from pysad.models.perfect_model import PerfectModel
+    from pysad.models import PerfectModel
     from pysad.utils import fix_seed
     fix_seed(61)
 

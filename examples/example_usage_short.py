@@ -1,6 +1,6 @@
-from pysad.evaluation.metrics import AUROCMetric
-from pysad.models.loda import LODA
-from pysad.utils.data import Data
+from pysad.evaluation import AUROCMetric
+from pysad.models import LODA
+from pysad.utils import Data
 
 model = LODA()
 metric = AUROCMetric()

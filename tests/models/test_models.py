@@ -1,21 +1,21 @@
 
 
 def test_unsupervised_models():
-    from pysad.models.robust_random_cut_forest import RobustRandomCutForest
-    from pysad.models.exact_storm import ExactStorm
-    from pysad.models.half_space_trees import HalfSpaceTrees
-    from pysad.models.iforest_asd import IForestASD
-    from pysad.models.kitnet import KitNet
-    from pysad.models.knn_cad import KNNCAD
-    from pysad.models.loda import LODA
-    from pysad.models.loop import StreamLocalOutlierProbability
-    from pysad.models.median_absolute_deviation import MedianAbsoluteDeviation
-    from pysad.models.null_model import NullModel
-    from pysad.models.random_model import RandomModel
-    from pysad.models.relative_entropy import RelativeEntropy
-    from pysad.models.rs_hash import RSHash
-    from pysad.models.standard_absolute_deviation import StandardAbsoluteDeviation
-    from pysad.models.xstream import xStream
+    from pysad.models import RobustRandomCutForest
+    from pysad.models import ExactStorm
+    from pysad.models import HalfSpaceTrees
+    from pysad.models import IForestASD
+    from pysad.models import KitNet
+    from pysad.models import KNNCAD
+    from pysad.models import LODA
+    from pysad.models import LocalOutlierProbability
+    from pysad.models import MedianAbsoluteDeviation
+    from pysad.models import NullModel
+    from pysad.models import RandomModel
+    from pysad.models import RelativeEntropy
+    from pysad.models import RSHash
+    from pysad.models import StandardAbsoluteDeviation
+    from pysad.models import xStream
     import numpy as np
     from pysad.utils import fix_seed
     fix_seed(61)
@@ -29,7 +29,7 @@ def test_unsupervised_models():
         KitNet: {},
         KNNCAD: {"probationary_period": 50},
         LODA: {},
-        StreamLocalOutlierProbability: { "initial_X": True },
+        LocalOutlierProbability: { "initial_X": True },
         MedianAbsoluteDeviation: [{}, { "absolute": False }],
         NullModel: {},
         RandomModel: {},
@@ -63,7 +63,7 @@ def helper_test_model(X, model_cls, params_dict):
 
 
 def test_fit_and_score_separately():
-    from pysad.models.xstream import xStream
+    from pysad.models import xStream
     import numpy as np
     from pysad.utils import fix_seed
     fix_seed(61)

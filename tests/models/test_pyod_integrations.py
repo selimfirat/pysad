@@ -3,10 +3,10 @@ from pysad.models.integrations.one_fit_model import OneFitModel
 
 def test_reference_window(test_path):
     from sklearn.utils import shuffle
-    from pysad.models.integrations.reference_window_model import ReferenceWindowModel
-    from pysad.utils.data import Data
-    from pysad.evaluation.metrics import AUROCMetric
-    from pysad.utils.array_streamer import ArrayStreamer
+    from pysad.models.integrations import ReferenceWindowModel
+    from pysad.utils import Data
+    from pysad.evaluation import AUROCMetric
+    from pysad.utils import ArrayStreamer
     import os
     from pyod.models.iforest import IForest
 
@@ -36,9 +36,9 @@ def test_reference_window(test_path):
 
 def test_one_fit(test_path):
     from sklearn.utils import shuffle
-    from pysad.utils.data import Data
-    from pysad.evaluation.metrics import AUROCMetric
-    from pysad.utils.array_streamer import ArrayStreamer
+    from pysad.utils import Data
+    from pysad.evaluation import AUROCMetric
+    from pysad.utils import ArrayStreamer
     import os
     from pyod.models.iforest import IForest
 

@@ -1,11 +1,11 @@
 from sklearn.utils import shuffle
 from tqdm import tqdm
-from pysad.evaluation.metrics import AUROCMetric
-from pysad.models.loda import LODA
-from pysad.models.xstream import xStream
-from pysad.utils.array_streamer import ArrayStreamer
-from pysad.transform.ensemble.ensemblers import AverageScoreEnsembler
-from pysad.utils.data import Data
+from pysad.evaluation import AUROCMetric
+from pysad.models import LODA
+from pysad.models import xStream
+from pysad.utils import ArrayStreamer
+from pysad.transform.ensemble import AverageScoreEnsembler
+from pysad.utils import Data
 import numpy as np
 
 # This example demonstrates the usage of an ensembling method.

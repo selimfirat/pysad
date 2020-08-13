@@ -2,7 +2,7 @@
 
 def test_instance_standard_scaler():
     import numpy as np
-    from pysad.transform.preprocessing.instance_standard_scaler import InstanceStandardScaler
+    from pysad.transform.preprocessing import InstanceStandardScaler
 
     X = np.random.rand(100, 25)
     scaler = InstanceStandardScaler()

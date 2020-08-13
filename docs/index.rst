@@ -93,10 +93,10 @@ This repository is currently under development.
 
 .. toctree::
    :hidden:
-   :caption: API Reference
+   :caption: API Documentation
 
    cheatsheet
-   modules
+   pysad
 
 .. toctree::
    :hidden:

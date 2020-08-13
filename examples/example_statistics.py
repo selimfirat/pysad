@@ -1,7 +1,7 @@
 import numpy as np
 
-from pysad.statistics.average_meter import AverageMeter
-from pysad.statistics.variance_meter import VarianceMeter
+from pysad.statistics import AverageMeter
+from pysad.statistics import VarianceMeter
 
 # This example shows the usage of statistics module for streaming data.
 if __name__ == '__main__':

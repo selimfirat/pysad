@@ -1,6 +1,6 @@
-from pysad.transform.postprocessing.postprocessors import AveragePostprocessor, MaxPostprocessor, MedianPostprocessor, \
+from pysad.transform.postprocessing import AveragePostprocessor, MaxPostprocessor, MedianPostprocessor, \
     ZScorePostprocessor
-from pysad.transform.postprocessing.running_postprocessors import RunningZScorePostprocessor, \
+from pysad.transform.postprocessing import RunningZScorePostprocessor, \
     RunningMedianPostprocessor, RunningMaxPostprocessor, RunningAveragePostprocessor
 
 

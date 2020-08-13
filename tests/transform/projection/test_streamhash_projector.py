@@ -2,9 +2,9 @@
 
 def test_streamhash_projector(test_path):
     from sklearn.utils import shuffle
-    from pysad.utils.data import Data
+    from pysad.utils import Data
     import os
-    from pysad.transform.projection.streamhash_projector import StreamhashProjector
+    from pysad.transform.projection import StreamhashProjector
 
     for num_components in [2, 50, 250]:
         data = Data(os.path.join(test_path, "../../../examples/data"))

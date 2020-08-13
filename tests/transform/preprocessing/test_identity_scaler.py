@@ -2,7 +2,7 @@
 
 def test_identity_scaler():
     import numpy as np
-    from pysad.transform.preprocessing.identity_scaler import IdentityScaler
+    from pysad.transform.preprocessing import IdentityScaler
 
     X = np.random.rand(100, 25)
     scaler = IdentityScaler()

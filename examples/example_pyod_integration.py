@@ -1,9 +1,9 @@
 from pyod.models.iforest import IForest
 from sklearn.utils import shuffle
-from pysad.evaluation.metrics import AUROCMetric
-from pysad.models.integrations.reference_window_model import ReferenceWindowModel
-from pysad.utils.array_streamer import ArrayStreamer
-from pysad.utils.data import Data
+from pysad.evaluation import AUROCMetric
+from pysad.models.integrations import ReferenceWindowModel
+from pysad.utils import ArrayStreamer
+from pysad.utils import Data
 from tqdm import tqdm
 import numpy as np
 

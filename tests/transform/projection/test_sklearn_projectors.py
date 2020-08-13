@@ -1,7 +1,7 @@
 
 
 def test_gaussian_random_projector(test_path):
-    from pysad.transform.projection.random_projector import GaussianRandomProjector
+    from pysad.transform.projection import GaussianRandomProjector
 
     for num_components in [2, 50, 250]:
 
@@ -11,7 +11,7 @@ def test_gaussian_random_projector(test_path):
 
 
 def test_sparse_random_projector(test_path):
-    from pysad.transform.projection.random_projector import SparseRandomProjector
+    from pysad.transform.projection import SparseRandomProjector
 
     for num_components in [2, 50, 250]:
 
@@ -23,7 +23,7 @@ def test_sparse_random_projector(test_path):
 def helper_test_projector(test_path, projector, num_components):
     import os
     from sklearn.utils import shuffle
-    from pysad.utils.data import Data
+    from pysad.utils import Data
 
     data = Data(os.path.join(test_path, "../../../examples/data"))
 

@@ -1,7 +1,7 @@
 
 def helper_test_all_metrics(metric_classes, y_true, y_pred, ignore_nonempty_last):
     import numpy as np
-    from pysad.evaluation.windowed_metric import WindowedMetric
+    from pysad.evaluation import WindowedMetric
 
     for metric_cls, val in metric_classes.items():
         metric = WindowedMetric(metric_cls, 25, ignore_nonempty_last)
@@ -13,7 +13,7 @@ def helper_test_all_metrics(metric_classes, y_true, y_pred, ignore_nonempty_last
 
 
 def test_all_correct():
-    from pysad.evaluation.metrics import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
+    from pysad.evaluation import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
     import numpy as np
     metric_classes = [
         PrecisionMetric,
@@ -32,7 +32,7 @@ def test_all_correct():
 
 
 def test_none_correct():
-    from pysad.evaluation.metrics import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
+    from pysad.evaluation import PrecisionMetric, AUPRMetric, AUROCMetric, RecallMetric
     import numpy as np
 
     metric_classes = {

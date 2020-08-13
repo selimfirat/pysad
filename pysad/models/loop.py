@@ -1,7 +1,7 @@
 from pysad.core.base_model import BaseModel
 
 
-class StreamLocalOutlierProbability(BaseModel):
+class LocalOutlierProbability(BaseModel):
 
     def __init__(self, initial_X, num_neighbors=10, extent=3):
         """The implementation of streaming Local Outlier Probabilities method :cite:`kriegel2009loop`, which uses the implementation of PyNomaly library :cite:`constantinou2018pynomaly`.

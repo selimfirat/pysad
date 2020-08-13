@@ -1,7 +1,8 @@
 Python Streaming Anomaly Detection (PySAD)
-===============================
+==========================================
 
-This repository is currently under development. Not ready for usage yet.
+This repository is curerntly under development.
+
 
 .. image:: https://dev.azure.com/selimfirat/pysad/_apis/build/status/selimfirat.pysad?branchName=master
    :target: https://dev.azure.com/selimfirat/pysad/_build/latest?definitionId=2&branchName=master
@@ -31,19 +32,73 @@ This repository is currently under development. Not ready for usage yet.
    :target: https://github.com/selimfirat/pysad/blob/master/LICENSE
    :alt: License
 
+===============================
+
+Installation
+============
+
+
+The PySAD framework can be installed via:
+
+
+.. code-block:: bash
+
+    pip install -U pysad
+
+
+Alternatively, you can install the library directly using the source code in Github repository by:
+
+
+.. code-block:: bash
+
+    git clone https://github.com/selimfirat/pysad.git
+    cd pysad
+    pip install .
+
+
+**Required Dependencies:**
+
+
+* numpy>=1.18.5
+* scipy>=1.4.1
+* scikit-learn>=0.23.2
+* pyod>=0.7.7.1
+
+**Optional Dependencies:**
+
+
+* rrcf==0.4.3 (Only required for :class:`pysad.models.robust_random_cut_forest.RobustRandomCutForest`)
+* PyNomaly==0.3.3 (Only required for :class:`pysad.models.loop.StreamLocalOutlierProbability`)
+* mmh3==2.5.1 (Only required for :class:`pysad.models.xstream.xStream`)
+* pandas>=0.23.3 (Only required for :class:`pysad.utils.pandas_streamer.PandasStreamer`)
 
 ===============================
 
-.. include:: docs/installation.rst
+Quick Links
+============
+
+* `Github Repository <https://github.com/selimfirat/pysad/>`_
+
+* `Documentation <http://pysad.readthedocs.io/>`_
+
+* `PyPI Package <https://pypi.org/project/pysad>`_
+
+* `Travis CI <https://travis-ci.com/github/selimfirat/pysad>`_
+
+* `Azure Pipelines <https://dev.azure.com/selimfirat/pysad/>`_
 
 ===============================
 
-.. include:: docs/useful_links.rst
+Versioning
+==========
+
+`Semantic versioning <http://semver.org/>`_ is used for this project.
 
 ===============================
 
-.. include:: docs/versioning.rst
+License
+=======
 
-===============================
+This project is licensed under the `3-Clause BSD License <../LICENSE>`_.
 
-.. include:: docs/license.rst
+.. literalinclude:: ../LICENSE

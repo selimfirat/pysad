@@ -2,7 +2,7 @@ from pysad.core.base_statistic import UnivariateStatistic
 
 
 class SumMeter(UnivariateStatistic):
-    """The statistic that keeps the sum of values.
+    """The statistic that keeps track of the sum of values.
 
     Attrs:
         sum (float): The summation of values.

@@ -50,6 +50,13 @@ def get_minmax_scalar(x):
 
 
 def _iterate(X, y=None):
+    """Iterates array of features and possibly labels.
+
+    Args:
+        X (np.array of shape (num_instances, num_features)): The features array.
+        y (np.array of shape (num_instances, ): The array containing labels (Default=None).
+    """
+
     iterator = ArrayStreamer(shuffle=False)
 
     if y is None:

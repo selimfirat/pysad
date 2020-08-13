@@ -3,14 +3,14 @@ from pysad.statistics.median_meter import MedianMeter
 
 
 class MedianAbsoluteDeviation(BaseModel):
+    """Median Absolute Deviation method :cite:`hochenbaum2017automatic`.
+
+    Args:
+        absolute (bool): Whether to output score's absolute value (Default=True).
+        b (float): The default value `1.4826` is used for normally distributed data. See :cite:`hochenbaum2017automatic` for details. (Default=1.4826).
+    """
 
     def __init__(self, absolute=True, b=1.4826):
-        """Median Absolute Deviation method :cite:`hochenbaum2017automatic`.
-
-        Args:
-            absolute (bool): Whether to output score's absolute value (Default=True).
-            b (float): The default value `1.4826` is used for normally distributed data. See :cite:`hochenbaum2017automatic` for details. (Default=1.4826).
-        """
         self.b = b
         self.absolute = absolute
         self.median_meter = MedianMeter()

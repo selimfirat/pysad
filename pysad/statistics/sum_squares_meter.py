@@ -2,7 +2,7 @@ from pysad.core.base_statistic import UnivariateStatistic
 
 
 class SumSquaresMeter(UnivariateStatistic):
-    """Sum of squares. This class is useful to calculate and used in VarianceMeter.
+    """The statistic that keeps track of the sum of squares. This class is useful to calculate and used in VarianceMeter.
 
     Attrs:
         sum_squares (float): The sum of squares of values.

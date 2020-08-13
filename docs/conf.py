@@ -48,9 +48,10 @@ pygments_style = 'sphinx'
 # ones.
 extensions = [
     "sphinx_rtd_theme",
-    "sphinx.ext.autodoc",
+    #"sphinx.ext.autodoc",
     'sphinx.ext.intersphinx',
     'sphinx.ext.coverage',
+    'sphinx.ext.autosummary',
     'sphinx.ext.viewcode',
     "sphinxcontrib.bibtex",
     'sphinx_copybutton',
@@ -89,6 +90,8 @@ html_theme_options = {
     'includehidden': True,
     'titles_only': False,
 }
+html_logo = "logo.png"
+html_favicon = "infinity.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

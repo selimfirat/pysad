@@ -47,7 +47,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):
-    """Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / n_components). This text is taken from the `Sklearn documentation`_.
+    """Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / n_components). This text is taken from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.GaussianRandomProjection.html#sklearn.random_projection.GaussianRandomProjection>`_.
 
     Args:
         n_components (int or 'auto'): Dimensionality of the target projection space, optional (default = 'auto').

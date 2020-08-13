@@ -95,8 +95,7 @@ This repository is currently under development.
    :hidden:
    :caption: API Documentation
 
-   cheatsheet
-   pysad
+   api
 
 .. toctree::
    :hidden:

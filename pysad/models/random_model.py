@@ -3,6 +3,9 @@ import numpy as np
 
 
 class RandomModel(BaseModel):
+    """Random scorer that chooses a score between 0 and 1 ignoring the input.
+
+    """
 
     def fit_partial(self, X, y=None):
         """This method is ignored. Added for convenience.

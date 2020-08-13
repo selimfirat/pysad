@@ -4,6 +4,16 @@ from pysad.core.base_model import BaseModel
 
 
 class HalfSpaceTrees(BaseModel):
+    """Half-Space Trees method :cite:`tan2011fast`.
+
+    Args:
+        feature_mins (np.float array of shape (num_features,)): Minimum boundary of the features.
+        feature_maxes (np.float array of shape (num_features,)): Maximum boundary of the features.
+        window_size (int): The size of the window (Default=100).
+        num_trees (int): The number of treesint (Default=25).
+        max_depth (int): Maximum depth of the trees (Default=15).
+        initial_window_X (np.float array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. If not `None`, we simply apply fit to these instances (Default=None).
+    """
 
     def __init__(
             self,
@@ -13,16 +23,6 @@ class HalfSpaceTrees(BaseModel):
             num_trees=25,
             max_depth=15,
             initial_window_X=None):
-        """Half-Space Trees method :cite:`tan2011fast`.
-
-        Args:
-            feature_mins (np.float array of shape (num_features,)): Minimum boundary of the features.
-            feature_maxes (np.float array of shape (num_features,)): Maximum boundary of the features.
-            window_size (int): The size of the window (Default=100).
-            num_trees (int): The number of treesint (Default=25).
-            max_depth (int): Maximum depth of the trees (Default=15).
-            initial_window_X (np.float array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. If not `None`, we simply apply fit to these instances (Default=None).
-        """
         self.window_size = window_size
         self.max_depth = max_depth
         self.num_trees = num_trees

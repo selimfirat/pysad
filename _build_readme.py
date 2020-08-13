@@ -1,7 +1,7 @@
 res = ""
 with open("README_template.rst", "r") as f:
     for line in f.readlines():
-        line = line.strip("\n").replace(".. include:: ", "").replace(".. literalinclude:: ../LICENSE", "").replace("<../LICENSE>", "<LICENSE>")
+        line = line.strip("\n").replace(".. include:: ", "").replace(".. literalinclude:: ../LICENSE", "").replace("<../LICENSE>", "<LICENSE>").replace(":class:", " ")
         if line.endswith(".rst"):
             tf = open(line, "r").read()
             res += tf

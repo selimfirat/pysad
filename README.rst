@@ -1,6 +1,6 @@
 .. raw:: html
 
-    <a target="_blank" href=""><img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/logo.png"></a>
+    <a target="_blank" href="" align="center"><img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/logo.png"></a>
 Python Streaming Anomaly Detection (PySAD)
 ==========================================
 

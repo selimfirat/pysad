@@ -1,5 +1,5 @@
-.. image:: docs/logo.png
-    :align: center
+.. raw:: html
+   <img src="docs/logo.png" align="center">
 
 Python Streaming Anomaly Detection (PySAD)
 ==========================================

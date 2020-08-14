@@ -1,4 +1,4 @@
-.. image:: logo.png
+.. image:: docs/logo.png
     :align: center
 
 Python Streaming Anomaly Detection (PySAD)

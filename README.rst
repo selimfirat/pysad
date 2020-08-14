@@ -1,5 +1,5 @@
 .. raw:: html
-   <img src="docs/logo.png" align="center">
+   <img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/example.png" align="center">
 
 Python Streaming Anomaly Detection (PySAD)
 ==========================================

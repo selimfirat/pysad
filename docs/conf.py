@@ -33,10 +33,10 @@ project = 'PySAD'
 copyright = '2020, Selim Firat Yilmaz'
 author = 'Selim Firat Yilmaz'
 
-#version = __version__
-#release = __version__
+version = __version__
+release = __version__
 
-version = "latest"
+#version = "latest"
 
 master_doc = 'index'
 pygments_style = 'sphinx'
@@ -51,7 +51,7 @@ extensions = [
     #"sphinx.ext.autodoc",
     'sphinx.ext.intersphinx',
     'sphinx.ext.coverage',
-    #'sphinx.ext.autosummary',
+    'sphinx.ext.autosummary',
     'sphinx.ext.viewcode',
     "sphinxcontrib.bibtex",
     'sphinx_copybutton',
@@ -107,7 +107,7 @@ autodoc_typehints = "none"
 intersphinx_mapping = {
     'python': ('https://docs.python.org/{.major}'.format(
         sys.version_info), None),
-    #'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
     #'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
     # 'matplotlib': ('https://matplotlib.org/', None),
     #'sklearn': ('https://scikit-learn.org/stable', None)

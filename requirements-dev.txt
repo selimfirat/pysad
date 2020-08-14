@@ -6,3 +6,11 @@ pytest-cov==2.10.0
 coveralls==2.1.1
 sphinx-copybutton==0.3.0
 sphinxcontrib-bibtex==1.0.0
+numpy==1.18.5
+pandas==1.1.0
+scipy==1.4.1
+pyod==0.7.7.1
+rrcf==0.4.3
+PyNomaly==0.3.3
+mmh3==2.5.1
+scikit-learn==0.23.2

@@ -1,3 +1,6 @@
+.. image:: logo.png
+    :align: center
+
 .. include:: docs/badges.rst
 
 .. include:: docs/installation.rst

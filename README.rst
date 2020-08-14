@@ -1,10 +1,11 @@
 .. raw:: html
+
    <img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/logo.png" align="center">
 
 Python Streaming Anomaly Detection (PySAD)
 ==========================================
 
-This repository is curerntly under development.
+This repository is currently under development.
 
 
 .. image:: https://dev.azure.com/selimfirat/pysad/_apis/build/status/selimfirat.pysad?branchName=master

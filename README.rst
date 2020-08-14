@@ -101,6 +101,5 @@ Versioning
 License
 =======
 
-This project is licensed under the `3-Clause BSD License <../LICENSE>`_.
+This project is licensed under the `3-Clause BSD License <LICENSE>`_.
 
-.. literalinclude:: ../LICENSE

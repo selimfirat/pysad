@@ -1,10 +1,10 @@
 res = ""
 with open("README_template.rst", "r") as f:
     for line in f.readlines():
-        line = line.strip("\n").replace(".. include:: ", "").replace(".. literalinclude:: ../LICENSE", "").replace("<../LICENSE>", "<LICENSE>").replace(":class:", " ")
+        line = line.strip("\n").replace(".. include:: ", "").replace(":class:", " ")
         if line.endswith(".rst"):
             tf = open(line, "r").read()
-            res += tf
+            res += tf.replace(".. literalinclude:: ../LICENSE", "").replace("<../LICENSE>", "<LICENSE>")
         else:
             res += line + "\n"
 

@@ -51,7 +51,7 @@ extensions = [
     #"sphinx.ext.autodoc",
     'sphinx.ext.intersphinx',
     'sphinx.ext.coverage',
-    'sphinx.ext.autosummary',
+    #'sphinx.ext.autosummary',
     'sphinx.ext.viewcode',
     "sphinxcontrib.bibtex",
     'sphinx_copybutton',

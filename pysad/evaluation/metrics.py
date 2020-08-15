@@ -16,7 +16,7 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
 
         Args:
             y_true (int): Ground truth class. Either 1 or 0.
-            y_pred (int): Predicted class. Either 1 or 0.
+            y_pred (float): Predicted class or anomaly score. Higher values correspond to more anomalousness and lower values correspond to more normalness.
         """
         self.y_true.append(y_true)
         self.y_pred.append(y_pred)
@@ -37,7 +37,7 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
 
         Args:
             y_true (list[int]): Ground truth classes.
-            y_pred (list[int]): Predicted classes.
+            y_pred (list[float]): Predicted classes or scores.
         """
         pass
 

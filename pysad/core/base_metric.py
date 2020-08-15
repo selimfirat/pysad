@@ -14,7 +14,7 @@ class BaseMetric(ABC):
 
         Args:
             y_true (int): Ground truth class. Either 1 or 0.
-            y_pred (int): Predicted class. Either 1 or 0.
+            y_pred (float): Predicted class or anomaly score. Higher values correspond to more anomalousness and lower values correspond to more normalness.
         """
         pass
 

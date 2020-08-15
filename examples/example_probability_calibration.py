@@ -1,17 +1,22 @@
+# Import modules.
 from pysad.models import xStream
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import Data
+import numpy as np
 
 # This example demonstrates the usage of the probability calibrators.
 if __name__ == "__main__":
-    model = xStream()
-    calibrator = ConformalProbabilityCalibrator(windowed=True, window_size=300)
-    streaming_data = Data().get_iterator("arrhythmia.mat")
+    np.random.seed(61)  # Fix seed.
 
-    for i, (x, y_true) in enumerate(streaming_data):
-        anomaly_score = model.fit_score_partial(x)
+    model = xStream()  # Init model.
+    calibrator = ConformalProbabilityCalibrator(windowed=True, window_size=300) # Init probability calibrator.
+    streaming_data = Data().get_iterator("arrhythmia.mat") # Get streamer.
 
-        calibrated_score = calibrator.fit_transform(anomaly_score)
-        print(calibrated_score)
-        if calibrated_score < 0.05: # ıf probabability is less than 5%.
+    for i, (x, y_true) in enumerate(streaming_data):  # Stream data.
+        anomaly_score = model.fit_score_partial(x)  # Fit to an instance x and score it.
+
+        calibrated_score = calibrator.fit_transform(anomaly_score)  # Fit & calibrate score.
+
+        # Output if the instance is anomalous.
+        if calibrated_score < 0.05:  # If probability is less than 5%.
             print(f"Alert: {i}th data point is anomalous.")

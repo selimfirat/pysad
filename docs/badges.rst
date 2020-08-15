@@ -28,6 +28,10 @@ This repository is currently under development.
    :target: https://coveralls.io/github/selimfirat/pysad?branch=master
    :alt: Coverage Status
 
+.. image:: https://badges.gitter.im/selimfirat-pysad/community.svg
+   :target: https://gitter.im/selimfirat-pysad/community?utm_source=share-link&utm_medium=link&utm_campaign=share-link
+   :alt: Gitter
+
 .. image:: https://img.shields.io/github/license/selimfirat/pysad.svg
    :target: https://github.com/selimfirat/pysad/blob/master/LICENSE
    :alt: License

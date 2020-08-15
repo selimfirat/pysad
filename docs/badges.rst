@@ -38,10 +38,10 @@ Python Streaming Anomaly Detection (PySAD)
    :alt: Coverage Status
 
 .. image:: https://img.shields.io/pypi/pyversions/pysad
-    :alt: PyPI - Python Version
+   :alt: PyPI - Python Version
 
 .. image:: https://img.shields.io/badge/platforms-linux--64%2Cosx--64%2Cwin--64-orange
-    :alt: Supported Platforms
+   :alt: Supported Platforms
 
 .. image:: https://img.shields.io/github/license/selimfirat/pysad.svg
    :target: https://github.com/selimfirat/pysad/blob/master/LICENSE

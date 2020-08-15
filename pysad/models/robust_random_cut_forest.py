@@ -1,5 +1,4 @@
 from pysad.core.base_model import BaseModel
-from rrcf import rrcf
 
 
 class RobustRandomCutForest(BaseModel):
@@ -12,6 +11,7 @@ class RobustRandomCutForest(BaseModel):
     """
 
     def __init__(self, num_trees=4, shingle_size=4, tree_size=256):
+        from rrcf import rrcf
 
         self.tree_size = tree_size
         self.shingle_size = shingle_size

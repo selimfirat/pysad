@@ -12,7 +12,7 @@ jobs:
       - python/install-deps
       - python/save-cache
       - run:
-          command: python -m pip install --upgrade pip && pip install -r requirements.txt && pip install pytest && pytest
+          command: python -m pip install --upgrade pip && pip install -r requirements-ci.txt && pip install pytest && pytest
           name: Test
 
 workflows:

@@ -1,4 +1,5 @@
 from pysad.core.base_model import BaseModel
+from pysad.core.kitnet_model import KitNET as kit
 
 
 class KitNet(BaseModel):
@@ -20,7 +21,6 @@ class KitNet(BaseModel):
             grace_anomaly_detector=50000,
             learning_rate=0.1,
             hidden_ratio=0.75):
-        from pysad.models.kitnet_model import KitNET as kit
 
         self.grace_feature_mapping = grace_feature_mapping
         self.hidden_ratio = hidden_ratio

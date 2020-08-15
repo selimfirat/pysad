@@ -1,5 +1,4 @@
 import numpy as np
-import mmh3
 from pysad.core.base_transformer import BaseTransformer
 
 
@@ -13,6 +12,8 @@ class StreamhashProjector(BaseTransformer):
 
     def __init__(self, num_components, density=1 / 3.0):
         super().__init__(num_components)
+        import mmh3
+
         self.keys = np.arange(0, num_components, 1)
         self.constant = np.sqrt(1. / density) / np.sqrt(num_components)
         self.density = density

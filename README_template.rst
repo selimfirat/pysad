@@ -1,4 +1,4 @@
-.. image:: docs/logo.png
+.. image:: https://raw.githubusercontent.com/selimfirat/pysad/master/docs/logo.png
 
 .. include:: docs/badges.rst
 

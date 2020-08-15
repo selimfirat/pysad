@@ -1,5 +1,5 @@
 """
-The :mod:`pysad.core` module covers base classes of `PySAD`.
+The :mod:`pysad.core` module covers base classes of the `PySAD`.
 """
 from .base_metric import BaseMetric
 from .base_model import BaseModel

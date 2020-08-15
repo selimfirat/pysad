@@ -1,5 +1,8 @@
 language: python
-dist: xenial
+os:
+  - windows
+  - linux
+  - osx
 
 env:
   global:

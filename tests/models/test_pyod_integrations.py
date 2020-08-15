@@ -1,5 +1,3 @@
-from pysad.models.integrations.one_fit_model import OneFitModel
-
 
 def test_reference_window(test_path):
     from sklearn.utils import shuffle
@@ -41,6 +39,7 @@ def test_one_fit(test_path):
     from pysad.utils import ArrayStreamer
     import os
     from pyod.models.iforest import IForest
+    from pysad.models.integrations.one_fit_model import OneFitModel
 
     data = Data(os.path.join(test_path, "../../examples/data"))
 

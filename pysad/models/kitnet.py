@@ -1,5 +1,5 @@
 from pysad.core.base_model import BaseModel
-from pysad.core.kitnet_model import KitNET as kit
+from pysad.models.kitnet_model import KitNET as kit
 
 
 class KitNet(BaseModel):

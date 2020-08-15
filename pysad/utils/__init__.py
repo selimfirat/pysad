@@ -1,7 +1,9 @@
+"""
+The :mod:`pysad.utils` module includes utility functions used in the `PySAD` framework, which can also be useful streaming learning.
+"""
 from .array_streamer import ArrayStreamer
 import random
 import numpy as np
-
 from .data import Data
 from .pandas_streamer import PandasStreamer
 from .window import Window

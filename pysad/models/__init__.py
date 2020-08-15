@@ -1,3 +1,6 @@
+"""
+The :mod:`pysad.models` module includes anomaly detection models to score the anomalousness of instances.
+"""
 from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
 from .kitnet import KitNet

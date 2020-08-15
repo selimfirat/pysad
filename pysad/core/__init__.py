@@ -1,3 +1,6 @@
+"""
+The :mod:`pysad.core` module covers base classes of `PySAD`.
+"""
 from .base_metric import BaseMetric
 from .base_model import BaseModel
 from .base_postprocessor import BasePostprocessor

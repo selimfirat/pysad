@@ -1,3 +1,6 @@
+"""
+The :mod:`pysad.statistics` module contains methods to keep track of statistics on streaming data.
+"""
 from .abs_statistic import AbsStatistic
 from .average_meter import AverageMeter
 from .count_meter import CountMeter

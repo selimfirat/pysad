@@ -12,8 +12,6 @@ class StreamhashProjector(BaseTransformer):
 
     def __init__(self, num_components, density=1 / 3.0):
         super().__init__(num_components)
-        import mmh3
-
         self.keys = np.arange(0, num_components, 1)
         self.constant = np.sqrt(1. / density) / np.sqrt(num_components)
         self.density = density
@@ -54,6 +52,7 @@ class StreamhashProjector(BaseTransformer):
         return Y
 
     def _hash_string(self, k, s):
+        import mmh3
         hash_value = int(mmh3.hash(s, signed=False, seed=k)) / (2.0 ** 32 - 1)
         s = self.density
         if hash_value <= s / 2.0:

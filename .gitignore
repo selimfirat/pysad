@@ -10,6 +10,9 @@ docs/_build
 
 # C extensions
 *.so
+.pytest_cache/
+docs/_build/*
+docs/generated/
 
 # Distribution / packaging
 .Python

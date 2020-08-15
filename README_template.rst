@@ -1,6 +1,6 @@
 .. raw:: html
 
-   <img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/logo.png" align="center">
+    <div align="center"><img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/logo.png"></div>
 
 .. include:: docs/badges.rst
 

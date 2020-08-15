@@ -23,6 +23,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+.pysad.egg-info/
 lib64/
 parts/
 sdist/

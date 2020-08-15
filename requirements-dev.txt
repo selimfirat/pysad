@@ -14,3 +14,6 @@ rrcf==0.4.3
 PyNomaly==0.3.3
 mmh3==2.5.1
 scikit-learn==0.23.2
+setuptools>=49.6.0
+wheel>=0.35.1
+twine>=3.2.0

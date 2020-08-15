@@ -1,6 +1,4 @@
-.. raw:: html
-
-    <div align="center"><img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/logo.png"></div>
+.. image:: docs/logo.png
 
 Python Streaming Anomaly Detection (PySAD)
 ==========================================
@@ -76,7 +74,7 @@ Alternatively, you can install the library directly using the source code in Git
 * rrcf==0.4.3 (Only required for  `pysad.models.robust_random_cut_forest.RobustRandomCutForest`)
 * PyNomaly==0.3.3 (Only required for  `pysad.models.loop.StreamLocalOutlierProbability`)
 * mmh3==2.5.1 (Only required for  `pysad.models.xstream.xStream`)
-* pandas>=0.23.3 (Only required for  `pysad.utils.pandas_streamer.PandasStreamer`)
+* pandas==1.1.0 (Only required for  `pysad.utils.pandas_streamer.PandasStreamer`)
 
 Quick Links
 ============

@@ -8,8 +8,8 @@ Python Streaming Anomaly Detection (PySAD)
     :alt: PyPI
 
 .. image:: https://img.shields.io/github/v/release/selimfirat/pysad
-    :target: https://github.com/selimfirat/pysad/releases
-    :alt: GitHub release (latest by date)
+   :target: https://github.com/selimfirat/pysad/releases
+   :alt: GitHub release (latest by date)
 
 .. image:: https://readthedocs.org/projects/pysad/badge/?version=latest
    :target: https://pysad.readthedocs.io/en/latest/?badge=latest
@@ -40,9 +40,11 @@ Python Streaming Anomaly Detection (PySAD)
    :alt: Coverage Status
 
 .. image:: https://img.shields.io/pypi/pyversions/pysad
+   :target: https://github.com/selimfirat/pysad/
    :alt: PyPI - Python Version
 
-.. image:: https://img.shields.io/badge/platforms-linux--64%2Cosx--64%2Cwin--64-orange
+.. image:: https://img.shields.io/badge/platforms-linux--64%2Cosx--64%2Cwin--64-green
+   :target: https://github.com/selimfirat/pysad/
    :alt: Supported Platforms
 
 .. image:: https://img.shields.io/github/license/selimfirat/pysad.svg

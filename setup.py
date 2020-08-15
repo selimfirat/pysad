@@ -18,9 +18,9 @@ setup(
     version=VERSION,
     url='https://github.com/selimfirat/pysad',
     license='3-Clause BSD',
-    author='selim',
+    author='Selim Firat Yilmaz',
     author_email='yilmazselimfirat@gmail.com',
-    description='Python Streaming Anomaly Detection (PySAD) ',
+    description='PySAD is an open-source python framework for anomaly detection on streaming multivariate data. ',
     long_description=readme,
     long_description_content_type='text/x-rst',
     packages=find_packages(exclude=['tests']),
@@ -46,5 +46,5 @@ setup(
         'Programming Language :: Python :: 3.7',
         "Programming Language :: Python :: 3.8",
     ],
-    python_requires=">=3.5"
+    python_requires=">=3.6"
 )

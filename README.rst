@@ -1,6 +1,9 @@
 .. image:: docs/logo.png
     :align: center
 
+Python Streaming Anomaly Detection (PySAD)
+==========================================
+
 .. image:: https://img.shields.io/pypi/v/pysad
     :target: https://pypi.org/project/pysad/
     :alt: PyPI

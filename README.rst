@@ -1,7 +1,5 @@
-.. image:: logo.png
+.. image:: docs/logo.png
     :align: center
-
-===============================
 
 .. image:: https://img.shields.io/pypi/v/pysad
     :target: https://pypi.org/project/pysad/
@@ -54,8 +52,6 @@
 
 **PySAD** is an open-source python framework for anomaly detection on streaming multivariate data.
 
-===============================
-
 Features
 ========
 
@@ -95,8 +91,6 @@ Free and Open Source Software (FOSS)
 
 `PySAD` is distributed under `3-Clause BSD License` and favors FOSS principles.
 
-===============================
-
 Installation
 ============
 
@@ -135,8 +129,6 @@ Alternatively, you can install the library directly using the source code in Git
 * mmh3==2.5.1 (Only required for  `pysad.models.xstream.xStream`)
 * pandas==1.1.0 (Only required for  `pysad.utils.pandas_streamer.PandasStreamer`)
 
-===============================
-
 Quick Links
 ============
 
@@ -160,14 +152,10 @@ Quick Links
 
 
 
-===============================
-
 Versioning
 ==========
 
 `Semantic versioning <http://semver.org/>`_ is used for this project.
-
-===============================
 
 License
 =======

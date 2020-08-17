@@ -9,8 +9,8 @@ if __name__ == "__main__":
     np.random.seed(61)  # Fix seed.
 
     model = xStream()  # Init model.
-    calibrator = ConformalProbabilityCalibrator(windowed=True, window_size=300) # Init probability calibrator.
-    streaming_data = Data().get_iterator("arrhythmia.mat") # Get streamer.
+    calibrator = ConformalProbabilityCalibrator(windowed=True, window_size=300)  # Init probability calibrator.
+    streaming_data = Data().get_iterator("arrhythmia.mat")  # Get streamer.
 
     for i, (x, y_true) in enumerate(streaming_data):  # Stream data.
         anomaly_score = model.fit_score_partial(x)  # Fit to an instance x and score it.

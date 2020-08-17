@@ -1,6 +1,6 @@
 License
 =======
 
-This project is licensed under the `3-Clause BSD License <../LICENSE>`_.
+This project is licensed under the `BSD License 2.0 <https://github.com/selimfirat/pysad/blob/master/LICENSE>`_.
 
 .. literalinclude:: ../LICENSE

@@ -18,5 +18,5 @@ if __name__ == "__main__":
         calibrated_score = calibrator.fit_transform(anomaly_score)  # Fit & calibrate score.
 
         # Output if the instance is anomalous.
-        if calibrated_score > 0.95:  # If probability is less than 5%.
+        if calibrated_score > 0.95:  # If probability of being normal is less than 5%.
             print(f"Alert: {i}th data point is anomalous.")

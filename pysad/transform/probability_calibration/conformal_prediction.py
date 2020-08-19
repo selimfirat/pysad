@@ -39,6 +39,4 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         Returns:
             float: Processed score.
         """
-
-        return (np.sum(np.array(self.window.get()) <= score))/ (len(self.window.get()))
-
+        return (np.sum(np.array(self.window.get()) > score)) / (len(self.window.get()))

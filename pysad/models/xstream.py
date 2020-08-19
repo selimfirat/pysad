@@ -77,8 +77,8 @@ class xStream(BaseModel):
         return score
 
     def _compute_deltamax(self):
-        #mx = np.max(np.concatenate(self.ref_window, axis=0), axis=0)
-        #mn = np.min(np.concatenate(self.ref_window, axis=0), axis=0)
+        # mx = np.max(np.concatenate(self.ref_window, axis=0), axis=0)
+        # mn = np.min(np.concatenate(self.ref_window, axis=0), axis=0)
         mn, mx = get_minmax_array(np.concatenate(self.ref_window, axis=0))
 
         deltamax = (mx - mn) / 2.0

@@ -54,7 +54,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         else:
             std = 1.0
 
-        return self._qfunction(score, mean, std)
+        return 1 - self._qfunction(score, mean, std)
 
     def _qfunction(self, x, mean, std):
         """

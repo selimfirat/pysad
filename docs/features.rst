@@ -13,14 +13,14 @@ Resource-Efficient
 Streaming methods efficiently handle the limitied memory and processing time requirements of the data streams so that they can be used in near real-time. The methods can only store an instance or a small window of recent instances.
 
 
-Streaming Anomaly Detection Tools
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Complete
+^^^^^^^^
 
 `PySAD` contains stream simulators, evaluators, preprocessors, statistic trackers, postprocessors, probability calibrators and more. In addition to streaming models, `PySAD` also provides integrations for batch anomaly detectors of the `PyOD <https://github.com/yzhao062/pyod/>`_ so that they can be used in the streaming setting.
 
 
-Comprehensiveness
-^^^^^^^^^^^^^^^^^
+Comprehensive
+^^^^^^^^^^^^^
 
 `PySAD` serves models that are specifically designed for both univariate and multivariate data. Furthermore, one can experiment via `PySAD` in supervised, semi-supervised and unsupervised setting.
 

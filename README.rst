@@ -55,6 +55,8 @@ Python Streaming Anomaly Detection (PySAD)
 
 **PySAD** is an open-source python framework for anomaly detection on streaming multivariate data.
 
+`Documentation <https://pysad.readthedocs.io/en/latest/>`_
+
 Features
 ========
 
@@ -62,7 +64,6 @@ Online Anomaly Detection
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 `PySAD` provides methods for online/sequential anomaly detection, i.e. anomaly detection on streaming data, where model updates itself as a new instance arrives.
-
 
 Resource-Efficient
 ^^^^^^^^^^^^^^^^^^

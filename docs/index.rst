@@ -51,4 +51,5 @@
    contributing
    versioning
    license
+   citing
    references

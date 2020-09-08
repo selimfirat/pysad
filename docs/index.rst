@@ -25,6 +25,10 @@
 
 .. include:: license.rst
 
+===============================
+
+.. include:: citing.rst
+
 ----
 
 

@@ -12,3 +12,5 @@
 .. include:: docs/versioning.rst
 
 .. include:: docs/license.rst
+
+.. include:: docs/citing.rst

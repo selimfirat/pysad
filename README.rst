@@ -169,7 +169,7 @@ This project is licensed under the `BSD License 2.0 <https://github.com/selimfir
 
 Citing PySAD
 ============
-If you use PyOD for a scientific publication, we would appreciate citations to the following paper:
+If you use PySAD for a scientific publication, we would appreciate citations to the following paper:
 
 .. code-block::
 

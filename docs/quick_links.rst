@@ -3,7 +3,7 @@ Quick Links
 
 * `Github Repository <https://github.com/selimfirat/pysad/>`_
 
-* `Documentation <http://pysad.readthedocs.io/>`_
+* `Documentation <http://pysad.readthedocs.io/>`__
 
 * `PyPI Package <https://pypi.org/project/pysad>`_
 

@@ -30,7 +30,7 @@ version_path = os.path.join(pysad_dir, 'pysad', 'version.py')
 exec(open(version_path).read())
 
 project = 'PySAD'
-copyright = '2020, Selim Firat Yilmaz'
+copyright = '2023, Selim Firat Yilmaz'
 author = 'Selim Firat Yilmaz'
 
 version = __version__

@@ -118,8 +118,7 @@ Alternatively, you can install the library directly using the source code in Git
 
 
 **Required Dependencies:**
-
-
+* Python 3.8
 * numpy==1.23.5
 * scikit-learn>=1.3.0
 * scipy==1.10.0

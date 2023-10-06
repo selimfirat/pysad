@@ -1,3 +1,4 @@
+
 # Python package
 # Create and test a Python package on multiple Python versions.
 # Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
@@ -8,33 +9,42 @@ trigger:
 
 strategy:
   matrix:
-    linux36:
-      imageName: "ubuntu-latest"
-      python.version: '3.6'
-    linux37:
-      imageName: "ubuntu-latest"
-      python.version: '3.7'
     linux38:
       imageName: "ubuntu-latest"
       python.version: '3.8'
-    mac36:
-      imageName: "macos-10.14"
-      python.version: '3.6'
-    mac37:
-      imageName: "macos-10.14"
-      python.version: '3.7'
+    linux39:
+      imageName: "ubuntu-latest"
+      python.version: '3.9'
+    linux310:
+      imageName: "ubuntu-latest"
+      python.version: '3.10'
+    linux311:
+      imageName: "ubuntu-latest"
+      python.version: '3.11'
     mac38:
       imageName: "macos-10.14"
       python.version: '3.8'
-    windows36:
-      imageName: "vs2017-win2016"
-      python.version: '3.6'
-    windows37:
-      imageName: "vs2017-win2016"
-      python.version: '3.7'
+    mac39:
+      imageName: "macos-10.14"
+      python.version: '3.9'
+    mac310:
+      imageName: "macos-10.14"
+      python.version: '3.10'
+    mac311:
+      imageName: "macos-10.14"
+      python.version: '3.11'
     windows38:
       imageName: "vs2017-win2016"
       python.version: '3.8'
+    windows39:
+      imageName: "vs2017-win2016"
+      python.version: '3.9'
+    windows310:
+      imageName: "vs2017-win2016"
+      python.version: '3.10'
+    windows311:
+      imageName: "vs2017-win2016"
+      python.version: '3.11'
 
   maxParallel: 9
 

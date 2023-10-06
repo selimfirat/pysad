@@ -19,7 +19,7 @@ class LODA(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X (np.float array of shape (num_features,)): The instance to fit.
+            X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
@@ -29,7 +29,7 @@ class LODA(BaseModel):
             self.num_features = X.shape[0]
             self.weights = np.ones(
                 self.n_random_cuts,
-                dtype=np.float) / self.n_random_cuts
+                dtype=np.float64) / self.n_random_cuts
             self.projections_ = np.random.randn(
                 self.n_random_cuts, self.num_features)
             self.histograms_ = np.zeros((self.n_random_cuts, self.n_bins))
@@ -37,7 +37,7 @@ class LODA(BaseModel):
 
             n_nonzero_components = np.sqrt(self.num_features)
             self.n_zero_components = self.num_features - \
-                np.int(n_nonzero_components)
+                np.int32(n_nonzero_components)
 
             self.to_init = False
 
@@ -59,7 +59,7 @@ class LODA(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
             float: The anomalousness score of the input instance.

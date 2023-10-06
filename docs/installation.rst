@@ -23,10 +23,11 @@ Alternatively, you can install the library directly using the source code in Git
 **Required Dependencies:**
 
 
-* numpy>=1.18.5
-* scipy>=1.4.1
-* scikit-learn>=0.23.2
-* pyod>=0.7.7.1
+* numpy==1.23.5
+* scikit-learn>=1.3.0
+* scipy==1.10.0
+* pyod==1.1.0
+* combo==0.1.3
 
 **Optional Dependencies:**
 
@@ -34,4 +35,4 @@ Alternatively, you can install the library directly using the source code in Git
 * rrcf==0.4.3 (Only required for :class:`pysad.models.robust_random_cut_forest.RobustRandomCutForest`)
 * PyNomaly==0.3.3 (Only required for :class:`pysad.models.loop.StreamLocalOutlierProbability`)
 * mmh3==2.5.1 (Only required for :class:`pysad.models.xstream.xStream`)
-* pandas==1.1.0 (Only required for :class:`pysad.utils.pandas_streamer.PandasStreamer`)
+* pandas==2.0.3 (Only required for :class:`pysad.utils.pandas_streamer.PandasStreamer`)

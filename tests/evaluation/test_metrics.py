@@ -24,7 +24,7 @@ def test_all_correct():
         AUROCMetric
     ]
     metric_classes = { metric_cls: 1.0 for metric_cls in metric_classes }
-    y_true = np.random.randint(0, 2, size=(25,), dtype=np.int)
+    y_true = np.random.randint(0, 2, size=(25,), dtype=np.int32)
     y_true[0] = 1
     y_true[1] = 0
     y_pred = y_true.copy()
@@ -44,7 +44,7 @@ def test_none_correct():
         AUROCMetric: 0.0,
         RecallMetric: 0.0
     }
-    y_true = np.random.randint(0, 2, size=(25,), dtype=np.int)
+    y_true = np.random.randint(0, 2, size=(25,), dtype=np.int32)
     y_true[0] = 1
     y_true[1] = 0
     y_pred = 1 - y_true.copy()

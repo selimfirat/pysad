@@ -1,6 +1,6 @@
 Citing PySAD
 ============
-If you use PySAD for a scientific publication, we would appreciate citations to the following paper:
+If you use PySAD for a scientific publication, please cite the following paper:
 
 .. code-block::
 

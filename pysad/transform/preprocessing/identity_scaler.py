@@ -12,7 +12,7 @@ class IdentityScaler(BaseTransformer):
         """Convenience method that does not modify the input or the scaler.
 
         Args:
-            X (np.float array of shape (num_features,)): Input feature vector.
+            X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
             object: The scaler.
@@ -23,9 +23,9 @@ class IdentityScaler(BaseTransformer):
         """Convenience method that does not modify the input.
 
         Args:
-            X (np.float array of shape (num_features,)): Input feature vector.
+            X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            X (np.float array of shape (features,)): The exact same input feature vector.
+            X (np.float64 array of shape (features,)): The exact same input feature vector.
         """
         return X

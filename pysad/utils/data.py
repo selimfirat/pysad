@@ -51,7 +51,7 @@ class Data:
             path (str): The path of data.
 
         Returns:
-            X (np.float array of shape (num_instances, num_features)): Feature vectors.
+            X (np.float64 array of shape (num_instances, num_features)): Feature vectors.
         """
         X = np.loadtxt(path, delimiter=",")
 

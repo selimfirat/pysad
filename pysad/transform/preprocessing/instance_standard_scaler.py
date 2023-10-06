@@ -13,7 +13,7 @@ class InstanceStandardScaler(BaseTransformer):
         """Fits particular (next) timestep's features to train the scaler.
 
         Args:
-            X (np.float array of shape (num_features,)): Input feature vector.
+            X (np.float64 array of shape (num_features,)): Input feature vector.
         Returns:
             object: self.
         """
@@ -23,10 +23,10 @@ class InstanceStandardScaler(BaseTransformer):
         """Scales particular (next) timestep's vector.
 
         Args:
-            X (np.float array of shape (num_features,)): Input feature vector.
+            X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            scaled_X (np.float array of shape (features,)): Scaled feature vector.
+            scaled_X (np.float64 array of shape (features,)): Scaled feature vector.
         """
 
         X_mean = X.mean()

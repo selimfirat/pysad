@@ -72,14 +72,14 @@ Resource-Efficient
 Streaming methods efficiently handle the limitied memory and processing time requirements of the data streams so that they can be used in near real-time. The methods can only store an instance or a small window of recent instances.
 
 
-Streaming Anomaly Detection Tools
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Complete
+^^^^^^^^
 
 `PySAD` contains stream simulators, evaluators, preprocessors, statistic trackers, postprocessors, probability calibrators and more. In addition to streaming models, `PySAD` also provides integrations for batch anomaly detectors of the `PyOD <https://github.com/yzhao062/pyod/>`_ so that they can be used in the streaming setting.
 
 
-Comprehensiveness
-^^^^^^^^^^^^^^^^^
+Comprehensive
+^^^^^^^^^^^^^
 
 `PySAD` serves models that are specifically designed for both univariate and multivariate data. Furthermore, one can experiment via `PySAD` in supervised, semi-supervised and unsupervised setting.
 
@@ -120,10 +120,11 @@ Alternatively, you can install the library directly using the source code in Git
 **Required Dependencies:**
 
 
-* numpy>=1.18.5
-* scipy>=1.4.1
-* scikit-learn>=0.23.2
-* pyod>=0.7.7.1
+* numpy==1.23.5
+* scikit-learn>=1.3.0
+* scipy==1.10.0
+* pyod==1.1.0
+* combo==0.1.3
 
 **Optional Dependencies:**
 
@@ -131,7 +132,7 @@ Alternatively, you can install the library directly using the source code in Git
 * rrcf==0.4.3 (Only required for  `pysad.models.robust_random_cut_forest.RobustRandomCutForest`)
 * PyNomaly==0.3.3 (Only required for  `pysad.models.loop.StreamLocalOutlierProbability`)
 * mmh3==2.5.1 (Only required for  `pysad.models.xstream.xStream`)
-* pandas==1.1.0 (Only required for  `pysad.utils.pandas_streamer.PandasStreamer`)
+* pandas==2.0.3 (Only required for  `pysad.utils.pandas_streamer.PandasStreamer`)
 
 Quick Links
 ============
@@ -169,7 +170,7 @@ This project is licensed under the `BSD License 2.0 <https://github.com/selimfir
 
 Citing PySAD
 ============
-If you use PySAD for a scientific publication, we would appreciate citations to the following paper:
+If you use PySAD for a scientific publication, please cite the following paper:
 
 .. code-block::
 

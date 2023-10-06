@@ -46,12 +46,12 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies transform_partial to all instances in order.
 
         Args:
-            np.float array of shape (num_instances,): Input scores.
+            np.float64 array of shape (num_instances,): Input scores.
 
         Returns:
-            np.float array of shape (num_instances,): Processed scores.
+            np.float64 array of shape (num_instances,): Processed scores.
         """
-        processed_scores = np.empty(scores.shape[0], dtype=np.float)
+        processed_scores = np.empty(scores.shape[0], dtype=np.float64)
         for i, (score, _) in enumerate(_iterate(scores)):
             processed_scores[i] = self.transform_partial(score)
 
@@ -61,7 +61,7 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies fit_partial to all instances in order.
 
         Args:
-            np.float array of shape (num_instances,): Input scores.
+            np.float64 array of shape (num_instances,): Input scores.
 
         Returns:
             object: self.
@@ -75,12 +75,12 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies fit_transform_partial to all instances in order.
 
         Args:
-            np.float array of shape (num_instances,): Input scores.
+            np.float64 array of shape (num_instances,): Input scores.
 
         Returns:
-            np.float array of shape (num_instances,): Processed scores.
+            np.float64 array of shape (num_instances,): Processed scores.
         """
-        processed_scores = np.empty(scores.shape[0], dtype=np.float)
+        processed_scores = np.empty(scores.shape[0], dtype=np.float64)
         for i, (score, _) in enumerate(_iterate(scores)):
             processed_scores[i] = self.fit_transform_partial(score)
 

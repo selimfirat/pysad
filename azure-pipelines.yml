@@ -21,30 +21,6 @@ strategy:
     linux311:
       imageName: "ubuntu-latest"
       python.version: '3.11'
-    mac38:
-      imageName: "macos-10.14"
-      python.version: '3.8'
-    mac39:
-      imageName: "macos-10.14"
-      python.version: '3.9'
-    mac310:
-      imageName: "macos-10.14"
-      python.version: '3.10'
-    mac311:
-      imageName: "macos-10.14"
-      python.version: '3.11'
-    windows38:
-      imageName: "vs2017-win2016"
-      python.version: '3.8'
-    windows39:
-      imageName: "vs2017-win2016"
-      python.version: '3.9'
-    windows310:
-      imageName: "vs2017-win2016"
-      python.version: '3.10'
-    windows311:
-      imageName: "vs2017-win2016"
-      python.version: '3.11'
 
   maxParallel: 9
 

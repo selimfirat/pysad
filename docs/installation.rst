@@ -23,10 +23,11 @@ Alternatively, you can install the library directly using the source code in Git
 **Required Dependencies:**
 
 
-* numpy==1.21.0
+* numpy==1.23.5
 * scikit-learn>=1.3.0
 * scipy==1.10.0
 * pyod==1.1.0
+* combo==0.1.3
 
 **Optional Dependencies:**
 

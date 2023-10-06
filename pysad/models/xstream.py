@@ -37,7 +37,7 @@ class xStream(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X (np.float array of shape (num_features,)): The instance to fit.
+            X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
@@ -65,7 +65,7 @@ class xStream(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
             score (float): The anomalousness score of the input instance.
@@ -104,8 +104,8 @@ class _Chain:
         self.is_first_window = True
 
     def fit(self, X):
-        prebins = np.zeros(X.shape, dtype=np.float)
-        depthcount = np.zeros(len(self.deltamax), dtype=np.int)
+        prebins = np.zeros(X.shape, dtype=np.float64)
+        depthcount = np.zeros(len(self.deltamax), dtype=np.int32)
         for depth in range(self.depth):
             f = self.fs[depth]
             depthcount[f] += 1
@@ -119,7 +119,7 @@ class _Chain:
             if self.is_first_window:
                 cmsketch = self.cmsketches[depth]
                 for prebin in prebins:
-                    l_index = tuple(np.floor(prebin).astype(np.int))
+                    l_index = tuple(np.floor(prebin).astype(np.int32))
                     if l_index not in cmsketch:
                         cmsketch[l_index] = 0
                     cmsketch[l_index] += 1
@@ -132,7 +132,7 @@ class _Chain:
                 cmsketch = self.cmsketches_cur[depth]
 
                 for prebin in prebins:
-                    l_index = tuple(np.floor(prebin).astype(np.int))
+                    l_index = tuple(np.floor(prebin).astype(np.int32))
                     if l_index not in cmsketch:
                         cmsketch[l_index] = 0
                     cmsketch[l_index] += 1
@@ -143,8 +143,8 @@ class _Chain:
 
     def bincount(self, X):
         scores = np.zeros((X.shape[0], self.depth))
-        prebins = np.zeros(X.shape, dtype=np.float)
-        depthcount = np.zeros(len(self.deltamax), dtype=np.int)
+        prebins = np.zeros(X.shape, dtype=np.float64)
+        depthcount = np.zeros(len(self.deltamax), dtype=np.int32)
         for depth in range(self.depth):
             f = self.fs[depth]
             depthcount[f] += 1
@@ -157,7 +157,7 @@ class _Chain:
 
             cmsketch = self.cmsketches[depth]
             for i, prebin in enumerate(prebins):
-                l_index = tuple(np.floor(prebin).astype(np.int))
+                l_index = tuple(np.floor(prebin).astype(np.int32))
                 if l_index not in cmsketch:
                     scores[i, depth] = 0.0
                 else:

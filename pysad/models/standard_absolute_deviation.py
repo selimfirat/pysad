@@ -27,7 +27,7 @@ class StandardAbsoluteDeviation(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X (np.float array of shape (1,)): The instance to fit. Note that this model is univariate.
+            X (np.float64 array of shape (1,)): The instance to fit. Note that this model is univariate.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
@@ -44,7 +44,7 @@ class StandardAbsoluteDeviation(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X (np.float array of shape (1,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float64 array of shape (1,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
             float: The anomalousness score of the input instance.

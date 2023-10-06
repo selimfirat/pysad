@@ -1,1 +1,2 @@
-v<0.0.0>, <08/15/2020> -- Initial release.
+v<0.1.0>, <08/15/2020> -- Initial release.
+v<0.2.0> <06/10/2023> -- Upgrade numpy version and small refactorings

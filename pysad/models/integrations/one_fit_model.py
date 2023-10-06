@@ -6,8 +6,8 @@ class OneFitModel(PYODModel):
 
         Args:
             model_cls (class):     The model class to be instantiated.
-            initial_X (np.float array of shape (num_initial_instances, num_features)): Initial instances to fit.
-            initial_y (np.int array of shape (num_initial_instances,): Initial window's ground truth labels. Used if not None. Needs to be `None` for the unsupervised `model_cls` models. (Default=None).
+            initial_X (np.float64 array of shape (num_initial_instances, num_features)): Initial instances to fit.
+            initial_y (np.int32 array of shape (num_initial_instances,): Initial window's ground truth labels. Used if not None. Needs to be `None` for the unsupervised `model_cls` models. (Default=None).
             **kwargs (Keyword arguments): Keyword arguments that are passed to the `model_cls`.
     """
 
@@ -43,7 +43,7 @@ class OneFitModel(PYODModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X (np.float array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
             float: The anomalousness score of the input instance.

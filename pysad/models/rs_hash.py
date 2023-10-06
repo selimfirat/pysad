@@ -6,8 +6,8 @@ class RSHash(BaseModel):
     """Subspace outlier detection in linear time with randomized hashing :cite:`sathe2016subspace`. This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_.
 
         Args:
-            feature_mins (np.float array of shape (num_features,)): Minimum boundary of the features.
-            feature_maxes (np.float array of shape (num_features,)): Maximum boundary of the features.
+            feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
+            feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
             sampling_points (int): The number of sampling points (Default=1000).
             decay (float): The decay hyperparameter (Default=0.015).
             num_components (int): The number of ensemble components (Default=100).
@@ -53,7 +53,7 @@ class RSHash(BaseModel):
         """Fits the model to next instance.
 
         Args:
-            X (np.float array of shape (num_features,)): The instance to fit.
+            X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
@@ -66,7 +66,7 @@ class RSHash(BaseModel):
                 (X[np.array(self.V[r])] + np.array(self.alpha[r])) / float(self.f[r]))
 
             mod_entry = np.insert(Y, 0, r)
-            mod_entry = tuple(mod_entry.astype(np.int))
+            mod_entry = tuple(mod_entry.astype(np.int32))
 
             c = []
             for w in range(len(self.cmsketches)):
@@ -133,7 +133,7 @@ class RSHash(BaseModel):
                         low=low_value[i],
                         high=high_value[i]),
                     self.dim)
-            all_feats = np.array(list(range(self.dim)), dtype=np.int)
+            all_feats = np.array(list(range(self.dim)), dtype=np.int32)
 
             choice_feats = all_feats[np.where(self.minimum != self.maximum)]
             sel_V = np.random.choice(

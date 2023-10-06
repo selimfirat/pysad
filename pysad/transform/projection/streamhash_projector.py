@@ -21,7 +21,7 @@ class StreamhashProjector(BaseTransformer):
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
-            X (np.float array of shape (n_components,)): Input feature vector.
+            X (np.float64 array of shape (n_components,)): Input feature vector.
 
         Returns:
             object: self.
@@ -32,10 +32,10 @@ class StreamhashProjector(BaseTransformer):
         """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
 
         Args:
-            X (np.float array of shape (num_features,)): Input feature vector.
+            X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            projected_X (np.float array of shape (num_components,)): Projected feature vector.
+            projected_X (np.float64 array of shape (num_components,)): Projected feature vector.
         """
         X = X.reshape(1, -1)
 

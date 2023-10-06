@@ -34,7 +34,7 @@ def test_all_zero_stats():
         abs_stat = AbsStatistic(stat_cls)
         window_size = 25
         running_stat = RunningStatistic(stat_cls, window_size=window_size)
-        arr = np.zeros(num_items, dtype=np.float)
+        arr = np.zeros(num_items, dtype=np.float64)
         prev_value = 0.0
         for i in range(arr.shape[0]):
             num = arr[i]

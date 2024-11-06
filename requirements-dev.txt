@@ -7,7 +7,7 @@ coveralls==2.1.1
 sphinx-copybutton==0.3.0
 sphinxcontrib-bibtex==1.0.0
 numpy==2.0.2
-pandas==2.0.3
+pandas==2.2.3
 scipy==1.13.1
 pyod==1.1.0
 rrcf==0.4.3

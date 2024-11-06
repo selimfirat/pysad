@@ -1,6 +1,6 @@
-numpy==1.23.5
+numpy==2.0.2
 scikit-learn>=1.3.0
-scipy==1.10.0
+scipy==1.14.1
 pyod==1.1.0
 pandas==2.0.3
 rrcf==0.4.3

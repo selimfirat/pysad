@@ -43,6 +43,7 @@ Individual Anomaly Models
     models.ExactStorm
     models.HalfSpaceTrees
     models.IForestASD
+    models.Inqmad
     models.KitNet
     models.KNNCAD
     models.LODA

@@ -7,3 +7,5 @@ rrcf==0.4.3
 PyNomaly==0.3.3
 mmh3==2.5.1
 combo==0.1.3
+jax==0.4.6
+jaxlib==0.4.6

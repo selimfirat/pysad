@@ -72,8 +72,7 @@ class QFeatureMap_rff():
     Args:
         input_shape (int): number of features
         dim (int): random Fourier features dimension 
-        gamma (int): kernel parammeter for the random Fourier features 
-        random_state (int): initial random state for the random Fourier features
+        gamma (int): kernel parameter for the random Fourier features 
     """
 
   def __init__(

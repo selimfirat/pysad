@@ -21,6 +21,9 @@ strategy:
     linux312:
       imageName: "ubuntu-latest"
       python.version: '3.12'
+    linux312:
+      imageName: "ubuntu-latest"
+      python.version: '3.13'
 
   maxParallel: 9
 

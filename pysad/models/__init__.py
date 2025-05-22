@@ -17,5 +17,6 @@ from .rs_hash import RSHash
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .xstream import xStream
 from .exact_storm import ExactStorm
+from .inqmad import Inqmad
 
-__all__ = ["ExactStorm", "HalfSpaceTrees", "IForestASD", "KitNet", "KNNCAD", "LODA", "LocalOutlierProbability", "MedianAbsoluteDeviation", "NullModel", "PerfectModel", "RandomModel", "RelativeEntropy", "RobustRandomCutForest", "RSHash", "StandardAbsoluteDeviation", "xStream"]
+__all__ = ["ExactStorm", "HalfSpaceTrees", "IForestASD", "KitNet", "KNNCAD", "LODA", "LocalOutlierProbability", "MedianAbsoluteDeviation", "NullModel", "PerfectModel", "RandomModel", "RelativeEntropy", "RobustRandomCutForest", "RSHash", "StandardAbsoluteDeviation", "xStream", "Inqmad"]

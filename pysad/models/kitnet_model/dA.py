@@ -45,8 +45,8 @@ class dA:
             self.params.n_hidden = int(numpy.ceil(self.params.n_visible*self.params.hiddenRatio))
 
         # for 0-1 normlaization
-        self.norm_max = numpy.ones((self.params.n_visible,)) * -numpy.Inf
-        self.norm_min = numpy.ones((self.params.n_visible,)) * numpy.Inf
+        self.norm_max = numpy.ones((self.params.n_visible,)) * -numpy.inf
+        self.norm_min = numpy.ones((self.params.n_visible,)) * numpy.inf
         self.n = 0
 
         self.rng = numpy.random.RandomState(1234)

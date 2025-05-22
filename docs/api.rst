@@ -170,14 +170,14 @@ Postprocessors
    :template: class.rst
    :toctree: generated
 
-    pysad.transform.postprocessing.AveragePostprocessor
-    pysad.transform.postprocessing.MaxPostprocessor
-    pysad.transform.postprocessing.MedianPostprocessor
-    pysad.transform.postprocessing.ZScorePostprocessor
-    pysad.transform.postprocessing.RunningAveragePostprocessor
-    pysad.transform.postprocessing.RunningMaxPostprocessor
-    pysad.transform.postprocessing.RunningMedianPostprocessor
-    pysad.transform.postprocessing.RunningZScorePostprocessor
+    transform.postprocessing.AveragePostprocessor
+    transform.postprocessing.MaxPostprocessor
+    transform.postprocessing.MedianPostprocessor
+    transform.postprocessing.ZScorePostprocessor
+    transform.postprocessing.RunningAveragePostprocessor
+    transform.postprocessing.RunningMaxPostprocessor
+    transform.postprocessing.RunningMedianPostprocessor
+    transform.postprocessing.RunningZScorePostprocessor
 
 
 Statistics

@@ -76,9 +76,8 @@ html_theme = 'sphinx_rtd_theme'
 
 html_theme_options = {
     'canonical_url': '',
-    'analytics_id': 'UA-XXXXXXX-1',  #  Provided by Google in your dashboard
     'logo_only': True,
-    'display_version': False,
+    'version_selector': False,
     'prev_next_buttons_location': 'bottom',
     'style_external_links': False,
     #'vcs_pageview_mode': '',
@@ -112,3 +111,5 @@ intersphinx_mapping = {
     # 'matplotlib': ('https://matplotlib.org/', None),
     #'sklearn': ('https://scikit-learn.org/stable', None)
 }
+
+bibtex_bibfiles = ['refs.bib']

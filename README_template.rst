@@ -10,6 +10,9 @@
 Examples
 ========
 
+Quick Start
+^^^^^^^^^^^^^^^^^^
+
 Here's a simple example showing how to use PySAD for anomaly detection on streaming data:
 
 .. code-block:: python

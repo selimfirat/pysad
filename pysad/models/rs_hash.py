@@ -138,7 +138,7 @@ class RSHash(BaseModel):
             # Use boolean indexing to avoid deprecated nonzero on 0d arrays
             mask = (self.minimum != self.maximum)
             
-            # Handle the case when mask is a scalar boolean
+            # Handle the case when mask is a scalar boolean (occurs when minimum/maximum are scalars)
             if isinstance(mask, bool):
                 # If mask is True, use all features
                 if mask:
@@ -147,7 +147,6 @@ class RSHash(BaseModel):
                     valid_indices = np.array([], dtype=int)
             else:
                 # If mask is an array, proceed as normal
-                # Get indices where mask is True
                 valid_indices = np.where(mask)[0]
             
             # Select from all_feats using these indices

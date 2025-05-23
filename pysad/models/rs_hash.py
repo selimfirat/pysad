@@ -137,7 +137,25 @@ class RSHash(BaseModel):
 
             # Use boolean indexing to avoid deprecated nonzero on 0d arrays
             mask = (self.minimum != self.maximum)
-            choice_feats = all_feats[mask]
-            sel_V = np.random.choice(
-                choice_feats, size=self.r[i], replace=False)
+            
+            # Ensure we're working with 1-dimensional arrays for np.random.choice
+            if mask.ndim == 0:
+                # If mask is a scalar, convert it to a 1D array first
+                mask = np.atleast_1d(mask)
+            
+            # Get indices where mask is True
+            valid_indices = np.where(mask)[0]
+            
+            # Select from all_feats using these indices
+            choice_feats = all_feats[valid_indices]
+            
+            # Ensure we have enough features to choose from
+            if len(choice_feats) > 0:
+                sel_V = np.random.choice(
+                    choice_feats, size=min(self.r[i], len(choice_feats)), replace=False)
+            else:
+                # Fallback if no features meet criteria, select from all features
+                sel_V = np.random.choice(
+                    all_feats, size=min(self.r[i], len(all_feats)), replace=False)
+                
             self.V.append(sel_V)

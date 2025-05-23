@@ -86,6 +86,10 @@ class BaseModel(ABC):
         """
         y_pred = np.zeros(X.shape[0], dtype=np.float64)
         for i, (xi, yi) in enumerate(_iterate(X, y)):
-            y_pred[i] = self.fit_score_partial(xi, yi)
+            # Extract scalar value to avoid deprecation warning
+            score = self.fit_score_partial(xi, yi)
+            if hasattr(score, 'item'):
+                score = score.item()
+            y_pred[i] = score
 
         return y_pred

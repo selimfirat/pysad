@@ -5,9 +5,13 @@ from pysad.utils import get_minmax_array
 
 # Try to import JAX dependencies, otherwise define a flag to indicate they're missing
 try:
-    import jax
-    from jax import jit
-    import jax.numpy as jnp
+    import warnings
+    # Suppress numpy.core deprecation warnings
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="numpy.core is deprecated")
+        import jax
+        from jax import jit
+        import jax.numpy as jnp
     JAX_AVAILABLE = True
 except ImportError:
     JAX_AVAILABLE = False

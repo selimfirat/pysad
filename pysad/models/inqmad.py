@@ -32,10 +32,12 @@ class Inqmad(BaseModel):
         batch_size (int): training samples processed by iteration
 
     Note:
-        This model requires JAX and JAXlib to be installed. You can install them using:
-        `pip install jax jaxlib`
+        This model requires JAX and JAXlib (version 0.6.1 or higher) to be installed. You can install them using:
+        `pip install jax>=0.6.1 jaxlib>=0.6.1`
         or via the optional dependency:
         `pip install pysad[inqmad]`
+        
+        When using NumPy 2.0 or higher, JAX 0.6.1+ is required for compatibility.
     """
 
     def __init__(

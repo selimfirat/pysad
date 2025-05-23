@@ -37,5 +37,5 @@ Alternatively, you can install the library directly using the source code in Git
 * PyNomaly==0.3.3 (Only required for :class:`pysad.models.loop.StreamLocalOutlierProbability`)
 * mmh3==2.5.1 (Only required for :class:`pysad.models.xstream.xStream`)
 * pandas==2.2.3 (Only required for :class:`pysad.utils.pandas_streamer.PandasStreamer`)
-* jax==0.4.17 (Only required for :class:`pysad.models.inqmad.Inqmad`)
-* jaxlib==0.4.17 (Only required for :class:`pysad.models.inqmad.Inqmad`)
+* jax>=0.6.1 (Only required for :class:`pysad.models.inqmad.Inqmad`; required for NumPy 2.0+ compatibility)
+* jaxlib>=0.6.1 (Only required for :class:`pysad.models.inqmad.Inqmad`; required for NumPy 2.0+ compatibility)

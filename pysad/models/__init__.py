@@ -18,4 +18,15 @@ from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .xstream import xStream
 from .exact_storm import ExactStorm
 
+# Try to import Inqmad - this requires JAX dependencies which are optional
+try:
+    from .inqmad import Inqmad
+    _has_inqmad = True
+except ImportError:
+    _has_inqmad = False
+
 __all__ = ["ExactStorm", "HalfSpaceTrees", "IForestASD", "KitNet", "KNNCAD", "LODA", "LocalOutlierProbability", "MedianAbsoluteDeviation", "NullModel", "PerfectModel", "RandomModel", "RelativeEntropy", "RobustRandomCutForest", "RSHash", "StandardAbsoluteDeviation", "xStream"]
+
+# Add Inqmad to __all__ if available
+if _has_inqmad:
+    __all__.append("Inqmad")

@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pysad"
+version = "0.3.0"
+dependencies = [
+  "numpy",
+  "scikit-learn",
+  "scipy",
+  "pyod==1.1.0",
+  "combo==0.1.3",
+]
+requires-python = ">=3.10"
+authors = [
+  {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"},
+]
+maintainers = [
+  {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"}
+]
+description = "PySAD is an open-source python framework for anomaly detection on streaming multivariate data."
+readme = "README.rst"
+license = {file = "LICENSE"}
+keywords = ["outlier detection", "anomaly detection", "machine learning"]
+classifiers = [
+        'Development Status :: 2 - Pre-Alpha',
+        'Intended Audience :: Education',
+        'Intended Audience :: Financial and Insurance Industry',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
+        'Intended Audience :: Information Technology',
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Software Development",
+        "License :: OSI Approved :: BSD License",
+        'Operating System :: Unix',
+        'Operating System :: MacOS',
+        'Operating System :: Microsoft :: Windows',
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+    ]
+
+[project.optional-dependencies]
+rrcf = ["rrcf==0.4.3"]
+slop = ["PyNomaly==0.3.3"]
+xStream = ["mmh3==2.5.1"]
+pandas = ["pandas"]
+inqmad = ["jax>=0.6.1", "jaxlib>=0.6.1"]
+
+[project.urls]
+Homepage = "https://github.com/selimfirat/pysad"
+Documentation = "https://pysad.readthedocs.io/"
+Repository = "https://github.com/selimfirat/pysad.git"
+"Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
+Changelog = "https://github.com/selimfirat/pysad/blob/master/CHANGES.txt"
+

@@ -64,7 +64,7 @@ class RelativeEntropy(BaseModel):
             util_current = self.util[-self.W:]
 
             # Quantize window data points into discretized bin values
-            B_current = [math.ceil((c - self.min_val) / self.stepSize) for c in
+            B_current = [math.ceil(float(c - self.min_val) / self.stepSize) for c in
                          util_current]
 
             # Create a histogram of empirical frequencies for the current window

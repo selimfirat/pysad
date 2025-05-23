@@ -9,18 +9,15 @@ trigger:
 
 strategy:
   matrix:
-    linux38:
-      imageName: "ubuntu-latest"
-      python.version: '3.8'
-    linux39:
-      imageName: "ubuntu-latest"
-      python.version: '3.9'
     linux310:
       imageName: "ubuntu-latest"
       python.version: '3.10'
     linux311:
       imageName: "ubuntu-latest"
       python.version: '3.11'
+    linux312:
+      imageName: "ubuntu-latest"
+      python.version: '3.12'
 
   maxParallel: 9
 

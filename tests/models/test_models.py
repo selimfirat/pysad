@@ -16,6 +16,7 @@ def test_unsupervised_models():
     from pysad.models import RSHash
     from pysad.models import StandardAbsoluteDeviation
     from pysad.models import xStream
+    from pysad.models import Inqmad
     import numpy as np
     from pysad.utils import fix_seed
     fix_seed(61)
@@ -37,7 +38,8 @@ def test_unsupervised_models():
         RSHash: {"feature_mins": [0.0], "feature_maxes": [1.0]},
         StandardAbsoluteDeviation: [{}, {"absolute": False}],
         xStream: {},
-        RobustRandomCutForest: {}
+        RobustRandomCutForest: {},
+        Inqmad: {"input_shape": X.shape[1], "dim_x": 128, "gamma": 100}
     }
 
     for model_cls, params_dict in model_classes.items():

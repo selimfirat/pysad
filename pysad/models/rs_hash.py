@@ -135,7 +135,30 @@ class RSHash(BaseModel):
                     self.dim)
             all_feats = np.array(list(range(self.dim)), dtype=np.int32)
 
-            choice_feats = all_feats[np.where(self.minimum != self.maximum)]
-            sel_V = np.random.choice(
-                choice_feats, size=self.r[i], replace=False)
+            # Use boolean indexing to avoid deprecated nonzero on 0d arrays
+            mask = (self.minimum != self.maximum)
+            
+            # Handle the case when mask is a scalar boolean (occurs when minimum/maximum are scalars)
+            if isinstance(mask, bool):
+                # If mask is True, use all features
+                if mask:
+                    valid_indices = np.arange(self.dim)
+                else:
+                    valid_indices = np.array([], dtype=int)
+            else:
+                # If mask is an array, proceed as normal
+                valid_indices = np.where(mask)[0]
+            
+            # Select from all_feats using these indices
+            choice_feats = all_feats[valid_indices]
+            
+            # Ensure we have enough features to choose from
+            if len(choice_feats) > 0:
+                sel_V = np.random.choice(
+                    choice_feats, size=min(self.r[i], len(choice_feats)), replace=False)
+            else:
+                # Fallback if no features meet criteria, select from all features
+                sel_V = np.random.choice(
+                    all_feats, size=min(self.r[i], len(all_feats)), replace=False)
+                
             self.V.append(sel_V)

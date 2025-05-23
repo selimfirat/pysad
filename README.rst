@@ -1,4 +1,4 @@
-.. image:: docs/logo.png
+.. image:: https://github.com/selimfirat/pysad/raw/master/docs/logo.png
     :align: center
 
 Python Streaming Anomaly Detection (PySAD)

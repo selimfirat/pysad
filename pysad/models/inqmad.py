@@ -3,9 +3,15 @@ from pysad.core.base_model import BaseModel
 from pysad.transform.projection.streamhash_projector import StreamhashProjector
 from pysad.utils import get_minmax_array
 
-import jax
-from jax import jit
-import jax.numpy as jnp
+# Try to import JAX dependencies, otherwise define a flag to indicate they're missing
+try:
+    import jax
+    from jax import jit
+    import jax.numpy as jnp
+    JAX_AVAILABLE = True
+except ImportError:
+    JAX_AVAILABLE = False
+
 from functools import partial
 from sklearn.kernel_approximation import RBFSampler
 
@@ -20,6 +26,12 @@ class Inqmad(BaseModel):
         gamma (int): kernel parameter for the random Fourier features 
         random_state (int): initial random state for the random Fourier features
         batch_size (int): training samples processed by iteration
+
+    Note:
+        This model requires JAX and JAXlib to be installed. You can install them using:
+        `pip install jax jaxlib`
+        or via the optional dependency:
+        `pip install pysad[inqmad]`
     """
 
     def __init__(
@@ -30,7 +42,13 @@ class Inqmad(BaseModel):
             random_state=42, 
             batch_size = 300
             ):
-        self.inqmad = InqMeasurement(input_shape, dim_x, gamma, random_state, batch_size) 
+        if not JAX_AVAILABLE:
+            raise ImportError(
+                "JAX dependencies are required to use the Inqmad model. "
+                "Please install jax and jaxlib via pip: "
+                "`pip install jax jaxlib` or `pip install pysad[inqmad]`"
+            )
+        self.inqmad = InqMeasurement(input_shape, dim_x, gamma, random_state, batch_size)
 
 
     def fit_partial(self, X, y=None):

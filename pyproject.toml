@@ -48,6 +48,7 @@ rrcf = ["rrcf==0.4.3"]
 slop = ["PyNomaly==0.3.3"]
 xStream = ["mmh3==2.5.1"]
 pandas = ["pandas"]
+inqmad = ["jax==0.4.6", "jaxlib==0.4.6"]
 
 [project.urls]
 Homepage = "https://github.com/selimfirat/pysad"

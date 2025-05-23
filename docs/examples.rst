@@ -1,6 +1,14 @@
 Examples
 ========
 
+Quick Start
+^^^^^^^^^^^^^^^^^^
+
+Here's a simple example showing how to use PySAD for anomaly detection on streaming data:
+
+.. literalinclude:: ../examples/example_usage_short.py
+   :language: python
+
 
 Example Full Usage
 ^^^^^^^^^^^^^^^^^^

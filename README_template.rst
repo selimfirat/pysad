@@ -7,6 +7,8 @@
 
 .. include:: docs/installation.rst
 
+.. include:: docs/examples.rst
+
 .. include:: docs/quick_links.rst
 
 .. include:: docs/versioning.rst

@@ -9,9 +9,6 @@ trigger:
 
 strategy:
   matrix:
-    linux39:
-      imageName: "ubuntu-latest"
-      python.version: '3.9'
     linux310:
       imageName: "ubuntu-latest"
       python.version: '3.10'

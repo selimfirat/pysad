@@ -1,3 +1,4 @@
 v<0.1.0>, <08/15/2020> -- Initial release.
 v<0.2.0> <06/10/2023> -- Upgraded some libraries like numpy,pandas and small refactorings.
 v<0.3.0>, <05/23/2025> -- Updated dependencies to latest versions, improved documentation, added quick start example in README. Added Inqmad model. Special thanks to @TechyNilesh @Joaggi @onixlas.
+v<0.3.1>, <06/04/2025> -- Enhanced README with comprehensive community engagement section, educational content, third-party integrations, and developer community highlights. Fixed sublist formatting in reStructuredText. Improved error handling for Inqmad model imports.

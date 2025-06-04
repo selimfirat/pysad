@@ -121,11 +121,13 @@ Educational Content
 Featured in educational content across multiple platforms:
 
 * **Medium Articles:**
+
   * `Real-time Anomaly Detection with Python <https://medium.com/data-science/real-time-anomaly-detection-with-python-36e3455e84e2>`_
   * `Real-time Anomaly Detection for Quality Control <https://medium.com/data-science/real-time-anomaly-detection-for-quality-control-e6af28a3350d>`_
   * `The Challenges of AI in an Industrial Environment <https://medium.com/@anthonycvn/the-challenges-of-ai-in-an-industrial-environment-6e118a8daa67>`_
 
 * **Resource Collections:**
+
   * `Anomaly Detection Resources <https://andrewm4894.com/2021/01/03/anomaly-detection-resources/>`_ comprehensive guide
   * `Anomaly Detection Resources by Yue Zhao <https://github.com/yzhao062/anomaly-detection-resources>`_ curated collection of papers, algorithms, and datasets
 
@@ -146,6 +148,7 @@ Developer Community
 * **Widespread GitHub usage** with 50+ files using ``import pysad`` and 200+ files using ``from pysad`` across various repositories: `import usage <https://github.com/search?q=%22import+pysad%22&type=code>`_, `from usage <https://github.com/search?q=%22from+pysad%22&type=code>`_.
 
 * **External projects** demonstrating practical applications across diverse domains:
+
   * `Online Isolation Forest implementation <https://github.com/ineveLoppiliF/Online-Isolation-Forest>`_
   * `Anomaly Detection Final Project <https://github.com/berfinkavsut/anomaly-detection-final-project>`_
   * `Natural Gas Wells Anomaly Detection <https://github.com/charles-cao/Anomaly-detection-in-natural-gas-wells>`_

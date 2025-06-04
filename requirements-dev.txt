@@ -2,7 +2,7 @@ sphinx_rtd_theme==3.0.1
 sphinx==7.1.2
 sphinxcontrib-fulltoc==1.2.0
 pytest==8.3.3
-pytest-cov==5.0.0
+pytest-cov==6.0.0
 coveralls==4.0.1
 sphinx-copybutton==0.5.2
 sphinxcontrib-bibtex==2.6.3

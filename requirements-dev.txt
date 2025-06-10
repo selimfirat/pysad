@@ -9,7 +9,7 @@ sphinxcontrib-bibtex==2.6.3
 numpy==2.0.2
 pandas==2.2.3
 scipy==1.13.1
-pyod==1.1.0
+pyod==2.0.5
 rrcf==0.4.3
 PyNomaly==0.3.3
 mmh3==2.5.1

@@ -1,5 +1,3 @@
-
-
 def test_unsupervised_models():
     from pysad.models import RobustRandomCutForest
     from pysad.models import ExactStorm
@@ -24,6 +22,7 @@ def test_unsupervised_models():
     X = np.random.rand(150, 1)
 
     model_classes = {
+        RelativeEntropy: {"min_val": 0.0, "max_val": 1.0},
         ExactStorm: {},
         HalfSpaceTrees: {"feature_mins": [0.0], "feature_maxes": [1.0]},
         IForestASD: {},
@@ -34,7 +33,6 @@ def test_unsupervised_models():
         MedianAbsoluteDeviation: [{}, { "absolute": False }],
         NullModel: {},
         RandomModel: {},
-        RelativeEntropy: {"min_val": 0.0, "max_val": 1.0},
         RSHash: {"feature_mins": [0.0], "feature_maxes": [1.0]},
         StandardAbsoluteDeviation: [{}, {"absolute": False}],
         xStream: {},
@@ -77,3 +75,31 @@ def test_fit_and_score_separately():
     model = model.fit(X)
     y_pred = model.score(X)
     assert y_pred.shape == (X.shape[0],)
+
+
+def test_relative_entropy_no_warnings():
+    """Test that RelativeEntropy doesn't produce DeprecationWarnings about scalar conversion."""
+    import warnings
+    import numpy as np
+    from pysad.models import RelativeEntropy
+    from pysad.utils import fix_seed
+    
+    fix_seed(61)
+    X = np.random.rand(150, 1)
+    
+    # Capture any DeprecationWarnings about scalar conversion
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        
+        model = RelativeEntropy(min_val=0.0, max_val=1.0)
+        y_pred = model.fit_score(X)
+        
+        # Filter for the specific warnings we're concerned about
+        scalar_warnings = [warning for warning in w 
+                          if issubclass(warning.category, DeprecationWarning) and
+                          ('scalar divide' in str(warning.message) or 
+                           'Conversion of an array with ndim > 0 to a scalar' in str(warning.message))]
+        
+        # Assert no scalar conversion warnings occurred
+        assert len(scalar_warnings) == 0, f"Found {len(scalar_warnings)} scalar conversion warnings"
+        assert y_pred.shape == (X.shape[0],)

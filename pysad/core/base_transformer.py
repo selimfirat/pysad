@@ -56,7 +56,11 @@ class BaseTransformer(ABC):
         output_dims = self.output_dims if self.output_dims > 0 else X.shape[1]
         transformed_X = np.empty((X.shape[0], output_dims), dtype=np.float64)
         for i, (xi, _) in enumerate(_iterate(X)):
-            transformed_X[i] = self.transform_partial(xi)
+            result = self.transform_partial(xi)
+            if np.asarray(result).ndim == 0:
+                transformed_X[i] = result
+            else:
+                transformed_X[i] = result
 
         return transformed_X
 
@@ -86,6 +90,10 @@ class BaseTransformer(ABC):
         output_dims = self.output_dims if self.output_dims > 0 else X.shape[1]
         transformed_X = np.empty((X.shape[0], output_dims), dtype=np.float64)
         for i, (xi, _) in enumerate(_iterate(X)):
-            transformed_X[i] = self.fit_transform_partial(xi)
+            result = self.fit_transform_partial(xi)
+            if np.asarray(result).ndim == 0:
+                transformed_X[i] = result
+            else:
+                transformed_X[i] = result
 
         return transformed_X

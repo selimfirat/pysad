@@ -1,2 +1,4 @@
 [run]
 omit = pysad/models/kitnet_model/*
+       setup.py
+       _build_readme.py

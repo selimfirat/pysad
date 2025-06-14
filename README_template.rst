@@ -37,6 +37,19 @@ Here's a simple example showing how to use PySAD for anomaly detection on stream
 
 .. include:: docs/quick_links.rst
 
+Contributors
+============
+
+.. raw:: html
+
+   <div align="center">
+     <a href="https://github.com/selimfirat/pysad/graphs/contributors">
+       <img src="https://contrib.rocks/image?repo=selimfirat/pysad" alt="Contributors" />
+     </a>
+   </div>
+
+We thank all our contributors for their valuable input and efforts to make PySAD better!
+
 .. include:: docs/versioning.rst
 
 .. include:: docs/license.rst

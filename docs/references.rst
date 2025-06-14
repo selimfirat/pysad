@@ -4,4 +4,4 @@ References
 .. bibliography:: refs.bib
    :labelprefix: B
 
-The infinity icon made by `Freepik <http://www.freepik.com/>`_ from `Flaticon <www.flaticon.com>`_.
+The infinity icon made by `Freepik <https://www.freepik.com/>`_ from `Flaticon <https://www.flaticon.com/>`_.

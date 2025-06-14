@@ -7,6 +7,8 @@ docs/_build
 # Byte-compiled / optimized / DLL files
 *.py[cod]
 *$py.class
+paper
+.vscode
 
 # C extensions
 *.so

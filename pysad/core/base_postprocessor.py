@@ -53,7 +53,8 @@ class BasePostprocessor(ABC):
         """
         processed_scores = np.empty(scores.shape[0], dtype=np.float64)
         for i, (score, _) in enumerate(_iterate(scores)):
-            processed_scores[i] = self.transform_partial(score)
+            result = self.transform_partial(score)
+            processed_scores[i] = np.asarray(result).item() if np.asarray(result).ndim > 0 else result
 
         return processed_scores
 
@@ -82,6 +83,7 @@ class BasePostprocessor(ABC):
         """
         processed_scores = np.empty(scores.shape[0], dtype=np.float64)
         for i, (score, _) in enumerate(_iterate(scores)):
-            processed_scores[i] = self.fit_transform_partial(score)
+            result = self.fit_transform_partial(score)
+            processed_scores[i] = np.asarray(result).item() if np.asarray(result).ndim > 0 else result
 
         return processed_scores

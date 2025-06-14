@@ -188,6 +188,19 @@ Quick Links
 
 
 
+Contributors
+============
+
+.. raw:: html
+
+   <div align="center">
+     <a href="https://github.com/selimfirat/pysad/graphs/contributors">
+       <img src="https://contrib.rocks/image?repo=selimfirat/pysad" alt="Contributors" />
+     </a>
+   </div>
+
+We thank all our contributors for their valuable input and efforts to make PySAD better!
+
 Versioning
 ==========
 

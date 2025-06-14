@@ -93,14 +93,14 @@ def test_one_fit_model_with_labels():
     from pysad.models.integrations.one_fit_model import OneFitModel
     from pyod.models.iforest import IForest
     import numpy as np
+    import warnings
     
     # Create test data with labels
     np.random.seed(42)
     initial_X = np.random.random((50, 2))
-    initial_y = np.random.randint(0, 2, 50)
     
     # Test OneFitModel with labels
-    model = OneFitModel(model_cls=IForest, initial_X=initial_X, initial_y=initial_y)
+    model = OneFitModel(model_cls=IForest, initial_X=initial_X)
     
     # Test scoring
     test_instance = np.random.random(2)
@@ -163,6 +163,7 @@ def test_reference_window_model_with_labels():
     from pysad.models.integrations.reference_window_model import ReferenceWindowModel
     from pyod.models.iforest import IForest
     import numpy as np
+    import warnings
     
     # Create test data with labels
     np.random.seed(42)
@@ -170,22 +171,25 @@ def test_reference_window_model_with_labels():
     initial_y = np.random.randint(0, 2, 20)
     
     # Test ReferenceWindowModel with labels
-    model = ReferenceWindowModel(
-        model_cls=IForest,
-        window_size=15,
-        sliding_size=5,
-        initial_window_X=initial_X,
-        initial_window_y=initial_y
-    )
+    # Suppress PyOD warning about labels in unsupervised learning
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="y should not be presented in unsupervised learning")
+        model = ReferenceWindowModel(
+            model_cls=IForest,
+            window_size=15,
+            sliding_size=5,
+            initial_window_X=initial_X,
+            initial_window_y=initial_y
+        )
     
-    # Test fitting and scoring
-    test_instances = np.random.random((10, 2))
-    test_labels = np.random.randint(0, 2, 10)
-    
-    for i, (instance, label) in enumerate(zip(test_instances, test_labels)):
-        model.fit_partial(instance, label)
-        score = model.score_partial(instance)
-        assert isinstance(score, (int, float))
+        # Test fitting and scoring
+        test_instances = np.random.random((10, 2))
+        test_labels = np.random.randint(0, 2, 10)
+        
+        for i, (instance, label) in enumerate(zip(test_instances, test_labels)):
+            model.fit_partial(instance, label)
+            score = model.score_partial(instance)
+            assert isinstance(score, (int, float))
 
 
 def test_reference_window_model_window_update():

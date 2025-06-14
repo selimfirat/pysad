@@ -93,12 +93,16 @@ def test_windowed_metric_ignore_nonempty_last():
 def test_windowed_metric_empty_window():
     """Test WindowedMetric behavior with empty window."""
     from pysad.evaluation import WindowedMetric, RecallMetric
+    import warnings
     
     metric = WindowedMetric(RecallMetric, window_size=10)
     
     # Get score before any updates
-    score = metric.get()
-    assert score == 0.0
+    # Suppress the sklearn warning since we're testing edge cases  
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Recall is ill-defined and being set to 0.0")
+        score = metric.get()
+        assert score == 0.0
 
 
 def test_windowed_metric_various_metrics():

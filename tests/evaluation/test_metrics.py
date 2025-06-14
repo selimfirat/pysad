@@ -92,6 +92,7 @@ def test_metric_error_handling():
 def test_precision_metric_edge_cases():
     """Test PrecisionMetric with edge cases."""
     from pysad.evaluation import PrecisionMetric
+    import warnings
     
     metric = PrecisionMetric()
     
@@ -101,8 +102,11 @@ def test_precision_metric_edge_cases():
     metric.update(0, 0)  # True negative
     
     # Precision should handle division by zero gracefully
-    precision = metric.get()
-    assert precision == 0.0
+    # Suppress the sklearn warning since we're testing edge cases
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Precision is ill-defined and being set to 0.0")
+        precision = metric.get()
+        assert precision == 0.0
 
 
 def test_precision_metric_normal_case():
@@ -124,6 +128,7 @@ def test_precision_metric_normal_case():
 def test_recall_metric_edge_cases():
     """Test RecallMetric with edge cases."""
     from pysad.evaluation import RecallMetric
+    import warnings
     
     metric = RecallMetric()
     
@@ -133,8 +138,11 @@ def test_recall_metric_edge_cases():
     metric.update(0, 1)  # False positive
     
     # Recall should handle division by zero gracefully 
-    recall = metric.get()
-    assert recall == 0.0
+    # Suppress the sklearn warning since we're testing edge cases
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Recall is ill-defined and being set to 0.0")
+        recall = metric.get()
+        assert recall == 0.0
 
 
 def test_recall_metric_normal_case():

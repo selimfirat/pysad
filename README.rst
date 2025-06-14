@@ -95,65 +95,6 @@ Free and Open Source Software (FOSS)
 
 `PySAD` is distributed under `BSD License 2.0 <https://github.com/selimfirat/pysad/blob/master/LICENSE>`_ and favors FOSS principles.
 
-Community Engagement
-=====================
-
-PySAD has built a strong and active community with significant adoption across academia and industry:
-
-Academic Recognition
-^^^^^^^^^^^^^^^^^^^^
-
-* **Cited in academic literature** with growing adoption in streaming data research with more than 50 citations to the arXiv version (excluding GitHub link-only citations). See `Google Scholar <https://scholar.google.com/citations?view_op=view_citation&hl=tr&user=R6Hwp20AAAAJ&citation_for_view=R6Hwp20AAAAJ:2osOgNQ5qMEC>`_ for detailed citation metrics.
-
-GitHub Community
-^^^^^^^^^^^^^^^^^
-
-* **260+ GitHub Stars** demonstrating widespread community interest and adoption among developers and researchers in the machine learning community.
-
-Active Usage
-^^^^^^^^^^^^
-
-* **Strong PyPI download statistics** according to `pypistats.org <https://pypistats.org/packages/pysad>`_ with 2K+ downloads in the May 2025 and consistent weekly usage.
-
-Educational Content
-^^^^^^^^^^^^^^^^^^^
-
-Featured in educational content across multiple platforms:
-
-* **Medium Articles:**
-
-  * `Real-time Anomaly Detection with Python <https://medium.com/data-science/real-time-anomaly-detection-with-python-36e3455e84e2>`_
-  * `Real-time Anomaly Detection for Quality Control <https://medium.com/data-science/real-time-anomaly-detection-for-quality-control-e6af28a3350d>`_
-  * `The Challenges of AI in an Industrial Environment <https://medium.com/@anthonycvn/the-challenges-of-ai-in-an-industrial-environment-6e118a8daa67>`_
-
-* **Resource Collections:**
-
-  * `Anomaly Detection Resources <https://andrewm4894.com/2021/01/03/anomaly-detection-resources/>`_ comprehensive guide
-  * `Anomaly Detection Resources by Yue Zhao <https://github.com/yzhao062/anomaly-detection-resources>`_ curated collection of papers, algorithms, and datasets
-
-Third-party Integrations
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-PySAD has been adopted and integrated into major machine learning frameworks:
-
-* **TurboML Integration:** `PySAD example documentation <https://docs.turboml.com/wyo_models/pysad_example/>`_ showing adoption in machine learning workflow platforms.
-
-* **Apache Beam Integration:** PySAD modules adapted into Apache Beam's ML package with `zscore <https://beam.apache.org/releases/pydoc/2.64.0/apache_beam.ml.anomaly.detectors.zscore.html>`_ and `robust_zscore <https://beam.apache.org/releases/pydoc/2.64.0/apache_beam.ml.anomaly.detectors.robust_zscore.html>`_ anomaly detectors.
-
-* **River ML Integration:** The prominent online machine learning library has adapted PySAD algorithms, including the `StandardAbsoluteDeviation detector <https://riverml.xyz/0.20.0/api/anomaly/StandardAbsoluteDeviation/?query=pysad>`_ with explicit PySAD references.
-
-Developer Community
-^^^^^^^^^^^^^^^^^^^
-
-* **Widespread GitHub usage** with 50+ files using ``import pysad`` and 200+ files using ``from pysad`` across various repositories: `import usage <https://github.com/search?q=%22import+pysad%22&type=code>`_, `from usage <https://github.com/search?q=%22from+pysad%22&type=code>`_.
-
-* **External projects** demonstrating practical applications across diverse domains:
-
-  * `Online Isolation Forest implementation <https://github.com/ineveLoppiliF/Online-Isolation-Forest>`_
-  * `Anomaly Detection Final Project <https://github.com/berfinkavsut/anomaly-detection-final-project>`_
-  * `Natural Gas Wells Anomaly Detection <https://github.com/charles-cao/Anomaly-detection-in-natural-gas-wells>`_
-  * `EuroPython 2024 Conference Material <https://github.com/ciortanmadalina/europython2024>`_
-
 Installation
 ============
 

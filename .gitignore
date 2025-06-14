@@ -8,6 +8,7 @@ docs/_build
 *.py[cod]
 *$py.class
 paper
+.vscode
 
 # C extensions
 *.so

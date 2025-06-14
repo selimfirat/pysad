@@ -70,7 +70,8 @@ class BaseModel(ABC):
         """
         y_pred = np.empty(X.shape[0], dtype=np.float64)
         for i, (xi, _) in enumerate(_iterate(X)):
-            y_pred[i] = self.score_partial(xi)
+            score = self.score_partial(xi)
+            y_pred[i] = np.asarray(score).item() if np.asarray(score).ndim > 0 else score
 
         return y_pred
 

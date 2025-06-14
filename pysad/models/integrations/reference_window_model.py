@@ -75,12 +75,13 @@ class ReferenceWindowModel(PYODModel):
                 0, len(self.reference_window_X) - self.window_size):]
 
             if y is not None:
-                self.reference_window_y = self.reference_window_y[max(
-                    0, len(self.reference_window_y) - self.window_size):]
                 self.reference_window_y = np.concatenate(
                     [self.reference_window_y, self.cur_window_y], axis=0)
+                self.reference_window_y = self.reference_window_y[max(
+                    0, len(self.reference_window_y) - self.window_size):]
 
-            self.cur_window = []
+            self.cur_window_X = []
+            self.cur_window_y = []
             self._fit_model()
 
         return self

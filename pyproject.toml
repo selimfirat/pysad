@@ -44,7 +44,7 @@ classifiers = [
     ]
 
 [project.optional-dependencies]
-rrcf = ["rrcf==0.4.3"]
+rrcf = ["rrcf==0.4.4"]
 slop = ["PyNomaly==0.3.3"]
 xStream = ["mmh3==2.5.1"]
 pandas = ["pandas"]

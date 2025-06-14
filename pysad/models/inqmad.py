@@ -13,7 +13,8 @@ try:
         from jax import jit
         import jax.numpy as jnp
     JAX_AVAILABLE = True
-except ImportError:
+except (ImportError, AttributeError):
+    # Handle both missing JAX and JAX-NumPy compatibility issues
     JAX_AVAILABLE = False
 
 from functools import partial

@@ -22,8 +22,8 @@ from .exact_storm import ExactStorm
 try:
     from .inqmad import Inqmad
     _has_inqmad = True
-except (ImportError, NameError):
-    # Handle both missing dependencies and undefined names like 'jit'
+except (ImportError, NameError, AttributeError):
+    # Handle missing dependencies, undefined names, and JAX-NumPy compatibility issues
     _has_inqmad = False
 
 __all__ = ["ExactStorm", "HalfSpaceTrees", "IForestASD", "KitNet", "KNNCAD", "LODA", "LocalOutlierProbability", "MedianAbsoluteDeviation", "NullModel", "PerfectModel", "RandomModel", "RelativeEntropy", "RobustRandomCutForest", "RSHash", "StandardAbsoluteDeviation", "xStream"]

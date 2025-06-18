@@ -219,3 +219,55 @@ def test_reference_window_model_window_update():
         
         # Check internal state
         assert len(model.cur_window_X) <= model.window_size
+
+
+def test_reference_window_model_issue_23_fix():
+    """Test for the fix of issue #23: reference window duplication bug.
+    
+    The bug was that reference_window_X and cur_window_X pointed to the same
+    list object, causing data duplication when concatenation occurred.
+    """
+    from pysad.models.integrations.reference_window_model import ReferenceWindowModel
+    from pyod.models.iforest import IForest
+    import numpy as np
+    
+    # Setup from issue #23
+    window_size = 4
+    sliding_size = 2
+    
+    model = ReferenceWindowModel(
+        model_cls=IForest,
+        window_size=window_size,
+        sliding_size=sliding_size,
+        initial_window_X=None
+    )
+    
+    # Step 1: Add first data point
+    X1 = np.array([1.0])
+    model.fit_partial(X1)
+    
+    # Verify that cur_window_X and reference_window_X are independent objects
+    assert model.cur_window_X is not model.reference_window_X, \
+        "cur_window_X and reference_window_X should be independent objects"
+    
+    # Step 2: Add second data point
+    X2 = np.array([2.0])
+    model.fit_partial(X2)
+    
+    # Verify they are still independent
+    assert model.cur_window_X is not model.reference_window_X, \
+        "cur_window_X and reference_window_X should remain independent objects"
+    
+    # Test independence: modify cur_window_X and ensure reference_window_X is unchanged
+    original_ref_len = len(model.reference_window_X)
+    model.cur_window_X.append(np.array([999.0]))
+    
+    # reference_window_X should not be affected by changes to cur_window_X
+    assert len(model.reference_window_X) == original_ref_len, \
+        "reference_window_X should not be affected by changes to cur_window_X"
+    
+    # Extract values for comparison - should be [1.0, 2.0], NOT [1.0, 2.0, 1.0, 2.0]
+    ref_values = [x[0] for x in model.reference_window_X]
+    expected = [1.0, 2.0]
+    assert ref_values == expected, \
+        f"Expected {expected}, but got {ref_values}. Duplication detected!"

@@ -65,8 +65,8 @@ class ReferenceWindowModel(PYODModel):
 
         if not self.initial_ref_window and len(
                 self.cur_window_X) < self.window_size:
-            self.reference_window_X = self.cur_window_X
-            self.reference_window_y = self.cur_window_y if y is not None else None
+            self.reference_window_X = self.cur_window_X.copy()
+            self.reference_window_y = self.cur_window_y.copy() if y is not None else None
             self._fit_model()
         elif len(self.cur_window_X) % self.sliding_size == 0:
             self.reference_window_X = np.concatenate(

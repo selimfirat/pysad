@@ -30,6 +30,12 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
+    # Install system dependencies required for building scipy from source
+    sudo apt-get update
+    sudo apt-get install -y libopenblas-dev liblapack-dev gfortran pkg-config
+  displayName: 'Install system dependencies'
+
+- script: |
     python -m pip install --upgrade pip
     pip install -r requirements-ci.txt
   displayName: 'Install dependencies'

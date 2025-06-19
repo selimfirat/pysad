@@ -3,7 +3,7 @@ import numpy as np
 
 
 class ReferenceWindowModel(PYODModel):
-    """This PyOD model wrapper wraps the batch anomaly detectors. This wrapper keeps track of the reference window of size `window_length`. For every `sliding_size` instnaces, it resets the model by training new `model_cls` instance with the reference window. This implementation is based on the reference windowing described in :cite:`xstream`.
+    """This PyOD model wrapper wraps the batch anomaly detectors. This wrapper keeps track of the reference window of size `window_size`. For every `sliding_size` instances, it resets the model by training new `model_cls` instance with the reference window. This implementation is based on the reference windowing described in :cite:`xstream`.
 
         Args:
             model_cls (class): The model class to be instantiated.
@@ -65,8 +65,8 @@ class ReferenceWindowModel(PYODModel):
 
         if not self.initial_ref_window and len(
                 self.cur_window_X) < self.window_size:
-            self.reference_window_X = self.cur_window_X
-            self.reference_window_y = self.cur_window_y if y is not None else None
+            self.reference_window_X = self.cur_window_X.copy()
+            self.reference_window_y = self.cur_window_y.copy() if y is not None else None
             self._fit_model()
         elif len(self.cur_window_X) % self.sliding_size == 0:
             self.reference_window_X = np.concatenate(

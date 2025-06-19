@@ -20,7 +20,7 @@ maintainers = [
   {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"}
 ]
 description = "PySAD is an open-source python framework for anomaly detection on streaming multivariate data."
-readme = "README.rst"
+readme = {file = "README.rst", content-type = "text/x-rst"}
 license = {file = "LICENSE"}
 keywords = ["outlier detection", "anomaly detection", "machine learning"]
 classifiers = [

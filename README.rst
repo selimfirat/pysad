@@ -191,13 +191,10 @@ Quick Links
 Contributors
 ============
 
-.. raw:: html
-
-   <div align="center">
-     <a href="https://github.com/selimfirat/pysad/graphs/contributors">
-       <img src="https://contrib.rocks/image?repo=selimfirat/pysad" alt="Contributors" />
-     </a>
-   </div>
+.. image:: https://contrib.rocks/image?repo=selimfirat/pysad
+    :target: https://github.com/selimfirat/pysad/graphs/contributors
+    :alt: Contributors
+    :align: center
 
 We thank all our contributors for their valuable input and efforts to make PySAD better!
 

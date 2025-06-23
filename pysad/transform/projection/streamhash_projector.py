@@ -53,7 +53,7 @@ class StreamhashProjector(BaseTransformer):
 
     def _hash_string(self, k, s):
         import mmh3
-        hash_value = int(mmh3.hash(s, signed=False, seed=k)) / (2.0 ** 32 - 1)
+        hash_value = int(mmh3.hash(s, signed=False, seed=int(k))) / (2.0 ** 32 - 1)
         s = self.density
         if hash_value <= s / 2.0:
             return -1 * self.constant

@@ -271,3 +271,55 @@ def test_reference_window_model_issue_23_fix():
     expected = [1.0, 2.0]
     assert ref_values == expected, \
         f"Expected {expected}, but got {ref_values}. Duplication detected!"
+
+
+def test_reference_window_model_issue_25_fix():
+    """Test for the fix of issue #25: Reference window reset bug.
+    
+    The bug: When cur_window_X length is less than window_size after sliding,
+    the reference_window_X is incorrectly reset to just the current window
+    instead of maintaining the properly sized reference window.
+    
+    Test scenario: window_size=4, sliding_size=2, streaming data [1,2,3,4,5,6,7,8,...]
+    The critical test is after sliding occurs and cur_window_X becomes small again,
+    the reference_window_X should NOT be reset to just the current window.
+    """
+    from pysad.models.integrations.reference_window_model import ReferenceWindowModel
+    from pyod.models.iforest import IForest
+    import numpy as np
+    
+    window_size = 4
+    sliding_size = 2
+    
+    model = ReferenceWindowModel(
+        model_cls=IForest,
+        window_size=window_size,
+        sliding_size=sliding_size,
+        initial_window_X=None
+    )
+    
+    # Build up the initial window
+    for i in range(1, 9):
+        model.fit_partial(np.array([float(i)]))
+    
+    # At this point, after several sliding operations, the reference window
+    # should be properly sized (window_size=4) and should NOT be reset to
+    # just the current window when cur_window_X is small
+    
+    # Verify reference window is properly sized
+    assert len(model.reference_window_X) == window_size, \
+        f"Reference window should be size {window_size}, got {len(model.reference_window_X)}"
+    
+    # Verify reference window is not just the current window
+    ref_values = [x[0] for x in model.reference_window_X]
+    cur_values = [x[0] for x in model.cur_window_X] if model.cur_window_X else []
+    
+    # The reference window should not be identical to the current window
+    # (this would indicate the bug where reference_window_X gets reset)
+    assert ref_values != cur_values, \
+        f"Reference window should not be reset to current window. Got ref={ref_values}, cur={cur_values}"
+    
+    # Reference window should contain the most recent window_size elements
+    # from the sliding window, not just the current partial window
+    assert len(ref_values) == window_size, \
+        f"Reference window should maintain size {window_size}, got {len(ref_values)}"

@@ -64,7 +64,8 @@ class ReferenceWindowModel(PYODModel):
             self.cur_window_y.append(y)
 
         if not self.initial_ref_window and len(
-                self.cur_window_X) < self.window_size:
+                self.cur_window_X) < self.window_size and (
+                self.reference_window_X is None or len(self.reference_window_X) < self.window_size):
             self.reference_window_X = self.cur_window_X.copy()
             self.reference_window_y = self.cur_window_y.copy() if y is not None else None
             self._fit_model()

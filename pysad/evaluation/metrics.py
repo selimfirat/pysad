@@ -63,6 +63,9 @@ class AUROCMetric(BaseSKLearnMetric):
     """
 
     def _evaluate(self, y_true, y_pred):
+        # Check if only one class is present
+        if len(set(y_true)) <= 1:
+            raise ValueError("Only one class present in y_true. ROC AUC score is not defined in that case.")
         return roc_auc_score(y_true, y_pred)
 
 

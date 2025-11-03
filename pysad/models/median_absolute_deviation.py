@@ -29,7 +29,8 @@ class MedianAbsoluteDeviation(BaseModel):
         assert len(X) == 1  # Only for time series
 
         self.median_meter.update(X)
-        self.mad_meter.update(X)
+        deviation = abs(X - self.median_meter.get())
+        self.mad_meter.update(deviation)
 
         return self
 

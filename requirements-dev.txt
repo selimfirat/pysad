@@ -11,7 +11,7 @@ pandas==2.2.3
 scipy==1.13.1
 pyod==2.0.5
 rrcf==0.4.4
-PyNomaly==0.3.3
+PyNomaly==0.3.5
 mmh3==2.5.1
 scikit-learn==1.5.2
 setuptools>=49.6.0

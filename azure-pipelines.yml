@@ -40,7 +40,7 @@ steps:
 
 - script: |
     python -m pip install --upgrade pip
-    pip install -r requirements-ci.txt
+    pip install --prefer-binary -r requirements-ci.txt
   displayName: 'Install dependencies'
 
 - script: |

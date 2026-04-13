@@ -119,50 +119,21 @@ Alternatively, you can install the library directly using the source code in Git
 
 **Required Dependencies:**
 
-.. list-table::
-    :header-rows: 1
-
-    * - Package
-       - Version
-    * - Python
-       - 3.10,3.11,3.12,3.13
-    * - numpy
-       - 2.1.3
-    * - scikit-learn
-       - 1.5.2
-    * - scipy
-       - 1.15.3
-    * - pyod
-       - 2.1.0
-    * - combo
-       - 0.1.3
+* Python: 3.10+
+* numpy: 2.1.3
+* scikit-learn: 1.5.2
+* scipy: 1.15.3
+* pyod: 2.1.0
+* combo: 0.1.3
 
 **Optional Dependencies:**
 
-.. list-table::
-    :header-rows: 1
-
-    * - Package
-       - Version
-       - Used For
-    * - rrcf
-       - 0.4.4
-       - ``pysad.models.robust_random_cut_forest.RobustRandomCutForest``
-    * - PyNomaly
-       - 0.3.5
-       - ``pysad.models.loop.StreamLocalOutlierProbability``
-    * - mmh3
-       - 2.5.1
-       - ``pysad.models.xstream.xStream``
-    * - pandas
-       - 2.2.3
-       - ``pysad.utils.pandas_streamer.PandasStreamer``
-    * - jax
-       - >=0.6.1
-       - ``pysad.models.inqmad.Inqmad`` (NumPy 2.0+ compatibility)
-    * - jaxlib
-       - >=0.6.1
-       - ``pysad.models.inqmad.Inqmad`` (NumPy 2.0+ compatibility)
+* rrcf: 0.4.4 (for ``pysad.models.robust_random_cut_forest.RobustRandomCutForest``)
+* PyNomaly: 0.3.5 (for ``pysad.models.loop.StreamLocalOutlierProbability``)
+* mmh3: 2.5.1 (for ``pysad.models.xstream.xStream``)
+* pandas: 2.2.3 (for ``pysad.utils.pandas_streamer.PandasStreamer``)
+* jax: >=0.6.1 (for ``pysad.models.inqmad.Inqmad``; required for NumPy 2.0+ compatibility of this module)
+* jaxlib: >=0.6.1 (for ``pysad.models.inqmad.Inqmad``; required forNumPy 2.0+ compatibility of this module)
 
 Examples
 ========
@@ -218,10 +189,13 @@ Quick Links
 Contributors
 ============
 
-.. image:: https://contrib.rocks/image?repo=selimfirat/pysad
-    :target: https://github.com/selimfirat/pysad/graphs/contributors
-    :alt: Contributors
-    :align: center
+.. raw:: html
+
+   <div align="center">
+     <a href="https://github.com/selimfirat/pysad/graphs/contributors">
+       <img src="https://contrib.rocks/image?repo=selimfirat/pysad" alt="Contributors" />
+     </a>
+   </div>
 
 We thank all our contributors for their valuable input and efforts to make PySAD better!
 

@@ -125,7 +125,7 @@ Alternatively, you can install the library directly using the source code in Git
     * - Package
        - Version
     * - Python
-       - 3.10+
+       - 3.10,3.11,3.12,3.13
     * - numpy
        - 2.1.3
     * - scikit-learn

@@ -119,23 +119,50 @@ Alternatively, you can install the library directly using the source code in Git
 
 **Required Dependencies:**
 
+.. list-table::
+    :header-rows: 1
 
-* Python 3.10+
-* numpy==2.0.2
-* scikit-learn==1.5.2
-* scipy==1.13.1
-* pyod==2.0.5
-* combo==0.1.3
+    * - Package
+       - Version
+    * - Python
+       - 3.10+
+    * - numpy
+       - 2.1.3
+    * - scikit-learn
+       - 1.5.2
+    * - scipy
+       - 1.15.3
+    * - pyod
+       - 2.1.0
+    * - combo
+       - 0.1.3
 
 **Optional Dependencies:**
 
+.. list-table::
+    :header-rows: 1
 
-* rrcf==0.4.3 (Only required for  `pysad.models.robust_random_cut_forest.RobustRandomCutForest`)
-* PyNomaly==0.3.3 (Only required for  `pysad.models.loop.StreamLocalOutlierProbability`)
-* mmh3==2.5.1 (Only required for  `pysad.models.xstream.xStream`)
-* pandas==2.2.3 (Only required for  `pysad.utils.pandas_streamer.PandasStreamer`)
-* jax>=0.6.1 (Only required for  `pysad.models.inqmad.Inqmad`; required for NumPy 2.0+ compatibility)
-* jaxlib>=0.6.1 (Only required for  `pysad.models.inqmad.Inqmad`; required for NumPy 2.0+ compatibility)
+    * - Package
+       - Version
+       - Used For
+    * - rrcf
+       - 0.4.4
+       - ``pysad.models.robust_random_cut_forest.RobustRandomCutForest``
+    * - PyNomaly
+       - 0.3.5
+       - ``pysad.models.loop.StreamLocalOutlierProbability``
+    * - mmh3
+       - 2.5.1
+       - ``pysad.models.xstream.xStream``
+    * - pandas
+       - 2.2.3
+       - ``pysad.utils.pandas_streamer.PandasStreamer``
+    * - jax
+       - >=0.6.1
+       - ``pysad.models.inqmad.Inqmad`` (NumPy 2.0+ compatibility)
+    * - jaxlib
+       - >=0.6.1
+       - ``pysad.models.inqmad.Inqmad`` (NumPy 2.0+ compatibility)
 
 Examples
 ========

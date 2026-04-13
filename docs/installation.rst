@@ -36,4 +36,4 @@ Alternatively, you can install the library directly using the source code in Git
 * mmh3: 2.5.1 (for ``pysad.models.xstream.xStream``)
 * pandas: 2.2.3 (for ``pysad.utils.pandas_streamer.PandasStreamer``)
 * jax: >=0.6.1 (for ``pysad.models.inqmad.Inqmad``; required for NumPy 2.0+ compatibility of this module)
-* jaxlib: >=0.6.1 (for ``pysad.models.inqmad.Inqmad``; required forNumPy 2.0+ compatibility of this module)
+* jaxlib: >=0.6.1 (for ``pysad.models.inqmad.Inqmad``; required for NumPy 2.0+ compatibility of this module)

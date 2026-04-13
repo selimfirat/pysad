@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysad"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
   "numpy",
   "scikit-learn",
@@ -45,7 +45,7 @@ classifiers = [
 
 [project.optional-dependencies]
 rrcf = ["rrcf==0.4.4"]
-slop = ["PyNomaly==0.3.3"]
+slop = ["PyNomaly==0.3.5"]
 xStream = ["mmh3==2.5.1"]
 pandas = ["pandas"]
 inqmad = ["jax>=0.6.1", "jaxlib>=0.6.1"]

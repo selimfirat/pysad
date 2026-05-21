@@ -4,5 +4,11 @@ The :mod:`pysad.transform.preprocessing` module includes preprocessing methods t
 from .identity_scaler import IdentityScaler
 from .instance_standard_scaler import InstanceStandardScaler
 from .instance_unit_norm_scaler import InstanceUnitNormScaler
+from .seasonal_trend_decomposer import SeasonalTrendDecomposer
 
-__all__ = ["IdentityScaler", "InstanceStandardScaler", "InstanceUnitNormScaler"]
+__all__ = [
+    "IdentityScaler",
+    "InstanceStandardScaler",
+    "InstanceUnitNormScaler",
+    "SeasonalTrendDecomposer",
+]

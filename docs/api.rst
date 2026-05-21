@@ -154,6 +154,7 @@ Preprocessors
     transform.preprocessing.IdentityScaler
     transform.preprocessing.InstanceStandardScaler
     transform.preprocessing.InstanceUnitNormScaler
+    transform.preprocessing.SeasonalTrendDecomposer
 
 
 Postprocessors
@@ -250,4 +251,3 @@ Utilities
     utils.get_minmax_array
     utils.get_minmax_scalar
     utils.fix_seed
-

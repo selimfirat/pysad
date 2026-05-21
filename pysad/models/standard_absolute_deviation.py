@@ -7,6 +7,12 @@ from pysad.statistics.variance_meter import VarianceMeter
 class StandardAbsoluteDeviation(BaseModel):
     """The model that assigns the deviation from the mean (or median) and divides with the standard deviation. This model is based on the 3-Sigma rule described in :cite:`hochenbaum2017automatic`.
 
+        This model only performs streaming univariate statistical scoring. It
+        does not apply STL decomposition, detrending, or deseasonalization
+        internally; preprocess seasonal or trending series before
+        fitting/scoring, for example with
+        :class:`pysad.transform.preprocessing.SeasonalTrendDecomposer`.
+
         substracted_statistic (str): The statistic to be substracted for scoring. It is either "mean" or "median". (Default="mean").
         absolute (bool): Whether to output score's absolute value. (Default=True).
     """

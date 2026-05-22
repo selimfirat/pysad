@@ -43,3 +43,33 @@ def test_modified_stl_residual_validates_inputs():
 
     with assert_raises(ValueError):
         ModifiedSTLResidualTransformer(period=3, window_size=5)
+
+
+def test_modified_stl_residual_fit_handles_base_transformer_tuple(monkeypatch):
+    import numpy as np
+    import sys
+    import types
+    from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
+
+    class DummySTL:
+        def __init__(self, X, period, robust, **kwargs):
+            self.X = X
+
+        def fit(self):
+            class Result:
+                seasonal = np.zeros(4)
+
+            return Result()
+
+    statsmodels_module = types.ModuleType("statsmodels")
+    tsa_module = types.ModuleType("statsmodels.tsa")
+    seasonal_module = types.ModuleType("statsmodels.tsa.seasonal")
+    seasonal_module.STL = DummySTL
+    monkeypatch.setitem(sys.modules, "statsmodels", statsmodels_module)
+    monkeypatch.setitem(sys.modules, "statsmodels.tsa", tsa_module)
+    monkeypatch.setitem(sys.modules, "statsmodels.tsa.seasonal", seasonal_module)
+
+    transformer = ModifiedSTLResidualTransformer(period=2, window_size=4)
+    transformer.fit(np.array([[1.0], [2.0], [3.0], [4.0]]))
+
+    assert transformer.window.get() == [1.0, 2.0, 3.0, 4.0]

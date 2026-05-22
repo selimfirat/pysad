@@ -38,7 +38,14 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         self.stl_kwargs = stl_kwargs
         self.window = Window(window_size) if window_size is not None else None
 
+    def _normalize_input(self, X):
+        if isinstance(X, tuple):
+            X = X[0]
+
+        return X
+
     def _as_univariate(self, X):
+        X = self._normalize_input(X)
         X = np.asarray(X, dtype=np.float64)
 
         if X.ndim == 2 and X.shape[1] == 1:

@@ -33,6 +33,9 @@ class SeasonalESD(BaseModel):
         if max_anomalies < 1:
             raise ValueError("max_anomalies must be greater than 0.")
 
+        if window_size < 2 * period:
+            raise ValueError("window_size must be at least 2 * period.")
+
         if max_anomalies > int(window_size * 0.49):
             raise ValueError(
                 "max_anomalies must be less than or equal to window_size * 0.49.")

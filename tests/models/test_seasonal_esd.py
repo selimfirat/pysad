@@ -62,3 +62,11 @@ def test_seasonal_esd_validates_configuration():
 
     with assert_raises(ValueError):
         SeasonalESD(period=2, window_size=5, max_anomalies=3)
+
+
+def test_seasonal_esd_rejects_short_windows():
+    from numpy.testing import assert_raises
+    from pysad.models import SeasonalESD
+
+    with assert_raises(ValueError):
+        SeasonalESD(period=10, window_size=15, max_anomalies=1)

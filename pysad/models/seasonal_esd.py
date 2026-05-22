@@ -1,0 +1,138 @@
+import numpy as np
+from scipy.stats import t
+
+from pysad.core.base_model import BaseModel
+from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
+from pysad.utils import Window
+
+
+class SeasonalESD(BaseModel):
+    """Window-based Seasonal ESD model :cite:`hochenbaum2017automatic`.
+
+    This model computes the modified STL residual over a fixed-size PySAD
+    window, applies generalized ESD to the residuals, and scores the latest
+    observation when it is selected as anomalous.
+
+    Args:
+        period (int): Number of observations in one seasonal period.
+        window_size (int): Number of recent observations used for STL and ESD.
+        max_anomalies (int): Maximum number of anomalies tested by ESD.
+        alpha (float): ESD significance level. (Default=0.05).
+        robust (bool): Whether to use robust STL fitting. (Default=True).
+        **stl_kwargs: Additional keyword arguments passed to STL.
+    """
+
+    def __init__(
+            self,
+            period,
+            window_size,
+            max_anomalies,
+            alpha=0.05,
+            robust=True,
+            **stl_kwargs):
+        if max_anomalies < 1:
+            raise ValueError("max_anomalies must be greater than 0.")
+
+        if max_anomalies > int(window_size * 0.49):
+            raise ValueError(
+                "max_anomalies must be less than or equal to window_size * 0.49.")
+
+        self.period = period
+        self.window_size = window_size
+        self.max_anomalies = max_anomalies
+        self.alpha = alpha
+        self.window = Window(window_size)
+        self.residual_transformer = ModifiedSTLResidualTransformer(
+            period=period,
+            window_size=window_size,
+            robust=robust,
+            **stl_kwargs
+        )
+
+    def _as_value(self, X):
+        X = np.asarray(X, dtype=np.float64)
+
+        if X.shape != (1,):
+            raise ValueError("SeasonalESD supports univariate inputs.")
+
+        return X[0]
+
+    def _center_scale(self, values):
+        return np.mean(values), np.std(values, ddof=1)
+
+    def _candidate_window(self, X):
+        value = self._as_value(X)
+        values = self.window.get()
+
+        if len(values) == 0 or not np.array_equal(np.asarray(values[-1]), value):
+            values = values + [value]
+            values = values[-self.window_size:]
+
+        return np.asarray(values, dtype=np.float64)
+
+    def _critical_value(self, n, i):
+        p = 1.0 - self.alpha / (2.0 * (n - i + 1))
+        t_value = t.ppf(p, n - i - 1)
+        return ((n - i) * t_value) / np.sqrt((n - i - 1 + t_value**2) * (n - i + 1))
+
+    def _esd(self, values):
+        remaining_values = np.asarray(values, dtype=np.float64)
+        remaining_indices = np.arange(remaining_values.shape[0])
+        candidates = []
+
+        for i in range(1, self.max_anomalies + 1):
+            center, scale = self._center_scale(remaining_values)
+            if scale <= 1e-10:
+                break
+
+            deviations = np.abs(remaining_values - center) / scale
+            local_idx = int(np.argmax(deviations))
+            candidates.append((
+                remaining_indices[local_idx],
+                deviations[local_idx],
+                self._critical_value(values.shape[0], i)
+            ))
+            remaining_values = np.delete(remaining_values, local_idx)
+            remaining_indices = np.delete(remaining_indices, local_idx)
+
+        selected_count = 0
+        for i, (_, statistic, critical_value) in enumerate(candidates, start=1):
+            if statistic > critical_value:
+                selected_count = i
+
+        return candidates[:selected_count]
+
+    def fit_partial(self, X, y=None):
+        """Adds the next instance to the model window."""
+        self.window.update(self._as_value(X))
+        return self
+
+    def score_partial(self, X):
+        """Scores whether the latest instance is anomalous in the current window."""
+        values = self._candidate_window(X)
+
+        if values.shape[0] < self.window_size:
+            return 0.0
+
+        residuals = self.residual_transformer.transform_window(values)
+        anomalies = self._esd(residuals)
+        latest_idx = values.shape[0] - 1
+
+        for idx, statistic, _ in anomalies:
+            if idx == latest_idx:
+                return statistic
+
+        return 0.0
+
+
+class SeasonalHybridESD(SeasonalESD):
+    """Window-based Seasonal Hybrid ESD model :cite:`hochenbaum2017automatic`.
+
+    This model follows Seasonal ESD's modified STL residual step, but uses the
+    robust median and MAD-based scale in the ESD statistic.
+    """
+
+    def _center_scale(self, values):
+        center = np.median(values)
+        scale = 1.4826 * np.median(np.abs(values - center))
+        return center, scale

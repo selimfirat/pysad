@@ -5,12 +5,14 @@ from pysad.utils import Window
 
 
 class ModifiedSTLResidualTransformer(BaseTransformer):
-    """Modified STL residual transformer used by Seasonal ESD.
+    """Modified STL residual transformer used by S-ESD and S-H-ESD.
 
     The transformer follows the residual construction in
     :cite:`hochenbaum2017automatic`: estimate the seasonal component with STL,
     replace STL's trend component with the median of the raw series, and return
-    ``X - seasonal - median(X)``.
+    ``X - seasonal - median(X)``. It owns only the paper's residual step; use
+    :class:`pysad.models.SeasonalESD` or
+    :class:`pysad.models.SeasonalHybridESD` for the full detector.
 
     Args:
         period (int): Number of observations in one seasonal period.

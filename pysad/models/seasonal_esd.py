@@ -9,9 +9,9 @@ from pysad.utils import Window
 class SeasonalESD(BaseModel):
     """Window-based Seasonal ESD model :cite:`hochenbaum2017automatic`.
 
-    This model computes the modified STL residual over a fixed-size PySAD
-    window, applies generalized ESD to the residuals, and scores the latest
-    observation when it is selected as anomalous.
+    This is the paper's S-ESD method: compute the modified STL residual
+    ``X - seasonal - median(X)`` over a fixed-size PySAD window, then apply
+    generalized ESD with mean and standard deviation to the residuals.
 
     Args:
         period (int): Number of observations in one seasonal period.
@@ -128,8 +128,9 @@ class SeasonalESD(BaseModel):
 class SeasonalHybridESD(SeasonalESD):
     """Window-based Seasonal Hybrid ESD model :cite:`hochenbaum2017automatic`.
 
-    This model follows Seasonal ESD's modified STL residual step, but uses the
-    robust median and MAD-based scale in the ESD statistic.
+    This is the paper's S-H-ESD method: use the same modified STL residual as
+    :class:`SeasonalESD`, then replace ESD's mean and standard deviation with
+    median and MAD-based scale in the test statistic.
     """
 
     def _center_scale(self, values):

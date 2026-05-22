@@ -11,7 +11,9 @@ class SeasonalTrendDecomposer(BaseTransformer):
     The transformer subtracts a rolling mean trend estimate and a running
     average seasonal estimate for each position in the season. This is an
     online approximation intended for preprocessing before univariate anomaly
-    scoring; it is not an STL implementation.
+    scoring; it is not an STL implementation and does not reproduce the
+    modified STL residual used by Seasonal ESD in
+    :cite:`hochenbaum2017automatic`.
 
     Args:
         season_length (int): Number of observations in one seasonal period.

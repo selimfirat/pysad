@@ -65,13 +65,13 @@ class SeasonalESD(BaseModel):
 
     def _candidate_window(self, X):
         value = self._as_value(X)
-        values = self.window.get()
-
-        if len(values) == 0 or not np.array_equal(np.asarray(values[-1]), value):
-            values = values + [value]
-            values = values[-self.window_size:]
+        values = self.window.get() + [value]
+        values = values[-self.window_size:]
 
         return np.asarray(values, dtype=np.float64)
+
+    def _current_window(self):
+        return np.asarray(self.window.get(), dtype=np.float64)
 
     def _critical_value(self, n, i):
         p = 1.0 - self.alpha / (2.0 * (n - i + 1))
@@ -110,10 +110,7 @@ class SeasonalESD(BaseModel):
         self.window.update(self._as_value(X))
         return self
 
-    def score_partial(self, X):
-        """Scores whether the latest instance is anomalous in the current window."""
-        values = self._candidate_window(X)
-
+    def _score_window(self, values):
         if values.shape[0] < self.window_size:
             return 0.0
 
@@ -126,6 +123,15 @@ class SeasonalESD(BaseModel):
                 return statistic
 
         return 0.0
+
+    def score_partial(self, X):
+        """Scores whether the next instance is anomalous in a candidate window."""
+        return self._score_window(self._candidate_window(X))
+
+    def fit_score_partial(self, X, y=None):
+        """Adds and scores the next instance without adding it twice."""
+        self.fit_partial(X, y)
+        return self._score_window(self._current_window())
 
 
 class SeasonalHybridESD(SeasonalESD):

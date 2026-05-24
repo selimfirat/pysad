@@ -53,6 +53,50 @@ def test_seasonal_esd_uses_window_for_latest_candidate(monkeypatch):
     assert seen_window_sizes == [5]
 
 
+def test_seasonal_esd_scores_repeated_latest_candidate(monkeypatch):
+    import numpy as np
+    from pysad.models import SeasonalESD
+
+    seen_windows = []
+
+    def fake_transform(self, values):
+        seen_windows.append(np.asarray(values, dtype=float).copy())
+        return np.asarray(values, dtype=float)
+
+    monkeypatch.setattr(
+        "pysad.models.seasonal_esd.ModifiedSTLResidualTransformer.transform_window",
+        fake_transform,
+    )
+
+    model = SeasonalESD(period=2, window_size=5, max_anomalies=1)
+    model.fit(np.array([[0.0], [1.0], [2.0], [3.0]]))
+    model.score_partial(np.array([3.0]))
+
+    assert np.array_equal(seen_windows[0], np.array([0.0, 1.0, 2.0, 3.0, 3.0]))
+
+
+def test_seasonal_esd_fit_score_does_not_double_append(monkeypatch):
+    import numpy as np
+    from pysad.models import SeasonalESD
+
+    seen_windows = []
+
+    def fake_transform(self, values):
+        seen_windows.append(np.asarray(values, dtype=float).copy())
+        return np.asarray(values, dtype=float)
+
+    monkeypatch.setattr(
+        "pysad.models.seasonal_esd.ModifiedSTLResidualTransformer.transform_window",
+        fake_transform,
+    )
+
+    model = SeasonalESD(period=2, window_size=5, max_anomalies=1)
+    model.fit(np.array([[0.0], [1.0], [2.0], [3.0]]))
+    model.fit_score_partial(np.array([3.0]))
+
+    assert np.array_equal(seen_windows[0], np.array([0.0, 1.0, 2.0, 3.0, 3.0]))
+
+
 def test_seasonal_esd_validates_configuration():
     from numpy.testing import assert_raises
     from pysad.models import SeasonalESD

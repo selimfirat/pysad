@@ -73,3 +73,51 @@ def test_modified_stl_residual_fit_handles_base_transformer_tuple(monkeypatch):
     transformer.fit(np.array([[1.0], [2.0], [3.0], [4.0]]))
 
     assert transformer.window.get() == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_modified_stl_residual_transform_partial_includes_repeated_candidate(monkeypatch):
+    import numpy as np
+    from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
+
+    seen_windows = []
+
+    def fake_transform_window(self, X):
+        seen_windows.append(np.asarray(X, dtype=float).copy())
+        return np.asarray(X, dtype=float)
+
+    monkeypatch.setattr(
+        "pysad.transform.preprocessing.modified_stl_residual."
+        "ModifiedSTLResidualTransformer.transform_window",
+        fake_transform_window,
+    )
+
+    transformer = ModifiedSTLResidualTransformer(period=2, window_size=4)
+    transformer.fit(np.array([[1.0], [2.0], [3.0]]))
+    residual = transformer.transform_partial(np.array([3.0]))
+
+    assert residual == 3.0
+    assert np.array_equal(seen_windows[0], np.array([1.0, 2.0, 3.0, 3.0]))
+
+
+def test_modified_stl_residual_fit_transform_partial_does_not_double_append(monkeypatch):
+    import numpy as np
+    from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
+
+    seen_windows = []
+
+    def fake_transform_window(self, X):
+        seen_windows.append(np.asarray(X, dtype=float).copy())
+        return np.asarray(X, dtype=float)
+
+    monkeypatch.setattr(
+        "pysad.transform.preprocessing.modified_stl_residual."
+        "ModifiedSTLResidualTransformer.transform_window",
+        fake_transform_window,
+    )
+
+    transformer = ModifiedSTLResidualTransformer(period=2, window_size=4)
+    transformer.fit(np.array([[1.0], [2.0], [3.0]]))
+    residual = transformer.fit_transform_partial(np.array([3.0]))
+
+    assert residual == 3.0
+    assert np.array_equal(seen_windows[0], np.array([1.0, 2.0, 3.0, 3.0]))

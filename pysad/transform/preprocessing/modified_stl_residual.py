@@ -92,19 +92,34 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         self.window.update(X[0])
         return self
 
+    def _as_partial_value(self, X):
+        X = self._as_univariate(X)
+        if X.shape[0] != 1:
+            raise ValueError("Partial operations require a single univariate value.")
+
+        return X[0]
+
+    def _current_values(self):
+        return np.asarray(self.window.get(), dtype=np.float64)
+
+    def _candidate_values(self, X):
+        value = self._as_partial_value(X)
+        values = self.window.get() + [value]
+        values = values[-self.window_size:]
+        return np.asarray(values, dtype=np.float64)
+
+    def _latest_residual(self, values):
+        residuals = self.transform_window(values)
+        return residuals[-1]
+
     def transform_partial(self, X):
-        """Returns the latest residual for the current candidate window."""
+        """Returns the latest residual for the next candidate window."""
         if self.window is None:
             raise ValueError("window_size is required for partial transforms.")
 
-        X = self._as_univariate(X)
-        if X.shape[0] != 1:
-            raise ValueError("Partial transforms require a single univariate value.")
+        return self._latest_residual(self._candidate_values(X))
 
-        values = self.window.get()
-        if len(values) == 0 or not np.array_equal(np.asarray(values[-1]), X[0]):
-            values = values + [X[0]]
-            values = values[-self.window_size:]
-
-        residuals = self.transform_window(values)
-        return residuals[-1]
+    def fit_transform_partial(self, X):
+        """Adds and transforms the next timestep without adding it twice."""
+        self.fit_partial(X)
+        return self._latest_residual(self._current_values())

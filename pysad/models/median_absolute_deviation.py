@@ -5,6 +5,11 @@ from pysad.statistics.median_meter import MedianMeter
 class MedianAbsoluteDeviation(BaseModel):
     """Median Absolute Deviation method :cite:`hochenbaum2017automatic`.
 
+    This is a streaming MAD score component, not the paper's S-H-ESD method.
+    It does not apply STL decomposition or generalized ESD internally. Use
+    :class:`pysad.models.SeasonalHybridESD` for the paper's modified-STL plus
+    median/MAD ESD detector.
+
     Args:
         absolute (bool): Whether to output score's absolute value (Default=True).
         b (float): The default value `1.4826` is used for normally distributed data. See :cite:`hochenbaum2017automatic` for details. (Default=1.4826).

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysad"
-version = "0.4.0"
+dynamic = ["version"]
 dependencies = [
   "numpy",
   "scikit-learn",
@@ -57,3 +57,6 @@ Documentation = "https://pysad.readthedocs.io/"
 Repository = "https://github.com/selimfirat/pysad.git"
 "Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
 Changelog = "https://github.com/selimfirat/pysad/blob/master/CHANGES.txt"
+
+[tool.setuptools.dynamic]
+version = {attr = "pysad.version.__version__"}

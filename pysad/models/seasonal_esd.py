@@ -40,6 +40,9 @@ class SeasonalESD(BaseModel):
             raise ValueError(
                 "max_anomalies must be less than or equal to window_size * 0.49.")
 
+        if not np.isfinite(alpha) or not (0 < alpha < 1):
+            raise ValueError("alpha must be finite and between 0 and 1.")
+
         self.period = period
         self.window_size = window_size
         self.max_anomalies = max_anomalies

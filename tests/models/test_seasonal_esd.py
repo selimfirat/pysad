@@ -114,3 +114,13 @@ def test_seasonal_esd_rejects_short_windows():
 
     with assert_raises(ValueError):
         SeasonalESD(period=10, window_size=15, max_anomalies=1)
+
+
+def test_seasonal_esd_rejects_invalid_alpha():
+    import numpy as np
+    from numpy.testing import assert_raises
+    from pysad.models import SeasonalESD
+
+    for alpha in (0.0, 1.0, -0.1, np.nan, np.inf):
+        with assert_raises(ValueError):
+            SeasonalESD(period=2, window_size=5, max_anomalies=1, alpha=alpha)

@@ -19,6 +19,11 @@ Release flow
   published. It builds the package, checks the distribution metadata and
   publishes to PyPI using trusted publishing.
 
+The Release Please workflow must use ``RELEASE_PLEASE_TOKEN`` rather than the
+default ``GITHUB_TOKEN``. GitHub suppresses downstream workflow runs for events
+created by ``GITHUB_TOKEN``, so a release created with the default token would
+not trigger the PyPI publishing workflow.
+
 Version source
 --------------
 
@@ -32,3 +37,7 @@ PyPI setup
 PyPI publishing uses OpenID Connect trusted publishing. Configure the PyPI
 project with this GitHub repository, the ``Publish`` workflow and the ``pypi``
 environment before the first automated release.
+
+Release validation runs in CI for release-related changes. It builds the
+package, runs ``twine check`` and verifies that the workflow's PyPI project URL
+matches PyPI's JSON API for ``pysad``.

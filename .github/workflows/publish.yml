@@ -45,7 +45,7 @@ jobs:
       id-token: write
     environment:
       name: pypi
-      url: https://pypi.org/p/pysad
+      url: https://pypi.org/project/pysad/
     steps:
       - name: Download distribution artifact
         uses: actions/download-artifact@v4

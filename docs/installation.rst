@@ -26,7 +26,7 @@ Alternatively, you can install the library directly using the source code in Git
 * numpy: 2.1.3
 * scikit-learn: 1.5.2
 * scipy: 1.15.3
-* pyod: 2.1.0
+* pyod: 3.5.2
 * combo: 0.1.3
 
 **Optional Dependencies:**

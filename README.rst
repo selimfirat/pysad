@@ -16,10 +16,6 @@ Python Streaming Anomaly Detection (PySAD)
    :target: https://pysad.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation status
 
-.. image:: https://badges.gitter.im/selimfirat-pysad/community.svg
-   :target: https://gitter.im/selimfirat-pysad/community?utm_source=share-link&utm_medium=link&utm_campaign=share-link
-   :alt: Gitter
-
 .. image:: https://dev.azure.com/selimfirat/pysad/_apis/build/status/selimfirat.pysad?branchName=master
    :target: https://dev.azure.com/selimfirat/pysad/_build/latest?definitionId=2&branchName=master
    :alt: Azure Pipelines Build Status
@@ -123,7 +119,7 @@ Alternatively, you can install the library directly using the source code in Git
 * numpy: 2.1.3
 * scikit-learn: 1.5.2
 * scipy: 1.15.3
-* pyod: 2.1.0
+* pyod: 3.5.2
 * combo: 0.1.3
 
 **Optional Dependencies:**

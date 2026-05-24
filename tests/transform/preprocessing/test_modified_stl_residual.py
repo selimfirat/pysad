@@ -121,3 +121,27 @@ def test_modified_stl_residual_fit_transform_partial_does_not_double_append(monk
 
     assert residual == 3.0
     assert np.array_equal(seen_windows[0], np.array([1.0, 2.0, 3.0, 3.0]))
+
+
+def test_modified_stl_residual_fit_transform_cold_starts_until_enough_values(monkeypatch):
+    import numpy as np
+    from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
+
+    seen_windows = []
+
+    def fake_transform_window(self, X):
+        seen_windows.append(np.asarray(X, dtype=float).copy())
+        return np.asarray(X, dtype=float)
+
+    monkeypatch.setattr(
+        "pysad.transform.preprocessing.modified_stl_residual."
+        "ModifiedSTLResidualTransformer.transform_window",
+        fake_transform_window,
+    )
+
+    transformer = ModifiedSTLResidualTransformer(period=2, window_size=4)
+    residuals = transformer.fit_transform(np.array([[1.0], [2.0], [3.0], [4.0]]))
+
+    assert np.array_equal(residuals.ravel(), np.array([0.0, 0.0, 0.0, 4.0]))
+    assert len(seen_windows) == 1
+    assert np.array_equal(seen_windows[0], np.array([1.0, 2.0, 3.0, 4.0]))

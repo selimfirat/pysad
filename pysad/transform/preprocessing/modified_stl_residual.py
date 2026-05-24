@@ -109,6 +109,9 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         return np.asarray(values, dtype=np.float64)
 
     def _latest_residual(self, values):
+        if values.shape[0] < 2 * self.period:
+            return 0.0
+
         residuals = self.transform_window(values)
         return residuals[-1]
 

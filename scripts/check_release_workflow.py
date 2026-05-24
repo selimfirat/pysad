@@ -47,8 +47,8 @@ def check_release_please() -> None:
     )
     require_pattern(
         workflow,
-        r"^\s*target-branch:\s*develop\s*$",
-        "Release Please must target develop.",
+        r"^\s*target-branch:\s*master\s*$",
+        "Release Please must target master.",
     )
     require(config["packages"]["."]["release-type"] == "python", "Release Please must use python releases.")
     require(

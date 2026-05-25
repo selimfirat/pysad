@@ -1,5 +1,5 @@
 """
-The :mod:`pysad.utils` module includes utility functions used in the `PySAD` framework, which can also be useful streaming learning.
+The :mod:`pysad.utils` module includes utility functions used in the `PySAD` framework, which can also be useful for streaming learning.
 """
 from .array_streamer import ArrayStreamer
 import random
@@ -40,7 +40,7 @@ def get_minmax_scalar(x):
     """Utility method that returns the boundaries of the input array.
 
     Args:
-        X (np.float64 array of any shape): Input array.
+        x (np.float64 array of any shape): Input array.
     Returns:
         float: Minimum value in array.
         float: Maximum value in array.

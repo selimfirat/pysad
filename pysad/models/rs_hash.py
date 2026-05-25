@@ -96,7 +96,7 @@ class RSHash(BaseModel):
         return self
 
     def score_partial(self, X):
-        """Scores the anomalousness of the next instance. Outputs the last score. Note that this method must be called after the fit_partial
+        """Scores the anomalousness of the next instance. Outputs the last score. Note that this method must be called after fit_partial is called.
 
         Args:
             X (any): Ignored.

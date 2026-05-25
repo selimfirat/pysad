@@ -5,7 +5,7 @@ from pysad.utils.window import Window
 
 
 class ExactStorm(BaseModel):
-    """The Exact-STORM method :cite:`angiulli2007detecting`. This method assigns anomaly score that is the mean of distances to the instances in window of length `window_size` with distnaces less than `max_radius`. Note that the decision making in :cite:`angiulli2007detecting` is not implemented.
+    """The Exact-STORM method :cite:`angiulli2007detecting`. This method assigns anomaly score that is the mean of distances to the instances in window of length `window_size` with distances less than `max_radius`. Note that the decision making in :cite:`angiulli2007detecting` is not implemented.
 
             Args:
                 window_size : int (Default=10000)

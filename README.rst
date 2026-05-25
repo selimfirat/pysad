@@ -59,13 +59,13 @@ Features
 Online Anomaly Detection
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-`PySAD` provides methods for online/sequential anomaly detection, i.e. anomaly detection on streaming data, where model updates itself as a new instance arrives.
+`PySAD` provides methods for online/sequential anomaly detection, i.e. anomaly detection on streaming data, where the model updates itself as a new instance arrives.
 
 
 Resource-Efficient
 ^^^^^^^^^^^^^^^^^^
 
-Streaming methods efficiently handle the limitied memory and processing time requirements of the data streams so that they can be used in near real-time. The methods can only store an instance or a small window of recent instances.
+Streaming methods efficiently handle the limited memory and processing time requirements of the data streams so that they can be used in near real-time. The methods can only store an instance or a small window of recent instances.
 
 
 Complete

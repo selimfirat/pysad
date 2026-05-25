@@ -47,7 +47,10 @@ Contributors
 
 We thank all our contributors for their valuable input and efforts to make PySAD better!
 
-.. include:: docs/versioning.rst
+Versioning
+==========
+
+`Semantic versioning <http://semver.org/>`_ is used for this project.
 
 .. include:: docs/license.rst
 

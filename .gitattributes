@@ -1,2 +1,4 @@
 docs/* linguist-documentation
 examples/*.ipynb linguist-documentation=false
+
+.github/workflows/*.lock.yml linguist-generated=true merge=ours

@@ -25,7 +25,7 @@ readme = {file = "README.rst", content-type = "text/x-rst"}
 license = {file = "LICENSE"}
 keywords = ["outlier detection", "anomaly detection", "machine learning"]
 classifiers = [
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Education',
         'Intended Audience :: Financial and Insurance Industry',
         'Intended Audience :: Developers',

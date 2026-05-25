@@ -11,6 +11,15 @@ class RobustRandomCutForest(BaseModel):
     """
 
     def __init__(self, num_trees=4, shingle_size=4, tree_size=256):
+        import sys
+        from unittest.mock import MagicMock
+
+        # Mock pkg_resources to prevent importing the real deprecated pkg_resources when importing rrcf
+        if 'pkg_resources' not in sys.modules:
+            mock_pkg_resources = MagicMock()
+            mock_pkg_resources.get_distribution.return_value.version = "0.4.4"
+            sys.modules['pkg_resources'] = mock_pkg_resources
+
         from rrcf import rrcf
 
         self.tree_size = tree_size

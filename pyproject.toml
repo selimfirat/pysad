@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysad"
-version = "0.4.0"
+dynamic = ["version"]
 dependencies = [
   "numpy",
   "scikit-learn",
   "scipy",
-  "pyod==2.0.5",
+  "statsmodels",
+  "pyod==3.5.2",
   "combo==0.1.3",
 ]
 requires-python = ">=3.10"
@@ -24,7 +25,7 @@ readme = {file = "README.rst", content-type = "text/x-rst"}
 license = {file = "LICENSE"}
 keywords = ["outlier detection", "anomaly detection", "machine learning"]
 classifiers = [
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Education',
         'Intended Audience :: Financial and Insurance Industry',
         'Intended Audience :: Developers',
@@ -57,3 +58,5 @@ Repository = "https://github.com/selimfirat/pysad.git"
 "Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
 Changelog = "https://github.com/selimfirat/pysad/blob/master/CHANGES.txt"
 
+[tool.setuptools.dynamic]
+version = {attr = "pysad.version.__version__"}

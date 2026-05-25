@@ -29,7 +29,7 @@ setup(
     setup_requires=['setuptools>=38.6.0'],
     download_url="https://github.com/selimfirat/pysad/archive/master.zip",
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Education',
         'Intended Audience :: Financial and Insurance Industry',
         'Intended Audience :: Developers',

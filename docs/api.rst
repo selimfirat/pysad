@@ -55,6 +55,8 @@ Individual Anomaly Models
     models.RelativeEntropy
     models.RobustRandomCutForest
     models.RSHash
+    models.SeasonalESD
+    models.SeasonalHybridESD
     models.StandardAbsoluteDeviation
     models.xStream
 
@@ -154,6 +156,8 @@ Preprocessors
     transform.preprocessing.IdentityScaler
     transform.preprocessing.InstanceStandardScaler
     transform.preprocessing.InstanceUnitNormScaler
+    transform.preprocessing.ModifiedSTLResidualTransformer
+    transform.preprocessing.SeasonalTrendDecomposer
 
 
 Postprocessors
@@ -250,4 +254,3 @@ Utilities
     utils.get_minmax_array
     utils.get_minmax_scalar
     utils.fix_seed
-

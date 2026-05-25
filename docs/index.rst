@@ -19,10 +19,6 @@
 
 ===============================
 
-.. include:: versioning.rst
-
-===============================
-
 .. include:: license.rst
 
 ===============================
@@ -53,7 +49,6 @@
    faq
    inclusion_criteria
    contributing
-   versioning
    license
    citing
    references

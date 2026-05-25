@@ -5,6 +5,7 @@
       "package-name": "pysad",
       "release-type": "python",
       "changelog-path": "CHANGES.txt",
+      "bootstrap-sha": "c1551dca6a78f073c02f3b4fc764db248525625f",
       "extra-files": [
         "pysad/version.py"
       ]

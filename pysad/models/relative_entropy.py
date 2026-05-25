@@ -93,14 +93,14 @@ class RelativeEntropy(BaseModel):
         score = 0.0
 
         if len(self.util) >= self.W and self.m > 0 and self.P_hat is not None:
-            score = self._get_aggreement_hypothesis(self.P_hat)
+            score = self._get_agreement_hypothesis(self.P_hat)
 
         return score
 
-    def _get_aggreement_hypothesis(self, P_hat):
+    def _get_agreement_hypothesis(self, P_hat):
         """This function computes multinomial goodness-of-fit test. It calculates
         the relative entropy test statistic between P_hat and all `m` null
-        hypothesis and compares it against the threshold `T` based on cdf of
+        hypotheses and compares it against the threshold `T` based on cdf of
         chi-squared distribution. The test relies on the observation that if the
         null hypothesis P is true, then as the number of samples grow the relative
         entropy converges to a chi-squared distribution1 with K-1 degrees of

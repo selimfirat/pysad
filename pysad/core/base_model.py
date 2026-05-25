@@ -60,7 +60,7 @@ class BaseModel(ABC):
         return self
 
     def score(self, X):
-        """Scores all instaces via score_partial iteratively.
+        """Scores all instances via score_partial iteratively.
 
         Args:
             X (np.float64 array of shape (num_instances, num_features)): The instances in order to score.

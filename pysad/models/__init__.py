@@ -14,6 +14,7 @@ from .random_model import RandomModel
 from .relative_entropy import RelativeEntropy
 from .robust_random_cut_forest import RobustRandomCutForest
 from .rs_hash import RSHash
+from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .xstream import xStream
 from .exact_storm import ExactStorm
@@ -26,7 +27,7 @@ except (ImportError, NameError, AttributeError):
     # Handle missing dependencies, undefined names, and JAX-NumPy compatibility issues
     _has_inqmad = False
 
-__all__ = ["ExactStorm", "HalfSpaceTrees", "IForestASD", "KitNet", "KNNCAD", "LODA", "LocalOutlierProbability", "MedianAbsoluteDeviation", "NullModel", "PerfectModel", "RandomModel", "RelativeEntropy", "RobustRandomCutForest", "RSHash", "StandardAbsoluteDeviation", "xStream"]
+__all__ = ["ExactStorm", "HalfSpaceTrees", "IForestASD", "KitNet", "KNNCAD", "LODA", "LocalOutlierProbability", "MedianAbsoluteDeviation", "NullModel", "PerfectModel", "RandomModel", "RelativeEntropy", "RobustRandomCutForest", "RSHash", "SeasonalESD", "SeasonalHybridESD", "StandardAbsoluteDeviation", "xStream"]
 
 # Add Inqmad to __all__ if available
 if _has_inqmad:

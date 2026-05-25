@@ -7,6 +7,11 @@ from pysad.statistics.variance_meter import VarianceMeter
 class StandardAbsoluteDeviation(BaseModel):
     """The model that assigns the deviation from the mean (or median) and divides with the standard deviation. This model is based on the 3-Sigma rule described in :cite:`hochenbaum2017automatic`.
 
+        This is a streaming standard-deviation score component, not the paper's
+        S-ESD method. It does not apply STL decomposition or generalized ESD
+        internally. Use :class:`pysad.models.SeasonalESD` for the paper's
+        modified-STL plus standard ESD detector.
+
         substracted_statistic (str): The statistic to be substracted for scoring. It is either "mean" or "median". (Default="mean").
         absolute (bool): Whether to output score's absolute value. (Default=True).
     """

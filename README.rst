@@ -119,6 +119,7 @@ Alternatively, you can install the library directly using the source code in Git
 * numpy: 2.1.3
 * scikit-learn: 1.5.2
 * scipy: 1.15.3
+* statsmodels: 0.14.4 (for ``pysad.models.SeasonalESD``, ``pysad.models.SeasonalHybridESD`` and ``pysad.transform.preprocessing.ModifiedSTLResidualTransformer``)
 * pyod: 3.5.2
 * combo: 0.1.3
 
@@ -185,13 +186,10 @@ Quick Links
 Contributors
 ============
 
-.. raw:: html
-
-   <div align="center">
-     <a href="https://github.com/selimfirat/pysad/graphs/contributors">
-       <img src="https://contrib.rocks/image?repo=selimfirat/pysad" alt="Contributors" />
-     </a>
-   </div>
+.. image:: https://contrib.rocks/image?repo=selimfirat/pysad
+   :target: https://github.com/selimfirat/pysad/graphs/contributors
+   :alt: Contributors
+   :align: center
 
 We thank all our contributors for their valuable input and efforts to make PySAD better!
 

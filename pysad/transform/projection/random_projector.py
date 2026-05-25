@@ -12,6 +12,7 @@ class BaseSKLearnProjector(BaseTransformer):
             num_components (int): The number of dimensions that the target will be projected into.
         """
         super().__init__(num_components)
+        self.projector = None
 
     @property
     @abstractmethod
@@ -29,6 +30,13 @@ class BaseSKLearnProjector(BaseTransformer):
         Returns:
             object: self.
         """
+        if self.projector is None:
+            self.projector = self._projector()
+
+        if not hasattr(self.projector, "components_"):
+            x = X.reshape(1, -1)
+            self.projector.fit(x)
+
         return self
 
     def transform_partial(self, X):
@@ -41,9 +49,20 @@ class BaseSKLearnProjector(BaseTransformer):
             projected_X: np.float64 array of shape (num_components,)
                 Projected feature vector.
         """
-        x = X.reshape(1, -1)
+        if self.projector is None:
+            self.projector = self._projector()
 
-        return self._projector().fit_transform(x).reshape(-1)
+        x = X.reshape(1, -1)
+        if not hasattr(self.projector, "components_"):
+            self.projector.fit(x)
+
+        import numpy as np
+        from scipy.sparse import issparse
+        components = self.projector.components_
+        if issparse(components):
+            components = components.toarray()
+
+        return np.dot(x, components.T).reshape(-1)
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):

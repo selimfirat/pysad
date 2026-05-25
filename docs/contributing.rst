@@ -25,11 +25,11 @@ For any questions, you may open issue on Github or drop me an email at `yilmasel
 Pull Request Checklist
 ^^^^^^^^^^^^^^^^^^^^^^
 
-* Does features/fixes by your pull request matches the aim of this framework?
+* Do the features/fixes in your pull request match the aim of this framework?
 * Does your code obey PEP8 principles? You may check via `bash lint.sh`.
-* Does your submission passes tests, Travis CI?
+* Does your submission pass all tests (including CI)?
 * Have you checked the active `pull requests <https://github.com/selimfirat/pysad/pulls>`_ and `issues <https://github.com/selimfirat/pysad/issues>`_ so that your contribution does not overlap significantly with these?
-* **For new features** Have you implemented tests so that your new code has more than 95% test coverage and the tests are reasonable?.
+* **For new features** Have you implemented tests so that your new code has more than 95% test coverage and the tests are reasonable?
 * **For new features** Have you implemented examples demonstrating the usage of your new feature?
 
 Development Instructions

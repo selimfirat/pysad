@@ -8,10 +8,10 @@ Releases are automated with GitHub Actions and Release Please.
 Release flow
 ------------
 
-* Merge feature and fix pull requests into ``master`` using conventional commit
+* Merge feature and fix pull requests into ``develop`` using conventional commit
   messages such as ``feat:``, ``fix:``, ``docs:`` and ``chore:``.
 * The ``Release Please`` workflow updates a release pull request on every push to
-  ``master``. That pull request owns the version bump, changelog update and
+  ``develop``. That pull request owns the version bump, changelog update and
   release metadata.
 * Merge the release pull request when the release contents are ready. Release
   Please creates the GitHub release and tag.

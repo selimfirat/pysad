@@ -1,3 +1,72 @@
+# Changelog
+
+## [0.6.0](https://github.com/selimfirat/pysad/compare/pysad-v0.5.0...pysad-v0.6.0) (2026-05-25)
+
+
+### Features
+
+* add seasonal esd models ([66f2d88](https://github.com/selimfirat/pysad/commit/66f2d88966b0e11ad9c76d9a0ccb07bb6d858827))
+* add Seasonal ESD models ([0c18776](https://github.com/selimfirat/pysad/commit/0c18776b71a32473e50b223829d61016872188bb))
+* add seasonal trend decomposer ([dd1ac57](https://github.com/selimfirat/pysad/commit/dd1ac57877921a194fe7ae38ab8f8292cd715bdd))
+* add support for Python 3.13 in Azure Pipelines and update setuptools version constraint ([7c23ba3](https://github.com/selimfirat/pysad/commit/7c23ba3d476959e2bd699fbde1264ca1b44f73d1))
+
+
+### Bug Fixes
+
+* Add 'paper' to .gitignore to exclude it from version control ([8d0557f](https://github.com/selimfirat/pysad/commit/8d0557fef4b62b137dbe8f4f85fcbc86b11d7704))
+* Add examples section to README template for better usage guidance ([ed0adfa](https://github.com/selimfirat/pysad/commit/ed0adfabbfc27011cd2543bd607cd5b16d914599))
+* Add Quick Start section to README template for improved user guidance ([c675d79](https://github.com/selimfirat/pysad/commit/c675d796f229cbd6a4b41674d34cbbf67bc147ed))
+* Address deprecation warnings in JAX imports and improve numerical stability in model calculations ([90c9699](https://github.com/selimfirat/pysad/commit/90c9699c4ad46052ac0f61636f4df1f60ec32796))
+* bug [#28](https://github.com/selimfirat/pysad/issues/28), incorrect MAD computation ([894e1da](https://github.com/selimfirat/pysad/commit/894e1dacd3e9d08e169cf493cf605024a50147d8))
+* bug [#28](https://github.com/selimfirat/pysad/issues/28), incorrect MAD computation ([6db8336](https://github.com/selimfirat/pysad/commit/6db8336c61368563774e943b749063981971f109))
+* cold start modified stl residuals ([06e885d](https://github.com/selimfirat/pysad/commit/06e885de35d2779455e1a13bc4fdde5dd5976de5))
+* Correctly manage reference window labels and initialize current window variables in ReferenceWindowModel ([16e2ec0](https://github.com/selimfirat/pysad/commit/16e2ec0c96c78d5b8de9be02984ea99a83816480))
+* Downgrade pytest-cov version in requirements-dev.txt for compatibility ([b60c175](https://github.com/selimfirat/pysad/commit/b60c175e1ec8f3aa04d340a270adab8f937592eb))
+* Downgrade sphinx version in requirements-dev.txt for compatibility ([429ed01](https://github.com/selimfirat/pysad/commit/429ed0177455500344cbb703cab47c03f3712214))
+* Enhance error handling for Inqmad import to cover undefined names ([7656f21](https://github.com/selimfirat/pysad/commit/7656f214dea55142ad80b8a72453c5f5e6a7316e))
+* Enhance error handling for optional JAX dependencies in model imports ([f29bf56](https://github.com/selimfirat/pysad/commit/f29bf562fb2a475755eacd601a6af46e98e9cb1f))
+* Ensure reference window data is copied to prevent unintended mutations and fix bug in ReferenceWindowModel fit_partial [#23](https://github.com/selimfirat/pysad/issues/23) ([b225a7c](https://github.com/selimfirat/pysad/commit/b225a7cbf50aae2f59ff66968efa5264e5992d8c))
+* handle repeated seasonal esd values ([4b4cc29](https://github.com/selimfirat/pysad/commit/4b4cc29d1339e770117b99a9dab72952bf459782))
+* improve docstring for remove method in MedianMeter class [#27](https://github.com/selimfirat/pysad/issues/27) ([5e2977d](https://github.com/selimfirat/pysad/commit/5e2977d970cfc759c8c2b93c9a2ca2eb3244443c))
+* Improve handling of scalar boolean masks in RSHash to avoid deprecated nonzero on 0d arrays ([1d1b3e0](https://github.com/selimfirat/pysad/commit/1d1b3e05b985106e505c954bee55475a2ef49a3f))
+* Indent code examples in README template for consistent formatting ([2a4a4c2](https://github.com/selimfirat/pysad/commit/2a4a4c2d070cc36d86795a371e8810eaab849369))
+* Make JAX dependencies optional and handle import gracefully ([1c5a8d3](https://github.com/selimfirat/pysad/commit/1c5a8d3057a2238f2ef704f75f2f5b722af08110))
+* pin numpy, scikit-learn, scipy, and mmh3 versions in requirements-ci.txt back ([2c25312](https://github.com/selimfirat/pysad/commit/2c25312b34c78f8758714c2c33964053c869247e))
+* Remove examples section from README template to streamline documentation ([9930627](https://github.com/selimfirat/pysad/commit/99306273399f88e8f3658cd471f9d1495c154141))
+* Reorganize deploy script for improved readability and structure ([14d17d3](https://github.com/selimfirat/pysad/commit/14d17d31416511e08eafcce3e235b38030c45592))
+* small typo ([1650efd](https://github.com/selimfirat/pysad/commit/1650efdd492385ad53a1b6dbd6484e0423bbc39a))
+* small typo ([ad6e21e](https://github.com/selimfirat/pysad/commit/ad6e21ebe579eeb0aa8dbf729341c833fd764211))
+* Suppress warnings in metric tests for edge cases and improve handling in ReferenceWindowModel ([6610406](https://github.com/selimfirat/pysad/commit/66104065aeef169f26f66bf798e9fb66f4e78a95))
+* Suppress warnings in tests and improve score generation for reproducibility ([a0ce1b9](https://github.com/selimfirat/pysad/commit/a0ce1b9d3350f14c308d6530fdb2e69aec175f7f))
+* Update coverage configuration to omit additional files and enhance test coverage; add tests for Data and PandasStreamer utilities ([dbf246e](https://github.com/selimfirat/pysad/commit/dbf246e65f4e4798ce532116fc01ca20f2f27aaf))
+* update dependency versions in requirements-ci.txt and adjust pip install command ([f136c31](https://github.com/selimfirat/pysad/commit/f136c31212817c4c4dff08b7bf95e12a381c58ae))
+* Update JAX and JAXlib dependencies to version 0.6.1 for compatibility with NumPy 2.0+ and improve documentation ([caa8ce3](https://github.com/selimfirat/pysad/commit/caa8ce3e2f544ba7b0a95bb9aac518b505b11aa1))
+* Update JAX and jaxlib versions to 0.4.17 in documentation and requirements ([e824c7d](https://github.com/selimfirat/pysad/commit/e824c7d86fb3dd60a41a1522f079fc3eb482938d))
+* Update logo image path in README template for correct display ([6ff9709](https://github.com/selimfirat/pysad/commit/6ff97095eb23be63e951cbe8aebd5ffb1dbfa909))
+* update numpy version to 2.1.0 in requirements-ci.txt ([cfb7ead](https://github.com/selimfirat/pysad/commit/cfb7ead854b0959f01f055ccb47e7677d7d976df))
+* update numpy version to 2.1.3 in requirements files ([25b3de5](https://github.com/selimfirat/pysad/commit/25b3de59ff62a13b2a1510621a5346ba27bef1b4))
+* update PyNomaly version to 0.3.5 in requirements-ci.txt as well ([7991f7a](https://github.com/selimfirat/pysad/commit/7991f7aee4ab67f8c8f67d26bd8bdfbd3e004a36))
+* update pyod version to 2.1.0 in requirements.txt ([ef4dac4](https://github.com/selimfirat/pysad/commit/ef4dac493a97b1d4b161b6837d8b2176410a720c))
+* Update Python version requirement to 3.10+ in documentation and configuration files ([2820b07](https://github.com/selimfirat/pysad/commit/2820b074ffc8b65eeb2978c5e86ce0615a980b6d))
+* Update Python versions in configuration files for consistency ([351c7bb](https://github.com/selimfirat/pysad/commit/351c7bbca65782cd46f30cdaa7e79dcbae8dc46f))
+* Update README generation to replace literalinclude with code-block and improve handling of include directives ([07028ba](https://github.com/selimfirat/pysad/commit/07028ba614ab555da5d2348f43216bda75cf6a48))
+* Update rrcf version to 0.4.4 and improve quantization in RelativeEntropy model ([3e4ca97](https://github.com/selimfirat/pysad/commit/3e4ca9788d1793ff8df7e69cf6b1b99e252d8aef))
+* Update rrcf version to 0.4.4 in pyproject.toml and requirements-dev.txt; remove deprecated test file ([b13bfab](https://github.com/selimfirat/pysad/commit/b13bfab115766a02c1727669d2d6426628d025b2))
+* Update RSHash to handle deprecated nonzero on 0d arrays and ensure proper feature selection ([0247d18](https://github.com/selimfirat/pysad/commit/0247d18a5a7431c18958f5cec2f4f72ef074b0f9))
+* Update RSHash to handle scalar boolean masks and avoid deprecated nonzero on 0d arrays ([c418615](https://github.com/selimfirat/pysad/commit/c418615c13da2fb27a5d91c50f00dd8347a3790b))
+* update scipy version constraint in requirements-ci.txt ([a3ebc59](https://github.com/selimfirat/pysad/commit/a3ebc5910b00c70b8f5655f8964ee1db295fb804))
+* update scipy version to 1.15.3 in requirements files ([39ebb73](https://github.com/selimfirat/pysad/commit/39ebb739a8b47acfb46988fd7daf4a08c8e752d7))
+* validate seasonal esd inputs ([79c0bf8](https://github.com/selimfirat/pysad/commit/79c0bf85dab1ce00ab25656317db94b09d662f30))
+
+
+### Documentation
+
+* clarify seasonal decomposer scope ([8a59e50](https://github.com/selimfirat/pysad/commit/8a59e5001c9351f79a6c5fca8e41b99329be4b3c))
+* clarify seasonal esd method mapping ([8e0783d](https://github.com/selimfirat/pysad/commit/8e0783d97b0dc9f5f7b02038b24055a4654daf3a))
+* update dependency formatting in README.rst and installation.rst ([19c7907](https://github.com/selimfirat/pysad/commit/19c790798f6acc9a5bc34ca5fb1440a3171994aa))
+* update Python version compatibility in README.rst ([1af5668](https://github.com/selimfirat/pysad/commit/1af566894772c357562a8c21bc510bc37e3231fb))
+* update README.rst to format dependencies in list tables and reflect version changes ([3b483d8](https://github.com/selimfirat/pysad/commit/3b483d86a6b33c8b308f2394299fc367aee58bd7))
+
 v<0.1.0>, <08/15/2020> -- Initial release.
 v<0.2.0> <06/10/2023> -- Upgraded some libraries like numpy,pandas and small refactorings.
 v<0.3.0>, <05/23/2025> -- Updated dependencies to latest versions, improved documentation, added quick start example in README. Added Inqmad model. Special thanks to @TechyNilesh @Joaggi @onixlas.

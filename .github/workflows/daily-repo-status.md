@@ -4,6 +4,7 @@ description: |
   activity (issues, PRs, discussions, releases, code changes) and generates
   engaging GitHub issues with productivity insights, community highlights,
   and project recommendations.
+model: gpt-5-mini
 
 on:
   schedule: daily

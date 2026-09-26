@@ -7,7 +7,7 @@ from pysad.statistics.sum_squares_meter import SumSquaresMeter
 class VarianceMeter(UnivariateStatistic):
     """The statistic that keeps track of the variance of the values. The variance formula is: (sum_squares - (sum**2)/count)/count.
 
-    Attrs:
+    Attributes:
         sum_meter (pyod.statistics.SumMeter object): SumMeter object.
         sum_squares_meter (pyod.statistics.SumSquaresMeter object): SumSquaresMeter object.
         count_meter (pyod.statistics.CountMeter object): CountMeter object.

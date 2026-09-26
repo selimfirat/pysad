@@ -6,7 +6,6 @@ from pysad.utils import ArrayStreamer
 from pysad.transform.ensemble import AverageScoreEnsembler
 from pysad.utils import Data
 from sklearn.utils import shuffle
-from tqdm import tqdm
 import numpy as np
 
 # This example demonstrates the usage of an ensembling method.
@@ -25,7 +24,7 @@ if __name__ == '__main__':
     ]
     ensembler = AverageScoreEnsembler()  # Ensembler module.
 
-    for X, y in tqdm(iterator.iter(X_all, y_all)):  # Iterate over examples.
+    for X, y in iterator.iter(X_all, y_all):  # Iterate over examples.
         model_scores = np.empty(len(models), dtype=np.float64)
 
         # Fit & Score via for each model.

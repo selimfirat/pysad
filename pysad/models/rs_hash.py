@@ -3,7 +3,7 @@ import numpy as np
 
 
 class RSHash(BaseModel):
-    """Subspace outlier detection in linear time with randomized hashing :cite:`sathe2016subspace`. This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_.
+    """Subspace outlier detection in linear time with randomized hashing :cite:`sathe2016subspace`. This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_ and follows the streaming variant (RS-Stream) of the paper. Instances are normalized with `feature_mins` and `feature_maxes`, and the score is the negated average of log2(1 + c) over the ensemble, where c is the time-decayed count of the instance's grid cell, so that higher scores are more anomalous.
 
         Args:
             feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
@@ -22,8 +22,10 @@ class RSHash(BaseModel):
             decay=0.015,
             num_components=100,
             num_hash_fns=1):
-        self.minimum = feature_mins
-        self.maximum = feature_maxes
+        self.minimum = np.asarray(feature_mins, dtype=np.float64)
+        self.maximum = np.asarray(feature_maxes, dtype=np.float64)
+        self.range = self.maximum - self.minimum
+        self.range[self.range == 0] = 1.0
 
         self.m = num_components
         self.w = num_hash_fns
@@ -59,11 +61,12 @@ class RSHash(BaseModel):
         Returns:
             object: Returns the self.
         """
+        # Equation 1 of the paper: normalize with the minimum and maximum of each feature.
+        X = (np.asarray(X, dtype=np.float64) - self.minimum) / self.range
+
         score_instance = 0
         for r in range(self.m):
-            Y = -1 * np.ones(len(self.V[r]))
-            Y[range(len(self.V[r]))] = np.floor(
-                (X[np.array(self.V[r])] + np.array(self.alpha[r])) / float(self.f[r]))
+            Y = np.floor((X[self.V[r]] + self.alpha[r]) / float(self.f[r]))
 
             mod_entry = np.insert(Y, 0, r)
             mod_entry = tuple(mod_entry.astype(np.int32))
@@ -86,10 +89,11 @@ class RSHash(BaseModel):
                 self.cmsketches[w][mod_entry] = (new_tstamp, new_wt + 1)
 
             min_c = min(c)
-            c = np.log(1 + min_c)
+            c = np.log2(1 + min_c)
             score_instance = score_instance + c
 
-        self.last_score = score_instance / self.m
+        # Low counts indicate outliers in the paper, so the average log-count is negated to make higher scores more anomalous.
+        self.last_score = -score_instance / self.m
 
         self.index += 1
 
@@ -101,7 +105,7 @@ class RSHash(BaseModel):
         Args:
             X (any): Ignored.
         Returns:
-            float: The anomalousness score of the last fitted instance.
+            float: The anomalousness score of the last fitted instance. Higher scores represent more anomalous instances.
         """
         return self.last_score
 
@@ -117,48 +121,20 @@ class RSHash(BaseModel):
         return alpha
 
     def _sample_dims(self):
-        max_term = np.max((2 * np.ones(self.f.size), list(1.0 / self.f)), axis=0)
+        # Dimensions with max == min are dropped from the candidate subspaces.
+        all_feats = np.arange(self.dim)
+        choice_feats = all_feats[self.minimum != self.maximum]
+        if len(choice_feats) == 0:
+            choice_feats = all_feats
+
+        # r is an integer drawn uniformly between 1 + 0.5 * log_{max(2, 1/f)}(s) and log_{max(2, 1/f)}(s).
+        max_term = np.maximum(2.0, 1.0 / self.f)
         common_term = np.log(self.effS) / np.log(max_term)
-        low_value = 1 + 0.5 * common_term
-        high_value = common_term
+        high_value = np.floor(common_term).astype(int)
+        low_value = np.minimum(np.ceil(1 + 0.5 * common_term).astype(int), high_value)
 
         self.r = np.empty([self.m, ], dtype=int)
         self.V = []
         for i in range(self.m):
-            if np.floor(low_value[i]) == np.floor(high_value[i]):
-                self.r[i] = 1
-            else:
-                self.r[i] = min(
-                    np.random.randint(
-                        low=low_value[i],
-                        high=high_value[i]),
-                    self.dim)
-            all_feats = np.array(list(range(self.dim)), dtype=np.int32)
-
-            # Use boolean indexing to avoid deprecated nonzero on 0d arrays
-            mask = (self.minimum != self.maximum)
-            
-            # Handle the case when mask is a scalar boolean (occurs when minimum/maximum are scalars)
-            if isinstance(mask, bool):
-                # If mask is True, use all features
-                if mask:
-                    valid_indices = np.arange(self.dim)
-                else:
-                    valid_indices = np.array([], dtype=int)
-            else:
-                # If mask is an array, proceed as normal
-                valid_indices = np.where(mask)[0]
-            
-            # Select from all_feats using these indices
-            choice_feats = all_feats[valid_indices]
-            
-            # Ensure we have enough features to choose from
-            if len(choice_feats) > 0:
-                sel_V = np.random.choice(
-                    choice_feats, size=min(self.r[i], len(choice_feats)), replace=False)
-            else:
-                # Fallback if no features meet criteria, select from all features
-                sel_V = np.random.choice(
-                    all_feats, size=min(self.r[i], len(all_feats)), replace=False)
-                
-            self.V.append(sel_V)
+            self.r[i] = min(np.random.randint(low=low_value[i], high=high_value[i] + 1), len(choice_feats))
+            self.V.append(np.random.choice(choice_feats, size=self.r[i], replace=False))

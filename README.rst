@@ -36,6 +36,10 @@ Python Streaming Anomaly Detection (PySAD)
    :target: https://github.com/selimfirat/pysad/
    :alt: Supported Platforms
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.22983312.svg
+   :target: https://doi.org/10.5281/zenodo.22983312
+   :alt: DOI
+
 .. image:: https://img.shields.io/github/license/selimfirat/pysad.svg
    :target: https://github.com/selimfirat/pysad/blob/master/LICENSE
    :alt: License
@@ -204,3 +208,5 @@ If you use PySAD for a scientific publication, please cite the following paper:
       journal={arXiv preprint arXiv:2009.02572},
       year={2020}
     }
+
+To cite a specific version of the software, use its Zenodo DOI. `10.5281/zenodo.22983312 <https://doi.org/10.5281/zenodo.22983312>`_ always resolves to the latest version, and each release has its own DOI listed on that page.

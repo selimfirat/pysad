@@ -33,6 +33,10 @@ Python Streaming Anomaly Detection (PySAD)
    :target: https://github.com/selimfirat/pysad/
    :alt: Supported Platforms
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.22983312.svg
+   :target: https://doi.org/10.5281/zenodo.22983312
+   :alt: DOI
+
 .. image:: https://img.shields.io/github/license/selimfirat/pysad.svg
    :target: https://github.com/selimfirat/pysad/blob/master/LICENSE
    :alt: License

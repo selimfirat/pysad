@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use PySAD in your research, please cite the paper below."
+title: "PySAD: A Streaming Anomaly Detection Framework in Python"
+type: software
+authors:
+  - given-names: Selim Firat
+    family-names: Yilmaz
+    orcid: "https://orcid.org/0000-0002-0486-7731"
+repository-code: "https://github.com/selimfirat/pysad"
+url: "https://pysad.readthedocs.io/"
+license: BSD-3-Clause
+abstract: >-
+  PySAD is an open-source Python framework for anomaly detection on streaming
+  multivariate data, providing online anomaly detection models, stream
+  simulators, evaluators, preprocessors, postprocessors, probability
+  calibrators and statistic trackers.
+keywords:
+  - anomaly detection
+  - outlier detection
+  - streaming data
+  - online learning
+  - machine learning
+  - python
+preferred-citation:
+  type: article
+  title: "PySAD: A Streaming Anomaly Detection Framework in Python"
+  authors:
+    - given-names: Selim Firat
+      family-names: Yilmaz
+      orcid: "https://orcid.org/0000-0002-0486-7731"
+    - given-names: Suleyman Serdar
+      family-names: Kozat
+      orcid: "https://orcid.org/0000-0002-6488-3848"
+  journal: "arXiv preprint arXiv:2009.02572"
+  year: 2020
+  doi: "10.48550/arXiv.2009.02572"
+  url: "https://arxiv.org/abs/2009.02572"

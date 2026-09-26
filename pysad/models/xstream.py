@@ -8,7 +8,7 @@ class xStream(BaseModel):
     """The xStream model for row-streaming data :cite:`xstream`. It first projects the data via streamhash projection. It then fits half space chains by reference windowing. It scores the instances using the window fitted to the reference window.
 
     Args:
-        n_components (int): The number of components for streamhash projection (Default=100).
+        num_components (int): The number of components for streamhash projection (Default=100).
         n_chains (int): The number of half-space chains (Default=100).
         depth (int): The maximum depth for the chains (Default=25).
         window_size (int): The size (and the sliding length) of the reference window (Default=25).

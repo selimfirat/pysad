@@ -9,8 +9,8 @@ class ReferenceWindowModel(PYODModel):
             model_cls (class): The model class to be instantiated.
             window_size (int): The size of each window.
             sliding_size (int): The sliding length of the windows.
-            initial_X (np.float64 array of shape (num_initial_instances, num_features)): Initial instances to fit.
-            initial_y (np.int32 array of shape (num_initial_instances,)): Initial window's ground truth labels. Used if not None. Needs to be `None` for the unsupervised `model_cls` models. (Default=None).
+            initial_window_X (np.float64 array of shape (num_initial_instances, num_features)): Initial instances to fit (Default=None).
+            initial_window_y (np.int32 array of shape (num_initial_instances,)): Initial window's ground truth labels. Used if not None. Needs to be `None` for the unsupervised `model_cls` models. (Default=None).
             **kwargs (Keyword arguments): Keyword arguments that is passed to the `model_cls`.
     """
 
@@ -22,15 +22,6 @@ class ReferenceWindowModel(PYODModel):
             initial_window_X=None,
             initial_window_y=None,
             **kwargs):
-        """
-
-        Args:
-            model_cls:
-            window_size:
-            sliding_size:
-            initial_window_X:
-            initial_window_y:
-        """
         super().__init__(model_cls, **kwargs)
 
         self.window_size = window_size

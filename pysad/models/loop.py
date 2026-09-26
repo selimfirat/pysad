@@ -6,9 +6,8 @@ class LocalOutlierProbability(BaseModel):
 
     Args:
         initial_X (np.float64 array of shape (num_instances, num_features)): Initial training data to calibrate the model.
-        num_neighbors (int): Number of neighbors (Default=10).
-        extent (int): an integer value that controls the statistical extent, e.g. lambda times the standard deviation from the mean (optional, default 3)
-        n_neighbors (int): the total number of neighbors to consider w.r.t. each sample (optional, default 10)
+        num_neighbors (int): The total number of neighbors to consider w.r.t. each sample (Default=10).
+        extent (int): an integer value that controls the statistical extent, e.g. lambda times the standard deviation from the mean (Default=3).
     """
 
     def __init__(self, initial_X, num_neighbors=10, extent=3):

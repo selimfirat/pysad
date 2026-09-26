@@ -26,3 +26,21 @@ def test_calibrators():
 
         assert calibrated_scores.shape == scores.shape
         assert not np.isnan(calibrated_scores).any()
+
+
+def test_conformal_calibrator_p_values():
+    import numpy as np
+    import pytest
+    from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+    for target, expected in [(0.0, 1.0), (5.5, 0.5), (10.0, 0.1)]:
+        calibrator = ConformalProbabilityCalibrator(windowed=True, window_size=300)
+        calibrator.fit(np.arange(1, 10, dtype=np.float64))
+        assert calibrator.fit_transform_partial(target) == pytest.approx(expected)
+
+    # The first point of a fresh stream is never anomalous.
+    assert ConformalProbabilityCalibrator().fit_transform_partial(0.7) == 1.0
+
+    # A constant stream gets p = 1, not p = 0.
+    calibrated_scores = ConformalProbabilityCalibrator().fit_transform(np.full(50, 0.3))
+    assert np.all(calibrated_scores == 1.0)

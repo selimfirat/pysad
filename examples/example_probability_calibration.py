@@ -15,8 +15,8 @@ if __name__ == "__main__":
     for i, (x, y_true) in enumerate(streaming_data):  # Stream data.
         anomaly_score = model.fit_score_partial(x)  # Fit to an instance x and score it.
 
-        calibrated_score = calibrator.fit_transform(anomaly_score)  # Fit & calibrate score.
+        calibrated_score = calibrator.fit_transform_partial(anomaly_score)  # Fit & calibrate score.
 
         # Output if the instance is anomalous.
-        if calibrated_score > 0.95:  # If probability of being normal is less than 5%.
+        if calibrated_score < 0.05:  # If the conformal p-value is less than 5%.
             print(f"Alert: {i}th data point is anomalous.")

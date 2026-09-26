@@ -20,14 +20,6 @@ Python Streaming Anomaly Detection (PySAD)
    :target: https://dev.azure.com/selimfirat/pysad/_build/latest?definitionId=2&branchName=master
    :alt: Azure Pipelines Build Status
 
-.. image:: https://travis-ci.org/selimfirat/pysad.svg?branch=master
-   :target: https://travis-ci.org/selimfirat/pysad
-   :alt: Travis CI Build Status
-
-.. image:: https://ci.appveyor.com/api/projects/status/ceghuv517ghqgjce/branch/master?svg=true
-   :target: https://ci.appveyor.com/project/selimfirat/pysad/branch/master
-   :alt: Appveyor Build status
-
 .. image:: https://circleci.com/gh/selimfirat/pysad.svg?style=svg
    :target: https://circleci.com/gh/selimfirat/pysad
    :alt: Circle CI
@@ -168,8 +160,6 @@ Quick Links
 * `Documentation <http://pysad.readthedocs.io/>`__
 
 * `PyPI Package <https://pypi.org/project/pysad>`_
-
-* `Travis CI <https://travis-ci.com/github/selimfirat/pysad>`_
 
 * `Azure Pipelines <https://dev.azure.com/selimfirat/pysad/>`_
 

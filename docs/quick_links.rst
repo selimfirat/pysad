@@ -7,8 +7,6 @@ Quick Links
 
 * `PyPI Package <https://pypi.org/project/pysad>`_
 
-* `Travis CI <https://travis-ci.com/github/selimfirat/pysad>`_
-
 * `Azure Pipelines <https://dev.azure.com/selimfirat/pysad/>`_
 
 * `Circle CI <https://circleci.com/gh/selimfirat/pysad/>`_

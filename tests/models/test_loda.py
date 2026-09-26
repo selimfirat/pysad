@@ -80,8 +80,8 @@ def test_loda_scores_outliers_higher():
 
     normal_score = model.score_partial(np.zeros(5))
     outlier_score = model.score_partial(np.full(5, 8.))
-    assert normal_score.shape == (1,)
-    assert outlier_score[0] > normal_score[0]
+    assert isinstance(normal_score, float)
+    assert outlier_score > normal_score
 
 
 def test_loda_auroc_synthetic_stream():
@@ -127,7 +127,7 @@ def test_loda_score_before_fit_and_non_finite_values():
 
     fix_seed(61)
     model = LODA(num_bins=5, num_random_cuts=10)
-    assert model.score_partial(np.zeros(4)).shape == (1,)
+    assert isinstance(model.score_partial(np.zeros(4)), float)
 
     # Instances with non-finite values are skipped instead of stretching the bins without bound.
     model.fit_partial(np.array([np.nan, 0., 0., 0.]))
@@ -138,4 +138,4 @@ def test_loda_score_before_fit_and_non_finite_values():
     assert np.all(np.isfinite(model.bin_lows_)) and np.all(np.isfinite(model.bin_widths_))
     assert model.num_seen_ == 50
     np.testing.assert_array_equal(model.histograms_.sum(axis=1), 50)
-    assert np.isfinite(model.score_partial(np.array([np.inf, 0., 0., 0.]))[0])
+    assert np.isfinite(model.score_partial(np.array([np.inf, 0., 0., 0.])))

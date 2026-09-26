@@ -4,17 +4,78 @@ on:
   release:
     types:
       - published
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
 
 permissions:
   contents: read
 
 jobs:
+  tag-release:
+    name: Tag and create release
+    # Runs when a release/vX.Y.Z branch from this repository is merged into master.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/v') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out merge commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - name: Read and verify version
+        id: version
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          VERSION="${HEAD_REF#release/}"
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Branch $HEAD_REF does not name a version" >&2
+            exit 1
+          fi
+          PKG_VERSION=$(python -c "exec(open('pysad/version.py').read()); print(__version__)")
+          if [ "v$PKG_VERSION" != "$VERSION" ]; then
+            echo "pysad/version.py is $PKG_VERSION but branch is $VERSION" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag and GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          NOTES: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n' "$NOTES" > release-notes.md
+          gh release create "$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SHA" \
+            --title "$VERSION" \
+            --notes-file release-notes.md
+
   build:
     name: Build distribution
+    needs: tag-release
+    # Releases published by hand take the release path; merged release branches take the tag-release path.
+    # A release created by tag-release uses GITHUB_TOKEN, so it does not trigger this workflow again.
+    if: >-
+      always() &&
+      (github.event_name == 'release' || needs.tag-release.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -39,6 +100,8 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: build
+    # always() is needed because tag-release (an ancestor) is skipped on the release path.
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -354,6 +354,15 @@ class TestBaseTransformer:
         expected = X + 1.0
         np.testing.assert_array_equal(result, expected)
 
+    def test_fit_method(self):
+        """Test that fit passes each instance, not an (instance, label) pair, to fit_partial."""
+        transformer = ConcreteTransformer()
+        X = np.array([[1.0, 2.0], [3.0, 4.0]])
+
+        assert transformer.fit(X) is transformer
+        assert len(transformer.fitted_data) == 2
+        np.testing.assert_array_equal(transformer.fitted_data[1], X[1])
+
 
 class TestAbstractClassInstantiation:
     """Test that abstract base classes cannot be instantiated directly."""

@@ -1,4 +1,29 @@
+import sys
+import types
+from importlib.metadata import version
 from pysad.core.base_model import BaseModel
+
+
+def _import_rrcf():
+    """Imports rrcf without pkg_resources, which setuptools>=82 no longer ships.
+
+    rrcf only calls ``pkg_resources.get_distribution("rrcf").version``, so a stub serving that call is
+    registered for the duration of the import and removed afterwards.
+    """
+    if "pkg_resources" in sys.modules:
+        from rrcf import rrcf
+        return rrcf
+
+    stub = types.ModuleType("pkg_resources")
+    stub.get_distribution = lambda name: types.SimpleNamespace(version=version(name))
+    sys.modules["pkg_resources"] = stub
+    try:
+        from rrcf import rrcf
+    finally:
+        if sys.modules.get("pkg_resources") is stub:
+            del sys.modules["pkg_resources"]
+
+    return rrcf
 
 
 class RobustRandomCutForest(BaseModel):
@@ -11,7 +36,7 @@ class RobustRandomCutForest(BaseModel):
     """
 
     def __init__(self, num_trees=4, shingle_size=4, tree_size=256):
-        from rrcf import rrcf
+        rrcf = _import_rrcf()
 
         self.tree_size = tree_size
         self.shingle_size = shingle_size

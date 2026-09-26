@@ -11,9 +11,8 @@ class RunningStatistic(BaseStatistic):
     """
 
     def __init__(self, statistic_cls, window_size, **kwargs):
-        super().__init__(**kwargs)
         self.statistic_cls = statistic_cls
-        self.statistic = self.statistic_cls()
+        self.statistic = self.statistic_cls(**kwargs)
 
         self.window_size = window_size
         self.window = []

@@ -30,6 +30,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
 
       - name: Read and verify version
         id: version
@@ -71,6 +72,13 @@ jobs:
             exit 0
           fi
           printf '%s\n' "$NOTES" > release-notes.md
+          # Thank everyone who opened a pull request or a fixed issue since the previous tag.
+          # This is best effort, so a failure here never blocks the release.
+          PREVIOUS=$(git describe --tags --abbrev=0 "$SHA^" 2>/dev/null || true)
+          if [ -n "$PREVIOUS" ]; then
+            bash .github/scripts/release_contributors.sh "$PREVIOUS" "$SHA" >> release-notes.md \
+              || echo "Could not list contributors since $PREVIOUS; releasing without them" >&2
+          fi
           gh release create "$VERSION" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$SHA" \

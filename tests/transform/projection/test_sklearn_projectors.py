@@ -45,3 +45,14 @@ def test_projection_is_consistent_across_instances():
 
         assert np.allclose(projector.transform_partial(X[0]), projected_X[0])
         assert np.allclose(projector.transform_partial(2 * X[0]), 2 * projected_X[0])
+
+
+def test_sparse_projector_keeps_components_sparse():
+    import numpy as np
+    from scipy.sparse import issparse
+    from pysad.transform.projection import SparseRandomProjector
+
+    projector = SparseRandomProjector(num_components=10)
+    projector.fit_transform(np.random.RandomState(0).rand(5, 1000))
+
+    assert issparse(projector._components)

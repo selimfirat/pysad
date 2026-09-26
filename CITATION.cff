@@ -6,6 +6,7 @@ authors:
   - given-names: Selim Firat
     family-names: Yilmaz
     orcid: "https://orcid.org/0000-0002-0486-7731"
+doi: "10.5281/zenodo.22983312"
 repository-code: "https://github.com/selimfirat/pysad"
 url: "https://pysad.readthedocs.io/"
 license: BSD-3-Clause

@@ -13,6 +13,8 @@ Quick Links
 
 * `Coveralls <https://coveralls.io/github/selimfirat/pysad?branch=master>`_
 
+* `Qlty <https://qlty.sh/gh/selimfirat/projects/pysad>`_
+
 * `License <https://github.com/selimfirat/pysad/blob/master/LICENSE>`_
 
 

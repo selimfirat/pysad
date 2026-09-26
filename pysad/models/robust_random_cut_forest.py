@@ -1,6 +1,10 @@
+import copy
 import sys
 import types
 from importlib.metadata import version
+
+import numpy as np
+
 from pysad.core.base_model import BaseModel
 
 
@@ -48,6 +52,26 @@ class RobustRandomCutForest(BaseModel):
             self.forest.append(tree)
 
         self.index = 0
+
+    def __getstate__(self):
+        # rrcf.RCTree keeps a reference to the ``numpy.random`` module as its random number generator,
+        # which cannot be pickled. Trees are shallow-copied without that reference and it is restored on load.
+        state = self.__dict__.copy()
+        state["forest"] = []
+        for tree in self.forest:
+            if tree.rng is np.random:
+                tree = copy.copy(tree)
+                tree.rng = None
+            state["forest"].append(tree)
+
+        return state
+
+    def __setstate__(self, state):
+        for tree in state["forest"]:
+            if tree.rng is None:
+                tree.rng = np.random
+
+        self.__dict__.update(state)
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.

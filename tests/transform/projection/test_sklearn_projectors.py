@@ -83,6 +83,7 @@ def test_auto_components_are_sized_from_the_batch():
 
     for projector_cls in [GaussianRandomProjector, SparseRandomProjector]:
         assert projector_cls(eps=0.5).fit_transform(X).shape == (50, num_components)
+        assert projector_cls(eps=0.5).transform(X).shape == (50, num_components)
         assert projector_cls(eps=0.5).fit(X).transform_partial(X[0]).shape == (num_components,)
 
         with pytest.raises(ValueError, match="num_components='auto'"):

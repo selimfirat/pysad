@@ -48,6 +48,19 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return self
 
+    def transform(self, X):
+        """Projects all instances, fitting the projector to them first if it is not fitted yet.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): Input feature vectors.
+
+        Returns:
+            np.float64 array of shape (num_instances, num_components): Projected feature vectors.
+        """
+        self.fit(X)
+
+        return super().transform(X)
+
     def fit_transform(self, X):
         """Fits the projector to all instances, then projects them.
 

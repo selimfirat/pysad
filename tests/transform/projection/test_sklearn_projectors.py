@@ -70,3 +70,20 @@ def test_fit_draws_projection_used_by_transform():
 
         assert projector.transform(X).shape == (20, 10)
         assert projector._components is components
+
+
+def test_auto_components_are_sized_from_the_batch():
+    import numpy as np
+    import pytest
+    from sklearn.random_projection import johnson_lindenstrauss_min_dim
+    from pysad.transform.projection import GaussianRandomProjector, SparseRandomProjector
+
+    X = np.random.RandomState(0).rand(50, 500)
+    num_components = johnson_lindenstrauss_min_dim(50, eps=0.5)
+
+    for projector_cls in [GaussianRandomProjector, SparseRandomProjector]:
+        assert projector_cls(eps=0.5).fit_transform(X).shape == (50, num_components)
+        assert projector_cls(eps=0.5).fit(X).transform_partial(X[0]).shape == (num_components,)
+
+        with pytest.raises(ValueError, match="num_components='auto'"):
+            projector_cls(eps=0.5).transform_partial(X[0])

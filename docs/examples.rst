@@ -42,3 +42,9 @@ Example PyOD Integration
 
 .. literalinclude:: ../examples/example_pyod_integration.py
    :language: python
+
+Example Seasonal ESD Usage
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../examples/example_seasonal_esd.py
+   :language: python

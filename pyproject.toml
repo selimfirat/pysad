@@ -23,7 +23,16 @@ maintainers = [
 description = "PySAD is an open-source python framework for anomaly detection on streaming multivariate data."
 readme = {file = "README.rst", content-type = "text/x-rst"}
 license = {file = "LICENSE"}
-keywords = ["outlier detection", "anomaly detection", "machine learning"]
+keywords = [
+  "outlier detection",
+  "anomaly detection",
+  "machine learning",
+  "streaming",
+  "online learning",
+  "real-time",
+  "incremental learning",
+  "time series",
+]
 classifiers = [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Education',

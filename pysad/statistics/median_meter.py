@@ -5,7 +5,7 @@ from pysad.core.base_statistic import UnivariateStatistic
 class MedianMeter(UnivariateStatistic):
     """The statistic that keeps track of the median.
 
-        Attrs:
+        Attributes:
             num_items (int): The number of items that are used to update the statistic.
             lst (list[float]): The list of values that are used to update the statistic. It is necessary for windowing operations.
     """

@@ -11,16 +11,12 @@ class RobustRandomCutForest(BaseModel):
     """
 
     def __init__(self, num_trees=4, shingle_size=4, tree_size=256):
-        import sys
-        from unittest.mock import MagicMock
+        import warnings
 
-        # Mock pkg_resources to prevent importing the real deprecated pkg_resources when importing rrcf
-        if 'pkg_resources' not in sys.modules:
-            mock_pkg_resources = MagicMock()
-            mock_pkg_resources.get_distribution.return_value.version = "0.4.4"
-            sys.modules['pkg_resources'] = mock_pkg_resources
-
-        from rrcf import rrcf
+        # rrcf imports the deprecated pkg_resources to read its own version.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
+            from rrcf import rrcf
 
         self.tree_size = tree_size
         self.shingle_size = shingle_size

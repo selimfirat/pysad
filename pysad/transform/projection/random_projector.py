@@ -1,4 +1,6 @@
 from abc import abstractmethod
+import numpy as np
+from scipy.sparse import issparse
 from sklearn.random_projection import SparseRandomProjection, GaussianRandomProjection
 from pysad.core.base_transformer import BaseTransformer
 
@@ -12,7 +14,7 @@ class BaseSKLearnProjector(BaseTransformer):
             num_components (int): The number of dimensions that the target will be projected into.
         """
         super().__init__(num_components)
-        self.projector = None
+        self._components = None
 
     @property
     @abstractmethod
@@ -22,6 +24,15 @@ class BaseSKLearnProjector(BaseTransformer):
         """
         pass
 
+    def _fit_projector(self, x):
+        """Draws the random projection matrix once, from the first instance's dimensionality.
+
+        Args:
+            x (np.float64 array of shape (1, num_features)): Input feature vector.
+        """
+        components = self._projector().fit(x).components_
+        self._components = components.toarray() if issparse(components) else components
+
     def fit_partial(self, X):
         """Fits particular (next) timestep's features to train the projector.
 
@@ -30,12 +41,8 @@ class BaseSKLearnProjector(BaseTransformer):
         Returns:
             object: self.
         """
-        if self.projector is None:
-            self.projector = self._projector()
-
-        if not hasattr(self.projector, "components_"):
-            x = X.reshape(1, -1)
-            self.projector.fit(x)
+        if self._components is None:
+            self._fit_projector(X.reshape(1, -1))
 
         return self
 
@@ -49,20 +56,12 @@ class BaseSKLearnProjector(BaseTransformer):
             projected_X: np.float64 array of shape (num_components,)
                 Projected feature vector.
         """
-        if self.projector is None:
-            self.projector = self._projector()
-
         x = X.reshape(1, -1)
-        if not hasattr(self.projector, "components_"):
-            self.projector.fit(x)
+        if self._components is None:
+            self._fit_projector(x)
 
-        import numpy as np
-        from scipy.sparse import issparse
-        components = self.projector.components_
-        if issparse(components):
-            components = components.toarray()
-
-        return np.dot(x, components.T).reshape(-1)
+        # np.dot rather than sklearn's transform: its matmul raises spurious FPE warnings with macOS Accelerate BLAS.
+        return np.dot(x, self._components.T).reshape(-1)
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):

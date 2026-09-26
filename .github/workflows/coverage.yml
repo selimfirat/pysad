@@ -11,6 +11,10 @@ permissions:
 jobs:
   coverage:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Lets the Qlty upload authenticate with OIDC instead of a stored token.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,5 +35,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: coverage.lcov
+      - name: Upload to Qlty
+        uses: qltysh/qlty-action/coverage@v2
+        with:
+          oidc: true
+          files: coverage.lcov
       - name: Run examples
         run: pytest -m examples

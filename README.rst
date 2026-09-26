@@ -28,6 +28,14 @@ Python Streaming Anomaly Detection (PySAD)
    :target: https://coveralls.io/github/selimfirat/pysad?branch=master
    :alt: Coverage Status
 
+.. image:: https://qlty.sh/gh/selimfirat/projects/pysad/maintainability.svg
+   :target: https://qlty.sh/gh/selimfirat/projects/pysad
+   :alt: Maintainability
+
+.. image:: https://qlty.sh/gh/selimfirat/projects/pysad/coverage.svg
+   :target: https://qlty.sh/gh/selimfirat/projects/pysad
+   :alt: Code Coverage
+
 .. image:: https://img.shields.io/pypi/pyversions/pysad
    :target: https://github.com/selimfirat/pysad/
    :alt: PyPI - Python Version
@@ -166,6 +174,8 @@ Quick Links
 * `Circle CI <https://circleci.com/gh/selimfirat/pysad/>`_
 
 * `Coveralls <https://coveralls.io/github/selimfirat/pysad?branch=master>`_
+
+* `Qlty <https://qlty.sh/gh/selimfirat/projects/pysad>`_
 
 * `License <https://github.com/selimfirat/pysad/blob/master/LICENSE>`_
 

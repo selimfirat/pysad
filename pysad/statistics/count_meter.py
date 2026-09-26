@@ -4,7 +4,7 @@ from pysad.core.base_statistic import UnivariateStatistic
 class CountMeter(UnivariateStatistic):
     """A simple counter statistic.
 
-    Attrs:
+    Attributes:
         count (int): The number of items that are used to update the statistic.
     """
 
@@ -25,7 +25,7 @@ class CountMeter(UnivariateStatistic):
         return self
 
     def remove(self, num=None):
-        """Updates the statistic by removing particular value. This method
+        """Updates the statistic by removing a particular value.
 
         Args:
             num (float): The value to be removed.

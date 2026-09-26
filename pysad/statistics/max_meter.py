@@ -7,7 +7,7 @@ import numpy as np
 class MaxMeter(UnivariateStatistic):
     """The statistic that keeps track of the maximum value.
 
-        Attrs:
+        Attributes:
             max (float): The maximum value.
             lst (list[float]): The list of values that are used to update the statistic. It is necessary for windowing operations.
     """
@@ -35,7 +35,7 @@ class MaxMeter(UnivariateStatistic):
         return self
 
     def remove(self, num):
-        """Updates the statistic by removing particular value. This method
+        """Updates the statistic by removing a particular value.
 
         Args:
             num (float): The value to be removed.

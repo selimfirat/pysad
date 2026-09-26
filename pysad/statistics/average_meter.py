@@ -4,7 +4,7 @@ from pysad.core.base_statistic import UnivariateStatistic
 class AverageMeter(UnivariateStatistic):
     """The average of the values.
 
-    Attrs:
+    Attributes:
         sum (float): The summation of values.
         num_items (int): The number of items that are used to update the statistic.
     """
@@ -28,7 +28,7 @@ class AverageMeter(UnivariateStatistic):
         return self
 
     def remove(self, num):
-        """Updates the statistic by removing particular value. This method
+        """Updates the statistic by removing a particular value.
 
         Args:
             num (float): The value to be removed.

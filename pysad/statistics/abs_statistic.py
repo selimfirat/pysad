@@ -29,7 +29,7 @@ class AbsStatistic(UnivariateStatistic):
         return self
 
     def remove(self, num):
-        """Updates the statistic by removing particular value. This method
+        """Updates the statistic by removing a particular value.
 
         Args:
             num (float):  The value to be removed.

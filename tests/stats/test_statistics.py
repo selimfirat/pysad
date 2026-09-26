@@ -112,3 +112,24 @@ def test_stats_with_batch_numpy():
             abs_stat.update(num)
 
             prev_value = stat.get()
+
+
+def test_running_statistic_passes_kwargs():
+    import numpy as np
+    from pysad.statistics import AverageMeter
+
+    class ScaledAverage(AverageMeter):
+        def __init__(self, scale=1.0):
+            super().__init__()
+            self.scale = scale
+
+        def get(self):
+            return self.scale * super().get()
+
+    stat = RunningStatistic(ScaledAverage, window_size=2, scale=3.0)
+    assert stat.statistic.scale == 3.0
+
+    for num in [1.0, 2.0, 4.0]:
+        stat.update(num)
+
+    assert np.isclose(stat.get(), 3.0 * (2.0 + 4.0) / 2)

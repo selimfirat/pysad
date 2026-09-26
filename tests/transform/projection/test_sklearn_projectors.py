@@ -56,3 +56,17 @@ def test_sparse_projector_keeps_components_sparse():
     projector.fit_transform(np.random.RandomState(0).rand(5, 1000))
 
     assert issparse(projector._components)
+
+
+def test_fit_draws_projection_used_by_transform():
+    import numpy as np
+    from pysad.transform.projection import GaussianRandomProjector, SparseRandomProjector
+
+    X = np.random.RandomState(0).rand(20, 100)
+
+    for projector_cls in [GaussianRandomProjector, SparseRandomProjector]:
+        projector = projector_cls(num_components=10).fit(X)
+        components = projector._components
+
+        assert projector.transform(X).shape == (20, 10)
+        assert projector._components is components

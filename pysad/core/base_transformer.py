@@ -73,7 +73,7 @@ class BaseTransformer(ABC):
         Returns:
             object: The fitted transformer
         """
-        for xi in _iterate(X):
+        for xi, _ in _iterate(X):
             self.fit_partial(xi)
 
         return self

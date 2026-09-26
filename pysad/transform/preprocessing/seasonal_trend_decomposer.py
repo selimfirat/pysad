@@ -40,8 +40,6 @@ class SeasonalTrendDecomposer(BaseTransformer):
         self.num_seen = 0
 
     def _as_array(self, X):
-        if isinstance(X, tuple):
-            X = X[0]
 
         return np.asarray(X)
 

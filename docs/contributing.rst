@@ -22,7 +22,7 @@ welcome to post feature requests or pull requests.
 
 I aim to reply to new issues and pull requests within a few days.
 
-For any questions, you may open issue on Github or drop me an email at `yilmaselimfirat (at)gmail(you know the rest)`.
+For any questions, you may open issue on Github or drop me an email at `yilmazselimfirat (at)gmail(you know the rest)`.
 
 Pull Request Checklist
 ^^^^^^^^^^^^^^^^^^^^^^

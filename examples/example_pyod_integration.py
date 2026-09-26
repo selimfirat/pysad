@@ -5,7 +5,6 @@ from pysad.evaluation import AUROCMetric
 from pysad.models.integrations import ReferenceWindowModel
 from pysad.utils import ArrayStreamer
 from pysad.utils import Data
-from tqdm import tqdm
 import numpy as np
 
 # This example demonstrates the integration of a PyOD model via ReferenceWindowModel.
@@ -23,7 +22,7 @@ if __name__ == "__main__":
 
     auroc = AUROCMetric()  # Init area under receiver-operating-characteristics curve metric tracker.
 
-    for X, y in tqdm(iterator.iter(X_all[100:], y_all[100:])):
+    for X, y in iterator.iter(X_all[100:], y_all[100:]):
 
         model.fit_partial(X)  # Fit to the instance.
         score = model.score_partial(X)  # Score the instance.

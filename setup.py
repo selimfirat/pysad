@@ -20,7 +20,7 @@ setup(
     license='3-Clause BSD',
     author='Selim Firat Yilmaz',
     author_email='yilmazselimfirat@gmail.com',
-    description='PySAD is an open-source python framework for anomaly detection on streaming multivariate data. ',
+    description='Streaming anomaly detection in Python: 16 online detectors (xStream, LODA, RS-Hash, Half-Space Trees, RRCF...) plus calibration and prequential evaluation for real-time data.',
     long_description=readme,
     long_description_content_type='text/x-rst',
     packages=find_packages(exclude=['tests']),

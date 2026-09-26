@@ -54,7 +54,22 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           SHA: ${{ github.event.pull_request.merge_commit_sha }}
           NOTES: ${{ github.event.pull_request.body }}
+        # Idempotent so a failed PyPI publish can be retried with "Re-run all jobs".
         run: |
+          # The peeled "^{}" line of an annotated tag follows the tag line, so the last match is the commit.
+          TAG_SHA=$(git ls-remote --tags origin | awk -v t="refs/tags/$VERSION" '$2 == t || $2 == t "^{}" { sha = $1 } END { print sha }')
+          if [ -n "$TAG_SHA" ] && [ "$TAG_SHA" != "$SHA" ]; then
+            echo "Tag $VERSION points at $TAG_SHA, not merge commit $SHA" >&2
+            exit 1
+          fi
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            if [ -z "$TAG_SHA" ]; then
+              echo "Release $VERSION exists but tag $VERSION does not" >&2
+              exit 1
+            fi
+            echo "Release $VERSION already exists at $SHA; continuing to publish"
+            exit 0
+          fi
           printf '%s\n' "$NOTES" > release-notes.md
           gh release create "$VERSION" \
             --repo "$GITHUB_REPOSITORY" \

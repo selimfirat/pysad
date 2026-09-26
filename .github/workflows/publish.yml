@@ -41,7 +41,7 @@ jobs:
             echo "Branch $HEAD_REF does not name a version" >&2
             exit 1
           fi
-          PKG_VERSION=$(python -c "exec(open('pysad/version.py').read()); print(__version__)")
+          PKG_VERSION=$(python -c "import ast; tree=ast.parse(open('pysad/version.py').read()); node=next(n for n in tree.body if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == '__version__' for t in n.targets)); print(ast.literal_eval(node.value))")
           if [ "v$PKG_VERSION" != "$VERSION" ]; then
             echo "pysad/version.py is $PKG_VERSION but branch is $VERSION" >&2
             exit 1

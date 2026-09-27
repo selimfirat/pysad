@@ -1,5 +1,9 @@
 import os
+from collections.abc import Iterator
+from typing import Any
+
 import numpy as np
+
 from pysad.utils.array_streamer import ArrayStreamer
 
 
@@ -10,10 +14,10 @@ class Data:
         data_base_path (str): Base path that contains the data files.
     """
 
-    def __init__(self, data_base_path="data"):
+    def __init__(self, data_base_path: str = "data") -> None:
         self.data_base_path = data_base_path
 
-    def _get_data_files(self):
+    def _get_data_files(self) -> list[str]:
         """ Helper method to return the names of the data files.
 
         Returns:
@@ -44,7 +48,7 @@ class Data:
             "magic-telescope_sampled.txt",
         ]
 
-    def _load_via_txt(self, path):
+    def _load_via_txt(self, path: str) -> np.ndarray:
         """Loads the data file from .txt file.
 
         Args:
@@ -57,7 +61,7 @@ class Data:
 
         return X
 
-    def get_data(self, data_file):
+    def get_data(self, data_file: str) -> tuple[np.ndarray, np.ndarray]:
         """Loads the data given the path.
 
         Args:
@@ -84,7 +88,9 @@ class Data:
 
         return X, y
 
-    def get_iterator(self, data_file, shuffle=True, seed=None):
+    def get_iterator(
+        self, data_file: str, shuffle: bool = True, seed: int | None = None
+    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
         """The iterator function
 
         Args:

@@ -52,6 +52,11 @@ Versioning
 
 `Semantic versioning <http://semver.org/>`_ is used for this project.
 
+Development Style
+=================
+
+This project follows `Trunk-based development <https://trunkbaseddevelopment.com/>`_. All changes are integrated into the trunk (``master``) via short-lived branches and pull requests verified by continuous integration.
+
 .. include:: docs/license.rst
 
 .. include:: docs/citing.rst

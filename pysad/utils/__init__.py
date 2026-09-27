@@ -1,9 +1,12 @@
 """
 The :mod:`pysad.utils` module includes utility functions used in the `PySAD` framework, which can also be useful for streaming learning.
 """
-from .array_streamer import ArrayStreamer
 import random
+from collections.abc import Iterator
+
 import numpy as np
+
+from .array_streamer import ArrayStreamer
 from .data import Data
 from .pandas_streamer import PandasStreamer
 from .window import Window
@@ -11,7 +14,7 @@ from .window import Window
 __all__ = ["fix_seed", "get_minmax_array", "get_minmax_scalar", "_iterate", "ArrayStreamer", "PandasStreamer", "Window", "Data"]
 
 
-def fix_seed(seed):
+def fix_seed(seed: int) -> None:
     """Utility method to fix the seed for randomness.
 
     Args:
@@ -21,7 +24,7 @@ def fix_seed(seed):
     np.random.seed(seed)
 
 
-def get_minmax_array(X):
+def get_minmax_array(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Utility method that returns the boundaries for each feature of the input array.
 
     Args:
@@ -36,7 +39,9 @@ def get_minmax_array(X):
     return min, max
 
 
-def get_minmax_scalar(x):
+def get_minmax_scalar(
+    x: np.ndarray,
+) -> tuple[np.float64, np.float64]:
     """Utility method that returns the boundaries of the input array.
 
     Args:
@@ -51,7 +56,9 @@ def get_minmax_scalar(x):
     return min, max
 
 
-def _iterate(X, y=None):
+def _iterate(
+    X: np.ndarray, y: np.ndarray | None = None
+) -> Iterator[tuple[np.ndarray, np.ndarray | None]]:
     """Iterates array of features and possibly labels.
 
     Args:

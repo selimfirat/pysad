@@ -1,5 +1,15 @@
-from pysad.utils.array_streamer import ArrayStreamer
+from __future__ import annotations
+
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
+
+import numpy as np
+
 from pysad.core.base_streamer import BaseStreamer
+from pysad.utils.array_streamer import ArrayStreamer
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class PandasStreamer(BaseStreamer):
@@ -9,12 +19,14 @@ class PandasStreamer(BaseStreamer):
         shuffle (bool): Whether shuffle the data initially (Default=False).
     """
 
-    def __init__(self, shuffle=False):
+    def __init__(self, shuffle: bool = False) -> None:
         super().__init__(shuffle=shuffle)
 
         self.array_iterator = ArrayStreamer(shuffle=shuffle)
 
-    def iter(self, X, y=None):
+    def iter(
+        self, X: pd.DataFrame, y: pd.DataFrame | None = None
+    ) -> Iterator[np.ndarray | tuple[np.ndarray, np.ndarray]]:
         """Iterates pandas dataframes of of features and possibly labels.
 
         Args:

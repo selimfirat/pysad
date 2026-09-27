@@ -1,5 +1,8 @@
 import abc
 from abc import abstractmethod
+from collections.abc import Iterator
+
+import numpy as np
 
 
 class BaseStreamer(abc.ABC):
@@ -9,11 +12,13 @@ class BaseStreamer(abc.ABC):
         shuffle (bool): Whether shuffle the data initially (Optional, default=False).
     """
 
-    def __init__(self, shuffle=False):
+    def __init__(self, shuffle: bool = False) -> None:
         self.shuffle = shuffle
 
     @abstractmethod
-    def iter(self, X, y=None):
+    def iter(
+        self, X: np.ndarray, y: np.ndarray | None = None
+    ) -> Iterator[np.ndarray | tuple[np.ndarray, np.ndarray]]:
         """Method that iterates array of data and (optionally) labels.
 
         Args:

@@ -1,5 +1,8 @@
-from pysad.core.base_streamer import BaseStreamer
+from collections.abc import Iterator
+
 import numpy as np
+
+from pysad.core.base_streamer import BaseStreamer
 
 
 class ArrayStreamer(BaseStreamer):
@@ -9,10 +12,12 @@ class ArrayStreamer(BaseStreamer):
         shuffle (bool): Whether shuffle the data initially (Default=False).
     """
 
-    def __init__(self, shuffle=False):
+    def __init__(self, shuffle: bool = False) -> None:
         self.shuffle = shuffle
 
-    def iter(self, X, y=None):
+    def iter(
+        self, X: np.ndarray, y: np.ndarray | None = None
+    ) -> Iterator[np.ndarray | tuple[np.ndarray, np.ndarray]]:
         """Iterates array of features and possibly labels.
 
         Args:

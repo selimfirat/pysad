@@ -1,5 +1,3 @@
-
-
 class Window:
     """Window to limit the instances in list and keep the size fixed when full.
 
@@ -7,11 +5,11 @@ class Window:
         window_size (int): The size of the window.
     """
 
-    def __init__(self, window_size):
+    def __init__(self, window_size: int | None) -> None:
         self.window_size = window_size
         self.window = []
 
-    def update(self, num):
+    def update(self, num: float) -> None:
         """Adds new item to the window. Removes the tail if size exceeds the self.window_size.
 
         Args:
@@ -21,7 +19,7 @@ class Window:
         if len(self.window) > self.window_size:
             self.window = self.window[1:]
 
-    def get(self):
+    def get(self) -> list[float]:
         """Method to obtain the window list.
 
         Returns:
@@ -34,10 +32,10 @@ class UnlimitedWindow(Window):
     """Unlimited window implemented for convenience. This class only provides a list with unlimited size. Note that this does not fit to the memory for streaming data.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(None)
 
-    def update(self, num):
+    def update(self, num: float) -> None:
         """Adds new item to the window. Removes the tail if size exceeds the self.window_size.
 
         Args:

@@ -4,16 +4,17 @@ import numpy as np
 
 
 class RelativeEntropy(BaseModel):
-    """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_: it differs from the paper in that windows slide one value at a time instead of being non-overlapping. Unlike NAB, whose histogram puts the top two quantization levels in one bin, this implementation gives each of the `num_bins` equal-width buckets its own bin, as in the paper (Fig. 1, steps 3-4b), so its scores differ from NAB's. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, and 0.0 otherwise. With NAB's rarity threshold `c_th` kept at 1, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
+    """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. By default (`step=None`, resolved to `window_size`), windows are non-overlapping, as in the paper; pass `step=1` to reproduce NAB's detector, which slides the window by one value at a time. Unlike NAB, whose histogram puts the top two quantization levels in one bin, this implementation gives each of the `num_bins` equal-width buckets its own bin, as in the paper (Fig. 1, steps 3-4b), so its scores differ from NAB's. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, and 0.0 otherwise. With NAB's rarity threshold `c_th` kept at 1, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
 
         Args:
             min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
             max_val (float): Maximum value of the univariate stream. Values above this are clipped to it.
             num_bins (int): Number of bins (Default=5).
             window_size (int): The size of the window (Default=52).
+            step (int): Number of values between the ends of consecutive tested windows. `None` (default) resolves to `window_size`, giving the paper's non-overlapping windows; `step=1` reproduces NAB's sliding windows. Must be an int >= 1 (after resolving `None`), or `ValueError` is raised.
     """
 
-    def __init__(self, min_val, max_val, num_bins=5, window_size=52):
+    def __init__(self, min_val, max_val, num_bins=5, window_size=52, step=None):
         self.min_val = min_val
         self.max_val = max_val
 
@@ -25,6 +26,13 @@ class RelativeEntropy(BaseModel):
 
         # Window size
         self.W = window_size
+
+        # Number of values between the ends of consecutive tested windows. None resolves to
+        # W (the paper's non-overlapping windows); step=1 reproduces NAB's sliding windows.
+        resolved_step = self.W if step is None else step
+        if not isinstance(resolved_step, int) or resolved_step < 1:
+            raise ValueError("step must be an int >= 1 (after resolving None to window_size).")
+        self.step = resolved_step
 
         # Threshold against which the test statistic is compared. It is set to
         # the point in the chi-squared cdf with N-bins -1 degrees of freedom that
@@ -49,7 +57,7 @@ class RelativeEntropy(BaseModel):
         self.c_th = 1
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance: appends `X` to the window and, once the window is full, either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise.
+        """Fits the model to next instance: appends `X` to the window and, when `X` closes a window (the window is full and its end is `step` values past the previous tested window's end), either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise. Values that don't close a window leave the model unchanged.
 
         Args:
             X (float): The instance to fit. Note that this model is univariate.
@@ -64,7 +72,7 @@ class RelativeEntropy(BaseModel):
         x = self._value(X)
         self.util.append(x)
 
-        if self.stepSize != 0.0 and len(self.util) >= self.W:
+        if self.stepSize != 0.0 and self._closes_window(len(self.util)):
             P_hat, index = self._window_index(self.util[-self.W:])
             self._fit_window(P_hat, index)
 
@@ -77,20 +85,18 @@ class RelativeEntropy(BaseModel):
             X (float): The instance to score. Note that this model is univariate.
 
         Returns:
-            float: 1.0 if the window agrees with no hypothesis; with NAB's `c_th = 1`, a window that agrees with an existing hypothesis always scores 0.0. Also 0.0 before the window is full, before any hypothesis has been learned, or when `min_val == max_val` (step size 0).
+            float: 1.0 if the window agrees with no hypothesis; with NAB's `c_th = 1`, a window that agrees with an existing hypothesis always scores 0.0. Also 0.0 before the window is full, when `X` doesn't close a window (per `step`), before any hypothesis has been learned, or when `min_val == max_val` (step size 0).
 
         Raises:
             ValueError: If `X` is NaN.
         """
         x = self._value(X)
 
-        if self.stepSize == 0.0:
+        if self.stepSize == 0.0 or not self._closes_window(len(self.util) + 1) or self.m == 0:
             return 0.0
 
         start = max(0, len(self.util) - self.W + 1)
         window = self.util[start:] + [x]
-        if len(window) < self.W or self.m == 0:
-            return 0.0
 
         _, index = self._window_index(window)
 
@@ -112,7 +118,7 @@ class RelativeEntropy(BaseModel):
         x = self._value(X)
         self.util.append(x)
 
-        if self.stepSize == 0.0 or len(self.util) < self.W:
+        if self.stepSize == 0.0 or not self._closes_window(len(self.util)):
             return 0.0
 
         # Computed once and shared: the score reads `index` before `_fit_window` changes
@@ -142,6 +148,23 @@ class RelativeEntropy(BaseModel):
             raise ValueError("RelativeEntropy does not accept NaN values.")
 
         return x
+
+    def _closes_window(self, length):
+        """Whether the value bringing `util` to `length` closes a tested window: the window must
+        be full and its end must land `step` values past the end of the previous tested window,
+        counting from the first full window. With the default `step == W` this is true once per
+        `W` values (the paper's non-overlapping windows); with `step == 1` it is true for every
+        value from the first full window on (NAB's sliding windows).
+
+        Args:
+            length (int): The number of values in `util` counting the value that would close the
+                window, i.e. `len(self.util)` in `fit_partial`/`fit_score_partial`, or
+                `len(self.util) + 1` for the hypothetical window in `score_partial`.
+
+        Returns:
+            bool: True if the window ending at `length` should be fitted/scored.
+        """
+        return length >= self.W and (length - self.W) % self.step == 0
 
     def _window_index(self, window):
         """Computes a window's empirical histogram and the index of the hypothesis it agrees with.

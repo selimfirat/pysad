@@ -96,7 +96,7 @@ def test_relative_entropy_matches_reference(window_size):
 
     reference_scores, reference_c, reference_P = _reference_fit_scores(x, min_val=0.0, max_val=1.0, window_size=window_size)
 
-    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size, step=1)
     scores = [model.fit_score_partial(np.array([v])) for v in x]
 
     assert scores == reference_scores
@@ -116,7 +116,7 @@ def test_relative_entropy_issue_example():
     y = np.zeros(3000, dtype=int)
     y[2000:2100] = 1
 
-    model = RelativeEntropy(min_val=0.0, max_val=1.0)
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, step=1)
     scores = np.array([model.fit_score_partial(np.array([v])) for v in x])
 
     assert set(np.unique(scores)) <= {0.0, 1.0}
@@ -139,7 +139,7 @@ def test_relative_entropy_score_partial_has_no_side_effects():
     x = rng.normal(0.5, 0.05, 300)
     x = np.clip(x, 0, 1)
 
-    model = RelativeEntropy(min_val=0.0, max_val=1.0)
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, step=1)
     for v in x:
         model.fit_partial(np.array([v]))
 
@@ -169,14 +169,14 @@ def test_relative_entropy_score_then_fit_matches_fit_score_partial():
     x[150:160] = rng.normal(0.9, 0.05, 10)
     x = np.clip(x, 0, 1)
 
-    model_a = RelativeEntropy(min_val=0.0, max_val=1.0)
+    model_a = RelativeEntropy(min_val=0.0, max_val=1.0, step=1)
     scores_a = []
     for v in x:
         xi = np.array([v])
         scores_a.append(model_a.score_partial(xi))
         model_a.fit_partial(xi)
 
-    model_b = RelativeEntropy(min_val=0.0, max_val=1.0)
+    model_b = RelativeEntropy(min_val=0.0, max_val=1.0, step=1)
     scores_b = [model_b.fit_score_partial(np.array([v])) for v in x]
 
     assert scores_a == scores_b
@@ -199,7 +199,7 @@ def test_relative_entropy_out_of_range_values_do_not_produce_nan_hypotheses():
     import numpy as np
 
     window_size = 10
-    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size, step=1)
 
     # In-range warm-up so at least one hypothesis is learned before the stream
     # goes out of range.
@@ -230,7 +230,7 @@ def test_relative_entropy_max_val_round_off_lands_in_top_bin():
     # 1..num_bins that _histogram maps to bins 0..num_bins - 1; clipping the level must put
     # max_val in the top bin.
     window_size = 10
-    model = RelativeEntropy(min_val=0.0, max_val=100.0, num_bins=29, window_size=window_size)
+    model = RelativeEntropy(min_val=0.0, max_val=100.0, num_bins=29, window_size=window_size, step=1)
     assert np.ceil((model.max_val - model.min_val) / model.stepSize) == model.N_bins + 1
 
     m_history = []
@@ -289,17 +289,63 @@ def test_relative_entropy_flags_jump_between_top_two_buckets():
     # A level shift from the 4th bucket (60, 80] to the 5th bucket (80, 100] must be
     # flagged just as often as a shift of the same size between two lower buckets.
     x_top_shift = np.r_[np.full(200, 70.0), np.full(200, 90.0)]
-    scores_top_shift = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50).fit_score(
+    scores_top_shift = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50, step=1).fit_score(
         x_top_shift.reshape(-1, 1)
     )
 
     x_lower_shift = np.r_[np.full(200, 50.0), np.full(200, 70.0)]
-    scores_lower_shift = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50).fit_score(
+    scores_lower_shift = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50, step=1).fit_score(
         x_lower_shift.reshape(-1, 1)
     )
 
     assert scores_top_shift.sum() > 0
     assert scores_top_shift.sum() == scores_lower_shift.sum()
+
+
+def test_relative_entropy_default_step_tests_non_overlapping_windows():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    x = np.clip(rng.normal(50, 10, 52 * 20), 0, 100)  # 20 non-overlapping windows of W=52
+
+    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=52)
+    model.fit_score(x.reshape(-1, 1))
+
+    assert sum(model.c) == 20
+
+
+def test_relative_entropy_step_one_reproduces_nab_sliding_windows():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    n = 52 * 20
+    x = np.clip(rng.normal(50, 10, n), 0, 100)
+
+    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=52, step=1)
+    model.fit_score(x.reshape(-1, 1))
+
+    assert sum(model.c) == n - model.W + 1
+
+
+def test_relative_entropy_values_that_do_not_close_a_window_score_zero():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    window_size = 5
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)  # step defaults to window_size
+
+    rng = np.random.default_rng(5)
+    x = np.clip(rng.normal(0.5, 0.05, 23), 0, 1)
+
+    scores = [model.fit_score_partial(np.array([v])) for v in x]
+
+    # Only the value that closes a window (every window_size-th value here) can score
+    # nonzero; every other value must score 0.0.
+    for i, score in enumerate(scores, start=1):
+        if i % window_size != 0:
+            assert score == 0.0
 
 
 @pytest.mark.parametrize("method", ["fit_partial", "score_partial", "fit_score_partial"])
@@ -326,3 +372,35 @@ def test_relative_entropy_rejects_nan_without_changing_the_model(method, num_fit
     for _ in range(10):
         model.fit_score_partial(np.array([0.9]))
     assert len(model.util) == num_fitted + 10
+
+
+@pytest.mark.parametrize("step", [0, -1, 1.5, "1"])
+def test_relative_entropy_invalid_step_raises(step):
+    from pysad.models import RelativeEntropy
+
+    with pytest.raises(ValueError):
+        RelativeEntropy(min_val=0.0, max_val=1.0, step=step)
+
+
+@pytest.mark.parametrize("window_size", [1, 2, 3])
+@pytest.mark.parametrize("step", [1, None])
+def test_relative_entropy_small_windows_score_partial_matches_fit_score_partial(window_size, step):
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    rng = np.random.default_rng(4)
+    x = np.clip(rng.normal(0.5, 0.05, 30), 0, 1)
+
+    kwargs = dict(min_val=0.0, max_val=1.0, window_size=window_size, step=step)
+
+    model_a = RelativeEntropy(**kwargs)
+    scores_a = []
+    for v in x:
+        xi = np.array([v])
+        scores_a.append(model_a.score_partial(xi))
+        model_a.fit_partial(xi)
+
+    model_b = RelativeEntropy(**kwargs)
+    scores_b = [model_b.fit_score_partial(np.array([v])) for v in x]
+
+    assert scores_a == scores_b

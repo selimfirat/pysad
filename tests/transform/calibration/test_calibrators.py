@@ -1,4 +1,3 @@
-
 def test_calibrators():
     from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
     import numpy as np
@@ -44,3 +43,18 @@ def test_conformal_calibrator_p_values():
     # A constant stream gets p = 1, not p = 0.
     calibrated_scores = ConformalProbabilityCalibrator().fit_transform(np.full(50, 0.3))
     assert np.all(calibrated_scores == 1.0)
+
+
+def test_gaussian_tail_probability_calibrator_non_running_statistics():
+    import numpy as np
+    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
+
+    np.random.seed(0)
+    scores = np.r_[np.random.normal(0, 10, 1000), np.zeros(5)]
+    calibrator = GaussianTailProbabilityCalibrator(running_statistics=False, window_size=5)
+    for score in scores:
+        calibrator.fit_partial(score)
+
+    # When running_statistics is False, the variance should be computed over all scores
+    expected_variance = scores.var()
+    assert np.isclose(calibrator.var_meter.get(), expected_variance, rtol=1e-5, atol=1e-8)

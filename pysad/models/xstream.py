@@ -142,10 +142,14 @@ class _HSChains:
 
         return bins.view(np.dtype((np.void, bins.shape[-1] * bins.itemsize))).reshape(-1).tolist()
 
-    def score(self, X):
+    def _bin_counts(self, X):
+        # Returns the reference count of the bin of every instance, chain and depth, of shape (n, nchains, depth).
         keys = self._bin_keys(X)
         counts = np.fromiter(map(self.counts.get, keys, repeat(0)), dtype=np.float64, count=len(keys))
-        counts = counts.reshape(X.shape[0], self.nchains, self.depth)
+        return counts.reshape(X.shape[0], self.nchains, self.depth)
+
+    def score(self, X):
+        counts = self._bin_counts(X)
 
         # scale score logarithmically to avoid overflow:
         #    score = min_d [ log2(bincount x 2^d) = log2(bincount) + d ]

@@ -5,9 +5,9 @@ import pytest
 
 from pysad.utils import fix_seed
 
-# Scores produced by the original per-chain, per-depth loop implementation of xStream. The
-# vectorized implementation must reproduce them exactly for the same seeds.
-REFERENCE_SCORES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "xstream_reference_scores.npz")
+# Bin counts and scores produced by the original per-chain, per-depth loop implementation of xStream. The
+# vectorized implementation must reproduce them for the same seeds.
+REFERENCE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "xstream_reference_scores.npz")
 
 
 def _uniform_one_feature(model_cls):
@@ -45,12 +45,27 @@ SCENARIOS = {
 
 
 @pytest.mark.parametrize("name", sorted(SCENARIOS))
-def test_xstream_scores_match_reference(name):
+def test_xstream_matches_reference(name, monkeypatch):
     from pysad.models import xStream
+    from pysad.models.xstream import _HSChains
 
-    with np.load(REFERENCE_SCORES_PATH) as reference:
-        expected = reference[name]
+    # Record the (n, nchains, depth) bin counts of every score call.
+    recorded_counts = []
+    bin_counts = _HSChains._bin_counts
+
+    def recording_bin_counts(self, X):
+        counts = bin_counts(self, X)
+        recorded_counts.append(counts)
+        return counts
+
+    monkeypatch.setattr(_HSChains, "_bin_counts", recording_bin_counts)
+
+    with np.load(REFERENCE_PATH) as reference:
+        expected_counts = reference[name + "_counts"]
+        expected_scores = reference[name + "_scores"]
 
     scores = SCENARIOS[name](xStream)
 
-    assert np.array_equal(scores, expected)
+    assert np.array_equal(np.concatenate(recorded_counts), expected_counts)
+    # log2 may differ by an ulp across platforms, so only the bin counts are pinned exactly.
+    np.testing.assert_allclose(scores, expected_scores, rtol=1e-12, atol=0)

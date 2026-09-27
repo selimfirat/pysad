@@ -59,13 +59,7 @@ class RSHash(BaseModel):
         Returns:
             object: Returns the self.
         """
-        for mod_entry in self._cell_keys(X):
-            for w in range(len(self.cmsketches)):
-                decayed_wt = self._decayed_count(w, mod_entry)
-
-                self.cmsketches[w][mod_entry] = (self.index, decayed_wt + 1)
-
-        self.index += 1
+        self._fit_keys(self._cell_keys(X))
 
         return self
 
@@ -78,15 +72,7 @@ class RSHash(BaseModel):
         Returns:
             float: The anomalousness score of the input instance. Higher scores represent more anomalous instances.
         """
-        score_instance = 0
-        for mod_entry in self._cell_keys(X):
-            c = [self._decayed_count(w, mod_entry) for w in range(len(self.cmsketches))]
-
-            min_c = min(c)
-            score_instance = score_instance + np.log2(1 + min_c)
-
-        # Low counts indicate outliers in the paper, so the average log-count is negated to make higher scores more anomalous.
-        return -score_instance / self.m
+        return self._score_keys(self._cell_keys(X))
 
     def fit_score_partial(self, X, y=None):
         """Scores the next instance against the current state, then fits the model to it.
@@ -100,10 +86,44 @@ class RSHash(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        score = self.score_partial(X)
-        self.fit_partial(X, y)
+        keys = self._cell_keys(X)
+        score = self._score_keys(keys)
+        self._fit_keys(keys)
 
         return score
+
+    def _fit_keys(self, keys):
+        """Updates the sketches with the cell keys of an instance.
+
+        Args:
+            keys (list of tuple): The cell keys of the instance, as returned by `_cell_keys`.
+        """
+        for mod_entry in keys:
+            for w in range(len(self.cmsketches)):
+                decayed_wt = self._decayed_count(w, mod_entry)
+
+                self.cmsketches[w][mod_entry] = (self.index, decayed_wt + 1)
+
+        self.index += 1
+
+    def _score_keys(self, keys):
+        """Scores an instance from its cell keys, without writing to the sketches.
+
+        Args:
+            keys (list of tuple): The cell keys of the instance, as returned by `_cell_keys`.
+
+        Returns:
+            float: The anomalousness score of the input instance. Higher scores represent more anomalous instances.
+        """
+        score_instance = 0
+        for mod_entry in keys:
+            c = [self._decayed_count(w, mod_entry) for w in range(len(self.cmsketches))]
+
+            min_c = min(c)
+            score_instance = score_instance + np.log2(1 + min_c)
+
+        # Low counts indicate outliers in the paper, so the average log-count is negated to make higher scores more anomalous.
+        return -score_instance / self.m
 
     def _cell_keys(self, X):
         """Computes each ensemble component's grid cell key for a normalized instance.

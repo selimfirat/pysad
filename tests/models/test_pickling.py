@@ -13,11 +13,6 @@ NUM_NEXT = 20
 
 UNIVARIATE_MODELS = {"KNNCAD", "MedianAbsoluteDeviation", "RelativeEntropy", "SeasonalESD", "SeasonalHybridESD", "StandardAbsoluteDeviation"}
 
-# IForestASD wraps PyOD's unsupervised IForest; feeding it labels reaches
-# IForest.fit(X, y), which warns "y should not be presented in unsupervised
-# learning." and otherwise ignores y, so these models are only ever fit with y=None.
-PYOD_UNSUPERVISED_MODELS = {"IForestASD"}
-
 MODEL_PARAMS = {
     "HalfSpaceTrees": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0], "window_size": 20, "num_trees": 5, "max_depth": 8},
     "IForestASD": {"window_size": 32},
@@ -57,30 +52,26 @@ def _make_model(model_name, X):
     return model_cls(**MODEL_PARAMS.get(model_name, {}))
 
 
-def _label(model_name, yi):
-    return None if model_name in PYOD_UNSUPERVISED_MODELS else yi
-
-
 def _fitted_model(model_name, X, y):
     fix_seed(SEED)
     model = _make_model(model_name, X)
     for xi, yi in zip(X[:NUM_FIT], y[:NUM_FIT]):
-        model.fit_partial(xi, _label(model_name, yi))
+        model.fit_partial(xi, yi)
 
     return model
 
 
-def _next_scores(model_name, model, X, y):
+def _next_scores(model, X, y):
     # Models such as RobustRandomCutForest and RandomModel draw from the global numpy generator.
     fix_seed(SEED + 1)
-    scores = [model.fit_score_partial(xi, _label(model_name, yi)) for xi, yi in zip(X[NUM_FIT:], y[NUM_FIT:])]
+    scores = [model.fit_score_partial(xi, yi) for xi, yi in zip(X[NUM_FIT:], y[NUM_FIT:])]
 
     return np.array([np.asarray(score, dtype=np.float64).ravel() for score in scores])
 
 
-def _assert_same_scores(model_name, original, restored, X, y):
-    expected = _next_scores(model_name, original, X, y)
-    actual = _next_scores(model_name, restored, X, y)
+def _assert_same_scores(original, restored, X, y):
+    expected = _next_scores(original, X, y)
+    actual = _next_scores(restored, X, y)
 
     np.testing.assert_allclose(actual, expected)
 
@@ -104,7 +95,7 @@ def test_pickle_round_trip(model_name):
     restored = pickle.loads(pickle.dumps(model))
 
     assert type(restored) is type(model)
-    _assert_same_scores(model_name, model, restored, X, y)
+    _assert_same_scores(model, restored, X, y)
 
 
 @pytest.mark.parametrize("model_name", pysad.models.__all__)
@@ -114,7 +105,7 @@ def test_deepcopy(model_name):
 
     copied = copy.deepcopy(model)
 
-    _assert_same_scores(model_name, model, copied, X, y)
+    _assert_same_scores(model, copied, X, y)
 
 
 def test_rrcf_pickle_round_trip():
@@ -133,7 +124,7 @@ def test_rrcf_pickle_round_trip():
         assert sorted(restored_tree.leaves) == sorted(original_tree.leaves)
 
     # tree_size < NUM_FIT, so the next instances also exercise forgetting old points after restoring.
-    _assert_same_scores("RobustRandomCutForest", model, restored, X, y)
+    _assert_same_scores(model, restored, X, y)
 
     restored_again = pickle.loads(pickle.dumps(restored))
     assert isinstance(restored_again, RobustRandomCutForest)

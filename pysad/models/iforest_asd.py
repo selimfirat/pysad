@@ -12,3 +12,17 @@ class IForestASD(ReferenceWindowModel):
     def __init__(self, initial_window_X=None, window_size=2048, **kwargs):
         super().__init__(IForest, window_size, window_size, initial_window_X, **kwargs)
         # TODO: implement concept drift method
+
+    def fit_partial(self, X, y=None):
+        """Fits the model to next instance. `y` is accepted for API consistency but always
+        ignored, since the wrapped `IForest` is unsupervised and PyOD warns whenever a
+        non-`None` `y` reaches its `fit`.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            object: self.
+        """
+        return super().fit_partial(X, None)

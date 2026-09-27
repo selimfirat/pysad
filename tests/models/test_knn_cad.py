@@ -1,3 +1,7 @@
+import numpy as np
+import pytest
+
+
 class NABKNNCAD:
     """Reference port of ``handleRecord`` from NAB's nab/detectors/knncad/knncad_detector.py.
 
@@ -159,17 +163,49 @@ def test_knn_cad_outlier_scores_higher():
     assert outlier > second_inlier
 
 
-def test_knn_cad_rejects_probationary_period_below_minimum():
-    import pytest
+@pytest.mark.parametrize("period", [1, 19, 20, 47])
+def test_knn_cad_rejects_probationary_period_below_minimum(period):
     from pysad.models import KNNCAD
 
-    with pytest.raises(ValueError):
-        KNNCAD(probationary_period=47)
+    # 1 and 19 leave the training set empty; 20-47 have too few training windows for the
+    # calibration scores (np.partition kth out of bounds). All of them must raise at
+    # construction, with a message that names the actual minimum (48).
+    with pytest.raises(ValueError, match="48"):
+        KNNCAD(probationary_period=period)
+
+
+@pytest.mark.parametrize("period", [float("nan"), float("inf"), 48.5, None, "48", True])
+def test_knn_cad_rejects_non_integer_probationary_period(period):
+    from pysad.models import KNNCAD
+
+    # NaN and inf compare False to any bound, so a plain `<` check lets them through and the
+    # model then fails later with an unrelated error. Floats, None, strings and bools are not
+    # valid periods either (bool is a subclass of int, but is not an accepted "integral" value).
+    with pytest.raises(TypeError):
+        KNNCAD(probationary_period=period)
+
+
+@pytest.mark.parametrize("period", [np.uint8(200), np.int8(100), np.int64(200)])
+def test_knn_cad_stores_narrow_numpy_integer_probationary_period_as_python_int(period):
+    from pysad.models import KNNCAD
+
+    # Narrow NumPy dtypes (int8/uint8) overflow in `2 * probationaryPeriod` (knn_cad.py) once the
+    # stream passes 2 * period records, unless the period is converted to a plain Python int at
+    # construction.
+    model = KNNCAD(probationary_period=period)
+
+    assert type(model.probationaryPeriod) is int
+    assert model.probationaryPeriod == int(period)
+
+    X = np.random.default_rng(0).random((500, 1))
+    with np.errstate(over="raise"):
+        scores = model.fit_score(X)
+
+    assert np.isfinite(scores).all()
 
 
 def test_knn_cad_accepts_minimum_probationary_period():
     from pysad.models import KNNCAD
-    import numpy as np
 
     X = np.random.default_rng(0).random((100, 1))
 
@@ -177,3 +213,8 @@ def test_knn_cad_accepts_minimum_probationary_period():
     scores = model.fit_score(X)
 
     assert len(scores) == len(X)
+    assert np.isfinite(scores).all()
+    # Before the probationary period ends (records 1-47, i.e. indices 0-46) every score is 0.0.
+    assert np.all(scores[:47] == 0.0)
+    # From record 48 (index 47) on, the model is actually scoring: at least one score is nonzero.
+    assert np.any(scores[47:] != 0.0)

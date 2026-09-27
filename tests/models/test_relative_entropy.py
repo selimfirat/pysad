@@ -226,10 +226,12 @@ def test_relative_entropy_max_val_round_off_lands_in_top_bin():
     import numpy as np
 
     # With these exact (min_val, max_val, num_bins), floating-point round-off makes
-    # ceil((max_val - min_val) / stepSize) evaluate to num_bins + 1, one bin past the
-    # histogram's (0, num_bins) range.
+    # ceil((max_val - min_val) / stepSize) evaluate to num_bins + 1, one level past the levels
+    # 1..num_bins that _histogram maps to bins 0..num_bins - 1; clipping the level must put
+    # max_val in the top bin.
     window_size = 10
     model = RelativeEntropy(min_val=0.0, max_val=100.0, num_bins=29, window_size=window_size)
+    assert np.ceil((model.max_val - model.min_val) / model.stepSize) == model.N_bins + 1
 
     m_history = []
     for _ in range(30):
@@ -240,7 +242,7 @@ def test_relative_entropy_max_val_round_off_lands_in_top_bin():
     assert len(set(m_history[-window_size:])) == 1
 
     histogram = model._histogram([100.0] * window_size)
-    assert np.isfinite(histogram).all()
+    np.testing.assert_array_equal(histogram, np.eye(model.N_bins)[-1])
 
 
 def test_histogram_gives_each_bucket_its_own_bin():
@@ -253,6 +255,19 @@ def test_histogram_gives_each_bucket_its_own_bin():
     # (60, 80], (80, 100].
     window = np.arange(1, 100, 2)  # 1, 3, ..., 99
     np.testing.assert_allclose(model._histogram(list(window)), [0.2] * 5)
+
+
+def test_histogram_buckets_are_closed_on_the_right():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=5)
+
+    # The paper's level B = ceil((u - min_val) / stepSize) makes the buckets (0, 20], (20, 40],
+    # (40, 60], (60, 80], (80, 100]: a value on an edge belongs to the bucket below it, and a
+    # value just above an edge to the bucket above it.
+    np.testing.assert_array_equal(model._histogram([20.0, 40.0, 60.0, 80.0, 100.0]), [0.2] * 5)
+    np.testing.assert_array_equal(model._histogram([20.5, 40.5, 60.5, 80.5, 80.5]), [0.0, 0.2, 0.2, 0.2, 0.4])
 
 
 def test_histogram_puts_min_val_in_first_bucket_and_max_val_in_last():

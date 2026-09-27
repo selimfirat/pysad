@@ -49,8 +49,6 @@ class RSHash(BaseModel):
 
         self.index = 0 + 1 - self.s
 
-        self.last_score = None
-
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.
 
@@ -61,53 +59,112 @@ class RSHash(BaseModel):
         Returns:
             object: Returns the self.
         """
-        # Equation 1 of the paper: normalize with the minimum and maximum of each feature.
-        X = (np.asarray(X, dtype=np.float64) - self.minimum) / self.range
-
-        score_instance = 0
-        for r in range(self.m):
-            Y = np.floor((X[self.V[r]] + self.alpha[r]) / float(self.f[r]))
-
-            mod_entry = np.insert(Y, 0, r)
-            mod_entry = tuple(mod_entry.astype(np.int32))
-
-            c = []
-            for w in range(len(self.cmsketches)):
-                try:
-                    value = self.cmsketches[w][mod_entry]
-                except KeyError:
-                    value = (self.index, 0)
-
-                # Scoring the Instance
-                tstamp = value[0]
-                wt = value[1]
-                new_wt = wt * np.power(2, -self.decay * (self.index - tstamp))
-                c.append(new_wt)
-
-                # Update the instance
-                new_tstamp = self.index
-                self.cmsketches[w][mod_entry] = (new_tstamp, new_wt + 1)
-
-            min_c = min(c)
-            c = np.log2(1 + min_c)
-            score_instance = score_instance + c
-
-        # Low counts indicate outliers in the paper, so the average log-count is negated to make higher scores more anomalous.
-        self.last_score = -score_instance / self.m
-
-        self.index += 1
+        self._fit_keys(self._cell_keys(X))
 
         return self
 
     def score_partial(self, X):
-        """Scores the anomalousness of the next instance. Outputs the last score. Note that this method must be called after fit_partial is called.
+        """Scores the anomalousness of the next instance. This method does not change the model.
 
         Args:
-            X (any): Ignored.
+            X (np.float64 array of shape (num_features,)): The instance to score.
+
         Returns:
-            float: The anomalousness score of the last fitted instance. Higher scores represent more anomalous instances.
+            float: The anomalousness score of the input instance. Higher scores represent more anomalous instances.
         """
-        return self.last_score
+        return self._score_keys(self._cell_keys(X))
+
+    def fit_score_partial(self, X, y=None):
+        """Scores the next instance against the current state, then fits the model to it.
+
+        The paper's streaming variant scores an instance before learning it (Sathe & Aggarwal 2016, §III): the "testing step" reads the current hash table, and the "training update" then updates the counts.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance.
+        """
+        keys = self._cell_keys(X)
+        score = self._score_keys(keys)
+        self._fit_keys(keys)
+
+        return score
+
+    def _fit_keys(self, keys):
+        """Updates the sketches with the cell keys of an instance.
+
+        Args:
+            keys (list of tuple): The cell keys of the instance, as returned by `_cell_keys`.
+        """
+        for mod_entry in keys:
+            for w in range(len(self.cmsketches)):
+                decayed_wt = self._decayed_count(w, mod_entry)
+
+                self.cmsketches[w][mod_entry] = (self.index, decayed_wt + 1)
+
+        self.index += 1
+
+    def _score_keys(self, keys):
+        """Scores an instance from its cell keys, without writing to the sketches.
+
+        Args:
+            keys (list of tuple): The cell keys of the instance, as returned by `_cell_keys`.
+
+        Returns:
+            float: The anomalousness score of the input instance. Higher scores represent more anomalous instances.
+        """
+        score_instance = 0
+        for mod_entry in keys:
+            c = [self._decayed_count(w, mod_entry) for w in range(len(self.cmsketches))]
+
+            min_c = min(c)
+            score_instance = score_instance + np.log2(1 + min_c)
+
+        # Low counts indicate outliers in the paper, so the average log-count is negated to make higher scores more anomalous.
+        return -score_instance / self.m
+
+    def _cell_keys(self, X):
+        """Computes each ensemble component's grid cell key for a normalized instance.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to hash.
+
+        Returns:
+            list of tuple: The cell key of each ensemble component, in order.
+        """
+        # Equation 1 of the paper: normalize with the minimum and maximum of each feature.
+        X = (np.asarray(X, dtype=np.float64) - self.minimum) / self.range
+
+        mod_entries = []
+        for r in range(self.m):
+            Y = np.floor((X[self.V[r]] + self.alpha[r]) / float(self.f[r]))
+
+            mod_entry = np.insert(Y, 0, r)
+            mod_entries.append(tuple(mod_entry.astype(np.int32)))
+
+        return mod_entries
+
+    def _decayed_count(self, w, mod_entry):
+        """Reads a hash function's time-decayed count for a grid cell, without writing it back.
+
+        Args:
+            w (int): The index of the hash function's sketch.
+            mod_entry (tuple): The grid cell key, as returned by `_cell_keys`.
+
+        Returns:
+            float: The count decayed to `self.index`, or 0 for an unseen cell.
+        """
+        try:
+            value = self.cmsketches[w][mod_entry]
+        except KeyError:
+            value = (self.index, 0)
+
+        tstamp = value[0]
+        wt = value[1]
+
+        return wt * np.power(2, -self.decay * (self.index - tstamp))
 
     def _sample_shifts(self):
         alpha = []

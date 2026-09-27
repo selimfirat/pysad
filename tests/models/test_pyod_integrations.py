@@ -1,3 +1,38 @@
+def test_iforest_asd_ignores_labels_without_warning():
+    """IForestASD wraps PyOD's unsupervised IForest. Passing labels to fit_partial
+    must not reach IForest.fit (which would emit PyOD's "y should not be presented
+    in unsupervised learning" UserWarning) and must not change the resulting scores,
+    since the model is documented as not needing y.
+    """
+    import warnings
+
+    import numpy as np
+
+    from pysad.models import IForestASD
+    from pysad.utils import fix_seed
+
+    def _scores(with_labels):
+        fix_seed(61)
+        rng = np.random.RandomState(61)
+        X = rng.rand(40, 3)
+        y = rng.randint(0, 2, 40)
+
+        model = IForestASD(window_size=16)
+        scores = []
+        for xi, yi in zip(X, y):
+            scores.append(model.fit_score_partial(xi, yi if with_labels else None))
+
+        return np.array(scores)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error", message="y should not be presented", category=UserWarning)
+        scores_with_labels = _scores(with_labels=True)
+
+    scores_without_labels = _scores(with_labels=False)
+
+    np.testing.assert_array_equal(scores_with_labels, scores_without_labels)
+
+
 def test_reference_window(test_path):
     from sklearn.utils import shuffle
     from pysad.models.integrations import ReferenceWindowModel

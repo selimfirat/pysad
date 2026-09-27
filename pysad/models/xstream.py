@@ -1,3 +1,6 @@
+from collections import Counter
+from itertools import repeat
+
 import numpy as np
 from pysad.core.base_model import BaseModel
 from pysad.transform.projection.streamhash_projector import StreamhashProjector
@@ -87,108 +90,84 @@ class xStream(BaseModel):
         return deltamax
 
 
-class _Chain:
+class _HSChains:
+    """Half-space chains that are fitted and scored together, vectorized across the chains.
 
-    def __init__(self, deltamax, depth):
+    At depth `d`, a chain assigns an instance to the bin given by the floored values of the (shifted and repeatedly halved) features it split on up to `d`. The bin counts of all chains and depths are kept in a single `Counter` keyed by the bytes of `(chain * depth + d, bin)`.
+    """
+
+    def __init__(self, deltamax, n_chains=100, depth=25):
         k = len(deltamax)
 
-        self.depth = depth
-        self.fs = [np.random.randint(0, k) for d in range(depth)]
-        self.cmsketches = [{} for i in range(depth)] * depth
-        self.cmsketches_cur = [{} for i in range(depth)] * depth
-
-        self.deltamax = deltamax  # feature ranges
-        self.rand_arr = np.random.rand(k)
-        self.shift = self.rand_arr * deltamax
-
-        self.is_first_window = True
-
-    def _update_prebins(self, X, prebins, depthcount, depth):
-        f = self.fs[depth]
-        depthcount[f] += 1
-
-        if depthcount[f] == 1:
-            prebins[:, f] = (X[:, f] + self.shift[f]) / self.deltamax[f]
-        else:
-            prebins[:, f] = 2.0 * prebins[:, f] - \
-                self.shift[f] / self.deltamax[f]
-
-    def fit(self, X):
-        prebins = np.zeros(X.shape, dtype=np.float64)
-        depthcount = np.zeros(len(self.deltamax), dtype=np.int32)
-        for depth in range(self.depth):
-            self._update_prebins(X, prebins, depthcount, depth)
-
-            # In the first window, the reference and current sketches are the same.
-            if self.is_first_window:
-                self.cmsketches_cur[depth] = self.cmsketches[depth]
-
-            cmsketch = self.cmsketches_cur[depth]
-            for prebin in prebins:
-                l_index = tuple(np.floor(prebin).astype(np.int32))
-                cmsketch[l_index] = cmsketch.get(l_index, 0) + 1
-
-        return self
-
-    def bincount(self, X):
-        scores = np.zeros((X.shape[0], self.depth))
-        prebins = np.zeros(X.shape, dtype=np.float64)
-        depthcount = np.zeros(len(self.deltamax), dtype=np.int32)
-        for depth in range(self.depth):
-            self._update_prebins(X, prebins, depthcount, depth)
-
-            cmsketch = self.cmsketches[depth]
-            for i, prebin in enumerate(prebins):
-                l_index = tuple(np.floor(prebin).astype(np.int32))
-                if l_index not in cmsketch:
-                    scores[i, depth] = 0.0
-                else:
-                    scores[i, depth] = cmsketch[l_index]
-
-        return scores
-
-    def score(self, X):
-        # scale score logarithmically to avoid overflow:
-        #    score = min_d [ log2(bincount x 2^d) = log2(bincount) + d ]
-        scores = self.bincount(X)
-        depths = np.array([d for d in range(1, self.depth + 1)])
-        scores = np.log2(1.0 + scores) + depths  # add 1 to avoid log(0)
-        return -np.min(scores, axis=1)
-
-    def next_window(self):
-        self.is_first_window = False
-        self.cmsketches = self.cmsketches_cur
-        self.cmsketches_cur = [{} for _ in range(self.depth)] * self.depth
-
-
-class _HSChains:
-    def __init__(self, deltamax, n_chains=100, depth=25):
         self.nchains = n_chains
         self.depth = depth
-        self.chains = []
 
-        for i in range(self.nchains):
+        # Draw the split features and the shifts chain by chain to keep the order of the random numbers.
+        self.fs = np.empty((n_chains, depth), dtype=np.intp)
+        self.rand_arr = np.empty((n_chains, k))
+        for c in range(n_chains):
+            self.fs[c] = [np.random.randint(0, k) for d in range(depth)]
+            self.rand_arr[c] = np.random.rand(k)
 
-            c = _Chain(deltamax=deltamax, depth=self.depth)
-            self.chains.append(c)
+        self.set_deltamax(deltamax)
+
+        # A split on a feature is stored in the slot of the first depth that splits on the same feature, so a bin only holds the features its chain splits on.
+        self.slots = np.argmax(self.fs[:, :, None] == self.fs[:, None, :], axis=2)
+        self.first_split = self.slots == np.arange(depth)
+        self.chain_depth_ids = np.arange(n_chains * depth, dtype=np.int32).reshape(n_chains, depth)
+
+        # In the first window, the reference and current counts are the same.
+        self.counts = Counter()
+        self.counts_cur = self.counts
+
+    def _bin_keys(self, X):
+        # Returns the bytes key of the bin of every instance, chain and depth (flattened in that order).
+        n = X.shape[0]
+        chains = np.arange(self.nchains)
+        prebins = np.zeros((n, self.nchains, self.depth), dtype=np.float64)
+        bins = np.empty((n, self.nchains, self.depth, self.depth + 1), dtype=np.int32)
+        bins[..., 0] = self.chain_depth_ids
+
+        for depth in range(self.depth):
+            f = self.fs[:, depth]
+            slot = self.slots[:, depth]
+            shift = self.shift[chains, f]
+            deltamax = self.deltamax[f]
+
+            first = (X[:, f] + shift) / deltamax
+            halved = 2.0 * prebins[:, chains, slot] - shift / deltamax
+            prebins[:, chains, slot] = np.where(self.first_split[:, depth], first, halved)
+
+            bins[:, :, depth, 1:] = np.floor(prebins).astype(np.int32)
+
+        return bins.view(np.dtype((np.void, bins.shape[-1] * bins.itemsize))).reshape(-1).tolist()
+
+    def _bin_counts(self, X):
+        # Returns the reference count of the bin of every instance, chain and depth, of shape (n, nchains, depth).
+        keys = self._bin_keys(X)
+        counts = np.fromiter(map(self.counts.get, keys, repeat(0)), dtype=np.float64, count=len(keys))
+        return counts.reshape(X.shape[0], self.nchains, self.depth)
 
     def score(self, X):
-        scores = np.zeros(X.shape[0])
-        for ch in self.chains:
-            scores += ch.score(X)
+        counts = self._bin_counts(X)
 
+        # scale score logarithmically to avoid overflow:
+        #    score = min_d [ log2(bincount x 2^d) = log2(bincount) + d ]
+        depths = np.arange(1, self.depth + 1)
+        scores = -np.min(np.log2(1.0 + counts) + depths, axis=2)  # add 1 to avoid log(0)
+
+        # Sum the chains sequentially, as a pairwise sum would round differently.
+        scores = np.add.accumulate(scores, axis=1)[:, -1]
         scores /= float(self.nchains)
         return scores
 
     def fit(self, X):
-        for ch in self.chains:
-            ch.fit(X)
+        self.counts_cur.update(self._bin_keys(X))
 
     def next_window(self):
-        for ch in self.chains:
-            ch.next_window()
+        self.counts = self.counts_cur
+        self.counts_cur = Counter()
 
     def set_deltamax(self, deltamax):
-        for ch in self.chains:
-            ch.deltamax = deltamax
-            ch.shift = ch.rand_arr * deltamax
+        self.deltamax = deltamax
+        self.shift = self.rand_arr * deltamax

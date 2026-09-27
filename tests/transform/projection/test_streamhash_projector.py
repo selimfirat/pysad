@@ -1,3 +1,4 @@
+import pickle
 import warnings
 
 import numpy as np
@@ -102,6 +103,28 @@ def test_build_projection_matrix_matches_reference_for_various_shapes():
 
         assert actual.shape == (num_components, ndim)
         assert np.array_equal(actual, expected)
+
+
+def test_streamhash_projector_loads_old_pickle_without_cache_attrs():
+    """Instances pickled by older pysad versions lack `_R`/`_R_ndim` in their __dict__."""
+    from pysad.transform.projection import StreamhashProjector
+
+    num_components = 10
+    rng = np.random.RandomState(61)
+    x = rng.rand(7)
+
+    fresh_projector = StreamhashProjector(num_components=num_components)
+    expected = fresh_projector.transform_partial(x)
+
+    old_projector = StreamhashProjector(num_components=num_components)
+    del old_projector.__dict__["_R"]
+    del old_projector.__dict__["_R_ndim"]
+
+    restored_projector = pickle.loads(pickle.dumps(old_projector))
+
+    actual = restored_projector.transform_partial(x)
+
+    assert np.array_equal(actual, expected)
 
 
 def test_streamhash_projector_rebuilds_matrix_on_ndim_change():

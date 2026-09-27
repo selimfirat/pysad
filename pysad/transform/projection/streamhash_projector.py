@@ -65,6 +65,11 @@ class StreamhashProjector(BaseTransformer):
             density (float): Density parameter of the streamhash projection.
     """
 
+    # Defaults for instances unpickled from older pysad versions, whose __dict__ predates
+    # these attributes; __init__ below overrides them for freshly constructed instances.
+    _R = None
+    _R_ndim = None
+
     def __init__(self, num_components, density=1 / 3.0):
         super().__init__(num_components)
         self.keys = np.arange(0, num_components, 1)

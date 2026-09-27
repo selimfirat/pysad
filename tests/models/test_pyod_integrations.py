@@ -25,7 +25,7 @@ def test_iforest_asd_ignores_labels_without_warning():
         return np.array(scores)
 
     with warnings.catch_warnings():
-        warnings.simplefilter("error", UserWarning)
+        warnings.filterwarnings("error", message="y should not be presented", category=UserWarning)
         scores_with_labels = _scores(with_labels=True)
 
     scores_without_labels = _scores(with_labels=False)

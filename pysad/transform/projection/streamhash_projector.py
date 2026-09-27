@@ -16,6 +16,8 @@ class StreamhashProjector(BaseTransformer):
         self.constant = np.sqrt(1. / density) / np.sqrt(num_components)
         self.density = density
         self.n_components = num_components
+        self._R = None
+        self._R_ndim = None
 
     def fit_partial(self, X):
         """Fits particular (next) timestep's features to train the projector.
@@ -41,15 +43,33 @@ class StreamhashProjector(BaseTransformer):
 
         ndim = X.shape[1]
 
-        feature_names = [str(i) for i in range(ndim)]
-
-        R = np.array([[self._hash_string(k, f)
-                       for f in feature_names]
-                      for k in self.keys])
+        R = self._get_projection_matrix(ndim)
 
         Y = np.dot(X, R.T).squeeze()
 
         return Y
+
+    def _get_projection_matrix(self, ndim):
+        """Returns the projection matrix for the given number of features, building and caching it on first use.
+
+        The matrix only depends on `ndim`, `self.keys`, `self.density` and `self.constant`, so it is
+        rebuilt only when a sample with a different `ndim` than the cached one arrives.
+
+        Args:
+            ndim (int): Number of features of the incoming sample.
+
+        Returns:
+            R (np.float64 array of shape (num_components, ndim)): Projection matrix.
+        """
+        if self._R is None or self._R_ndim != ndim:
+            feature_names = [str(i) for i in range(ndim)]
+
+            self._R = np.array([[self._hash_string(k, f)
+                                  for f in feature_names]
+                                 for k in self.keys])
+            self._R_ndim = ndim
+
+        return self._R
 
     def _hash_string(self, k, s):
         import mmh3

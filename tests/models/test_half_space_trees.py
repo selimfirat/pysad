@@ -68,11 +68,13 @@ def test_half_space_trees_scores_outlier_that_closes_a_window():
         X_ = X.copy()
         X_[position] = [6.0, 6.0]
         fix_seed(0)
-        scores = HalfSpaceTrees(feature_mins=[-7, -7], feature_maxes=[7, 7], window_size=100).fit_score(X_)
+        scores = HalfSpaceTrees(feature_mins=[-7, -7], feature_maxes=[7, 7], window_size=100,
+                                num_trees=10, max_depth=12).fit_score(X_)
         return np.mean(np.delete(scores, position) < scores[position])
 
     # Both the point right before a window closes and the point that closes it must be
-    # ranked as highly anomalous; before the fix, the latter scored as normal (rank 0.12).
+    # ranked as highly anomalous; before the fix, the latter scored as normal (rank 0.59 with
+    # these trees, 0.12 with the default 25 trees of depth 15).
     assert rank_of_outlier(498) >= 0.95
     assert rank_of_outlier(499) >= 0.95
 
@@ -212,7 +214,7 @@ def test_half_space_trees_score_partial_does_not_record_the_instance():
                                       later_scores(num_fitted, score_extra=False))
 
 
-def test_half_space_trees_score_then_fit_matches_fit_score_partial():
+def test_half_space_trees_fit_score_matches_scoring_then_fitting_each_instance():
     import numpy as np
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
@@ -220,15 +222,15 @@ def test_half_space_trees_score_then_fit_matches_fit_score_partial():
     fix_seed(7)
     X = np.random.uniform(size=(250, 3))
 
-    fix_seed(123)
-    model_a = HalfSpaceTrees(feature_mins=[0.0] * 3, feature_maxes=[1.0] * 3, window_size=50)
-    scores_a = []
+    def new_model():
+        fix_seed(123)
+        return HalfSpaceTrees(feature_mins=[0.0] * 3, feature_maxes=[1.0] * 3,
+                              window_size=50, num_trees=5, max_depth=6)
+
+    model = new_model()
+    expected_scores = []
     for x in X:
-        scores_a.append(model_a.score_partial(x))
-        model_a.fit_partial(x)
+        expected_scores.append(model.score_partial(x))
+        model.fit_partial(x)
 
-    fix_seed(123)
-    model_b = HalfSpaceTrees(feature_mins=[0.0] * 3, feature_maxes=[1.0] * 3, window_size=50)
-    scores_b = [model_b.fit_score_partial(x) for x in X]
-
-    np.testing.assert_allclose(scores_a, scores_b)
+    np.testing.assert_array_equal(new_model().fit_score(X), expected_scores)

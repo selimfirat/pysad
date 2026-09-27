@@ -7,8 +7,8 @@ class RelativeEntropy(BaseModel):
     """Relative entropy based anomaly detection model on univariate stream :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis (which is then added as a new hypothesis) or only with a hypothesis that is still rare, and 0.0 otherwise.
 
         Args:
-            min_val (float): Minimum value of the univariate stream.
-            max_val (float): Maximum value of the univariate stream.
+            min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
+            max_val (float): Maximum value of the univariate stream. Values above this are clipped to it.
             num_bins (int): Number of bins (Default=5).
             window_size (int): The size of the window (Default=52).
     """
@@ -177,7 +177,8 @@ class RelativeEntropy(BaseModel):
         Returns:
             np.float64 array of shape (N_bins,): The empirical frequencies of the quantized window.
         """
-        B_current = np.ceil((np.asarray(window, dtype=np.float64) - self.min_val) / self.stepSize)
+        values = np.clip(np.asarray(window, dtype=np.float64), self.min_val, self.max_val)
+        B_current = np.ceil((values - self.min_val) / self.stepSize)
 
         return np.histogram(B_current, bins=self.N_bins, range=(0, self.N_bins), density=True)[0]
 

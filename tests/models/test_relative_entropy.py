@@ -168,3 +168,25 @@ def test_relative_entropy_constant_stream_scores_zero():
     scores = [model.fit_score_partial(np.array([0.5])) for _ in range(100)]
 
     assert all(score == 0.0 for score in scores)
+
+
+def test_relative_entropy_out_of_range_values_do_not_produce_nan_hypotheses():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=10)
+
+    # In-range warm-up so at least one hypothesis is learned before the stream
+    # goes out of range.
+    rng = np.random.default_rng(3)
+    for v in rng.normal(0.5, 0.05, 50):
+        model.fit_score_partial(np.array([np.clip(v, 0, 1)]))
+
+    m_after_warmup = model.m
+
+    # More than a window's worth of values above max_val.
+    for v in rng.normal(5.0, 0.1, 30):
+        model.fit_score_partial(np.array([v]))
+
+    assert not np.isnan(model.P).any()
+    assert model.m <= m_after_warmup + 1

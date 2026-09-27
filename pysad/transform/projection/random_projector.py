@@ -104,12 +104,12 @@ class BaseSKLearnProjector(BaseTransformer):
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):
-    """Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / n_components). This text is taken from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.GaussianRandomProjection.html#sklearn.random_projection.GaussianRandomProjection>`_.
+    """Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / num_components). This text is taken from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.GaussianRandomProjection.html#sklearn.random_projection.GaussianRandomProjection>`_.
 
     Args:
-        n_components (int or 'auto'): Dimensionality of the target projection space, optional (default = 'auto').
+        num_components (int or 'auto'): Dimensionality of the target projection space, optional (default = 'auto').
 
-            n_components can be automatically adjusted according to the
+            num_components can be automatically adjusted according to the
             number of samples in the dataset and the bound given by the
             Johnson-Lindenstrauss lemma. In that case the quality of the
             embedding is controlled by the ``eps`` parameter.
@@ -122,11 +122,11 @@ class GaussianRandomProjector(BaseSKLearnProjector):
 
         eps (strictly positive float, optional): (default=0.1)
             Parameter to control the quality of the embedding according to
-            the Johnson-Lindenstrauss lemma when n_components is set to
+            the Johnson-Lindenstrauss lemma when num_components is set to
             'auto'.
 
             Smaller values lead to better embedding and higher number of
-            dimensions (n_components) in the target projection space.
+            dimensions (num_components) in the target projection space.
 
     """
 
@@ -141,13 +141,13 @@ class GaussianRandomProjector(BaseSKLearnProjector):
 
 
 class SparseRandomProjector(BaseSKLearnProjector):
-    """The wrapper method for Sklearn's SparseRandomProjection. Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / n_components). This text is taken from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.SparseRandomProjection.html#sklearn.random_projection.SparseRandomProjection>`_.
+    """The wrapper method for Sklearn's SparseRandomProjection. Reduces dimensionality through sparse random projection. The random matrix is sparse, which is cheaper to store and to multiply than a dense Gaussian matrix while keeping similar embedding quality. This text is adapted from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.SparseRandomProjection.html#sklearn.random_projection.SparseRandomProjection>`_.
 
-    Parameters
-        n_components (int or 'auto'): Optional (default = 'auto')
+    Args:
+        num_components (int or 'auto'): Optional (default = 'auto')
             Dimensionality of the target projection space.
 
-            n_components can be automatically adjusted according to the
+            num_components can be automatically adjusted according to the
             number of samples in the dataset and the bound given by the
             Johnson-Lindenstrauss lemma. In that case the quality of the
             embedding is controlled by the ``eps`` parameter.
@@ -158,13 +158,19 @@ class SparseRandomProjector(BaseSKLearnProjector):
 
             'auto' needs the number of instances, so fit the projector on a batch with fit or fit_transform first.
 
+        density (float in range (0, 1] or 'auto'): Ratio of non-zero components in the random projection matrix, optional (default='auto').
+
+            If 'auto', it is set to the minimum density recommended by Ping Li et al., 1 / sqrt(num_features).
+
+            Use density = 1 / 3.0 for Achlioptas' original construction, or density = 1.0 for a dense matrix.
+
         eps (strictly positive float): Optional (default=0.1)
             Parameter to control the quality of the embedding according to
-            the Johnson-Lindenstrauss lemma when n_components is set to
+            the Johnson-Lindenstrauss lemma when num_components is set to
             'auto'.
 
             Smaller values lead to better embedding and higher number of
-            dimensions (n_components) in the target projection space.
+            dimensions (num_components) in the target projection space.
 
     """
 

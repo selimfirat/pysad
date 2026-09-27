@@ -12,8 +12,9 @@ class StandardAbsoluteDeviation(BaseModel):
         internally. Use :class:`pysad.models.SeasonalESD` for the paper's
         modified-STL plus standard ESD detector.
 
-        substracted_statistic (str): The statistic to be substracted for scoring. It is either "mean" or "median". (Default="mean").
-        absolute (bool): Whether to output score's absolute value. (Default=True).
+        Args:
+            substracted_statistic (str): The statistic to be substracted for scoring. It is either "mean" or "median". (Default="mean").
+            absolute (bool): Whether to output score's absolute value. (Default=True).
     """
 
     def __init__(self, substracted_statistic="mean", absolute=True):

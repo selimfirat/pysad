@@ -12,7 +12,7 @@ class HalfSpaceTrees(BaseModel):
         window_size (int): The size of the window (Default=100).
         num_trees (int): The number of treesint (Default=25).
         max_depth (int): Maximum depth of the trees (Default=15).
-        initial_window_X (np.float64 array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. If not `None`, we simply apply fit to these instances (Default=None).
+        initial_window_X (np.float64 array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. Per Tan et al. (IJCAI 2011), Algorithm 3, this is expected to hold the first `window_size` instances of the stream; they are fitted to build the reference mass profile and are not scored (Default=None).
     """
 
     def __init__(
@@ -42,7 +42,7 @@ class HalfSpaceTrees(BaseModel):
 
         self.is_first_window = True
         self.step = 0
-        if initial_window_X:
+        if initial_window_X is not None:
             self.fit(initial_window_X)
 
     def _build_single_hs_tree(self, mins, maxes, current_depth):

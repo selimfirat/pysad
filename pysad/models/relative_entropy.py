@@ -1,6 +1,5 @@
 from scipy import stats
 from pysad.core.base_model import BaseModel
-import math
 import numpy as np
 
 
@@ -38,9 +37,9 @@ class RelativeEntropy(BaseModel):
         # Step size in time series quantization
         self.stepSize = (max_val - min_val) / self.N_bins
 
-        # List of lists where P[i] indicates the empirical frequency of the ith
-        # hypothesis.
-        self.P = []
+        # Rows are the empirical frequencies of the learned hypotheses. Grows by one row
+        # whenever a new hypothesis is added.
+        self.P = np.empty((0, self.N_bins))
 
         # List where c[i] tracks the number of windows that agree with P[i]
         self.c = []
@@ -62,20 +61,8 @@ class RelativeEntropy(BaseModel):
         self.util.append(x)
 
         if self.stepSize != 0.0 and len(self.util) >= self.W:
-            P_hat = self._histogram(self.util[-self.W:])
-
-            if self.m == 0:
-                self.P.append(P_hat)
-                self.c.append(1)
-                self.m = 1
-            else:
-                index = self._get_agreement_hypothesis(P_hat)
-                if index != -1:
-                    self.c[index] += 1
-                else:
-                    self.P.append(P_hat)
-                    self.c.append(1)
-                    self.m += 1
+            P_hat, index = self._window_index(self.util[-self.W:])
+            self._fit_window(P_hat, index)
 
         return self
 
@@ -98,12 +85,9 @@ class RelativeEntropy(BaseModel):
         if len(window) < self.W or self.m == 0:
             return 0.0
 
-        P_hat = self._histogram(window)
-        index = self._get_agreement_hypothesis(P_hat)
-        if index == -1:
-            return 1.0
+        _, index = self._window_index(window)
 
-        return 1.0 if self.c[index] + 1 <= self.c_th else 0.0
+        return self._score_window(index)
 
     def fit_score_partial(self, X, y=None):
         """Scores the window ending with the given instance and then fits the model to it, as NAB's detector does for each record.
@@ -115,10 +99,74 @@ class RelativeEntropy(BaseModel):
         Returns:
             float: The anomalousness score of the input instance, as in `score_partial`.
         """
-        score = self.score_partial(X)
-        self.fit_partial(X, y)
+        x = np.asarray(X).item()
+        self.util.append(x)
+
+        if self.stepSize == 0.0 or len(self.util) < self.W:
+            return 0.0
+
+        # Computed once and shared: the score reads `index` before `_fit_window` changes
+        # `self.P`/`self.c`/`self.m`, matching the score-then-fit order of `score_partial`
+        # followed by `fit_partial`.
+        P_hat, index = self._window_index(self.util[-self.W:])
+        score = 0.0 if self.m == 0 else self._score_window(index)
+        self._fit_window(P_hat, index)
 
         return score
+
+    def _window_index(self, window):
+        """Computes a window's empirical histogram and the index of the hypothesis it agrees with.
+
+        Args:
+            window (list of float): The values in the window, in order.
+
+        Returns:
+            tuple: `(P_hat, index)`, where `P_hat` is the np.float64 array of shape `(N_bins,)`
+                returned by `_histogram` and `index` is the return value of
+                `_get_agreement_hypothesis(P_hat)`.
+        """
+        P_hat = self._histogram(window)
+        index = self._get_agreement_hypothesis(P_hat)
+
+        return P_hat, index
+
+    def _score_window(self, index):
+        """Scores a window from the index of the hypothesis it agrees with.
+
+        Args:
+            index (int): The return value of `_get_agreement_hypothesis` for the window.
+
+        Returns:
+            float: 1.0 if the window agrees with no hypothesis or only with a still-rare one, 0.0 otherwise.
+        """
+        if index == -1:
+            return 1.0
+
+        return 1.0 if self.c[index] + 1 <= self.c_th else 0.0
+
+    def _fit_window(self, P_hat, index):
+        """Fits a window from its histogram and the index of the hypothesis it agrees with: updates
+        the agreeing hypothesis's count, or adds `P_hat` as a new hypothesis if none agrees.
+
+        Args:
+            P_hat (np.float64 array of shape (N_bins,)): The empirical frequencies of the window,
+                used only when a new hypothesis needs to be added.
+            index (int): The return value of `_get_agreement_hypothesis` for the window.
+        """
+        if index != -1:
+            self.c[index] += 1
+        else:
+            self._add_hypothesis(P_hat)
+
+    def _add_hypothesis(self, P_hat):
+        """Learns `P_hat` as a new hypothesis with a window count of 1.
+
+        Args:
+            P_hat (np.float64 array of shape (N_bins,)): The empirical frequencies of the window.
+        """
+        self.P = np.vstack([self.P, P_hat])
+        self.c.append(1)
+        self.m += 1
 
     def _histogram(self, window):
         """Computes the empirical frequency histogram `P_hat` of a window.
@@ -129,7 +177,7 @@ class RelativeEntropy(BaseModel):
         Returns:
             np.float64 array of shape (N_bins,): The empirical frequencies of the quantized window.
         """
-        B_current = [math.ceil((v - self.min_val) / self.stepSize) for v in window]
+        B_current = np.ceil((np.asarray(window, dtype=np.float64) - self.min_val) / self.stepSize)
 
         return np.histogram(B_current, bins=self.N_bins, range=(0, self.N_bins), density=True)[0]
 
@@ -143,17 +191,18 @@ class RelativeEntropy(BaseModel):
         freedom.
         The function returns the index of hypothesis that agrees with minimum
         relative entropy. If all hypotheses disagree, the function returns -1.
-        @param P_hat    (list)  Empirical frequencies of the current window.
+        @param P_hat    (np.float64 array of shape (N_bins,))  Empirical frequencies of the current window.
         @return index   (int)   Index of the hypothesis with the minimum test
                                 statistic.
         """
+        if self.m == 0:
+            return -1
 
-        index = -1
-        minEntropy = float("inf")
-        for i in range(self.m):
-            entropy = 2 * self.W * stats.entropy(P_hat, self.P[i])
-            if entropy < self.T and entropy < minEntropy:
-                minEntropy = entropy
-                index = i
+        # Relative entropy of P_hat against every learned hypothesis in one call, instead of
+        # looping in Python and calling scipy.stats.entropy once per hypothesis.
+        entropies = 2 * self.W * stats.entropy(P_hat, self.P, axis=1)
+        candidates = np.flatnonzero(entropies < self.T)
+        if candidates.size == 0:
+            return -1
 
-        return index
+        return int(candidates[np.argmin(entropies[candidates])])

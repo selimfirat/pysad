@@ -64,7 +64,7 @@ class RSHash(BaseModel):
         return self
 
     def score_partial(self, X):
-        """Scores the anomalousness of the next instance.
+        """Scores the anomalousness of the next instance. This method does not change the model.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score.

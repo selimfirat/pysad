@@ -25,6 +25,45 @@ def test_standard_absolute_deviation():
         StandardAbsoluteDeviation(subtracted_statistic=None)
 
 
+def test_standard_absolute_deviation_score_values():
+    from pysad.models import StandardAbsoluteDeviation
+    import numpy as np
+    from numpy.testing import assert_allclose
+
+    values = np.array([3, 1, 4, 1, 5, 9, 2, 6], dtype=float)
+    X = values.reshape(-1, 1)
+
+    def expected_scores(statistic, absolute=True):
+        scores = []
+        for i, value in enumerate(values, start=1):
+            seen = values[:i]
+            center = statistic(seen)
+            std = np.std(seen, ddof=0)
+            score = (value - center) / (std + 1e-10)
+            scores.append(abs(score) if absolute else score)
+        return np.asarray(scores)
+
+    mean_scores = StandardAbsoluteDeviation(
+        subtracted_statistic="mean"
+    ).fit_score(X)
+    assert mean_scores[0] == 0.0
+    assert_allclose(mean_scores, expected_scores(np.mean))
+
+    median_scores = StandardAbsoluteDeviation(
+        subtracted_statistic="median"
+    ).fit_score(X)
+    assert median_scores[0] == 0.0
+    assert_allclose(median_scores, expected_scores(np.median))
+
+    signed_scores = StandardAbsoluteDeviation(
+        subtracted_statistic="mean",
+        absolute=False,
+    ).fit_score(X)
+    assert signed_scores[0] == 0.0
+    assert signed_scores[1] < 0.0
+    assert_allclose(signed_scores, expected_scores(np.mean, absolute=False))
+
+
 def test_absolute_deviation_rejects_multivariate_input():
     from pysad.models import MedianAbsoluteDeviation, StandardAbsoluteDeviation
     import numpy as np

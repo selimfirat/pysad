@@ -53,16 +53,7 @@ class BaseTransformer(ABC):
         Returns:
             np.float64 array of shape (num_instances, num_components): Projected feature vectors.
         """
-        output_dims = self.output_dims if self.output_dims > 0 else X.shape[1]
-        transformed_X = np.empty((X.shape[0], output_dims), dtype=np.float64)
-        for i, (xi, _) in enumerate(_iterate(X)):
-            result = self.transform_partial(xi)
-            if np.asarray(result).ndim == 0:
-                transformed_X[i] = result
-            else:
-                transformed_X[i] = result
-
-        return transformed_X
+        return self._transform_all(X, self.transform_partial)
 
     def fit(self, X):
         """Shortcut method that iteratively applies fit_partial to all instances in order.
@@ -87,13 +78,12 @@ class BaseTransformer(ABC):
         Returns:
             np.float64 array of shape (num_instances, num_components): Projected feature vectors.
         """
+        return self._transform_all(X, self.fit_transform_partial)
+
+    def _transform_all(self, X, transform_partial):
         output_dims = self.output_dims if self.output_dims > 0 else X.shape[1]
         transformed_X = np.empty((X.shape[0], output_dims), dtype=np.float64)
         for i, (xi, _) in enumerate(_iterate(X)):
-            result = self.fit_transform_partial(xi)
-            if np.asarray(result).ndim == 0:
-                transformed_X[i] = result
-            else:
-                transformed_X[i] = result
+            transformed_X[i] = transform_partial(xi)
 
         return transformed_X

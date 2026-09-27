@@ -173,9 +173,7 @@ class InqMeasurement():
     self.fm_x = QFeatureMap_rff( input_dim=input_shape, dim = dim_x, gamma = gamma, random_state = random_state)
     self.fm_x.build()
     self.num_samples = 0 
-    self.train_pure_batch = jax.jit(jax.vmap(self.train_pure, in_axes=(0)))
     self.collapse_batch = jax.jit(jax.vmap(self.collapse, in_axes=(0, None)))
-    self.sum_batch = jax.jit(self.sum)
     self.batch_size = batch_size
 
   @staticmethod
@@ -192,34 +190,19 @@ class InqMeasurement():
 
 
   @staticmethod
-  @partial(jit, static_argnums=(1,2,3,4))
-  def compute_training_jit(batch, alpha, fm_x, train_pure_batch, sum_batch, rho):
+  @partial(jit, static_argnums=(1,2))
+  def compute_training_jit(batch, alpha, fm_x, rho):
       inputs = fm_x(batch)
-      rho_res = train_pure_batch(inputs)
-      rho_res = sum_batch(rho_res)
+      rho_res = jax.vmap(InqMeasurement.train_pure)(inputs)
+      rho_res = InqMeasurement.sum(rho_res)
       return jnp.add((alpha)*rho_res, (1-alpha)*rho) if rho is not None else rho_res
-
-  @staticmethod
-  def compute_training(values, alpha, perm, i, batch_size, fm_x, train_pure_batch, sum_batch, rho, compute_training_jit):
-      batch_idx = perm[i * batch_size: (i + 1)*batch_size]
-      batch = values[batch_idx, :]
-      return compute_training_jit(batch, alpha, fm_x, train_pure_batch, sum_batch, rho)
 
   def initial_train(self, values, alpha):
     num_batches = InqMeasurement.obtain_params_batches(values, self.batch_size)
-    num_train = values.shape[0]
-    perm = jnp.arange(num_train)
     for i in range(num_batches):
-      if hasattr(self, "rho_res"):
-        self.rho_res = self.compute_training(values, alpha, perm, i,
-                            self.batch_size, self.fm_x, 
-                            self.train_pure_batch, self.sum_batch, 
-                            self.rho_res, self.compute_training_jit)
-      else:
-        self.rho_res = self.compute_training(values, alpha, perm, i, 
-                            self.batch_size, self.fm_x,
-                            self.train_pure_batch, self.sum_batch, None, 
-                            self.compute_training_jit)
+      batch = values[i * self.batch_size: (i + 1)*self.batch_size, :]
+      self.rho_res = self.compute_training_jit(batch, alpha, self.fm_x,
+                          getattr(self, "rho_res", None))
     self.num_samples += values.shape[0]  
 
     

@@ -51,12 +51,7 @@ class BasePostprocessor(ABC):
         Returns:
             np.float64 array of shape (num_instances,): Processed scores.
         """
-        processed_scores = np.empty(scores.shape[0], dtype=np.float64)
-        for i, (score, _) in enumerate(_iterate(scores)):
-            result = self.transform_partial(score)
-            processed_scores[i] = np.asarray(result).item() if np.asarray(result).ndim > 0 else result
-
-        return processed_scores
+        return self._process_all(scores, self.transform_partial)
 
     def fit(self, scores):
         """Shortcut method that iteratively applies fit_partial to all instances in order.
@@ -81,9 +76,13 @@ class BasePostprocessor(ABC):
         Returns:
             np.float64 array of shape (num_instances,): Processed scores.
         """
+        return self._process_all(scores, self.fit_transform_partial)
+
+    @staticmethod
+    def _process_all(scores, process_partial):
         processed_scores = np.empty(scores.shape[0], dtype=np.float64)
         for i, (score, _) in enumerate(_iterate(scores)):
-            result = self.fit_transform_partial(score)
+            result = process_partial(score)
             processed_scores[i] = np.asarray(result).item() if np.asarray(result).ndim > 0 else result
 
         return processed_scores

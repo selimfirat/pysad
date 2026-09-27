@@ -57,8 +57,11 @@ class RelativeEntropy(BaseModel):
 
         Returns:
             object: Returns the self.
+
+        Raises:
+            ValueError: If `X` is NaN. The model is left unchanged.
         """
-        x = np.asarray(X).item()
+        x = self._value(X)
         self.util.append(x)
 
         if self.stepSize != 0.0 and len(self.util) >= self.W:
@@ -75,8 +78,11 @@ class RelativeEntropy(BaseModel):
 
         Returns:
             float: 1.0 if the window agrees with no hypothesis; with NAB's `c_th = 1`, a window that agrees with an existing hypothesis always scores 0.0. Also 0.0 before the window is full, before any hypothesis has been learned, or when `min_val == max_val` (step size 0).
+
+        Raises:
+            ValueError: If `X` is NaN.
         """
-        x = np.asarray(X).item()
+        x = self._value(X)
 
         if self.stepSize == 0.0:
             return 0.0
@@ -99,8 +105,11 @@ class RelativeEntropy(BaseModel):
 
         Returns:
             float: The anomalousness score of the input instance, as in `score_partial`.
+
+        Raises:
+            ValueError: If `X` is NaN. The model is left unchanged.
         """
-        x = np.asarray(X).item()
+        x = self._value(X)
         self.util.append(x)
 
         if self.stepSize == 0.0 or len(self.util) < self.W:
@@ -114,6 +123,25 @@ class RelativeEntropy(BaseModel):
         self._fit_window(P_hat, index)
 
         return score
+
+    @staticmethod
+    def _value(X):
+        """Reads the single value of an instance, rejecting NaN before it can reach the window.
+
+        Args:
+            X (float): The instance. Note that this model is univariate.
+
+        Returns:
+            float: The value of `X` as a Python scalar.
+
+        Raises:
+            ValueError: If the value is NaN, which has no quantization level.
+        """
+        x = np.asarray(X).item()
+        if np.isnan(x):
+            raise ValueError("RelativeEntropy does not accept NaN values.")
+
+        return x
 
     def _window_index(self, window):
         """Computes a window's empirical histogram and the index of the hypothesis it agrees with.

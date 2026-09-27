@@ -300,3 +300,29 @@ def test_relative_entropy_flags_jump_between_top_two_buckets():
 
     assert scores_top_shift.sum() > 0
     assert scores_top_shift.sum() == scores_lower_shift.sum()
+
+
+@pytest.mark.parametrize("method", ["fit_partial", "score_partial", "fit_score_partial"])
+@pytest.mark.parametrize("num_fitted", [3, 6])  # NaN would not fill / would close a window
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+def test_relative_entropy_rejects_nan_without_changing_the_model(method, num_fitted):
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=5)
+    for v in [0.1, 0.3, 0.5, 0.7, 0.9, 0.9, 0.9, 0.9, 0.9][:num_fitted]:
+        model.fit_partial(np.array([v]))
+    util_before, P_before, c_before, m_before = list(model.util), model.P.copy(), list(model.c), model.m
+
+    with pytest.raises(ValueError, match="RelativeEntropy does not accept NaN values"):
+        getattr(model, method)(np.array([np.nan]))
+
+    assert model.util == util_before
+    np.testing.assert_array_equal(model.P, P_before)
+    assert model.c == c_before
+    assert model.m == m_before
+
+    # The rejected value leaves nothing behind that breaks later windows.
+    for _ in range(10):
+        model.fit_score_partial(np.array([0.9]))
+    assert len(model.util) == num_fitted + 10

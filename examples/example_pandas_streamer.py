@@ -11,7 +11,7 @@ from pysad.utils import PandasStreamer
 
 np.random.seed(42)
 
-timestamps = pd.date_range("2025-01-01 09:00:00", periods=80, freq="min")
+timestamps = pd.date_range("2025-01-01 09:00:00", periods=200, freq="min")
 dataframe = pd.DataFrame(
     {
         "cpu": np.random.normal(loc=45, scale=4, size=len(timestamps)),
@@ -21,7 +21,7 @@ dataframe = pd.DataFrame(
     index=timestamps,
 )
 
-spike_positions = [20, 45, 70]
+spike_positions = [80, 130, 180]
 dataframe.iloc[spike_positions, dataframe.columns.get_loc("cpu")] += [40, 50, 45]
 dataframe.iloc[spike_positions, dataframe.columns.get_loc("latency_ms")] += [120, 150, 130]
 

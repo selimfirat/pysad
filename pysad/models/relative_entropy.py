@@ -206,8 +206,10 @@ class RelativeEntropy(BaseModel):
             return -1
 
         # Relative entropy of P_hat against every learned hypothesis in one call, instead of
-        # looping in Python and calling scipy.stats.entropy once per hypothesis.
-        entropies = 2 * self.W * stats.entropy(P_hat, self.P, axis=1)
+        # looping in Python and calling scipy.stats.entropy once per hypothesis. P_hat is
+        # broadcast to self.P's shape explicitly because scipy < 1.12 normalizes `pk` along
+        # `axis` before broadcasting, which raises AxisError for a 1-D `pk` with axis=1.
+        entropies = 2 * self.W * stats.entropy(np.broadcast_to(P_hat, self.P.shape), self.P, axis=1)
         candidates = np.flatnonzero(entropies < self.T)
         if candidates.size == 0:
             return -1

@@ -4,7 +4,7 @@ import numpy as np
 
 
 class RelativeEntropy(BaseModel):
-    """Relative entropy based anomaly detection model on univariate stream :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis (which is then added as a new hypothesis) or only with a hypothesis that is still rare, and 0.0 otherwise.
+    """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_ and follows it where it differs from the paper: windows slide one value at a time instead of being non-overlapping, and the first window always scores 0.0. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, and 0.0 otherwise. With NAB's rarity threshold `c_th` kept at 1, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
 
         Args:
             min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
@@ -44,7 +44,8 @@ class RelativeEntropy(BaseModel):
         # List where c[i] tracks the number of windows that agree with P[i]
         self.c = []
 
-        # NAB's rarity threshold: a hypothesis counted at most this many times is still rare.
+        # NAB's rarity threshold, kept at 1. With c_th = 1 no accepted hypothesis is rare:
+        # counts start at 1 and are incremented before the comparison.
         self.c_th = 1
 
     def fit_partial(self, X, y=None):
@@ -73,7 +74,7 @@ class RelativeEntropy(BaseModel):
             X (float): The instance to score. Note that this model is univariate.
 
         Returns:
-            float: 1.0 if the window agrees with no hypothesis or only with a still-rare one, 0.0 otherwise. Also 0.0 before the window is full or before any hypothesis has been learned.
+            float: 1.0 if the window agrees with no hypothesis; with NAB's `c_th = 1`, a window that agrees with an existing hypothesis always scores 0.0. Also 0.0 before the window is full or before any hypothesis has been learned.
         """
         x = np.asarray(X).item()
 
@@ -137,7 +138,7 @@ class RelativeEntropy(BaseModel):
             index (int): The return value of `_get_agreement_hypothesis` for the window.
 
         Returns:
-            float: 1.0 if the window agrees with no hypothesis or only with a still-rare one, 0.0 otherwise.
+            float: 1.0 if the window agrees with no hypothesis; with NAB's `c_th = 1`, a window that agrees with an existing hypothesis always scores 0.0.
         """
         if index == -1:
             return 1.0

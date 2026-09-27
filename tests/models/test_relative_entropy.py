@@ -1,13 +1,15 @@
 import pytest
 
 
-def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52):
+def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52, step=1):
     """Loop-based reference for `RelativeEntropy.fit_score_partial`: NAB's `handleRecord`
     (nab/detectors/relative_entropy/relative_entropy_detector.py), adapted to take a plain float
     per record and return a scalar score, with the paper's quantizer (Fig. 1, steps 3-4b: bucket
     B = ceil((u - min_val) / stepSize) for u clipped to [min_val, max_val], one bin per bucket
-    1..num_bins), and the relative entropy written out as in the paper instead of calling
-    scipy.stats.entropy. As in NAB, a window ends at every value from the `window_size`-th on.
+    1..num_bins), the relative entropy written out as in the paper instead of calling
+    scipy.stats.entropy, and windows that end at the `window_size`-th value and every `step`
+    values after it (`step=1` gives NAB's sliding windows, `step=window_size` the paper's
+    non-overlapping ones).
 
     Returns:
         tuple: `(scores, c, P)`, the score of every value, and the count and histogram of every
@@ -27,6 +29,7 @@ def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52):
     P = []
     c = []
     m = 0
+    next_window_end = W
 
     def histogram(window):
         counts = [0] * N_bins
@@ -60,7 +63,8 @@ def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52):
     for value in x:
         anomalyScore = 0.0
         util.append(value)
-        if stepSize != 0.0 and len(util) >= W:
+        if stepSize != 0.0 and len(util) == next_window_end:
+            next_window_end += step
             P_hat = histogram(util[-W:])
             if m == 0:
                 P.append(P_hat)
@@ -83,7 +87,9 @@ def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52):
 
 
 @pytest.mark.parametrize("window_size", [1, 2, 3, 52])
-def test_relative_entropy_matches_reference(window_size):
+@pytest.mark.parametrize("step", [1, None, 7])  # 7 divides none of the window sizes
+@pytest.mark.parametrize("driver", ["fit_score_partial", "score_partial_then_fit_partial"])
+def test_relative_entropy_matches_reference(window_size, step, driver):
     from pysad.models import RelativeEntropy
     import numpy as np
 
@@ -94,10 +100,19 @@ def test_relative_entropy_matches_reference(window_size):
     x[200:220] = rng.normal(0.9, 0.05, 20)  # regime shift
     x = np.clip(x, 0, 1)
 
-    reference_scores, reference_c, reference_P = _reference_fit_scores(x, min_val=0.0, max_val=1.0, window_size=window_size)
+    reference_scores, reference_c, reference_P = _reference_fit_scores(
+        x, min_val=0.0, max_val=1.0, window_size=window_size, step=window_size if step is None else step)
 
-    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size, step=1)
-    scores = [model.fit_score_partial(np.array([v])) for v in x]
+    # score_partial followed by fit_partial must score and learn exactly as fit_score_partial.
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size, step=step)
+    scores = []
+    for v in x:
+        xi = np.array([v])
+        if driver == "fit_score_partial":
+            scores.append(model.fit_score_partial(xi))
+        else:
+            scores.append(model.score_partial(xi))
+            model.fit_partial(xi)
 
     assert scores == reference_scores
     assert model.c == reference_c

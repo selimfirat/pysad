@@ -25,8 +25,8 @@ permissions:
   contents: read
 
 concurrency:
-  # Supersede stale PR runs but never cancel an in-progress push to master.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # PR runs share a group per PR (so stale pushes get cancelled); every push gets its own group.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

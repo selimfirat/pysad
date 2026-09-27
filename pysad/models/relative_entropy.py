@@ -11,14 +11,14 @@ def _is_positive_int(value):
 
 
 class RelativeEntropy(BaseModel):
-    """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. By default (`step=None`, resolved to `window_size`), windows are non-overlapping, as in the paper; pass `step=1` to reproduce NAB's detector, which slides the window by one value at a time. Unlike NAB, whose histogram puts the top two quantization levels in one bin, this implementation gives each of the `num_bins` equal-width buckets its own bin, as in the paper (Fig. 1, steps 3-4b), so its scores differ from NAB's. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, and 0.0 otherwise. With NAB's rarity threshold `c_th` kept at 1, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
+    """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. By default (`step=None`, resolved to `window_size`), windows are non-overlapping, as in the paper; pass `step=1` to reproduce NAB's sliding windows, which move by one value at a time. Each tested window's score goes to the value that closes it and every other value scores 0.0 (NAB tests a window at every value, and the paper flags windows rather than values), so with the default `step` only one value in every `window_size` can score nonzero. For the same reason, `score` on held-out values after `fit` scores each of them as the value following the fitted ones and returns all 0.0 unless that value would close a window (with the default `step`, unless the number of fitted values is one short of a multiple of `window_size`); pass `step=1` to fit and score separately. Unlike NAB, whose histogram puts the top two quantization levels in one bin, this implementation gives each of the `num_bins` equal-width buckets its own bin, as in the paper (Fig. 1, steps 3-4b), so its scores differ from NAB's. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, and 0.0 otherwise. With NAB's rarity threshold `c_th` kept at 1, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
 
         Args:
             min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
             max_val (float): Maximum value of the univariate stream. Values above this are clipped to it.
             num_bins (int): Number of bins (Default=5).
             window_size (int): The size of the window (Default=52). Must be an int >= 1 (a NumPy integer is accepted), or `ValueError` is raised.
-            step (int): Number of values between the ends of consecutive tested windows. `None` (default) resolves to `window_size`, giving the paper's non-overlapping windows; `step=1` reproduces NAB's sliding windows. Must be `None` or an int >= 1 (a NumPy integer is accepted), or `ValueError` is raised.
+            step (int): Number of values between the ends of consecutive tested windows. `None` (default) resolves to `window_size`, giving the paper's non-overlapping windows; `step=1` reproduces NAB's sliding windows. Only the value that closes a tested window can score nonzero, so `step=1` is the setting for fitting and scoring separately. Must be `None` or an int >= 1 (a NumPy integer is accepted), or `ValueError` is raised.
     """
 
     def __init__(self, min_val, max_val, num_bins=5, window_size=52, step=None):
@@ -51,7 +51,7 @@ class RelativeEntropy(BaseModel):
         # Tracks the current number of null hypothesis
         self.m = 0
 
-        # Step size in time series quantization
+        # Width of each quantization bucket (unrelated to `step`)
         self.stepSize = (max_val - min_val) / self.N_bins
 
         # Rows are the empirical frequencies of the learned hypotheses. Grows by one row
@@ -66,7 +66,7 @@ class RelativeEntropy(BaseModel):
         self.c_th = 1
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance: appends `X` to the window and, when `X` closes a window (the window is full and its end is `step` values past the previous tested window's end), either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise. Values that don't close a window leave the model unchanged.
+        """Fits the model to next instance: appends `X` to the window buffer and, when `X` closes a window (the window is full and ends `step` values after the previous tested window, counting from the first full window), either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise. Values that don't close a window are only appended to the window buffer; the learned hypotheses and counts are unchanged.
 
         Args:
             X (float): The instance to fit. Note that this model is univariate.
@@ -88,13 +88,13 @@ class RelativeEntropy(BaseModel):
         return self
 
     def score_partial(self, X):
-        """Scores the window ending with the given instance, i.e., the last `W - 1` fitted values followed by `X`. This method does not change the model.
+        """Scores the window ending with the given instance, i.e., the last `W - 1` fitted values followed by `X`, if `X` would close a window. This method does not change the model, so `score` after `fit` scores every row as the value following the fitted ones: with the default `step`, it returns all 0.0 unless the number of fitted values is one short of a multiple of `window_size`. Use `step=1` to fit and score separately.
 
         Args:
             X (float): The instance to score. Note that this model is univariate.
 
         Returns:
-            float: 1.0 if the window agrees with no hypothesis; with NAB's `c_th = 1`, a window that agrees with an existing hypothesis always scores 0.0. Also 0.0 before the window is full, when `X` doesn't close a window (per `step`), before any hypothesis has been learned, or when `min_val == max_val` (step size 0).
+            float: 1.0 if the window agrees with no hypothesis; with NAB's `c_th = 1`, a window that agrees with an existing hypothesis always scores 0.0. Also 0.0 before the window is full, when `X` doesn't close a window (per `step`, only the value that closes a window gets its score), before any hypothesis has been learned, or when `min_val == max_val` (bucket width `stepSize` is 0).
 
         Raises:
             ValueError: If `X` is NaN.
@@ -112,7 +112,7 @@ class RelativeEntropy(BaseModel):
         return self._score_window(index)
 
     def fit_score_partial(self, X, y=None):
-        """Scores the window ending with the given instance and then fits the model to it, as NAB's detector does for each record.
+        """Scores the window ending with the given instance and then fits the model to it, as NAB's detector does for each record. Only a value that closes a window (per `step`) gets that window's score and has the window fitted; any other value scores 0.0 and is only appended to the window buffer.
 
         Args:
             X (float): The instance to fit and score. Note that this model is univariate.

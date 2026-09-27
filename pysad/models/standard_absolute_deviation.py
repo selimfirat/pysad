@@ -1,7 +1,11 @@
+import warnings
+
 from pysad.core.base_model import BaseModel
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.median_meter import MedianMeter
 from pysad.statistics.variance_meter import VarianceMeter
+
+_UNSET = object()
 
 
 class StandardAbsoluteDeviation(BaseModel):
@@ -13,21 +17,43 @@ class StandardAbsoluteDeviation(BaseModel):
         modified-STL plus standard ESD detector.
 
         Args:
-            substracted_statistic (str): The statistic to be substracted for scoring. It is either "mean" or "median". (Default="mean").
+            subtracted_statistic (str): The statistic to be subtracted for scoring. It is either "mean" or "median". (Default="mean").
             absolute (bool): Whether to output score's absolute value. (Default=True).
+
+        .. deprecated:: 0.6.1
+            The ``substracted_statistic`` keyword is deprecated.
+            Use ``subtracted_statistic`` instead.
     """
 
-    def __init__(self, substracted_statistic="mean", absolute=True):
+    def __init__(self, subtracted_statistic=_UNSET, absolute=True,
+                 *, substracted_statistic=_UNSET):
+        if substracted_statistic is not _UNSET:
+            warnings.warn(
+                "The 'substracted_statistic' parameter is deprecated. "
+                "Use 'subtracted_statistic' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if subtracted_statistic is not _UNSET:
+                raise TypeError(
+                    "Cannot specify both 'subtracted_statistic' and "
+                    "'substracted_statistic'."
+                )
+            subtracted_statistic = substracted_statistic
+
+        if subtracted_statistic is _UNSET:
+            subtracted_statistic = "mean"
+
         self.absolute = absolute
         self.variance_meter = VarianceMeter()
 
-        if substracted_statistic == "median":
+        if subtracted_statistic == "median":
             self.sub_meter = MedianMeter()
-        elif substracted_statistic == "mean":
+        elif subtracted_statistic == "mean":
             self.sub_meter = AverageMeter()
         else:
             raise ValueError(
-                "Unknown substracted_statistic value! Please choose median or mean.")
+                "Unknown subtracted_statistic value! Please choose median or mean.")
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.

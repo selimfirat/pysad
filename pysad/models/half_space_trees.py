@@ -42,7 +42,7 @@ class HalfSpaceTrees(BaseModel):
 
         self.is_first_window = True
         self.step = 0
-        if initial_window_X:
+        if initial_window_X is not None:
             self.fit(initial_window_X)
 
     def _build_single_hs_tree(self, mins, maxes, current_depth):

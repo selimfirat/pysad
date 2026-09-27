@@ -20,7 +20,7 @@ class StandardAbsoluteDeviation(BaseModel):
             subtracted_statistic (str): The statistic to be subtracted for scoring. It is either "mean" or "median". (Default="mean").
             absolute (bool): Whether to output score's absolute value. (Default=True).
 
-        .. deprecated::
+        .. deprecated:: 0.6.1
             The ``substracted_statistic`` keyword is deprecated.
             Use ``subtracted_statistic`` instead.
     """

@@ -30,15 +30,17 @@ jobs:
           pip install -e .
       - name: Test with coverage
         run: pytest --cov=pysad --cov-report=lcov
+      - name: Run examples
+        run: pytest -m examples
       - name: Upload to Coveralls
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: coverage.lcov
       - name: Upload to Qlty
+        # Forked PRs get no OIDC token, so upload only from this repo.
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         uses: qltysh/qlty-action/coverage@v2
         with:
           oidc: true
           files: coverage.lcov
-      - name: Run examples
-        run: pytest -m examples

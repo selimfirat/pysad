@@ -4,7 +4,7 @@ from pysad.core.base_model import BaseModel
 
 
 class HalfSpaceTrees(BaseModel):
-    """Half-Space Trees method :cite:`tan2011fast`.
+    """Half-Space Trees method :cite:`tan2011fast`. Instances are scored against the reference mass profile built from the previous window before being recorded into the next one (Algorithm 3); instances in the first window (not covered by `initial_window_X`) get the lowest possible score, since Algorithm 3 does not score them.
 
     Args:
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
@@ -42,6 +42,10 @@ class HalfSpaceTrees(BaseModel):
 
         self.is_first_window = True
         self.step = 0
+        # Every node's r-mass is at most window_size, and depth k contributes r * 2**k
+        # summed over max_depth + 1 levels (0..max_depth), across every tree.
+        self._min_score = - \
+            self.num_trees * self.window_size * (2 ** (self.max_depth + 1) - 1)
         if initial_window_X is not None:
             self.fit(initial_window_X)
 
@@ -77,17 +81,13 @@ class HalfSpaceTrees(BaseModel):
             split_value=p,
             k=current_depth)
 
-    def _update_mass(self, x, node, ref_window):
-        if ref_window:
-            node.r_mass += 1
-            node.l_mass += 1  # Does not exist in original since we want it to predict while building the first window
-        else:
-            node.l_mass += 1
+    def _update_mass(self, x, node):
+        node.l_mass += 1
 
         if node.k < self.max_depth:
             target_node = node.right if x[node.split_att] > node.split_value else node.left
 
-            self._update_mass(x, target_node, ref_window)
+            self._update_mass(x, target_node)
 
     def _update_model(self, node):
 
@@ -114,7 +114,7 @@ class HalfSpaceTrees(BaseModel):
         self.step += 1
 
         for root in self.roots:
-            self._update_mass(X, root, self.is_first_window)
+            self._update_mass(X, root)
 
         if self.step % self.window_size == 0:
             for root in self.roots:
@@ -131,20 +131,38 @@ class HalfSpaceTrees(BaseModel):
         return node.r_mass * (2**node.k) + self._score_tree(X, target_node)
 
     def score_partial(self, X):
-        """Scores the anomalousness of the next instance.
+        """Scores the anomalousness of the next instance against the reference mass profile built from the previous window, without recording it.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            float: The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance. During the first window (Algorithm 3 does not score these instances, and there is no previous window to score against), returns the lowest possible score, `-num_trees * window_size * (2 ** (max_depth + 1) - 1)`.
         """
+        if self.is_first_window:
+            return self._min_score
+
         s = 0.0
 
         for root in self.roots:
             s += self._score_tree(X, root)
 
         return -s
+
+    def fit_score_partial(self, X, y=None):
+        """Scores the next instance against the reference mass profile built from the previous window, and then fits it, as Algorithm 3 does (score before updating the mass profile, and swap in the updated profile only at the end of a window).
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to fit and score.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance, as in `score_partial`.
+        """
+        score = self.score_partial(X)
+        self.fit_partial(X, y)
+
+        return score
 
     class _Node:
         def __init__(self, left, right, split_att, split_value, k):

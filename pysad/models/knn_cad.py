@@ -3,7 +3,7 @@ import numpy as np
 
 
 class KNNCAD(BaseModel):
-    """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate.
+    """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate. Where NAB and the paper disagree, this implementation follows NAB: the training and calibration sets and their rotation, the `inv(XᵀX)` distance refreshed every half probationary period, and the alarm suppression that returns `0.5`.
 
         Args:
             probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`.

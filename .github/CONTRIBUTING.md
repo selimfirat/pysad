@@ -13,6 +13,10 @@ I aim to reply to new issues and pull requests within a few days.
 
 We follow the [Python Software Foundation Code of Conduct](https://policies.python.org/python.org/code-of-conduct/).
 
+## Development style
+
+PySAD follows [Trunk-based development](https://trunkbaseddevelopment.com/). All development happens directly against the primary branch (`master`) using short-lived branches (e.g. `feat/...`, `fix/...`, `docs/...`) that are merged frequently via pull requests. Every pull request is verified with continuous integration tests and lint checks to ensure the trunk remains stable and continuously releasable.
+
 ## Development setup
 
 ```bash

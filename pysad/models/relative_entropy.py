@@ -93,7 +93,8 @@ class RelativeEntropy(BaseModel):
         if self.stepSize == 0.0:
             return 0.0
 
-        window = self.util[-(self.W - 1):] + [x]
+        start = max(0, len(self.util) - self.W + 1)
+        window = self.util[start:] + [x]
         if len(window) < self.W or self.m == 0:
             return 0.0
 

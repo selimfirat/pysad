@@ -1,3 +1,6 @@
+import pytest
+
+
 def _nab_reference_scores(x, min_val, max_val, num_bins=5, window_size=52):
     """Reference implementation of NAB's `handleRecord`
     (nab/detectors/relative_entropy/relative_entropy_detector.py), adapted to
@@ -58,7 +61,8 @@ def _nab_reference_scores(x, min_val, max_val, num_bins=5, window_size=52):
     return scores
 
 
-def test_relative_entropy_matches_nab_reference():
+@pytest.mark.parametrize("window_size", [1, 2, 3, 52])
+def test_relative_entropy_matches_nab_reference(window_size):
     from pysad.models import RelativeEntropy
     from pysad.utils import fix_seed
     import numpy as np
@@ -69,9 +73,9 @@ def test_relative_entropy_matches_nab_reference():
     x[200:220] = rng.normal(0.9, 0.05, 20)  # regime shift
     x = np.clip(x, 0, 1)
 
-    reference_scores = _nab_reference_scores(x, min_val=0.0, max_val=1.0)
+    reference_scores = _nab_reference_scores(x, min_val=0.0, max_val=1.0, window_size=window_size)
 
-    model = RelativeEntropy(min_val=0.0, max_val=1.0)
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
     scores = [model.fit_score_partial(np.array([v])) for v in x]
 
     assert scores == reference_scores

@@ -157,3 +157,23 @@ def test_knn_cad_outlier_scores_higher():
 
     assert outlier > first_inlier
     assert outlier > second_inlier
+
+
+def test_knn_cad_rejects_probationary_period_below_minimum():
+    import pytest
+    from pysad.models import KNNCAD
+
+    with pytest.raises(ValueError):
+        KNNCAD(probationary_period=47)
+
+
+def test_knn_cad_accepts_minimum_probationary_period():
+    from pysad.models import KNNCAD
+    import numpy as np
+
+    X = np.random.default_rng(0).random((100, 1))
+
+    model = KNNCAD(probationary_period=48)
+    scores = model.fit_score(X)
+
+    assert len(scores) == len(X)

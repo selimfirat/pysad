@@ -6,7 +6,7 @@ class KNNCAD(BaseModel):
     """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate. Where NAB and the paper disagree, this implementation follows NAB, including: the training and calibration sets and their rotation, the sum of squared quadratic forms with the `inv(XᵀX)` distance (refreshed every half probationary period) in place of the paper's Eq. (1) distance sum, the fixed `k = 27` and window length `19`, and the alarm suppression that returns `0.5`.
 
         Args:
-            probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`.
+            probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`. Must be at least `48` (window length `19` plus `k = 27` plus `2`): the training set holds `probationary_period - 19` windows, and the calibration scores need at least `k + 2` of them.
     """
 
     def __init__(self, probationary_period):
@@ -17,7 +17,17 @@ class KNNCAD(BaseModel):
         self.record_count = 0
         self.pred = -1
         self.k = 27
+        self.dim = 19
         self.to_init = True
+
+        min_probationary_period = self.dim + self.k + 2
+        if probationary_period < min_probationary_period:
+            raise ValueError(
+                f"probationary_period must be at least {min_probationary_period} "
+                f"(window length {self.dim} plus k={self.k} plus 2): the training "
+                f"set holds probationary_period - {self.dim} windows, and the "
+                f"calibration scores need at least k + 2 of them."
+            )
 
         self.probationaryPeriod = probationary_period
 
@@ -74,7 +84,6 @@ class KNNCAD(BaseModel):
             object: Returns the self.
         """
         if self.to_init:
-            self.dim = 19  # X.shape[0]
             self.sigma = np.diag(np.ones(self.dim))
             self.to_init = False
 

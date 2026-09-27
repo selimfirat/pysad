@@ -442,20 +442,40 @@ def test_relative_entropy_rejects_nan_without_changing_the_model(method, num_fit
     assert len(model.util) == num_fitted + 10
 
 
-@pytest.mark.parametrize("step", [0, -1, 1.5, "1", True])
-def test_relative_entropy_invalid_step_raises(step):
+@pytest.mark.parametrize("step", [0, -1])
+def test_relative_entropy_step_below_one_raises_value_error(step):
     from pysad.models import RelativeEntropy
 
-    with pytest.raises(ValueError, match="step must be"):
+    with pytest.raises(ValueError, match=f"step must be at least 1, got {step}"):
         RelativeEntropy(min_val=0.0, max_val=1.0, step=step)
 
 
-@pytest.mark.parametrize("window_size", [0, -1, 52.0, None, "52", True])
-def test_relative_entropy_invalid_window_size_raises(window_size):
+@pytest.mark.parametrize("step", [1.5, 1.0, "1", True])
+def test_relative_entropy_non_integer_step_raises_type_error(step):
+    from pysad.models import RelativeEntropy
+    import re
+
+    # As in KNNCAD and RSHash: TypeError for a wrong type (bool is an int subclass, but not an
+    # accepted integer), ValueError only for an int out of range.
+    with pytest.raises(TypeError, match=re.escape(f"step must be None or an int, got {step!r}")):
+        RelativeEntropy(min_val=0.0, max_val=1.0, step=step)
+
+
+@pytest.mark.parametrize("window_size", [0, -1])
+def test_relative_entropy_window_size_below_one_raises_value_error(window_size):
     from pysad.models import RelativeEntropy
 
     # The error names window_size, not the step resolved from it.
-    with pytest.raises(ValueError, match="window_size must be an int >= 1"):
+    with pytest.raises(ValueError, match=f"window_size must be at least 1, got {window_size}"):
+        RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
+
+
+@pytest.mark.parametrize("window_size", [52.0, 1.5, None, "52", True])
+def test_relative_entropy_non_integer_window_size_raises_type_error(window_size):
+    from pysad.models import RelativeEntropy
+    import re
+
+    with pytest.raises(TypeError, match=re.escape(f"window_size must be an int, got {window_size!r}")):
         RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
 
 

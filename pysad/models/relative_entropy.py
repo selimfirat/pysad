@@ -5,9 +5,29 @@ from pysad.core.base_model import BaseModel
 import numpy as np
 
 
-def _is_positive_int(value):
-    """Whether `value` is an integer >= 1: a Python or NumPy integer, but not a bool."""
-    return isinstance(value, numbers.Integral) and not isinstance(value, bool) and value >= 1
+def _positive_int(value, name, expected="an int"):
+    """Returns `value` as a Python int, or raises if it is not an integer >= 1 (NumPy integers are accepted, bools are not).
+
+    Args:
+        value (object): The value to check.
+        name (str): The parameter name to put in the error message.
+        expected (str): What the parameter accepts, for the `TypeError` message (Default="an int").
+
+    Returns:
+        int: `value` as a Python int.
+
+    Raises:
+        TypeError: If `value` is a bool or not an integer.
+        ValueError: If `value` is below 1.
+    """
+    if isinstance(value, bool) or not isinstance(value, numbers.Integral):
+        raise TypeError(f"{name} must be {expected}, got {value!r}.")
+
+    value = int(value)
+    if value < 1:
+        raise ValueError(f"{name} must be at least 1, got {value}.")
+
+    return value
 
 
 class RelativeEntropy(BaseModel):
@@ -17,15 +37,14 @@ class RelativeEntropy(BaseModel):
             min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
             max_val (float): Maximum value of the univariate stream. Values above this are clipped to it.
             num_bins (int): Number of bins (Default=5).
-            window_size (int): The size of the window (Default=52). Must be an int >= 1 (a NumPy integer is accepted), or `ValueError` is raised.
-            step (int): Number of values between the ends of consecutive tested windows. `None` (default) resolves to `window_size`, giving the paper's non-overlapping windows; `step=1` reproduces NAB's sliding windows. Only the value that closes a tested window can score nonzero, so `step=1` is the setting for fitting and scoring separately. Must be `None` or an int >= 1 (a NumPy integer is accepted), or `ValueError` is raised.
+            window_size (int): The size of the window (Default=52). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
+            step (int or None): Number of values between the ends of consecutive tested windows. `None` (default) resolves to `window_size`, giving the paper's non-overlapping windows; `step=1` reproduces NAB's sliding windows. Only the value that closes a tested window can score nonzero, so `step=1` is the setting for fitting and scoring separately. Must be `None` or an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
     """
 
     def __init__(self, min_val, max_val, num_bins=5, window_size=52, step=None):
-        if not _is_positive_int(window_size):
-            raise ValueError("window_size must be an int >= 1.")
-        if step is not None and not _is_positive_int(step):
-            raise ValueError("step must be None or an int >= 1.")
+        window_size = _positive_int(window_size, "window_size")
+        if step is not None:
+            step = _positive_int(step, "step", expected="None or an int")
 
         self.min_val = min_val
         self.max_val = max_val
@@ -37,11 +56,11 @@ class RelativeEntropy(BaseModel):
         self.N_bins = num_bins
 
         # Window size, stored as a Python int even when given as a NumPy integer
-        self.W = int(window_size)
+        self.W = window_size
 
         # Number of values between the ends of consecutive tested windows. None resolves to
         # W (the paper's non-overlapping windows); step=1 reproduces NAB's sliding windows.
-        self.step = self.W if step is None else int(step)
+        self.step = self.W if step is None else step
 
         # Threshold against which the test statistic is compared. It is set to
         # the point in the chi-squared cdf with N-bins -1 degrees of freedom that

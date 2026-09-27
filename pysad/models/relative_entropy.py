@@ -5,7 +5,7 @@ import numpy as np
 
 
 class RelativeEntropy(BaseModel):
-    """Relative entropy based anomaly detection model on univariate stream :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_.
+    """Relative entropy based anomaly detection model on univariate stream :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis (which is then added as a new hypothesis) or only with a hypothesis that is still rare, and 0.0 otherwise.
 
         Args:
             min_val (float): Minimum value of the univariate stream.
@@ -45,10 +45,11 @@ class RelativeEntropy(BaseModel):
         # List where c[i] tracks the number of windows that agree with P[i]
         self.c = []
 
-        self.P_hat = None
+        # NAB's rarity threshold: a hypothesis counted at most this many times is still rare.
+        self.c_th = 1
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Fits the model to next instance: appends `X` to the window and, once the window is full, either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise.
 
         Args:
             X (float): The instance to fit. Note that this model is univariate.
@@ -57,45 +58,79 @@ class RelativeEntropy(BaseModel):
         Returns:
             object: Returns the self.
         """
-        self.util.append(X)
-        if len(self.util) >= self.W:
+        x = np.asarray(X).item()
+        self.util.append(x)
 
-            # Extracting current window
-            util_current = self.util[-self.W:]
-
-            # Quantize window data points into discretized bin values
-            B_current = [math.ceil((np.asarray(c).item() - self.min_val) / self.stepSize) for c in
-                         util_current]
-
-            # Create a histogram of empirical frequencies for the current window
-            # using B_current
-            self.P_hat = np.histogram(B_current,
-                                      bins=self.N_bins,
-                                      range=(0, self.N_bins),
-                                      density=True)[0]
+        if self.stepSize != 0.0 and len(self.util) >= self.W:
+            P_hat = self._histogram(self.util[-self.W:])
 
             if self.m == 0:
-                self.P.append(self.P_hat)
+                self.P.append(P_hat)
                 self.c.append(1)
                 self.m = 1
+            else:
+                index = self._get_agreement_hypothesis(P_hat)
+                if index != -1:
+                    self.c[index] += 1
+                else:
+                    self.P.append(P_hat)
+                    self.c.append(1)
+                    self.m += 1
 
         return self
 
     def score_partial(self, X):
-        """Scores the anomalousness of the next instance. Note that this method should be called after the fit_partial method.
+        """Scores the window ending with the given instance, i.e., the last `W - 1` fitted values followed by `X`. This method does not change the model.
 
         Args:
-            X (any): (Ignored) The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (float): The instance to score. Note that this model is univariate.
 
         Returns:
-            float: The anomalousness score of the input instance.
+            float: 1.0 if the window agrees with no hypothesis or only with a still-rare one, 0.0 otherwise. Also 0.0 before the window is full or before any hypothesis has been learned.
         """
-        score = 0.0
+        x = np.asarray(X).item()
 
-        if len(self.util) >= self.W and self.m > 0 and self.P_hat is not None:
-            score = self._get_agreement_hypothesis(self.P_hat)
+        if self.stepSize == 0.0:
+            return 0.0
+
+        window = self.util[-(self.W - 1):] + [x]
+        if len(window) < self.W or self.m == 0:
+            return 0.0
+
+        P_hat = self._histogram(window)
+        index = self._get_agreement_hypothesis(P_hat)
+        if index == -1:
+            return 1.0
+
+        return 1.0 if self.c[index] + 1 <= self.c_th else 0.0
+
+    def fit_score_partial(self, X, y=None):
+        """Scores the window ending with the given instance and then fits the model to it, as NAB's detector does for each record.
+
+        Args:
+            X (float): The instance to fit and score. Note that this model is univariate.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance, as in `score_partial`.
+        """
+        score = self.score_partial(X)
+        self.fit_partial(X, y)
 
         return score
+
+    def _histogram(self, window):
+        """Computes the empirical frequency histogram `P_hat` of a window.
+
+        Args:
+            window (list of float): The values in the window, in order.
+
+        Returns:
+            np.float64 array of shape (N_bins,): The empirical frequencies of the quantized window.
+        """
+        B_current = [math.ceil((v - self.min_val) / self.stepSize) for v in window]
+
+        return np.histogram(B_current, bins=self.N_bins, range=(0, self.N_bins), density=True)[0]
 
     def _get_agreement_hypothesis(self, P_hat):
         """This function computes multinomial goodness-of-fit test. It calculates

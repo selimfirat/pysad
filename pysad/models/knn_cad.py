@@ -154,7 +154,7 @@ class KNNCAD(BaseModel):
         return 1. * len(np.where(np.array(scores) < new_score)[0]) / len(scores)
 
     def fit_score_partial(self, X, y=None):
-        """Scores the window that ends with the given instance and then fits the model to it, as NAB's detector does for each record. After a score of at least `0.9965` raises an alarm, the next `probationary_period / 5` scores are suppressed to `0.5`.
+        """Scores the window that ends with the given instance and then fits the model to it, as NAB's detector does for each record. After a score of at least `0.9965` raises an alarm, the next `int(probationary_period / 5)` scores are suppressed to `0.5`.
 
         Args:
             X (np.float64 array of shape (1,)): The instance to fit and score.

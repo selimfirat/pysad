@@ -5,7 +5,7 @@ from pysad.utils.window import Window
 
 
 class ExactStorm(BaseModel):
-    """The Exact-STORM method :cite:`angiulli2007detecting`. Following the paper, an instance in the window of length `window_size` is a neighbor of the scored instance if their distance is not greater than `max_radius`, and the scored instance is never its own neighbor. In the paper, an instance is an outlier if it has fewer than k neighbors. This method assigns an anomaly score that is the fraction of window instances that are not neighbors of the scored instance, so instances with fewer neighbors get higher scores. Note that the decision making with a fixed k in :cite:`angiulli2007detecting` is not implemented.
+    """The Exact-STORM method :cite:`angiulli2007detecting`. Following the paper, an instance in the window of length `window_size` is a neighbor of the scored instance if their distance is not greater than `max_radius`, and the scored instance is never its own neighbor. In the paper, an instance is an outlier if it has fewer than k neighbors. This method assigns an anomaly score that is the fraction of window instances that are not neighbors of the scored instance, so instances with fewer neighbors get higher scores. An instance scored against an empty window has no neighbors and gets the maximum score of 1. Note that the decision making with a fixed k in :cite:`angiulli2007detecting` is not implemented.
 
             Args:
                 window_size : int (Default=10000)
@@ -59,7 +59,7 @@ class ExactStorm(BaseModel):
 
     def _score(self, window, X):
         if len(window) == 0:
-            return 0.0
+            return 1.0
 
         dists = scipy.spatial.distance.cdist(window, [X])
 

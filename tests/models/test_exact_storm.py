@@ -44,9 +44,7 @@ def test_exact_storm_neighbor_counting():
     from numpy.testing import assert_almost_equal
 
     model = ExactStorm(window_size=4, max_radius=1.0)
-    assert model.fit_score_partial(np.array([0.0])) == 0.0
-
-    model.fit(np.array([[1.0], [5.0], [6.0]]))
+    model.fit(np.array([[0.0], [1.0], [5.0], [6.0]]))
 
     # Neighbors are at distance not greater than max_radius, and every instance in the window counts when only scoring.
     assert_almost_equal(model.score_partial(np.array([0.0])), 0.5)
@@ -54,3 +52,12 @@ def test_exact_storm_neighbor_counting():
 
     # The fitted instance is not its own neighbor: of the other three instances in the window, only 5.0 and 6.0 are neighbors of itself.
     assert_almost_equal(model.fit_score_partial(np.array([5.5])), 1.0 / 3.0)
+
+
+def test_exact_storm_empty_window():
+    from pysad.models import ExactStorm
+    import numpy as np
+
+    # With no instances to be neighbors of, an instance has fewer than k neighbors for any k, so it gets the maximum score.
+    assert ExactStorm().score_partial(np.array([0.0, 0.0])) == 1.0
+    assert ExactStorm().fit_score_partial(np.array([0.0, 0.0])) == 1.0

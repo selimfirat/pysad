@@ -1,3 +1,4 @@
+import math
 import numbers
 
 from pysad.core.base_model import BaseModel
@@ -8,7 +9,7 @@ class KNNCAD(BaseModel):
     """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate. Where NAB and the paper disagree, this implementation follows NAB, including: the training and calibration sets and their rotation, the sum of squared quadratic forms with the `inv(XᵀX)` distance (refreshed every half probationary period) in place of the paper's Eq. (1) distance sum, the fixed `k = 27` and window length `19`, and the alarm suppression that returns `0.5`.
 
         Args:
-            probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`. Must be an int (a NumPy integer is accepted, but not a bool) of at least `48` (window length `19` plus `k = 27` plus `2`): the training set holds `probationary_period - 19` windows, and the calibration scores need at least `k + 2` of them. Raises `TypeError` if not an int and `ValueError` if below the minimum.
+            probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`. Must be a whole number of at least `48` (window length `19` plus `k = 27` plus `2`): the training set holds `probationary_period - 19` windows, and the calibration scores need at least `k + 2` of them. It may be an int (a NumPy integer is accepted, but not a bool) or an integral-valued float, such as the `750.0` that NAB's probation period helper returns, which is converted to an int. Raises `TypeError` for a bool or a non-real type, and `ValueError` for NaN, infinity, a value with a fractional part, or a value below the minimum.
     """
 
     def __init__(self, probationary_period):
@@ -16,19 +17,26 @@ class KNNCAD(BaseModel):
         k = 27
         min_probationary_period = dim + k + 2
 
-        if isinstance(probationary_period, bool) or not isinstance(probationary_period, numbers.Integral):
+        if isinstance(probationary_period, bool) or not isinstance(probationary_period, numbers.Real):
             raise TypeError(
-                f"probationary_period must be an int, got {probationary_period!r}."
+                f"probationary_period must be an int or an integral float, got {probationary_period!r}."
             )
 
-        probationary_period = int(probationary_period)
+        if not isinstance(probationary_period, numbers.Integral) and not (
+                math.isfinite(probationary_period) and float(probationary_period).is_integer()):
+            raise ValueError(
+                f"probationary_period must be a whole number, got {probationary_period!r}."
+            )
+
         if probationary_period < min_probationary_period:
             raise ValueError(
                 f"probationary_period must be at least {min_probationary_period} "
-                f"(window length {dim} plus k={k} plus 2): the training "
-                f"set holds probationary_period - {dim} windows, and the "
+                f"(window length {dim} plus k={k} plus 2), got {probationary_period!r}: "
+                f"the training set holds probationary_period - {dim} windows, and the "
                 f"calibration scores need at least k + 2 of them."
             )
+
+        probationary_period = int(probationary_period)
 
         self.buf = []
         self.training = []

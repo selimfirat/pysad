@@ -163,26 +163,53 @@ def test_knn_cad_outlier_scores_higher():
     assert outlier > second_inlier
 
 
-@pytest.mark.parametrize("period", [1, 19, 20, 47])
+@pytest.mark.parametrize("period", [1, 19, 20, 47, 47.0])
 def test_knn_cad_rejects_probationary_period_below_minimum(period):
     from pysad.models import KNNCAD
+    import re
 
     # 1 and 19 leave the training set empty; 20-47 have too few training windows for the
     # calibration scores (np.partition kth out of bounds). All of them must raise at
-    # construction, with a message that names the actual minimum (48).
-    with pytest.raises(ValueError, match="48"):
+    # construction, with a message that names the actual minimum (48) and the rejected value.
+    with pytest.raises(ValueError, match=re.escape(f"at least 48 (window length 19 plus k=27 plus 2), got {period!r}")):
         KNNCAD(probationary_period=period)
 
 
-@pytest.mark.parametrize("period", [float("nan"), float("inf"), 48.5, None, "48", True])
-def test_knn_cad_rejects_non_integer_probationary_period(period):
+@pytest.mark.parametrize("period", [float("nan"), float("inf"), float("-inf"), 48.5, np.float64(100.5)])
+def test_knn_cad_rejects_non_integral_probationary_period(period):
     from pysad.models import KNNCAD
+    import re
 
     # NaN and inf compare False to any bound, so a plain `<` check lets them through and the
-    # model then fails later with an unrelated error. Floats, None, strings and bools are not
-    # valid periods either (bool is a subclass of int, but is not an accepted "integral" value).
-    with pytest.raises(TypeError):
+    # model then fails later with an unrelated error. A period with a fractional part is not a
+    # whole number of records.
+    with pytest.raises(ValueError, match=re.escape(f"got {period!r}")):
         KNNCAD(probationary_period=period)
+
+
+@pytest.mark.parametrize("period", [None, "48", True, np.True_, 100 + 0j])
+def test_knn_cad_rejects_non_real_probationary_period(period):
+    from pysad.models import KNNCAD
+
+    # None, strings and complex numbers are not periods, and neither are bools (bool is a
+    # subclass of int, but True is not an accepted period of 1).
+    with pytest.raises(TypeError, match="probationary_period must be"):
+        KNNCAD(probationary_period=period)
+
+
+@pytest.mark.parametrize("period", [100.0, np.float64(100.0), np.float32(100.0)])
+def test_knn_cad_accepts_integral_float_probationary_period(period):
+    from pysad.models import KNNCAD
+
+    # NAB's probation period helper (nab/util.py, getProbationPeriod) returns a float such as
+    # 750.0, which master accepted; it is converted to the matching int and scores the same.
+    model = KNNCAD(probationary_period=period)
+
+    assert type(model.probationaryPeriod) is int
+    assert model.probationaryPeriod == 100
+
+    X = generate_stream()
+    np.testing.assert_array_equal(model.fit_score(X), KNNCAD(probationary_period=100).fit_score(X))
 
 
 @pytest.mark.parametrize("period", [np.uint8(200), np.int8(100), np.int64(200)])

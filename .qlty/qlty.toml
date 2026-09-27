@@ -63,10 +63,10 @@ file_patterns = ["tests/**"]
 
 # Known false positives, silenced so the report only shows actionable issues.
 
-# setup.py and docs/conf.py exec pysad/version.py to read __version__ without importing pysad.
+# docs/conf.py execs pysad/version.py to read __version__ without importing pysad.
 [[triage]]
 match.rules = ["ruff:F821", "bandit:B102"]
-match.file_patterns = ["setup.py", "docs/conf.py"]
+match.file_patterns = ["docs/conf.py"]
 set.ignored = true
 
 # Warning filters must be installed before the subpackages are imported.

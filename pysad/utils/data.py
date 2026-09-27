@@ -1,9 +1,11 @@
 import os
 from collections.abc import Iterator
+from typing import Any
 
 import numpy as np
 
 from pysad.utils.array_streamer import ArrayStreamer
+
 
 class Data:
     """A helper class to load various data.
@@ -88,7 +90,7 @@ class Data:
 
     def get_iterator(
         self, data_file: str, shuffle: bool = True, seed: int | None = None
-    ) -> Iterator[np.ndarray | tuple[np.ndarray, np.ndarray]]:
+    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
         """The iterator function
 
         Args:
@@ -97,7 +99,7 @@ class Data:
             seed (int): Random seed (Default=None).
 
         Returns:
-            iterator (The iterator): pysad.utils.array_streamer.ArrayStreamer.iter method applied with (X, y), where X is the variable containingfeature vectors and y is the variable containing labels.
+            iterator (The iterator): pysad.utils.array_streamer.ArrayStreamer.iter method applied with (X, y), where X is the variable containing feature vectors and y is the variable containing labels.
 
         """
         if seed is not None:

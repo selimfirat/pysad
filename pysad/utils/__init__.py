@@ -3,6 +3,7 @@ The :mod:`pysad.utils` module includes utility functions used in the `PySAD` fra
 """
 import random
 from collections.abc import Iterator
+from typing import Any
 
 import numpy as np
 
@@ -41,7 +42,7 @@ def get_minmax_array(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 def get_minmax_scalar(
     x: np.ndarray,
-) -> tuple[np.float64, np.float64]:
+) -> tuple[Any, Any]:
     """Utility method that returns the boundaries of the input array.
 
     Args:
@@ -58,7 +59,7 @@ def get_minmax_scalar(
 
 def _iterate(
     X: np.ndarray, y: np.ndarray | None = None
-) -> Iterator[tuple[np.ndarray, np.ndarray | None]]:
+) -> Iterator[tuple[np.ndarray, Any | None]]:
     """Iterates array of features and possibly labels.
 
     Args:

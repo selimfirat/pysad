@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class Window:
     """Window to limit the instances in list and keep the size fixed when full.
 
@@ -7,19 +10,19 @@ class Window:
 
     def __init__(self, window_size: int | None) -> None:
         self.window_size = window_size
-        self.window = []
+        self.window: list[Any] = []
 
-    def update(self, num: float) -> None:
+    def update(self, num: Any) -> None:
         """Adds new item to the window. Removes the tail if size exceeds the self.window_size.
 
         Args:
             num (float): item to be added to the window.
         """
         self.window.append(num)
-        if len(self.window) > self.window_size:
+        if self.window_size is not None and len(self.window) > self.window_size:
             self.window = self.window[1:]
 
-    def get(self) -> list[float]:
+    def get(self) -> list[Any]:
         """Method to obtain the window list.
 
         Returns:
@@ -35,7 +38,7 @@ class UnlimitedWindow(Window):
     def __init__(self) -> None:
         super().__init__(None)
 
-    def update(self, num: float) -> None:
+    def update(self, num: Any) -> None:
         """Adds new item to the window. Removes the tail if size exceeds the self.window_size.
 
         Args:

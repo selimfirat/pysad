@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 
@@ -24,9 +24,21 @@ class PandasStreamer(BaseStreamer):
 
         self.array_iterator = ArrayStreamer(shuffle=shuffle)
 
+    @overload
     def iter(
-        self, X: pd.DataFrame, y: pd.DataFrame | None = None
-    ) -> Iterator[np.ndarray | tuple[np.ndarray, np.ndarray]]:
+        self, X: pd.DataFrame, y: None = None
+    ) -> Iterator[np.ndarray]:
+        ...
+
+    @overload
+    def iter(
+        self, X: pd.DataFrame, y: pd.DataFrame | pd.Series
+    ) -> Iterator[tuple[np.ndarray, Any]]:
+        ...
+
+    def iter(
+        self, X: pd.DataFrame, y: pd.DataFrame | pd.Series | None = None
+    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
         """Iterates pandas dataframes of of features and possibly labels.
 
         Args:

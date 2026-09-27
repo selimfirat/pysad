@@ -1,6 +1,13 @@
+import numbers
+
 from scipy import stats
 from pysad.core.base_model import BaseModel
 import numpy as np
+
+
+def _is_positive_int(value):
+    """Whether `value` is an integer >= 1: a Python or NumPy integer, but not a bool."""
+    return isinstance(value, numbers.Integral) and not isinstance(value, bool) and value >= 1
 
 
 class RelativeEntropy(BaseModel):
@@ -10,11 +17,16 @@ class RelativeEntropy(BaseModel):
             min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
             max_val (float): Maximum value of the univariate stream. Values above this are clipped to it.
             num_bins (int): Number of bins (Default=5).
-            window_size (int): The size of the window (Default=52).
-            step (int): Number of values between the ends of consecutive tested windows. `None` (default) resolves to `window_size`, giving the paper's non-overlapping windows; `step=1` reproduces NAB's sliding windows. Must be an int >= 1 (after resolving `None`), or `ValueError` is raised.
+            window_size (int): The size of the window (Default=52). Must be an int >= 1 (a NumPy integer is accepted), or `ValueError` is raised.
+            step (int): Number of values between the ends of consecutive tested windows. `None` (default) resolves to `window_size`, giving the paper's non-overlapping windows; `step=1` reproduces NAB's sliding windows. Must be `None` or an int >= 1 (a NumPy integer is accepted), or `ValueError` is raised.
     """
 
     def __init__(self, min_val, max_val, num_bins=5, window_size=52, step=None):
+        if not _is_positive_int(window_size):
+            raise ValueError("window_size must be an int >= 1.")
+        if step is not None and not _is_positive_int(step):
+            raise ValueError("step must be None or an int >= 1.")
+
         self.min_val = min_val
         self.max_val = max_val
 
@@ -24,15 +36,12 @@ class RelativeEntropy(BaseModel):
         # Number of bins into which util is to be quantized
         self.N_bins = num_bins
 
-        # Window size
-        self.W = window_size
+        # Window size, stored as a Python int even when given as a NumPy integer
+        self.W = int(window_size)
 
         # Number of values between the ends of consecutive tested windows. None resolves to
         # W (the paper's non-overlapping windows); step=1 reproduces NAB's sliding windows.
-        resolved_step = self.W if step is None else step
-        if not isinstance(resolved_step, int) or resolved_step < 1:
-            raise ValueError("step must be an int >= 1 (after resolving None to window_size).")
-        self.step = resolved_step
+        self.step = self.W if step is None else int(step)
 
         # Threshold against which the test statistic is compared. It is set to
         # the point in the chi-squared cdf with N-bins -1 degrees of freedom that

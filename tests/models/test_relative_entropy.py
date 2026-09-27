@@ -374,12 +374,42 @@ def test_relative_entropy_rejects_nan_without_changing_the_model(method, num_fit
     assert len(model.util) == num_fitted + 10
 
 
-@pytest.mark.parametrize("step", [0, -1, 1.5, "1"])
+@pytest.mark.parametrize("step", [0, -1, 1.5, "1", True])
 def test_relative_entropy_invalid_step_raises(step):
     from pysad.models import RelativeEntropy
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="step must be"):
         RelativeEntropy(min_val=0.0, max_val=1.0, step=step)
+
+
+@pytest.mark.parametrize("window_size", [0, -1, 52.0, None, "52", True])
+def test_relative_entropy_invalid_window_size_raises(window_size):
+    from pysad.models import RelativeEntropy
+
+    # The error names window_size, not the step resolved from it.
+    with pytest.raises(ValueError, match="window_size must be an int >= 1"):
+        RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
+
+
+def test_relative_entropy_accepts_numpy_integer_window_size_and_step():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    for integer_type in (np.int32, np.int64, np.uint16):
+        model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=integer_type(52))
+        assert type(model.W) is int and model.W == 52
+        assert type(model.step) is int and model.step == 52
+
+        model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=integer_type(52), step=integer_type(1))
+        assert type(model.step) is int and model.step == 1
+
+    # e.g. window sizes from a grid built with np.arange
+    rng = np.random.default_rng(0)
+    x = np.clip(rng.normal(50, 10, 52 * 20), 0, 100)
+    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=np.arange(52, 53)[0])
+    model.fit_score(x.reshape(-1, 1))
+
+    assert sum(model.c) == 20
 
 
 @pytest.mark.parametrize("window_size", [1, 2, 3])

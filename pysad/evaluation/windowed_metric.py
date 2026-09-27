@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 from pysad.core.base_metric import BaseMetric
 from pysad.statistics.average_meter import AverageMeter
 
@@ -13,10 +17,10 @@ class WindowedMetric(BaseMetric):
 
     def __init__(
             self,
-            metric_cls,
-            window_size,
-            ignore_nonempty_last=True,
-            **kwargs):
+            metric_cls: type[BaseMetric],
+            window_size: int,
+            ignore_nonempty_last: bool = True,
+            **kwargs: Any) -> None:
         super().__init__()
         self.ignore_nonempty_last = ignore_nonempty_last
         self.window_size = window_size
@@ -28,11 +32,11 @@ class WindowedMetric(BaseMetric):
         self.step = 0
         self.num_windows = 1
 
-    def _init_metric(self, **kwargs):
+    def _init_metric(self, **kwargs: Any) -> BaseMetric:
 
         return self.metric_cls(**kwargs)
 
-    def update(self, y_true, y_pred):
+    def update(self, y_true: int, y_pred: float) -> WindowedMetric:
         """Updates the score with new true label and predicted score/label.
 
         Args:
@@ -55,7 +59,7 @@ class WindowedMetric(BaseMetric):
 
         return self
 
-    def get(self):
+    def get(self) -> float | None:
         """Obtains the averaged score.
 
         Returns:

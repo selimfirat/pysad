@@ -49,8 +49,6 @@ class RSHash(BaseModel):
 
         self.index = 0 + 1 - self.s
 
-        self.last_score = None
-
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.
 
@@ -61,16 +59,34 @@ class RSHash(BaseModel):
         Returns:
             object: Returns the self.
         """
-        # Equation 1 of the paper: normalize with the minimum and maximum of each feature.
-        X = (np.asarray(X, dtype=np.float64) - self.minimum) / self.range
+        for mod_entry in self._cell_keys(X):
+            for w in range(len(self.cmsketches)):
+                try:
+                    value = self.cmsketches[w][mod_entry]
+                except KeyError:
+                    value = (self.index, 0)
 
+                tstamp = value[0]
+                wt = value[1]
+                decayed_wt = wt * np.power(2, -self.decay * (self.index - tstamp))
+
+                self.cmsketches[w][mod_entry] = (self.index, decayed_wt + 1)
+
+        self.index += 1
+
+        return self
+
+    def score_partial(self, X):
+        """Scores the anomalousness of the next instance.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score.
+
+        Returns:
+            float: The anomalousness score of the input instance. Higher scores represent more anomalous instances.
+        """
         score_instance = 0
-        for r in range(self.m):
-            Y = np.floor((X[self.V[r]] + self.alpha[r]) / float(self.f[r]))
-
-            mod_entry = np.insert(Y, 0, r)
-            mod_entry = tuple(mod_entry.astype(np.int32))
-
+        for mod_entry in self._cell_keys(X):
             c = []
             for w in range(len(self.cmsketches)):
                 try:
@@ -78,36 +94,54 @@ class RSHash(BaseModel):
                 except KeyError:
                     value = (self.index, 0)
 
-                # Scoring the Instance
                 tstamp = value[0]
                 wt = value[1]
-                new_wt = wt * np.power(2, -self.decay * (self.index - tstamp))
-                c.append(new_wt)
-
-                # Update the instance
-                new_tstamp = self.index
-                self.cmsketches[w][mod_entry] = (new_tstamp, new_wt + 1)
+                decayed_wt = wt * np.power(2, -self.decay * (self.index - tstamp))
+                c.append(decayed_wt)
 
             min_c = min(c)
-            c = np.log2(1 + min_c)
-            score_instance = score_instance + c
+            score_instance = score_instance + np.log2(1 + min_c)
 
         # Low counts indicate outliers in the paper, so the average log-count is negated to make higher scores more anomalous.
-        self.last_score = -score_instance / self.m
+        return -score_instance / self.m
 
-        self.index += 1
+    def fit_score_partial(self, X, y=None):
+        """Scores the next instance against the current state, then fits the model to it.
 
-        return self
-
-    def score_partial(self, X):
-        """Scores the anomalousness of the next instance. Outputs the last score. Note that this method must be called after fit_partial is called.
+        The paper's streaming variant scores an instance before learning it (Sathe & Aggarwal 2016, §III): the "testing step" reads the current hash table, and the "training update" then updates the counts.
 
         Args:
-            X (any): Ignored.
+            X (np.float64 array of shape (num_features,)): The instance to score and fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
         Returns:
-            float: The anomalousness score of the last fitted instance. Higher scores represent more anomalous instances.
+            float: The anomalousness score of the input instance.
         """
-        return self.last_score
+        score = self.score_partial(X)
+        self.fit_partial(X, y)
+
+        return score
+
+    def _cell_keys(self, X):
+        """Computes each ensemble component's grid cell key for a normalized instance.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to hash.
+
+        Returns:
+            list of tuple: The cell key of each ensemble component, in order.
+        """
+        # Equation 1 of the paper: normalize with the minimum and maximum of each feature.
+        X = (np.asarray(X, dtype=np.float64) - self.minimum) / self.range
+
+        mod_entries = []
+        for r in range(self.m):
+            Y = np.floor((X[self.V[r]] + self.alpha[r]) / float(self.f[r]))
+
+            mod_entry = np.insert(Y, 0, r)
+            mod_entries.append(tuple(mod_entry.astype(np.int32)))
+
+        return mod_entries
 
     def _sample_shifts(self):
         alpha = []

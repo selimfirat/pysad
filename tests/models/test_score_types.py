@@ -39,7 +39,7 @@ def _model_specs():
         ("RandomModel", lambda: RandomModel(), NUM_FEATURES),
         ("RelativeEntropy", lambda: RelativeEntropy(min_val=0.0, max_val=1.0), 1),
         ("RobustRandomCutForest", lambda: RobustRandomCutForest(num_trees=4, tree_size=32), NUM_FEATURES),
-        ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes, sampling_points=50), NUM_FEATURES),
+        ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
         ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=2), 1),
         ("SeasonalHybridESD", lambda: SeasonalHybridESD(period=4, window_size=12, max_anomalies=2), 1),
         ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),

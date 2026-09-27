@@ -120,6 +120,98 @@ def test_half_space_trees_scores_a_batch_fitted_on_less_than_a_window():
     assert np.all(np.delete(scores, 7) < scores[7])
 
 
+def test_half_space_trees_scores_against_the_first_window_right_after_it_closes():
+    import numpy as np
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    window_size = 20
+
+    fix_seed(0)
+    X = np.random.uniform(size=(2 * window_size, 2))
+    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
+                           window_size=window_size, num_trees=5, max_depth=6)
+    scores = model.fit_score(X)
+
+    # From the instance right after the first window on, the reference is the whole first window.
+    for x, score in zip(X[window_size:], scores[window_size:]):
+        assert score == _score_against(model, X[:window_size], x)
+
+
+def test_half_space_trees_reference_profile_is_fixed_within_a_window():
+    import numpy as np
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    window_size = 20
+
+    fix_seed(0)
+    X = np.random.uniform(size=(2 * window_size, 2))
+    probe = np.array([0.3, 0.6])
+    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
+                           window_size=window_size, num_trees=5, max_depth=6)
+    model.fit(X[:window_size])
+    first_reference_score = model.score_partial(probe)
+
+    # Recording the instances of the second window must not change the reference until that window closes.
+    for x in X[window_size:-1]:
+        model.fit_partial(x)
+        assert model.score_partial(probe) == first_reference_score
+
+    model.fit_partial(X[-1])
+    assert model.score_partial(probe) != first_reference_score
+
+
+def test_half_space_trees_window_swap_replaces_the_reference_with_the_last_window():
+    import numpy as np
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    window_size = 20
+
+    fix_seed(0)
+    X = np.random.uniform(size=(4 * window_size, 2))
+    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
+                           window_size=window_size, num_trees=5, max_depth=6)
+
+    # The instance that closes a window belongs to the reference that window becomes.
+    model.fit(X[:window_size])
+    assert all(root.r_mass == window_size and root.l_mass == 0 for root in model.roots)
+
+    # Older windows are forgotten: the reference holds only the last window.
+    model.fit(X[window_size:3 * window_size])
+    assert all(root.r_mass == window_size and root.l_mass == 0 for root in model.roots)
+    scores = model.fit_score(X[3 * window_size:])
+    for x, score in zip(X[3 * window_size:], scores):
+        assert score == _score_against(model, X[2 * window_size:3 * window_size], x)
+
+
+def test_half_space_trees_score_partial_does_not_record_the_instance():
+    import numpy as np
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    window_size = 20
+
+    fix_seed(0)
+    X = np.random.uniform(size=(3 * window_size, 2))
+    extra_X = np.random.uniform(size=(10, 2))
+
+    def later_scores(num_fitted, score_extra):
+        fix_seed(1)
+        model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
+                               window_size=window_size, num_trees=5, max_depth=6)
+        model.fit(X[:num_fitted])
+        if score_extra:
+            model.score(extra_X)
+        return model.fit_score(X[num_fitted:])
+
+    # Scoring extra instances, during the first window or after it, must leave every later score unchanged.
+    for num_fitted in [window_size // 2, window_size + window_size // 2]:
+        np.testing.assert_array_equal(later_scores(num_fitted, score_extra=True),
+                                      later_scores(num_fitted, score_extra=False))
+
+
 def test_half_space_trees_score_then_fit_matches_fit_score_partial():
     import numpy as np
     from pysad.models import HalfSpaceTrees

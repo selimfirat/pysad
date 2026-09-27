@@ -1,6 +1,109 @@
 import pytest
 
 
+def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52):
+    """Loop-based reference for `RelativeEntropy.fit_score_partial`: NAB's `handleRecord`
+    (nab/detectors/relative_entropy/relative_entropy_detector.py), adapted to take a plain float
+    per record and return a scalar score, with the paper's quantizer (Fig. 1, steps 3-4b: bucket
+    B = ceil((u - min_val) / stepSize) for u clipped to [min_val, max_val], one bin per bucket
+    1..num_bins), and the relative entropy written out as in the paper instead of calling
+    scipy.stats.entropy. As in NAB, a window ends at every value from the `window_size`-th on.
+
+    Returns:
+        tuple: `(scores, c, P)`, the score of every value, and the count and histogram of every
+            learned hypothesis.
+    """
+    import math
+    import numpy as np
+    from scipy import stats
+
+    N_bins = num_bins
+    W = window_size
+    T = stats.chi2.isf(0.01, N_bins - 1)
+    c_th = 1
+    stepSize = (max_val - min_val) / N_bins
+
+    util = []
+    P = []
+    c = []
+    m = 0
+
+    def histogram(window):
+        counts = [0] * N_bins
+        for u in window:
+            u = min(max(u, min_val), max_val)
+            # min_val is in the first bucket; round-off may put max_val one bucket too high.
+            B = min(max(math.ceil((u - min_val) / stepSize), 1), N_bins)
+            counts[B - 1] += 1
+        return np.array(counts) / len(window)
+
+    def relative_entropy(p, q):  # D(p || q) = sum_k p_k log(p_k / q_k)
+        total = 0.0
+        for p_k, q_k in zip(p, q):
+            if p_k > 0:
+                if q_k == 0:
+                    return float("inf")
+                total += p_k * math.log(p_k / q_k)
+        return total
+
+    def get_agreement_hypothesis(P_hat):
+        index = -1
+        minEntropy = float("inf")
+        for i in range(m):
+            entropy = 2 * W * relative_entropy(P_hat, P[i])
+            if entropy < T and entropy < minEntropy:
+                minEntropy = entropy
+                index = i
+        return index
+
+    scores = []
+    for value in x:
+        anomalyScore = 0.0
+        util.append(value)
+        if stepSize != 0.0 and len(util) >= W:
+            P_hat = histogram(util[-W:])
+            if m == 0:
+                P.append(P_hat)
+                c.append(1)
+                m = 1
+            else:
+                index = get_agreement_hypothesis(P_hat)
+                if index != -1:
+                    c[index] += 1
+                    if c[index] <= c_th:
+                        anomalyScore = 1.0
+                else:
+                    anomalyScore = 1.0
+                    P.append(P_hat)
+                    c.append(1)
+                    m += 1
+        scores.append(anomalyScore)
+
+    return scores, c, P
+
+
+@pytest.mark.parametrize("window_size", [1, 2, 3, 52])
+def test_relative_entropy_matches_reference(window_size):
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    # Spread over several buckets, so that window histograms vary and some test statistics
+    # land near the threshold.
+    rng = np.random.default_rng(0)
+    x = rng.normal(0.5, 0.15, 500)
+    x[200:220] = rng.normal(0.9, 0.05, 20)  # regime shift
+    x = np.clip(x, 0, 1)
+
+    reference_scores, reference_c, reference_P = _reference_fit_scores(x, min_val=0.0, max_val=1.0, window_size=window_size)
+
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
+    scores = [model.fit_score_partial(np.array([v])) for v in x]
+
+    assert scores == reference_scores
+    assert model.c == reference_c
+    np.testing.assert_array_equal(model.P, np.array(reference_P))
+
+
 def test_relative_entropy_issue_example():
     from pysad.models import RelativeEntropy
     from sklearn.metrics import roc_auc_score

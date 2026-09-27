@@ -349,7 +349,7 @@ def test_relative_entropy_values_that_do_not_close_a_window_score_zero():
 
 
 @pytest.mark.parametrize("method", ["fit_partial", "score_partial", "fit_score_partial"])
-@pytest.mark.parametrize("num_fitted", [3, 6])  # NaN would not fill / would close a window
+@pytest.mark.parametrize("num_fitted", [6, 9])  # NaN would not close / would close the second window
 @pytest.mark.filterwarnings("error::RuntimeWarning")
 def test_relative_entropy_rejects_nan_without_changing_the_model(method, num_fitted):
     from pysad.models import RelativeEntropy

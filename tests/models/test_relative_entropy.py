@@ -116,6 +116,8 @@ def test_relative_entropy_issue_example():
     y = np.zeros(3000, dtype=int)
     y[2000:2100] = 1
 
+    # With step=1 every value closes a window, so score() on held-out points after fitting
+    # works at any fitted length.
     model = RelativeEntropy(min_val=0.0, max_val=1.0, step=1)
     scores = np.array([model.fit_score_partial(np.array([v])) for v in x])
 
@@ -126,6 +128,39 @@ def test_relative_entropy_issue_example():
 
     # A learned model must not return the same score for these three different points.
     assert len(set(test_scores.tolist())) > 1
+
+
+def test_relative_entropy_issue_example_default_step():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    x = rng.normal(0.5, 0.05, 3000)
+    x[2000:2100] = rng.normal(0.9, 0.05, 100)  # anomalous segment
+    x = np.clip(x, 0, 1)
+
+    model = RelativeEntropy(min_val=0.0, max_val=1.0)  # step defaults to window_size = 52
+    scores = model.fit_score(x.reshape(-1, 1))
+
+    # Only a value that closes a window (every 52nd value) can score nonzero, and the three
+    # windows that overlap the anomalous segment (closed by the 2028th, 2080th and 2132nd
+    # values) are flagged.
+    flagged = np.flatnonzero(scores)
+    assert ((flagged + 1) % 52 == 0).all()
+    assert {2027, 2079, 2131} <= set(flagged.tolist())
+
+    # score() on held-out points after fit() scores each point as the value that would follow
+    # the fitted ones: it tells the points apart only when that value closes a window, i.e. when
+    # the fitted length is one short of a multiple of 52, and returns all 0.0 otherwise.
+    points = np.array([[0.5], [0.9], [0.1]])
+    model = RelativeEntropy(min_val=0.0, max_val=1.0).fit(x[:2900].reshape(-1, 1))
+    for num_fitted in range(2900, 3000):
+        test_scores = model.score(points).tolist()
+        if num_fitted % 52 == 51:  # 2911 and 2963
+            assert len(set(test_scores)) > 1
+        else:
+            assert test_scores == [0.0, 0.0, 0.0]
+        model.fit_partial(x[num_fitted:num_fitted + 1])
 
 
 def test_relative_entropy_score_partial_has_no_side_effects():

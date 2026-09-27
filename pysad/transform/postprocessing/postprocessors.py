@@ -17,7 +17,7 @@ class _MeterPostprocessor(BasePostprocessor):
         self.meter = meter
 
     def fit_partial(self, score):
-        """Fits the postprocessor to the (next) timestep's score.
+        """Fits the postprocessor to the (next) timestep's score. Running postprocessors only keep the scores in their window.
 
         Args:
             score (float): Input score.
@@ -30,7 +30,7 @@ class _MeterPostprocessor(BasePostprocessor):
         return self
 
     def transform_partial(self, score=None):
-        """Applies postprocessing to the score. This method should be used immediately after the fit_partial method with same score.
+        """Applies postprocessing to the score, using only the scores in the window for running postprocessors. This method should be used immediately after the fit_partial method with same score.
 
         Args:
             score (float): The input score.
@@ -54,7 +54,7 @@ class _ZScorePostprocessor(BasePostprocessor):
         self.average_meter = average_meter
 
     def fit_partial(self, score):
-        """Fits the postprocessor to the (next) timestep's score.
+        """Fits the postprocessor to the (next) timestep's score. Running postprocessors only keep the scores in their window.
 
         Args:
             score (float): Input score.
@@ -68,7 +68,7 @@ class _ZScorePostprocessor(BasePostprocessor):
         return self
 
     def transform_partial(self, score):
-        """Applies postprocessing to the score.
+        """Applies postprocessing to the score, using the statistics of the window for running postprocessors.
 
         Args:
             score (float): The input score.

@@ -109,7 +109,7 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
     Args:
         n_buckets (int): The number of subgroups to build (Default=5).
         method (str):  {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (Default='static').
-        bootstrap_estimators (bool) Whether estimators are drawn with replacement (Default=False).
+        bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 
     def __init__(
@@ -138,24 +138,23 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
 
 
 class AverageOfMaximumScoreEnsembler(_BucketScoreEnsembler):
-    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
+    """Average of maximum scores ensembler that outputs the average of maximum. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler first divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
 
     Args:
         n_buckets (int): The number of subgroups to build (Default=5).
         method (str):  {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (Default='static').
-        bootstrap_estimators (bool) Whether estimators are drawn with replacement (Default=False).
+        bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 
     _combine_buckets = staticmethod(aom)
 
 
 class MaximumOfAverageScoreEnsembler(_BucketScoreEnsembler):
-    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
+    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler first divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
 
     Args:
-        n_buckets  : int, optional (default=5)
-            The number of subgroups to build
-        method (str): {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (default='static').
+        n_buckets (int): The number of subgroups to build (Default=5).
+        method (str): {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (Default='static').
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 

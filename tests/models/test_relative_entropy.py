@@ -170,11 +170,13 @@ def test_relative_entropy_constant_stream_scores_zero():
     assert all(score == 0.0 for score in scores)
 
 
+@pytest.mark.filterwarnings("error::RuntimeWarning")
 def test_relative_entropy_out_of_range_values_do_not_produce_nan_hypotheses():
     from pysad.models import RelativeEntropy
     import numpy as np
 
-    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=10)
+    window_size = 10
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
 
     # In-range warm-up so at least one hypothesis is learned before the stream
     # goes out of range.
@@ -182,11 +184,37 @@ def test_relative_entropy_out_of_range_values_do_not_produce_nan_hypotheses():
     for v in rng.normal(0.5, 0.05, 50):
         model.fit_score_partial(np.array([np.clip(v, 0, 1)]))
 
-    m_after_warmup = model.m
-
     # More than a window's worth of values above max_val.
+    m_history = []
     for v in rng.normal(5.0, 0.1, 30):
         model.fit_score_partial(np.array([v]))
+        m_history.append(model.m)
 
     assert not np.isnan(model.P).any()
-    assert model.m <= m_after_warmup + 1
+    # Once the out-of-range window fills, every further out-of-range window quantizes
+    # to the same top bin and must agree with an already-learned hypothesis, so `m`
+    # stops changing well before the stream ends: it doesn't grow with every record.
+    assert len(set(m_history[-window_size:])) == 1
+
+
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+def test_relative_entropy_max_val_round_off_lands_in_top_bin():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    # With these exact (min_val, max_val, num_bins), floating-point round-off makes
+    # ceil((max_val - min_val) / stepSize) evaluate to num_bins + 1, one bin past the
+    # histogram's (0, num_bins) range.
+    window_size = 10
+    model = RelativeEntropy(min_val=0.0, max_val=100.0, num_bins=29, window_size=window_size)
+
+    m_history = []
+    for _ in range(30):
+        model.fit_score_partial(np.array([150.0]))
+        m_history.append(model.m)
+
+    assert not np.isnan(model.P).any()
+    assert len(set(m_history[-window_size:])) == 1
+
+    histogram = model._histogram([100.0] * window_size)
+    assert np.isfinite(histogram).all()

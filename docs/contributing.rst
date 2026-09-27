@@ -24,6 +24,11 @@ I aim to reply to new issues and pull requests within a few days.
 
 For any questions, you may open issue on Github or drop me an email at `yilmazselimfirat (at)gmail(you know the rest)`.
 
+Development Style
+^^^^^^^^^^^^^^^^^
+
+PySAD follows `Trunk-based development <https://trunkbaseddevelopment.com/>`_. All development is conducted using short-lived branches integrated into the trunk (``master``) via pull requests. Pull requests should be kept small and focused, and must pass automated testing and linting in continuous integration to ensure that the trunk remains continuously releasable.
+
 Pull Request Checklist
 ^^^^^^^^^^^^^^^^^^^^^^
 

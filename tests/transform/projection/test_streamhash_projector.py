@@ -1,4 +1,34 @@
+import warnings
+
 import numpy as np
+
+
+def test_murmurhash3_x86_32_matches_mmh3():
+    """The vectorized hash must equal mmh3.hash(str(j), signed=False, seed=k) bit for bit."""
+    import mmh3
+    from pysad.transform.projection.streamhash_projector import _murmurhash3_x86_32
+
+    feature_indices = list(range(20001)) + [123456, 9999999]
+    seeds = list(range(50)) + [2 ** 31 - 1]
+
+    seeds_arr = np.array(seeds, dtype=np.uint32)
+    lengths = {}
+    for i in feature_indices:
+        lengths.setdefault(len(str(i)), []).append(i)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+
+        for length, indices in lengths.items():
+            byte_matrix = np.array(
+                [[ord(c) for c in str(i)] for i in indices], dtype=np.uint8
+            )
+            actual = _murmurhash3_x86_32(seeds_arr, byte_matrix)
+
+            for row, seed in enumerate(seeds):
+                for col, i in enumerate(indices):
+                    expected = mmh3.hash(str(i), signed=False, seed=seed)
+                    assert actual[row, col] == expected, (seed, i)
 
 
 def test_streamhash_projector(test_path):
@@ -54,6 +84,23 @@ def test_streamhash_projector_cached_matrix_matches_reference():
         expected = x @ R_ref.T
         actual = projector.transform_partial(x)
 
+        assert np.array_equal(actual, expected)
+
+
+def test_build_projection_matrix_matches_reference_for_various_shapes():
+    """Full matrix build (vectorized) must equal the per-entry mmh3 formula across digit-length groups."""
+    from pysad.transform.projection import StreamhashProjector
+
+    for num_components, ndim in [(2, 1), (50, 123), (250, 274), (3, 1234)]:
+        projector = StreamhashProjector(num_components=num_components)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            actual = projector._get_projection_matrix(ndim)
+
+        expected = _reference_projection_matrix(projector, ndim)
+
+        assert actual.shape == (num_components, ndim)
         assert np.array_equal(actual, expected)
 
 

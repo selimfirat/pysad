@@ -113,6 +113,10 @@ set.ignored = true
 [smells]
 mode = "comment"
 
+# Detector constructors take their hyperparameters as keyword arguments, scikit-learn style.
+[smells.function_parameters]
+threshold = 7
+
 [[source]]
 name = "default"
 default = true

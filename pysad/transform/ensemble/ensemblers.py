@@ -103,8 +103,8 @@ class MedianScoreEnsembler(PYODScoreEnsembler):
         return median(scores)
 
 
-class AverageOfMaximumScoreEnsembler(PYODScoreEnsembler):
-    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
+class _BucketScoreEnsembler(PYODScoreEnsembler):
+    """Base class for the PyOD ensemblers that combine scores in buckets.
 
     Args:
         n_buckets (int): The number of subgroups to build (Default=5).
@@ -130,14 +130,26 @@ class AverageOfMaximumScoreEnsembler(PYODScoreEnsembler):
         Returns:
             float: Resulting anomaly score.
         """
-        return aom(
+        return self._combine_buckets(
             scores,
             n_buckets=self.n_buckets,
             method=self.method,
             bootstrap_estimators=self.bootstrap_estimators)
 
 
-class MaximumOfAverageScoreEnsembler(PYODScoreEnsembler):
+class AverageOfMaximumScoreEnsembler(_BucketScoreEnsembler):
+    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
+
+    Args:
+        n_buckets (int): The number of subgroups to build (Default=5).
+        method (str):  {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (Default='static').
+        bootstrap_estimators (bool) Whether estimators are drawn with replacement (Default=False).
+    """
+
+    _combine_buckets = staticmethod(aom)
+
+
+class MaximumOfAverageScoreEnsembler(_BucketScoreEnsembler):
     """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler firt divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
 
     Args:
@@ -147,27 +159,4 @@ class MaximumOfAverageScoreEnsembler(PYODScoreEnsembler):
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 
-    def __init__(
-            self,
-            n_buckets=5,
-            method='static',
-            bootstrap_estimators=False):
-        self.method = method
-        self.n_buckets = n_buckets
-        self.bootstrap_estimators = bootstrap_estimators
-
-    def _combine(self, scores):
-        """
-        Wrapping for PyOD the ensembler.
-        Args:
-            scores: np.float64 array of shape (num_anomaly_detectors, )
-                List of scores from multiple anomaly detectors.
-
-        Returns:
-            float: Resulting anomaly score.
-        """
-        return moa(
-            scores,
-            n_buckets=self.n_buckets,
-            method=self.method,
-            bootstrap_estimators=self.bootstrap_estimators)
+    _combine_buckets = staticmethod(moa)

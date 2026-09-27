@@ -103,41 +103,30 @@ class _Chain:
 
         self.is_first_window = True
 
+    def _update_prebins(self, X, prebins, depthcount, depth):
+        f = self.fs[depth]
+        depthcount[f] += 1
+
+        if depthcount[f] == 1:
+            prebins[:, f] = (X[:, f] + self.shift[f]) / self.deltamax[f]
+        else:
+            prebins[:, f] = 2.0 * prebins[:, f] - \
+                self.shift[f] / self.deltamax[f]
+
     def fit(self, X):
         prebins = np.zeros(X.shape, dtype=np.float64)
         depthcount = np.zeros(len(self.deltamax), dtype=np.int32)
         for depth in range(self.depth):
-            f = self.fs[depth]
-            depthcount[f] += 1
+            self._update_prebins(X, prebins, depthcount, depth)
 
-            if depthcount[f] == 1:
-                prebins[:, f] = (X[:, f] + self.shift[f]) / self.deltamax[f]
-            else:
-                prebins[:, f] = 2.0 * prebins[:, f] - \
-                    self.shift[f] / self.deltamax[f]
-
+            # In the first window, the reference and current sketches are the same.
             if self.is_first_window:
-                cmsketch = self.cmsketches[depth]
-                for prebin in prebins:
-                    l_index = tuple(np.floor(prebin).astype(np.int32))
-                    if l_index not in cmsketch:
-                        cmsketch[l_index] = 0
-                    cmsketch[l_index] += 1
+                self.cmsketches_cur[depth] = self.cmsketches[depth]
 
-                self.cmsketches[depth] = cmsketch
-
-                self.cmsketches_cur[depth] = cmsketch
-
-            else:
-                cmsketch = self.cmsketches_cur[depth]
-
-                for prebin in prebins:
-                    l_index = tuple(np.floor(prebin).astype(np.int32))
-                    if l_index not in cmsketch:
-                        cmsketch[l_index] = 0
-                    cmsketch[l_index] += 1
-
-                self.cmsketches_cur[depth] = cmsketch
+            cmsketch = self.cmsketches_cur[depth]
+            for prebin in prebins:
+                l_index = tuple(np.floor(prebin).astype(np.int32))
+                cmsketch[l_index] = cmsketch.get(l_index, 0) + 1
 
         return self
 
@@ -146,14 +135,7 @@ class _Chain:
         prebins = np.zeros(X.shape, dtype=np.float64)
         depthcount = np.zeros(len(self.deltamax), dtype=np.int32)
         for depth in range(self.depth):
-            f = self.fs[depth]
-            depthcount[f] += 1
-
-            if depthcount[f] == 1:
-                prebins[:, f] = (X[:, f] + self.shift[f]) / self.deltamax[f]
-            else:
-                prebins[:, f] = 2.0 * prebins[:, f] - \
-                    self.shift[f] / self.deltamax[f]
+            self._update_prebins(X, prebins, depthcount, depth)
 
             cmsketch = self.cmsketches[depth]
             for i, prebin in enumerate(prebins):

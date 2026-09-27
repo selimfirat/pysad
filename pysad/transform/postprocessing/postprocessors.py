@@ -6,45 +6,15 @@ from pysad.statistics.variance_meter import VarianceMeter
 import numpy as np
 
 
-class AveragePostprocessor(BasePostprocessor):
-    """A postprocessor that convert a score to the average of of all previous scores.
-    """
-
-    def __init__(self):
-        self.meter = AverageMeter()
-
-    def fit_partial(self, score):
-        """Fits the postprocessor to the (next) timestep's score.
+class _MeterPostprocessor(BasePostprocessor):
+    """Base class for postprocessors that convert a score to a statistic of the previous scores.
 
         Args:
-            score (float): Input score.
-
-        Returns:
-            object: self.
-        """
-
-        self.meter.update(score)
-
-        return self
-
-    def transform_partial(self, score=None):
-        """Gets the current average. This method should be used immediately after the fit_partial method with same score.
-
-        Args:
-            score (float): The input score.
-
-        Returns:
-            float: Transformed score.
-        """
-        return self.meter.get()
-
-
-class MaxPostprocessor(BasePostprocessor):
-    """A postprocessor that convert a score to the maximum of of all previous scores.
+            meter: The statistic to update with each score.
     """
 
-    def __init__(self):
-        self.meter = MaxMeter()
+    def __init__(self, meter):
+        self.meter = meter
 
     def fit_partial(self, score):
         """Fits the postprocessor to the (next) timestep's score.
@@ -71,45 +41,17 @@ class MaxPostprocessor(BasePostprocessor):
         return self.meter.get()
 
 
-class MedianPostprocessor(BasePostprocessor):
-    """A postprocessor that convert a score to the median of of all previous scores.
-    """
-
-    def __init__(self):
-        self.meter = MedianMeter()
-
-    def fit_partial(self, score):
-        """Fits the postprocessor to the (next) timestep's score.
+class _ZScorePostprocessor(BasePostprocessor):
+    """Base class for postprocessors that normalize the score via Z-score normalization.
 
         Args:
-            score (float): Input score.
-
-        Returns:
-            object: self.
-        """
-        self.meter.update(score)
-
-        return self
-
-    def transform_partial(self, score=None):
-        """Applies postprocessing to the score.
-
-        Args:
-            score (float): The input score.
-
-        Returns:
-            float: Transformed score.
-        """
-        return self.meter.get()
-
-
-class ZScorePostprocessor(BasePostprocessor):
-    """A postprocessor that normalize the score via Z-score normalization.
+            variance_meter: The variance statistic of the previous scores.
+            average_meter: The average statistic of the previous scores.
     """
 
-    def __init__(self):
-        self.variance_meter = VarianceMeter()
-        self.average_meter = AverageMeter()
+    def __init__(self, variance_meter, average_meter):
+        self.variance_meter = variance_meter
+        self.average_meter = average_meter
 
     def fit_partial(self, score):
         """Fits the postprocessor to the (next) timestep's score.
@@ -138,3 +80,35 @@ class ZScorePostprocessor(BasePostprocessor):
             np.sqrt(self.variance_meter.get())
 
         return zscore
+
+
+class AveragePostprocessor(_MeterPostprocessor):
+    """A postprocessor that convert a score to the average of of all previous scores.
+    """
+
+    def __init__(self):
+        super().__init__(AverageMeter())
+
+
+class MaxPostprocessor(_MeterPostprocessor):
+    """A postprocessor that convert a score to the maximum of of all previous scores.
+    """
+
+    def __init__(self):
+        super().__init__(MaxMeter())
+
+
+class MedianPostprocessor(_MeterPostprocessor):
+    """A postprocessor that convert a score to the median of of all previous scores.
+    """
+
+    def __init__(self):
+        super().__init__(MedianMeter())
+
+
+class ZScorePostprocessor(_ZScorePostprocessor):
+    """A postprocessor that normalize the score via Z-score normalization.
+    """
+
+    def __init__(self):
+        super().__init__(VarianceMeter(), AverageMeter())

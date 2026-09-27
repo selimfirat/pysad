@@ -1,3 +1,21 @@
+def _score_against(model, reference_X, x):
+    """Scores `x` with the model's trees as if their mass profile held exactly the instances in `reference_X`.
+
+    The masses are counted here from the tree splits alone, so the result does not depend on the
+    masses the model has recorded.
+    """
+    score = 0.0
+    for root in model.roots:
+        node, in_node = root, list(reference_X)
+        while node is not None:
+            score += len(in_node) * 2 ** node.k
+            goes_right = x[node.split_att] > node.split_value
+            in_node = [r for r in in_node if (r[node.split_att] > node.split_value) == goes_right]
+            node = node.right if goes_right else node.left
+
+    return -score
+
+
 def _verify_initial_window_reproducibility(window_transform):
     import numpy as np
     from pysad.models import HalfSpaceTrees
@@ -54,30 +72,47 @@ def test_half_space_trees_scores_outlier_that_closes_a_window():
     assert rank_of_outlier(499) >= 0.95
 
 
-def test_half_space_trees_first_window_scores_are_the_minimum():
+def test_half_space_trees_first_window_scores_against_the_instances_before_it():
     import numpy as np
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
     window_size = 20
-    num_trees = 5
-    max_depth = 4
 
     fix_seed(0)
-    model = HalfSpaceTrees(
-        feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
-        window_size=window_size, num_trees=num_trees, max_depth=max_depth)
-
-    expected_min_score = -num_trees * window_size * (2 ** (max_depth + 1) - 1)
-    assert model._min_score == expected_min_score
-
     X = np.random.uniform(size=(window_size, 2))
+    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
+                           window_size=window_size, num_trees=5, max_depth=6)
     scores = model.fit_score(X)
 
-    # Algorithm 3 does not score the first window at all; every instance in it gets the
-    # documented lowest possible score, including the instance that closes the window.
-    assert all(score == expected_min_score for score in scores)
+    # Nothing has been recorded when the very first instance arrives.
+    assert scores[0] == 0.0
+    # Every later instance of the first window, including the one that closes it, is scored
+    # against the instances before it, without its own mass.
+    for i in range(1, window_size):
+        assert scores[i] == _score_against(model, X[:i], X[i])
     assert model.is_first_window is False
+
+
+def test_half_space_trees_scores_a_batch_fitted_on_less_than_a_window():
+    import numpy as np
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    rng = np.random.default_rng(0)
+    X_train = rng.normal(0, 1, (60, 2))
+    X_test = rng.normal(0, 1, (40, 2))
+    X_test[7] = [6.0, 6.0]
+
+    fix_seed(0)
+    model = HalfSpaceTrees(feature_mins=[-7, -7], feature_maxes=[7, 7], window_size=100, num_trees=5, max_depth=6)
+    scores = model.fit(X_train).score(X_test)
+
+    # The first window is still open, so the test batch is scored against the 60 instances fitted so far.
+    assert model.is_first_window is True
+    for x, score in zip(X_test, scores):
+        assert score == _score_against(model, X_train, x)
+    assert np.all(np.delete(scores, 7) < scores[7])
 
 
 def test_half_space_trees_score_then_fit_matches_fit_score_partial():

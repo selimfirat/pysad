@@ -4,6 +4,10 @@
 Python Streaming Anomaly Detection (PySAD)
 ==========================================
 
+.. image:: https://colab.research.google.com/assets/colab-badge.svg
+   :target: https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb
+   :alt: Open in Colab
+
 .. image:: https://img.shields.io/pypi/v/pysad
     :target: https://pypi.org/project/pysad/
     :alt: PyPI

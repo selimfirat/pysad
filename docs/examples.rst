@@ -4,6 +4,8 @@ Examples
 Quick Start
 ^^^^^^^^^^^^^^^^^^
 
+To try PySAD without installing anything, open the `quick start notebook in Colab <https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb>`_.
+
 Here's a simple example showing how to use PySAD for anomaly detection on streaming data:
 
 .. literalinclude:: ../examples/example_usage_short.py

@@ -1,86 +1,6 @@
 import pytest
 
 
-def _nab_reference_scores(x, min_val, max_val, num_bins=5, window_size=52):
-    """Reference implementation of NAB's `handleRecord`
-    (nab/detectors/relative_entropy/relative_entropy_detector.py), adapted to
-    take a plain float per record and return a scalar score instead of a
-    one-element list.
-    """
-    import math
-    import numpy as np
-    from scipy import stats
-
-    N_bins = num_bins
-    W = window_size
-    T = stats.chi2.isf(0.01, N_bins - 1)
-    c_th = 1
-    stepSize = (max_val - min_val) / N_bins
-
-    util = []
-    P = []
-    c = []
-    m = 0
-
-    def get_agreement_hypothesis(P_hat):
-        index = -1
-        minEntropy = float("inf")
-        for i in range(m):
-            entropy = 2 * W * stats.entropy(P_hat, P[i])
-            if entropy < T and entropy < minEntropy:
-                minEntropy = entropy
-                index = i
-        return index
-
-    scores = []
-    for value in x:
-        anomalyScore = 0.0
-        util.append(value)
-        if stepSize != 0.0:
-            if len(util) >= W:
-                util_current = util[-W:]
-                B_current = [math.ceil((v - min_val) / stepSize) for v in util_current]
-                P_hat = np.histogram(B_current, bins=N_bins, range=(0, N_bins), density=True)[0]
-                if m == 0:
-                    P.append(P_hat)
-                    c.append(1)
-                    m = 1
-                else:
-                    index = get_agreement_hypothesis(P_hat)
-                    if index != -1:
-                        c[index] += 1
-                        if c[index] <= c_th:
-                            anomalyScore = 1.0
-                    else:
-                        anomalyScore = 1.0
-                        P.append(P_hat)
-                        c.append(1)
-                        m += 1
-        scores.append(anomalyScore)
-
-    return scores
-
-
-@pytest.mark.parametrize("window_size", [1, 2, 3, 52])
-def test_relative_entropy_matches_nab_reference(window_size):
-    from pysad.models import RelativeEntropy
-    from pysad.utils import fix_seed
-    import numpy as np
-
-    fix_seed(0)
-    rng = np.random.default_rng(0)
-    x = rng.normal(0.5, 0.05, 500)
-    x[200:220] = rng.normal(0.9, 0.05, 20)  # regime shift
-    x = np.clip(x, 0, 1)
-
-    reference_scores = _nab_reference_scores(x, min_val=0.0, max_val=1.0, window_size=window_size)
-
-    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
-    scores = [model.fit_score_partial(np.array([v])) for v in x]
-
-    assert scores == reference_scores
-
-
 def test_relative_entropy_issue_example():
     from pysad.models import RelativeEntropy
     from sklearn.metrics import roc_auc_score
@@ -218,3 +138,47 @@ def test_relative_entropy_max_val_round_off_lands_in_top_bin():
 
     histogram = model._histogram([100.0] * window_size)
     assert np.isfinite(histogram).all()
+
+
+def test_histogram_gives_each_bucket_its_own_bin():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50)
+
+    # Ten values in each of the five buckets of width 20: (0, 20], (20, 40], (40, 60],
+    # (60, 80], (80, 100].
+    window = np.arange(1, 100, 2)  # 1, 3, ..., 99
+    np.testing.assert_allclose(model._histogram(list(window)), [0.2] * 5)
+
+
+def test_histogram_puts_min_val_in_first_bucket_and_max_val_in_last():
+    from pysad.models import RelativeEntropy
+
+    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50)
+
+    histogram = model._histogram([model.min_val] * 25 + [model.max_val] * 25)
+
+    assert histogram[0] == 0.5
+    assert histogram[-1] == 0.5
+    assert histogram[1:-1].sum() == 0.0
+
+
+def test_relative_entropy_flags_jump_between_top_two_buckets():
+    from pysad.models import RelativeEntropy
+    import numpy as np
+
+    # A level shift from the 4th bucket (60, 80] to the 5th bucket (80, 100] must be
+    # flagged just as often as a shift of the same size between two lower buckets.
+    x_top_shift = np.r_[np.full(200, 70.0), np.full(200, 90.0)]
+    scores_top_shift = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50).fit_score(
+        x_top_shift.reshape(-1, 1)
+    )
+
+    x_lower_shift = np.r_[np.full(200, 50.0), np.full(200, 70.0)]
+    scores_lower_shift = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50).fit_score(
+        x_lower_shift.reshape(-1, 1)
+    )
+
+    assert scores_top_shift.sum() > 0
+    assert scores_top_shift.sum() == scores_lower_shift.sum()

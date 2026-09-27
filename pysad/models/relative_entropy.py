@@ -4,7 +4,7 @@ import numpy as np
 
 
 class RelativeEntropy(BaseModel):
-    """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_: it differs from the paper in that windows slide one value at a time instead of being non-overlapping, and, as in NAB, its histogram puts the top two quantization levels in one bin. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, and 0.0 otherwise. With NAB's rarity threshold `c_th` kept at 1, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
+    """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_: it differs from the paper in that windows slide one value at a time instead of being non-overlapping. Unlike NAB, whose histogram puts the top two quantization levels in one bin, this implementation gives each of the `num_bins` equal-width buckets its own bin, as in the paper (Fig. 1, steps 3-4b), so its scores differ from NAB's. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, and 0.0 otherwise. With NAB's rarity threshold `c_th` kept at 1, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
 
         Args:
             min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
@@ -179,14 +179,14 @@ class RelativeEntropy(BaseModel):
             np.float64 array of shape (N_bins,): The empirical frequencies of the quantized window.
         """
         values = np.clip(np.asarray(window, dtype=np.float64), self.min_val, self.max_val)
-        B_current = np.ceil((values - self.min_val) / self.stepSize)
-        # Deliberate difference from NAB: floating-point round-off can put a value already
-        # clipped to max_val one bin past N_bins (e.g. ceil((100-0)/(100/29)) == 30), which
-        # NAB's histogram silently drops. Clipping the bin index puts it in the top bin
-        # instead, matching the paper's quantizer, which maps max_val to level N_bins.
-        B_current = np.clip(B_current, 0, self.N_bins)
+        # Levels 1 to N_bins map to bins 0 to N_bins - 1, one bucket per level, as in the
+        # paper's quantizer (Fig. 1, steps 3-4b). Clipping the level to [1, N_bins] puts
+        # min_val in the first bucket (ceil((min_val - min_val) / stepSize) == 0 otherwise)
+        # and also absorbs the floating-point round-off that can put a value already clipped
+        # to max_val one level past N_bins (e.g. ceil((100-0)/(100/29)) == 30).
+        B_current = np.clip(np.ceil((values - self.min_val) / self.stepSize), 1, self.N_bins).astype(int)
 
-        return np.histogram(B_current, bins=self.N_bins, range=(0, self.N_bins), density=True)[0]
+        return np.bincount(B_current - 1, minlength=self.N_bins) / len(window)
 
     def _get_agreement_hypothesis(self, P_hat):
         """This function computes multinomial goodness-of-fit test. It calculates

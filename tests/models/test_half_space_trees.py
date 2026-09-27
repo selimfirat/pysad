@@ -21,26 +21,31 @@ def _verify_initial_window_reproducibility(window_transform):
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
+    window_size = 10
+
     fix_seed(42)
-    initial_window_X = np.random.rand(10, 2)
+    initial_window_X = np.random.rand(window_size, 2)
     test_X = np.random.rand(5, 2)
 
-    fix_seed(42)
-    model_with_window = HalfSpaceTrees(feature_mins=[0, 0], feature_maxes=[1, 1],
-                                       num_trees=5, max_depth=5,
-                                       initial_window_X=window_transform(initial_window_X))
+    def new_model(**kwargs):
+        fix_seed(42)
+        return HalfSpaceTrees(feature_mins=[0, 0], feature_maxes=[1, 1],
+                              window_size=window_size, num_trees=5, max_depth=5, **kwargs)
 
-    fix_seed(42)
-    model_without_window = HalfSpaceTrees(feature_mins=[0, 0], feature_maxes=[1, 1],
-                                          num_trees=5, max_depth=5)
-    model_without_window.fit(initial_window_X)
+    model_with_window = new_model(initial_window_X=window_transform(initial_window_X))
+    model_without_window = new_model().fit(initial_window_X)
+    unfitted_model = new_model()
+
+    # An initial window of window_size instances is the first window, so it becomes the reference.
+    assert model_with_window.is_first_window is False
 
     scores_with_window = np.array([model_with_window.score_partial(x) for x in test_X])
     scores_without_window = np.array([model_without_window.score_partial(x) for x in test_X])
+    scores_unfitted = np.array([unfitted_model.score_partial(x) for x in test_X])
 
     np.testing.assert_array_equal(scores_with_window, scores_without_window)
-    # A fitted model must score differently from an unfitted one, otherwise this test would pass trivially.
-    assert np.any(scores_with_window != 0.0)
+    # The initial window must have been fitted, otherwise the models above would match trivially.
+    assert np.all(scores_with_window != scores_unfitted)
 
 
 def test_half_space_trees_with_numpy_initial_window():

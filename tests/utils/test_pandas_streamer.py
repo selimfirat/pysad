@@ -29,7 +29,7 @@ def test_pandas_streamer_iter_length_mismatch():
     df = pd.DataFrame(np.random.rand(10, 3))
     labels = pd.Series(np.arange(9))
     streamer = PandasStreamer(shuffle=False)
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         list(streamer.iter(df, labels))
 
 

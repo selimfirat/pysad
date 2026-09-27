@@ -25,7 +25,8 @@ class PandasStreamer(BaseStreamer):
             for x in self.array_iterator.iter(X.to_numpy()):
                 yield x
         else:
-            assert len(X) == len(y)
+            if len(X) != len(y):
+                raise ValueError("X and y must have the same length.")
 
             for x, yr in self.array_iterator.iter(X.to_numpy(), y.to_numpy()):
                 yield x, yr

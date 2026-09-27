@@ -95,13 +95,16 @@ def test_rs_hash_sampling_points_warns_and_has_no_effect():
     X = np.random.default_rng(0).random((200, 5))
 
     fix_seed(0)
-    with pytest.warns(FutureWarning, match="sampling_points"):
+    with pytest.warns(FutureWarning, match="sampling_points") as record:
         model_with = RSHash(feature_mins=np.zeros(5), feature_maxes=np.ones(5), sampling_points=10)
     scores_with = model_with.fit_score(X)
 
+    # stacklevel=2 attributes the warning to the code that passed sampling_points, not to rs_hash.py.
+    assert record[0].filename == __file__
+
     fix_seed(0)
     with warnings.catch_warnings():
-        warnings.simplefilter("error")
+        warnings.simplefilter("error", FutureWarning)
         model_without = RSHash(feature_mins=np.zeros(5), feature_maxes=np.ones(5))
     scores_without = model_without.fit_score(X)
 

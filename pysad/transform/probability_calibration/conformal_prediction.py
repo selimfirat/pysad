@@ -11,7 +11,10 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
 
         Args:
             windowed (bool): Whether the probability calibrator is windowed so that forget scores that are older than `window_size`.
-            window_size (int): The size of window for running average and std. Ignored if `running_statistics` parameter is False.
+            window_size (int): The number of scores kept in the window. Must be at least 1 when `windowed` is True; ignored otherwise.
+
+        Raises:
+            ValueError: If windowed is True and window_size is less than 1.
     """
 
     def __init__(self, windowed=True, window_size=300):

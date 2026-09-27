@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import abstractmethod, ABC
 
 
@@ -5,11 +7,11 @@ class BaseMetric(ABC):
     """Abstract base class for metrics.
     """
 
-    def __init__(self):
-        self.score = None
+    def __init__(self) -> None:
+        self.score: float | None = None
 
     @abstractmethod
-    def update(self, y_true, y_pred):
+    def update(self, y_true: int, y_pred: float) -> BaseMetric | None:
         """Updates the metric with given true and predicted value for a timestep.
 
         Args:
@@ -19,7 +21,7 @@ class BaseMetric(ABC):
         pass
 
     @abstractmethod
-    def get(self):
+    def get(self) -> float | None:
         """Gets the current value of the score. Note that some methods such as AUPR and AUROC gives exception when used with only one class exist in the list of previous y_trues.
 
         Returns:

@@ -61,14 +61,7 @@ class RSHash(BaseModel):
         """
         for mod_entry in self._cell_keys(X):
             for w in range(len(self.cmsketches)):
-                try:
-                    value = self.cmsketches[w][mod_entry]
-                except KeyError:
-                    value = (self.index, 0)
-
-                tstamp = value[0]
-                wt = value[1]
-                decayed_wt = wt * np.power(2, -self.decay * (self.index - tstamp))
+                decayed_wt = self._decayed_count(w, mod_entry)
 
                 self.cmsketches[w][mod_entry] = (self.index, decayed_wt + 1)
 
@@ -87,17 +80,7 @@ class RSHash(BaseModel):
         """
         score_instance = 0
         for mod_entry in self._cell_keys(X):
-            c = []
-            for w in range(len(self.cmsketches)):
-                try:
-                    value = self.cmsketches[w][mod_entry]
-                except KeyError:
-                    value = (self.index, 0)
-
-                tstamp = value[0]
-                wt = value[1]
-                decayed_wt = wt * np.power(2, -self.decay * (self.index - tstamp))
-                c.append(decayed_wt)
+            c = [self._decayed_count(w, mod_entry) for w in range(len(self.cmsketches))]
 
             min_c = min(c)
             score_instance = score_instance + np.log2(1 + min_c)
@@ -142,6 +125,26 @@ class RSHash(BaseModel):
             mod_entries.append(tuple(mod_entry.astype(np.int32)))
 
         return mod_entries
+
+    def _decayed_count(self, w, mod_entry):
+        """Reads a hash function's time-decayed count for a grid cell, without writing it back.
+
+        Args:
+            w (int): The index of the hash function's sketch.
+            mod_entry (tuple): The grid cell key, as returned by `_cell_keys`.
+
+        Returns:
+            float: The count decayed to `self.index`, or 0 for an unseen cell.
+        """
+        try:
+            value = self.cmsketches[w][mod_entry]
+        except KeyError:
+            value = (self.index, 0)
+
+        tstamp = value[0]
+        wt = value[1]
+
+        return wt * np.power(2, -self.decay * (self.index - tstamp))
 
     def _sample_shifts(self):
         alpha = []

@@ -31,7 +31,8 @@ class MedianAbsoluteDeviation(BaseModel):
         Returns:
             object: Returns the self.
         """
-        assert len(X) == 1  # Only for time series
+        if len(X) != 1:
+            raise ValueError("MedianAbsoluteDeviation supports univariate inputs.")
 
         self.median_meter.update(X)
         deviation = abs(X - self.median_meter.get())

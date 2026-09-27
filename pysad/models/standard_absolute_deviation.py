@@ -39,7 +39,8 @@ class StandardAbsoluteDeviation(BaseModel):
         Returns:
             object: Returns the self.
         """
-        assert len(X) == 1  # Only for time series
+        if len(X) != 1:
+            raise ValueError("StandardAbsoluteDeviation supports univariate inputs.")
 
         self.variance_meter.update(X)
         self.sub_meter.update(X)

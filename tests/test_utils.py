@@ -290,7 +290,16 @@ class TestArrayStreamer:
         for i, (xi, yi) in enumerate(results):
             np.testing.assert_array_equal(xi, X[i])
             assert yi == y[i]
-            
+
+    def test_array_streamer_length_mismatch(self):
+        """Test ArrayStreamer rejects labels of a different length."""
+        from pysad.utils import ArrayStreamer
+        import pytest
+
+        streamer = ArrayStreamer(shuffle=False)
+        with pytest.raises(ValueError):
+            list(streamer.iter(np.zeros((3, 2)), np.zeros(2)))
+
     def test_array_streamer_shuffle(self):
         """Test ArrayStreamer with shuffle."""
         from pysad.utils import ArrayStreamer

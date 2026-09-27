@@ -23,3 +23,13 @@ def test_standard_absolute_deviation():
 
     with assert_raises(ValueError):
         StandardAbsoluteDeviation(substracted_statistic=None)
+
+
+def test_absolute_deviation_rejects_multivariate_input():
+    from pysad.models import MedianAbsoluteDeviation, StandardAbsoluteDeviation
+    import numpy as np
+    from numpy.testing import assert_raises
+
+    for model in [MedianAbsoluteDeviation(), StandardAbsoluteDeviation()]:
+        with assert_raises(ValueError):
+            model.fit_partial(np.array([0.1, 0.2]))

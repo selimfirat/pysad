@@ -27,6 +27,7 @@ class ArrayStreamer(BaseStreamer):
             for i in indices:
                 yield X[i]
         else:
-            assert len(X) == len(y)
+            if len(X) != len(y):
+                raise ValueError("X and y must have the same length.")
             for i in indices:
                 yield X[i], y[i]

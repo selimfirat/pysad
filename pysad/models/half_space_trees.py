@@ -4,13 +4,13 @@ from pysad.core.base_model import BaseModel
 
 
 class HalfSpaceTrees(BaseModel):
-    """Half-Space Trees method :cite:`tan2011fast`. Instances are scored against the reference mass profile built from the previous window before being recorded into the next one (Algorithm 3). Algorithm 3 does not score the first window; pysad scores each first-window instance that `initial_window_X` does not cover against the partial profile gathered so far in that window (the instances before it, without its own mass), so early instances look more anomalous, and the very first instance of a stream without `initial_window_X` scores 0.0.
+    """Half-Space Trees method :cite:`tan2011fast`. Instances are scored against the reference mass profile built from the previous window before being recorded into the next one (Algorithm 3). Algorithm 3 does not score the first window; pysad scores each first-window instance that `initial_window_X` does not cover against the partial profile gathered so far in that window (the instances before it, without its own mass), so early instances look more anomalous, and the very first instance of a stream without `initial_window_X` scores 0.0. The paper scores `r * 2^k` at the terminal node only (the node at maximum depth or the first one on the path holding at most sizeLimit instances), whereas pysad sums `r * 2^k` over every node on the path, with no sizeLimit early stop.
 
     Args:
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
         feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
         window_size (int): The size of the window (Default=100).
-        num_trees (int): The number of treesint (Default=25).
+        num_trees (int): The number of trees (Default=25).
         max_depth (int): Maximum depth of the trees (Default=15).
         initial_window_X (np.float64 array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. Per Tan et al. (IJCAI 2011), Algorithm 3, this is expected to hold the first `window_size` instances of the stream; they are fitted to build the reference mass profile and are not scored (Default=None).
     """

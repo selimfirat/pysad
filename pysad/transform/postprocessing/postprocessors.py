@@ -76,8 +76,12 @@ class _ZScorePostprocessor(BasePostprocessor):
         Returns:
             float: Transformed score.
         """
-        zscore = (score - self.average_meter.get()) / \
-            np.sqrt(self.variance_meter.get())
+        # With a single sample (or a zero-variance window), both the numerator and the
+        # denominator are 0, so the z-score is undefined; the resulting nan is expected
+        # and propagates unchanged.
+        with np.errstate(invalid='ignore'):
+            zscore = (score - self.average_meter.get()) / \
+                np.sqrt(self.variance_meter.get())
 
         return zscore
 

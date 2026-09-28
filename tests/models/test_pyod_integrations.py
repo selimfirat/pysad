@@ -56,14 +56,11 @@ def test_reference_window(test_path):
 
     auroc = AUROCMetric()
 
-    y_pred = []
     for X, y in iterator.iter(X_all[100:], y_all[100:]):
         model.fit_partial(X)
         score = model.score_partial(X)
         assert isinstance(score, float)
         assert np.isfinite(score)
-
-        y_pred.append(score)
 
         auroc.update(y, score)
 
@@ -92,14 +89,11 @@ def test_one_fit(test_path):
 
     auroc = AUROCMetric()
 
-    y_pred = []
     for X, y in iterator.iter(X_all[100:], y_all[100:]):
         model.fit_partial(X)
         score = model.score_partial(X)
         assert isinstance(score, float)
         assert np.isfinite(score)
-
-        y_pred.append(score)
 
         auroc.update(y, score)
 

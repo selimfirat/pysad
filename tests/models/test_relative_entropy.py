@@ -145,7 +145,7 @@ def test_relative_entropy_issue_example():
     assert len(set(test_scores.tolist())) > 1
 
 
-def test_relative_entropy_issue_example_default_step():
+def test_relative_entropy_issue_example_non_overlapping_windows():
     from pysad.models import RelativeEntropy
     import numpy as np
 
@@ -154,7 +154,7 @@ def test_relative_entropy_issue_example_default_step():
     x[2000:2100] = rng.normal(0.9, 0.05, 100)  # anomalous segment
     x = np.clip(x, 0, 1)
 
-    model = RelativeEntropy(min_val=0.0, max_val=1.0)  # step defaults to window_size = 52
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, step=52)  # the paper's windows: step = window_size
     scores = model.fit_score(x.reshape(-1, 1))
 
     # Only a value that closes a window (every 52nd value) can score nonzero, and the three
@@ -168,7 +168,7 @@ def test_relative_entropy_issue_example_default_step():
     # the fitted ones: it tells the points apart only when that value closes a window, i.e. when
     # the fitted length is one short of a multiple of 52, and returns all 0.0 otherwise.
     points = np.array([[0.5], [0.9], [0.1]])
-    model = RelativeEntropy(min_val=0.0, max_val=1.0).fit(x[:2900].reshape(-1, 1))
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, step=52).fit(x[:2900].reshape(-1, 1))
     for num_fitted in range(2900, 3000):
         test_scores = model.score(points).tolist()
         if num_fitted % 52 == 51:  # 2911 and 2963
@@ -353,21 +353,22 @@ def test_relative_entropy_flags_jump_between_top_two_buckets():
 
 
 @pytest.mark.parametrize("method", ["fit", "fit_score"])
-def test_relative_entropy_default_step_tests_non_overlapping_windows(method):
+def test_relative_entropy_step_window_size_tests_non_overlapping_windows(method):
     from pysad.models import RelativeEntropy
     import numpy as np
 
     rng = np.random.default_rng(0)
     x = np.clip(rng.normal(50, 10, 52 * 20), 0, 100)  # 20 non-overlapping windows of W=52
 
-    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=52)
+    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=52, step=52)
     getattr(model, method)(x.reshape(-1, 1))
 
     assert sum(model.c) == 20
 
 
+@pytest.mark.parametrize("step_kwargs", [{}, {"step": 1}], ids=["default", "step=1"])
 @pytest.mark.parametrize("method", ["fit", "fit_score"])
-def test_relative_entropy_step_one_reproduces_nab_sliding_windows(method):
+def test_relative_entropy_default_step_reproduces_nab_sliding_windows(method, step_kwargs):
     from pysad.models import RelativeEntropy
     import numpy as np
 
@@ -375,7 +376,7 @@ def test_relative_entropy_step_one_reproduces_nab_sliding_windows(method):
     n = 52 * 20
     x = np.clip(rng.normal(50, 10, n), 0, 100)
 
-    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=52, step=1)
+    model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=52, **step_kwargs)
     getattr(model, method)(x.reshape(-1, 1))
 
     assert sum(model.c) == n - model.W + 1
@@ -386,6 +387,7 @@ def test_relative_entropy_step_one_reproduces_nab_sliding_windows(method):
     # second (0.1 x 2, 0.9 x 3) holds the shift and agrees with no hypothesis, so its closing
     # value, the 10th, scores 1.0; the third (all 0.9) agrees with the second.
     pytest.param(None, [9], id="step=None"),
+    pytest.param(5, [9], id="step=window_size"),
     # Windows end at every value from the 5th on: the 8th value's window is the first to hold a
     # 0.9, the 12th value's the first to hold only 0.9s; every window in between agrees.
     pytest.param(1, [7, 11], id="step=1"),
@@ -486,6 +488,9 @@ def test_relative_entropy_accepts_numpy_integer_window_size_and_step():
     for integer_type in (np.int32, np.int64, np.uint16):
         model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=integer_type(52))
         assert type(model.W) is int and model.W == 52
+        assert type(model.step) is int and model.step == 1
+
+        model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=integer_type(52), step=None)
         assert type(model.step) is int and model.step == 52
 
         model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=integer_type(52), step=integer_type(1))
@@ -497,7 +502,7 @@ def test_relative_entropy_accepts_numpy_integer_window_size_and_step():
     model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=np.arange(52, 53)[0])
     model.fit_score(x.reshape(-1, 1))
 
-    assert sum(model.c) == 20
+    assert sum(model.c) == 52 * 20 - 52 + 1
 
 
 @pytest.mark.parametrize("window_size", [1, 2, 3])

@@ -18,9 +18,9 @@ MODEL_PARAMS = {
     "IForestASD": {"window_size": 32},
     "Inqmad": {"input_shape": 3, "dim_x": 32, "gamma": 100},
     "KNNCAD": {"probationary_period": 50},
-    # Windows of 5 close 4 times among the NUM_NEXT compared values, and 80 buckets split the noise
-    # so that some of them score 1.0 (see test_relative_entropy_compared_scores_use_learned_state).
-    "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 80},
+    # Non-overlapping windows of 5 close 4 times among the NUM_NEXT compared values, and 80 buckets
+    # split the noise so that some of them score 1.0 (see test_relative_entropy_compared_scores_use_learned_state).
+    "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 80, "step": 5},
     "RobustRandomCutForest": {"tree_size": 32},
     "RSHash": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0]},
     "SeasonalESD": {"period": 4, "window_size": 16, "max_anomalies": 3},

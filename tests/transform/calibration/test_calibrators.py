@@ -51,18 +51,20 @@ def test_gaussian_tail_calibrator_global_statistics():
     from scipy.stats import norm
 
     scores = np.random.RandomState(0).normal(0, 10, 100)
-    calibrator = GaussianTailProbabilityCalibrator(running_statistics=False)
+    # A window smaller than the stream makes the windowed and global variance
+    # differ, so this test fails if the variance meter is windowed (#107).
+    calibrator = GaussianTailProbabilityCalibrator(running_statistics=False, window_size=10)
 
     for score in scores:
         calibrator.fit_partial(score)
 
     mean = scores.mean()
     std = scores.std(ddof=0)
-    
+
     last_score = scores[-1]
     actual = calibrator.transform_partial(last_score)
     expected = norm.cdf(last_score, loc=mean, scale=std)
-    
+
     np.testing.assert_allclose(actual, expected)
 
 

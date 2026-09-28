@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import abstractmethod, ABC
 
 
@@ -12,7 +14,7 @@ class UnivariateStatistic(BaseStatistic):
     """
 
     @abstractmethod
-    def update(self, num):
+    def update(self, num: float) -> "UnivariateStatistic":
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -24,7 +26,7 @@ class UnivariateStatistic(BaseStatistic):
         pass
 
     @abstractmethod
-    def get(self):
+    def get(self) -> float:
         """ Method to obtain the tracked statistic.
 
         Returns:
@@ -33,7 +35,7 @@ class UnivariateStatistic(BaseStatistic):
         pass
 
     @abstractmethod
-    def remove(self, num):
+    def remove(self, num: float) -> "UnivariateStatistic":
         """Updates the statistic by removing a particular value.
 
         Args:

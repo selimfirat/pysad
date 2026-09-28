@@ -245,3 +245,42 @@ def test_knn_cad_accepts_minimum_probationary_period():
     assert np.all(scores[:47] == 0.0)
     # From record 48 (index 47) on, the model is actually scoring: at least one score is nonzero.
     assert np.any(scores[47:] != 0.0)
+
+
+def test_knn_cad_accepts_scalar_and_single_value_2d_instances():
+    from pysad.models import KNNCAD
+    import numpy as np
+
+    X = generate_stream()
+    model = KNNCAD(probationary_period=100)
+    expected = np.array([model.fit_score_partial(x) for x in X])
+
+    for instances in (X[:, 0], [x.reshape(1, 1) for x in X], list(X[:, 0].astype(float))):
+        model = KNNCAD(probationary_period=100)
+        actual = np.array([model.fit_score_partial(x) for x in instances])
+        np.testing.assert_array_equal(actual, expected)
+
+    # The batch path hands each row of a 1-D stream to the model as a scalar.
+    np.testing.assert_array_equal(KNNCAD(probationary_period=100).fit_score(X[:, 0]), expected)
+
+
+def test_knn_cad_rejects_multivariate_instances_without_changing_state():
+    from pysad.models import KNNCAD
+    import numpy as np
+    import pytest
+
+    X = generate_stream()
+    model = KNNCAD(probationary_period=100)
+    for x in X[:150]:
+        model.fit_score_partial(x)
+    buf, record_count = list(model.buf), model.record_count
+
+    for bad in (np.array([0.1, 0.2, 0.3]), np.zeros((1, 2)), np.array([])):
+        for method in (model.fit_partial, model.score_partial, model.fit_score_partial):
+            with pytest.raises(ValueError, match="univariate"):
+                method(bad)
+    assert model.buf == buf
+    assert model.record_count == record_count
+
+    with pytest.raises(ValueError, match="univariate"):
+        KNNCAD(probationary_period=100).fit_score(np.random.RandomState(0).rand(200, 3))

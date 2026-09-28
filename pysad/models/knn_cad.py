@@ -6,7 +6,7 @@ import numpy as np
 
 
 class KNNCAD(BaseModel):
-    """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate. Where NAB and the paper disagree, this implementation follows NAB, including: the training and calibration sets and their rotation, the sum of squared quadratic forms with the `inv(XᵀX)` distance (refreshed every half probationary period) in place of the paper's Eq. (1) distance sum, the fixed `k = 27` and window length `19`, and the alarm suppression that returns `0.5`.
+    """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate: each instance must hold exactly one value, and an instance with more raises `ValueError`. Where NAB and the paper disagree, this implementation follows NAB, including: the training and calibration sets and their rotation, the sum of squared quadratic forms with the `inv(XᵀX)` distance (refreshed every half probationary period) in place of the paper's Eq. (1) distance sum, the fixed `k = 27` and window length `19`, and the alarm suppression that returns `0.5`.
 
         Args:
             probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`. Must be a whole number of at least `48` (window length `19` plus `k = 27` plus `2`): the training set holds `probationary_period - 19` windows, and the calibration scores need at least `k + 2` of them. It may be an int (a NumPy integer is accepted, but not a bool) or an integral-valued float, such as the `750.0` that NAB's probation period helper returns, which is converted to an int. Raises `TypeError` for a bool or a non-real type, and `ValueError` for NaN, infinity, a value with a fractional part, or a value below the minimum.
@@ -48,6 +48,28 @@ class KNNCAD(BaseModel):
         self.dim = dim
         self.to_init = True
         self.probationaryPeriod = probationary_period
+
+    @staticmethod
+    def _value(X):
+        """Returns the single value of a univariate instance.
+
+        Args:
+            X (float or np.float64 array): The instance, holding exactly one value, e.g. a scalar or an array of shape (1,) or (1, 1).
+
+        Returns:
+            float: The value of the instance.
+
+        Raises:
+            ValueError: If the instance does not hold exactly one value.
+        """
+        values = np.asarray(X, dtype=np.float64).ravel()
+        if values.size != 1:
+            raise ValueError(
+                "KNNCAD is univariate: expected an instance with one value, "
+                f"got an instance of shape {np.shape(X)}."
+            )
+
+        return float(values[0])
 
     def _metric(self, a, b, sigma):
         diff = a - np.array(b)
@@ -95,17 +117,22 @@ class KNNCAD(BaseModel):
         """Fits the model to next instance. Note that this model is univariate.
 
         Args:
-            X (np.float64 array of shape (1,)): The instance to fit.
+            X (float or np.float64 array): The instance to fit, holding exactly one value (e.g. a scalar or an array of shape (1,) or (1, 1)).
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
             object: Returns the self.
+
+        Raises:
+            ValueError: If `X` does not hold exactly one value.
         """
+        value = self._value(X)
+
         if self.to_init:
             self.sigma = np.diag(np.ones(self.dim))
             self.to_init = False
 
-        self.buf.append(X[0])
+        self.buf.append(value)
         self.record_count += 1
         if len(self.buf) < self.dim:
             return self
@@ -137,11 +164,16 @@ class KNNCAD(BaseModel):
         """Scores the window that ends with the given instance, i.e., the last `dim - 1` fitted values followed by `X`, against the current calibration scores. The score is the fraction of calibration scores lower than the window's score. This method does not change the model. Alarm suppression, which outputs `0.5` for a while after an alarm as in NAB, applies only in `fit_score_partial`.
 
         Args:
-            X (np.float64 array of shape (1,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
+            X (float or np.float64 array): The instance to score, holding exactly one value (e.g. a scalar or an array of shape (1,) or (1, 1)). Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
             float: The anomalousness score of the input instance.
+
+        Raises:
+            ValueError: If `X` does not hold exactly one value.
         """
+        value = self._value(X)
+
         if self.to_init or len(self.buf) + 1 < self.dim:
             return 0.0
 
@@ -149,7 +181,7 @@ class KNNCAD(BaseModel):
         if record_count < self.probationaryPeriod:
             return 0.0
 
-        new_item = self.buf[-(self.dim - 1):] + [X[0]]
+        new_item = self.buf[-(self.dim - 1):] + [value]
 
         try:
             sigma = self._sigma_at(record_count)
@@ -165,11 +197,14 @@ class KNNCAD(BaseModel):
         """Scores the window that ends with the given instance and then fits the model to it, as NAB's detector does for each record. After a score of at least `0.9965` raises an alarm, the next `int(probationary_period / 5)` scores are suppressed to `0.5`.
 
         Args:
-            X (np.float64 array of shape (1,)): The instance to fit and score.
+            X (float or np.float64 array): The instance to fit and score, holding exactly one value (e.g. a scalar or an array of shape (1,) or (1, 1)).
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
             float: The anomalousness score of the input instance.
+
+        Raises:
+            ValueError: If `X` does not hold exactly one value; the model is left unchanged.
         """
         score = self.score_partial(X)
         self.fit_partial(X, y)

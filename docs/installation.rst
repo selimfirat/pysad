@@ -34,7 +34,7 @@ Alternatively, you can install the library directly using the source code in Git
 
 * rrcf: 0.4.4 (``pip install pysad[rrcf]``, for ``pysad.models.robust_random_cut_forest.RobustRandomCutForest``)
 * PyNomaly: 0.3.5 (``pip install pysad[slop]``, for ``pysad.models.LocalOutlierProbability``)
-* mmh3: 2.5.1 (``pip install pysad[xStream]``, for ``pysad.models.xstream.xStream``)
+* mmh3: 5.3.0 (``pip install pysad[xStream]``, for ``pysad.models.xstream.xStream``)
 * pandas: 2.2.3 (``pip install pysad[pandas]``, for ``pysad.utils.pandas_streamer.PandasStreamer``)
 * jax and jaxlib: >=0.6.1 (``pip install pysad[inqmad]``, for ``pysad.models.inqmad.Inqmad``; required for NumPy 2.0+ compatibility of this module)
 

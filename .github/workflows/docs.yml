@@ -2,12 +2,11 @@ name: docs
 
 # Builds the Sphinx documentation the same way Read the Docs does (.readthedocs.yaml:
 # Python 3.10, requirements-dev.txt, docs/conf.py) so a broken docs build fails the
-# pull request instead of surfacing after the merge. Runs on every pull request so that
-# release/vX.Y.Z branches are always covered.
+# release pull request instead of surfacing on Read the Docs after the merge.
 on:
-  push:
-    branches: [master]
   pull_request:
+    branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,6 +18,8 @@ concurrency:
 
 jobs:
   docs:
+    # Only release/vX.Y.Z pull requests, the same branches publish.yml tags and releases.
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.pull_request.head.ref, 'release/v')
     runs-on: ubuntu-latest
     permissions:
       contents: read

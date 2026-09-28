@@ -34,7 +34,7 @@ def _returns_float_score(method: Callable[..., Any]) -> Callable[..., float]:
     def wrapper(self, *args, **kwargs) -> float:
         return _to_float_score(method(self, *args, **kwargs))
 
-    wrapper._returns_float_score = True
+    setattr(wrapper, "_returns_float_score", True)
     return wrapper
 
 

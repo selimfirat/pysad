@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from typing import cast
 
 import numpy as np
 from pysad.utils import _iterate
@@ -66,8 +67,9 @@ class BasePostprocessor(ABC):
         Returns:
             object: self.
         """
-        for i, (score, _) in enumerate(_iterate(scores)):
-            self.fit_partial(score)
+        for score, _ in _iterate(scores):
+            # _iterate yields NumPy scalars for 1-D score arrays, which are floats.
+            self.fit_partial(cast(float, score))
 
         return self
 
@@ -86,7 +88,7 @@ class BasePostprocessor(ABC):
     def _process_all(scores: np.ndarray, process_partial: Callable[[float], float]) -> np.ndarray:
         processed_scores = np.empty(scores.shape[0], dtype=np.float64)
         for i, (score, _) in enumerate(_iterate(scores)):
-            result = process_partial(score)
+            result = process_partial(cast(float, score))
             processed_scores[i] = np.asarray(result).item() if np.asarray(result).ndim > 0 else result
 
         return processed_scores

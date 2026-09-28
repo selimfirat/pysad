@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from functools import wraps
+from typing import Any
+
 from pysad.utils import _iterate
 import numpy as np
 
 
-def _to_float_score(score):
+def _to_float_score(score: float | np.number | np.ndarray | list[float]) -> float:
     """Converts a single-instance score to a Python float.
 
     Models may compute a score as a Python number, a NumPy scalar or a one-element array. This helper maps all of them to a plain ``float``.
@@ -23,13 +28,13 @@ def _to_float_score(score):
     return float(score.reshape(-1)[0])
 
 
-def _returns_float_score(method):
+def _returns_float_score(method: Callable[..., Any]) -> Callable[..., float]:
     """Wraps a single-instance scoring method so that it returns a Python float."""
     @wraps(method)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args, **kwargs) -> float:
         return _to_float_score(method(self, *args, **kwargs))
 
-    wrapper._returns_float_score = True
+    setattr(wrapper, "_returns_float_score", True)
     return wrapper
 
 
@@ -39,7 +44,7 @@ class BaseModel(ABC):
     Single-instance methods (`score_partial` and `fit_score_partial`) always return a Python `float`, and batch methods (`score` and `fit_score`) return a `np.float64` array of shape (num_instances,). Subclasses may compute a score as a NumPy scalar or a one-element array; it is converted to a `float` automatically.
     """
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
 
         for name in ("score_partial", "fit_score_partial"):
@@ -48,7 +53,7 @@ class BaseModel(ABC):
                 setattr(cls, name, _returns_float_score(method))
 
     @abstractmethod
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> "BaseModel":
         """Fits the model to next instance.
 
         Args:
@@ -61,7 +66,7 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -72,7 +77,7 @@ class BaseModel(ABC):
         """
         pass
 
-    def fit_score_partial(self, X, y=None):
+    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Applies fit_partial and score_partial to the next instance, respectively.
 
         Args:
@@ -84,7 +89,7 @@ class BaseModel(ABC):
         """
         return _to_float_score(self.fit_partial(X, y).score_partial(X))
 
-    def fit(self, X, y=None):
+    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> "BaseModel":
         """Fits the model to all instances in order.
 
         Args:
@@ -99,7 +104,7 @@ class BaseModel(ABC):
 
         return self
 
-    def score(self, X):
+    def score(self, X: np.ndarray) -> np.ndarray:
         """Scores all instances via score_partial iteratively.
 
         Args:
@@ -114,7 +119,7 @@ class BaseModel(ABC):
 
         return y_pred
 
-    def fit_score(self, X, y=None):
+    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
         """This helper method applies fit_score_partial to all instances in order.
 
         Args:

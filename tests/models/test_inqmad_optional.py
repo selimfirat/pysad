@@ -31,5 +31,5 @@ def test_inqmad_module_imports_without_jax(monkeypatch):
 
 def test_inqmad_init_raises_import_error_without_jax(monkeypatch):
     mod = _reload_inqmad_without_jax(monkeypatch)
-    with pytest.raises(ImportError, match=r"pysad\[inqmad\]|jax"):
+    with pytest.raises(ImportError, match=r"pysad\[inqmad\]"):
         mod.Inqmad(input_shape=2, dim_x=4, gamma=1.0)

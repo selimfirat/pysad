@@ -1,0 +1,38 @@
+# Dependabot configuration: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+updates:
+  # GitHub Actions used in .github/workflows. Actions are pinned to commit
+  # SHAs with a version comment; Dependabot updates both together.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Python dependencies from pyproject.toml and the requirements*.txt files.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "build"
+    groups:
+      # Minor and patch bumps land in one PR; majors get their own PR each.
+      python-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"

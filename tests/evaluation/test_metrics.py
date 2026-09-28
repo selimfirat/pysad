@@ -210,3 +210,81 @@ def test_auroc_single_class_error():
     # AUROC should throw ValueError with single class
     with pytest.raises(ValueError, match="Only one class present"):
         metric.get()
+
+
+def test_precision_recall_threshold_on_scores():
+    """Test PrecisionMetric and RecallMetric turn scores at or above the threshold into anomalies."""
+    from pysad.evaluation import PrecisionMetric, RecallMetric
+    import numpy as np
+
+    y_true = [1, 0, 0, 1, 1, 0]
+    scores = [0.9, 0.2, 0.5, 0.4, 0.8, 0.6]
+    # threshold=0.5 predicts [1, 0, 1, 0, 1, 1]: 2 true positives, 2 false positives, 1 false negative.
+    # The 0.5 score sits on the threshold and counts as an anomaly.
+    precision = PrecisionMetric(threshold=0.5)
+    recall = RecallMetric(threshold=0.5)
+    for yt, score in zip(y_true, scores):
+        precision.update(yt, score)
+        recall.update(yt, score)
+
+    assert np.isclose(precision.get(), 2.0 / 4.0)
+    assert np.isclose(recall.get(), 2.0 / 3.0)
+
+
+def test_precision_recall_threshold_on_model_scores():
+    """Test PrecisionMetric and RecallMetric with a threshold on scores from a streaming model."""
+    from pysad.evaluation import PrecisionMetric, RecallMetric
+    from pysad.models import StandardAbsoluteDeviation
+    from pysad.utils import fix_seed
+    from sklearn.metrics import precision_score, recall_score
+    import numpy as np
+    fix_seed(61)
+
+    X = np.random.normal(size=(200, 1))
+    y_true = np.zeros(200, dtype=np.int32)
+    y_true[50::25] = 1
+    X[y_true == 1] += 6.0
+
+    model = StandardAbsoluteDeviation()
+    precision = PrecisionMetric(threshold=3.0)
+    recall = RecallMetric(threshold=3.0)
+    scores = []
+    for x, yt in zip(X, y_true):
+        score = model.fit_score_partial(x)
+        scores.append(score)
+        precision.update(yt, score)
+        recall.update(yt, score)
+
+    y_pred = (np.asarray(scores) >= 3.0).astype(int)
+    assert np.isclose(precision.get(), precision_score(y_true, y_pred))
+    assert np.isclose(recall.get(), recall_score(y_true, y_pred))
+    assert recall.get() > 0.0
+
+
+def test_precision_recall_without_threshold_on_binary_predictions():
+    """Test PrecisionMetric and RecallMetric keep their 0/1 behaviour when threshold is None."""
+    from pysad.evaluation import PrecisionMetric, RecallMetric
+    from sklearn.metrics import precision_score, recall_score
+    import numpy as np
+
+    y_true = [1, 0, 1, 1, 0, 0, 1]
+    y_pred = [1, 1, 0, 1, 0, 1, 1]
+
+    for metric_cls, sklearn_metric in [(PrecisionMetric, precision_score), (RecallMetric, recall_score)]:
+        for metric in [metric_cls(), metric_cls(threshold=None)]:
+            for yt, yp in zip(y_true, y_pred):
+                metric.update(yt, yp)
+            assert np.isclose(metric.get(), sklearn_metric(y_true, y_pred))
+
+
+def test_precision_recall_without_threshold_reject_scores():
+    """Test PrecisionMetric and RecallMetric do not pick a threshold for scores on their own."""
+    from pysad.evaluation import PrecisionMetric, RecallMetric
+    import pytest
+
+    for metric_cls in [PrecisionMetric, RecallMetric]:
+        metric = metric_cls()
+        metric.update(1, 0.9)
+        metric.update(0, 0.2)
+        with pytest.raises(ValueError):
+            metric.get()

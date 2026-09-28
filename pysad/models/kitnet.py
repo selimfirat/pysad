@@ -6,10 +6,9 @@ class KitNet(BaseModel):
     """KitNET is a lightweight online anomaly detection algorithm based on an ensemble of autoencoders :cite:`mirsky2018kitsune`. This model directly uses the implementation from `KitNET-py <https://github.com/ymirsky/KitNET-py>`_.
 
     Args:
-        num_features (int): The number of features in your input dataset.
         max_size_ae (int): The maximum size of any autoencoder in the ensemble layer (Default=10).
-        grace_feature_mapping (int): The number of instances the network will learn from before producing anomaly scores (Default=None).
-        grace_anomaly_detector (int): The number of instances which will be taken to learn the feature mapping. If 'None', then FM_grace_period=AM_grace_period. (Default=50000).
+        grace_feature_mapping (int): The number of instances used to learn the feature mapping. If ``None``, the feature mapping and anomaly detector grace periods are equal (Default=None).
+        grace_anomaly_detector (int): The number of instances used to train the autoencoders after the feature mapping is learned (Default=50000).
         learning_rate (float): The default stochastic gradient descent learning rate for all autoencoders in the KitNET instance (Default=0.1).
         hidden_ratio (float): The default ratio of hidden to visible neurons. E.g., 0.75 will cause roughly a 25% compression in the hidden layer (Default=0.75).
     """
@@ -30,7 +29,11 @@ class KitNet(BaseModel):
         self.to_init = True
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance. Simply, adds the instance to the window.
+        """Fits the model to the next instance.
+
+        The first ``grace_feature_mapping`` instances learn the feature mapping;
+        subsequent grace-period instances train the autoencoders. Until the
+        feature mapping is built, :meth:`score_partial` returns ``0.0``.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.

@@ -4,7 +4,7 @@ from pysad.core.base_model import BaseModel
 
 
 class HalfSpaceTrees(BaseModel):
-    """Half-Space Trees method :cite:`tan2011fast`. Instances are scored against the reference mass profile built from the previous window before being recorded into the next one (Algorithm 3). Algorithm 3 does not score the first window; pysad scores each first-window instance that `initial_window_X` does not cover against the partial profile gathered so far in that window (the instances before it, without its own mass), so early instances look more anomalous, and the very first instance of a stream without `initial_window_X` scores 0.0. The paper scores `r * 2^k` at the terminal node only (the node at maximum depth or the first one on the path holding at most sizeLimit instances), whereas pysad sums `r * 2^k` over every node on the path, with no sizeLimit early stop.
+    """Half-Space Trees method :cite:`tan2011fast`. Instances are scored against the reference mass profile built from the previous window before being recorded into the next one (Algorithm 3). Algorithm 3 does not score the first window: its first `window_size` instances only build the initial reference profile. pysad does score them, which departs from the paper (and from river and scikit-multiflow, which return a constant during the first window): each first-window instance that `initial_window_X` does not cover is scored against the partial profile of the n instances recorded before it in that window (without its own mass), and that score is rescaled by `window_size / n`, which estimates the mass a full window would hold, so that first-window scores are on the same scale as later ones. The very first instance of a stream without `initial_window_X` has n = 0 and scores 0.0. From the instance after the first window on, scoring follows Algorithm 3. The paper scores `r * 2^k` at the terminal node only (the node at maximum depth or the first one on the path holding at most sizeLimit instances), whereas pysad sums `r * 2^k` over every node on the path, with no sizeLimit early stop.
 
     Args:
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
@@ -135,17 +135,22 @@ class HalfSpaceTrees(BaseModel):
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            float: The anomalousness score of the input instance. During the first window there is no previous window to score against, and Algorithm 3 does not score these instances; pysad scores them against the partial profile gathered so far in that window instead, so early instances look more anomalous (0.0 when nothing has been recorded yet).
+            float: The anomalousness score of the input instance. During the first window there is no previous window to score against, and Algorithm 3 does not score these instances. pysad scores them against the partial profile of the n instances recorded so far in that window, rescaled by `window_size / n` to the scale of a full window (0.0 when nothing has been recorded yet). This rescaling is pysad's own and is not part of the paper.
         """
         s = 0.0
 
         for root in self.roots:
             s += self._score_tree(X, root, self.is_first_window)
 
-        return -s
+        if self.is_first_window and self.step > 0:
+            # Not in the paper: scale the partial profile of the `step` instances recorded so far
+            # up to a full window, so first-window scores match the scale of later ones.
+            s *= self.window_size / self.step
+
+        return 0.0 - s
 
     def fit_score_partial(self, X, y=None):
-        """Scores the next instance against the reference mass profile built from the previous window (during the first window, against the partial profile gathered so far, as in `score_partial`), and then fits it, as Algorithm 3 does (score before updating the mass profile, and swap in the updated profile only at the end of a window).
+        """Scores the next instance against the reference mass profile built from the previous window (during the first window, against the partial profile gathered so far, rescaled to a full window, as in `score_partial`), and then fits it, as Algorithm 3 does (score before updating the mass profile, and swap in the updated profile only at the end of a window).
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit and score.

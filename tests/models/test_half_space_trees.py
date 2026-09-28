@@ -95,10 +95,30 @@ def test_half_space_trees_first_window_scores_against_the_instances_before_it():
     # Nothing has been recorded when the very first instance arrives.
     assert scores[0] == 0.0
     # Every later instance of the first window, including the one that closes it, is scored
-    # against the instances before it, without its own mass.
+    # against the instances before it, without its own mass, rescaled to a full window.
     for i in range(1, window_size):
-        assert scores[i] == _score_against(model, X[:i], X[i])
+        assert scores[i] == _score_against(model, X[:i], X[i]) * (window_size / i)
     assert model.is_first_window is False
+
+
+def test_half_space_trees_first_window_scores_match_the_scale_of_a_full_window():
+    import numpy as np
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    window_size = 20
+
+    fix_seed(0)
+    # On a constant stream, a partial profile of n copies rescaled to a full window equals the
+    # reference profile of a full window, so every score after the very first is the same.
+    X = np.full((3 * window_size, 2), 0.3)
+    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
+                           window_size=window_size, num_trees=5, max_depth=6)
+    scores = model.fit_score(X)
+
+    assert scores[0] == 0.0
+    assert np.all(scores[1:] == scores[window_size])
+    assert scores[window_size] == _score_against(model, X[:window_size], X[0])
 
 
 def test_half_space_trees_scores_a_batch_fitted_on_less_than_a_window():
@@ -115,10 +135,11 @@ def test_half_space_trees_scores_a_batch_fitted_on_less_than_a_window():
     model = HalfSpaceTrees(feature_mins=[-7, -7], feature_maxes=[7, 7], window_size=100, num_trees=5, max_depth=6)
     scores = model.fit(X_train).score(X_test)
 
-    # The first window is still open, so the test batch is scored against the 60 instances fitted so far.
+    # The first window is still open, so the test batch is scored against the 60 instances fitted so far,
+    # rescaled to a full window of 100.
     assert model.is_first_window is True
     for x, score in zip(X_test, scores):
-        assert score == _score_against(model, X_train, x)
+        assert score == _score_against(model, X_train, x) * (100 / 60)
     assert np.all(np.delete(scores, 7) < scores[7])
 
 

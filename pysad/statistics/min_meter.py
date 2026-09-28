@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 from heapq import heappush
 from pysad.core.base_statistic import UnivariateStatistic
@@ -17,7 +19,7 @@ class MinMeter(UnivariateStatistic):
 
         self.lst = []
 
-    def update(self, num: float) -> "MinMeter":
+    def update(self, num: float) -> MinMeter:
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -33,7 +35,7 @@ class MinMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num: float) -> "MinMeter":
+    def remove(self, num: float) -> MinMeter:
         """Updates the statistic by removing a particular value.
 
         Args:

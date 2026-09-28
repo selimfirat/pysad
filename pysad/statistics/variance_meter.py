@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pysad.core.base_statistic import UnivariateStatistic
 from pysad.statistics.count_meter import CountMeter
 from pysad.statistics.sum_meter import SumMeter
@@ -18,7 +20,7 @@ class VarianceMeter(UnivariateStatistic):
         self.sum_squares_meter = SumSquaresMeter()
         self.count_meter = CountMeter()
 
-    def update(self, num: float) -> "VarianceMeter":
+    def update(self, num: float) -> VarianceMeter:
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -34,7 +36,7 @@ class VarianceMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num: float) -> "VarianceMeter":
+    def remove(self, num: float) -> VarianceMeter:
         """Updates the statistic by removing particular value.
 
         Args:

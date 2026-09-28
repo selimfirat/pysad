@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 from heapq import heappush
 from pysad.core.base_statistic import UnivariateStatistic
@@ -17,7 +19,7 @@ class MaxMeter(UnivariateStatistic):
 
         self.lst = []
 
-    def update(self, num: float) -> "MaxMeter":
+    def update(self, num: float) -> MaxMeter:
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -34,7 +36,7 @@ class MaxMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num: float) -> "MaxMeter":
+    def remove(self, num: float) -> MaxMeter:
         """Updates the statistic by removing a particular value.
 
         Args:

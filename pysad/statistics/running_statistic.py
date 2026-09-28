@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pysad.core.base_statistic import BaseStatistic, UnivariateStatistic
 
 
@@ -26,9 +28,9 @@ class RunningStatistic(BaseStatistic):
         self.statistic = self.statistic_cls(**kwargs)
 
         self.window_size = window_size
-        self.window = []
+        self.window: list[float] = []
 
-    def update(self, num: float) -> "RunningStatistic":
+    def update(self, num: float) -> RunningStatistic:
         """Updates the statistic with the value for a timestep.
 
         Args:

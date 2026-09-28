@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from heapq import heappush
 from pysad.core.base_statistic import UnivariateStatistic
 
@@ -14,7 +16,7 @@ class MedianMeter(UnivariateStatistic):
         self.lst = []
         self.num_items = 0
 
-    def update(self, num: float) -> "MedianMeter":
+    def update(self, num: float) -> MedianMeter:
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -28,7 +30,7 @@ class MedianMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num: float) -> "MedianMeter":
+    def remove(self, num: float) -> MedianMeter:
         """Updates the statistic by removing a particular value.
 
         Args:

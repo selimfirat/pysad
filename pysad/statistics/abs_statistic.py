@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pysad.core.base_statistic import UnivariateStatistic
 
 
@@ -14,7 +16,7 @@ class AbsStatistic(UnivariateStatistic):
 
         self.statistic = self.statistic_cls(**kwargs)
 
-    def update(self, num: float) -> "AbsStatistic":
+    def update(self, num: float) -> AbsStatistic:
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -28,7 +30,7 @@ class AbsStatistic(UnivariateStatistic):
 
         return self
 
-    def remove(self, num: float) -> "AbsStatistic":
+    def remove(self, num: float) -> AbsStatistic:
         """Updates the statistic by removing a particular value.
 
         Args:

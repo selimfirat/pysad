@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pysad.core.base_statistic import UnivariateStatistic
 
 
@@ -13,7 +15,7 @@ class SumSquaresMeter(UnivariateStatistic):
         self.sum_squares = 0.0
         self.num_items = 0
 
-    def update(self, num: float) -> "SumSquaresMeter":
+    def update(self, num: float) -> SumSquaresMeter:
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -27,7 +29,7 @@ class SumSquaresMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num: float) -> "SumSquaresMeter":
+    def remove(self, num: float) -> SumSquaresMeter:
         """Updates the statistic by removing a particular value.
 
         Args:

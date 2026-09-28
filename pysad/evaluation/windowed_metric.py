@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from pysad.core.base_metric import BaseMetric
 from pysad.statistics.average_meter import AverageMeter
@@ -55,7 +55,8 @@ class WindowedMetric(BaseMetric):
 
         if self.step % self.window_size == 0:
             self.num_windows += 1
-            score = self.metric.get()
+            # The window metric has seen data here, so get() never returns None.
+            score = cast(float, self.metric.get())
             self.score_meter.update(score)
             self.metric = self._init_metric(**self.metric_kwargs)
 
@@ -70,6 +71,7 @@ class WindowedMetric(BaseMetric):
         if self.num_windows == 1:
             return self.metric.get()
         elif not self.ignore_nonempty_last and self.step % self.window_size != 0:
-            return (self.metric.get() + self.score_meter.get() * (self.num_windows - 1)) / self.num_windows
+            last = cast(float, self.metric.get())
+            return (last + self.score_meter.get() * (self.num_windows - 1)) / self.num_windows
         else:
             return self.score_meter.get()

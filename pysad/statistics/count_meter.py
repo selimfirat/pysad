@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pysad.core.base_statistic import UnivariateStatistic
 
 
@@ -11,7 +13,7 @@ class CountMeter(UnivariateStatistic):
     def __init__(self):
         self.count = 0
 
-    def update(self, num):
+    def update(self, num: float) -> CountMeter:
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -24,7 +26,7 @@ class CountMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num=None):
+    def remove(self, num: float | None = None) -> CountMeter:
         """Updates the statistic by removing a particular value.
 
         Args:
@@ -37,7 +39,7 @@ class CountMeter(UnivariateStatistic):
 
         return self
 
-    def get(self):
+    def get(self) -> float:
         """ Method to obtain the tracked statistic.
 
         Returns:

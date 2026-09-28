@@ -1,4 +1,6 @@
-from pysad.core.base_statistic import BaseStatistic
+from __future__ import annotations
+
+from pysad.core.base_statistic import BaseStatistic, UnivariateStatistic
 
 
 class RunningStatistic(BaseStatistic):
@@ -13,7 +15,12 @@ class RunningStatistic(BaseStatistic):
         ValueError: If window_size is less than 1.
     """
 
-    def __init__(self, statistic_cls, window_size, **kwargs):
+    def __init__(
+        self,
+        statistic_cls: type[UnivariateStatistic],
+        window_size: int,
+        **kwargs
+    ):
         if window_size < 1:
             raise ValueError("window_size must be a positive integer.")
 
@@ -21,9 +28,9 @@ class RunningStatistic(BaseStatistic):
         self.statistic = self.statistic_cls(**kwargs)
 
         self.window_size = window_size
-        self.window = []
+        self.window: list[float] = []
 
-    def update(self, num):
+    def update(self, num: float) -> RunningStatistic:
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -42,7 +49,7 @@ class RunningStatistic(BaseStatistic):
 
         return self
 
-    def get(self):
+    def get(self) -> float:
         """ Method to obtain the tracked statistic.
 
         Returns:

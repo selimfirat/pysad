@@ -23,7 +23,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
             self.var_meter = RunningStatistic(VarianceMeter, self.window_size)
         else:
             self.avg_meter = AverageMeter()
-            self.var_meter = RunningStatistic(VarianceMeter, self.window_size)
+            self.var_meter = VarianceMeter()
 
     def fit_partial(self, score):
         """Fits particular (next) timestep's score to train the postprocessor.

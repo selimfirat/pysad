@@ -44,3 +44,46 @@ def test_conformal_calibrator_p_values():
     # A constant stream gets p = 1, not p = 0.
     calibrated_scores = ConformalProbabilityCalibrator().fit_transform(np.full(50, 0.3))
     assert np.all(calibrated_scores == 1.0)
+
+def test_gaussian_tail_calibrator_global_statistics():
+    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
+    import numpy as np
+    from scipy.stats import norm
+
+    scores = np.random.RandomState(0).normal(0, 10, 100)
+    calibrator = GaussianTailProbabilityCalibrator(running_statistics=False)
+
+    for score in scores:
+        calibrator.fit_partial(score)
+
+    mean = scores.mean()
+    std = scores.std(ddof=0)
+    
+    last_score = scores[-1]
+    actual = calibrator.transform_partial(last_score)
+    expected = norm.cdf(last_score, loc=mean, scale=std)
+    
+    np.testing.assert_allclose(actual, expected)
+
+
+def test_gaussian_tail_calibrator_running_statistics():
+    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
+    import numpy as np
+    from scipy.stats import norm
+
+    window_size = 10
+    scores = np.random.RandomState(0).normal(0, 10, 100)
+    calibrator = GaussianTailProbabilityCalibrator(running_statistics=True, window_size=window_size)
+
+    for score in scores:
+        calibrator.fit_partial(score)
+
+    windowed_scores = scores[-window_size:]
+    mean = windowed_scores.mean()
+    std = windowed_scores.std(ddof=0)
+    
+    last_score = scores[-1]
+    actual = calibrator.transform_partial(last_score)
+    expected = norm.cdf(last_score, loc=mean, scale=std)
+    
+    np.testing.assert_allclose(actual, expected)

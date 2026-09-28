@@ -141,3 +141,19 @@ def test_windowed_metric_various_metrics():
         score = metric.get()
         assert isinstance(score, (int, float))
         assert 0.0 <= score <= 1.0
+
+
+def test_windowed_metric_passes_kwargs_to_every_window():
+    """Test WindowedMetric passes keyword arguments to the metric of every window, not only the first."""
+    from pysad.evaluation import WindowedMetric, PrecisionMetric
+    import numpy as np
+
+    y_true = [1, 0, 1, 0, 1, 0, 1, 0]
+    scores = [0.9, 0.1, 0.8, 0.7, 0.6, 0.2, 0.3, 0.4]
+    metric = WindowedMetric(PrecisionMetric, window_size=4, threshold=0.5)
+    for yt, score in zip(y_true, scores):
+        metric.update(yt, score)
+
+    # First window predicts [1, 0, 1, 1] (precision 2/3), second predicts [1, 0, 0, 0] (precision 1).
+    assert metric.metric.threshold == 0.5
+    assert np.isclose(metric.get(), (2.0 / 3.0 + 1.0) / 2.0)

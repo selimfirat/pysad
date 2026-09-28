@@ -44,20 +44,54 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         pass
 
 
+def _apply_threshold(y_pred: list[float], threshold: float | None) -> list[float] | list[int]:
+    """Turns anomaly scores into 0/1 predictions when a threshold is given.
+
+    Args:
+        y_pred (list[float]): Predicted classes or scores.
+        threshold (float | None): The score at or above which an instance is predicted anomalous. If None, y_pred is returned unchanged.
+
+    Returns:
+        list[float] | list[int]: The predicted classes.
+    """
+    if threshold is None:
+        return y_pred
+
+    return [1 if score >= threshold else 0 for score in y_pred]
+
+
 class PrecisionMetric(BaseSKLearnMetric):
     """Precision wrapper class for sklearn.
+
+    Precision is defined on predicted classes. With the default ``threshold=None``, ``y_pred`` must be 0 or 1 and is used as given. To pass anomaly scores, set ``threshold``. Scores at or above it are predicted anomalous (1) and the rest normal (0).
+
+    Args:
+        threshold (float | None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions. (Default=None).
     """
 
+    def __init__(self, threshold: float | None = None) -> None:
+        super().__init__()
+        self.threshold = threshold
+
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
-        return precision_score(y_true, y_pred)
+        return precision_score(y_true, _apply_threshold(y_pred, self.threshold))
 
 
 class RecallMetric(BaseSKLearnMetric):
     """Recall wrapper class for sklearn.
+
+    Recall is defined on predicted classes. With the default ``threshold=None``, ``y_pred`` must be 0 or 1 and is used as given. To pass anomaly scores, set ``threshold``. Scores at or above it are predicted anomalous (1) and the rest normal (0).
+
+    Args:
+        threshold (float | None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions. (Default=None).
     """
 
+    def __init__(self, threshold: float | None = None) -> None:
+        super().__init__()
+        self.threshold = threshold
+
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
-        return recall_score(y_true, y_pred)
+        return recall_score(y_true, _apply_threshold(y_pred, self.threshold))
 
 
 class AUROCMetric(BaseSKLearnMetric):

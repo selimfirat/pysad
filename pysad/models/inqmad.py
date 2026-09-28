@@ -14,8 +14,18 @@ try:
         import jax.numpy as jnp
     JAX_AVAILABLE = True
 except (ImportError, AttributeError):
-    # Handle both missing JAX and JAX-NumPy compatibility issues
+    # Handle both missing JAX and JAX-NumPy compatibility issues.
+    # Stub ``jit`` so class-body ``@partial(jit, ...)`` decorators still
+    # resolve at import time; ``Inqmad.__init__`` raises ImportError with
+    # the install hint when JAX is actually missing (see #174).
     JAX_AVAILABLE = False
+
+    def jit(fun=None, **_kwargs):
+        if fun is None:
+            return lambda f: f
+        return fun
+
+    jnp = None
 
 from functools import partial
 from sklearn.kernel_approximation import RBFSampler

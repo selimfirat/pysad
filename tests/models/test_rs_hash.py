@@ -85,6 +85,32 @@ def test_rs_hash_score_partial_has_no_side_effects():
     assert model.index == index_before
 
 
+def test_rs_hash_sampling_points_warns_and_has_no_effect():
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+    import numpy as np
+    import pytest
+    import warnings
+
+    X = np.random.default_rng(0).random((200, 5))
+
+    fix_seed(0)
+    with pytest.warns(FutureWarning, match="sampling_points") as record:
+        model_with = RSHash(feature_mins=np.zeros(5), feature_maxes=np.ones(5), sampling_points=10)
+    scores_with = model_with.fit_score(X)
+
+    # stacklevel=2 attributes the warning to the code that passed sampling_points, not to rs_hash.py.
+    assert record[0].filename == __file__
+
+    fix_seed(0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        model_without = RSHash(feature_mins=np.zeros(5), feature_maxes=np.ones(5))
+    scores_without = model_without.fit_score(X)
+
+    np.testing.assert_array_equal(scores_with, scores_without)
+
+
 def test_rs_hash_score_then_fit_matches_fit_score_partial():
     from pysad.models import RSHash
     from pysad.utils import fix_seed

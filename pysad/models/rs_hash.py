@@ -1,5 +1,9 @@
+import warnings
+
 from pysad.core.base_model import BaseModel
 import numpy as np
+
+_UNSET = object()
 
 
 class RSHash(BaseModel):
@@ -8,28 +12,38 @@ class RSHash(BaseModel):
         Args:
             feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
             feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
-            sampling_points (int): The number of sampling points (Default=1000).
+            sampling_points (int): Deprecated. Has no effect.
             decay (float): The decay hyperparameter (Default=0.015).
             num_components (int): The number of ensemble components (Default=100).
             num_hash_fns (int): The number of hashing functions (Default=1).
+
+        .. deprecated:: 0.6.1
+            The ``sampling_points`` parameter is deprecated and has no effect.
+            It will be removed in a future release.
     """
 
     def __init__(
             self,
             feature_mins,
             feature_maxes,
-            sampling_points=1000,
+            sampling_points=_UNSET,
             decay=0.015,
             num_components=100,
             num_hash_fns=1):
+        if sampling_points is not _UNSET:
+            warnings.warn(
+                "The 'sampling_points' parameter is deprecated and has no "
+                "effect. It will be removed in a future release.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
         self.minimum = np.asarray(feature_mins, dtype=np.float64)
         self.maximum = np.asarray(feature_maxes, dtype=np.float64)
         self.range = self.maximum - self.minimum
         self.range[self.range == 0] = 1.0
 
         self.m = num_components
-        self.w = num_hash_fns
-        self.s = sampling_points
         self.dim = len(self.minimum)
         self.decay = decay
         self.scores = []
@@ -47,7 +61,7 @@ class RSHash(BaseModel):
 
         self.alpha = self._sample_shifts()
 
-        self.index = 0 + 1 - self.s
+        self.index = 1
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.

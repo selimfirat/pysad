@@ -9,12 +9,12 @@ class AbsStatistic(UnivariateStatistic):
         **kwargs (Keyword arguments): The keyword arguments that is input to the statistic_cls.
     """
 
-    def __init__(self, statistic_cls, **kwargs):
+    def __init__(self, statistic_cls: type[UnivariateStatistic], **kwargs):
         self.statistic_cls = statistic_cls
 
         self.statistic = self.statistic_cls(**kwargs)
 
-    def update(self, num):
+    def update(self, num: float) -> "AbsStatistic":
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -28,7 +28,7 @@ class AbsStatistic(UnivariateStatistic):
 
         return self
 
-    def remove(self, num):
+    def remove(self, num: float) -> "AbsStatistic":
         """Updates the statistic by removing a particular value.
 
         Args:
@@ -42,7 +42,7 @@ class AbsStatistic(UnivariateStatistic):
 
         return self
 
-    def get(self):
+    def get(self) -> float:
         """Method to obtain the tracked statistic.
 
         Returns:

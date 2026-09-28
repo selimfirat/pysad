@@ -13,7 +13,7 @@ class AverageMeter(UnivariateStatistic):
         self.sum = 0.0
         self.num_items = 0
 
-    def update(self, num):
+    def update(self, num: float) -> "AverageMeter":
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -27,7 +27,7 @@ class AverageMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num):
+    def remove(self, num: float) -> "AverageMeter":
         """Updates the statistic by removing a particular value.
 
         Args:
@@ -41,7 +41,7 @@ class AverageMeter(UnivariateStatistic):
 
         return self
 
-    def get(self):
+    def get(self) -> float:
         """ Method to obtain the tracked statistic.
 
         Returns:

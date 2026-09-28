@@ -18,7 +18,7 @@ class VarianceMeter(UnivariateStatistic):
         self.sum_squares_meter = SumSquaresMeter()
         self.count_meter = CountMeter()
 
-    def update(self, num):
+    def update(self, num: float) -> "VarianceMeter":
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -34,7 +34,7 @@ class VarianceMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num):
+    def remove(self, num: float) -> "VarianceMeter":
         """Updates the statistic by removing particular value.
 
         Args:
@@ -50,7 +50,7 @@ class VarianceMeter(UnivariateStatistic):
 
         return self
 
-    def get(self):
+    def get(self) -> float:
         """ Method to obtain the tracked statistic.
 
         Returns:

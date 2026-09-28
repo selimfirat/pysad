@@ -14,7 +14,7 @@ class MedianMeter(UnivariateStatistic):
         self.lst = []
         self.num_items = 0
 
-    def update(self, num):
+    def update(self, num: float) -> "MedianMeter":
         """Updates the statistic with the value for a timestep.
 
         Args:
@@ -28,7 +28,7 @@ class MedianMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num):
+    def remove(self, num: float) -> "MedianMeter":
         """Updates the statistic by removing a particular value.
 
         Args:
@@ -42,7 +42,7 @@ class MedianMeter(UnivariateStatistic):
 
         return self
 
-    def get(self):
+    def get(self) -> float:
         """ Method to obtain the tracked statistic.
 
         Returns:

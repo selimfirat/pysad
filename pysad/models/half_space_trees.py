@@ -4,13 +4,13 @@ from pysad.core.base_model import BaseModel
 
 
 class HalfSpaceTrees(BaseModel):
-    """Half-Space Trees method :cite:`tan2011fast`.
+    """Half-Space Trees method :cite:`tan2011fast`. Instances are scored against the reference mass profile built from the previous window before being recorded into the next one (Algorithm 3). Algorithm 3 does not score the first window: its first `window_size` instances only build the initial reference profile. pysad does score them, which departs from the paper (and from river and scikit-multiflow, which return a constant during the first window): each first-window instance that `initial_window_X` does not cover is scored against the partial profile of the n instances recorded before it in that window (without its own mass), and that score is rescaled by `window_size / n`, which estimates the mass a full window would hold, so that first-window scores are on the same scale as later ones. The very first instance of a stream without `initial_window_X` has n = 0 and scores 0.0. From the instance after the first window on, scoring follows Algorithm 3. The paper scores `r * 2^k` at the terminal node only (the node at maximum depth or the first one on the path holding at most sizeLimit instances), whereas pysad sums `r * 2^k` over every node on the path, with no sizeLimit early stop.
 
     Args:
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
         feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
         window_size (int): The size of the window (Default=100).
-        num_trees (int): The number of treesint (Default=25).
+        num_trees (int): The number of trees (Default=25).
         max_depth (int): Maximum depth of the trees (Default=15).
         initial_window_X (np.float64 array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. Per Tan et al. (IJCAI 2011), Algorithm 3, this is expected to hold the first `window_size` instances of the stream; they are fitted to build the reference mass profile and are not scored (Default=None).
     """
@@ -77,17 +77,13 @@ class HalfSpaceTrees(BaseModel):
             split_value=p,
             k=current_depth)
 
-    def _update_mass(self, x, node, ref_window):
-        if ref_window:
-            node.r_mass += 1
-            node.l_mass += 1  # Does not exist in original since we want it to predict while building the first window
-        else:
-            node.l_mass += 1
+    def _update_mass(self, x, node):
+        node.l_mass += 1
 
         if node.k < self.max_depth:
             target_node = node.right if x[node.split_att] > node.split_value else node.left
 
-            self._update_mass(x, target_node, ref_window)
+            self._update_mass(x, target_node)
 
     def _update_model(self, node):
 
@@ -114,7 +110,7 @@ class HalfSpaceTrees(BaseModel):
         self.step += 1
 
         for root in self.roots:
-            self._update_mass(X, root, self.is_first_window)
+            self._update_mass(X, root)
 
         if self.step % self.window_size == 0:
             for root in self.roots:
@@ -122,29 +118,51 @@ class HalfSpaceTrees(BaseModel):
 
         return self
 
-    def _score_tree(self, X, node):
+    def _score_tree(self, X, node, first_window):
         if node is None:
             return 0.0
 
         target_node = node.right if X[node.split_att] > node.split_value else node.left
+        # During the first window there is no reference yet, so score against the mass recorded so far.
+        mass = node.l_mass if first_window else node.r_mass
 
-        return node.r_mass * (2**node.k) + self._score_tree(X, target_node)
+        return mass * (2**node.k) + self._score_tree(X, target_node, first_window)
 
     def score_partial(self, X):
-        """Scores the anomalousness of the next instance.
+        """Scores the anomalousness of the next instance against the reference mass profile built from the previous window, without recording it.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            float: The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance. During the first window there is no previous window to score against, and Algorithm 3 does not score these instances. pysad scores them against the partial profile of the n instances recorded so far in that window, rescaled by `window_size / n` to the scale of a full window (0.0 when nothing has been recorded yet). This rescaling is pysad's own and is not part of the paper.
         """
         s = 0.0
 
         for root in self.roots:
-            s += self._score_tree(X, root)
+            s += self._score_tree(X, root, self.is_first_window)
 
-        return -s
+        if self.is_first_window and self.step > 0:
+            # Not in the paper: scale the partial profile of the `step` instances recorded so far
+            # up to a full window, so first-window scores match the scale of later ones.
+            s *= self.window_size / self.step
+
+        return 0.0 - s
+
+    def fit_score_partial(self, X, y=None):
+        """Scores the next instance against the reference mass profile built from the previous window (during the first window, against the partial profile gathered so far, rescaled to a full window, as in `score_partial`), and then fits it, as Algorithm 3 does (score before updating the mass profile, and swap in the updated profile only at the end of a window).
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to fit and score.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance, as in `score_partial`.
+        """
+        score = self.score_partial(X)
+        self.fit_partial(X, y)
+
+        return score
 
     class _Node:
         def __init__(self, left, right, split_att, split_value, k):

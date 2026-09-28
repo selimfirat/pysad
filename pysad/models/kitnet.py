@@ -32,8 +32,11 @@ class KitNet(BaseModel):
         """Fits the model to the next instance.
 
         The first ``grace_feature_mapping`` instances learn the feature mapping;
-        subsequent grace-period instances train the autoencoders. Until the
-        feature mapping is built, :meth:`score_partial` returns ``0.0``.
+        the next ``grace_anomaly_detector`` instances train the autoencoders.
+        Until the feature mapping is built, :meth:`score_partial` returns ``0.0``.
+        While the autoencoders are still training, it returns real scores from
+        partially trained autoencoders, so they are unreliable for alerting.
+        After both grace periods the model stops learning and only scores.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.

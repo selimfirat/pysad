@@ -1,0 +1,47 @@
+name: stale
+
+# Marks issues and pull requests with no activity for 90 days as stale, and closes them
+# 30 days later if nothing happens. Any comment, commit or label change removes the label.
+on:
+  schedule:
+    # Daily at 03:17 UTC.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11.0.0
+        with:
+          days-before-stale: 90
+          days-before-close: 30
+          stale-issue-label: stale
+          stale-pr-label: stale
+          close-issue-reason: not_planned
+          # Issues that are waiting for a contributor, and anything on a milestone, never go stale.
+          exempt-issue-labels: "help wanted,good first issue"
+          exempt-pr-labels: "help wanted,dependencies"
+          exempt-all-milestones: true
+          exempt-draft-pr: true
+          operations-per-run: 200
+          stale-issue-message: >-
+            This issue has had no activity for 90 days and is marked as stale. It will be
+            closed in 30 days unless there is new activity. Comment or remove the `stale` label
+            to keep it open.
+          stale-pr-message: >-
+            This pull request has had no activity for 90 days and is marked as stale. It will be
+            closed in 30 days unless there is new activity. Push a commit, comment, or remove the
+            `stale` label to keep it open.
+          close-issue-message: >-
+            Closing this issue because it has been stale for 30 days. Feel free to reopen it, or
+            open a new issue, if it is still relevant.
+          close-pr-message: >-
+            Closing this pull request because it has been stale for 30 days. Feel free to reopen
+            it if you would like to continue the work.

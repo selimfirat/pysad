@@ -13,6 +13,7 @@ class WindowedMetric(BaseMetric):
         metric_cls (class): The metric class to be windowed.
         window_size (int): The window size.
         ignore_nonempty_last (bool): Whether to ignore the score of the nonempty last window. Note that the empty last window is always ignored.
+        **kwargs: Keyword arguments passed to `metric_cls` for every window, e.g. ``threshold`` for :class:`pysad.evaluation.PrecisionMetric`.
     """
 
     def __init__(
@@ -25,6 +26,7 @@ class WindowedMetric(BaseMetric):
         self.ignore_nonempty_last = ignore_nonempty_last
         self.window_size = window_size
         self.metric_cls = metric_cls
+        self.metric_kwargs = kwargs
 
         self.metric = self._init_metric(**kwargs)
 
@@ -55,7 +57,7 @@ class WindowedMetric(BaseMetric):
             self.num_windows += 1
             score = self.metric.get()
             self.score_meter.update(score)
-            self.metric = self._init_metric()
+            self.metric = self._init_metric(**self.metric_kwargs)
 
         return self
 

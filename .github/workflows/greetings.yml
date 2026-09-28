@@ -1,0 +1,31 @@
+name: greetings
+
+# Thanks people the first time they open an issue or a pull request in this repository.
+on:
+  issues:
+    types: [opened]
+  # pull_request_target runs in the base repository's context so the token can comment on
+  # pull requests from forks. Nothing from the pull request is checked out or executed.
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3.1.0
+        with:
+          issue_message: >-
+            Thanks for opening your first issue in PySAD! A maintainer will take a look soon.
+            In the meantime, please make sure the issue includes the PySAD version, a short
+            code snippet that reproduces the problem, and the full traceback if there is one.
+          pr_message: >-
+            Thanks for your first pull request to PySAD! CI will run the tests shortly.
+            Please make sure the change comes with a test and, for new features or models,
+            a note in `CHANGES.txt`. See `.github/CONTRIBUTING.md` for the full checklist.

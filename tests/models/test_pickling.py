@@ -18,7 +18,9 @@ MODEL_PARAMS = {
     "IForestASD": {"window_size": 32},
     "Inqmad": {"input_shape": 3, "dim_x": 32, "gamma": 100},
     "KNNCAD": {"probationary_period": 50},
-    "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0},
+    # Non-overlapping windows of 5 close 4 times among the NUM_NEXT compared values, and 80 buckets
+    # split the noise so that some of them score 1.0 (see test_relative_entropy_compared_scores_use_learned_state).
+    "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 80, "step": 5},
     "RobustRandomCutForest": {"tree_size": 32},
     "RSHash": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0]},
     "SeasonalESD": {"period": 4, "window_size": 16, "max_anomalies": 3},
@@ -106,6 +108,15 @@ def test_deepcopy(model_name):
     copied = copy.deepcopy(model)
 
     _assert_same_scores(model, copied, X, y)
+
+
+def test_relative_entropy_compared_scores_use_learned_state():
+    # Only a value that closes a window can score nonzero. If no compared value did, a round trip
+    # that lost RelativeEntropy's hypotheses would still give the same (all 0.0) scores.
+    X, y = _data("RelativeEntropy")
+    model = _fitted_model("RelativeEntropy", X, y)
+
+    assert _next_scores(model, X, y).max() == 1.0
 
 
 def test_rrcf_pickle_round_trip():

@@ -1,9 +1,9 @@
 """Score combination functions for the ensemblers.
 
-Copied from combo 0.1.3 (``combo/models/score_comb.py``, https://github.com/yzhao062/combo),
-the functions PyOD's ``pyod.models.combination`` wraps, so that pysad does not need combo,
-which is only published as a source distribution. The logic is unchanged. For licensing
-information, see the end of this file.
+Copied from combo 0.1.3 :cite:`zhao2020combo` (``combo/models/score_comb.py``,
+https://github.com/yzhao062/combo), the functions PyOD's ``pyod.models.combination`` wraps,
+so that pysad does not need combo, which is only published as a source distribution. The
+logic is unchanged. For licensing information, see the end of this file.
 """
 
 import numpy as np

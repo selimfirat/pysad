@@ -205,11 +205,10 @@ class InqMeasurement:
 
     @staticmethod
     def collapse(inputs, rho_res):
-        rho_h = jnp.matmul(jnp.conj(inputs), rho_res)
-        rho_res = jnp.einsum(
-            "...i, ...i -> ...", rho_h, jnp.conj(rho_h), optimize="optimal"
-        )  # shape (b,)
-        return rho_res
+        # Density estimate of the paper's Eq. 3, psi^T rho psi.
+        return jnp.einsum(
+            "...i, ij, ...j -> ...", jnp.conj(inputs), rho_res, inputs, optimize="optimal"
+        )
 
     @staticmethod
     def obtain_params_batches(values, batch_size):

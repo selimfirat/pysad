@@ -35,6 +35,8 @@ from sklearn.kernel_approximation import RBFSampler
 class Inqmad(BaseModel):
     """The Inqmad model for row-streaming data :cite:`xstream`. (a) an initial normal stream data point is captured (b) those points are mapped to a Hilbert space using adaptive Fourier features (AFF) (c) a memory density matrix $\rho_t$ is initialized using the points from the last step and the $\tau$-threshold value is defined (d) the stream of data points arrives (e) each point is mapped to a Hilbert space using (AFF) (f) a quantum measurement is performed between the streaming point and the memory density matrix $\rho_t$ (g) a $\tau$-threshold value is used to classify normal and anomalous points (h) detect whether the point was classified as normal (i) compute the updated memory density matrix $\rho_{t+1}$ using the normal classified streaming point (j) update the memory density matrix $\rho_t$ with the new matrix $\rho_{t+1}.
 
+    The anomaly score is the negative of the estimated density (not the paper's raw density), so higher scores mean more anomalous instances, consistent with the rest of pysad.
+
     Args:
         input_shape (int): number of features
         dim_x (int): random Fourier features dimension
@@ -84,12 +86,12 @@ class Inqmad(BaseModel):
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score (float): The anomalousness score of the input instance.
+            score (float): The negative of the estimated density for the input instance, as a Python float. Higher scores (lower estimated density) represent more anomalous instances.
         """
         if X.ndim == 1:
             X = np.expand_dims(X, axis=0)
 
-        return self.inqmad.predict(X)
+        return -self.inqmad.predict(X)
 
 
 class QFeatureMap_rff:
@@ -214,22 +216,31 @@ class InqMeasurement:
         num_batches = num_complete_batches + bool(leftover)
         return num_batches
 
-    @partial(jit, static_argnums=(0,))
-    def predict(self, values):
-        num_batches = InqMeasurement.obtain_params_batches(values, self.batch_size)
+    @staticmethod
+    @partial(jit, static_argnums=(3, 4, 5))
+    def predict_pure(values, rho_res, num_samples, fm_x, collapse_batch, batch_size):
+        num_batches = InqMeasurement.obtain_params_batches(values, batch_size)
         results = None
-        rho_res = self.rho_res / self.num_samples
+        rho_res = rho_res / num_samples
         num_train = values.shape[0]
         perm = jnp.arange(num_train)
         for i in range(num_batches):
-            batch_idx = perm[i * self.batch_size : (i + 1) * self.batch_size]
+            batch_idx = perm[i * batch_size : (i + 1) * batch_size]
             batch = values[batch_idx, :]
 
-            inputs = self.fm_x(batch)
-            batch_probs = self.collapse_batch(inputs, rho_res)
+            inputs = fm_x(batch)
+            batch_probs = collapse_batch(inputs, rho_res)
             results = (
                 jnp.concatenate([results, batch_probs], axis=0)
                 if results is not None
                 else batch_probs
             )
         return results
+
+    def predict(self, values):
+        # rho_res and num_samples are passed as traced arguments (not read from
+        # self inside the jitted function) so a later fit_partial's update is
+        # picked up instead of being baked into a stale compiled trace.
+        return self.predict_pure(
+            values, self.rho_res, self.num_samples, self.fm_x, self.collapse_batch, self.batch_size
+        )

@@ -37,10 +37,9 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - name: Run actionlint
         # The runner comes with shellcheck, which actionlint uses for the run: scripts.
-        # The lint dependency group in pyproject.toml pins the pre-commit version.
-        run: |
-          uv pip install --system --group lint
-          pre-commit run actionlint --all-files
+        # The lint dependency group in pyproject.toml pins the pre-commit version. --only-group
+        # installs just that group into a venv, without the project or its dependencies.
+        run: uv run --only-group lint pre-commit run actionlint --all-files
 
   zizmor:
     runs-on: ubuntu-latest
@@ -56,6 +55,4 @@ jobs:
           # Turns on zizmor's online audits, such as impostor commits, version comments
           # that don't match the pinned SHA, and actions with known vulnerabilities.
           GH_TOKEN: ${{ github.token }}
-        run: |
-          uv pip install --system --group lint
-          pre-commit run zizmor --all-files
+        run: uv run --only-group lint pre-commit run zizmor --all-files

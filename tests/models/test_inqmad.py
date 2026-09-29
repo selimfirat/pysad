@@ -113,3 +113,18 @@ def test_density_matrix_is_mean_of_fitted_states():
     rho = np.asarray(model.inqmad.rho_res, dtype=np.float64) / model.inqmad.num_samples
 
     np.testing.assert_allclose(rho, np.einsum("ni,nj->ij", states, states) / 12, atol=1e-6)
+
+
+def test_score_partial_is_negated_paper_density():
+    """Regression test for #120: the score is the negated density
+    estimate psi^T rho psi of the paper's Eq. 3, with rho normalised by
+    the number of fitted instances.
+    """
+    rng = np.random.default_rng(0)
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0).fit(rng.random((50, 3)))
+    q = rng.random(3)
+
+    psi = np.asarray(model.inqmad.fm_x(q[None, :]), dtype=np.float64)[0]
+    rho = np.asarray(model.inqmad.rho_res, dtype=np.float64) / model.inqmad.num_samples
+
+    assert model.score_partial(q) == pytest.approx(-np.einsum("i,ij,j->", psi, rho, psi), rel=1e-5)

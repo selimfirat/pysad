@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import numpy as np
 from pyod.models.combination import average, maximization, median, moa, aom
 from pysad.core.base_postprocessor import BasePostprocessor
 
@@ -42,7 +43,7 @@ class PYODScoreEnsembler(BasePostprocessor):
         Returns:
             float: Resulting anomaly score.
         """
-        scores = scores.reshape(1, -1)
+        scores = np.asarray(scores, dtype=np.float64).reshape(1, -1)
 
         return float(self._combine(scores)[0])
 

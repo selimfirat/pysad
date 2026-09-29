@@ -38,7 +38,7 @@ class Inqmad(BaseModel):
     Args:
         input_shape (int): number of features
         dim_x (int): random Fourier features dimension
-        gamma (int): kernel parameter for the random Fourier features
+        gamma (float): kernel parameter for the random Fourier features
         random_state (int, np.random.RandomState or None): Seed or random number generator for the random Fourier features. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
         batch_size (int): training samples processed by iteration
 
@@ -118,9 +118,9 @@ class QFeatureMap_rff:
     """The random Fourier features for Inqmad :cite:`gallego2022inqmad`.
 
     Args:
-        input_shape (int): number of features
+        input_dim (int): number of features
         dim (int): random Fourier features dimension
-        gamma (int): kernel parameter for the random Fourier features
+        gamma (float): kernel parameter for the random Fourier features
         random_state (int, np.random.RandomState or None): Seed or random number generator for the random Fourier features. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
@@ -177,7 +177,7 @@ class InqMeasurement:
     Args:
         input_shape (int): number of features
         dim_x (int): random Fourier features dimension
-        gamma (int): kernel parameter for the random Fourier features
+        gamma (float): kernel parameter for the random Fourier features
         random_state (int, np.random.RandomState or None): Seed or random number generator for the random Fourier features. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
         batch_size (int): training samples processed by iteration
     """

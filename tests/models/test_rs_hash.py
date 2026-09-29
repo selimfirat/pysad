@@ -12,6 +12,35 @@ def generate_stream(seed=61, scale=1.0):
     return X * scale, y
 
 
+def exact_count_scores(model, X):
+    """Scores X with fit_score_partial semantics, keeping exact per-cell decayed counts in a dict.
+
+    This is the unbounded table pysad used before #122, and what a count-min sketch computes when
+    no two live cells share a slot. Only the model's grid (`_cell_keys`), decay and ensemble size
+    are used; its sketch is not read or changed.
+    """
+    import numpy as np
+
+    exact_counts = {}
+    scores = []
+    for index, x in enumerate(X, 1):
+        keys = model._cell_keys(x)
+
+        score_instance = 0.0
+        for key in keys:
+            tstamp, wt = exact_counts.get(key, (index, 0.0))
+            decayed = wt * np.power(2, -model.decay * (index - tstamp))
+            score_instance += np.log2(1 + decayed)
+        scores.append(-score_instance / model.m)
+
+        for key in keys:
+            tstamp, wt = exact_counts.get(key, (index, 0.0))
+            decayed = wt * np.power(2, -model.decay * (index - tstamp))
+            exact_counts[key] = (index, decayed + 1)
+
+    return np.array(scores)
+
+
 def test_rs_hash_auroc():
     from sklearn.metrics import roc_auc_score
 
@@ -67,8 +96,6 @@ def test_rs_hash_score_partial_scores_given_instance():
 
 
 def test_rs_hash_score_partial_has_no_side_effects():
-    import copy
-
     import numpy as np
 
     from pysad.models import RSHash
@@ -79,15 +106,251 @@ def test_rs_hash_score_partial_has_no_side_effects():
     model.fit(np.random.uniform(size=(50, 3)))
 
     x = np.array([0.3, 0.6, 0.9])
-    sketches_before = copy.deepcopy(model.cmsketches)
+    timestamps_before = model.sketch_timestamps.copy()
+    counts_before = model.sketch_counts.copy()
     index_before = model.index
 
     score1 = model.score_partial(x)
     score2 = model.score_partial(x)
 
     assert score1 == score2
-    assert model.cmsketches == sketches_before
+    np.testing.assert_array_equal(model.sketch_timestamps, timestamps_before)
+    np.testing.assert_array_equal(model.sketch_counts, counts_before)
     assert model.index == index_before
+
+
+def test_rs_hash_model_size_does_not_grow_with_the_stream():
+    import pickle
+
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    rng = np.random.default_rng(0)
+    # A slowly drifting stream (as in #122) keeps reaching new grid cells, which a per-cell table
+    # would keep forever.
+    X = rng.random((3000, 5)) + np.linspace(0, 10, 3000)[:, None]
+
+    model = RSHash(
+        feature_mins=np.zeros(5),
+        feature_maxes=np.full(5, 11.0),
+        num_components=10,
+        num_hash_fns=3,
+        hash_range=97,
+    )
+    assert model.sketch_timestamps.shape == (3, 97)
+    assert model.sketch_counts.shape == (3, 97)
+
+    pickled_sizes = []
+    for i, x in enumerate(X, 1):
+        model.fit_score_partial(x)
+        if i in (1000, 3000):
+            # model.index stays below 65,536, so pickle stores it in the same number of bytes both times.
+            pickled_sizes.append(len(pickle.dumps(model)))
+
+    assert pickled_sizes[0] == pickled_sizes[1]
+
+
+def test_rs_hash_more_hash_tables_move_scores_toward_exact_counts():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    rng = np.random.default_rng(0)
+    X = rng.random((1000, 5)) + np.linspace(0, 10, 1000)[:, None]
+
+    def run(num_hash_fns):
+        fix_seed(0)
+        model = RSHash(
+            feature_mins=np.zeros(5),
+            feature_maxes=np.full(5, 11.0),
+            num_components=20,
+            num_hash_fns=num_hash_fns,
+            hash_range=17,
+        )
+        scores = np.array([model.fit_score_partial(x) for x in X])
+        return model, scores
+
+    model_w1, scores_w1 = run(1)
+    model_w3, scores_w3 = run(3)
+
+    # num_hash_fns must not perturb the sampled subspaces (V) or shifts (alpha) under a fixed
+    # seed, or a difference below could come from a different grid instead of from the sketch
+    # actually reading more tables.
+    assert len(model_w1.V) == len(model_w3.V)
+    for v1, v3 in zip(model_w1.V, model_w3.V, strict=True):
+        np.testing.assert_array_equal(v1, v3)
+    for a1, a3 in zip(model_w1.alpha, model_w3.alpha, strict=True):
+        np.testing.assert_array_equal(a1, a3)
+
+    # Each table's hash parameters are drawn with their own scalar calls, so table 0 gets the same
+    # parameters, and so the same counts, whatever num_hash_fns is.
+    assert model_w1._hash_params[0] == model_w3._hash_params[0]
+    np.testing.assert_array_equal(model_w1.sketch_counts[0], model_w3.sketch_counts[0])
+
+    # Collisions can only raise a table's count, and the score reads the smallest count over the
+    # tables, so extra tables can only lower the overestimate: exact >= w=3 >= w=1 elementwise.
+    # (Taking the max or mean over the tables instead breaks this ordering.)
+    scores_exact = exact_count_scores(model_w1, X)
+    assert np.all(scores_w3 >= scores_w1)
+    assert np.any(scores_w3 > scores_w1)
+    assert np.all(scores_exact >= scores_w3 - 1e-12)
+
+
+def test_rs_hash_large_hash_range_matches_exact_count_behavior():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    rng = np.random.default_rng(0)
+    X = rng.uniform(size=(30, 3))
+
+    fix_seed(123)
+    model = RSHash(
+        feature_mins=[0.0] * 3,
+        feature_maxes=[1.0] * 3,
+        num_components=5,
+        num_hash_fns=2,
+        hash_range=2_000_000,
+    )
+
+    # A fixed-size sketch degenerates to exact counting when its hash_range is large enough that
+    # this short stream causes no slot collisions.
+    exact_scores = exact_count_scores(model, X)
+    model_scores = np.array([model.fit_score_partial(x) for x in X])
+
+    np.testing.assert_allclose(model_scores, exact_scores)
+
+
+def test_rs_hash_default_sketch_is_one_table_of_10000_slots():
+    import numpy as np
+
+    from pysad.models import RSHash
+
+    model = RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3))
+
+    # p = 10,000 is the paper's typical hash range (§II-A).
+    assert model.hash_range == 10000
+    assert model.sketch_counts.shape == (1, 10000)
+    assert model.sketch_timestamps.shape == (1, 10000)
+
+
+def test_rs_hash_cell_keys_are_tuples_of_python_ints():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    model = RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), num_components=10)
+
+    # hash() of a tuple of Python ints is the same in every process, while str and bytes hashes
+    # change with PYTHONHASHSEED, so int keys keep slots (and scores) reproducible across processes
+    # and after unpickling. The second instance lies below and above the feature range.
+    for x in (np.array([0.2, 0.5, 0.9]), np.array([-3.0, 0.5, 40.0])):
+        keys = model._cell_keys(x)
+        assert len(keys) == model.m
+        for key in keys:
+            assert type(key) is tuple
+            assert all(type(v) is int for v in key)
+
+
+def test_rs_hash_cells_at_minus_one_and_minus_two_do_not_share_slots():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    model = RSHash(feature_mins=[0.0], feature_maxes=[1.0], num_components=1, num_hash_fns=2)
+    f, alpha = model.f[0], model.alpha[0][0]
+
+    # The single component's grid coordinate floor((x + alpha) / f) is -1 and -2 for these instances.
+    x_minus_one = np.array([-alpha - 0.5 * f])
+    x_minus_two = np.array([-alpha - 1.5 * f])
+    assert np.floor((x_minus_one[0] + alpha) / f) == -1
+    assert np.floor((x_minus_two[0] + alpha) / f) == -2
+
+    # CPython hashes -1 like -2 (hash(-1) == hash(-2)), so unencoded keys (0, -1) and (0, -2) got
+    # the same hash and shared a slot in every table.
+    (key_minus_one,) = model._cell_keys(x_minus_one)
+    (key_minus_two,) = model._cell_keys(x_minus_two)
+    assert model._cell_slots(key_minus_one) != model._cell_slots(key_minus_two)
+
+    for _ in range(20):
+        model.fit_partial(x_minus_one)
+
+    assert model.score_partial(x_minus_two) == 0.0
+
+
+def test_rs_hash_builds_where_randint_defaults_to_32_bit_ints(monkeypatch):
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    # np.random.randint defaults to the C long, which is 32 bits on Windows, so drawing the hash
+    # parameters below the 61-bit prime without an explicit 64-bit dtype raises there. Emulate that
+    # default so that a missing dtype fails this test on every platform, not only on Windows.
+    randint = np.random.randint
+
+    def randint_with_32_bit_default(low, high=None, size=None, dtype=int):
+        return randint(low, high, size, dtype=np.int32 if dtype is int else dtype)
+
+    monkeypatch.setattr(np.random, "randint", randint_with_32_bit_default)
+
+    fix_seed(0)
+    model = RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), num_hash_fns=3)
+
+    params = [value for pair in model._hash_params for value in pair]
+    assert all(0 <= value < model._prime for value in params)
+    assert max(params) >= 2**32
+    assert isinstance(model.fit_score_partial(np.array([0.1, 0.2, 0.3])), float)
+
+
+def test_rs_hash_accepts_numpy_integer_sketch_sizes():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    X = np.random.default_rng(0).random((50, 3))
+
+    def run(num_hash_fns, hash_range):
+        fix_seed(0)
+        model = RSHash(
+            feature_mins=np.zeros(3),
+            feature_maxes=np.ones(3),
+            num_components=10,
+            num_hash_fns=num_hash_fns,
+            hash_range=hash_range,
+        )
+        return model.fit_score(X)
+
+    expected = run(2, 97)
+    # A NumPy integer narrower than 64 bits used to overflow in the slot arithmetic on the first fit.
+    for int_type in (np.int16, np.uint16, np.int32, np.int64):
+        np.testing.assert_array_equal(run(int_type(2), int_type(97)), expected)
+
+
+def test_rs_hash_rejects_invalid_sketch_sizes():
+    import numpy as np
+    import pytest
+
+    from pysad.models import RSHash
+
+    for name in ("num_hash_fns", "hash_range"):
+        for value in (0, -1, np.int32(0)):
+            with pytest.raises(ValueError, match=f"{name} must be at least 1"):
+                RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), **{name: value})
+
+        for value in (True, np.bool_(True), 2.0, 2.5, "4", None):
+            with pytest.raises(TypeError, match=f"{name} must be an int"):
+                RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), **{name: value})
 
 
 def test_rs_hash_sampling_points_warns_and_has_no_effect():

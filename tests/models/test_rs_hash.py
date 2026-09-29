@@ -195,6 +195,34 @@ def test_rs_hash_large_hash_range_matches_exact_count_behavior():
     np.testing.assert_allclose(model_scores, np.array(exact_scores))
 
 
+def test_rs_hash_cells_at_minus_one_and_minus_two_do_not_share_slots():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    model = RSHash(feature_mins=[0.0], feature_maxes=[1.0], num_components=1, num_hash_fns=2)
+    f, alpha = model.f[0], model.alpha[0][0]
+
+    # The single component's grid coordinate floor((x + alpha) / f) is -1 and -2 for these instances.
+    x_minus_one = np.array([-alpha - 0.5 * f])
+    x_minus_two = np.array([-alpha - 1.5 * f])
+    assert np.floor((x_minus_one[0] + alpha) / f) == -1
+    assert np.floor((x_minus_two[0] + alpha) / f) == -2
+
+    # CPython hashes -1 like -2 (hash(-1) == hash(-2)), so unencoded keys (0, -1) and (0, -2) got
+    # the same hash and shared a slot in every table.
+    (key_minus_one,) = model._cell_keys(x_minus_one)
+    (key_minus_two,) = model._cell_keys(x_minus_two)
+    assert model._cell_slots(key_minus_one) != model._cell_slots(key_minus_two)
+
+    for _ in range(20):
+        model.fit_partial(x_minus_one)
+
+    assert model.score_partial(x_minus_two) == 0.0
+
+
 def test_rs_hash_builds_where_randint_defaults_to_32_bit_ints(monkeypatch):
     import numpy as np
 

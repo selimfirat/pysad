@@ -104,5 +104,3 @@ ignore = [
 "docs/conf.py" = ["F821"]
 # The examples unpack (X, y) pairs from the streamers to show the API, even where y is unused.
 "examples/**" = ["B007"]
-# The warning filters have to be installed before the subpackages are imported.
-"pysad/__init__.py" = ["E402"]

@@ -69,12 +69,6 @@ match.rules = ["ruff:F821", "bandit:B102"]
 match.file_patterns = ["docs/conf.py"]
 set.ignored = true
 
-# Warning filters must be installed before the subpackages are imported.
-[[triage]]
-match.rules = ["ruff:E402"]
-match.file_patterns = ["pysad/__init__.py"]
-set.ignored = true
-
 # Package __init__ modules import names to re-export them, including the optional Inqmad.
 [[triage]]
 match.rules = ["ruff:F401"]

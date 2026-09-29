@@ -24,14 +24,11 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         self.y_pred.append(y_pred)
 
     def get(self) -> float:
-        """Gets the current value of the score, or 0.0 if no samples were recorded.
+        """Gets the current value of the score.
 
         Returns:
             float: The current score.
         """
-        if not self.y_true:
-            return 0.0
-
         score = self._evaluate(self.y_true, self.y_pred)
 
         return score
@@ -77,6 +74,8 @@ class PrecisionMetric(BaseSKLearnMetric):
         self.threshold = threshold
 
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
+        if not y_true:
+            return 0.0
         return precision_score(y_true, _apply_threshold(y_pred, self.threshold))
 
 
@@ -94,6 +93,8 @@ class RecallMetric(BaseSKLearnMetric):
         self.threshold = threshold
 
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
+        if not y_true:
+            return 0.0
         return recall_score(y_true, _apply_threshold(y_pred, self.threshold))
 
 
@@ -113,4 +114,6 @@ class AUPRMetric(BaseSKLearnMetric):
     """
 
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
+        if not y_true:
+            raise ValueError("No samples recorded. PR AUC score is not defined in that case.")
         return average_precision_score(y_true, y_pred)

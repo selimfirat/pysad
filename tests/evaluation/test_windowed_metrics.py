@@ -92,6 +92,7 @@ def test_windowed_metric_ignore_nonempty_last():
 
 def test_windowed_metric_empty_window():
     """Test WindowedMetric behavior with empty window."""
+    import pytest
     from pysad.evaluation import (
         AUPRMetric,
         AUROCMetric,
@@ -100,9 +101,15 @@ def test_windowed_metric_empty_window():
         WindowedMetric,
     )
 
-    for metric_cls in (PrecisionMetric, RecallMetric, AUPRMetric, AUROCMetric):
+    for metric_cls in (PrecisionMetric, RecallMetric):
         assert metric_cls().get() == 0.0
         assert WindowedMetric(metric_cls, window_size=10).get() == 0.0
+
+    for metric_cls in (AUPRMetric, AUROCMetric):
+        with pytest.raises(ValueError):
+            metric_cls().get()
+        with pytest.raises(ValueError):
+            WindowedMetric(metric_cls, window_size=10).get()
 
 
 def test_windowed_metric_various_metrics():

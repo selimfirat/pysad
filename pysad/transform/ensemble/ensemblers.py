@@ -1,9 +1,10 @@
 from abc import abstractmethod
 
 import numpy as np
-from pyod.models.combination import aom, average, maximization, median, moa
 
 from pysad.core.base_postprocessor import BasePostprocessor
+
+from ._combination import aom, average, maximization, median, moa
 
 
 class PYODScoreEnsembler(BasePostprocessor):

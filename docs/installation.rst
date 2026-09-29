@@ -28,7 +28,6 @@ Alternatively, you can install the library directly using the source code in Git
 * scipy: 1.15.3
 * statsmodels: 0.15.0 (for ``pysad.models.SeasonalESD``, ``pysad.models.SeasonalHybridESD`` and ``pysad.transform.preprocessing.ModifiedSTLResidualTransformer``)
 * pyod: >=3.6.2
-* combo: 0.1.3
 
 **Optional Dependencies:**
 

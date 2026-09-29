@@ -192,17 +192,20 @@ class RSHash(BaseModel):
             X (np.float64 array of shape (num_features,)): The instance to hash.
 
         Returns:
-            list of tuple: The cell key of each ensemble component, in order.
+            list of tuple of int: The cell key of each ensemble component, in order: the component's index followed by its zigzag-encoded grid coordinates.
         """
         # Equation 1 of the paper: normalize with the minimum and maximum of each feature.
         X = (np.asarray(X, dtype=np.float64) - self.minimum) / self.range
 
         mod_entries = []
         for r in range(self.m):
-            Y = np.floor((X[self.V[r]] + self.alpha[r]) / float(self.f[r]))
+            Y = np.floor((X[self.V[r]] + self.alpha[r]) / float(self.f[r])).astype(np.int32)
 
-            mod_entry = np.insert(Y, 0, r)
-            mod_entries.append(tuple(int(v) for v in mod_entry.astype(np.int32)))
+            # Zigzag-encode the coordinates (0, -1, 1, -2, 2, ... -> 0, 1, 2, 3, 4, ...) so none is -1:
+            # CPython hashes -1 like -2, so cells differing only in a -1/-2 coordinate would
+            # otherwise hash alike and share a slot in every table. tolist() yields Python ints, so
+            # the key hashes the same in every process.
+            mod_entries.append((r,) + tuple(2 * y if y >= 0 else -2 * y - 1 for y in Y.tolist()))
 
         return mod_entries
 

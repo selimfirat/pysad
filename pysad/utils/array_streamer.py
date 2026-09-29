@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from typing import Any, overload
 
 import numpy as np
+from sklearn.utils import check_random_state
 
 from pysad.core.base_streamer import BaseStreamer
 
@@ -11,10 +12,17 @@ class ArrayStreamer(BaseStreamer):
 
     Args:
         shuffle (bool): Whether shuffle the data initially (Default=False).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the shuffling. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    def __init__(self, shuffle: bool = False) -> None:
+    # The class-level default keeps streamers pickled before `random_state` was added loadable.
+    random_state: int | np.random.RandomState | None = None
+
+    def __init__(
+        self, shuffle: bool = False, random_state: int | np.random.RandomState | None = None
+    ) -> None:
         self.shuffle = shuffle
+        self.random_state = random_state
 
     @overload
     def iter(self, X: np.ndarray, y: None = None) -> Iterator[np.ndarray]: ...
@@ -33,7 +41,7 @@ class ArrayStreamer(BaseStreamer):
         """
         indices = list(range(len(X)))
         if self.shuffle:
-            np.random.shuffle(indices)
+            check_random_state(self.random_state).shuffle(indices)
 
         if y is None:
             for i in indices:

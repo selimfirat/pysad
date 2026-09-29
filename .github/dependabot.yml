@@ -36,3 +36,19 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+  # Keeps the hash-locked release build tools (build, twine) current.
+  - package-ecosystem: "pip"
+    directory: "/.github/requirements"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "build"
+    groups:
+      build-tools:
+        patterns:
+          - "*"

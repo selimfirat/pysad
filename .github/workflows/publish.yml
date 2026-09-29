@@ -107,8 +107,9 @@ jobs:
         with:
           python-version: "3.13"
 
+      # Hash-locked; regenerate with the pip-compile command in the header of the file.
       - name: Install build tools
-        run: python -m pip install --upgrade build twine
+        run: python -m pip install --require-hashes -r .github/requirements/build.txt
 
       - name: Build package
         run: python -m build

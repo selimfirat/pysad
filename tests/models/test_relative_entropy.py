@@ -42,7 +42,7 @@ def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52, step=
 
     def relative_entropy(p, q):  # D(p || q) = sum_k p_k log(p_k / q_k)
         total = 0.0
-        for p_k, q_k in zip(p, q):
+        for p_k, q_k in zip(p, q, strict=True):
             if p_k > 0:
                 if q_k == 0:
                     return float("inf")
@@ -204,7 +204,7 @@ def test_relative_entropy_score_partial_has_no_side_effects():
     assert score1 == score2
     assert model.util == util_before
     assert len(model.P) == len(P_before)
-    for hypothesis, hypothesis_before in zip(model.P, P_before):
+    for hypothesis, hypothesis_before in zip(model.P, P_before, strict=True):
         np.testing.assert_array_equal(hypothesis, hypothesis_before)
     assert model.c == c_before
     assert model.m == m_before

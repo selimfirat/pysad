@@ -19,7 +19,7 @@ def test_iforest_asd_ignores_labels_without_warning():
 
         model = IForestASD(window_size=16)
         scores = []
-        for xi, yi in zip(X, y):
+        for xi, yi in zip(X, y, strict=True):
             scores.append(model.fit_score_partial(xi, yi if with_labels else None))
 
         return np.array(scores)
@@ -165,7 +165,7 @@ def test_reference_window_model_basic():
     # Test fitting and scoring
     test_instances = np.random.random((15, 2))
     
-    for i, instance in enumerate(test_instances):
+    for instance in test_instances:
         model.fit_partial(instance)
         score = model.score_partial(instance)
         assert isinstance(score, (int, float))
@@ -188,7 +188,7 @@ def test_reference_window_model_without_initial():
     np.random.seed(42)
     test_instances = np.random.random((25, 2))
     
-    for i, instance in enumerate(test_instances):
+    for instance in test_instances:
         model.fit_partial(instance)
         score = model.score_partial(instance)
         assert isinstance(score, (int, float))
@@ -222,7 +222,7 @@ def test_reference_window_model_with_labels():
         test_instances = np.random.random((10, 2))
         test_labels = np.random.randint(0, 2, 10)
         
-        for i, (instance, label) in enumerate(zip(test_instances, test_labels)):
+        for instance, label in zip(test_instances, test_labels, strict=True):
             model.fit_partial(instance, label)
             score = model.score_partial(instance)
             assert isinstance(score, (int, float))
@@ -248,7 +248,7 @@ def test_reference_window_model_window_update():
     # Add instances and verify model retrains
     test_instances = np.random.random((8, 2))
     
-    for i, instance in enumerate(test_instances):
+    for instance in test_instances:
         model.fit_partial(instance)
         score = model.score_partial(instance)
         assert isinstance(score, (int, float))

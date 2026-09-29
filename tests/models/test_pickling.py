@@ -57,7 +57,7 @@ def _make_model(model_name, X):
 def _fitted_model(model_name, X, y):
     fix_seed(SEED)
     model = _make_model(model_name, X)
-    for xi, yi in zip(X[:NUM_FIT], y[:NUM_FIT]):
+    for xi, yi in zip(X[:NUM_FIT], y[:NUM_FIT], strict=True):
         model.fit_partial(xi, yi)
 
     return model
@@ -66,7 +66,7 @@ def _fitted_model(model_name, X, y):
 def _next_scores(model, X, y):
     # Models such as RobustRandomCutForest and RandomModel draw from the global numpy generator.
     fix_seed(SEED + 1)
-    scores = [model.fit_score_partial(xi, yi) for xi, yi in zip(X[NUM_FIT:], y[NUM_FIT:])]
+    scores = [model.fit_score_partial(xi, yi) for xi, yi in zip(X[NUM_FIT:], y[NUM_FIT:], strict=True)]
 
     return np.array([np.asarray(score, dtype=np.float64).ravel() for score in scores])
 
@@ -129,7 +129,7 @@ def test_rrcf_pickle_round_trip():
 
     assert restored.index == model.index == NUM_FIT
     assert len(restored.forest) == model.num_trees
-    for original_tree, restored_tree in zip(model.forest, restored.forest):
+    for original_tree, restored_tree in zip(model.forest, restored.forest, strict=True):
         assert original_tree.rng is np.random
         assert restored_tree.rng is np.random
         assert sorted(restored_tree.leaves) == sorted(original_tree.leaves)

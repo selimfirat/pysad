@@ -141,7 +141,7 @@ def test_half_space_trees_scores_a_batch_fitted_on_less_than_a_window():
     # The first window is still open, so the test batch is scored against the 60 instances fitted so far,
     # rescaled to a full window of 100.
     assert model.is_first_window is True
-    for x, score in zip(X_test, scores):
+    for x, score in zip(X_test, scores, strict=True):
         assert score == _score_against(model, X_train, x) * (100 / 60)
     assert np.all(np.delete(scores, 7) < scores[7])
 
@@ -160,7 +160,7 @@ def test_half_space_trees_scores_against_the_first_window_right_after_it_closes(
     scores = model.fit_score(X)
 
     # From the instance right after the first window on, the reference is the whole first window.
-    for x, score in zip(X[window_size:], scores[window_size:]):
+    for x, score in zip(X[window_size:], scores[window_size:], strict=True):
         assert score == _score_against(model, X[:window_size], x)
 
 
@@ -215,7 +215,7 @@ def test_half_space_trees_window_swap_replaces_the_reference_with_the_last_windo
     model.fit(X[window_size:3 * window_size])
     assert all(masses == (window_size, 0) for masses in root_masses())
     scores = model.fit_score(X[3 * window_size:])
-    for x, score in zip(X[3 * window_size:], scores):
+    for x, score in zip(X[3 * window_size:], scores, strict=True):
         assert score == _score_against(model, X[2 * window_size:3 * window_size], x)
 
 

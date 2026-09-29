@@ -160,7 +160,7 @@ def test_float_scores_work_downstream():
     ensemblers = [AverageScoreEnsembler(), MaximumScoreEnsembler(), MedianScoreEnsembler()]
     metrics = [AUROCMetric(), AUPRMetric(), WindowedMetric(AUROCMetric, window_size=50)]
 
-    for xi, yi in zip(X, y):
+    for xi, yi in zip(X, y, strict=True):
         scores = [model.fit_score_partial(xi) for model in models]
 
         for postprocessor in postprocessors:

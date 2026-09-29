@@ -1,0 +1,47 @@
+name: codeql
+
+# Runs GitHub CodeQL static analysis on the Python package and on the workflow
+# files themselves. Results appear in the repository's Security tab.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    # Weekly, so new queries also run against code that has not changed.
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # PR runs share a group per PR (so stale pushes get cancelled); every other run gets its own group.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Uploads the SARIF results to code scanning.
+      security-events: write
+      # Lets the analysis read workflow run metadata.
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, actions]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
+        with:
+          languages: ${{ matrix.language }}
+          # Python and Actions are interpreted, so no build is needed.
+          build-mode: none
+      - uses: github/codeql-action/analyze@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
+        with:
+          category: "/language:${{ matrix.language }}"

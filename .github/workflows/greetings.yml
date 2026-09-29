@@ -5,8 +5,9 @@ on:
   issues:
     types: [opened]
   # pull_request_target runs in the base repository's context so the token can comment on
-  # pull requests from forks. Nothing from the pull request is checked out or executed.
-  pull_request_target:
+  # pull requests from forks. Nothing from the pull request is checked out or executed,
+  # which is why zizmor's dangerous-triggers finding is ignored here.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened]
 
 permissions:

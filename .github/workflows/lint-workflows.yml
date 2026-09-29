@@ -1,0 +1,57 @@
+name: lint workflows
+
+# Lints the GitHub Actions setup with the actionlint and zizmor hooks pinned in
+# .pre-commit-config.yaml, so the results match `pre-commit run` locally. actionlint catches
+# syntax and expression errors and runs shellcheck on the run: scripts. zizmor catches
+# security problems: unpinned actions, broad token permissions, persisted credentials,
+# template injection, dangerous triggers and Dependabot updates without a cooldown.
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/**"
+      - ".pre-commit-config.yaml"
+  pull_request:
+    paths:
+      - ".github/**"
+      - ".pre-commit-config.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # PR runs share a group per PR (so stale pushes get cancelled); every push gets its own group.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Run actionlint
+        # The runner comes with shellcheck, which actionlint uses for the run: scripts.
+        # requirements-dev.txt pins the pre-commit version.
+        run: uvx --constraints requirements-dev.txt pre-commit run actionlint --all-files
+
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Run zizmor
+        env:
+          # Turns on zizmor's online audits, such as impostor commits, version comments
+          # that don't match the pinned SHA, and actions with known vulnerabilities.
+          GH_TOKEN: ${{ github.token }}
+        run: uvx --constraints requirements-dev.txt pre-commit run zizmor --all-files

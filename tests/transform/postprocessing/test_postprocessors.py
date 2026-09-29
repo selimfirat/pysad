@@ -84,8 +84,8 @@ def test_zscore_postprocessors_output_values():
                                        (RunningZScorePostprocessor(window_size=WINDOW_SIZE), WINDOW_SIZE)]:
         postprocessed_scores = postprocessor.fit_transform(scores)
 
-        # A single observation has zero variance, so the first z-score is undefined.
-        assert np.isnan(postprocessed_scores[0])
+        # A single observation has zero deviation from its own mean.
+        assert postprocessed_scores[0] == 0.0
 
         expected = []
         for i in range(1, len(scores)):
@@ -94,6 +94,20 @@ def test_zscore_postprocessors_output_values():
             expected.append((scores[i] - np.mean(values)) / np.std(values, ddof=0))
 
         np.testing.assert_allclose(postprocessed_scores[1:], expected, err_msg=type(postprocessor).__name__)
+
+
+def test_zscore_postprocessors_return_zero_for_constant_stream():
+    import numpy as np
+
+    scores = np.full(10, 3.5)
+
+    for postprocessor in [ZScorePostprocessor(),
+                          RunningZScorePostprocessor(window_size=WINDOW_SIZE)]:
+        np.testing.assert_array_equal(
+            postprocessor.fit_transform(scores),
+            np.zeros_like(scores),
+            err_msg=type(postprocessor).__name__,
+        )
 
 
 def test_postprocessors_partial_matches_batch():
@@ -119,5 +133,5 @@ def test_postprocessors_partial_matches_batch():
         postprocessor = postprocessor_cls(**params_dict)
         partial_scores = [postprocessor.fit_transform_partial(score) for score in scores]
 
-        # assert_allclose treats nan == nan, which covers the z-score postprocessors' first output.
+        # All postprocessors should produce the same values through either API.
         np.testing.assert_allclose(partial_scores, batch_scores, err_msg=postprocessor_cls.__name__)

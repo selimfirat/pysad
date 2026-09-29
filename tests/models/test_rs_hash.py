@@ -67,8 +67,6 @@ def test_rs_hash_score_partial_scores_given_instance():
 
 
 def test_rs_hash_score_partial_has_no_side_effects():
-    import copy
-
     import numpy as np
 
     from pysad.models import RSHash
@@ -79,15 +77,112 @@ def test_rs_hash_score_partial_has_no_side_effects():
     model.fit(np.random.uniform(size=(50, 3)))
 
     x = np.array([0.3, 0.6, 0.9])
-    sketches_before = copy.deepcopy(model.cmsketches)
+    timestamps_before = model.sketch_timestamps.copy()
+    counts_before = model.sketch_counts.copy()
     index_before = model.index
 
     score1 = model.score_partial(x)
     score2 = model.score_partial(x)
 
     assert score1 == score2
-    assert model.cmsketches == sketches_before
+    np.testing.assert_array_equal(model.sketch_timestamps, timestamps_before)
+    np.testing.assert_array_equal(model.sketch_counts, counts_before)
     assert model.index == index_before
+
+
+def test_rs_hash_sketch_arrays_have_fixed_shape_and_do_not_grow():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    rng = np.random.default_rng(0)
+    X = rng.random((20000, 5)) + np.linspace(0, 10, 20000)[:, None]
+
+    model = RSHash(
+        feature_mins=np.zeros(5), feature_maxes=np.full(5, 11.0), num_hash_fns=3, hash_range=97
+    )
+
+    expected_shape = (3, 97)
+    assert model.sketch_timestamps.shape == expected_shape
+    assert model.sketch_counts.shape == expected_shape
+
+    for i, x in enumerate(X, 1):
+        model.fit_score_partial(x)
+        if i in (1000, 5000, 20000):
+            assert model.sketch_timestamps.shape == expected_shape
+            assert model.sketch_counts.shape == expected_shape
+
+
+def test_rs_hash_num_hash_fns_changes_scores_with_small_hash_range():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    rng = np.random.default_rng(0)
+    X = rng.random((2000, 5)) + np.linspace(0, 10, 2000)[:, None]
+
+    def run(num_hash_fns):
+        fix_seed(0)
+        model = RSHash(
+            feature_mins=np.zeros(5),
+            feature_maxes=np.full(5, 11.0),
+            num_hash_fns=num_hash_fns,
+            hash_range=17,
+        )
+        return np.array([model.fit_score_partial(x) for x in X])
+
+    scores_w1 = run(1)
+    scores_w3 = run(3)
+
+    assert not np.array_equal(scores_w1, scores_w3)
+
+
+def test_rs_hash_large_hash_range_matches_exact_count_behavior():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    rng = np.random.default_rng(0)
+    X = rng.uniform(size=(30, 3))
+
+    fix_seed(123)
+    model = RSHash(
+        feature_mins=[0.0] * 3,
+        feature_maxes=[1.0] * 3,
+        num_components=5,
+        num_hash_fns=2,
+        hash_range=2_000_000,
+    )
+
+    # Reference: an exact, unbounded count-min sketch (a plain dict per key, as pysad used before
+    # #122), which is what a fixed-size sketch degenerates to when its hash_range is large enough
+    # that this short stream causes no slot collisions.
+    exact_counts = {}
+    index = 1
+    exact_scores = []
+    for x in X:
+        keys = model._cell_keys(x)
+
+        score_instance = 0.0
+        for key in keys:
+            tstamp, wt = exact_counts.get(key, (index, 0.0))
+            decayed = wt * np.power(2, -model.decay * (index - tstamp))
+            score_instance += np.log2(1 + decayed)
+        exact_scores.append(-score_instance / model.m)
+
+        for key in keys:
+            tstamp, wt = exact_counts.get(key, (index, 0.0))
+            decayed = wt * np.power(2, -model.decay * (index - tstamp))
+            exact_counts[key] = (index, decayed + 1)
+        index += 1
+
+    model_scores = np.array([model.fit_score_partial(x) for x in X])
+
+    np.testing.assert_allclose(model_scores, np.array(exact_scores))
 
 
 def test_rs_hash_sampling_points_warns_and_has_no_effect():

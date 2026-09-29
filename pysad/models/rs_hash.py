@@ -10,17 +10,20 @@ _UNSET = object()
 class RSHash(BaseModel):
     """Subspace outlier detection in linear time with randomized hashing :cite:`sathe2016subspace`. This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_ and follows the streaming variant (RS-Stream) of the paper. Instances are normalized with `feature_mins` and `feature_maxes`, and the score is the negated average of log2(1 + c) over the ensemble, where c is the time-decayed count of the instance's grid cell, so that higher scores are more anomalous.
 
-    Args:
-        feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
-        feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
-        sampling_points (int): Deprecated. Has no effect.
-        decay (float): The decay hyperparameter (Default=0.015).
-        num_components (int): The number of ensemble components (Default=100).
-        num_hash_fns (int): The number of hashing functions (Default=1).
+    Grid cell counts are kept in a count-min sketch (Sathe & Aggarwal 2016, §II-A): `num_hash_fns` (w) pairwise-independent hash tables of `hash_range` (p) slots each, so the sketch's memory is O(w * p) and stays constant regardless of stream length, at the cost of hash collisions that can only overestimate a cell's count. Taking the minimum decayed count over the w tables reduces that overestimate.
 
-    .. deprecated:: 0.6.1
-        The ``sampling_points`` parameter is deprecated and has no effect.
-        It will be removed in a future release.
+        Args:
+            feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
+            feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
+            sampling_points (int): Deprecated. Has no effect.
+            decay (float): The decay hyperparameter (Default=0.015).
+            num_components (int): The number of ensemble components (Default=100).
+            num_hash_fns (int): The number w of pairwise-independent hash tables in the count-min sketch (Default=1).
+            hash_range (int): The number p of slots per hash table of the count-min sketch (Default=10000).
+
+        .. deprecated:: 0.6.1
+            The ``sampling_points`` parameter is deprecated and has no effect.
+            It will be removed in a future release.
     """
 
     def __init__(
@@ -31,6 +34,7 @@ class RSHash(BaseModel):
         decay=0.015,
         num_components=100,
         num_hash_fns=1,
+        hash_range=10000,
     ):
         if sampling_points is not _UNSET:
             warnings.warn(
@@ -50,15 +54,27 @@ class RSHash(BaseModel):
         self.decay = decay
         self.scores = []
         self.num_hash = num_hash_fns
-        self.cmsketches = []
+        self.hash_range = hash_range
         self.effS = max(1000, 1.0 / (1 - np.power(2, -self.decay)))
 
         self.f = np.random.uniform(
             low=1.0 / np.sqrt(self.effS), high=1 - (1.0 / np.sqrt(self.effS)), size=self.m
         )
 
-        for _ in range(self.num_hash):
-            self.cmsketches.append({})
+        # Count-min sketch of fixed size (w=num_hash_fns tables, p=hash_range slots each), so
+        # memory stays constant however long the stream runs. sketch_timestamps holds the last
+        # index each slot was updated at; sketch_counts holds its decayed count as of that index.
+        self.sketch_timestamps = np.zeros((self.num_hash, self.hash_range), dtype=np.int64)
+        self.sketch_counts = np.zeros((self.num_hash, self.hash_range), dtype=np.float64)
+
+        # Pairwise-independent hash parameters, one (a_k, b_k) pair per table, drawn from
+        # np.random so that pysad.utils.fix_seed makes the sketch's slot assignment reproducible.
+        # P is a Mersenne prime comfortably larger than any cell-key hash, and the modular
+        # arithmetic below is done in Python ints (not numpy int64) to avoid overflow.
+        self._prime = (1 << 61) - 1
+        a_vals = np.random.randint(1, self._prime, size=self.num_hash, dtype=np.int64)
+        b_vals = np.random.randint(0, self._prime, size=self.num_hash, dtype=np.int64)
+        self._hash_params = [(int(a), int(b)) for a, b in zip(a_vals, b_vals)]
 
         self._sample_dims()
 
@@ -116,10 +132,11 @@ class RSHash(BaseModel):
             keys (list of tuple): The cell keys of the instance, as returned by `_cell_keys`.
         """
         for mod_entry in keys:
-            for w in range(len(self.cmsketches)):
-                decayed_wt = self._decayed_count(w, mod_entry)
+            for w, slot in enumerate(self._cell_slots(mod_entry)):
+                decayed_wt = self._decayed_count(w, slot)
 
-                self.cmsketches[w][mod_entry] = (self.index, decayed_wt + 1)
+                self.sketch_timestamps[w, slot] = self.index
+                self.sketch_counts[w, slot] = decayed_wt + 1
 
         self.index += 1
 
@@ -134,7 +151,7 @@ class RSHash(BaseModel):
         """
         score_instance = 0
         for mod_entry in keys:
-            c = [self._decayed_count(w, mod_entry) for w in range(len(self.cmsketches))]
+            c = [self._decayed_count(w, slot) for w, slot in enumerate(self._cell_slots(mod_entry))]
 
             min_c = min(c)
             score_instance = score_instance + np.log2(1 + min_c)
@@ -159,27 +176,38 @@ class RSHash(BaseModel):
             Y = np.floor((X[self.V[r]] + self.alpha[r]) / float(self.f[r]))
 
             mod_entry = np.insert(Y, 0, r)
-            mod_entries.append(tuple(mod_entry.astype(np.int32)))
+            mod_entries.append(tuple(int(v) for v in mod_entry.astype(np.int32)))
 
         return mod_entries
 
-    def _decayed_count(self, w, mod_entry):
-        """Reads a hash function's time-decayed count for a grid cell, without writing it back.
+    def _cell_slots(self, key):
+        """Maps a grid cell key to one slot per hash table of the count-min sketch.
+
+        Uses w pairwise-independent hash functions of the form ``((a_k * h + b_k) mod P) mod p``,
+        where h is a single hash of the key shared by every table, P is a fixed prime, and
+        a_k, b_k are the per-table parameters drawn in `__init__`.
 
         Args:
-            w (int): The index of the hash function's sketch.
-            mod_entry (tuple): The grid cell key, as returned by `_cell_keys`.
+            key (tuple of int): The grid cell key, as returned by `_cell_keys`.
 
         Returns:
-            float: The count decayed to `self.index`, or 0 for an unseen cell.
+            list of int: The slot index into each of the `num_hash` hash tables, in order.
         """
-        try:
-            value = self.cmsketches[w][mod_entry]
-        except KeyError:
-            value = (self.index, 0)
+        h = hash(key) % self._prime
+        return [((a * h + b) % self._prime) % self.hash_range for a, b in self._hash_params]
 
-        tstamp = value[0]
-        wt = value[1]
+    def _decayed_count(self, w, slot):
+        """Reads a hash table's time-decayed count for a sketch slot, without writing it back.
+
+        Args:
+            w (int): The index of the hash table.
+            slot (int): The slot index within the table, as returned by `_cell_slots`.
+
+        Returns:
+            float: The count decayed to `self.index`, or 0 for a never-updated slot.
+        """
+        tstamp = self.sketch_timestamps[w, slot]
+        wt = self.sketch_counts[w, slot]
 
         return wt * np.power(2, -self.decay * (self.index - tstamp))
 

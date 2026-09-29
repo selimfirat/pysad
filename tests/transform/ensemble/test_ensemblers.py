@@ -1,3 +1,5 @@
+import pytest
+
 
 def test_ensemblers():
     import numpy as np
@@ -116,3 +118,27 @@ def test_ensemblers_partial_matches_batch():
         ensembler = ensembler_cls(**params_dict)
         for row, batch_score in zip(scores, batch_scores):
             np.testing.assert_allclose(ensembler.fit_transform_partial(row), [batch_score])
+
+
+@pytest.mark.parametrize("ensembler_cls,params_dict", [
+    ("AverageScoreEnsembler", {}),
+    ("MaximumScoreEnsembler", {}),
+    ("MedianScoreEnsembler", {}),
+    ("AverageOfMaximumScoreEnsembler", {"n_buckets": 3}),
+    ("MaximumOfAverageScoreEnsembler", {"n_buckets": 3}),
+])
+def test_ensemblers_accept_list_scores(ensembler_cls, params_dict):
+    """A plain list of scores must give the same result as the equivalent np.array (#208)."""
+    import numpy as np
+    from pysad.transform import ensemble as ensemble_module
+
+    cls = getattr(ensemble_module, ensembler_cls)
+    row = BUCKET_SCORES[0]
+
+    np.random.seed(0)
+    from_list = cls(**params_dict).fit_transform_partial(row)
+
+    np.random.seed(0)
+    from_array = cls(**params_dict).fit_transform_partial(np.array(row))
+
+    np.testing.assert_allclose(from_list, from_array)

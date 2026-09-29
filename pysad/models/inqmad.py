@@ -33,9 +33,7 @@ from sklearn.kernel_approximation import RBFSampler
 
 
 class Inqmad(BaseModel):
-    """The Inqmad model for row-streaming data :cite:`xstream`. (a) an initial normal stream data point is captured (b) those points are mapped to a Hilbert space using adaptive Fourier features (AFF) (c) a memory density matrix $\rho_t$ is initialized using the points from the last step and the $\tau$-threshold value is defined (d) the stream of data points arrives (e) each point is mapped to a Hilbert space using (AFF) (f) a quantum measurement is performed between the streaming point and the memory density matrix $\rho_t$ (g) a $\tau$-threshold value is used to classify normal and anomalous points (h) detect whether the point was classified as normal (i) compute the updated memory density matrix $\rho_{t+1}$ using the normal classified streaming point (j) update the memory density matrix $\rho_t$ with the new matrix $\rho_{t+1}.
-
-    The anomaly score is the negative of the estimated density (not the paper's raw density), so higher scores mean more anomalous instances, consistent with the rest of pysad.
+    r"""The Inqmad (incremental quantum measurement anomaly detection) model for row-streaming data :cite:`gallego2022inqmad`. Each instance is mapped to a state :math:`\psi` with random Fourier features, the model keeps a density matrix :math:`\rho` that averages :math:`\psi \psi^\top` over every fitted instance, and the anomaly score is the negated density estimate :math:`-\psi^\top \rho \psi` of the paper's Eq. 3 (without its normalization constant), so higher scores mean more anomalous instances. Unlike the paper, the random Fourier features are fixed rather than adaptive, there is no :math:`\tau` threshold, every fitted instance updates :math:`\rho` rather than only those classified as normal, and :math:`\rho` is a uniform running average rather than the paper's :math:`\alpha`-forgetting update.
 
     Args:
         input_shape (int): number of features
@@ -96,7 +94,7 @@ class Inqmad(BaseModel):
 
 
 class QFeatureMap_rff:
-    """The random Fourier features for Inqmad :cite:`inqmad`.
+    """The random Fourier features for Inqmad :cite:`gallego2022inqmad`.
 
     Args:
         input_shape (int): number of features
@@ -153,12 +151,12 @@ class QFeatureMap_rff:
 
 
 class InqMeasurement:
-    """The Inqmad model for row-streaming data :cite:`xstream`. (a) an initial normal stream data point is captured (b) those points are mapped to a Hilbert space using adaptive Fourier features (AFF) (c) a memory density matrix $\rho_t$ is initialized using the points from the last step and the $\tau$-threshold value is defined (d) the stream of data points arrives (e) each point is mapped to a Hilbert space using (AFF) (f) a quantum measurement is performed between the streaming point and the memory density matrix $\rho_t$ (g) a $\tau$-threshold value is used to classify normal and anomalous points (h) detect whether the point was classified as normal (i) compute the updated memory density matrix $\rho_{t+1}$ using the normal classified streaming point (j) update the memory density matrix $\rho_t$ with the new matrix $\rho_{t+1}.
+    r"""The density matrix estimator behind :class:`Inqmad` :cite:`gallego2022inqmad`. It sums the outer products :math:`\psi \psi^\top` of the random Fourier feature states of the fitted instances and estimates the density of a query state :math:`\psi` as :math:`\psi^\top \rho \psi`, where :math:`\rho` is that sum divided by the number of fitted instances.
 
     Args:
         input_shape (int): number of features
         dim_x (int): random Fourier features dimension
-        gamma (int): kernel parammeter for the random Fourier features
+        gamma (int): kernel parameter for the random Fourier features
         random_state (int, np.random.RandomState or None): Seed or random number generator for the random Fourier features. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
         batch_size (int): training samples processed by iteration
     """

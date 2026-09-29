@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     model = Inqmad(
         input_shape=X_all.shape[1], dim_x=128, gamma=100
-    )  # Init xStream anomaly detection model.
+    )  # Init Inqmad anomaly detection model.
     preprocessor = InstanceUnitNormScaler()  # Init normalizer.
     postprocessor = RunningAveragePostprocessor(
         window_size=5

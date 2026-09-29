@@ -4,7 +4,7 @@ from sklearn.metrics import roc_auc_score
 
 pytest.importorskip("jax")
 
-from pysad.models.inqmad import Inqmad
+from pysad.models.inqmad import Inqmad, InqMeasurement
 
 
 def test_score_partial_follows_later_training():
@@ -142,3 +142,12 @@ def test_score_partial_after_int32_max_fitted_instances():
 
     assert isinstance(score, float)
     assert np.isfinite(score)
+
+
+@pytest.mark.parametrize("cls", [Inqmad, InqMeasurement])
+def test_docstring_keeps_math_backslashes(cls):
+    """Regression test for #120: LaTeX such as \\rho and \\tau must not
+    turn into carriage returns or tabs in the rendered docstring.
+    """
+    assert "\r" not in cls.__doc__
+    assert "\t" not in cls.__doc__

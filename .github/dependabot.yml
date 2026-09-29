@@ -8,6 +8,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # Only propose releases that are at least a week old, so a compromised or broken
+    # release is likely caught upstream first. Security updates are not delayed.
+    cooldown:
+      default-days: 7
     labels:
       - "dependencies"
       - "github-actions"
@@ -24,6 +28,9 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # Same one-week cooldown as above.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
@@ -43,6 +50,9 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # Same one-week cooldown as above.
+    cooldown:
+      default-days: 7
     labels:
       - "dependencies"
       - "python"

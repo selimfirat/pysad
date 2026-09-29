@@ -151,7 +151,7 @@ jobs:
     name: Sign and attach to GitHub release
     needs: [tag-release, publish]
     # Runs after publish so a signing failure never blocks the PyPI release.
-    # always() is needed because tag-release (an ancestor) is skipped on the release path.
+    # tag-release is skipped on the release path, so always() is needed.
     if: always() && needs.publish.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -173,7 +173,7 @@ jobs:
           upload-signing-artifacts: false
           release-signing-artifacts: false
 
-      # --clobber keeps "Re-run all jobs" idempotent.
+      # --clobber makes "Re-run failed jobs" safe if signing or the upload fails after the PyPI publish.
       - name: Attach distributions and signatures to the release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -45,7 +45,7 @@ class PYODScoreEnsembler(BasePostprocessor):
         """
         scores = np.asarray(scores, dtype=np.float64).reshape(1, -1)
 
-        return self._combine(scores)
+        return float(self._combine(scores)[0])
 
 
 class AverageScoreEnsembler(PYODScoreEnsembler):

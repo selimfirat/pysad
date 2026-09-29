@@ -117,7 +117,10 @@ def test_ensemblers_partial_matches_batch():
         np.random.seed(0)
         ensembler = ensembler_cls(**params_dict)
         for row, batch_score in zip(scores, batch_scores):
-            np.testing.assert_allclose(ensembler.fit_transform_partial(row), [batch_score])
+            partial_score = ensembler.fit_transform_partial(row)
+
+            assert isinstance(partial_score, float)
+            np.testing.assert_allclose(partial_score, batch_score)
 
 
 @pytest.mark.parametrize("ensembler_cls,params_dict", [

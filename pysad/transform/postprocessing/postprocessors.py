@@ -76,12 +76,13 @@ class _ZScorePostprocessor(BasePostprocessor):
         Returns:
             float: Transformed score.
         """
-        # With a single sample (or a zero-variance window), both the numerator and the
-        # denominator are 0, so the z-score is undefined; the resulting nan is expected
-        # and propagates unchanged.
-        with np.errstate(invalid='ignore'):
-            zscore = (score - self.average_meter.get()) / \
-                np.sqrt(self.variance_meter.get())
+        variance = self.variance_meter.get()
+        # Scores in a zero-variance window equal the mean, so their normalized
+        # deviation is zero. Returning 0.0 also keeps downstream ensemblers usable.
+        if variance == 0:
+            return 0.0
+
+        zscore = (score - self.average_meter.get()) / np.sqrt(variance)
 
         return zscore
 

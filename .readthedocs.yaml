@@ -27,9 +27,13 @@ sphinx:
 #    - pdf
 #    - epub
 
-# Optional but recommended, declare the Python requirements required
-# to build your documentation
-# See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
+# Install the pinned runtime dependencies (Sphinx imports every model, including the
+# optional ones) and the Sphinx packages from the dependency groups in pyproject.toml.
+# This runs `uv sync --group runtime --group docs`, the same groups .github/workflows/docs.yml installs.
 python:
-   install:
-   - requirements: requirements-dev.txt
+  install:
+    - method: uv
+      command: sync
+      groups:
+        - runtime
+        - docs

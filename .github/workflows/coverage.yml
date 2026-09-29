@@ -46,13 +46,11 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-          cache-dependency-glob: "requirements-ci.txt"
+          cache-dependency-glob: "pyproject.toml"
       - name: Install dependencies
         run: |
           # uv prefers wheels by default, matching pip's --prefer-binary.
-          uv pip install --system -r requirements-ci.txt
-          uv pip install --system pytest pytest-cov pytest-xdist
-          uv pip install --system -e .
+          uv pip install --system --group runtime --group test -e .
       - name: Test with coverage
         env:
           COVERAGE_CORE: sysmon

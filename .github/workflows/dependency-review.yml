@@ -1,7 +1,7 @@
 name: dependency review
 
 # Fails a pull request that adds or upgrades to a dependency with a known security advisory,
-# using the repository's dependency graph (pyproject.toml, requirements*.txt, workflows).
+# using the repository's dependency graph (pyproject.toml and the workflows).
 on:
   pull_request:
     branches: [master]

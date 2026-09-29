@@ -21,7 +21,7 @@ maintainers = [
   {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"}
 ]
 description = "Streaming anomaly detection in Python: 16 online detectors (xStream, LODA, RS-Hash, Half-Space Trees, RRCF...) plus calibration and prequential evaluation for real-time data."
-readme = {file = "README.rst", content-type = "text/x-rst"}
+readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 keywords = [
   "outlier detection",

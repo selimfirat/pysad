@@ -203,12 +203,7 @@ class RSHash(BaseModel):
         high_value = np.floor(common_term).astype(int)
         low_value = np.minimum(np.ceil(1 + 0.5 * common_term).astype(int), high_value)
 
-        self.r = np.empty(
-            [
-                self.m,
-            ],
-            dtype=int,
-        )
+        self.r = np.empty([self.m], dtype=int)
         self.V = []
         for i in range(self.m):
             self.r[i] = min(

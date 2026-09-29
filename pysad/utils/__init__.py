@@ -50,9 +50,7 @@ def get_minmax_array(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return min, max
 
 
-def get_minmax_scalar(
-    x: np.ndarray,
-) -> tuple[Any, Any]:
+def get_minmax_scalar(x: np.ndarray) -> tuple[Any, Any]:
     """Utility method that returns the boundaries of the input array.
 
     Args:

@@ -154,8 +154,7 @@ class StreamhashProjector(BaseTransformer):
         for length in np.unique(lengths):
             group = np.flatnonzero(lengths == length)
             byte_matrix = np.array(
-                [[ord(c) for c in feature_strings[i]] for i in group],
-                dtype=np.uint8,
+                [[ord(c) for c in feature_strings[i]] for i in group], dtype=np.uint8
             )
 
             hashes = _murmurhash3_x86_32(seeds, byte_matrix)

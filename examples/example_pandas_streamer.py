@@ -31,11 +31,7 @@ scores = []
 for row in streamer.iter(dataframe):
     scores.append(model.fit_score_partial(row))
 
-highest_scoring_rows = sorted(
-    enumerate(scores),
-    key=lambda item: item[1],
-    reverse=True,
-)[:5]
+highest_scoring_rows = sorted(enumerate(scores), key=lambda item: item[1], reverse=True)[:5]
 
 print("Highest-scoring anomaly alerts:")
 for row_number, score in highest_scoring_rows:

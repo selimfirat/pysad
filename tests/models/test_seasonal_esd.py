@@ -44,8 +44,7 @@ def test_seasonal_esd_uses_window_for_latest_candidate(monkeypatch):
         return np.asarray(values, dtype=float)
 
     monkeypatch.setattr(
-        "pysad.models.seasonal_esd.ModifiedSTLResidualTransformer.transform_window",
-        fake_transform,
+        "pysad.models.seasonal_esd.ModifiedSTLResidualTransformer.transform_window", fake_transform
     )
 
     model = SeasonalESD(period=2, window_size=5, max_anomalies=1)
@@ -67,8 +66,7 @@ def test_seasonal_esd_scores_repeated_latest_candidate(monkeypatch):
         return np.asarray(values, dtype=float)
 
     monkeypatch.setattr(
-        "pysad.models.seasonal_esd.ModifiedSTLResidualTransformer.transform_window",
-        fake_transform,
+        "pysad.models.seasonal_esd.ModifiedSTLResidualTransformer.transform_window", fake_transform
     )
 
     model = SeasonalESD(period=2, window_size=5, max_anomalies=1)
@@ -90,8 +88,7 @@ def test_seasonal_esd_fit_score_does_not_double_append(monkeypatch):
         return np.asarray(values, dtype=float)
 
     monkeypatch.setattr(
-        "pysad.models.seasonal_esd.ModifiedSTLResidualTransformer.transform_window",
-        fake_transform,
+        "pysad.models.seasonal_esd.ModifiedSTLResidualTransformer.transform_window", fake_transform
     )
 
     model = SeasonalESD(period=2, window_size=5, max_anomalies=1)

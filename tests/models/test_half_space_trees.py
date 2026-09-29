@@ -1,3 +1,6 @@
+import pytest
+
+
 def _score_against(model, reference_X, x):
     """Scores `x` with the model's trees as if their mass profile held exactly the instances in `reference_X`.
 
@@ -197,13 +200,20 @@ def test_half_space_trees_window_swap_replaces_the_reference_with_the_last_windo
     model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
                            window_size=window_size, num_trees=5, max_depth=6)
 
+    def root_masses():
+        # The swap is applied lazily, so bring the roots up to the open window before reading them.
+        for root in model.roots:
+            if root.window != model.current_window:
+                model._roll_masses(root)
+        return [(root.r_mass, root.l_mass) for root in model.roots]
+
     # The instance that closes a window belongs to the reference that window becomes.
     model.fit(X[:window_size])
-    assert all(root.r_mass == window_size and root.l_mass == 0 for root in model.roots)
+    assert all(masses == (window_size, 0) for masses in root_masses())
 
     # Older windows are forgotten: the reference holds only the last window.
     model.fit(X[window_size:3 * window_size])
-    assert all(root.r_mass == window_size and root.l_mass == 0 for root in model.roots)
+    assert all(masses == (window_size, 0) for masses in root_masses())
     scores = model.fit_score(X[3 * window_size:])
     for x, score in zip(X[3 * window_size:], scores):
         assert score == _score_against(model, X[2 * window_size:3 * window_size], x)
@@ -255,3 +265,181 @@ def test_half_space_trees_fit_score_matches_scoring_then_fitting_each_instance()
         model.fit_partial(x)
 
     np.testing.assert_array_equal(new_model().fit_score(X), expected_scores)
+
+
+def _new_hst(**kwargs):
+    from pysad.models import HalfSpaceTrees
+
+    params = dict(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0], window_size=10, num_trees=3, max_depth=4)
+    params.update(kwargs)
+    return HalfSpaceTrees(**params)
+
+
+@pytest.mark.parametrize("name", ["window_size", "num_trees", "max_depth"])
+@pytest.mark.parametrize("value", [0, -1, 2.5, 3.0, "3", None, True])
+def test_half_space_trees_rejects_invalid_hyperparameters(name, value):
+    with pytest.raises(ValueError, match=f"{name} must be a positive integer"):
+        _new_hst(**{name: value})
+
+
+def test_half_space_trees_accepts_numpy_integer_hyperparameters():
+    import numpy as np
+
+    model = _new_hst(window_size=np.int64(10), num_trees=np.int32(3), max_depth=np.uint8(1))
+
+    assert len(model.roots) == 3
+    assert model.fit_score(np.random.uniform(size=(25, 2))).shape == (25,)
+
+
+@pytest.mark.parametrize("feature_mins, feature_maxes", [
+    ([0.0, 0.0], [1.0]),
+    ([], []),
+    ([[0.0, 0.0]], [[1.0, 1.0]]),
+    ([0.0, 2.0], [1.0, 1.0]),
+    ([0.0, float("-inf")], [1.0, 1.0]),
+    ([0.0, 0.0], [1.0, float("nan")]),
+])
+def test_half_space_trees_rejects_invalid_feature_bounds(feature_mins, feature_maxes):
+    with pytest.raises(ValueError, match="feature_mins"):
+        _new_hst(feature_mins=feature_mins, feature_maxes=feature_maxes)
+
+
+def test_half_space_trees_integer_bounds_build_the_same_trees_as_float_bounds():
+    import numpy as np
+    from pysad.utils import fix_seed
+
+    def split_values(feature_mins, feature_maxes):
+        fix_seed(0)
+        model = _new_hst(feature_mins=feature_mins, feature_maxes=feature_maxes, num_trees=5, max_depth=6)
+        values, nodes = [], list(model.roots)
+        while nodes:
+            node = nodes.pop()
+            values.append(node.split_value)
+            nodes.extend(child for child in (node.left, node.right) if child is not None)
+        return values
+
+    # Integer arrays used to truncate every split value written back into them.
+    float_splits = split_values(np.array([0.0, -3.0]), np.array([10.0, 3.0]))
+    assert split_values(np.array([0, -3]), np.array([10, 3])) == float_splits
+
+
+def test_half_space_trees_work_spaces_cover_the_feature_ranges():
+    import numpy as np
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    feature_mins, feature_maxes = np.array([0.0, -5.0, 2.0]), np.array([1.0, 5.0, 2.0])
+    model = _new_hst(feature_mins=feature_mins, feature_maxes=feature_maxes)
+    width = feature_maxes - feature_mins
+
+    for _ in range(100):
+        mins, maxes = model._work_space()
+        center = (mins + maxes) / 2
+        # Tan et al. (IJCAI 2011): s in [min, max] and a work range s +- 2 * max(s - min, max - s),
+        # so it holds the whole feature range and is 2 to 4 times as wide.
+        assert np.all((feature_mins <= center) & (center <= feature_maxes))
+        assert np.all((mins <= feature_mins) & (feature_maxes <= maxes))
+        np.testing.assert_allclose(maxes - center, 2 * np.maximum(center - feature_mins, feature_maxes - center))
+        assert np.all((2 * width <= maxes - mins) & (maxes - mins <= 4 * width))
+
+
+def test_half_space_trees_differ_on_one_dimensional_streams():
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    model = _new_hst(feature_mins=[0.0], feature_maxes=[1.0], num_trees=10, max_depth=5)
+
+    def splits(node):
+        return [] if node.left is None else [node.split_value] + splits(node.left) + splits(node.right)
+
+    # Without a work space per tree, every tree halved [0, 1] at the same points (0.5, 0.25, 0.75, ...).
+    assert len({tuple(splits(root)) for root in model.roots}) == 10
+    assert len({root.split_value for root in model.roots}) == 10
+
+
+def test_half_space_trees_without_random_work_space_split_the_feature_ranges():
+    import numpy as np
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    model = _new_hst(feature_mins=[0, 2], feature_maxes=[1, 6], random_work_space=False)
+    mins, maxes = model._work_space()
+
+    np.testing.assert_array_equal(mins, [0.0, 2.0])
+    np.testing.assert_array_equal(maxes, [1.0, 6.0])
+    assert {root.split_value for root in model.roots} <= {0.5, 4.0}
+
+
+@pytest.mark.parametrize("value", [0, 1, None, "yes"])
+def test_half_space_trees_rejects_a_non_bool_random_work_space(value):
+    with pytest.raises(ValueError, match="random_work_space must be a bool"):
+        _new_hst(random_work_space=value)
+
+
+def test_half_space_trees_closing_a_window_touches_no_node():
+    import numpy as np
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    model = _new_hst(window_size=10, num_trees=3, max_depth=6)
+    model.fit(np.random.uniform(size=(10, 2)))
+
+    def windows_of_all_nodes():
+        windows, nodes = [], list(model.roots)
+        while nodes:
+            node = nodes.pop()
+            windows.append(node.window)
+            nodes.extend(child for child in (node.left, node.right) if child is not None)
+        return windows
+
+    # The r <- l swap is deferred: closing the window only advances the window index.
+    assert model.current_window == 1
+    assert set(windows_of_all_nodes()) == {0}
+
+
+def test_half_space_trees_forgets_regions_left_empty_for_a_whole_window():
+    import numpy as np
+    from pysad.utils import fix_seed
+
+    window_size = 10
+
+    fix_seed(0)
+    low = np.random.uniform(0.0, 0.2, size=(window_size, 2))
+    high = np.random.uniform(0.8, 1.0, size=(2 * window_size, 2))
+    model = _new_hst(window_size=window_size, num_trees=5, max_depth=6)
+    model.fit(low)
+    model.fit(high)
+
+    # The nodes under the first window's region are not visited during the next two windows, so their
+    # deferred swap must not carry the first window's mass into the reference.
+    for x in np.vstack([low[:3], high[:3]]):
+        assert model.score_partial(x) == _score_against(model, high[window_size:], x)
+
+
+def test_half_space_trees_model_saved_before_the_lazy_swap_continues_the_stream():
+    import numpy as np
+    from pysad.utils import fix_seed
+
+    window_size = 10
+
+    fix_seed(0)
+    X = np.random.uniform(size=(5 * window_size, 2))
+
+    def new_fitted_model():
+        fix_seed(1)
+        return _new_hst(window_size=window_size, num_trees=5, max_depth=6).fit(X[:25])
+
+    model = new_fitted_model()
+    old_model = new_fitted_model()
+    # Rebuild the state a model saved before the lazy swap held: every swap applied eagerly, and no
+    # window indices on the model or its nodes.
+    nodes = list(old_model.roots)
+    while nodes:
+        node = nodes.pop()
+        if node.window != old_model.current_window:
+            old_model._roll_masses(node)
+        del node.window
+        nodes.extend(child for child in (node.left, node.right) if child is not None)
+    del old_model.current_window
+
+    np.testing.assert_array_equal(old_model.fit_score(X[25:]), model.fit_score(X[25:]))

@@ -181,9 +181,9 @@ def test_rs_hash_more_hash_tables_move_scores_toward_exact_counts():
     # seed, or a difference below could come from a different grid instead of from the sketch
     # actually reading more tables.
     assert len(model_w1.V) == len(model_w3.V)
-    for v1, v3 in zip(model_w1.V, model_w3.V):
+    for v1, v3 in zip(model_w1.V, model_w3.V, strict=True):
         np.testing.assert_array_equal(v1, v3)
-    for a1, a3 in zip(model_w1.alpha, model_w3.alpha):
+    for a1, a3 in zip(model_w1.alpha, model_w3.alpha, strict=True):
         np.testing.assert_array_equal(a1, a3)
 
     # Each table's hash parameters are drawn with their own scalar calls, so table 0 gets the same

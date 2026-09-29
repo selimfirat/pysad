@@ -128,3 +128,17 @@ def test_score_partial_is_negated_paper_density():
     rho = np.asarray(model.inqmad.rho_res, dtype=np.float64) / model.inqmad.num_samples
 
     assert model.score_partial(q) == pytest.approx(-np.einsum("i,ij,j->", psi, rho, psi), rel=1e-5)
+
+
+def test_score_partial_after_int32_max_fitted_instances():
+    """Regression test for #120: the fitted-instance count reaches the
+    jitted scorer without overflowing a 32-bit integer.
+    """
+    rng = np.random.default_rng(0)
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0).fit(rng.random((5, 3)))
+    model.inqmad.num_samples = 2**31
+
+    score = model.score_partial(np.array([0.5, 0.5, 0.5]))
+
+    assert isinstance(score, float)
+    assert np.isfinite(score)

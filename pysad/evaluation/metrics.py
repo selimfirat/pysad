@@ -24,11 +24,14 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         self.y_pred.append(y_pred)
 
     def get(self) -> float:
-        """Gets the current value of the score.
+        """Gets the current value of the score, or 0.0 if no samples were recorded.
 
         Returns:
             float: The current score.
         """
+        if not self.y_true:
+            return 0.0
+
         score = self._evaluate(self.y_true, self.y_pred)
 
         return score

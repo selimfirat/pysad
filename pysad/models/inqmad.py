@@ -223,6 +223,8 @@ class InqMeasurement:
     def predict_pure(values, rho_res, num_samples, fm_x, collapse_batch, batch_size):
         num_batches = InqMeasurement.obtain_params_batches(values, batch_size)
         results = None
+        # num_samples must stay a traced (non-static) argument: it changes with
+        # every fit, so marking it static would recompile on every score.
         rho_res = rho_res / num_samples
         num_train = values.shape[0]
         perm = jnp.arange(num_train)
@@ -242,7 +244,13 @@ class InqMeasurement:
     def predict(self, values):
         # rho_res and num_samples are passed as traced arguments (not read from
         # self inside the jitted function) so a later fit_partial's update is
-        # picked up instead of being baked into a stale compiled trace.
+        # picked up instead of being baked into a stale compiled trace. The count
+        # goes in as a float, which jit cannot overflow the way it does an int32.
         return self.predict_pure(
-            values, self.rho_res, self.num_samples, self.fm_x, self.collapse_batch, self.batch_size
+            values,
+            self.rho_res,
+            float(self.num_samples),
+            self.fm_x,
+            self.collapse_batch,
+            self.batch_size,
         )

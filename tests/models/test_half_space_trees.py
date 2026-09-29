@@ -345,9 +345,10 @@ def test_half_space_trees_work_spaces_cover_the_feature_ranges():
     feature_mins, feature_maxes = np.array([0.0, -5.0, 2.0]), np.array([1.0, 5.0, 2.0])
     model = _new_hst(feature_mins=feature_mins, feature_maxes=feature_maxes)
     width = feature_maxes - feature_mins
+    rng = np.random.RandomState(0)
 
     for _ in range(100):
-        mins, maxes = model._work_space()
+        mins, maxes = model._work_space(rng)
         center = (mins + maxes) / 2
         # Tan et al. (IJCAI 2011): s in [min, max] and a work range s +- 2 * max(s - min, max - s),
         # so it holds the whole feature range and is 2 to 4 times as wide.
@@ -382,7 +383,7 @@ def test_half_space_trees_without_random_work_space_split_the_feature_ranges():
 
     fix_seed(0)
     model = _new_hst(feature_mins=[0, 2], feature_maxes=[1, 6], random_work_space=False)
-    mins, maxes = model._work_space()
+    mins, maxes = model._work_space(np.random.RandomState(0))
 
     np.testing.assert_array_equal(mins, [0.0, 2.0])
     np.testing.assert_array_equal(maxes, [1.0, 6.0])

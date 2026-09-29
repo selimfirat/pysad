@@ -2,6 +2,7 @@ from collections import Counter
 from itertools import repeat
 
 import numpy as np
+from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
 from pysad.transform.projection.streamhash_projector import StreamhashProjector
@@ -16,14 +17,20 @@ class xStream(BaseModel):
         n_chains (int): The number of half-space chains (Default=100).
         depth (int): The maximum depth for the chains (Default=25).
         window_size (int): The size (and the sliding length) of the reference window (Default=25).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the split features and shifts of the chains. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    def __init__(self, num_components=100, n_chains=100, depth=25, window_size=25):
+    def __init__(
+        self, num_components=100, n_chains=100, depth=25, window_size=25, random_state=None
+    ):
         self.streamhash = StreamhashProjector(num_components=num_components)
         deltamax = np.ones(num_components) * 0.5
         deltamax[np.abs(deltamax) <= 0.0001] = 1.0
         self.window_size = window_size
-        self.hs_chains = _HSChains(deltamax=deltamax, n_chains=n_chains, depth=depth)
+        self.random_state = random_state
+        self.hs_chains = _HSChains(
+            deltamax=deltamax, n_chains=n_chains, depth=depth, random_state=random_state
+        )
 
         self.step = 0
         self.cur_window = []
@@ -89,8 +96,9 @@ class _HSChains:
     At depth `d`, a chain assigns an instance to the bin given by the floored values of the (shifted and repeatedly halved) features it split on up to `d`. The bin counts of all chains and depths are kept in a single `Counter` keyed by the bytes of `(chain * depth + d, bin)`.
     """
 
-    def __init__(self, deltamax, n_chains=100, depth=25):
+    def __init__(self, deltamax, n_chains=100, depth=25, random_state=None):
         k = len(deltamax)
+        rng = check_random_state(random_state)
 
         self.nchains = n_chains
         self.depth = depth
@@ -99,8 +107,8 @@ class _HSChains:
         self.fs = np.empty((n_chains, depth), dtype=np.intp)
         self.rand_arr = np.empty((n_chains, k))
         for c in range(n_chains):
-            self.fs[c] = [np.random.randint(0, k) for d in range(depth)]
-            self.rand_arr[c] = np.random.rand(k)
+            self.fs[c] = [rng.randint(0, k) for d in range(depth)]
+            self.rand_arr[c] = rng.rand(k)
 
         self.set_deltamax(deltamax)
 

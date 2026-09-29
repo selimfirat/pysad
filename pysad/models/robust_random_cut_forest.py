@@ -4,6 +4,7 @@ import types
 from importlib.metadata import version
 
 import numpy as np
+from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
 
@@ -38,18 +39,24 @@ class RobustRandomCutForest(BaseModel):
         num_trees (int): The number of trees.
         shingle_size (int): The shingle size (Default=4).
         tree_size (int): The tree size (Default=256).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the cuts of the trees, which all share it. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    def __init__(self, num_trees=4, shingle_size=4, tree_size=256):
+    def __init__(self, num_trees=4, shingle_size=4, tree_size=256, random_state=None):
         rrcf = _import_rrcf()
 
         self.tree_size = tree_size
         self.shingle_size = shingle_size
         self.num_trees = num_trees
+        self.random_state = random_state
+
+        # A seed is turned into one generator shared by all trees, since trees seeded alike would cut alike.
+        # None is passed on as is, so that rrcf draws from the ``numpy.random`` module.
+        rng = None if random_state is None else check_random_state(random_state)
 
         self.forest = []
         for _ in range(self.num_trees):
-            tree = rrcf.RCTree()
+            tree = rrcf.RCTree(random_state=rng)
             self.forest.append(tree)
 
         self.index = 0

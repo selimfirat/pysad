@@ -38,7 +38,7 @@ class dA_params:
         self.hiddenRatio = hiddenRatio
 
 class dA:
-    def __init__(self, params):
+    def __init__(self, params, rng):
         self.params = params
 
         if self.params.hiddenRatio is not None:
@@ -49,7 +49,7 @@ class dA:
         self.norm_min = numpy.ones((self.params.n_visible,)) * numpy.inf
         self.n = 0
 
-        self.rng = numpy.random.RandomState(1234)
+        self.rng = rng
 
         a = 1. / self.params.n_visible
         self.W = numpy.array(self.rng.uniform(  # initialize W uniformly

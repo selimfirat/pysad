@@ -1,6 +1,7 @@
 import warnings
 
 import numpy as np
+from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
 
@@ -17,6 +18,7 @@ class RSHash(BaseModel):
         decay (float): The decay hyperparameter (Default=0.015).
         num_components (int): The number of ensemble components (Default=100).
         num_hash_fns (int): The number of hashing functions (Default=1).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the grid sizes, subspaces and shifts of the ensemble components. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
 
     .. deprecated:: 0.6.1
         The ``sampling_points`` parameter is deprecated and has no effect.
@@ -31,6 +33,7 @@ class RSHash(BaseModel):
         decay=0.015,
         num_components=100,
         num_hash_fns=1,
+        random_state=None,
     ):
         if sampling_points is not _UNSET:
             warnings.warn(
@@ -52,17 +55,19 @@ class RSHash(BaseModel):
         self.num_hash = num_hash_fns
         self.cmsketches = []
         self.effS = max(1000, 1.0 / (1 - np.power(2, -self.decay)))
+        self.random_state = random_state
+        rng = check_random_state(random_state)
 
-        self.f = np.random.uniform(
+        self.f = rng.uniform(
             low=1.0 / np.sqrt(self.effS), high=1 - (1.0 / np.sqrt(self.effS)), size=self.m
         )
 
         for _ in range(self.num_hash):
             self.cmsketches.append({})
 
-        self._sample_dims()
+        self._sample_dims(rng)
 
-        self.alpha = self._sample_shifts()
+        self.alpha = self._sample_shifts(rng)
 
         self.index = 1
 
@@ -183,14 +188,14 @@ class RSHash(BaseModel):
 
         return wt * np.power(2, -self.decay * (self.index - tstamp))
 
-    def _sample_shifts(self):
+    def _sample_shifts(self, rng):
         alpha = []
         for r in range(self.m):
-            alpha.append(np.random.uniform(low=0, high=self.f[r], size=len(self.V[r])))
+            alpha.append(rng.uniform(low=0, high=self.f[r], size=len(self.V[r])))
 
         return alpha
 
-    def _sample_dims(self):
+    def _sample_dims(self, rng):
         # Dimensions with max == min are dropped from the candidate subspaces.
         all_feats = np.arange(self.dim)
         choice_feats = all_feats[self.minimum != self.maximum]
@@ -207,6 +212,6 @@ class RSHash(BaseModel):
         self.V = []
         for i in range(self.m):
             self.r[i] = min(
-                np.random.randint(low=low_value[i], high=high_value[i] + 1), len(choice_feats)
+                rng.randint(low=low_value[i], high=high_value[i] + 1), len(choice_feats)
             )
-            self.V.append(np.random.choice(choice_feats, size=self.r[i], replace=False))
+            self.V.append(rng.choice(choice_feats, size=self.r[i], replace=False))

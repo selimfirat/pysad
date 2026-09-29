@@ -1,6 +1,7 @@
 import numbers
 
 import numpy as np
+from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
 
@@ -16,14 +17,16 @@ class HalfSpaceTrees(BaseModel):
         max_depth (int): Maximum depth of the trees. Must be a positive integer (Default=15).
         initial_window_X (np.float64 array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. Per Tan et al. (IJCAI 2011), Algorithm 3, this is expected to hold the first `window_size` instances of the stream; they are fitted to build the reference mass profile and are not scored (Default=None).
         random_work_space (bool): Whether each tree splits its own random work space, as in the paper. If False, every tree splits [feature_mins, feature_maxes], so on 1-D streams all trees are identical (Default=True).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the work spaces and split features of the trees. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
 
     Raises:
         ValueError: If `window_size`, `num_trees` or `max_depth` is not a positive integer, if `random_work_space` is not a bool, or if `feature_mins` and `feature_maxes` are not finite 1-D arrays of the same length with every minimum at most its maximum.
     """
 
     # Index of the open window; a node's masses are brought up to it lazily (see `_roll_masses`).
-    # The class-level defaults keep models pickled before the lazy swap loadable.
+    # The class-level defaults keep models pickled before the lazy swap or before `random_state` loadable.
     current_window = 0
+    random_state = None
 
     def __init__(
         self,
@@ -34,6 +37,7 @@ class HalfSpaceTrees(BaseModel):
         max_depth=15,
         initial_window_X=None,
         random_work_space=True,
+        random_state=None,
     ):
         for name, value in [
             ("window_size", window_size),
@@ -66,13 +70,16 @@ class HalfSpaceTrees(BaseModel):
         self.max_depth = max_depth
         self.num_trees = num_trees
         self.random_work_space = bool(random_work_space)
+        self.random_state = random_state
         self.feature_maxes = feature_maxes
         self.feature_mins = feature_mins
 
         self.num_dimensions = len(self.feature_maxes)
 
+        rng = check_random_state(random_state)
         self.roots = [
-            self._build_single_hs_tree(*self._work_space(), 0) for _ in range(self.num_trees)
+            self._build_single_hs_tree(*self._work_space(rng), 0, rng)
+            for _ in range(self.num_trees)
         ]
 
         self.is_first_window = True
@@ -81,31 +88,31 @@ class HalfSpaceTrees(BaseModel):
         if initial_window_X is not None:
             self.fit(initial_window_X)
 
-    def _work_space(self):
+    def _work_space(self, rng):
         if not self.random_work_space:
             return self.feature_mins.copy(), self.feature_maxes.copy()
 
         # Tan et al. (IJCAI 2011), Section 3.1: s ~ U(min, max), work range s ± 2 * max(s - min, max - s).
-        s = np.random.uniform(self.feature_mins, self.feature_maxes)
+        s = rng.uniform(self.feature_mins, self.feature_maxes)
         half_width = 2.0 * np.maximum(s - self.feature_mins, self.feature_maxes - s)
 
         return s - half_width, s + half_width
 
-    def _build_single_hs_tree(self, mins, maxes, current_depth):
+    def _build_single_hs_tree(self, mins, maxes, current_depth, rng):
         if current_depth == self.max_depth:
             return self._Node(left=None, right=None, split_att=0, split_value=0.0, k=current_depth)
 
-        q = np.random.randint(self.num_dimensions)
+        q = rng.randint(self.num_dimensions)
         p = (maxes[q] + mins[q]) / 2.0
 
         # Narrow the bounds in place for each subtree and restore them afterwards, instead of copying them.
         temp = maxes[q]
         maxes[q] = p
-        left = self._build_single_hs_tree(mins, maxes, current_depth + 1)
+        left = self._build_single_hs_tree(mins, maxes, current_depth + 1, rng)
         maxes[q] = temp
         temp = mins[q]
         mins[q] = p
-        right = self._build_single_hs_tree(mins, maxes, current_depth + 1)
+        right = self._build_single_hs_tree(mins, maxes, current_depth + 1, rng)
         mins[q] = temp
 
         return self._Node(left=left, right=right, split_att=q, split_value=p, k=current_depth)

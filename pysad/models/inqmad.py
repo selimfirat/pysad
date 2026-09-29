@@ -39,7 +39,7 @@ class Inqmad(BaseModel):
         input_shape (int): number of features
         dim_x (int): random Fourier features dimension
         gamma (int): kernel parameter for the random Fourier features
-        random_state (int): initial random state for the random Fourier features
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the random Fourier features. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
         batch_size (int): training samples processed by iteration
 
     Note:
@@ -51,7 +51,7 @@ class Inqmad(BaseModel):
         When using NumPy 2.0 or higher, JAX 0.6.1+ is required for compatibility.
     """
 
-    def __init__(self, input_shape, dim_x, gamma, random_state=42, batch_size=300):
+    def __init__(self, input_shape, dim_x, gamma, random_state=None, batch_size=300):
         if not JAX_AVAILABLE:
             raise ImportError(
                 "JAX dependencies are required to use the Inqmad model. "
@@ -99,7 +99,7 @@ class QFeatureMap_rff:
         input_shape (int): number of features
         dim (int): random Fourier features dimension
         gamma (int): kernel parameter for the random Fourier features
-        random_state (int): initial random state for the random Fourier features
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the random Fourier features. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
     def __init__(
@@ -156,11 +156,11 @@ class InqMeasurement:
         input_shape (int): number of features
         dim_x (int): random Fourier features dimension
         gamma (int): kernel parammeter for the random Fourier features
-        random_state (int): initial random state for the random Fourier features
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the random Fourier features. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
         batch_size (int): training samples processed by iteration
     """
 
-    def __init__(self, input_shape, dim_x, gamma, random_state=42, batch_size=300):
+    def __init__(self, input_shape, dim_x, gamma, random_state=None, batch_size=300):
         self.gamma = gamma
         self.dim_x = dim_x
         self.fm_x = QFeatureMap_rff(

@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.utils import check_random_state
 from . import dA as AE
 from . import corClust as CC
 
@@ -17,7 +18,11 @@ class KitNET:
     #feature_map: One may optionally provide a feature map instead of learning one. The map must be a list,
     #           where the i-th entry contains a list of the feature indices to be assingned to the i-th autoencoder in the ensemble.
     #           For example, [[2,5,3],[4,0,1],[6,7]]
-    def __init__(self,n,max_autoencoder_size=10,FM_grace_period=None,AD_grace_period=10000,learning_rate=0.1,hidden_ratio=0.75, feature_map = None):
+    #random_state: seed or numpy RandomState for the initial weights of the autoencoders, which all share it. None draws from NumPy's global random state.
+    # The class-level default keeps models pickled before random_state was added loadable.
+    random_state = None
+
+    def __init__(self,n,max_autoencoder_size=10,FM_grace_period=None,AD_grace_period=10000,learning_rate=0.1,hidden_ratio=0.75, feature_map = None, random_state=None):
         # Parameters:
         self.AD_grace_period = AD_grace_period
         if FM_grace_period is None:
@@ -31,6 +36,7 @@ class KitNET:
         self.lr = learning_rate
         self.hr = hidden_ratio
         self.n = n
+        self.random_state = random_state
 
         # Variables
         self.n_trained = 0 # the number of training instances so far
@@ -95,14 +101,17 @@ class KitNET:
             return self.outputLayer.execute(S_l1)
 
     def __createAD__(self):
+        # Resolved here, when the autoencoders are built, so that None follows the global state at that time.
+        rng = check_random_state(self.random_state)
+
         # construct ensemble layer
         for map in self.v:
             params = AE.dA_params(n_visible=len(map), n_hidden=0, lr=self.lr, corruption_level=0, gracePeriod=0, hiddenRatio=self.hr)
-            self.ensembleLayer.append(AE.dA(params))
+            self.ensembleLayer.append(AE.dA(params, rng))
 
         # construct output layer
         params = AE.dA_params(len(self.v), n_hidden=0, lr=self.lr, corruption_level=0, gracePeriod=0, hiddenRatio=self.hr)
-        self.outputLayer = AE.dA(params)
+        self.outputLayer = AE.dA(params, rng)
 
 # Copyright (c) 2017 Yisroel Mirsky
 #

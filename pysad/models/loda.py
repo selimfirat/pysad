@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
 
@@ -15,21 +16,27 @@ class LODA(BaseModel):
         Args:
             num_bins (int): The number of bins of each histogram.
             num_random_cuts (int): The number of random projections, i.e. histograms.
+            random_state (int, np.random.RandomState or None): Seed or random number generator for the projections. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    def __init__(self, num_bins=10, num_random_cuts=100):
+    # The class-level default keeps models pickled before `random_state` was added loadable.
+    random_state = None
+
+    def __init__(self, num_bins=10, num_random_cuts=100, random_state=None):
         self.to_init = True
         self.n_bins = num_bins
         self.n_random_cuts = num_random_cuts
+        self.random_state = random_state
 
     def _init_model(self, num_features):
         self.num_features = num_features
         n_nonzero_components = max(1, int(np.sqrt(self.num_features)))
+        rng = check_random_state(self.random_state)
 
         self.projections_ = np.zeros((self.n_random_cuts, self.num_features))
         for i in range(self.n_random_cuts):
-            nonzero = np.random.permutation(self.num_features)[:n_nonzero_components]
-            self.projections_[i, nonzero] = np.random.randn(n_nonzero_components)
+            nonzero = rng.permutation(self.num_features)[:n_nonzero_components]
+            self.projections_[i, nonzero] = rng.randn(n_nonzero_components)
 
         self.histograms_ = np.zeros((self.n_random_cuts, self.n_bins))
         # Left edge and width of the bins of each histogram. A width of 0 means that the projection has only seen a single distinct value so far, which is kept in ``bin_lows_``.

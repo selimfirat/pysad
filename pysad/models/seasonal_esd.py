@@ -22,14 +22,7 @@ class SeasonalESD(BaseModel):
         **stl_kwargs: Additional keyword arguments passed to STL.
     """
 
-    def __init__(
-            self,
-            period,
-            window_size,
-            max_anomalies,
-            alpha=0.05,
-            robust=True,
-            **stl_kwargs):
+    def __init__(self, period, window_size, max_anomalies, alpha=0.05, robust=True, **stl_kwargs):
         if max_anomalies < 1:
             raise ValueError("max_anomalies must be greater than 0.")
 
@@ -37,8 +30,7 @@ class SeasonalESD(BaseModel):
             raise ValueError("window_size must be at least 2 * period.")
 
         if max_anomalies > int(window_size * 0.49):
-            raise ValueError(
-                "max_anomalies must be less than or equal to window_size * 0.49.")
+            raise ValueError("max_anomalies must be less than or equal to window_size * 0.49.")
 
         if not np.isfinite(alpha) or not (0 < alpha < 1):
             raise ValueError("alpha must be finite and between 0 and 1.")
@@ -49,10 +41,7 @@ class SeasonalESD(BaseModel):
         self.alpha = alpha
         self.window = Window(window_size)
         self.residual_transformer = ModifiedSTLResidualTransformer(
-            period=period,
-            window_size=window_size,
-            robust=robust,
-            **stl_kwargs
+            period=period, window_size=window_size, robust=robust, **stl_kwargs
         )
 
     def _as_value(self, X):
@@ -69,7 +58,7 @@ class SeasonalESD(BaseModel):
     def _candidate_window(self, X):
         value = self._as_value(X)
         values = self.window.get() + [value]
-        values = values[-self.window_size:]
+        values = values[-self.window_size :]
 
         return np.asarray(values, dtype=np.float64)
 
@@ -93,11 +82,13 @@ class SeasonalESD(BaseModel):
 
             deviations = np.abs(remaining_values - center) / scale
             local_idx = int(np.argmax(deviations))
-            candidates.append((
-                remaining_indices[local_idx],
-                deviations[local_idx],
-                self._critical_value(values.shape[0], i)
-            ))
+            candidates.append(
+                (
+                    remaining_indices[local_idx],
+                    deviations[local_idx],
+                    self._critical_value(values.shape[0], i),
+                )
+            )
             remaining_values = np.delete(remaining_values, local_idx)
             remaining_indices = np.delete(remaining_indices, local_idx)
 

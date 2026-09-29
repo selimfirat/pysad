@@ -7,10 +7,11 @@ import numpy as np
 def test_murmurhash3_x86_32_matches_mmh3():
     """The vectorized hash must equal mmh3.hash(str(j), signed=False, seed=k) bit for bit."""
     import mmh3
+
     from pysad.transform.projection.streamhash_projector import _murmurhash3_x86_32
 
     feature_indices = list(range(20001)) + [123456, 9999999]
-    seeds = list(range(50)) + [2 ** 31 - 1]
+    seeds = list(range(50)) + [2**31 - 1]
 
     seeds_arr = np.array(seeds, dtype=np.uint32)
     lengths = {}
@@ -21,9 +22,7 @@ def test_murmurhash3_x86_32_matches_mmh3():
         warnings.simplefilter("error", RuntimeWarning)
 
         for indices in lengths.values():
-            byte_matrix = np.array(
-                [[ord(c) for c in str(i)] for i in indices], dtype=np.uint8
-            )
+            byte_matrix = np.array([[ord(c) for c in str(i)] for i in indices], dtype=np.uint8)
             actual = _murmurhash3_x86_32(seeds_arr, byte_matrix)
 
             for row, seed in enumerate(seeds):
@@ -33,10 +32,12 @@ def test_murmurhash3_x86_32_matches_mmh3():
 
 
 def test_streamhash_projector(test_path):
-    from sklearn.utils import shuffle
-    from pysad.utils import Data
     import os
+
+    from sklearn.utils import shuffle
+
     from pysad.transform.projection import StreamhashProjector
+    from pysad.utils import Data
 
     for num_components in [2, 50, 250]:
         data = Data(os.path.join(test_path, "../../../examples/data"))
@@ -56,7 +57,7 @@ def _reference_projection_matrix(projector, ndim):
     import mmh3
 
     def hash_string(k, s):
-        hash_value = int(mmh3.hash(s, signed=False, seed=int(k))) / (2.0 ** 32 - 1)
+        hash_value = int(mmh3.hash(s, signed=False, seed=int(k))) / (2.0**32 - 1)
         density = projector.density
         if hash_value <= density / 2.0:
             return -1 * projector.constant

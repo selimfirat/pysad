@@ -17,11 +17,12 @@ class WindowedMetric(BaseMetric):
     """
 
     def __init__(
-            self,
-            metric_cls: type[BaseMetric],
-            window_size: int,
-            ignore_nonempty_last: bool = True,
-            **kwargs: Any) -> None:
+        self,
+        metric_cls: type[BaseMetric],
+        window_size: int,
+        ignore_nonempty_last: bool = True,
+        **kwargs: Any,
+    ) -> None:
         super().__init__()
         self.ignore_nonempty_last = ignore_nonempty_last
         self.window_size = window_size

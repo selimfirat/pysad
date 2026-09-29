@@ -4,17 +4,21 @@ from pysad.statistics.running_statistic import RunningStatistic
 
 def test_all_zero_stats():
     import numpy as np
-    from pysad.statistics import AbsStatistic
-    from pysad.statistics import RunningStatistic
-    from pysad.statistics import AverageMeter
-    from pysad.statistics import CountMeter
-    from pysad.statistics import MaxMeter
-    from pysad.statistics import MedianMeter
-    from pysad.statistics import MinMeter
-    from pysad.statistics import SumMeter
-    from pysad.statistics import SumSquaresMeter
-    from pysad.statistics import VarianceMeter
+
+    from pysad.statistics import (
+        AbsStatistic,
+        AverageMeter,
+        CountMeter,
+        MaxMeter,
+        MedianMeter,
+        MinMeter,
+        RunningStatistic,
+        SumMeter,
+        SumSquaresMeter,
+        VarianceMeter,
+    )
     from pysad.utils import fix_seed
+
     fix_seed(61)
 
     num_items = 100
@@ -26,7 +30,7 @@ def test_all_zero_stats():
         MinMeter: 0.0,
         SumMeter: 0.0,
         SumSquaresMeter: 0.0,
-        VarianceMeter: 0.0
+        VarianceMeter: 0.0,
     }
 
     for stat_cls, val in stat_classes.items():
@@ -41,10 +45,12 @@ def test_all_zero_stats():
             stat.update(num)
             abs_stat.update(num)
             running_stat.update(num)
-            if i > 1: # for variance meter.
-                assert np.isclose(stat.get(), val if val != "count" else i+1)
-                assert np.isclose(abs_stat.get(), val if val != "count" else i+1)
-                assert np.isclose(running_stat.get(), val if val != "count" else min(i+1, window_size))
+            if i > 1:  # for variance meter.
+                assert np.isclose(stat.get(), val if val != "count" else i + 1)
+                assert np.isclose(abs_stat.get(), val if val != "count" else i + 1)
+                assert np.isclose(
+                    running_stat.get(), val if val != "count" else min(i + 1, window_size)
+                )
 
                 stat.remove(num)
                 abs_stat.remove(num)
@@ -58,16 +64,20 @@ def test_all_zero_stats():
 
 def test_stats_with_batch_numpy():
 
-    from pysad.statistics import AverageMeter
-    from pysad.statistics import CountMeter
-    from pysad.statistics import MaxMeter
-    from pysad.statistics import MedianMeter
-    from pysad.statistics import MinMeter
-    from pysad.statistics import SumMeter
-    from pysad.statistics import SumSquaresMeter
-    from pysad.statistics import VarianceMeter
     import numpy as np
+
+    from pysad.statistics import (
+        AverageMeter,
+        CountMeter,
+        MaxMeter,
+        MedianMeter,
+        MinMeter,
+        SumMeter,
+        SumSquaresMeter,
+        VarianceMeter,
+    )
     from pysad.utils import fix_seed
+
     fix_seed(61)
 
     num_items = 100
@@ -79,7 +89,7 @@ def test_stats_with_batch_numpy():
         MinMeter: np.min,
         SumMeter: np.sum,
         SumSquaresMeter: lambda x: np.sum(x**2),
-        VarianceMeter: np.var
+        VarianceMeter: np.var,
     }
 
     for stat_cls, val in stat_classes.items():
@@ -96,9 +106,9 @@ def test_stats_with_batch_numpy():
             abs_stat.update(num)
             running_stat.update(num)
 
-            if i > 1: # for variance meter.
-                assert np.isclose(stat.get(), val(arr[:i+1]))
-                assert np.isclose(running_stat.get(), val(arr[max(0, i-window_size+1):i+1]))
+            if i > 1:  # for variance meter.
+                assert np.isclose(stat.get(), val(arr[: i + 1]))
+                assert np.isclose(running_stat.get(), val(arr[max(0, i - window_size + 1) : i + 1]))
                 assert np.isclose(abs(stat.get()), abs_stat.get())
 
             stat.remove(num)
@@ -116,6 +126,7 @@ def test_stats_with_batch_numpy():
 
 def test_running_statistic_passes_kwargs():
     import numpy as np
+
     from pysad.statistics import AverageMeter
 
     class ScaledAverage(AverageMeter):

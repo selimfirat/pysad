@@ -1,7 +1,7 @@
-
 def test_loda_projections_stay_sparse_and_fixed():
-    from pysad.models import LODA
     import numpy as np
+
+    from pysad.models import LODA
     from pysad.utils import fix_seed
 
     fix_seed(61)
@@ -22,8 +22,9 @@ def test_loda_projections_stay_sparse_and_fixed():
 
 
 def test_loda_histograms_accumulate_counts():
-    from pysad.models import LODA
     import numpy as np
+
+    from pysad.models import LODA
     from pysad.utils import fix_seed
 
     fix_seed(61)
@@ -50,26 +51,28 @@ def test_loda_histograms_accumulate_counts():
 
 
 def test_loda_histograms_extend_to_new_ranges():
-    from pysad.models import LODA
     import numpy as np
+
+    from pysad.models import LODA
     from pysad.utils import fix_seed
 
     fix_seed(61)
     model = LODA(num_bins=4, num_random_cuts=5)
-    for x in np.linspace(0., 1., 20):
+    for x in np.linspace(0.0, 1.0, 20):
         model.fit_partial(np.array([x]))
-    for x in [-50., 1000.]:
+    for x in [-50.0, 1000.0]:
         model.fit_partial(np.array([x]))
 
     np.testing.assert_array_equal(model.histograms_.sum(axis=1), 22)
-    projected = np.array([-50., 1000.])[:, None] * model.projections_[:, 0]
+    projected = np.array([-50.0, 1000.0])[:, None] * model.projections_[:, 0]
     assert np.all(projected >= model.bin_lows_)
     assert np.all(projected < model.bin_lows_ + model.n_bins * model.bin_widths_)
 
 
 def test_loda_scores_outliers_higher():
-    from pysad.models import LODA
     import numpy as np
+
+    from pysad.models import LODA
     from pysad.utils import fix_seed
 
     fix_seed(61)
@@ -79,15 +82,16 @@ def test_loda_scores_outliers_higher():
         model.fit_partial(x)
 
     normal_score = model.score_partial(np.zeros(5))
-    outlier_score = model.score_partial(np.full(5, 8.))
+    outlier_score = model.score_partial(np.full(5, 8.0))
     assert isinstance(normal_score, float)
     assert outlier_score > normal_score
 
 
 def test_loda_auroc_synthetic_stream():
-    from pysad.models import LODA
     import numpy as np
     from sklearn.metrics import roc_auc_score
+
+    from pysad.models import LODA
     from pysad.utils import fix_seed
 
     fix_seed(61)
@@ -104,10 +108,12 @@ def test_loda_auroc_synthetic_stream():
 
 
 def test_loda_auroc_arrhythmia(test_path):
-    from pysad.models import LODA
-    import numpy as np
     import os
+
+    import numpy as np
     from sklearn.metrics import roc_auc_score
+
+    from pysad.models import LODA
     from pysad.utils import Data, fix_seed
 
     fix_seed(61)
@@ -121,8 +127,9 @@ def test_loda_auroc_arrhythmia(test_path):
 
 
 def test_loda_score_before_fit_and_non_finite_values():
-    from pysad.models import LODA
     import numpy as np
+
+    from pysad.models import LODA
     from pysad.utils import fix_seed
 
     fix_seed(61)
@@ -130,12 +137,12 @@ def test_loda_score_before_fit_and_non_finite_values():
     assert isinstance(model.score_partial(np.zeros(4)), float)
 
     # Instances with non-finite values are skipped instead of stretching the bins without bound.
-    model.fit_partial(np.array([np.nan, 0., 0., 0.]))
+    model.fit_partial(np.array([np.nan, 0.0, 0.0, 0.0]))
     assert model.num_seen_ == 0
     for x in np.random.randn(50, 4):
         model.fit_partial(x)
-    model.fit_partial(np.array([np.inf, 0., 0., 0.]))
+    model.fit_partial(np.array([np.inf, 0.0, 0.0, 0.0]))
     assert np.all(np.isfinite(model.bin_lows_)) and np.all(np.isfinite(model.bin_widths_))
     assert model.num_seen_ == 50
     np.testing.assert_array_equal(model.histograms_.sum(axis=1), 50)
-    assert np.isfinite(model.score_partial(np.array([np.inf, 0., 0., 0.])))
+    assert np.isfinite(model.score_partial(np.array([np.inf, 0.0, 0.0, 0.0])))

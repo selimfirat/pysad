@@ -1,7 +1,6 @@
-
-
 def test_instance_unit_norm_scaler():
     import numpy as np
+
     from pysad.transform.preprocessing import InstanceUnitNormScaler
 
     X = np.random.rand(100, 25)

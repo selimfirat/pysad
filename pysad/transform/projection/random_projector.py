@@ -1,10 +1,11 @@
 from abc import abstractmethod
-from sklearn.random_projection import SparseRandomProjection, GaussianRandomProjection
+
+from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
+
 from pysad.core.base_transformer import BaseTransformer
 
 
 class BaseSKLearnProjector(BaseTransformer):
-
     def __init__(self, num_components):
         """Abstract base projector class to wrap the random sklearn projectors.
 
@@ -17,9 +18,7 @@ class BaseSKLearnProjector(BaseTransformer):
     @property
     @abstractmethod
     def _projector(self):
-        """ Helper property to wrap sklearn projectors.
-
-        """
+        """Helper property to wrap sklearn projectors."""
         pass
 
     def _fit_projector(self, X):
@@ -28,9 +27,11 @@ class BaseSKLearnProjector(BaseTransformer):
         Args:
             X (np.float64 array of shape (num_instances, num_features)): Input feature vectors.
         """
-        if self.num_components == 'auto' and X.shape[0] == 1:
-            raise ValueError("num_components='auto' is sized from the number of instances, so it cannot be resolved "
-                             "from a single instance. Call fit(X) on a batch first or set num_components to an int.")
+        if self.num_components == "auto" and X.shape[0] == 1:
+            raise ValueError(
+                "num_components='auto' is sized from the number of instances, so it cannot be resolved "
+                "from a single instance. Call fit(X) on a batch first or set num_components to an int."
+            )
 
         self._components = self._projector().fit(X).components_
         self.output_dims = self._components.shape[0]
@@ -130,14 +131,13 @@ class GaussianRandomProjector(BaseSKLearnProjector):
 
     """
 
-    def __init__(self, num_components='auto', *, eps=0.1):
+    def __init__(self, num_components="auto", *, eps=0.1):
         super().__init__(num_components)
         self.eps = eps
         self.num_components = num_components
 
     def _projector(self):
-        return GaussianRandomProjection(
-            n_components=self.num_components, eps=self.eps)
+        return GaussianRandomProjection(n_components=self.num_components, eps=self.eps)
 
 
 class SparseRandomProjector(BaseSKLearnProjector):
@@ -174,7 +174,7 @@ class SparseRandomProjector(BaseSKLearnProjector):
 
     """
 
-    def __init__(self, num_components='auto', density="auto", eps=0.1):
+    def __init__(self, num_components="auto", density="auto", eps=0.1):
         super().__init__(num_components)
         self.eps = eps
         self.density = density
@@ -182,7 +182,5 @@ class SparseRandomProjector(BaseSKLearnProjector):
 
     def _projector(self):
         return SparseRandomProjection(
-            n_components=self.num_components,
-            density=self.density,
-            eps=self.eps,
-            dense_output=True)
+            n_components=self.num_components, density=self.density, eps=self.eps, dense_output=True
+        )

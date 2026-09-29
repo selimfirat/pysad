@@ -1,11 +1,10 @@
 # Import modules.
-from pysad.statistics import AverageMeter
-from pysad.statistics import VarianceMeter
 import numpy as np
 
-# This example shows the usage of statistics module for streaming data.
-if __name__ == '__main__':
+from pysad.statistics import AverageMeter, VarianceMeter
 
+# This example shows the usage of statistics module for streaming data.
+if __name__ == "__main__":
     # Init data with mean 0 and standard deviation 1.
     X = np.random.randn(1000)
 

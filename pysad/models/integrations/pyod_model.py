@@ -2,7 +2,6 @@ from pysad.core.base_model import BaseModel
 
 
 class PYODModel(BaseModel):
-
     def __init__(self, model_cls, **kwargs):
         """Abstract base class for PYOD models.
 
@@ -15,6 +14,5 @@ class PYODModel(BaseModel):
         self.model = None
 
     def reset_model(self):
-        """Removes the old model from the memory and instantiates a new one.
-        """
+        """Removes the old model from the memory and instantiates a new one."""
         self.model = self.model_cls(**self.kwargs)

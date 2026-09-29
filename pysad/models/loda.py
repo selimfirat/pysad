@@ -1,5 +1,6 @@
-from pysad.core.base_model import BaseModel
 import numpy as np
+
+from pysad.core.base_model import BaseModel
 
 
 class LODA(BaseModel):
@@ -39,7 +40,7 @@ class LODA(BaseModel):
         self.to_init = False
 
     def _bin_indices(self, projected):
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             return np.floor((projected - self.bin_lows_) / self.bin_widths_)
 
     def _extend(self, i, value):
@@ -51,12 +52,12 @@ class LODA(BaseModel):
 
             padded = np.zeros(2 * self.n_bins)
             if ind < 0:  # Extend to the left, the old bins become the right half.
-                padded[self.n_bins:] = self.histograms_[i]
+                padded[self.n_bins :] = self.histograms_[i]
                 self.bin_lows_[i] -= self.n_bins * self.bin_widths_[i]
             else:  # Extend to the right, the old bins become the left half.
-                padded[:self.n_bins] = self.histograms_[i]
+                padded[: self.n_bins] = self.histograms_[i]
             self.histograms_[i] = padded.reshape(self.n_bins, 2).sum(axis=1)
-            self.bin_widths_[i] *= 2.
+            self.bin_widths_[i] *= 2.0
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.
@@ -78,28 +79,28 @@ class LODA(BaseModel):
 
         if self.num_seen_ == 0:
             self.bin_lows_[:] = projected
-            self.histograms_[:, 0] = 1.
+            self.histograms_[:, 0] = 1.0
             self.num_seen_ = 1
             return self
 
         inds = self._bin_indices(projected)
         for i in range(self.n_random_cuts):
-            if self.bin_widths_[i] == 0.:  # Only a single distinct value seen so far.
+            if self.bin_widths_[i] == 0.0:  # Only a single distinct value seen so far.
                 seen = self.bin_lows_[i]
                 if projected[i] == seen:
-                    self.histograms_[i, 0] += 1.
+                    self.histograms_[i, 0] += 1.0
                     continue
                 # The smaller value starts the first bin and the larger one falls in the middle of the last bin.
                 self.bin_widths_[i] = abs(projected[i] - seen) / (self.n_bins - 0.5)
                 self.bin_lows_[i] = min(projected[i], seen)
                 count = self.histograms_[i, 0]
-                self.histograms_[i, 0] = 0.
+                self.histograms_[i, 0] = 0.0
                 self.histograms_[i, self._extend(i, seen)] = count
-                self.histograms_[i, self._extend(i, projected[i])] += 1.
+                self.histograms_[i, self._extend(i, projected[i])] += 1.0
             elif 0 <= inds[i] < self.n_bins:
-                self.histograms_[i, int(inds[i])] += 1.
+                self.histograms_[i, int(inds[i])] += 1.0
             else:
-                self.histograms_[i, self._extend(i, projected[i])] += 1.
+                self.histograms_[i, self._extend(i, projected[i])] += 1.0
 
         self.num_seen_ += 1
 
@@ -120,7 +121,7 @@ class LODA(BaseModel):
         projected = self.projections_.dot(X.reshape(-1))
         inds = self._bin_indices(projected)
 
-        ready = self.bin_widths_ > 0.
+        ready = self.bin_widths_ > 0.0
         in_range = ready & (inds >= 0) & (inds < self.n_bins)
 
         counts = np.zeros(self.n_random_cuts)
@@ -128,6 +129,7 @@ class LODA(BaseModel):
 
         neg_log_densities = np.zeros(self.n_random_cuts)
         neg_log_densities[ready] = -np.log(
-            (counts[ready] + 1.) / ((self.num_seen_ + self.n_bins) * self.bin_widths_[ready]))
+            (counts[ready] + 1.0) / ((self.num_seen_ + self.n_bins) * self.bin_widths_[ready])
+        )
 
         return np.array([np.mean(neg_log_densities)])

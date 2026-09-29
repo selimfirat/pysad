@@ -1,12 +1,20 @@
-from pysad.transform.postprocessing import AveragePostprocessor, MaxPostprocessor, MedianPostprocessor, \
-    ZScorePostprocessor
-from pysad.transform.postprocessing import RunningZScorePostprocessor, \
-    RunningMedianPostprocessor, RunningMaxPostprocessor, RunningAveragePostprocessor
 import warnings
+
+from pysad.transform.postprocessing import (
+    AveragePostprocessor,
+    MaxPostprocessor,
+    MedianPostprocessor,
+    RunningAveragePostprocessor,
+    RunningMaxPostprocessor,
+    RunningMedianPostprocessor,
+    RunningZScorePostprocessor,
+    ZScorePostprocessor,
+)
 
 
 def helper_get_scores():
     import numpy as np
+
     # Use a fixed seed for reproducible results and avoid edge cases
     np.random.seed(42)
     # Create more diverse scores to avoid variance issues
@@ -23,10 +31,10 @@ def test_postprocessors_shape():
         MaxPostprocessor: {},
         MedianPostprocessor: {},
         ZScorePostprocessor: {},
-        RunningAveragePostprocessor: { "window_size": 30 },
-        RunningMaxPostprocessor: { "window_size": 30 },
-        RunningMedianPostprocessor: { "window_size": 30 },
-        RunningZScorePostprocessor: { "window_size": 30 },
+        RunningAveragePostprocessor: {"window_size": 30},
+        RunningMaxPostprocessor: {"window_size": 30},
+        RunningMedianPostprocessor: {"window_size": 30},
+        RunningZScorePostprocessor: {"window_size": 30},
     }
 
     for postprocessor_cls, params_dict in postprocessors.items():
@@ -34,8 +42,11 @@ def test_postprocessors_shape():
         # Suppress RuntimeWarning for division by zero in z-score calculations
         # This can happen with small variance values or edge cases
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=RuntimeWarning, 
-                                  message="invalid value encountered in scalar divide")
+            warnings.filterwarnings(
+                "ignore",
+                category=RuntimeWarning,
+                message="invalid value encountered in scalar divide",
+            )
             postprocessed_scores = postprocessor.fit_transform(scores)
         assert scores.shape == postprocessed_scores.shape
 
@@ -52,13 +63,16 @@ def test_cumulative_postprocessors_output_values():
 
     scores = np.array(SCORES, dtype=float)
 
-    for postprocessor_cls, reference in [(AveragePostprocessor, np.mean),
-                                         (MaxPostprocessor, np.max),
-                                         (MedianPostprocessor, np.median)]:
-        expected = [reference(scores[:i + 1]) for i in range(len(scores))]
+    for postprocessor_cls, reference in [
+        (AveragePostprocessor, np.mean),
+        (MaxPostprocessor, np.max),
+        (MedianPostprocessor, np.median),
+    ]:
+        expected = [reference(scores[: i + 1]) for i in range(len(scores))]
 
-        np.testing.assert_allclose(postprocessor_cls().fit_transform(scores), expected,
-                                   err_msg=postprocessor_cls.__name__)
+        np.testing.assert_allclose(
+            postprocessor_cls().fit_transform(scores), expected, err_msg=postprocessor_cls.__name__
+        )
 
 
 def test_running_postprocessors_output_values():
@@ -66,13 +80,20 @@ def test_running_postprocessors_output_values():
 
     scores = np.array(SCORES, dtype=float)
 
-    for postprocessor_cls, reference in [(RunningAveragePostprocessor, np.mean),
-                                         (RunningMaxPostprocessor, np.max),
-                                         (RunningMedianPostprocessor, np.median)]:
-        expected = [reference(scores[max(0, i - WINDOW_SIZE + 1):i + 1]) for i in range(len(scores))]
+    for postprocessor_cls, reference in [
+        (RunningAveragePostprocessor, np.mean),
+        (RunningMaxPostprocessor, np.max),
+        (RunningMedianPostprocessor, np.median),
+    ]:
+        expected = [
+            reference(scores[max(0, i - WINDOW_SIZE + 1) : i + 1]) for i in range(len(scores))
+        ]
 
-        np.testing.assert_allclose(postprocessor_cls(window_size=WINDOW_SIZE).fit_transform(scores), expected,
-                                   err_msg=postprocessor_cls.__name__)
+        np.testing.assert_allclose(
+            postprocessor_cls(window_size=WINDOW_SIZE).fit_transform(scores),
+            expected,
+            err_msg=postprocessor_cls.__name__,
+        )
 
 
 def test_zscore_postprocessors_output_values():
@@ -80,8 +101,10 @@ def test_zscore_postprocessors_output_values():
 
     scores = np.array(SCORES, dtype=float)
 
-    for postprocessor, window_size in [(ZScorePostprocessor(), None),
-                                       (RunningZScorePostprocessor(window_size=WINDOW_SIZE), WINDOW_SIZE)]:
+    for postprocessor, window_size in [
+        (ZScorePostprocessor(), None),
+        (RunningZScorePostprocessor(window_size=WINDOW_SIZE), WINDOW_SIZE),
+    ]:
         postprocessed_scores = postprocessor.fit_transform(scores)
 
         # A single observation has zero deviation from its own mean.
@@ -90,10 +113,12 @@ def test_zscore_postprocessors_output_values():
         expected = []
         for i in range(1, len(scores)):
             start = 0 if window_size is None else max(0, i - window_size + 1)
-            values = scores[start:i + 1]
+            values = scores[start : i + 1]
             expected.append((scores[i] - np.mean(values)) / np.std(values, ddof=0))
 
-        np.testing.assert_allclose(postprocessed_scores[1:], expected, err_msg=type(postprocessor).__name__)
+        np.testing.assert_allclose(
+            postprocessed_scores[1:], expected, err_msg=type(postprocessor).__name__
+        )
 
 
 def test_zscore_postprocessors_return_zero_for_constant_stream():
@@ -101,8 +126,10 @@ def test_zscore_postprocessors_return_zero_for_constant_stream():
 
     scores = np.full(10, 3.5)
 
-    for postprocessor in [ZScorePostprocessor(),
-                          RunningZScorePostprocessor(window_size=WINDOW_SIZE)]:
+    for postprocessor in [
+        ZScorePostprocessor(),
+        RunningZScorePostprocessor(window_size=WINDOW_SIZE),
+    ]:
         np.testing.assert_array_equal(
             postprocessor.fit_transform(scores),
             np.zeros_like(scores),

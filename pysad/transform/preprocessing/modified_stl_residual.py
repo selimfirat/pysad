@@ -65,12 +65,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         if X.shape[0] < 2 * self.period:
             raise ValueError("At least 2 * period observations are required for STL.")
 
-        seasonal = STL(
-            X,
-            period=self.period,
-            robust=self.robust,
-            **self.stl_kwargs
-        ).fit().seasonal
+        seasonal = STL(X, period=self.period, robust=self.robust, **self.stl_kwargs).fit().seasonal
         return X - seasonal - np.median(X)
 
     def fit_partial(self, X):
@@ -98,7 +93,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
     def _candidate_values(self, X):
         value = self._as_partial_value(X)
         values = self.window.get() + [value]
-        values = values[-self.window_size:]
+        values = values[-self.window_size :]
         return np.asarray(values, dtype=np.float64)
 
     def _latest_residual(self, values):

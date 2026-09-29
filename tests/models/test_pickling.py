@@ -11,16 +11,35 @@ SEED = 61
 NUM_FIT = 60
 NUM_NEXT = 20
 
-UNIVARIATE_MODELS = {"KNNCAD", "MedianAbsoluteDeviation", "RelativeEntropy", "SeasonalESD", "SeasonalHybridESD", "StandardAbsoluteDeviation"}
+UNIVARIATE_MODELS = {
+    "KNNCAD",
+    "MedianAbsoluteDeviation",
+    "RelativeEntropy",
+    "SeasonalESD",
+    "SeasonalHybridESD",
+    "StandardAbsoluteDeviation",
+}
 
 MODEL_PARAMS = {
-    "HalfSpaceTrees": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0], "window_size": 20, "num_trees": 5, "max_depth": 8},
+    "HalfSpaceTrees": {
+        "feature_mins": [0.0, 0.0, 0.0],
+        "feature_maxes": [1.0, 1.0, 1.0],
+        "window_size": 20,
+        "num_trees": 5,
+        "max_depth": 8,
+    },
     "IForestASD": {"window_size": 32},
     "Inqmad": {"input_shape": 3, "dim_x": 32, "gamma": 100},
     "KNNCAD": {"probationary_period": 50},
     # Non-overlapping windows of 5 close 4 times among the NUM_NEXT compared values, and 80 buckets
     # split the noise so that some of them score 1.0 (see test_relative_entropy_compared_scores_use_learned_state).
-    "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 80, "step": 5},
+    "RelativeEntropy": {
+        "min_val": 0.0,
+        "max_val": 1.0,
+        "window_size": 5,
+        "num_bins": 80,
+        "step": 5,
+    },
     "RobustRandomCutForest": {"tree_size": 32},
     "RSHash": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0]},
     "SeasonalESD": {"period": 4, "window_size": 16, "max_anomalies": 3},
@@ -66,7 +85,9 @@ def _fitted_model(model_name, X, y):
 def _next_scores(model, X, y):
     # Models such as RobustRandomCutForest and RandomModel draw from the global numpy generator.
     fix_seed(SEED + 1)
-    scores = [model.fit_score_partial(xi, yi) for xi, yi in zip(X[NUM_FIT:], y[NUM_FIT:], strict=True)]
+    scores = [
+        model.fit_score_partial(xi, yi) for xi, yi in zip(X[NUM_FIT:], y[NUM_FIT:], strict=True)
+    ]
 
     return np.array([np.asarray(score, dtype=np.float64).ravel() for score in scores])
 

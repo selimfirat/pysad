@@ -17,16 +17,10 @@ class ArrayStreamer(BaseStreamer):
         self.shuffle = shuffle
 
     @overload
-    def iter(
-        self, X: np.ndarray, y: None = None
-    ) -> Iterator[np.ndarray]:
-        ...
+    def iter(self, X: np.ndarray, y: None = None) -> Iterator[np.ndarray]: ...
 
     @overload
-    def iter(
-        self, X: np.ndarray, y: np.ndarray
-    ) -> Iterator[tuple[np.ndarray, Any]]:
-        ...
+    def iter(self, X: np.ndarray, y: np.ndarray) -> Iterator[tuple[np.ndarray, Any]]: ...
 
     def iter(
         self, X: np.ndarray, y: np.ndarray | None = None

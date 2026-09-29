@@ -8,7 +8,6 @@ import pandas as pd
 from pysad.models import LODA
 from pysad.utils import PandasStreamer
 
-
 np.random.seed(42)
 
 timestamps = pd.date_range("2025-01-01 09:00:00", periods=200, freq="min")

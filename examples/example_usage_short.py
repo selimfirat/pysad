@@ -3,7 +3,6 @@ from pysad.evaluation import AUROCMetric
 from pysad.models import LODA
 from pysad.utils import Data
 
-
 model = LODA()  # Init model
 metric = AUROCMetric()  # Init area under receiver-operating- characteristics curve metric
 streaming_data = Data().get_iterator("arrhythmia.mat")  # Get data streamer.

@@ -13,8 +13,9 @@ def generate_stream(seed=61):
 
 
 def test_exact_storm_auroc():
-    from pysad.models import ExactStorm
     from sklearn.metrics import roc_auc_score
+
+    from pysad.models import ExactStorm
 
     X, y = generate_stream()
 
@@ -26,8 +27,9 @@ def test_exact_storm_auroc():
 
 
 def test_exact_storm_outlier_scores_higher():
-    from pysad.models import ExactStorm
     import numpy as np
+
+    from pysad.models import ExactStorm
 
     X, _ = generate_stream()
 
@@ -39,9 +41,10 @@ def test_exact_storm_outlier_scores_higher():
 
 
 def test_exact_storm_neighbor_counting():
-    from pysad.models import ExactStorm
     import numpy as np
     from numpy.testing import assert_almost_equal
+
+    from pysad.models import ExactStorm
 
     model = ExactStorm(window_size=4, max_radius=1.0)
     model.fit(np.array([[0.0], [1.0], [5.0], [6.0]]))
@@ -55,8 +58,9 @@ def test_exact_storm_neighbor_counting():
 
 
 def test_exact_storm_empty_window():
-    from pysad.models import ExactStorm
     import numpy as np
+
+    from pysad.models import ExactStorm
 
     # With no instances to be neighbors of, an instance has fewer than k neighbors for any k, so it gets the maximum score.
     assert ExactStorm().score_partial(np.array([0.0, 0.0])) == 1.0

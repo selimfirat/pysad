@@ -14,12 +14,13 @@ class KitNet(BaseModel):
     """
 
     def __init__(
-            self,
-            max_size_ae=10,
-            grace_feature_mapping=None,
-            grace_anomaly_detector=50000,
-            learning_rate=0.1,
-            hidden_ratio=0.75):
+        self,
+        max_size_ae=10,
+        grace_feature_mapping=None,
+        grace_anomaly_detector=50000,
+        learning_rate=0.1,
+        hidden_ratio=0.75,
+    ):
 
         self.grace_feature_mapping = grace_feature_mapping
         self.hidden_ratio = hidden_ratio
@@ -53,7 +54,8 @@ class KitNet(BaseModel):
                 self.grace_feature_mapping,
                 self.grace_anomaly_detector,
                 self.learning_rate,
-                self.hidden_ratio)
+                self.hidden_ratio,
+            )
             self.to_init = False
         self.model.process(X)
 

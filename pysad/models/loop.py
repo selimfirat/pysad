@@ -14,7 +14,8 @@ class LocalOutlierProbability(BaseModel):
         from PyNomaly import loop
 
         self.model = loop.LocalOutlierProbability(
-            initial_X, extent=extent, n_neighbors=num_neighbors).fit()
+            initial_X, extent=extent, n_neighbors=num_neighbors
+        ).fit()
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.

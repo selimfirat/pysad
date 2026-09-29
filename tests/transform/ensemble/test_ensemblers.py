@@ -3,8 +3,14 @@ import pytest
 
 def test_ensemblers():
     import numpy as np
-    from pysad.transform.ensemble import AverageScoreEnsembler, MaximumScoreEnsembler, MedianScoreEnsembler, \
-    AverageOfMaximumScoreEnsembler, MaximumOfAverageScoreEnsembler
+
+    from pysad.transform.ensemble import (
+        AverageOfMaximumScoreEnsembler,
+        AverageScoreEnsembler,
+        MaximumOfAverageScoreEnsembler,
+        MaximumScoreEnsembler,
+        MedianScoreEnsembler,
+    )
 
     scores = np.random.rand(100, 10)
 
@@ -13,19 +19,19 @@ def test_ensemblers():
         MaximumScoreEnsembler: {},
         MedianScoreEnsembler: {},
         AverageOfMaximumScoreEnsembler: {},
-        MaximumOfAverageScoreEnsembler: {}
+        MaximumOfAverageScoreEnsembler: {},
     }
 
     for ensembler_cls, params_dict in ensemblers.items():
         ensembler = ensembler_cls(**params_dict)
         ensembled_scores = ensembler.fit_transform(scores)
 
-        assert ensembled_scores.shape == (scores.shape[0], )
+        assert ensembled_scores.shape == (scores.shape[0],)
 
         ensembler = ensembler_cls(**params_dict).fit(scores)
         ensembled_scores = ensembler.transform(scores)
 
-        assert ensembled_scores.shape == (scores.shape[0], )
+        assert ensembled_scores.shape == (scores.shape[0],)
 
 
 # Fixed score matrix: 4 instances scored by 3 detectors.
@@ -48,28 +54,42 @@ BUCKET_SCORES = [
 
 def test_simple_ensemblers_output_values():
     import numpy as np
-    from pysad.transform.ensemble import AverageScoreEnsembler, MaximumScoreEnsembler, MedianScoreEnsembler
+
+    from pysad.transform.ensemble import (
+        AverageScoreEnsembler,
+        MaximumScoreEnsembler,
+        MedianScoreEnsembler,
+    )
 
     scores = np.array(SCORES)
 
-    np.testing.assert_allclose(MaximumScoreEnsembler().fit_transform(scores), np.max(scores, axis=1))
-    np.testing.assert_allclose(MedianScoreEnsembler().fit_transform(scores), np.median(scores, axis=1))
-    np.testing.assert_allclose(AverageScoreEnsembler().fit_transform(scores), np.mean(scores, axis=1))
+    np.testing.assert_allclose(
+        MaximumScoreEnsembler().fit_transform(scores), np.max(scores, axis=1)
+    )
+    np.testing.assert_allclose(
+        MedianScoreEnsembler().fit_transform(scores), np.median(scores, axis=1)
+    )
+    np.testing.assert_allclose(
+        AverageScoreEnsembler().fit_transform(scores), np.mean(scores, axis=1)
+    )
 
 
 def test_weighted_average_ensembler_output_values():
     import numpy as np
+
     from pysad.transform.ensemble import AverageScoreEnsembler
 
     scores = np.array(SCORES)
     weights = np.array([[1, 2, 3]])
 
-    expected = np.array([
-        (1 * 0.1 + 2 * 0.5 + 3 * 0.9) / 6,
-        (1 * 0.8 + 2 * 0.2 + 3 * 0.4) / 6,
-        (1 * 0.3 + 2 * 0.3 + 3 * 0.6) / 6,
-        (1 * 1.0 + 2 * 0.0 + 3 * 0.5) / 6,
-    ])
+    expected = np.array(
+        [
+            (1 * 0.1 + 2 * 0.5 + 3 * 0.9) / 6,
+            (1 * 0.8 + 2 * 0.2 + 3 * 0.4) / 6,
+            (1 * 0.3 + 2 * 0.3 + 3 * 0.6) / 6,
+            (1 * 1.0 + 2 * 0.0 + 3 * 0.5) / 6,
+        ]
+    )
 
     ensembled_scores = AverageScoreEnsembler(estimator_weights=weights).fit_transform(scores)
 
@@ -79,12 +99,19 @@ def test_weighted_average_ensembler_output_values():
 def test_bucket_ensemblers_output_values():
     import numpy as np
     from pyod.models.combination import aom, moa
-    from pysad.transform.ensemble import AverageOfMaximumScoreEnsembler, MaximumOfAverageScoreEnsembler
+
+    from pysad.transform.ensemble import (
+        AverageOfMaximumScoreEnsembler,
+        MaximumOfAverageScoreEnsembler,
+    )
 
     scores = np.array(BUCKET_SCORES)
     n_buckets = 3
 
-    for ensembler_cls, combine in [(AverageOfMaximumScoreEnsembler, aom), (MaximumOfAverageScoreEnsembler, moa)]:
+    for ensembler_cls, combine in [
+        (AverageOfMaximumScoreEnsembler, aom),
+        (MaximumOfAverageScoreEnsembler, moa),
+    ]:
         np.random.seed(0)
         ensembled_scores = ensembler_cls(n_buckets=n_buckets).fit_transform(scores)
 
@@ -97,8 +124,14 @@ def test_bucket_ensemblers_output_values():
 
 def test_ensemblers_partial_matches_batch():
     import numpy as np
-    from pysad.transform.ensemble import AverageScoreEnsembler, MaximumScoreEnsembler, MedianScoreEnsembler, \
-        AverageOfMaximumScoreEnsembler, MaximumOfAverageScoreEnsembler
+
+    from pysad.transform.ensemble import (
+        AverageOfMaximumScoreEnsembler,
+        AverageScoreEnsembler,
+        MaximumOfAverageScoreEnsembler,
+        MaximumScoreEnsembler,
+        MedianScoreEnsembler,
+    )
 
     scores = np.array(BUCKET_SCORES)
 
@@ -123,16 +156,20 @@ def test_ensemblers_partial_matches_batch():
             np.testing.assert_allclose(partial_score, batch_score)
 
 
-@pytest.mark.parametrize("ensembler_cls,params_dict", [
-    ("AverageScoreEnsembler", {}),
-    ("MaximumScoreEnsembler", {}),
-    ("MedianScoreEnsembler", {}),
-    ("AverageOfMaximumScoreEnsembler", {"n_buckets": 3}),
-    ("MaximumOfAverageScoreEnsembler", {"n_buckets": 3}),
-])
+@pytest.mark.parametrize(
+    "ensembler_cls,params_dict",
+    [
+        ("AverageScoreEnsembler", {}),
+        ("MaximumScoreEnsembler", {}),
+        ("MedianScoreEnsembler", {}),
+        ("AverageOfMaximumScoreEnsembler", {"n_buckets": 3}),
+        ("MaximumOfAverageScoreEnsembler", {"n_buckets": 3}),
+    ],
+)
 def test_ensemblers_accept_list_scores(ensembler_cls, params_dict):
     """A plain list of scores must give the same result as the equivalent np.array (#208)."""
     import numpy as np
+
     from pysad.transform import ensemble as ensemble_module
 
     cls = getattr(ensemble_module, ensembler_cls)

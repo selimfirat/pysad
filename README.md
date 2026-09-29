@@ -169,8 +169,7 @@ from pyod.models.iforest import IForest
 from pysad.models.integrations import ReferenceWindowModel
 
 # Refit a batch Isolation Forest on the latest 200 points, every 50 points.
-model = ReferenceWindowModel(IForest, window_size=200, sliding_size=50,
-                             initial_window_X=X[:100])
+model = ReferenceWindowModel(IForest, window_size=200, sliding_size=50, initial_window_X=X[:100])
 for x in ArrayStreamer().iter(X[100:]):
     score = model.fit_score_partial(x)
 ```

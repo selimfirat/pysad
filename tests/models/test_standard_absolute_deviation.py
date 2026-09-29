@@ -1,7 +1,8 @@
 def test_standard_absolute_deviation():
-    from pysad.models import StandardAbsoluteDeviation
     import numpy as np
     from numpy.testing import assert_raises
+
+    from pysad.models import StandardAbsoluteDeviation
     from pysad.utils import fix_seed
 
     fix_seed(61)
@@ -25,9 +26,10 @@ def test_standard_absolute_deviation():
 
 
 def test_absolute_deviation_rejects_multivariate_input():
-    from pysad.models import MedianAbsoluteDeviation, StandardAbsoluteDeviation
     import numpy as np
     from numpy.testing import assert_raises
+
+    from pysad.models import MedianAbsoluteDeviation, StandardAbsoluteDeviation
 
     for model in [MedianAbsoluteDeviation(), StandardAbsoluteDeviation()]:
         with assert_raises(ValueError):
@@ -37,8 +39,10 @@ def test_absolute_deviation_rejects_multivariate_input():
 def test_substracted_statistic_deprecation():
     """Old spelling still works but emits FutureWarning."""
     import warnings
-    from pysad.models import StandardAbsoluteDeviation
+
     import numpy as np
+
+    from pysad.models import StandardAbsoluteDeviation
     from pysad.utils import fix_seed
 
     fix_seed(61)
@@ -59,6 +63,7 @@ def test_substracted_statistic_deprecation():
 def test_both_spellings_raises():
     """Passing both old and new spelling at once is an error."""
     import pytest
+
     from pysad.models import StandardAbsoluteDeviation
 
     with pytest.raises(TypeError, match="Cannot specify both"):
@@ -83,9 +88,10 @@ def _expected_scores(values, statistic="mean", absolute=True):
 
 
 def test_standard_absolute_deviation_score_values_mean():
-    from pysad.models import StandardAbsoluteDeviation
     import numpy as np
     from numpy.testing import assert_allclose
+
+    from pysad.models import StandardAbsoluteDeviation
 
     values = np.array([3, 1, 4, 1, 5, 9, 2, 6], dtype=float)
     X = values.reshape(-1, 1)
@@ -99,9 +105,10 @@ def test_standard_absolute_deviation_score_values_mean():
 
 
 def test_standard_absolute_deviation_score_values_median():
-    from pysad.models import StandardAbsoluteDeviation
     import numpy as np
     from numpy.testing import assert_allclose
+
+    from pysad.models import StandardAbsoluteDeviation
 
     values = np.array([3, 1, 4, 1, 5, 9, 2, 6], dtype=float)
     X = values.reshape(-1, 1)
@@ -114,9 +121,10 @@ def test_standard_absolute_deviation_score_values_median():
 
 
 def test_standard_absolute_deviation_keeps_sign_when_absolute_false():
-    from pysad.models import StandardAbsoluteDeviation
     import numpy as np
     from numpy.testing import assert_allclose
+
+    from pysad.models import StandardAbsoluteDeviation
 
     values = np.array([3, 1, 4, 1, 5, 9, 2, 6], dtype=float)
     X = values.reshape(-1, 1)
@@ -130,8 +138,9 @@ def test_standard_absolute_deviation_keeps_sign_when_absolute_false():
 
 
 def test_standard_absolute_deviation_first_score_is_zero():
-    from pysad.models import StandardAbsoluteDeviation
     import numpy as np
+
+    from pysad.models import StandardAbsoluteDeviation
 
     X = np.array([[3.0]])
     score = StandardAbsoluteDeviation().fit_score(X)[0]

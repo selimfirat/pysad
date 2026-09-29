@@ -1,5 +1,6 @@
-from pysad.models.integrations.reference_window_model import ReferenceWindowModel
 from pyod.models.iforest import IForest
+
+from pysad.models.integrations.reference_window_model import ReferenceWindowModel
 
 
 class IForestASD(ReferenceWindowModel):
@@ -9,6 +10,7 @@ class IForestASD(ReferenceWindowModel):
         initial_window_X (np.float64 array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. We simply apply fit to these instances (Default=None).
         window_size (int): The size of the reference window and its sliding (Default=2048).
     """
+
     def __init__(self, initial_window_X=None, window_size=2048, **kwargs):
         super().__init__(IForest, window_size, window_size, initial_window_X, **kwargs)
         # TODO: implement concept drift method

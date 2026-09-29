@@ -1,12 +1,13 @@
 from abc import abstractmethod
+
 import numpy as np
-from pyod.models.combination import average, maximization, median, moa, aom
+from pyod.models.combination import aom, average, maximization, median, moa
+
 from pysad.core.base_postprocessor import BasePostprocessor
 
 
 class PYODScoreEnsembler(BasePostprocessor):
-    """Abstract base class for the scoring ensembling methods for the scoring based ensemblers of the `PyOD <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_.
-    """
+    """Abstract base class for the scoring ensembling methods for the scoring based ensemblers of the `PyOD <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_."""
 
     @abstractmethod
     def _combine(self, scores):
@@ -51,8 +52,8 @@ class PYODScoreEnsembler(BasePostprocessor):
 class AverageScoreEnsembler(PYODScoreEnsembler):
     """An wrapper class that results in the weighted average of the anomaly scores from multiple anomaly detectors. For more details, see `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_.
 
-        Args:
-            estimator_weights (np array of shape (1, num_anomaly_detectors)): The weights for detectors. If None, uniform weights are assigned.
+    Args:
+        estimator_weights (np array of shape (1, num_anomaly_detectors)): The weights for detectors. If None, uniform weights are assigned.
 
     """
 
@@ -73,8 +74,7 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
 
 
 class MaximumScoreEnsembler(PYODScoreEnsembler):
-    """An ensembler that results the maximum of the previous scores.
-    """
+    """An ensembler that results the maximum of the previous scores."""
 
     def _combine(self, scores):
         """
@@ -89,8 +89,7 @@ class MaximumScoreEnsembler(PYODScoreEnsembler):
 
 
 class MedianScoreEnsembler(PYODScoreEnsembler):
-    """An ensembler that results the median of the previous scores.
-    """
+    """An ensembler that results the median of the previous scores."""
 
     def _combine(self, scores):
         """
@@ -113,11 +112,7 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 
-    def __init__(
-            self,
-            n_buckets=5,
-            method='static',
-            bootstrap_estimators=False):
+    def __init__(self, n_buckets=5, method="static", bootstrap_estimators=False):
         self.method = method
         self.n_buckets = n_buckets
         self.bootstrap_estimators = bootstrap_estimators
@@ -135,7 +130,8 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
             scores,
             n_buckets=self.n_buckets,
             method=self.method,
-            bootstrap_estimators=self.bootstrap_estimators)
+            bootstrap_estimators=self.bootstrap_estimators,
+        )
 
 
 class AverageOfMaximumScoreEnsembler(_BucketScoreEnsembler):

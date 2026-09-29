@@ -11,7 +11,7 @@ def _score_against(model, reference_X, x):
     for root in model.roots:
         node, in_node = root, list(reference_X)
         while node is not None:
-            score += len(in_node) * 2 ** node.k
+            score += len(in_node) * 2**node.k
             goes_right = x[node.split_att] > node.split_value
             in_node = [r for r in in_node if (r[node.split_att] > node.split_value) == goes_right]
             node = node.right if goes_right else node.left
@@ -21,6 +21,7 @@ def _score_against(model, reference_X, x):
 
 def _verify_initial_window_reproducibility(window_transform):
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -32,8 +33,14 @@ def _verify_initial_window_reproducibility(window_transform):
 
     def new_model(**kwargs):
         fix_seed(42)
-        return HalfSpaceTrees(feature_mins=[0, 0], feature_maxes=[1, 1],
-                              window_size=window_size, num_trees=5, max_depth=5, **kwargs)
+        return HalfSpaceTrees(
+            feature_mins=[0, 0],
+            feature_maxes=[1, 1],
+            window_size=window_size,
+            num_trees=5,
+            max_depth=5,
+            **kwargs,
+        )
 
     model_with_window = new_model(initial_window_X=window_transform(initial_window_X))
     model_without_window = new_model().fit(initial_window_X)
@@ -61,6 +68,7 @@ def test_half_space_trees_with_list_initial_window():
 
 def test_half_space_trees_scores_outlier_that_closes_a_window():
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -71,8 +79,9 @@ def test_half_space_trees_scores_outlier_that_closes_a_window():
         X_ = X.copy()
         X_[position] = [6.0, 6.0]
         fix_seed(0)
-        scores = HalfSpaceTrees(feature_mins=[-7, -7], feature_maxes=[7, 7], window_size=100,
-                                num_trees=10, max_depth=12).fit_score(X_)
+        scores = HalfSpaceTrees(
+            feature_mins=[-7, -7], feature_maxes=[7, 7], window_size=100, num_trees=10, max_depth=12
+        ).fit_score(X_)
         return np.mean(np.delete(scores, position) < scores[position])
 
     # Both the point right before a window closes and the point that closes it must be
@@ -84,6 +93,7 @@ def test_half_space_trees_scores_outlier_that_closes_a_window():
 
 def test_half_space_trees_first_window_scores_against_the_instances_before_it():
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -91,8 +101,13 @@ def test_half_space_trees_first_window_scores_against_the_instances_before_it():
 
     fix_seed(0)
     X = np.random.uniform(size=(window_size, 2))
-    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
-                           window_size=window_size, num_trees=5, max_depth=6)
+    model = HalfSpaceTrees(
+        feature_mins=[0.0, 0.0],
+        feature_maxes=[1.0, 1.0],
+        window_size=window_size,
+        num_trees=5,
+        max_depth=6,
+    )
     scores = model.fit_score(X)
 
     # Nothing has been recorded when the very first instance arrives.
@@ -106,6 +121,7 @@ def test_half_space_trees_first_window_scores_against_the_instances_before_it():
 
 def test_half_space_trees_first_window_scores_match_the_scale_of_a_full_window():
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -115,8 +131,13 @@ def test_half_space_trees_first_window_scores_match_the_scale_of_a_full_window()
     # On a constant stream, a partial profile of n copies rescaled to a full window equals the
     # reference profile of a full window, so every score after the very first is the same.
     X = np.full((3 * window_size, 2), 0.3)
-    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
-                           window_size=window_size, num_trees=5, max_depth=6)
+    model = HalfSpaceTrees(
+        feature_mins=[0.0, 0.0],
+        feature_maxes=[1.0, 1.0],
+        window_size=window_size,
+        num_trees=5,
+        max_depth=6,
+    )
     scores = model.fit_score(X)
 
     assert scores[0] == 0.0
@@ -126,6 +147,7 @@ def test_half_space_trees_first_window_scores_match_the_scale_of_a_full_window()
 
 def test_half_space_trees_scores_a_batch_fitted_on_less_than_a_window():
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -135,7 +157,9 @@ def test_half_space_trees_scores_a_batch_fitted_on_less_than_a_window():
     X_test[7] = [6.0, 6.0]
 
     fix_seed(0)
-    model = HalfSpaceTrees(feature_mins=[-7, -7], feature_maxes=[7, 7], window_size=100, num_trees=5, max_depth=6)
+    model = HalfSpaceTrees(
+        feature_mins=[-7, -7], feature_maxes=[7, 7], window_size=100, num_trees=5, max_depth=6
+    )
     scores = model.fit(X_train).score(X_test)
 
     # The first window is still open, so the test batch is scored against the 60 instances fitted so far,
@@ -148,6 +172,7 @@ def test_half_space_trees_scores_a_batch_fitted_on_less_than_a_window():
 
 def test_half_space_trees_scores_against_the_first_window_right_after_it_closes():
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -155,8 +180,13 @@ def test_half_space_trees_scores_against_the_first_window_right_after_it_closes(
 
     fix_seed(0)
     X = np.random.uniform(size=(2 * window_size, 2))
-    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
-                           window_size=window_size, num_trees=5, max_depth=6)
+    model = HalfSpaceTrees(
+        feature_mins=[0.0, 0.0],
+        feature_maxes=[1.0, 1.0],
+        window_size=window_size,
+        num_trees=5,
+        max_depth=6,
+    )
     scores = model.fit_score(X)
 
     # From the instance right after the first window on, the reference is the whole first window.
@@ -166,6 +196,7 @@ def test_half_space_trees_scores_against_the_first_window_right_after_it_closes(
 
 def test_half_space_trees_reference_profile_is_fixed_within_a_window():
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -174,8 +205,13 @@ def test_half_space_trees_reference_profile_is_fixed_within_a_window():
     fix_seed(0)
     X = np.random.uniform(size=(2 * window_size, 2))
     probe = np.array([0.3, 0.6])
-    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
-                           window_size=window_size, num_trees=5, max_depth=6)
+    model = HalfSpaceTrees(
+        feature_mins=[0.0, 0.0],
+        feature_maxes=[1.0, 1.0],
+        window_size=window_size,
+        num_trees=5,
+        max_depth=6,
+    )
     model.fit(X[:window_size])
     first_reference_score = model.score_partial(probe)
 
@@ -190,6 +226,7 @@ def test_half_space_trees_reference_profile_is_fixed_within_a_window():
 
 def test_half_space_trees_window_swap_replaces_the_reference_with_the_last_window():
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -197,8 +234,13 @@ def test_half_space_trees_window_swap_replaces_the_reference_with_the_last_windo
 
     fix_seed(0)
     X = np.random.uniform(size=(4 * window_size, 2))
-    model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
-                           window_size=window_size, num_trees=5, max_depth=6)
+    model = HalfSpaceTrees(
+        feature_mins=[0.0, 0.0],
+        feature_maxes=[1.0, 1.0],
+        window_size=window_size,
+        num_trees=5,
+        max_depth=6,
+    )
 
     def root_masses():
         # The swap is applied lazily, so bring the roots up to the open window before reading them.
@@ -212,15 +254,16 @@ def test_half_space_trees_window_swap_replaces_the_reference_with_the_last_windo
     assert all(masses == (window_size, 0) for masses in root_masses())
 
     # Older windows are forgotten: the reference holds only the last window.
-    model.fit(X[window_size:3 * window_size])
+    model.fit(X[window_size : 3 * window_size])
     assert all(masses == (window_size, 0) for masses in root_masses())
-    scores = model.fit_score(X[3 * window_size:])
-    for x, score in zip(X[3 * window_size:], scores, strict=True):
-        assert score == _score_against(model, X[2 * window_size:3 * window_size], x)
+    scores = model.fit_score(X[3 * window_size :])
+    for x, score in zip(X[3 * window_size :], scores, strict=True):
+        assert score == _score_against(model, X[2 * window_size : 3 * window_size], x)
 
 
 def test_half_space_trees_score_partial_does_not_record_the_instance():
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -232,8 +275,13 @@ def test_half_space_trees_score_partial_does_not_record_the_instance():
 
     def later_scores(num_fitted, score_extra):
         fix_seed(1)
-        model = HalfSpaceTrees(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0],
-                               window_size=window_size, num_trees=5, max_depth=6)
+        model = HalfSpaceTrees(
+            feature_mins=[0.0, 0.0],
+            feature_maxes=[1.0, 1.0],
+            window_size=window_size,
+            num_trees=5,
+            max_depth=6,
+        )
         model.fit(X[:num_fitted])
         if score_extra:
             model.score(extra_X)
@@ -241,12 +289,14 @@ def test_half_space_trees_score_partial_does_not_record_the_instance():
 
     # Scoring extra instances, during the first window or after it, must leave every later score unchanged.
     for num_fitted in [window_size // 2, window_size + window_size // 2]:
-        np.testing.assert_array_equal(later_scores(num_fitted, score_extra=True),
-                                      later_scores(num_fitted, score_extra=False))
+        np.testing.assert_array_equal(
+            later_scores(num_fitted, score_extra=True), later_scores(num_fitted, score_extra=False)
+        )
 
 
 def test_half_space_trees_fit_score_matches_scoring_then_fitting_each_instance():
     import numpy as np
+
     from pysad.models import HalfSpaceTrees
     from pysad.utils import fix_seed
 
@@ -255,8 +305,13 @@ def test_half_space_trees_fit_score_matches_scoring_then_fitting_each_instance()
 
     def new_model():
         fix_seed(123)
-        return HalfSpaceTrees(feature_mins=[0.0] * 3, feature_maxes=[1.0] * 3,
-                              window_size=50, num_trees=5, max_depth=6)
+        return HalfSpaceTrees(
+            feature_mins=[0.0] * 3,
+            feature_maxes=[1.0] * 3,
+            window_size=50,
+            num_trees=5,
+            max_depth=6,
+        )
 
     model = new_model()
     expected_scores = []
@@ -270,7 +325,9 @@ def test_half_space_trees_fit_score_matches_scoring_then_fitting_each_instance()
 def _new_hst(**kwargs):
     from pysad.models import HalfSpaceTrees
 
-    params = dict(feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0], window_size=10, num_trees=3, max_depth=4)
+    params = dict(
+        feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0], window_size=10, num_trees=3, max_depth=4
+    )
     params.update(kwargs)
     return HalfSpaceTrees(**params)
 
@@ -291,14 +348,17 @@ def test_half_space_trees_accepts_numpy_integer_hyperparameters():
     assert model.fit_score(np.random.uniform(size=(25, 2))).shape == (25,)
 
 
-@pytest.mark.parametrize("feature_mins, feature_maxes", [
-    ([0.0, 0.0], [1.0]),
-    ([], []),
-    ([[0.0, 0.0]], [[1.0, 1.0]]),
-    ([0.0, 2.0], [1.0, 1.0]),
-    ([0.0, float("-inf")], [1.0, 1.0]),
-    ([0.0, 0.0], [1.0, float("nan")]),
-])
+@pytest.mark.parametrize(
+    "feature_mins, feature_maxes",
+    [
+        ([0.0, 0.0], [1.0]),
+        ([], []),
+        ([[0.0, 0.0]], [[1.0, 1.0]]),
+        ([0.0, 2.0], [1.0, 1.0]),
+        ([0.0, float("-inf")], [1.0, 1.0]),
+        ([0.0, 0.0], [1.0, float("nan")]),
+    ],
+)
 def test_half_space_trees_rejects_invalid_feature_bounds(feature_mins, feature_maxes):
     with pytest.raises(ValueError, match="feature_mins"):
         _new_hst(feature_mins=feature_mins, feature_maxes=feature_maxes)
@@ -306,11 +366,14 @@ def test_half_space_trees_rejects_invalid_feature_bounds(feature_mins, feature_m
 
 def test_half_space_trees_integer_bounds_build_the_same_trees_as_float_bounds():
     import numpy as np
+
     from pysad.utils import fix_seed
 
     def split_values(feature_mins, feature_maxes):
         fix_seed(0)
-        model = _new_hst(feature_mins=feature_mins, feature_maxes=feature_maxes, num_trees=5, max_depth=6)
+        model = _new_hst(
+            feature_mins=feature_mins, feature_maxes=feature_maxes, num_trees=5, max_depth=6
+        )
         values, nodes = [], list(model.roots)
         while nodes:
             node = nodes.pop()
@@ -325,6 +388,7 @@ def test_half_space_trees_integer_bounds_build_the_same_trees_as_float_bounds():
 
 def test_half_space_trees_work_spaces_cover_the_feature_ranges():
     import numpy as np
+
     from pysad.utils import fix_seed
 
     fix_seed(0)
@@ -339,7 +403,9 @@ def test_half_space_trees_work_spaces_cover_the_feature_ranges():
         # so it holds the whole feature range and is 2 to 4 times as wide.
         assert np.all((feature_mins <= center) & (center <= feature_maxes))
         assert np.all((mins <= feature_mins) & (feature_maxes <= maxes))
-        np.testing.assert_allclose(maxes - center, 2 * np.maximum(center - feature_mins, feature_maxes - center))
+        np.testing.assert_allclose(
+            maxes - center, 2 * np.maximum(center - feature_mins, feature_maxes - center)
+        )
         assert np.all((2 * width <= maxes - mins) & (maxes - mins <= 4 * width))
 
 
@@ -350,7 +416,9 @@ def test_half_space_trees_differ_on_one_dimensional_streams():
     model = _new_hst(feature_mins=[0.0], feature_maxes=[1.0], num_trees=10, max_depth=5)
 
     def splits(node):
-        return [] if node.left is None else [node.split_value] + splits(node.left) + splits(node.right)
+        return (
+            [] if node.left is None else [node.split_value] + splits(node.left) + splits(node.right)
+        )
 
     # Without a work space per tree, every tree halved [0, 1] at the same points (0.5, 0.25, 0.75, ...).
     assert len({tuple(splits(root)) for root in model.roots}) == 10
@@ -359,6 +427,7 @@ def test_half_space_trees_differ_on_one_dimensional_streams():
 
 def test_half_space_trees_without_random_work_space_split_the_feature_ranges():
     import numpy as np
+
     from pysad.utils import fix_seed
 
     fix_seed(0)
@@ -378,6 +447,7 @@ def test_half_space_trees_rejects_a_non_bool_random_work_space(value):
 
 def test_half_space_trees_closing_a_window_touches_no_node():
     import numpy as np
+
     from pysad.utils import fix_seed
 
     fix_seed(0)
@@ -399,6 +469,7 @@ def test_half_space_trees_closing_a_window_touches_no_node():
 
 def test_half_space_trees_forgets_regions_left_empty_for_a_whole_window():
     import numpy as np
+
     from pysad.utils import fix_seed
 
     window_size = 10
@@ -418,6 +489,7 @@ def test_half_space_trees_forgets_regions_left_empty_for_a_whole_window():
 
 def test_half_space_trees_model_saved_before_the_lazy_swap_continues_the_stream():
     import numpy as np
+
     from pysad.utils import fix_seed
 
     window_size = 10

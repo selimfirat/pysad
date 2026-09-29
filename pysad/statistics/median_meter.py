@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from heapq import heappush
+
 from pysad.core.base_statistic import UnivariateStatistic
 
 
 class MedianMeter(UnivariateStatistic):
     """The statistic that keeps track of the median.
 
-        Attributes:
-            num_items (int): The number of items that are used to update the statistic.
-            lst (list[float]): The list of values that are used to update the statistic. It is necessary for windowing operations.
+    Attributes:
+        num_items (int): The number of items that are used to update the statistic.
+        lst (list[float]): The list of values that are used to update the statistic. It is necessary for windowing operations.
     """
 
     def __init__(self):
@@ -45,7 +46,7 @@ class MedianMeter(UnivariateStatistic):
         return self
 
     def get(self) -> float:
-        """ Method to obtain the tracked statistic.
+        """Method to obtain the tracked statistic.
 
         Returns:
             float: The statistic.

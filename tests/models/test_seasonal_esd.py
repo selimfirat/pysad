@@ -1,6 +1,6 @@
-
 def test_seasonal_esd_detects_latest_window_anomaly(monkeypatch):
     import numpy as np
+
     from pysad.models import SeasonalESD
 
     monkeypatch.setattr(
@@ -17,6 +17,7 @@ def test_seasonal_esd_detects_latest_window_anomaly(monkeypatch):
 
 def test_seasonal_hybrid_esd_detects_latest_window_anomaly(monkeypatch):
     import numpy as np
+
     from pysad.models import SeasonalHybridESD
 
     monkeypatch.setattr(
@@ -33,6 +34,7 @@ def test_seasonal_hybrid_esd_detects_latest_window_anomaly(monkeypatch):
 
 def test_seasonal_esd_uses_window_for_latest_candidate(monkeypatch):
     import numpy as np
+
     from pysad.models import SeasonalESD
 
     seen_window_sizes = []
@@ -55,6 +57,7 @@ def test_seasonal_esd_uses_window_for_latest_candidate(monkeypatch):
 
 def test_seasonal_esd_scores_repeated_latest_candidate(monkeypatch):
     import numpy as np
+
     from pysad.models import SeasonalESD
 
     seen_windows = []
@@ -77,6 +80,7 @@ def test_seasonal_esd_scores_repeated_latest_candidate(monkeypatch):
 
 def test_seasonal_esd_fit_score_does_not_double_append(monkeypatch):
     import numpy as np
+
     from pysad.models import SeasonalESD
 
     seen_windows = []
@@ -99,6 +103,7 @@ def test_seasonal_esd_fit_score_does_not_double_append(monkeypatch):
 
 def test_seasonal_esd_validates_configuration():
     from numpy.testing import assert_raises
+
     from pysad.models import SeasonalESD
 
     with assert_raises(ValueError):
@@ -110,6 +115,7 @@ def test_seasonal_esd_validates_configuration():
 
 def test_seasonal_esd_rejects_short_windows():
     from numpy.testing import assert_raises
+
     from pysad.models import SeasonalESD
 
     with assert_raises(ValueError):
@@ -119,6 +125,7 @@ def test_seasonal_esd_rejects_short_windows():
 def test_seasonal_esd_rejects_invalid_alpha():
     import numpy as np
     from numpy.testing import assert_raises
+
     from pysad.models import SeasonalESD
 
     for alpha in (0.0, 1.0, -0.1, np.nan, np.inf):

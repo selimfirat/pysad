@@ -5,8 +5,9 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
-from pysad.utils import _iterate
 import numpy as np
+
+from pysad.utils import _iterate
 
 
 def _to_float_score(score: float | np.number | np.ndarray | list[float]) -> float:
@@ -23,18 +24,20 @@ def _to_float_score(score: float | np.number | np.ndarray | list[float]) -> floa
     score = np.asarray(score)
     if score.size != 1:
         raise ValueError(
-            "Expected a single score for one instance, got an array of shape {}.".format(score.shape))
+            f"Expected a single score for one instance, got an array of shape {score.shape}."
+        )
 
     return float(score.reshape(-1)[0])
 
 
 def _returns_float_score(method: Callable[..., Any]) -> Callable[..., float]:
     """Wraps a single-instance scoring method so that it returns a Python float."""
+
     @wraps(method)
     def wrapper(self, *args, **kwargs) -> float:
         return _to_float_score(method(self, *args, **kwargs))
 
-    setattr(wrapper, "_returns_float_score", True)
+    wrapper._returns_float_score = True
     return wrapper
 
 
@@ -53,7 +56,7 @@ class BaseModel(ABC):
                 setattr(cls, name, _returns_float_score(method))
 
     @abstractmethod
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> "BaseModel":
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> BaseModel:
         """Fits the model to next instance.
 
         Args:
@@ -89,7 +92,7 @@ class BaseModel(ABC):
         """
         return _to_float_score(self.fit_partial(X, y).score_partial(X))
 
-    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> "BaseModel":
+    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> BaseModel:
         """Fits the model to all instances in order.
 
         Args:

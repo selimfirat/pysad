@@ -1,15 +1,16 @@
 import math
 import numbers
 
-from pysad.core.base_model import BaseModel
 import numpy as np
+
+from pysad.core.base_model import BaseModel
 
 
 class KNNCAD(BaseModel):
     """Conformalized density- and distance-based anomaly detection in time-series data :cite:`burnaev2016conformalized`, which uses a combination of a feature extraction method, an approach to assess a score whether a new observation differs significantly from a previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate: each instance must hold exactly one value, and an instance with more raises `ValueError`. Where NAB and the paper disagree, this implementation follows NAB, including: the training and calibration sets and their rotation, the sum of squared quadratic forms with the `inv(XᵀX)` distance (refreshed every half probationary period) in place of the paper's Eq. (1) distance sum, the fixed `k = 27` and window length `19`, and the alarm suppression that returns `0.5`.
 
-        Args:
-            probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`. Must be a whole number of at least `48` (window length `19` plus `k = 27` plus `2`): the training set holds `probationary_period - 19` windows, and the calibration scores need at least `k + 2` of them. It may be an int (a NumPy integer is accepted, but not a bool) or an integral-valued float, such as the `750.0` that NAB's probation period helper returns, which is converted to an int. Raises `TypeError` for a bool or a non-real type, and `ValueError` for NaN, infinity, a value with a fractional part, or a value below the minimum.
+    Args:
+        probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`. Must be a whole number of at least `48` (window length `19` plus `k = 27` plus `2`): the training set holds `probationary_period - 19` windows, and the calibration scores need at least `k + 2` of them. It may be an int (a NumPy integer is accepted, but not a bool) or an integral-valued float, such as the `750.0` that NAB's probation period helper returns, which is converted to an int. Raises `TypeError` for a bool or a non-real type, and `ValueError` for NaN, infinity, a value with a fractional part, or a value below the minimum.
     """
 
     def __init__(self, probationary_period):
@@ -17,13 +18,16 @@ class KNNCAD(BaseModel):
         k = 27
         min_probationary_period = dim + k + 2
 
-        if isinstance(probationary_period, bool) or not isinstance(probationary_period, numbers.Real):
+        if isinstance(probationary_period, bool) or not isinstance(
+            probationary_period, numbers.Real
+        ):
             raise TypeError(
                 f"probationary_period must be an int or an integral float, got {probationary_period!r}."
             )
 
         if not isinstance(probationary_period, numbers.Integral) and not (
-                math.isfinite(probationary_period) and float(probationary_period).is_integer()):
+            math.isfinite(probationary_period) and float(probationary_period).is_integer()
+        ):
             raise ValueError(
                 f"probationary_period must be a whole number, got {probationary_period!r}."
             )
@@ -79,7 +83,7 @@ class KNNCAD(BaseModel):
     def _ncm(self, item, sigma, item_in_array=False):
         arr = [self._metric(x, item, sigma) for x in self.training]
 
-        return np.sum(np.partition(arr, self.k + item_in_array)[:self.k + item_in_array])
+        return np.sum(np.partition(arr, self.k + item_in_array)[: self.k + item_in_array])
 
     def _sigma_at(self, record_count):
         """Returns the sigma NAB uses at the given record, recomputed from the training set when a refresh is due.
@@ -137,7 +141,7 @@ class KNNCAD(BaseModel):
         if len(self.buf) < self.dim:
             return self
 
-        new_item = self.buf[-self.dim:]
+        new_item = self.buf[-self.dim :]
 
         if self.record_count < self.probationaryPeriod:
             self.training.append(new_item)
@@ -145,7 +149,7 @@ class KNNCAD(BaseModel):
             try:
                 self.sigma = self._sigma_at(self.record_count)
             except np.linalg.LinAlgError:
-                print('Singular Matrix at record', self.record_count)
+                print("Singular Matrix at record", self.record_count)
             self.scores = self._calibration_scores(self.sigma)
 
             new_score = self._ncm(new_item, self.sigma)
@@ -181,7 +185,7 @@ class KNNCAD(BaseModel):
         if record_count < self.probationaryPeriod:
             return 0.0
 
-        new_item = self.buf[-(self.dim - 1):] + [value]
+        new_item = self.buf[-(self.dim - 1) :] + [value]
 
         try:
             sigma = self._sigma_at(record_count)
@@ -191,7 +195,7 @@ class KNNCAD(BaseModel):
 
         new_score = self._ncm(new_item, sigma)
 
-        return 1. * len(np.where(np.array(scores) < new_score)[0]) / len(scores)
+        return 1.0 * len(np.where(np.array(scores) < new_score)[0]) / len(scores)
 
     def fit_score_partial(self, X, y=None):
         """Scores the window that ends with the given instance and then fits the model to it, as NAB's detector does for each record. After a score of at least `0.9965` raises an alarm, the next `int(probationary_period / 5)` scores are suppressed to `0.5`.

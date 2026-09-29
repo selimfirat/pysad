@@ -1,10 +1,7 @@
-
-
 def test_gaussian_random_projector(test_path):
     from pysad.transform.projection import GaussianRandomProjector
 
     for num_components in [2, 50, 250]:
-
         projector = GaussianRandomProjector(num_components=num_components)
 
         helper_test_projector(test_path, projector, num_components)
@@ -14,7 +11,6 @@ def test_sparse_random_projector(test_path):
     from pysad.transform.projection import SparseRandomProjector
 
     for num_components in [2, 50, 250]:
-
         projector = SparseRandomProjector(num_components=num_components)
 
         helper_test_projector(test_path, projector, num_components)
@@ -22,7 +18,9 @@ def test_sparse_random_projector(test_path):
 
 def helper_test_projector(test_path, projector, num_components):
     import os
+
     from sklearn.utils import shuffle
+
     from pysad.utils import Data
 
     data = Data(os.path.join(test_path, "../../../examples/data"))
@@ -36,11 +34,15 @@ def helper_test_projector(test_path, projector, num_components):
 
 def test_projection_is_consistent_across_instances():
     import numpy as np
+
     from pysad.transform.projection import GaussianRandomProjector, SparseRandomProjector
 
     X = np.random.RandomState(0).rand(20, 100)
 
-    for projector in [GaussianRandomProjector(num_components=10), SparseRandomProjector(num_components=10)]:
+    for projector in [
+        GaussianRandomProjector(num_components=10),
+        SparseRandomProjector(num_components=10),
+    ]:
         projected_X = projector.fit_transform(X)
 
         assert np.allclose(projector.transform_partial(X[0]), projected_X[0])
@@ -50,6 +52,7 @@ def test_projection_is_consistent_across_instances():
 def test_sparse_projector_keeps_components_sparse():
     import numpy as np
     from scipy.sparse import issparse
+
     from pysad.transform.projection import SparseRandomProjector
 
     projector = SparseRandomProjector(num_components=10)
@@ -60,6 +63,7 @@ def test_sparse_projector_keeps_components_sparse():
 
 def test_fit_draws_projection_used_by_transform():
     import numpy as np
+
     from pysad.transform.projection import GaussianRandomProjector, SparseRandomProjector
 
     X = np.random.RandomState(0).rand(20, 100)
@@ -76,6 +80,7 @@ def test_auto_components_are_sized_from_the_batch():
     import numpy as np
     import pytest
     from sklearn.random_projection import johnson_lindenstrauss_min_dim
+
     from pysad.transform.projection import GaussianRandomProjector, SparseRandomProjector
 
     X = np.random.RandomState(0).rand(50, 500)

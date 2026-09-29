@@ -1,8 +1,9 @@
 import numbers
 
-from scipy import stats
-from pysad.core.base_model import BaseModel
 import numpy as np
+from scipy import stats
+
+from pysad.core.base_model import BaseModel
 
 
 def _positive_int(value, name, expected="an int"):
@@ -33,12 +34,12 @@ def _positive_int(value, name, expected="an int"):
 class RelativeEntropy(BaseModel):
     """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. By default (`step=1`) windows slide one value at a time, as in NAB, so every value from the `window_size`-th on is tested against the hypotheses. Pass `step=window_size` (or `step=None`, which resolves to it) for the paper's non-overlapping windows, where each value belongs to exactly one tested window. Each tested window's score goes to the value that closes it and every other value scores 0.0 (NAB tests a window at every value, and the paper flags windows rather than values), so with `step=window_size` only one value in every `window_size` can score nonzero, and per-value metrics are not meaningful. For the same reason, `score` on held-out values after `fit` scores each of them as the value following the fitted ones and, with `step > 1`, returns 0.0 unless that value would close a window (with `step=window_size`, unless the number of fitted values is one short of a multiple of `window_size`); the default `step=1` is the setting for fitting and scoring separately. Unlike NAB, whose histogram puts the top two quantization levels in one bin, this implementation gives each of the `num_bins` equal-width buckets its own bin, as in the paper (Fig. 1, steps 3-4b), so its scores differ from NAB's. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, and 0.0 otherwise. With NAB's rarity threshold `c_th` kept at 1, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
 
-        Args:
-            min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
-            max_val (float): Maximum value of the univariate stream. Values above this are clipped to it.
-            num_bins (int): Number of bins (Default=5).
-            window_size (int): The size of the window (Default=52). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
-            step (int or None): Number of values between the ends of consecutive tested windows. `1` (default) gives NAB's sliding windows, which move by one value at a time; `window_size` (or `None`, which resolves to it) gives the paper's non-overlapping windows. Only the value that closes a tested window can score nonzero, so the default is the setting for per-value scores and for fitting and scoring separately. Must be `None` or an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
+    Args:
+        min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
+        max_val (float): Maximum value of the univariate stream. Values above this are clipped to it.
+        num_bins (int): Number of bins (Default=5).
+        window_size (int): The size of the window (Default=52). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
+        step (int or None): Number of values between the ends of consecutive tested windows. `1` (default) gives NAB's sliding windows, which move by one value at a time; `window_size` (or `None`, which resolves to it) gives the paper's non-overlapping windows. Only the value that closes a tested window can score nonzero, so the default is the setting for per-value scores and for fitting and scoring separately. Must be `None` or an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
     """
 
     def __init__(self, min_val, max_val, num_bins=5, window_size=52, step=1):
@@ -101,7 +102,7 @@ class RelativeEntropy(BaseModel):
         self.util.append(x)
 
         if self.stepSize != 0.0 and self._closes_window(len(self.util)):
-            P_hat, index = self._window_index(self.util[-self.W:])
+            P_hat, index = self._window_index(self.util[-self.W :])
             self._fit_window(P_hat, index)
 
         return self
@@ -152,7 +153,7 @@ class RelativeEntropy(BaseModel):
         # Computed once and shared: the score reads `index` before `_fit_window` changes
         # `self.P`/`self.c`/`self.m`, matching the score-then-fit order of `score_partial`
         # followed by `fit_partial`.
-        P_hat, index = self._window_index(self.util[-self.W:])
+        P_hat, index = self._window_index(self.util[-self.W :])
         score = 0.0 if self.m == 0 else self._score_window(index)
         self._fit_window(P_hat, index)
 
@@ -263,7 +264,9 @@ class RelativeEntropy(BaseModel):
         # min_val in the first bucket (ceil((min_val - min_val) / stepSize) == 0 otherwise)
         # and also absorbs the floating-point round-off that can put a value already clipped
         # to max_val one level past N_bins (e.g. ceil((100-0)/(100/29)) == 30).
-        B_current = np.clip(np.ceil((values - self.min_val) / self.stepSize), 1, self.N_bins).astype(int)
+        B_current = np.clip(
+            np.ceil((values - self.min_val) / self.stepSize), 1, self.N_bins
+        ).astype(int)
 
         return np.bincount(B_current - 1, minlength=self.N_bins) / len(window)
 

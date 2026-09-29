@@ -1,6 +1,7 @@
 """
 The :mod:`pysad.utils` module includes utility functions used in the `PySAD` framework, which can also be useful for streaming learning.
 """
+
 import random
 from collections.abc import Iterator
 from typing import Any
@@ -12,7 +13,16 @@ from .data import Data
 from .pandas_streamer import PandasStreamer
 from .window import Window
 
-__all__ = ["fix_seed", "get_minmax_array", "get_minmax_scalar", "_iterate", "ArrayStreamer", "PandasStreamer", "Window", "Data"]
+__all__ = [
+    "fix_seed",
+    "get_minmax_array",
+    "get_minmax_scalar",
+    "_iterate",
+    "ArrayStreamer",
+    "PandasStreamer",
+    "Window",
+    "Data",
+]
 
 
 def fix_seed(seed: int) -> None:
@@ -57,9 +67,7 @@ def get_minmax_scalar(
     return min, max
 
 
-def _iterate(
-    X: np.ndarray, y: np.ndarray | None = None
-) -> Iterator[tuple[np.ndarray, Any | None]]:
+def _iterate(X: np.ndarray, y: np.ndarray | None = None) -> Iterator[tuple[np.ndarray, Any | None]]:
     """Iterates array of features and possibly labels.
 
     Args:

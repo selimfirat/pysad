@@ -1,5 +1,6 @@
-from pysad.core.base_transformer import BaseTransformer
 import numpy as np
+
+from pysad.core.base_transformer import BaseTransformer
 
 
 class InstanceUnitNormScaler(BaseTransformer):

@@ -1,11 +1,10 @@
-from pysad.core.base_model import BaseModel
 import numpy as np
+
+from pysad.core.base_model import BaseModel
 
 
 class RandomModel(BaseModel):
-    """Random scorer that chooses a score between 0 and 1 ignoring the input.
-
-    """
+    """Random scorer that chooses a score between 0 and 1 ignoring the input."""
 
     def fit_partial(self, X, y=None):
         """This method is ignored. Added for convenience.

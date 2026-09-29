@@ -2,8 +2,7 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class IdentityScaler(BaseTransformer):
-    """A scaler that does not modify the input, which is added for convenience.
-    """
+    """A scaler that does not modify the input, which is added for convenience."""
 
     def __init__(self):
         super().__init__(-1)

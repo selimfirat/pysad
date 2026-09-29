@@ -16,6 +16,7 @@ def _import_rrcf():
     """
     if "pkg_resources" in sys.modules:
         from rrcf import rrcf
+
         return rrcf
 
     stub = types.ModuleType("pkg_resources")
@@ -33,10 +34,10 @@ def _import_rrcf():
 class RobustRandomCutForest(BaseModel):
     """Robust Random Cut Forest model :cite:`guha2016robust`. The implementation uses `rrcf library <https://github.com/kLabUM/rrcf>`_ :cite:`bartos_2019_rrcf`.
 
-        Args:
-            num_trees (int): The number of trees.
-            shingle_size (int): The shingle size (Default=4).
-            tree_size (int): The tree size (Default=256).
+    Args:
+        num_trees (int): The number of trees.
+        shingle_size (int): The shingle size (Default=4).
+        tree_size (int): The tree size (Default=256).
     """
 
     def __init__(self, num_trees=4, shingle_size=4, tree_size=256):

@@ -1,7 +1,8 @@
 import warnings
 
-from pysad.core.base_model import BaseModel
 import numpy as np
+
+from pysad.core.base_model import BaseModel
 
 _UNSET = object()
 
@@ -9,27 +10,28 @@ _UNSET = object()
 class RSHash(BaseModel):
     """Subspace outlier detection in linear time with randomized hashing :cite:`sathe2016subspace`. This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_ and follows the streaming variant (RS-Stream) of the paper. Instances are normalized with `feature_mins` and `feature_maxes`, and the score is the negated average of log2(1 + c) over the ensemble, where c is the time-decayed count of the instance's grid cell, so that higher scores are more anomalous.
 
-        Args:
-            feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
-            feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
-            sampling_points (int): Deprecated. Has no effect.
-            decay (float): The decay hyperparameter (Default=0.015).
-            num_components (int): The number of ensemble components (Default=100).
-            num_hash_fns (int): The number of hashing functions (Default=1).
+    Args:
+        feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
+        feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
+        sampling_points (int): Deprecated. Has no effect.
+        decay (float): The decay hyperparameter (Default=0.015).
+        num_components (int): The number of ensemble components (Default=100).
+        num_hash_fns (int): The number of hashing functions (Default=1).
 
-        .. deprecated:: 0.6.1
-            The ``sampling_points`` parameter is deprecated and has no effect.
-            It will be removed in a future release.
+    .. deprecated:: 0.6.1
+        The ``sampling_points`` parameter is deprecated and has no effect.
+        It will be removed in a future release.
     """
 
     def __init__(
-            self,
-            feature_mins,
-            feature_maxes,
-            sampling_points=_UNSET,
-            decay=0.015,
-            num_components=100,
-            num_hash_fns=1):
+        self,
+        feature_mins,
+        feature_maxes,
+        sampling_points=_UNSET,
+        decay=0.015,
+        num_components=100,
+        num_hash_fns=1,
+    ):
         if sampling_points is not _UNSET:
             warnings.warn(
                 "The 'sampling_points' parameter is deprecated and has no "
@@ -52,7 +54,8 @@ class RSHash(BaseModel):
         self.effS = max(1000, 1.0 / (1 - np.power(2, -self.decay)))
 
         self.f = np.random.uniform(
-            low=1.0 / np.sqrt(self.effS), high=1 - (1.0 / np.sqrt(self.effS)), size=self.m)
+            low=1.0 / np.sqrt(self.effS), high=1 - (1.0 / np.sqrt(self.effS)), size=self.m
+        )
 
         for _ in range(self.num_hash):
             self.cmsketches.append({})
@@ -183,11 +186,7 @@ class RSHash(BaseModel):
     def _sample_shifts(self):
         alpha = []
         for r in range(self.m):
-            alpha.append(
-                np.random.uniform(
-                    low=0,
-                    high=self.f[r],
-                    size=len(self.V[r])))
+            alpha.append(np.random.uniform(low=0, high=self.f[r], size=len(self.V[r])))
 
         return alpha
 
@@ -204,8 +203,15 @@ class RSHash(BaseModel):
         high_value = np.floor(common_term).astype(int)
         low_value = np.minimum(np.ceil(1 + 0.5 * common_term).astype(int), high_value)
 
-        self.r = np.empty([self.m, ], dtype=int)
+        self.r = np.empty(
+            [
+                self.m,
+            ],
+            dtype=int,
+        )
         self.V = []
         for i in range(self.m):
-            self.r[i] = min(np.random.randint(low=low_value[i], high=high_value[i] + 1), len(choice_feats))
+            self.r[i] = min(
+                np.random.randint(low=low_value[i], high=high_value[i] + 1), len(choice_feats)
+            )
             self.V.append(np.random.choice(choice_feats, size=self.r[i], replace=False))

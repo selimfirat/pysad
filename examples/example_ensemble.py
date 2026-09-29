@@ -1,15 +1,14 @@
 # Import modules.
-from pysad.evaluation import AUROCMetric
-from pysad.models import LODA
-from pysad.models import xStream
-from pysad.utils import ArrayStreamer
-from pysad.transform.ensemble import AverageScoreEnsembler
-from pysad.utils import Data
-from sklearn.utils import shuffle
 import numpy as np
+from sklearn.utils import shuffle
+
+from pysad.evaluation import AUROCMetric
+from pysad.models import LODA, xStream
+from pysad.transform.ensemble import AverageScoreEnsembler
+from pysad.utils import ArrayStreamer, Data
 
 # This example demonstrates the usage of an ensembling method.
-if __name__ == '__main__':
+if __name__ == "__main__":
     np.random.seed(61)  # Fix random seed.
 
     data = Data("data")
@@ -20,7 +19,7 @@ if __name__ == '__main__':
 
     models = [  # Models to be ensembled.
         xStream(),
-        LODA()
+        LODA(),
     ]
     ensembler = AverageScoreEnsembler()  # Ensembler module.
 
@@ -32,7 +31,9 @@ if __name__ == '__main__':
             model.fit_partial(X)
             model_scores[i] = model.score_partial(X)
 
-        score = ensembler.fit_transform_partial(model_scores)  # fit to ensembler model and get ensembled score.
+        score = ensembler.fit_transform_partial(
+            model_scores
+        )  # fit to ensembler model and get ensembled score.
 
         auroc.update(y, score)  # update AUROC metric.
 

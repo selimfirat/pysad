@@ -11,22 +11,21 @@ _UNSET = object()
 class StandardAbsoluteDeviation(BaseModel):
     """The model that assigns the deviation from the mean (or median) and divides with the standard deviation. This model is based on the 3-Sigma rule described in :cite:`hochenbaum2017automatic`.
 
-        This is a streaming standard-deviation score component, not the paper's
-        S-ESD method. It does not apply STL decomposition or generalized ESD
-        internally. Use :class:`pysad.models.SeasonalESD` for the paper's
-        modified-STL plus standard ESD detector.
+    This is a streaming standard-deviation score component, not the paper's
+    S-ESD method. It does not apply STL decomposition or generalized ESD
+    internally. Use :class:`pysad.models.SeasonalESD` for the paper's
+    modified-STL plus standard ESD detector.
 
-        Args:
-            subtracted_statistic (str): The statistic to be subtracted for scoring. It is either "mean" or "median". (Default="mean").
-            absolute (bool): Whether to output score's absolute value. (Default=True).
+    Args:
+        subtracted_statistic (str): The statistic to be subtracted for scoring. It is either "mean" or "median". (Default="mean").
+        absolute (bool): Whether to output score's absolute value. (Default=True).
 
-        .. deprecated:: 0.6.1
-            The ``substracted_statistic`` keyword is deprecated.
-            Use ``subtracted_statistic`` instead.
+    .. deprecated:: 0.6.1
+        The ``substracted_statistic`` keyword is deprecated.
+        Use ``subtracted_statistic`` instead.
     """
 
-    def __init__(self, subtracted_statistic=_UNSET, absolute=True,
-                 *, substracted_statistic=_UNSET):
+    def __init__(self, subtracted_statistic=_UNSET, absolute=True, *, substracted_statistic=_UNSET):
         if substracted_statistic is not _UNSET:
             warnings.warn(
                 "The 'substracted_statistic' parameter is deprecated. "
@@ -36,8 +35,7 @@ class StandardAbsoluteDeviation(BaseModel):
             )
             if subtracted_statistic is not _UNSET:
                 raise TypeError(
-                    "Cannot specify both 'subtracted_statistic' and "
-                    "'substracted_statistic'."
+                    "Cannot specify both 'subtracted_statistic' and 'substracted_statistic'."
                 )
             subtracted_statistic = substracted_statistic
 
@@ -52,8 +50,7 @@ class StandardAbsoluteDeviation(BaseModel):
         elif subtracted_statistic == "mean":
             self.sub_meter = AverageMeter()
         else:
-            raise ValueError(
-                "Unknown subtracted_statistic value! Please choose median or mean.")
+            raise ValueError("Unknown subtracted_statistic value! Please choose median or mean.")
 
     def fit_partial(self, X, y=None):
         """Fits the model to next instance.
@@ -83,7 +80,7 @@ class StandardAbsoluteDeviation(BaseModel):
             float: The anomalousness score of the input instance.
         """
         sub = self.sub_meter.get()
-        dev = self.variance_meter.get()**0.5
+        dev = self.variance_meter.get() ** 0.5
 
         score = (X - sub) / (dev + 1e-10)
 

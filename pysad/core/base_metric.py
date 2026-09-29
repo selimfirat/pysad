@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 
 
 class BaseMetric(ABC):
-    """Abstract base class for metrics.
-    """
+    """Abstract base class for metrics."""
 
     def __init__(self) -> None:
         self.score: float | None = None

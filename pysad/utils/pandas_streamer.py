@@ -25,16 +25,12 @@ class PandasStreamer(BaseStreamer):
         self.array_iterator = ArrayStreamer(shuffle=shuffle)
 
     @overload
-    def iter(
-        self, X: pd.DataFrame, y: None = None
-    ) -> Iterator[np.ndarray]:
-        ...
+    def iter(self, X: pd.DataFrame, y: None = None) -> Iterator[np.ndarray]: ...
 
     @overload
     def iter(
         self, X: pd.DataFrame, y: pd.DataFrame | pd.Series
-    ) -> Iterator[tuple[np.ndarray, Any]]:
-        ...
+    ) -> Iterator[tuple[np.ndarray, Any]]: ...
 
     def iter(
         self, X: pd.DataFrame, y: pd.DataFrame | pd.Series | None = None

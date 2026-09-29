@@ -13,9 +13,10 @@ def generate_stream(seed=61, scale=1.0):
 
 
 def test_rs_hash_auroc():
+    from sklearn.metrics import roc_auc_score
+
     from pysad.models import RSHash
     from pysad.utils import fix_seed
-    from sklearn.metrics import roc_auc_score
 
     for scale in [1.0, 100.0]:
         fix_seed(61)
@@ -29,9 +30,10 @@ def test_rs_hash_auroc():
 
 
 def test_rs_hash_outlier_scores_higher():
+    import numpy as np
+
     from pysad.models import RSHash
     from pysad.utils import fix_seed
-    import numpy as np
 
     fix_seed(61)
     X = np.random.normal(0.0, 1.0, size=(500, 3))
@@ -46,9 +48,10 @@ def test_rs_hash_outlier_scores_higher():
 
 
 def test_rs_hash_score_partial_scores_given_instance():
+    import numpy as np
+
     from pysad.models import RSHash
     from pysad.utils import fix_seed
-    import numpy as np
 
     fix_seed(0)
     rng = np.random.default_rng(0)
@@ -64,10 +67,12 @@ def test_rs_hash_score_partial_scores_given_instance():
 
 
 def test_rs_hash_score_partial_has_no_side_effects():
+    import copy
+
+    import numpy as np
+
     from pysad.models import RSHash
     from pysad.utils import fix_seed
-    import numpy as np
-    import copy
 
     fix_seed(42)
     model = RSHash(feature_mins=[0.0] * 3, feature_maxes=[1.0] * 3)
@@ -86,11 +91,13 @@ def test_rs_hash_score_partial_has_no_side_effects():
 
 
 def test_rs_hash_sampling_points_warns_and_has_no_effect():
-    from pysad.models import RSHash
-    from pysad.utils import fix_seed
+    import warnings
+
     import numpy as np
     import pytest
-    import warnings
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
 
     X = np.random.default_rng(0).random((200, 5))
 
@@ -112,9 +119,10 @@ def test_rs_hash_sampling_points_warns_and_has_no_effect():
 
 
 def test_rs_hash_score_then_fit_matches_fit_score_partial():
+    import numpy as np
+
     from pysad.models import RSHash
     from pysad.utils import fix_seed
-    import numpy as np
 
     fix_seed(7)
     X = np.random.uniform(size=(200, 3))

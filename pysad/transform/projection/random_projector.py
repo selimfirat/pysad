@@ -1,11 +1,15 @@
 from abc import abstractmethod
 
+import numpy as np
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
 
 from pysad.core.base_transformer import BaseTransformer
 
 
 class BaseSKLearnProjector(BaseTransformer):
+    # The class-level default keeps projectors pickled before `random_state` was added loadable.
+    random_state: int | np.random.RandomState | None = None
+
     def __init__(self, num_components):
         """Abstract base projector class to wrap the random sklearn projectors.
 
@@ -129,15 +133,20 @@ class GaussianRandomProjector(BaseSKLearnProjector):
             Smaller values lead to better embedding and higher number of
             dimensions (num_components) in the target projection space.
 
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the random matrix. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
+
     """
 
-    def __init__(self, num_components="auto", *, eps=0.1):
+    def __init__(self, num_components="auto", *, eps=0.1, random_state=None):
         super().__init__(num_components)
         self.eps = eps
         self.num_components = num_components
+        self.random_state = random_state
 
     def _projector(self):
-        return GaussianRandomProjection(n_components=self.num_components, eps=self.eps)
+        return GaussianRandomProjection(
+            n_components=self.num_components, eps=self.eps, random_state=self.random_state
+        )
 
 
 class SparseRandomProjector(BaseSKLearnProjector):
@@ -172,15 +181,22 @@ class SparseRandomProjector(BaseSKLearnProjector):
             Smaller values lead to better embedding and higher number of
             dimensions (num_components) in the target projection space.
 
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the random matrix. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
+
     """
 
-    def __init__(self, num_components="auto", density="auto", eps=0.1):
+    def __init__(self, num_components="auto", density="auto", eps=0.1, random_state=None):
         super().__init__(num_components)
         self.eps = eps
         self.density = density
         self.num_components = num_components
+        self.random_state = random_state
 
     def _projector(self):
         return SparseRandomProjection(
-            n_components=self.num_components, density=self.density, eps=self.eps, dense_output=True
+            n_components=self.num_components,
+            density=self.density,
+            eps=self.eps,
+            dense_output=True,
+            random_state=self.random_state,
         )

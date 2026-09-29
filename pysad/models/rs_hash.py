@@ -23,20 +23,20 @@ def _positive_int(value, name):
 class RSHash(BaseModel):
     """Subspace outlier detection in linear time with randomized hashing :cite:`sathe2016subspace`. This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_ and follows the streaming variant (RS-Stream) of the paper. Instances are normalized with `feature_mins` and `feature_maxes`, and the score is the negated average of log2(1 + c) over the ensemble, where c is the time-decayed count of the instance's grid cell, so that higher scores are more anomalous.
 
-    Grid cell counts are kept in a count-min sketch (Sathe & Aggarwal 2016, §II-A): `num_hash_fns` (w) pairwise-independent hash tables of `hash_range` (p) slots each, so the sketch's memory is O(w * p) and stays constant regardless of stream length, at the cost of hash collisions that can only overestimate a cell's count. Taking the minimum decayed count over the w tables reduces that overestimate.
+    Grid cell counts are kept in a count-min sketch (:cite:`sathe2016subspace`, §II-A): `num_hash_fns` (w) pairwise-independent hash tables of `hash_range` (p) slots each, so the sketch's memory is O(w * p) and stays constant regardless of stream length, at the cost of hash collisions that can only overestimate a cell's count. Taking the minimum decayed count over the w tables reduces that overestimate. As in the paper's streaming variant (§III), all `num_components` components share one sketch, which holds about `num_components / (1 - 2**-decay)` live insertions (about 9,700 at the defaults); increase `hash_range` along with `num_components` or the decay window (smaller `decay`), or collisions make scores less accurate than exact counting. Unlike the paper, which pairs p = 10,000 with w = 4, the default `num_hash_fns=1` takes no minimum, so it does not reduce the overestimate; pass `num_hash_fns=4` for the paper's sketch.
 
-        Args:
-            feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
-            feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
-            sampling_points (int): Deprecated. Has no effect.
-            decay (float): The decay hyperparameter (Default=0.015).
-            num_components (int): The number of ensemble components (Default=100).
-            num_hash_fns (int): The number w of pairwise-independent hash tables in the count-min sketch (Default=1). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
-            hash_range (int): The number p of slots per hash table of the count-min sketch (Default=10000). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
+    Args:
+        feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
+        feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
+        sampling_points (int): Deprecated. Has no effect.
+        decay (float): The decay hyperparameter (Default=0.015).
+        num_components (int): The number of ensemble components (Default=100).
+        num_hash_fns (int): The number w of pairwise-independent hash tables in the count-min sketch, whose smallest count is read (Default=1, which takes no minimum; the paper uses 4). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
+        hash_range (int): The number p of slots per hash table of the count-min sketch, which all `num_components` components share (Default=10000, the paper's p). It should grow with `num_components` and the decay window, since the sketch holds about `num_components / (1 - 2**-decay)` live insertions. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
 
-        .. deprecated:: 0.6.1
-            The ``sampling_points`` parameter is deprecated and has no effect.
-            It will be removed in a future release.
+    .. deprecated:: 0.6.1
+        The ``sampling_points`` parameter is deprecated and has no effect.
+        It will be removed in a future release.
     """
 
     def __init__(
@@ -78,9 +78,10 @@ class RSHash(BaseModel):
             low=1.0 / np.sqrt(self.effS), high=1 - (1.0 / np.sqrt(self.effS)), size=self.m
         )
 
-        # Count-min sketch of fixed size (w=num_hash_fns tables, p=hash_range slots each), so
-        # memory stays constant however long the stream runs. sketch_timestamps holds the last
-        # index each slot was updated at; sketch_counts holds its decayed count as of that index.
+        # Count-min sketch of fixed size (w=num_hash_fns tables, p=hash_range slots each), shared by
+        # all components, so memory stays constant however long the stream runs. sketch_timestamps
+        # holds the last index each slot was updated at; sketch_counts holds its decayed count as of
+        # that index.
         self.sketch_timestamps = np.zeros((self.num_hash, self.hash_range), dtype=np.int64)
         self.sketch_counts = np.zeros((self.num_hash, self.hash_range), dtype=np.float64)
 
@@ -90,8 +91,9 @@ class RSHash(BaseModel):
 
         # Pairwise-independent hash parameters, one (a_k, b_k) pair per table, drawn from
         # np.random so that pysad.utils.fix_seed makes the sketch's slot assignment reproducible.
-        # P is a Mersenne prime comfortably larger than any cell-key hash, and the modular
-        # arithmetic below is done in Python ints (not numpy int64) to avoid overflow. Drawn after
+        # P is a Mersenne prime. _cell_slots reduces hash(key), a signed 64-bit value that is often
+        # larger than P in magnitude, mod P before computing ((a_k * h + b_k) mod P) mod p, all in
+        # Python ints (not numpy int64) to avoid overflow. Drawn after
         # _sample_dims/_sample_shifts so that num_hash_fns cannot perturb the sampled subspaces
         # (self.V) or shifts (self.alpha): those draws must depend only on num_components and the
         # seed, not on how many hash tables the sketch happens to have. Each table's (a_k, b_k)
@@ -213,8 +215,8 @@ class RSHash(BaseModel):
         """Maps a grid cell key to one slot per hash table of the count-min sketch.
 
         Uses w pairwise-independent hash functions of the form ``((a_k * h + b_k) mod P) mod p``,
-        where h is a single hash of the key shared by every table, P is a fixed prime, and
-        a_k, b_k are the per-table parameters drawn in `__init__`.
+        where h is hash(key) reduced mod P and shared by every table, P is the Mersenne prime
+        2**61 - 1, and a_k, b_k are the per-table parameters drawn in `__init__`.
 
         Args:
             key (tuple of int): The grid cell key, as returned by `_cell_keys`.

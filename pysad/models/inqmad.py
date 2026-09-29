@@ -76,7 +76,7 @@ class Inqmad(BaseModel):
         if X.ndim == 1:
             X = np.expand_dims(X, axis=0)
 
-        self.inqmad.initial_train(jnp.array(X), 1)
+        self.inqmad.initial_train(jnp.array(X))
         return self
 
     def score_partial(self, X):
@@ -185,19 +185,21 @@ class InqMeasurement:
         return jnp.sum(rho_res, axis=0)
 
     @staticmethod
-    @partial(jit, static_argnums=(1, 2))
-    def compute_training_jit(batch, alpha, fm_x, rho):
+    @partial(jit, static_argnums=(1,))
+    def compute_training_jit(batch, fm_x, rho):
         inputs = fm_x(batch)
         rho_res = jax.vmap(InqMeasurement.train_pure)(inputs)
         rho_res = InqMeasurement.sum(rho_res)
-        return jnp.add((alpha) * rho_res, (1 - alpha) * rho) if rho is not None else rho_res
+        # Sum, do not replace: predict divides by num_samples, so rho is the
+        # uniform average over every fitted instance.
+        return jnp.add(rho_res, rho) if rho is not None else rho_res
 
-    def initial_train(self, values, alpha):
+    def initial_train(self, values):
         num_batches = InqMeasurement.obtain_params_batches(values, self.batch_size)
         for i in range(num_batches):
             batch = values[i * self.batch_size : (i + 1) * self.batch_size, :]
             self.rho_res = self.compute_training_jit(
-                batch, alpha, self.fm_x, getattr(self, "rho_res", None)
+                batch, self.fm_x, getattr(self, "rho_res", None)
             )
         self.num_samples += values.shape[0]
 

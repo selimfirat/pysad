@@ -98,12 +98,12 @@ def test_weighted_average_ensembler_output_values():
 
 def test_bucket_ensemblers_output_values():
     import numpy as np
-    from pyod.models.combination import aom, moa
 
     from pysad.transform.ensemble import (
         AverageOfMaximumScoreEnsembler,
         MaximumOfAverageScoreEnsembler,
     )
+    from pysad.transform.ensemble._combination import aom, moa
 
     scores = np.array(BUCKET_SCORES)
     n_buckets = 3

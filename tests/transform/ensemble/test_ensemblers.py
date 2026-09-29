@@ -116,7 +116,7 @@ def test_ensemblers_partial_matches_batch():
 
         np.random.seed(0)
         ensembler = ensembler_cls(**params_dict)
-        for row, batch_score in zip(scores, batch_scores):
+        for row, batch_score in zip(scores, batch_scores, strict=True):
             partial_score = ensembler.fit_transform_partial(row)
 
             assert isinstance(partial_score, float)

@@ -20,7 +20,7 @@ def test_murmurhash3_x86_32_matches_mmh3():
     with warnings.catch_warnings():
         warnings.simplefilter("error", RuntimeWarning)
 
-        for length, indices in lengths.items():
+        for indices in lengths.values():
             byte_matrix = np.array(
                 [[ord(c) for c in str(i)] for i in indices], dtype=np.uint8
             )

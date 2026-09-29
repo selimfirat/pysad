@@ -4,7 +4,7 @@ def helper_test_all_metrics(metric_classes, y_true, y_pred):
     for metric_cls, val in metric_classes.items():
         metric = metric_cls()
 
-        for i, (yt, yp) in enumerate(zip(y_true, y_pred)):
+        for i, (yt, yp) in enumerate(zip(y_true, y_pred, strict=True)):
             metric.update(yt, yp)
             if i > 0:
                 assert np.isclose(metric.get(), val)
@@ -223,7 +223,7 @@ def test_precision_recall_threshold_on_scores():
     # The 0.5 score sits on the threshold and counts as an anomaly.
     precision = PrecisionMetric(threshold=0.5)
     recall = RecallMetric(threshold=0.5)
-    for yt, score in zip(y_true, scores):
+    for yt, score in zip(y_true, scores, strict=True):
         precision.update(yt, score)
         recall.update(yt, score)
 
@@ -249,7 +249,7 @@ def test_precision_recall_threshold_on_model_scores():
     precision = PrecisionMetric(threshold=3.0)
     recall = RecallMetric(threshold=3.0)
     scores = []
-    for x, yt in zip(X, y_true):
+    for x, yt in zip(X, y_true, strict=True):
         score = model.fit_score_partial(x)
         scores.append(score)
         precision.update(yt, score)
@@ -272,7 +272,7 @@ def test_precision_recall_without_threshold_on_binary_predictions():
 
     for metric_cls, sklearn_metric in [(PrecisionMetric, precision_score), (RecallMetric, recall_score)]:
         for metric in [metric_cls(), metric_cls(threshold=None)]:
-            for yt, yp in zip(y_true, y_pred):
+            for yt, yp in zip(y_true, y_pred, strict=True):
                 metric.update(yt, yp)
             assert np.isclose(metric.get(), sklearn_metric(y_true, y_pred))
 

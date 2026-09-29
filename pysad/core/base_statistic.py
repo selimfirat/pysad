@@ -3,7 +3,9 @@ from __future__ import annotations
 from abc import abstractmethod, ABC
 
 
-class BaseStatistic(ABC):
+# No abstract methods on purpose: UnivariateStatistic declares them, and RunningStatistic
+# delegates them to the statistic it wraps.
+class BaseStatistic(ABC):  # noqa: B024
     """Abstact base class for the statistics.
     """
     pass

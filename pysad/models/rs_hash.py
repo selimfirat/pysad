@@ -54,7 +54,7 @@ class RSHash(BaseModel):
         self.f = np.random.uniform(
             low=1.0 / np.sqrt(self.effS), high=1 - (1.0 / np.sqrt(self.effS)), size=self.m)
 
-        for i in range(self.num_hash):
+        for _ in range(self.num_hash):
             self.cmsketches.append({})
 
         self._sample_dims()

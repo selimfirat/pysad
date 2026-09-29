@@ -10,10 +10,6 @@ class RandomModel(BaseModel):
         random_state (int, np.random.RandomState or None): Seed or random number generator for the scores. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    # The class-level defaults keep models pickled before `random_state` was added loadable.
-    random_state = None
-    _rng = None
-
     def __init__(self, random_state=None):
         self.random_state = random_state
         # None is resolved on every draw instead, so that a pickled model keeps drawing from the global state rather than from a frozen copy of it.

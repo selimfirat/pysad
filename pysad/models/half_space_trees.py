@@ -24,9 +24,8 @@ class HalfSpaceTrees(BaseModel):
     """
 
     # Index of the open window; a node's masses are brought up to it lazily (see `_roll_masses`).
-    # The class-level defaults keep models pickled before the lazy swap or before `random_state` loadable.
+    # The class-level defaults keep models pickled before the lazy swap loadable.
     current_window = 0
-    random_state = None
 
     def __init__(
         self,

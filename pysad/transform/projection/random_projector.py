@@ -1,15 +1,11 @@
 from abc import abstractmethod
 
-import numpy as np
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
 
 from pysad.core.base_transformer import BaseTransformer
 
 
 class BaseSKLearnProjector(BaseTransformer):
-    # The class-level default keeps projectors pickled before `random_state` was added loadable.
-    random_state: int | np.random.RandomState | None = None
-
     def __init__(self, num_components):
         """Abstract base projector class to wrap the random sklearn projectors.
 

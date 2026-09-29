@@ -19,9 +19,6 @@ class LODA(BaseModel):
             random_state (int, np.random.RandomState or None): Seed or random number generator for the projections. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    # The class-level default keeps models pickled before `random_state` was added loadable.
-    random_state = None
-
     def __init__(self, num_bins=10, num_random_cuts=100, random_state=None):
         self.to_init = True
         self.n_bins = num_bins

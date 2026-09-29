@@ -19,9 +19,6 @@ class KitNET:
     #           where the i-th entry contains a list of the feature indices to be assingned to the i-th autoencoder in the ensemble.
     #           For example, [[2,5,3],[4,0,1],[6,7]]
     #random_state: seed or numpy RandomState for the initial weights of the autoencoders, which all share it. None draws from NumPy's global random state.
-    # The class-level default keeps models pickled before random_state was added loadable.
-    random_state = None
-
     def __init__(self,n,max_autoencoder_size=10,FM_grace_period=None,AD_grace_period=10000,learning_rate=0.1,hidden_ratio=0.75, feature_map = None, random_state=None):
         # Parameters:
         self.AD_grace_period = AD_grace_period

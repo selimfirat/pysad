@@ -14,9 +14,6 @@ class KitNet(BaseModel):
         random_state (int, np.random.RandomState or None): Seed or random number generator for the initial weights of the autoencoders, which all share it. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    # The class-level default keeps models pickled before `random_state` was added loadable.
-    random_state = None
-
     def __init__(
         self,
         max_size_ae=10,

@@ -15,9 +15,6 @@ class ArrayStreamer(BaseStreamer):
         random_state (int, np.random.RandomState or None): Seed or random number generator for the shuffling. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    # The class-level default keeps streamers pickled before `random_state` was added loadable.
-    random_state: int | np.random.RandomState | None = None
-
     def __init__(
         self, shuffle: bool = False, random_state: int | np.random.RandomState | None = None
     ) -> None:

@@ -32,7 +32,7 @@ def fix_seed(seed: int) -> None:
         seed (int): The seed.
     """
     random.seed(seed)
-    np.random.seed(seed)
+    np.random.seed(seed)  # noqa: NPY002 - seeding the global state is the point of this function.
 
 
 def get_minmax_array(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

@@ -103,7 +103,7 @@ class Data:
 
         """
         if seed is not None:
-            np.random.seed(seed)
+            np.random.seed(seed)  # noqa: NPY002 - also seeds the models that draw from the global state.
 
         iterator = ArrayStreamer(shuffle=shuffle)
 

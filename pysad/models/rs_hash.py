@@ -1,3 +1,4 @@
+import numbers
 import warnings
 
 import numpy as np
@@ -5,6 +6,18 @@ import numpy as np
 from pysad.core.base_model import BaseModel
 
 _UNSET = object()
+
+
+def _positive_int(value, name):
+    """Returns `value` as a Python int, or raises if it is not an integer >= 1 (NumPy integers are accepted, bools are not)."""
+    if isinstance(value, bool) or not isinstance(value, numbers.Integral):
+        raise TypeError(f"{name} must be an int, got {value!r}.")
+
+    value = int(value)
+    if value < 1:
+        raise ValueError(f"{name} must be at least 1, got {value}.")
+
+    return value
 
 
 class RSHash(BaseModel):
@@ -18,8 +31,8 @@ class RSHash(BaseModel):
             sampling_points (int): Deprecated. Has no effect.
             decay (float): The decay hyperparameter (Default=0.015).
             num_components (int): The number of ensemble components (Default=100).
-            num_hash_fns (int): The number w of pairwise-independent hash tables in the count-min sketch (Default=1).
-            hash_range (int): The number p of slots per hash table of the count-min sketch (Default=10000).
+            num_hash_fns (int): The number w of pairwise-independent hash tables in the count-min sketch (Default=1). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
+            hash_range (int): The number p of slots per hash table of the count-min sketch (Default=10000). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
 
         .. deprecated:: 0.6.1
             The ``sampling_points`` parameter is deprecated and has no effect.
@@ -36,6 +49,10 @@ class RSHash(BaseModel):
         num_hash_fns=1,
         hash_range=10000,
     ):
+        # Stored as Python ints: a NumPy integer narrower than 64 bits would overflow in _cell_slots.
+        num_hash_fns = _positive_int(num_hash_fns, "num_hash_fns")
+        hash_range = _positive_int(hash_range, "hash_range")
+
         if sampling_points is not _UNSET:
             warnings.warn(
                 "The 'sampling_points' parameter is deprecated and has no "

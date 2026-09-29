@@ -105,10 +105,7 @@ html_favicon = "infinity.png"
 html_static_path = []
 autosummary_generate = True
 
-autodoc_default_options = {
-    "members": True,
-    "inherited-members": True,
-}
+autodoc_default_options = {"members": True, "inherited-members": True}
 autodoc_typehints = "none"
 
 intersphinx_mapping = {

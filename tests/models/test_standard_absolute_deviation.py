@@ -67,10 +67,7 @@ def test_both_spellings_raises():
     from pysad.models import StandardAbsoluteDeviation
 
     with pytest.raises(TypeError, match="Cannot specify both"):
-        StandardAbsoluteDeviation(
-            subtracted_statistic="mean",
-            substracted_statistic="median",
-        )
+        StandardAbsoluteDeviation(subtracted_statistic="mean", substracted_statistic="median")
 
 
 def _expected_scores(values, statistic="mean", absolute=True):

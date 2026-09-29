@@ -1,18 +1,14 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@0.2.1
-
 jobs:
   build-and-test:
-    executor: python/default
+    docker:
+      - image: cimg/python:3.12
     steps:
       - checkout
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
       - run:
-          command: python -m pip install --upgrade pip && pip install -r requirements-ci.txt && pip install pytest && pytest
+          # --group needs pip 25.1 or newer.
+          command: python -m pip install --upgrade pip && pip install --group runtime --group test && pytest
           name: Test
 
 workflows:

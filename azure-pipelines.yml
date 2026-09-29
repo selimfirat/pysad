@@ -39,11 +39,12 @@ steps:
   displayName: 'Install system dependencies'
 
 - script: |
+    # --group needs pip 25.1 or newer.
     python -m pip install --upgrade pip
-    pip install --prefer-binary -r requirements-ci.txt
+    pip install --prefer-binary --group runtime --group test
   displayName: 'Install dependencies'
 
 - script: |
-    pip install pytest pytest-azurepipelines
+    pip install pytest-azurepipelines
     pytest
   displayName: 'pytest'

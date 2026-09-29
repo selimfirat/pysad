@@ -22,7 +22,7 @@ updates:
         patterns:
           - "*"
 
-  # Python dependencies from pyproject.toml and the requirements*.txt files.
+  # Python dependencies from pyproject.toml: [project] and the [dependency-groups] pins.
   - package-ecosystem: "pip"
     directory: "/"
     schedule:

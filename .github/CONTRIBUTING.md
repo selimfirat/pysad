@@ -22,9 +22,9 @@ PySAD follows [Trunk-based development](https://trunkbaseddevelopment.com/). All
 ```bash
 git clone https://github.com/selimfirat/pysad.git
 cd pysad
-pip install -r requirements-dev.txt
-pip install -e .
-pre-commit install    # lints and formats your changes on every commit
+pip install --upgrade pip    # --group needs pip 25.1 or newer
+pip install -e . --group dev  # runtime pins, pytest, Sphinx and pre-commit
+pre-commit install            # lints and formats your changes on every commit
 ```
 
 Before opening a pull request, run:

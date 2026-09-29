@@ -45,7 +45,8 @@ To install requirements of development environment, run the following bash code:
 
 .. code-block:: bash
 
-    pip install -r requirements-dev.txt
+    pip install --upgrade pip # --group needs pip 25.1 or newer.
+    pip install -e . --group dev # Runtime pins, pytest, Sphinx and pre-commit.
     pre-commit install # Linting and formatting on every commit.
 
 After you have done writing code, run the following bash code for checking:
@@ -54,6 +55,6 @@ After you have done writing code, run the following bash code for checking:
 
     bash build_docs.sh # Building docs.
     pre-commit run --all-files # Linting and formatting with ruff.
-    pytest --cov=pysad --cov-config=.coveragerc # Running tests.
+    pytest --cov=pysad # Running tests.
 
 `pre-commit.ci <https://pre-commit.ci>`_ also runs the hooks on every pull request and pushes a commit with the fixes it can make.

@@ -1,7 +1,7 @@
 name: docs
 
 # Builds the Sphinx documentation the same way Read the Docs does (.readthedocs.yaml:
-# Python 3.10, requirements-dev.txt, docs/conf.py) so a broken docs build fails the
+# Python 3.10, the runtime and docs dependency groups, docs/conf.py) so a broken docs build fails the
 # release pull request instead of surfacing on Read the Docs after the merge.
 on:
   pull_request:
@@ -34,11 +34,11 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           enable-cache: true
-          cache-dependency-glob: "requirements-dev.txt"
+          cache-dependency-glob: "pyproject.toml"
       - name: Install dependencies
-        # Same requirements file as python.install in .readthedocs.yaml. The package itself
-        # is not installed; docs/conf.py puts the repository root on sys.path like Read the Docs does.
-        run: uv pip install --system -r requirements-dev.txt
+        # Same dependency groups as python.install in .readthedocs.yaml. The package itself
+        # is not installed; docs/conf.py puts the repository root on sys.path.
+        run: uv pip install --system --group runtime --group docs
       - name: Build documentation
         # -W turns warnings into errors and --keep-going reports all of them in one run.
         run: python -m sphinx -W --keep-going -b html docs docs/_build/html

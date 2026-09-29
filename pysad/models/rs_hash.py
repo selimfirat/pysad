@@ -67,18 +67,26 @@ class RSHash(BaseModel):
         self.sketch_timestamps = np.zeros((self.num_hash, self.hash_range), dtype=np.int64)
         self.sketch_counts = np.zeros((self.num_hash, self.hash_range), dtype=np.float64)
 
-        # Pairwise-independent hash parameters, one (a_k, b_k) pair per table, drawn from
-        # np.random so that pysad.utils.fix_seed makes the sketch's slot assignment reproducible.
-        # P is a Mersenne prime comfortably larger than any cell-key hash, and the modular
-        # arithmetic below is done in Python ints (not numpy int64) to avoid overflow.
-        self._prime = (1 << 61) - 1
-        a_vals = np.random.randint(1, self._prime, size=self.num_hash, dtype=np.int64)
-        b_vals = np.random.randint(0, self._prime, size=self.num_hash, dtype=np.int64)
-        self._hash_params = [(int(a), int(b)) for a, b in zip(a_vals, b_vals)]
-
         self._sample_dims()
 
         self.alpha = self._sample_shifts()
+
+        # Pairwise-independent hash parameters, one (a_k, b_k) pair per table, drawn from
+        # np.random so that pysad.utils.fix_seed makes the sketch's slot assignment reproducible.
+        # P is a Mersenne prime comfortably larger than any cell-key hash, and the modular
+        # arithmetic below is done in Python ints (not numpy int64) to avoid overflow. Drawn after
+        # _sample_dims/_sample_shifts so that num_hash_fns cannot perturb the sampled subspaces
+        # (self.V) or shifts (self.alpha): those draws must depend only on num_components and the
+        # seed, not on how many hash tables the sketch happens to have. Each table's (a_k, b_k)
+        # pair is drawn with its own pair of scalar calls, one table at a time (rather than one
+        # vectorized call per parameter across all tables), so table k's parameters depend only on
+        # the draws made for tables 0..k-1, not on num_hash_fns itself.
+        self._prime = (1 << 61) - 1
+        self._hash_params = []
+        for _ in range(self.num_hash):
+            a = int(np.random.randint(1, self._prime))
+            b = int(np.random.randint(0, self._prime))
+            self._hash_params.append((a, b))
 
         self.index = 1
 

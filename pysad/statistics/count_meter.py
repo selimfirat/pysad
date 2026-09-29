@@ -40,7 +40,7 @@ class CountMeter(UnivariateStatistic):
         return self
 
     def get(self) -> float:
-        """ Method to obtain the tracked statistic.
+        """Method to obtain the tracked statistic.
 
         Returns:
             float: The statistic.

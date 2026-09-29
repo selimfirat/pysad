@@ -1,11 +1,11 @@
 # Import modules.
+import numpy as np
 from pyod.models.iforest import IForest
 from sklearn.utils import shuffle
+
 from pysad.evaluation import AUROCMetric
 from pysad.models.integrations import ReferenceWindowModel
-from pysad.utils import ArrayStreamer
-from pysad.utils import Data
-import numpy as np
+from pysad.utils import ArrayStreamer, Data
 
 # This example demonstrates the integration of a PyOD model via ReferenceWindowModel.
 if __name__ == "__main__":
@@ -18,12 +18,15 @@ if __name__ == "__main__":
     iterator = ArrayStreamer(shuffle=False)
 
     # Fit reference window integration to first 100 instances initially.
-    model = ReferenceWindowModel(model_cls=IForest, window_size=240, sliding_size=30, initial_window_X=X_all[:100])
+    model = ReferenceWindowModel(
+        model_cls=IForest, window_size=240, sliding_size=30, initial_window_X=X_all[:100]
+    )
 
-    auroc = AUROCMetric()  # Init area under receiver-operating-characteristics curve metric tracker.
+    auroc = (
+        AUROCMetric()
+    )  # Init area under receiver-operating-characteristics curve metric tracker.
 
     for X, y in iterator.iter(X_all[100:], y_all[100:]):
-
         model.fit_partial(X)  # Fit to the instance.
         score = model.score_partial(X)  # Score the instance.
 

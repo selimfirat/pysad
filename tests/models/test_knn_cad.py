@@ -33,7 +33,7 @@ class NABKNNCAD:
         import numpy as np
 
         arr = [self.metric(x, item) for x in self.training]
-        return np.sum(np.partition(arr, self.k + item_in_array)[:self.k + item_in_array])
+        return np.sum(np.partition(arr, self.k + item_in_array)[: self.k + item_in_array])
 
     def handle_record(self, value):
         import numpy as np
@@ -45,7 +45,7 @@ class NABKNNCAD:
         if len(self.buf) < self.dim:
             return 0.0
 
-        new_item = self.buf[-self.dim:]
+        new_item = self.buf[-self.dim :]
         if self.record_count < self.probationaryPeriod:
             self.training.append(new_item)
             return 0.0
@@ -55,12 +55,12 @@ class NABKNNCAD:
             try:
                 self.sigma = np.linalg.inv(np.dot(np.array(self.training).T, self.training))
             except np.linalg.LinAlgError:
-                print('Singular Matrix at record', self.record_count)
+                print("Singular Matrix at record", self.record_count)
         if len(self.scores) == 0:
             self.scores = [self.ncm(v, True) for v in self.training]
 
         new_score = self.ncm(new_item)
-        result = 1. * len(np.where(np.array(self.scores) < new_score)[0]) / len(self.scores)
+        result = 1.0 * len(np.where(np.array(self.scores) < new_score)[0]) / len(self.scores)
         self.result = result
 
         if self.record_count >= 2 * self.probationaryPeriod:
@@ -90,8 +90,9 @@ def generate_stream(seed=61):
 
 
 def test_knn_cad_fit_score_partial_matches_nab():
-    from pysad.models import KNNCAD
     import numpy as np
+
+    from pysad.models import KNNCAD
 
     X = generate_stream()
     reference = NABKNNCAD(probationary_period=100)
@@ -106,8 +107,9 @@ def test_knn_cad_fit_score_partial_matches_nab():
 
 
 def test_knn_cad_score_partial_is_nab_p_value():
-    from pysad.models import KNNCAD
     import numpy as np
+
+    from pysad.models import KNNCAD
 
     X = generate_stream()
     reference = NABKNNCAD(probationary_period=100)
@@ -125,9 +127,11 @@ def test_knn_cad_score_partial_is_nab_p_value():
 
 
 def test_knn_cad_score_partial_has_no_side_effects():
-    from pysad.models import KNNCAD
     import copy
+
     import numpy as np
+
+    from pysad.models import KNNCAD
 
     X = generate_stream()
     model = KNNCAD(probationary_period=100)
@@ -151,8 +155,9 @@ def test_knn_cad_score_partial_has_no_side_effects():
 
 
 def test_knn_cad_outlier_scores_higher():
-    from pysad.models import KNNCAD
     import numpy as np
+
+    from pysad.models import KNNCAD
 
     rng = np.random.default_rng(0)
     model = KNNCAD(probationary_period=100).fit(rng.random((500, 1)))
@@ -165,20 +170,27 @@ def test_knn_cad_outlier_scores_higher():
 
 @pytest.mark.parametrize("period", [1, 19, 20, 47, 47.0])
 def test_knn_cad_rejects_probationary_period_below_minimum(period):
-    from pysad.models import KNNCAD
     import re
+
+    from pysad.models import KNNCAD
 
     # 1 and 19 leave the training set empty; 20-47 have too few training windows for the
     # calibration scores (np.partition kth out of bounds). All of them must raise at
     # construction, with a message that names the actual minimum (48) and the rejected value.
-    with pytest.raises(ValueError, match=re.escape(f"at least 48 (window length 19 plus k=27 plus 2), got {period!r}")):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(f"at least 48 (window length 19 plus k=27 plus 2), got {period!r}"),
+    ):
         KNNCAD(probationary_period=period)
 
 
-@pytest.mark.parametrize("period", [float("nan"), float("inf"), float("-inf"), 48.5, np.float64(100.5)])
+@pytest.mark.parametrize(
+    "period", [float("nan"), float("inf"), float("-inf"), 48.5, np.float64(100.5)]
+)
 def test_knn_cad_rejects_non_integral_probationary_period(period):
-    from pysad.models import KNNCAD
     import re
+
+    from pysad.models import KNNCAD
 
     # NaN and inf compare False to any bound, so a plain `<` check lets them through and the
     # model then fails later with an unrelated error. A period with a fractional part is not a
@@ -248,8 +260,9 @@ def test_knn_cad_accepts_minimum_probationary_period():
 
 
 def test_knn_cad_accepts_scalar_and_single_value_2d_instances():
-    from pysad.models import KNNCAD
     import numpy as np
+
+    from pysad.models import KNNCAD
 
     X = generate_stream()
     model = KNNCAD(probationary_period=100)
@@ -265,9 +278,10 @@ def test_knn_cad_accepts_scalar_and_single_value_2d_instances():
 
 
 def test_knn_cad_rejects_multivariate_instances_without_changing_state():
-    from pysad.models import KNNCAD
     import numpy as np
     import pytest
+
+    from pysad.models import KNNCAD
 
     X = generate_stream()
     model = KNNCAD(probationary_period=100)

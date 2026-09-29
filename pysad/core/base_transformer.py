@@ -4,18 +4,18 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 import numpy as np
+
 from pysad.utils import _iterate
 
 
 class BaseTransformer(ABC):
-    """Base class for transforming methods.
-    """
+    """Base class for transforming methods."""
 
     def __init__(self, output_dims: int) -> None:
         self.output_dims = output_dims
 
     @abstractmethod
-    def fit_partial(self, X: np.ndarray) -> "BaseTransformer":
+    def fit_partial(self, X: np.ndarray) -> BaseTransformer:
         """Fits particular (next) timestep's features to train the transformer.
 
         Args:
@@ -59,7 +59,7 @@ class BaseTransformer(ABC):
         """
         return self._transform_all(X, self.transform_partial)
 
-    def fit(self, X: np.ndarray) -> "BaseTransformer":
+    def fit(self, X: np.ndarray) -> BaseTransformer:
         """Shortcut method that iteratively applies fit_partial to all instances in order.
 
         Args:
@@ -84,7 +84,9 @@ class BaseTransformer(ABC):
         """
         return self._transform_all(X, self.fit_transform_partial)
 
-    def _transform_all(self, X: np.ndarray, transform_partial: Callable[[np.ndarray], np.ndarray]) -> np.ndarray:
+    def _transform_all(
+        self, X: np.ndarray, transform_partial: Callable[[np.ndarray], np.ndarray]
+    ) -> np.ndarray:
         output_dims = self.output_dims if self.output_dims > 0 else X.shape[1]
         transformed_X = np.empty((X.shape[0], output_dims), dtype=np.float64)
         for i, (xi, _) in enumerate(_iterate(X)):

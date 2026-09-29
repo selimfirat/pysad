@@ -1,7 +1,7 @@
-from pysad.core.base_postprocessor import BasePostprocessor
 import numpy as np
 
-from pysad.utils.window import Window, UnlimitedWindow
+from pysad.core.base_postprocessor import BasePostprocessor
+from pysad.utils.window import UnlimitedWindow, Window
 
 
 class ConformalProbabilityCalibrator(BasePostprocessor):

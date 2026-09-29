@@ -1,15 +1,18 @@
 # Import modules.
+import numpy as np
+
 from pysad.models import xStream
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import Data
-import numpy as np
 
 # This example demonstrates the usage of the probability calibrators.
 if __name__ == "__main__":
     np.random.seed(61)  # Fix seed.
 
     model = xStream()  # Init model.
-    calibrator = ConformalProbabilityCalibrator(windowed=True, window_size=300)  # Init probability calibrator.
+    calibrator = ConformalProbabilityCalibrator(
+        windowed=True, window_size=300
+    )  # Init probability calibrator.
     streaming_data = Data().get_iterator("arrhythmia.mat")  # Get streamer.
 
     for i, (x, y_true) in enumerate(streaming_data):  # Stream data.

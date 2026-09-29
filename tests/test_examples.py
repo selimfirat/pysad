@@ -7,7 +7,9 @@ import pytest
 
 EXAMPLES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "examples")
 EXAMPLES = sorted(
-    name for name in os.listdir(EXAMPLES_DIR) if name.startswith("example_") and name.endswith(".py")
+    name
+    for name in os.listdir(EXAMPLES_DIR)
+    if name.startswith("example_") and name.endswith(".py")
 )
 OPTIONAL_DEPENDENCIES = {"example_usage_inqmad.py": "jax"}
 

@@ -1,8 +1,12 @@
 """
 The :mod:`pysad.models` module includes anomaly detection models to score the anomalousness of instances.
 """
+
+from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
+from .inqmad import JAX_AVAILABLE as _has_inqmad
+from .inqmad import Inqmad  # noqa: F401 -- exported below when JAX is installed
 from .kitnet import KitNet
 from .knn_cad import KNNCAD
 from .loda import LODA
@@ -17,11 +21,27 @@ from .rs_hash import RSHash
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .xstream import xStream
-from .exact_storm import ExactStorm
-from .inqmad import Inqmad  # noqa: F401 -- exported below when JAX is installed
-from .inqmad import JAX_AVAILABLE as _has_inqmad
 
-__all__ = ["ExactStorm", "HalfSpaceTrees", "IForestASD", "KitNet", "KNNCAD", "LODA", "LocalOutlierProbability", "MedianAbsoluteDeviation", "NullModel", "PerfectModel", "RandomModel", "RelativeEntropy", "RobustRandomCutForest", "RSHash", "SeasonalESD", "SeasonalHybridESD", "StandardAbsoluteDeviation", "xStream"]
+__all__ = [
+    "ExactStorm",
+    "HalfSpaceTrees",
+    "IForestASD",
+    "KitNet",
+    "KNNCAD",
+    "LODA",
+    "LocalOutlierProbability",
+    "MedianAbsoluteDeviation",
+    "NullModel",
+    "PerfectModel",
+    "RandomModel",
+    "RelativeEntropy",
+    "RobustRandomCutForest",
+    "RSHash",
+    "SeasonalESD",
+    "SeasonalHybridESD",
+    "StandardAbsoluteDeviation",
+    "xStream",
+]
 
 # Inqmad needs JAX, which is optional. The class is always importable; without
 # JAX its constructor raises an ImportError with the install hint (#174), and it

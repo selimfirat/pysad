@@ -1,4 +1,5 @@
 """Regression tests for optional JAX import of Inqmad (#174)."""
+
 import builtins
 import importlib
 import sys
@@ -9,7 +10,12 @@ import pytest
 def _reload_inqmad_without_jax(monkeypatch):
     """Re-import pysad.models.inqmad with jax imports blocked."""
     for name in list(sys.modules):
-        if name == "jax" or name.startswith("jax.") or name.endswith(".inqmad") or name == "pysad.models.inqmad":
+        if (
+            name == "jax"
+            or name.startswith("jax.")
+            or name.endswith(".inqmad")
+            or name == "pysad.models.inqmad"
+        ):
             monkeypatch.delitem(sys.modules, name, raising=False)
 
     real_import = builtins.__import__

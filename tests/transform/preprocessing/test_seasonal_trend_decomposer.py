@@ -1,6 +1,6 @@
-
 def test_seasonal_trend_decomposer_removes_repeating_pattern():
     import numpy as np
+
     from pysad.transform.preprocessing import SeasonalTrendDecomposer
 
     pattern = np.array([1.0, 2.0, 3.0])
@@ -16,6 +16,7 @@ def test_seasonal_trend_decomposer_removes_repeating_pattern():
 
 def test_seasonal_trend_decomposer_transform_uses_fitted_state():
     import numpy as np
+
     from pysad.transform.preprocessing import SeasonalTrendDecomposer
 
     X = np.tile(np.array([1.0, 2.0, 3.0]), 8).reshape(-1, 1)
@@ -28,6 +29,7 @@ def test_seasonal_trend_decomposer_transform_uses_fitted_state():
 
 def test_seasonal_trend_decomposer_validates_windows():
     from numpy.testing import assert_raises
+
     from pysad.transform.preprocessing import SeasonalTrendDecomposer
 
     with assert_raises(ValueError):

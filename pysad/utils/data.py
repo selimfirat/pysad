@@ -18,29 +18,29 @@ class Data:
         self.data_base_path = data_base_path
 
     def _get_data_files(self) -> list[str]:
-        """ Helper method to return the names of the data files.
+        """Helper method to return the names of the data files.
 
         Returns:
             file_names (list[str]): List of data file names.
         """
         return [
-            'arrhythmia.mat',
-            'cardio.mat',
-            'glass.mat',
-            'ionosphere.mat',
-            'letter.mat',
-            'lympho.mat',
-            'mnist.mat',
-            'musk.mat',
-            'optdigits.mat',
-            'pendigits.mat',
-            'pima.mat',
-            'satellite.mat',
-            'satimage-2.mat',
-            'shuttle.mat',
-            'vertebral.mat',
-            'vowels.mat',
-            'wbc.mat',
+            "arrhythmia.mat",
+            "cardio.mat",
+            "glass.mat",
+            "ionosphere.mat",
+            "letter.mat",
+            "lympho.mat",
+            "mnist.mat",
+            "musk.mat",
+            "optdigits.mat",
+            "pendigits.mat",
+            "pima.mat",
+            "satellite.mat",
+            "satimage-2.mat",
+            "shuttle.mat",
+            "vertebral.mat",
+            "vowels.mat",
+            "wbc.mat",
             "gisette_sampled.txt",
             "isolet_sampled.txt",
             "madelon_sampled.txt",
@@ -78,8 +78,8 @@ class Data:
 
             f = loadmat(data_path)
 
-            X = f['X']
-            y = f['y'].ravel()
+            X = f["X"]
+            y = f["y"].ravel()
         else:
             X = self._load_via_txt(data_path)
 

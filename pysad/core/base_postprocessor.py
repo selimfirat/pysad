@@ -5,15 +5,15 @@ from collections.abc import Callable
 from typing import cast
 
 import numpy as np
+
 from pysad.utils import _iterate
 
 
 class BasePostprocessor(ABC):
-    """Base class for postprocessing methods.
-    """
+    """Base class for postprocessing methods."""
 
     @abstractmethod
-    def fit_partial(self, score: float) -> "BasePostprocessor":
+    def fit_partial(self, score: float) -> BasePostprocessor:
         """Fits particular (next) timestep's score to train the postprocessor.
 
         Args:
@@ -58,7 +58,7 @@ class BasePostprocessor(ABC):
         """
         return self._process_all(scores, self.transform_partial)
 
-    def fit(self, scores: np.ndarray) -> "BasePostprocessor":
+    def fit(self, scores: np.ndarray) -> BasePostprocessor:
         """Shortcut method that iteratively applies fit_partial to all instances in order.
 
         Args:
@@ -89,6 +89,8 @@ class BasePostprocessor(ABC):
         processed_scores = np.empty(scores.shape[0], dtype=np.float64)
         for i, (score, _) in enumerate(_iterate(scores)):
             result = process_partial(cast(float, score))
-            processed_scores[i] = np.asarray(result).item() if np.asarray(result).ndim > 0 else result
+            processed_scores[i] = (
+                np.asarray(result).item() if np.asarray(result).ndim > 0 else result
+            )
 
         return processed_scores

@@ -1,16 +1,17 @@
+import numpy as np
+
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.max_meter import MaxMeter
 from pysad.statistics.median_meter import MedianMeter
 from pysad.statistics.variance_meter import VarianceMeter
-import numpy as np
 
 
 class _MeterPostprocessor(BasePostprocessor):
     """Base class for postprocessors that convert a score to a statistic of the previous scores.
 
-        Args:
-            meter: The statistic to update with each score.
+    Args:
+        meter: The statistic to update with each score.
     """
 
     def __init__(self, meter):
@@ -44,9 +45,9 @@ class _MeterPostprocessor(BasePostprocessor):
 class _ZScorePostprocessor(BasePostprocessor):
     """Base class for postprocessors that normalize the score via Z-score normalization.
 
-        Args:
-            variance_meter: The variance statistic of the previous scores.
-            average_meter: The average statistic of the previous scores.
+    Args:
+        variance_meter: The variance statistic of the previous scores.
+        average_meter: The average statistic of the previous scores.
     """
 
     def __init__(self, variance_meter, average_meter):
@@ -88,32 +89,28 @@ class _ZScorePostprocessor(BasePostprocessor):
 
 
 class AveragePostprocessor(_MeterPostprocessor):
-    """A postprocessor that convert a score to the average of of all previous scores.
-    """
+    """A postprocessor that convert a score to the average of of all previous scores."""
 
     def __init__(self):
         super().__init__(AverageMeter())
 
 
 class MaxPostprocessor(_MeterPostprocessor):
-    """A postprocessor that convert a score to the maximum of of all previous scores.
-    """
+    """A postprocessor that convert a score to the maximum of of all previous scores."""
 
     def __init__(self):
         super().__init__(MaxMeter())
 
 
 class MedianPostprocessor(_MeterPostprocessor):
-    """A postprocessor that convert a score to the median of of all previous scores.
-    """
+    """A postprocessor that convert a score to the median of of all previous scores."""
 
     def __init__(self):
         super().__init__(MedianMeter())
 
 
 class ZScorePostprocessor(_ZScorePostprocessor):
-    """A postprocessor that normalize the score via Z-score normalization.
-    """
+    """A postprocessor that normalize the score via Z-score normalization."""
 
     def __init__(self):
         super().__init__(VarianceMeter(), AverageMeter())

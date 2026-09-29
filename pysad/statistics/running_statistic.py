@@ -15,12 +15,7 @@ class RunningStatistic(BaseStatistic):
         ValueError: If window_size is less than 1.
     """
 
-    def __init__(
-        self,
-        statistic_cls: type[UnivariateStatistic],
-        window_size: int,
-        **kwargs
-    ):
+    def __init__(self, statistic_cls: type[UnivariateStatistic], window_size: int, **kwargs):
         if window_size < 1:
             raise ValueError("window_size must be a positive integer.")
 
@@ -50,7 +45,7 @@ class RunningStatistic(BaseStatistic):
         return self
 
     def get(self) -> float:
-        """ Method to obtain the tracked statistic.
+        """Method to obtain the tracked statistic.
 
         Returns:
             float: The statistic.

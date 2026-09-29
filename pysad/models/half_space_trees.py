@@ -1,6 +1,7 @@
 import numbers
 
 import numpy as np
+
 from pysad.core.base_model import BaseModel
 
 
@@ -25,15 +26,20 @@ class HalfSpaceTrees(BaseModel):
     current_window = 0
 
     def __init__(
-            self,
-            feature_mins,
-            feature_maxes,
-            window_size=100,
-            num_trees=25,
-            max_depth=15,
-            initial_window_X=None,
-            random_work_space=True):
-        for name, value in [("window_size", window_size), ("num_trees", num_trees), ("max_depth", max_depth)]:
+        self,
+        feature_mins,
+        feature_maxes,
+        window_size=100,
+        num_trees=25,
+        max_depth=15,
+        initial_window_X=None,
+        random_work_space=True,
+    ):
+        for name, value in [
+            ("window_size", window_size),
+            ("num_trees", num_trees),
+            ("max_depth", max_depth),
+        ]:
             if isinstance(value, bool) or not isinstance(value, numbers.Integral) or value < 1:
                 raise ValueError(f"{name} must be a positive integer, got {value!r}.")
 
@@ -43,8 +49,14 @@ class HalfSpaceTrees(BaseModel):
         # Float copies, so that integer bounds do not truncate the split values.
         feature_mins = np.array(feature_mins, dtype=np.float64)
         feature_maxes = np.array(feature_maxes, dtype=np.float64)
-        if feature_mins.ndim != 1 or feature_mins.shape != feature_maxes.shape or feature_mins.size == 0:
-            raise ValueError("feature_mins and feature_maxes must be non-empty 1-D arrays of the same length.")
+        if (
+            feature_mins.ndim != 1
+            or feature_mins.shape != feature_maxes.shape
+            or feature_mins.size == 0
+        ):
+            raise ValueError(
+                "feature_mins and feature_maxes must be non-empty 1-D arrays of the same length."
+            )
         if not (np.all(np.isfinite(feature_mins)) and np.all(np.isfinite(feature_maxes))):
             raise ValueError("feature_mins and feature_maxes must be finite.")
         if np.any(feature_mins > feature_maxes):
@@ -59,7 +71,9 @@ class HalfSpaceTrees(BaseModel):
 
         self.num_dimensions = len(self.feature_maxes)
 
-        self.roots = [self._build_single_hs_tree(*self._work_space(), 0) for _ in range(self.num_trees)]
+        self.roots = [
+            self._build_single_hs_tree(*self._work_space(), 0) for _ in range(self.num_trees)
+        ]
 
         self.is_first_window = True
         self.current_window = 0
@@ -79,12 +93,7 @@ class HalfSpaceTrees(BaseModel):
 
     def _build_single_hs_tree(self, mins, maxes, current_depth):
         if current_depth == self.max_depth:
-            return self._Node(
-                left=None,
-                right=None,
-                split_att=0,
-                split_value=0.0,
-                k=current_depth)
+            return self._Node(left=None, right=None, split_att=0, split_value=0.0, k=current_depth)
 
         q = np.random.randint(self.num_dimensions)
         p = (maxes[q] + mins[q]) / 2.0
@@ -99,12 +108,7 @@ class HalfSpaceTrees(BaseModel):
         right = self._build_single_hs_tree(mins, maxes, current_depth + 1)
         mins[q] = temp
 
-        return self._Node(
-            left=left,
-            right=right,
-            split_att=q,
-            split_value=p,
-            k=current_depth)
+        return self._Node(left=left, right=right, split_att=q, split_value=p, k=current_depth)
 
     def _roll_masses(self, node):
         """Brings the masses of a node last visited before the open window up to it.

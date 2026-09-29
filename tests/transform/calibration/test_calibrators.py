@@ -1,17 +1,17 @@
-
 def test_calibrators():
-    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
     import numpy as np
-    from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+    from pysad.transform.probability_calibration import (
+        ConformalProbabilityCalibrator,
+        GaussianTailProbabilityCalibrator,
+    )
     from pysad.utils import fix_seed
+
     fix_seed(61)
 
     scores = np.random.rand(100)
 
-    calibrators = {
-        GaussianTailProbabilityCalibrator: {},
-        ConformalProbabilityCalibrator: {}
-    }
+    calibrators = {GaussianTailProbabilityCalibrator: {}, ConformalProbabilityCalibrator: {}}
 
     for calibrator_cls, args in calibrators.items():
         calibrator = calibrator_cls(**args)
@@ -31,6 +31,7 @@ def test_calibrators():
 def test_conformal_calibrator_p_values():
     import numpy as np
     import pytest
+
     from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 
     for target, expected in [(0.0, 1.0), (5.5, 0.5), (10.0, 0.1)]:
@@ -45,10 +46,12 @@ def test_conformal_calibrator_p_values():
     calibrated_scores = ConformalProbabilityCalibrator().fit_transform(np.full(50, 0.3))
     assert np.all(calibrated_scores == 1.0)
 
+
 def test_gaussian_tail_calibrator_global_statistics():
-    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
     import numpy as np
     from scipy.stats import norm
+
+    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
 
     scores = np.random.RandomState(0).normal(0, 10, 100)
     # A window smaller than the stream makes the windowed and global variance
@@ -69,9 +72,10 @@ def test_gaussian_tail_calibrator_global_statistics():
 
 
 def test_gaussian_tail_calibrator_running_statistics():
-    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
     import numpy as np
     from scipy.stats import norm
+
+    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
 
     window_size = 10
     scores = np.random.RandomState(0).normal(0, 10, 100)
@@ -83,9 +87,9 @@ def test_gaussian_tail_calibrator_running_statistics():
     windowed_scores = scores[-window_size:]
     mean = windowed_scores.mean()
     std = windowed_scores.std(ddof=0)
-    
+
     last_score = scores[-1]
     actual = calibrator.transform_partial(last_score)
     expected = norm.cdf(last_score, loc=mean, scale=std)
-    
+
     np.testing.assert_allclose(actual, expected)

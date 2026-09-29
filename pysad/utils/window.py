@@ -39,8 +39,7 @@ class Window:
 
 
 class UnlimitedWindow(Window):
-    """Unlimited window implemented for convenience. This class only provides a list with unlimited size. Note that this does not fit to the memory for streaming data.
-    """
+    """Unlimited window implemented for convenience. This class only provides a list with unlimited size. Note that this does not fit to the memory for streaming data."""
 
     def __init__(self) -> None:
         super().__init__(None)

@@ -7,7 +7,9 @@ from pysad.utils import fix_seed
 
 # Bin counts and scores produced by the original per-chain, per-depth loop implementation of xStream. The
 # vectorized implementation must reproduce them for the same seeds.
-REFERENCE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "xstream_reference_scores.npz")
+REFERENCE_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "data", "xstream_reference_scores.npz"
+)
 
 
 def _uniform_one_feature(model_cls):

@@ -2,8 +2,7 @@ from pysad.core.base_model import BaseModel
 
 
 class NullModel(BaseModel):
-    """The model that returns `0.5` for all instances, which is added for testing and pipelining convenience purposes.
-    """
+    """The model that returns `0.5` for all instances, which is added for testing and pipelining convenience purposes."""
 
     def __init__(self):
         self.labels = []

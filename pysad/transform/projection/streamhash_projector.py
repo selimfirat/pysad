@@ -1,4 +1,5 @@
 import numpy as np
+
 from pysad.core.base_transformer import BaseTransformer
 
 
@@ -15,8 +16,8 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
     Returns:
         np.uint32 array of shape (n_seeds, n_keys): Unsigned hash of each (seed, key) pair.
     """
-    c1 = np.uint32(0xcc9e2d51)
-    c2 = np.uint32(0x1b873593)
+    c1 = np.uint32(0xCC9E2D51)
+    c2 = np.uint32(0x1B873593)
     n_keys, length = byte_matrix.shape
     nblocks = length // 4
 
@@ -24,18 +25,18 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
     h1 = np.tile(seeds.astype(np.uint32)[:, np.newaxis], (1, n_keys))
 
     for block in range(nblocks):
-        b = byte_matrix[:, 4 * block:4 * block + 4].astype(np.uint32)
+        b = byte_matrix[:, 4 * block : 4 * block + 4].astype(np.uint32)
         k1 = (b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16) | (b[:, 3] << 24)).astype(np.uint32)
         k1 = (k1 * c1).astype(np.uint32)
         k1 = ((k1 << 15) | (k1 >> 17)).astype(np.uint32)
         k1 = (k1 * c2).astype(np.uint32)
         h1 = h1 ^ k1[np.newaxis, :]
         h1 = ((h1 << 13) | (h1 >> 19)).astype(np.uint32)
-        h1 = (h1 * np.uint32(5) + np.uint32(0xe6546b64)).astype(np.uint32)
+        h1 = (h1 * np.uint32(5) + np.uint32(0xE6546B64)).astype(np.uint32)
 
     tail_size = length & 3
     if tail_size:
-        tail = byte_matrix[:, nblocks * 4:length].astype(np.uint32)
+        tail = byte_matrix[:, nblocks * 4 : length].astype(np.uint32)
         k1 = np.zeros(n_keys, dtype=np.uint32)
         if tail_size >= 3:
             k1 = k1 ^ (tail[:, 2] << 16).astype(np.uint32)
@@ -49,9 +50,9 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
 
     h1 = h1 ^ np.uint32(length)
     h1 = h1 ^ (h1 >> 16)
-    h1 = (h1 * np.uint32(0x85ebca6b)).astype(np.uint32)
+    h1 = (h1 * np.uint32(0x85EBCA6B)).astype(np.uint32)
     h1 = h1 ^ (h1 >> 13)
-    h1 = (h1 * np.uint32(0xc2b2ae35)).astype(np.uint32)
+    h1 = (h1 * np.uint32(0xC2B2AE35)).astype(np.uint32)
     h1 = h1 ^ (h1 >> 16)
 
     return h1
@@ -60,9 +61,9 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
 class StreamhashProjector(BaseTransformer):
     """Streamhash projection method  from Manzoor et. al.that is similar (or equivalent) to SparseRandomProjection. :cite:`xstream` The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
 
-        Args:
-            num_components (int): The number of dimensions that the target will be projected into.
-            density (float): Density parameter of the streamhash projection.
+    Args:
+        num_components (int): The number of dimensions that the target will be projected into.
+        density (float): Density parameter of the streamhash projection.
     """
 
     # Defaults for instances unpickled from older pysad versions, whose __dict__ predates
@@ -73,7 +74,7 @@ class StreamhashProjector(BaseTransformer):
     def __init__(self, num_components, density=1 / 3.0):
         super().__init__(num_components)
         self.keys = np.arange(0, num_components, 1)
-        self.constant = np.sqrt(1. / density) / np.sqrt(num_components)
+        self.constant = np.sqrt(1.0 / density) / np.sqrt(num_components)
         self.density = density
         self.n_components = num_components
         self._R = None
@@ -158,10 +159,11 @@ class StreamhashProjector(BaseTransformer):
             )
 
             hashes = _murmurhash3_x86_32(seeds, byte_matrix)
-            hash_values = hashes.astype(np.float64) / (2.0 ** 32 - 1)
+            hash_values = hashes.astype(np.float64) / (2.0**32 - 1)
 
             R[:, group] = np.where(
-                hash_values <= density / 2.0, -1 * self.constant,
+                hash_values <= density / 2.0,
+                -1 * self.constant,
                 np.where(hash_values <= density, self.constant, 0.0),
             )
 

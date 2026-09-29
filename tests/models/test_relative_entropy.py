@@ -16,6 +16,7 @@ def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52, step=
             learned hypothesis.
     """
     import math
+
     import numpy as np
     from scipy import stats
 
@@ -90,8 +91,9 @@ def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52, step=
 @pytest.mark.parametrize("step", [1, None, 7])  # 7 divides none of the window sizes
 @pytest.mark.parametrize("driver", ["fit_score_partial", "score_partial_then_fit_partial"])
 def test_relative_entropy_matches_reference(window_size, step, driver):
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     # Spread over several buckets, so that window histograms vary and some test statistics
     # land near the threshold.
@@ -101,7 +103,12 @@ def test_relative_entropy_matches_reference(window_size, step, driver):
     x = np.clip(x, 0, 1)
 
     reference_scores, reference_c, reference_P = _reference_fit_scores(
-        x, min_val=0.0, max_val=1.0, window_size=window_size, step=window_size if step is None else step)
+        x,
+        min_val=0.0,
+        max_val=1.0,
+        window_size=window_size,
+        step=window_size if step is None else step,
+    )
 
     # score_partial followed by fit_partial must score and learn exactly as fit_score_partial.
     model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size, step=step)
@@ -120,9 +127,10 @@ def test_relative_entropy_matches_reference(window_size, step, driver):
 
 
 def test_relative_entropy_issue_example():
-    from pysad.models import RelativeEntropy
-    from sklearn.metrics import roc_auc_score
     import numpy as np
+    from sklearn.metrics import roc_auc_score
+
+    from pysad.models import RelativeEntropy
 
     rng = np.random.default_rng(0)
     x = rng.normal(0.5, 0.05, 3000)
@@ -146,15 +154,18 @@ def test_relative_entropy_issue_example():
 
 
 def test_relative_entropy_issue_example_non_overlapping_windows():
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     rng = np.random.default_rng(0)
     x = rng.normal(0.5, 0.05, 3000)
     x[2000:2100] = rng.normal(0.9, 0.05, 100)  # anomalous segment
     x = np.clip(x, 0, 1)
 
-    model = RelativeEntropy(min_val=0.0, max_val=1.0, step=52)  # the paper's windows: step = window_size
+    model = RelativeEntropy(
+        min_val=0.0, max_val=1.0, step=52
+    )  # the paper's windows: step = window_size
     scores = model.fit_score(x.reshape(-1, 1))
 
     # Only a value that closes a window (every 52nd value) can score nonzero, and the three
@@ -175,14 +186,16 @@ def test_relative_entropy_issue_example_non_overlapping_windows():
             assert len(set(test_scores)) > 1
         else:
             assert test_scores == [0.0, 0.0, 0.0]
-        model.fit_partial(x[num_fitted:num_fitted + 1])
+        model.fit_partial(x[num_fitted : num_fitted + 1])
 
 
 def test_relative_entropy_score_partial_has_no_side_effects():
+    import copy
+
+    import numpy as np
+
     from pysad.models import RelativeEntropy
     from pysad.utils import fix_seed
-    import numpy as np
-    import copy
 
     fix_seed(1)
     rng = np.random.default_rng(1)
@@ -211,8 +224,9 @@ def test_relative_entropy_score_partial_has_no_side_effects():
 
 
 def test_relative_entropy_score_then_fit_matches_fit_score_partial():
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     rng = np.random.default_rng(2)
     x = rng.normal(0.5, 0.05, 300)
@@ -233,8 +247,9 @@ def test_relative_entropy_score_then_fit_matches_fit_score_partial():
 
 
 def test_relative_entropy_constant_stream_scores_zero():
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     model = RelativeEntropy(min_val=0.5, max_val=0.5)
 
@@ -245,8 +260,9 @@ def test_relative_entropy_constant_stream_scores_zero():
 
 @pytest.mark.filterwarnings("error::RuntimeWarning")
 def test_relative_entropy_out_of_range_values_do_not_produce_nan_hypotheses():
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     window_size = 10
     model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size, step=1)
@@ -272,15 +288,18 @@ def test_relative_entropy_out_of_range_values_do_not_produce_nan_hypotheses():
 
 @pytest.mark.filterwarnings("error::RuntimeWarning")
 def test_relative_entropy_max_val_round_off_lands_in_top_bin():
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     # With these exact (min_val, max_val, num_bins), floating-point round-off makes
     # ceil((max_val - min_val) / stepSize) evaluate to num_bins + 1, one level past the levels
     # 1..num_bins that _histogram maps to bins 0..num_bins - 1; clipping the level must put
     # max_val in the top bin.
     window_size = 10
-    model = RelativeEntropy(min_val=0.0, max_val=100.0, num_bins=29, window_size=window_size, step=1)
+    model = RelativeEntropy(
+        min_val=0.0, max_val=100.0, num_bins=29, window_size=window_size, step=1
+    )
     assert np.ceil((model.max_val - model.min_val) / model.stepSize) == model.N_bins + 1
 
     m_history = []
@@ -296,8 +315,9 @@ def test_relative_entropy_max_val_round_off_lands_in_top_bin():
 
 
 def test_histogram_gives_each_bucket_its_own_bin():
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50)
 
@@ -308,8 +328,9 @@ def test_histogram_gives_each_bucket_its_own_bin():
 
 
 def test_histogram_buckets_are_closed_on_the_right():
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     model = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=5)
 
@@ -317,7 +338,9 @@ def test_histogram_buckets_are_closed_on_the_right():
     # (40, 60], (60, 80], (80, 100]: a value on an edge belongs to the bucket below it, and a
     # value just above an edge to the bucket above it.
     np.testing.assert_array_equal(model._histogram([20.0, 40.0, 60.0, 80.0, 100.0]), [0.2] * 5)
-    np.testing.assert_array_equal(model._histogram([20.5, 40.5, 60.5, 80.5, 80.5]), [0.0, 0.2, 0.2, 0.2, 0.4])
+    np.testing.assert_array_equal(
+        model._histogram([20.5, 40.5, 60.5, 80.5, 80.5]), [0.0, 0.2, 0.2, 0.2, 0.4]
+    )
 
 
 def test_histogram_puts_min_val_in_first_bucket_and_max_val_in_last():
@@ -333,20 +356,21 @@ def test_histogram_puts_min_val_in_first_bucket_and_max_val_in_last():
 
 
 def test_relative_entropy_flags_jump_between_top_two_buckets():
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     # A level shift from the 4th bucket (60, 80] to the 5th bucket (80, 100] must be
     # flagged just as often as a shift of the same size between two lower buckets.
     x_top_shift = np.r_[np.full(200, 70.0), np.full(200, 90.0)]
-    scores_top_shift = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50, step=1).fit_score(
-        x_top_shift.reshape(-1, 1)
-    )
+    scores_top_shift = RelativeEntropy(
+        min_val=0, max_val=100, num_bins=5, window_size=50, step=1
+    ).fit_score(x_top_shift.reshape(-1, 1))
 
     x_lower_shift = np.r_[np.full(200, 50.0), np.full(200, 70.0)]
-    scores_lower_shift = RelativeEntropy(min_val=0, max_val=100, num_bins=5, window_size=50, step=1).fit_score(
-        x_lower_shift.reshape(-1, 1)
-    )
+    scores_lower_shift = RelativeEntropy(
+        min_val=0, max_val=100, num_bins=5, window_size=50, step=1
+    ).fit_score(x_lower_shift.reshape(-1, 1))
 
     assert scores_top_shift.sum() > 0
     assert scores_top_shift.sum() == scores_lower_shift.sum()
@@ -354,8 +378,9 @@ def test_relative_entropy_flags_jump_between_top_two_buckets():
 
 @pytest.mark.parametrize("method", ["fit", "fit_score"])
 def test_relative_entropy_step_window_size_tests_non_overlapping_windows(method):
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     rng = np.random.default_rng(0)
     x = np.clip(rng.normal(50, 10, 52 * 20), 0, 100)  # 20 non-overlapping windows of W=52
@@ -369,8 +394,9 @@ def test_relative_entropy_step_window_size_tests_non_overlapping_windows(method)
 @pytest.mark.parametrize("step_kwargs", [{}, {"step": 1}], ids=["default", "step=1"])
 @pytest.mark.parametrize("method", ["fit", "fit_score"])
 def test_relative_entropy_default_step_reproduces_nab_sliding_windows(method, step_kwargs):
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     rng = np.random.default_rng(0)
     n = 52 * 20
@@ -382,22 +408,26 @@ def test_relative_entropy_default_step_reproduces_nab_sliding_windows(method, st
     assert sum(model.c) == n - model.W + 1
 
 
-@pytest.mark.parametrize("step, flagged", [
-    # Windows end at the 5th, 10th, 15th and 20th values. The first (all 0.1) is learned; the
-    # second (0.1 x 2, 0.9 x 3) holds the shift and agrees with no hypothesis, so its closing
-    # value, the 10th, scores 1.0; the third (all 0.9) agrees with the second.
-    pytest.param(None, [9], id="step=None"),
-    pytest.param(5, [9], id="step=window_size"),
-    # Windows end at every value from the 5th on: the 8th value's window is the first to hold a
-    # 0.9, the 12th value's the first to hold only 0.9s; every window in between agrees.
-    pytest.param(1, [7, 11], id="step=1"),
-    # Windows end at the 5th, 8th, 11th, 14th, ... values, counting from the first full window.
-    pytest.param(3, [7, 13], id="step=3"),
-])
+@pytest.mark.parametrize(
+    "step, flagged",
+    [
+        # Windows end at the 5th, 10th, 15th and 20th values. The first (all 0.1) is learned; the
+        # second (0.1 x 2, 0.9 x 3) holds the shift and agrees with no hypothesis, so its closing
+        # value, the 10th, scores 1.0; the third (all 0.9) agrees with the second.
+        pytest.param(None, [9], id="step=None"),
+        pytest.param(5, [9], id="step=window_size"),
+        # Windows end at every value from the 5th on: the 8th value's window is the first to hold a
+        # 0.9, the 12th value's the first to hold only 0.9s; every window in between agrees.
+        pytest.param(1, [7, 11], id="step=1"),
+        # Windows end at the 5th, 8th, 11th, 14th, ... values, counting from the first full window.
+        pytest.param(3, [7, 13], id="step=3"),
+    ],
+)
 @pytest.mark.parametrize("driver", ["fit_score_partial", "score_partial_then_fit_partial"])
 def test_relative_entropy_only_the_value_closing_a_window_scores(step, flagged, driver):
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     # A level shift from bucket (0, 0.2] to bucket (0.8, 1] after the 7th value, inside the
     # second window of 5 values.
@@ -419,16 +449,24 @@ def test_relative_entropy_only_the_value_closing_a_window_scores(step, flagged, 
 
 
 @pytest.mark.parametrize("method", ["fit_partial", "score_partial", "fit_score_partial"])
-@pytest.mark.parametrize("num_fitted", [6, 9])  # NaN would not close / would close the second window
+@pytest.mark.parametrize(
+    "num_fitted", [6, 9]
+)  # NaN would not close / would close the second window
 @pytest.mark.filterwarnings("error::RuntimeWarning")
 def test_relative_entropy_rejects_nan_without_changing_the_model(method, num_fitted):
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=5)
     for v in [0.1, 0.3, 0.5, 0.7, 0.9, 0.9, 0.9, 0.9, 0.9][:num_fitted]:
         model.fit_partial(np.array([v]))
-    util_before, P_before, c_before, m_before = list(model.util), model.P.copy(), list(model.c), model.m
+    util_before, P_before, c_before, m_before = (
+        list(model.util),
+        model.P.copy(),
+        list(model.c),
+        model.m,
+    )
 
     with pytest.raises(ValueError, match="RelativeEntropy does not accept NaN values"):
         getattr(model, method)(np.array([np.nan]))
@@ -454,8 +492,9 @@ def test_relative_entropy_step_below_one_raises_value_error(step):
 
 @pytest.mark.parametrize("step", [1.5, 1.0, "1", True])
 def test_relative_entropy_non_integer_step_raises_type_error(step):
-    from pysad.models import RelativeEntropy
     import re
+
+    from pysad.models import RelativeEntropy
 
     # As in KNNCAD and RSHash: TypeError for a wrong type (bool is an int subclass, but not an
     # accepted integer), ValueError only for an int out of range.
@@ -474,16 +513,20 @@ def test_relative_entropy_window_size_below_one_raises_value_error(window_size):
 
 @pytest.mark.parametrize("window_size", [52.0, 1.5, None, "52", True])
 def test_relative_entropy_non_integer_window_size_raises_type_error(window_size):
-    from pysad.models import RelativeEntropy
     import re
 
-    with pytest.raises(TypeError, match=re.escape(f"window_size must be an int, got {window_size!r}")):
+    from pysad.models import RelativeEntropy
+
+    with pytest.raises(
+        TypeError, match=re.escape(f"window_size must be an int, got {window_size!r}")
+    ):
         RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
 
 
 def test_relative_entropy_accepts_numpy_integer_window_size_and_step():
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     for integer_type in (np.int32, np.int64, np.uint16):
         model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=integer_type(52))
@@ -493,7 +536,9 @@ def test_relative_entropy_accepts_numpy_integer_window_size_and_step():
         model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=integer_type(52), step=None)
         assert type(model.step) is int and model.step == 52
 
-        model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=integer_type(52), step=integer_type(1))
+        model = RelativeEntropy(
+            min_val=0.0, max_val=1.0, window_size=integer_type(52), step=integer_type(1)
+        )
         assert type(model.step) is int and model.step == 1
 
     # e.g. window sizes from a grid built with np.arange
@@ -508,8 +553,9 @@ def test_relative_entropy_accepts_numpy_integer_window_size_and_step():
 @pytest.mark.parametrize("window_size", [1, 2, 3])
 @pytest.mark.parametrize("step", [1, None])
 def test_relative_entropy_small_windows_score_partial_matches_fit_score_partial(window_size, step):
-    from pysad.models import RelativeEntropy
     import numpy as np
+
+    from pysad.models import RelativeEntropy
 
     rng = np.random.default_rng(4)
     x = np.clip(rng.normal(0.5, 0.05, 30), 0, 1)

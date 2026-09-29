@@ -16,5 +16,3 @@ Quick Links
 * `Qlty <https://qlty.sh/gh/selimfirat/projects/pysad>`_
 
 * `License <https://github.com/selimfirat/pysad/blob/master/LICENSE>`_
-
-

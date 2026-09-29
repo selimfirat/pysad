@@ -2,6 +2,7 @@ from collections import Counter
 from itertools import repeat
 
 import numpy as np
+
 from pysad.core.base_model import BaseModel
 from pysad.transform.projection.streamhash_projector import StreamhashProjector
 from pysad.utils import get_minmax_array
@@ -17,20 +18,12 @@ class xStream(BaseModel):
         window_size (int): The size (and the sliding length) of the reference window (Default=25).
     """
 
-    def __init__(
-            self,
-            num_components=100,
-            n_chains=100,
-            depth=25,
-            window_size=25):
+    def __init__(self, num_components=100, n_chains=100, depth=25, window_size=25):
         self.streamhash = StreamhashProjector(num_components=num_components)
         deltamax = np.ones(num_components) * 0.5
         deltamax[np.abs(deltamax) <= 0.0001] = 1.0
         self.window_size = window_size
-        self.hs_chains = _HSChains(
-            deltamax=deltamax,
-            n_chains=n_chains,
-            depth=depth)
+        self.hs_chains = _HSChains(deltamax=deltamax, n_chains=n_chains, depth=depth)
 
         self.step = 0
         self.cur_window = []
@@ -145,7 +138,9 @@ class _HSChains:
     def _bin_counts(self, X):
         # Returns the reference count of the bin of every instance, chain and depth, of shape (n, nchains, depth).
         keys = self._bin_keys(X)
-        counts = np.fromiter(map(self.counts.get, keys, repeat(0)), dtype=np.float64, count=len(keys))
+        counts = np.fromiter(
+            map(self.counts.get, keys, repeat(0)), dtype=np.float64, count=len(keys)
+        )
         return counts.reshape(X.shape[0], self.nchains, self.depth)
 
     def score(self, X):

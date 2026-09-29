@@ -4,11 +4,11 @@ from .pyod_model import PYODModel
 class OneFitModel(PYODModel):
     """The wrapper model fits the `model_cls` to the initial instnaces. Then it scores all incoming instances, with this fitted model.
 
-        Args:
-            model_cls (class):     The model class to be instantiated.
-            initial_X (np.float64 array of shape (num_initial_instances, num_features)): Initial instances to fit.
-            initial_y (np.int32 array of shape (num_initial_instances,): Initial window's ground truth labels. Used if not None. Needs to be `None` for the unsupervised `model_cls` models. (Default=None).
-            **kwargs (Keyword arguments): Keyword arguments that are passed to the `model_cls`.
+    Args:
+        model_cls (class):     The model class to be instantiated.
+        initial_X (np.float64 array of shape (num_initial_instances, num_features)): Initial instances to fit.
+        initial_y (np.int32 array of shape (num_initial_instances,): Initial window's ground truth labels. Used if not None. Needs to be `None` for the unsupervised `model_cls` models. (Default=None).
+        **kwargs (Keyword arguments): Keyword arguments that are passed to the `model_cls`.
     """
 
     def __init__(self, model_cls, initial_X, initial_y=None, **kwargs):

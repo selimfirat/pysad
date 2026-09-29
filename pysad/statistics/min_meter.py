@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import math
 from heapq import heappush
-from pysad.core.base_statistic import UnivariateStatistic
+
 import numpy as np
+
+from pysad.core.base_statistic import UnivariateStatistic
 
 
 class MinMeter(UnivariateStatistic):
     """The statistic that keeps track of the minimum value.
 
-        Attributes:
-            min (float): The minimum value.
-            lst (list[float]): The list of values that are used to update the statistic. It is necessary for windowing operations.
+    Attributes:
+        min (float): The minimum value.
+        lst (list[float]): The list of values that are used to update the statistic. It is necessary for windowing operations.
     """
 
     def __init__(self):
@@ -54,7 +56,7 @@ class MinMeter(UnivariateStatistic):
         return self
 
     def get(self) -> float:
-        """ Method to obtain the tracked statistic.
+        """Method to obtain the tracked statistic.
 
         Returns:
             float: The statistic.

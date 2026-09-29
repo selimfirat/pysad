@@ -1,8 +1,9 @@
-
 def test_modified_stl_residual_transformer_uses_paper_residual(monkeypatch):
-    import numpy as np
     import sys
     import types
+
+    import numpy as np
+
     from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 
     class DummySTL:
@@ -36,6 +37,7 @@ def test_modified_stl_residual_transformer_uses_paper_residual(monkeypatch):
 
 def test_modified_stl_residual_validates_inputs():
     from numpy.testing import assert_raises
+
     from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 
     with assert_raises(ValueError):
@@ -46,9 +48,11 @@ def test_modified_stl_residual_validates_inputs():
 
 
 def test_modified_stl_residual_fit_handles_base_transformer_tuple(monkeypatch):
-    import numpy as np
     import sys
     import types
+
+    import numpy as np
+
     from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 
     class DummySTL:
@@ -77,6 +81,7 @@ def test_modified_stl_residual_fit_handles_base_transformer_tuple(monkeypatch):
 
 def test_modified_stl_residual_transform_partial_includes_repeated_candidate(monkeypatch):
     import numpy as np
+
     from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 
     seen_windows = []
@@ -101,6 +106,7 @@ def test_modified_stl_residual_transform_partial_includes_repeated_candidate(mon
 
 def test_modified_stl_residual_fit_transform_partial_does_not_double_append(monkeypatch):
     import numpy as np
+
     from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 
     seen_windows = []
@@ -125,6 +131,7 @@ def test_modified_stl_residual_fit_transform_partial_does_not_double_append(monk
 
 def test_modified_stl_residual_fit_transform_cold_starts_until_enough_values(monkeypatch):
     import numpy as np
+
     from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 
     seen_windows = []

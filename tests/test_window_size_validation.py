@@ -14,15 +14,18 @@ from pysad.utils import Window
 
 
 @pytest.mark.parametrize("window_size", [0, -1])
-@pytest.mark.parametrize("component", [
-    pytest.param(partial(RunningStatistic, AverageMeter), id="RunningStatistic"),
-    Window,
-    ConformalProbabilityCalibrator,
-    RunningAveragePostprocessor,
-    RunningMaxPostprocessor,
-    RunningMedianPostprocessor,
-    RunningZScorePostprocessor,
-])
+@pytest.mark.parametrize(
+    "component",
+    [
+        pytest.param(partial(RunningStatistic, AverageMeter), id="RunningStatistic"),
+        Window,
+        ConformalProbabilityCalibrator,
+        RunningAveragePostprocessor,
+        RunningMaxPostprocessor,
+        RunningMedianPostprocessor,
+        RunningZScorePostprocessor,
+    ],
+)
 def test_nonpositive_window_size_is_rejected(component, window_size):
     with pytest.raises(ValueError, match=r"window_size must be a positive integer\."):
         component(window_size=window_size)

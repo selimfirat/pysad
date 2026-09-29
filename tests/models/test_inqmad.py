@@ -1,9 +1,10 @@
+import numpy as np
 import pytest
+from sklearn.metrics import roc_auc_score
 
-from pysad import models
+pytest.importorskip("jax")
 
-if not getattr(models, "_has_inqmad", False):
-    pytest.skip("Inqmad requires JAX", allow_module_level=True)
+from pysad.models.inqmad import Inqmad
 
 
 def test_score_partial_follows_later_training():
@@ -12,10 +13,6 @@ def test_score_partial_follows_later_training():
     first score_partial call (which used to get baked into a stale
     jit-compiled trace).
     """
-    import numpy as np
-
-    from pysad.models import Inqmad
-
     rng = np.random.default_rng(0)
     a = rng.random((50, 3))
     b = rng.random((50, 3)) + 5.0
@@ -39,11 +36,6 @@ def test_score_orders_far_outliers_above_inliers():
     """Regression test for #120: scores must be anomaly scores (higher
     is more anomalous), not raw density (higher is more normal).
     """
-    import numpy as np
-    from sklearn.metrics import roc_auc_score
-
-    from pysad.models import Inqmad
-
     rng = np.random.default_rng(0)
     train = rng.random((200, 3))
     X = np.vstack([rng.random((20, 3)), rng.random((20, 3)) + 5.0])

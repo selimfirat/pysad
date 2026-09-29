@@ -17,12 +17,15 @@ class PandasStreamer(BaseStreamer):
 
     Args:
         shuffle (bool): Whether shuffle the data initially (Default=False).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the shuffling. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    def __init__(self, shuffle: bool = False) -> None:
+    def __init__(
+        self, shuffle: bool = False, random_state: int | np.random.RandomState | None = None
+    ) -> None:
         super().__init__(shuffle=shuffle)
 
-        self.array_iterator = ArrayStreamer(shuffle=shuffle)
+        self.array_iterator = ArrayStreamer(shuffle=shuffle, random_state=random_state)
 
     @overload
     def iter(self, X: pd.DataFrame, y: None = None) -> Iterator[np.ndarray]: ...

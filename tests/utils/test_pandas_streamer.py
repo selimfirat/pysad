@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from pysad.utils.array_streamer import ArrayStreamer
 from pysad.utils.pandas_streamer import PandasStreamer
 
 
@@ -68,3 +69,11 @@ def test_pandas_streamer_empty_dataframe():
     streamer = PandasStreamer(shuffle=False)
     result = list(streamer.iter(df))
     assert len(result) == 0
+
+
+def test_pandas_streamer_random_state():
+    df = pd.DataFrame({"a": np.arange(50)})
+
+    shuffled = [x[0] for x in PandasStreamer(shuffle=True, random_state=4).iter(df)]
+
+    assert shuffled == list(ArrayStreamer(shuffle=True, random_state=4).iter(np.arange(50)))

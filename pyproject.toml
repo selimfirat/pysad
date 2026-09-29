@@ -154,13 +154,13 @@ select = [
 ignore = [
   # The formatter wraps code; long docstring and comment lines are allowed.
   "E501",
-  # The models draw from NumPy's global random state on purpose, so that
-  # pysad.utils.fix_seed makes them reproducible.
-  "NPY002",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 # __version__ is defined by exec-ing pysad/version.py.
 "docs/conf.py" = ["F821"]
 # The examples unpack (X, y) pairs from the streamers to show the API, even where y is unused.
-"examples/**" = ["B007"]
+# They also seed NumPy's global random state, as users of pysad.utils.fix_seed do.
+"examples/**" = ["B007", "NPY002"]
+# The tests seed NumPy's global random state with pysad.utils.fix_seed, which random_state=None draws from.
+"tests/**" = ["NPY002"]

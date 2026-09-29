@@ -318,3 +318,15 @@ class TestArrayStreamer:
         result_set = {tuple(xi) for xi in results}
         original_set = {tuple(X[i]) for i in range(len(X))}
         assert result_set == original_set
+
+    def test_array_streamer_random_state(self):
+        """Test that ArrayStreamer shuffles with its own seed, and with the global state by default."""
+        from pysad.utils import ArrayStreamer, fix_seed
+
+        X = np.arange(50)
+
+        fix_seed(4)
+        default = list(ArrayStreamer(shuffle=True).iter(X))
+
+        assert default == list(ArrayStreamer(shuffle=True, random_state=4).iter(X))
+        assert default != list(ArrayStreamer(shuffle=True, random_state=8).iter(X))

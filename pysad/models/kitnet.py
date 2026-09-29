@@ -11,6 +11,7 @@ class KitNet(BaseModel):
         grace_anomaly_detector (int): The number of instances used to train the autoencoders after the feature mapping is learned (Default=50000).
         learning_rate (float): The default stochastic gradient descent learning rate for all autoencoders in the KitNET instance (Default=0.1).
         hidden_ratio (float): The default ratio of hidden to visible neurons. E.g., 0.75 will cause roughly a 25% compression in the hidden layer (Default=0.75).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the initial weights of the autoencoders, which all share it. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
     def __init__(
@@ -20,6 +21,7 @@ class KitNet(BaseModel):
         grace_anomaly_detector=50000,
         learning_rate=0.1,
         hidden_ratio=0.75,
+        random_state=None,
     ):
 
         self.grace_feature_mapping = grace_feature_mapping
@@ -27,6 +29,7 @@ class KitNet(BaseModel):
         self.learning_rate = learning_rate
         self.max_size_ae = max_size_ae
         self.grace_anomaly_detector = grace_anomaly_detector
+        self.random_state = random_state
         self.to_init = True
 
     def fit_partial(self, X, y=None):
@@ -55,6 +58,7 @@ class KitNet(BaseModel):
                 self.grace_anomaly_detector,
                 self.learning_rate,
                 self.hidden_ratio,
+                random_state=self.random_state,
             )
             self.to_init = False
         self.model.process(X)

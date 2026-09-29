@@ -24,21 +24,24 @@ git clone https://github.com/selimfirat/pysad.git
 cd pysad
 pip install -r requirements-dev.txt
 pip install -e .
+pre-commit install    # lints and formats your changes on every commit
 ```
 
 Before opening a pull request, run:
 
 ```bash
-bash lint.sh          # PEP8 style (flake8)
-pytest --cov=pysad    # unit tests with coverage
-pytest -m examples    # runs every script in examples/ end to end
-bash build_docs.sh    # builds the documentation
+pre-commit run --all-files  # ruff lint and format, plus file and workflow checks
+pytest --cov=pysad          # unit tests with coverage
+pytest -m examples          # runs every script in examples/ end to end
+bash build_docs.sh          # builds the documentation
 ```
+
+[pre-commit.ci](https://pre-commit.ci) also runs the hooks on every pull request and pushes a commit with the fixes it can make, so pull before you push again.
 
 ## Pull request checklist
 
 - The change fits the aim of the framework: anomaly detection on streaming data.
-- Code passes `bash lint.sh` and all tests, including CI.
+- Code passes `pre-commit run --all-files` and all tests, including CI.
 - You checked open [pull requests](https://github.com/selimfirat/pysad/pulls) and [issues](https://github.com/selimfirat/pysad/issues) so the work doesn't overlap.
 - **New features** come with tests (aim for more than 95% coverage of the new code) and an example or docs showing how to use them.
 - **New models** cite the original paper in the docstring.

@@ -69,3 +69,40 @@ Changelog = "https://github.com/selimfirat/pysad/blob/master/CHANGES.txt"
 
 [tool.setuptools.dynamic]
 version = {attr = "pysad.version.__version__"}
+
+# Ruff reads the target Python version from requires-python above.
+[tool.ruff]
+# Most of the existing code already fits in 100 columns.
+line-length = 100
+# Vendored KitNET reference implementation, kept as upstream wrote it.
+extend-exclude = ["pysad/models/kitnet_model"]
+
+[tool.ruff.lint]
+select = [
+  "E",       # pycodestyle errors
+  "W",       # pycodestyle warnings
+  "F",       # Pyflakes
+  "I",       # isort
+  "UP",      # pyupgrade
+  "B",       # flake8-bugbear
+  "NPY",     # NumPy-specific rules, including the NumPy 2.0 removals
+  "PGH",     # no blanket noqa or type: ignore comments
+  "PLE",     # Pylint errors
+  "T10",     # leftover debugger breakpoints
+  "RUF100",  # unused noqa comments
+]
+ignore = [
+  # The formatter wraps code; long docstring and comment lines are allowed.
+  "E501",
+  # The models draw from NumPy's global random state on purpose, so that
+  # pysad.utils.fix_seed makes them reproducible.
+  "NPY002",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# __version__ is defined by exec-ing pysad/version.py.
+"docs/conf.py" = ["F821"]
+# The examples unpack (X, y) pairs from the streamers to show the API, even where y is unused.
+"examples/**" = ["B007"]
+# The warning filters have to be installed before the subpackages are imported.
+"pysad/__init__.py" = ["E402"]

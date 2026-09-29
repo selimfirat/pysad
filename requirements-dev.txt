@@ -4,6 +4,7 @@ sphinxcontrib-fulltoc==1.2.0
 pytest==9.1.1
 pytest-cov==7.1.0
 coveralls==4.1.0
+pre-commit==4.6.2
 sphinx-copybutton==0.5.2
 sphinxcontrib-bibtex==2.7.0
 numpy==2.2.6

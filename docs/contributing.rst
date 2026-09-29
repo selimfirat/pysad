@@ -33,7 +33,7 @@ Pull Request Checklist
 ^^^^^^^^^^^^^^^^^^^^^^
 
 * Do the features/fixes in your pull request match the aim of this framework?
-* Does your code obey PEP8 principles? You may check via `bash lint.sh`.
+* Does your code pass the linters? You may check via ``pre-commit run --all-files``.
 * Does your submission pass all tests (including CI)?
 * Have you checked the active `pull requests <https://github.com/selimfirat/pysad/pulls>`_ and `issues <https://github.com/selimfirat/pysad/issues>`_ so that your contribution does not overlap significantly with these?
 * **For new features** Have you implemented tests so that your new code has more than 95% test coverage and the tests are reasonable?
@@ -46,11 +46,14 @@ To install requirements of development environment, run the following bash code:
 .. code-block:: bash
 
     pip install -r requirements-dev.txt
+    pre-commit install # Linting and formatting on every commit.
 
 After you have done writing code, run the following bash code for checking:
 
 .. code-block:: bash
 
     bash build_docs.sh # Building docs.
-    bash lint.sh # Checking for PEP8 style.
+    pre-commit run --all-files # Linting and formatting with ruff.
     pytest --cov=pysad --cov-config=.coveragerc # Running tests.
+
+`pre-commit.ci <https://pre-commit.ci>`_ also runs the hooks on every pull request and pushes a commit with the fixes it can make.

@@ -25,6 +25,10 @@ Python Streaming Anomaly Detection (PySAD)
    :target: https://circleci.com/gh/selimfirat/pysad
    :alt: Circle CI
 
+.. image:: https://results.pre-commit.ci/badge/github/selimfirat/pysad/master.svg
+   :target: https://results.pre-commit.ci/latest/github/selimfirat/pysad/master
+   :alt: pre-commit.ci status
+
 .. image:: https://coveralls.io/repos/github/selimfirat/pysad/badge.svg?branch=master
    :target: https://coveralls.io/github/selimfirat/pysad?branch=master
    :alt: Coverage Status

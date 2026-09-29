@@ -226,6 +226,39 @@ def test_rs_hash_large_hash_range_matches_exact_count_behavior():
     np.testing.assert_allclose(model_scores, exact_scores)
 
 
+def test_rs_hash_default_sketch_is_one_table_of_10000_slots():
+    import numpy as np
+
+    from pysad.models import RSHash
+
+    model = RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3))
+
+    # p = 10,000 is the paper's typical hash range (§II-A).
+    assert model.hash_range == 10000
+    assert model.sketch_counts.shape == (1, 10000)
+    assert model.sketch_timestamps.shape == (1, 10000)
+
+
+def test_rs_hash_cell_keys_are_tuples_of_python_ints():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    model = RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), num_components=10)
+
+    # hash() of a tuple of Python ints is the same in every process, while str and bytes hashes
+    # change with PYTHONHASHSEED, so int keys keep slots (and scores) reproducible across processes
+    # and after unpickling. The second instance lies below and above the feature range.
+    for x in (np.array([0.2, 0.5, 0.9]), np.array([-3.0, 0.5, 40.0])):
+        keys = model._cell_keys(x)
+        assert len(keys) == model.m
+        for key in keys:
+            assert type(key) is tuple
+            assert all(type(v) is int for v in key)
+
+
 def test_rs_hash_cells_at_minus_one_and_minus_two_do_not_share_slots():
     import numpy as np
 

@@ -119,7 +119,9 @@ def test_rs_hash_score_partial_has_no_side_effects():
     assert model.index == index_before
 
 
-def test_rs_hash_sketch_arrays_have_fixed_shape_and_do_not_grow():
+def test_rs_hash_model_size_does_not_grow_with_the_stream():
+    import pickle
+
     import numpy as np
 
     from pysad.models import RSHash
@@ -127,21 +129,28 @@ def test_rs_hash_sketch_arrays_have_fixed_shape_and_do_not_grow():
 
     fix_seed(0)
     rng = np.random.default_rng(0)
-    X = rng.random((20000, 5)) + np.linspace(0, 10, 20000)[:, None]
+    # A slowly drifting stream (as in #122) keeps reaching new grid cells, which a per-cell table
+    # would keep forever.
+    X = rng.random((3000, 5)) + np.linspace(0, 10, 3000)[:, None]
 
     model = RSHash(
-        feature_mins=np.zeros(5), feature_maxes=np.full(5, 11.0), num_hash_fns=3, hash_range=97
+        feature_mins=np.zeros(5),
+        feature_maxes=np.full(5, 11.0),
+        num_components=10,
+        num_hash_fns=3,
+        hash_range=97,
     )
+    assert model.sketch_timestamps.shape == (3, 97)
+    assert model.sketch_counts.shape == (3, 97)
 
-    expected_shape = (3, 97)
-    assert model.sketch_timestamps.shape == expected_shape
-    assert model.sketch_counts.shape == expected_shape
-
+    pickled_sizes = []
     for i, x in enumerate(X, 1):
         model.fit_score_partial(x)
-        if i in (1000, 5000, 20000):
-            assert model.sketch_timestamps.shape == expected_shape
-            assert model.sketch_counts.shape == expected_shape
+        if i in (1000, 3000):
+            # model.index stays below 65,536, so pickle stores it in the same number of bytes both times.
+            pickled_sizes.append(len(pickle.dumps(model)))
+
+    assert pickled_sizes[0] == pickled_sizes[1]
 
 
 def test_rs_hash_more_hash_tables_move_scores_toward_exact_counts():

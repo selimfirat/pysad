@@ -107,7 +107,7 @@ jobs:
         with:
           python-version: "3.13"
 
-      # Hash-locked; regenerate with the pip-compile command in the header of the file.
+      # Hash-locked; see .github/requirements/build.in for how to regenerate.
       - name: Install build tools
         run: python -m pip install --require-hashes -r .github/requirements/build.txt
 

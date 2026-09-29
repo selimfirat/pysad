@@ -1,2 +1,4 @@
+# Regenerate on Linux with Python 3.13:
+#   pip-compile --allow-unsafe --generate-hashes --strip-extras --output-file=.github/requirements/build.txt .github/requirements/build.in
 build
 twine

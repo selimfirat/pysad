@@ -12,6 +12,35 @@ def generate_stream(seed=61, scale=1.0):
     return X * scale, y
 
 
+def exact_count_scores(model, X):
+    """Scores X with fit_score_partial semantics, keeping exact per-cell decayed counts in a dict.
+
+    This is the unbounded table pysad used before #122, and what a count-min sketch computes when
+    no two live cells share a slot. Only the model's grid (`_cell_keys`), decay and ensemble size
+    are used; its sketch is not read or changed.
+    """
+    import numpy as np
+
+    exact_counts = {}
+    scores = []
+    for index, x in enumerate(X, 1):
+        keys = model._cell_keys(x)
+
+        score_instance = 0.0
+        for key in keys:
+            tstamp, wt = exact_counts.get(key, (index, 0.0))
+            decayed = wt * np.power(2, -model.decay * (index - tstamp))
+            score_instance += np.log2(1 + decayed)
+        scores.append(-score_instance / model.m)
+
+        for key in keys:
+            tstamp, wt = exact_counts.get(key, (index, 0.0))
+            decayed = wt * np.power(2, -model.decay * (index - tstamp))
+            exact_counts[key] = (index, decayed + 1)
+
+    return np.array(scores)
+
+
 def test_rs_hash_auroc():
     from sklearn.metrics import roc_auc_score
 
@@ -115,20 +144,21 @@ def test_rs_hash_sketch_arrays_have_fixed_shape_and_do_not_grow():
             assert model.sketch_counts.shape == expected_shape
 
 
-def test_rs_hash_num_hash_fns_changes_scores_with_small_hash_range():
+def test_rs_hash_more_hash_tables_move_scores_toward_exact_counts():
     import numpy as np
 
     from pysad.models import RSHash
     from pysad.utils import fix_seed
 
     rng = np.random.default_rng(0)
-    X = rng.random((2000, 5)) + np.linspace(0, 10, 2000)[:, None]
+    X = rng.random((1000, 5)) + np.linspace(0, 10, 1000)[:, None]
 
     def run(num_hash_fns):
         fix_seed(0)
         model = RSHash(
             feature_mins=np.zeros(5),
             feature_maxes=np.full(5, 11.0),
+            num_components=20,
             num_hash_fns=num_hash_fns,
             hash_range=17,
         )
@@ -147,7 +177,18 @@ def test_rs_hash_num_hash_fns_changes_scores_with_small_hash_range():
     for a1, a3 in zip(model_w1.alpha, model_w3.alpha):
         np.testing.assert_array_equal(a1, a3)
 
-    assert not np.array_equal(scores_w1, scores_w3)
+    # Each table's hash parameters are drawn with their own scalar calls, so table 0 gets the same
+    # parameters, and so the same counts, whatever num_hash_fns is.
+    assert model_w1._hash_params[0] == model_w3._hash_params[0]
+    np.testing.assert_array_equal(model_w1.sketch_counts[0], model_w3.sketch_counts[0])
+
+    # Collisions can only raise a table's count, and the score reads the smallest count over the
+    # tables, so extra tables can only lower the overestimate: exact >= w=3 >= w=1 elementwise.
+    # (Taking the max or mean over the tables instead breaks this ordering.)
+    scores_exact = exact_count_scores(model_w1, X)
+    assert np.all(scores_w3 >= scores_w1)
+    assert np.any(scores_w3 > scores_w1)
+    assert np.all(scores_exact >= scores_w3 - 1e-12)
 
 
 def test_rs_hash_large_hash_range_matches_exact_count_behavior():
@@ -168,31 +209,12 @@ def test_rs_hash_large_hash_range_matches_exact_count_behavior():
         hash_range=2_000_000,
     )
 
-    # Reference: an exact, unbounded count-min sketch (a plain dict per key, as pysad used before
-    # #122), which is what a fixed-size sketch degenerates to when its hash_range is large enough
-    # that this short stream causes no slot collisions.
-    exact_counts = {}
-    index = 1
-    exact_scores = []
-    for x in X:
-        keys = model._cell_keys(x)
-
-        score_instance = 0.0
-        for key in keys:
-            tstamp, wt = exact_counts.get(key, (index, 0.0))
-            decayed = wt * np.power(2, -model.decay * (index - tstamp))
-            score_instance += np.log2(1 + decayed)
-        exact_scores.append(-score_instance / model.m)
-
-        for key in keys:
-            tstamp, wt = exact_counts.get(key, (index, 0.0))
-            decayed = wt * np.power(2, -model.decay * (index - tstamp))
-            exact_counts[key] = (index, decayed + 1)
-        index += 1
-
+    # A fixed-size sketch degenerates to exact counting when its hash_range is large enough that
+    # this short stream causes no slot collisions.
+    exact_scores = exact_count_scores(model, X)
     model_scores = np.array([model.fit_score_partial(x) for x in X])
 
-    np.testing.assert_allclose(model_scores, np.array(exact_scores))
+    np.testing.assert_allclose(model_scores, exact_scores)
 
 
 def test_rs_hash_cells_at_minus_one_and_minus_two_do_not_share_slots():

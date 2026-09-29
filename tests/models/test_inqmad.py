@@ -144,6 +144,18 @@ def test_score_partial_after_int32_max_fitted_instances():
     assert np.isfinite(score)
 
 
+def test_score_partial_rejects_multiple_rows_with_pysad_message():
+    """Regression test for #120: score_partial scores one instance, and
+    several rows raise pysad's single-instance error rather than the one
+    from converting the array to a scalar.
+    """
+    rng = np.random.default_rng(0)
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0).fit(rng.random((5, 3)))
+
+    with pytest.raises(ValueError, match="Expected a single score for one instance"):
+        model.score_partial(rng.random((4, 3)))
+
+
 @pytest.mark.parametrize("cls", [Inqmad, InqMeasurement])
 def test_docstring_keeps_math_backslashes(cls):
     """Regression test for #120: LaTeX such as \\rho and \\tau must not

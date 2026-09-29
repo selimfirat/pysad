@@ -90,7 +90,8 @@ class Inqmad(BaseModel):
             X = np.expand_dims(X, axis=0)
 
         # Negate on the host: a unary minus on the jax Array would dispatch another device op per call.
-        return -np.asarray(self.inqmad.predict(X)).item()
+        # The array is returned as is, so BaseModel converts it to a float and rejects several rows.
+        return -np.asarray(self.inqmad.predict(X))
 
 
 class QFeatureMap_rff:

@@ -144,16 +144,81 @@ def test_score_partial_after_int32_max_fitted_instances():
     assert np.isfinite(score)
 
 
-def test_score_partial_rejects_multiple_rows_with_pysad_message():
+@pytest.mark.parametrize("num_fitted", [0, 5])
+def test_score_partial_rejects_multiple_rows_with_pysad_message(num_fitted):
     """Regression test for #120: score_partial scores one instance, and
     several rows raise pysad's single-instance error rather than the one
-    from converting the array to a scalar.
+    from converting the array to a scalar, before and after fitting.
     """
     rng = np.random.default_rng(0)
-    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0).fit(rng.random((5, 3)))
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0)
+    if num_fitted:
+        model.fit(rng.random((num_fitted, 3)))
 
     with pytest.raises(ValueError, match="Expected a single score for one instance"):
         model.score_partial(rng.random((4, 3)))
+
+
+def test_first_instance_scores_zero():
+    """Regression test for #120: before anything has been fitted rho is
+    zero, so the density is 0 and the score is 0.0, the most anomalous
+    possible score, instead of an error.
+    """
+    x = np.array([0.5, 0.5, 0.5])
+
+    score = Inqmad(input_shape=3, dim_x=32, gamma=1.0).score_partial(x)
+    assert type(score) is float and score == 0.0
+
+    score = Inqmad(input_shape=3, dim_x=32, gamma=1.0).fit_score_partial(x)
+    assert type(score) is float and score == 0.0
+
+
+def test_fit_score_matches_score_then_fit():
+    """Regression test for #120: fit_score_partial scores each instance
+    against the density matrix of the instances before it and then fits
+    it, as in the paper, which measures the density against rho_t before
+    the update.
+    """
+    rng = np.random.default_rng(0)
+    X = rng.random((50, 3))
+    X[[10, 30]] += 5.0
+
+    fit_scores = Inqmad(input_shape=3, dim_x=32, gamma=1.0).fit_score(X)
+
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0)
+    expected = []
+    for x in X:
+        expected.append(model.score_partial(x))
+        model.fit_partial(x)
+
+    assert fit_scores[0] == 0.0
+    np.testing.assert_array_equal(fit_scores, expected)
+
+
+def test_fit_score_partial_leaves_out_the_instances_own_state():
+    """Regression test for #120: fitting before scoring added the
+    instance's own psi psi^T to rho, so with t fitted instances its
+    density was ((t - 1) * d + 1) / t instead of d, its density against
+    the earlier instances. Scoring first leaves the self-term out:
+    fit_score_partial(x) equals the score of x before fit(x).
+    """
+    rng = np.random.default_rng(0)
+    history = rng.random((9, 3))
+    far_point = np.array([50.0, 50.0, 50.0])
+
+    scored_first = Inqmad(input_shape=3, dim_x=32, gamma=1.0).fit(history)
+    expected = scored_first.score_partial(far_point)
+
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0).fit(history)
+    score = model.fit_score_partial(far_point)
+
+    fitted_first = Inqmad(input_shape=3, dim_x=32, gamma=1.0).fit(np.vstack([history, far_point]))
+    with_self_term = fitted_first.score_partial(far_point)
+
+    assert score == expected
+    # The score is the negated density, so the self-term 1/10 lowers it.
+    assert with_self_term == pytest.approx((9 * expected - 1) / 10, rel=1e-5)
+    assert score > with_self_term + 0.09
 
 
 @pytest.mark.parametrize("cls", [Inqmad, InqMeasurement])

@@ -33,7 +33,7 @@ from sklearn.kernel_approximation import RBFSampler
 
 
 class Inqmad(BaseModel):
-    r"""The Inqmad (incremental quantum measurement anomaly detection) model for row-streaming data :cite:`gallego2022inqmad`. Each instance is mapped to a state :math:`\psi` with random Fourier features, the model keeps a density matrix :math:`\rho` that averages :math:`\psi \psi^\top` over every fitted instance, and the anomaly score is the negated density estimate :math:`-\psi^\top \rho \psi` of the paper's Eq. 3 (without its normalization constant), so higher scores mean more anomalous instances. Unlike the paper, the random Fourier features are fixed rather than adaptive, there is no :math:`\tau` threshold, every fitted instance updates :math:`\rho` rather than only those classified as normal, and :math:`\rho` is a uniform running average rather than the paper's :math:`\alpha`-forgetting update.
+    r"""The Inqmad (incremental quantum measurement anomaly detection) model for row-streaming data :cite:`gallego2022inqmad`. Each instance is mapped to a state :math:`\psi` with random Fourier features, the model keeps a density matrix :math:`\rho` that averages :math:`\psi \psi^\top` over every fitted instance, and the anomaly score is the negated density estimate :math:`-\psi^\top \rho \psi` of the paper's Eq. 3 (without its normalization constant), so higher scores mean more anomalous instances. As in the paper, which measures the density against :math:`\rho_t` before updating it, `fit_score_partial` scores each instance before fitting it, so the instance's own state does not add to its density; before anything has been fitted, :math:`\rho` is zero and the score is 0.0 (density 0), the most anomalous possible score. Unlike the paper, the random Fourier features are fixed rather than adaptive, there is no :math:`\tau` threshold, every fitted instance updates :math:`\rho` rather than only those classified as normal, and :math:`\rho` is a uniform running average rather than the paper's :math:`\alpha`-forgetting update.
 
     Args:
         input_shape (int): number of features
@@ -84,14 +84,34 @@ class Inqmad(BaseModel):
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score (float): The negative of the estimated density for the input instance, as a Python float. Higher scores (lower estimated density) represent more anomalous instances.
+            score (float): The negative of the estimated density for the input instance, as a Python float. Higher scores (lower estimated density) represent more anomalous instances. Before anything has been fitted, the density is 0 and the score is 0.0, the most anomalous possible score.
         """
         if X.ndim == 1:
             X = np.expand_dims(X, axis=0)
 
+        if self.inqmad.num_samples == 0:
+            # rho is still zero, so every density is 0. One score per row, so that BaseModel
+            # still rejects several rows.
+            return np.zeros(X.shape[0])
+
         # Negate on the host: a unary minus on the jax Array would dispatch another device op per call.
         # The array is returned as is, so BaseModel converts it to a float and rejects several rows.
         return -np.asarray(self.inqmad.predict(X))
+
+    def fit_score_partial(self, X, y=None):
+        r"""Scores the next instance against the density matrix of the instances fitted before it, and then fits it, as the paper measures the density against :math:`\rho_t` before updating it. The instance's own state therefore does not add to its density.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to fit and score.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance, as in `score_partial`, so 0.0 for the first instance.
+        """
+        score = self.score_partial(X)
+        self.fit_partial(X, y)
+
+        return score
 
 
 class QFeatureMap_rff:

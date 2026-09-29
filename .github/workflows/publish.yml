@@ -25,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Check out merge commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -144,3 +146,36 @@ jobs:
 
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+
+  sign:
+    name: Sign and attach to GitHub release
+    needs: [tag-release, publish]
+    # Runs after publish so a signing failure never blocks the PyPI release.
+    # always() is needed because tag-release (an ancestor) is skipped on the release path.
+    if: always() && needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # upload release assets
+      id-token: write # keyless Sigstore signing
+    steps:
+      - name: Download distribution artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      # Writes a .sigstore.json bundle next to each file. The action only attaches bundles to
+      # release events, so both are uploaded below to cover releases created by tag-release too.
+      - name: Sign distributions with Sigstore
+        uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9 # v3.5.0
+        with:
+          inputs: ./dist/*.tar.gz ./dist/*.whl
+          upload-signing-artifacts: false
+          release-signing-artifacts: false
+
+      # --clobber keeps "Re-run all jobs" idempotent.
+      - name: Attach distributions and signatures to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || needs.tag-release.outputs.version }}
+        run: gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"

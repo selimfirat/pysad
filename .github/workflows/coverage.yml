@@ -88,3 +88,26 @@ jobs:
           uv pip install --system -e ".[rrcf,slop,xStream,pandas]" --group test
       - name: Test
         run: pytest -n auto
+
+  lowest-versions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.10"
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - name: Install the lowest allowed dependencies
+        # lowest-direct installs the floor of every dependency pyproject.toml names, on the
+        # oldest supported Python, and the newest versions of their own dependencies.
+        run: |
+          uv pip install --system --resolution lowest-direct -e ".[rrcf,slop,xStream,pandas]" --group test
+      - name: Test
+        run: pytest -n auto

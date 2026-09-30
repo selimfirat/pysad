@@ -31,6 +31,9 @@ updates:
     # Same one-week cooldown as above.
     cooldown:
       default-days: 7
+    # Bump the == pins in [dependency-groups], but leave the >= floors in [project] alone:
+    # they only rise when pysad needs a newer release.
+    versioning-strategy: increase-if-necessary
     open-pull-requests-limit: 10
     labels:
       - "dependencies"

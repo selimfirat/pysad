@@ -23,10 +23,10 @@ Alternatively, you can install the library directly using the source code in Git
 **Required Dependencies:**
 
 * Python: 3.10+
-* numpy: 2.2.6
-* scikit-learn: 1.7.2
-* scipy: 1.15.3
-* statsmodels: 0.15.0 (for ``pysad.models.SeasonalESD``, ``pysad.models.SeasonalHybridESD`` and ``pysad.transform.preprocessing.ModifiedSTLResidualTransformer``)
+* numpy: >=1.22.4
+* scikit-learn: >=1.4.2
+* scipy: >=1.13.0
+* statsmodels: >=0.14.2 (for ``pysad.models.SeasonalESD``, ``pysad.models.SeasonalHybridESD`` and ``pysad.transform.preprocessing.ModifiedSTLResidualTransformer``)
 * pyod: >=3.6.2
 
 **Optional Dependencies:**
@@ -34,6 +34,6 @@ Alternatively, you can install the library directly using the source code in Git
 * rrcf: 0.4.4 (``pip install pysad[rrcf]``, for ``pysad.models.robust_random_cut_forest.RobustRandomCutForest``)
 * PyNomaly: 0.4.0 (``pip install pysad[slop]``, for ``pysad.models.LocalOutlierProbability``)
 * mmh3: 5.3.0 (``pip install pysad[xStream]``, for ``pysad.models.xstream.xStream``)
-* pandas: 2.3.3 (``pip install pysad[pandas]``, for ``pysad.utils.pandas_streamer.PandasStreamer``)
+* pandas: >=2.2.2 (``pip install pysad[pandas]``, for ``pysad.utils.pandas_streamer.PandasStreamer``)
 
 Install all optional dependencies at once with ``pip install "pysad[rrcf,slop,xStream,pandas]"``.

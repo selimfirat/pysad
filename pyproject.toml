@@ -114,6 +114,10 @@ dev = [
 [tool.setuptools.dynamic]
 version = {attr = "pysad.version.__version__"}
 
+[tool.setuptools.package-data]
+# PEP 561 marker: type checkers use pysad's inline type hints.
+pysad = ["py.typed"]
+
 [tool.uv]
 # `uv sync` would otherwise add the dev group to whatever --group asks for; Read the Docs
 # and CI name the groups they need explicitly.
@@ -164,3 +168,24 @@ ignore = [
 "examples/**" = ["B007", "NPY002"]
 # The tests seed NumPy's global random state with pysad.utils.fix_seed, which random_state=None draws from.
 "tests/**" = ["NPY002"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["pysad"]
+# Vendored KitNET reference implementation, kept as upstream wrote it.
+exclude = ["^pysad/models/kitnet_model/"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+# The base classes are fully annotated; keep them that way. Add packages here as their
+# type hints are completed.
+[[tool.mypy.overrides]]
+module = ["pysad.core.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+# Dependencies without type hints or stubs.
+[[tool.mypy.overrides]]
+module = ["pandas.*", "PyNomaly.*", "pyod.*", "rrcf", "scipy.*", "sklearn.*", "statsmodels.*"]
+ignore_missing_imports = true

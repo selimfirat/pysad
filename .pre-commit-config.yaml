@@ -36,6 +36,18 @@ repos:
         args: [--fix]
       - id: ruff-format
 
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 7ff8d35ae36a7d2b968f2f90b4c723e292e594ee  # frozen: v2.3.1
+    hooks:
+      - id: mypy
+        # Checks the whole package as [tool.mypy] in pyproject.toml configures it, so that
+        # a change in one module can't break the types another module relies on.
+        pass_filenames: false
+        files: ^(pysad/|pyproject\.toml$)
+        # NumPy 2.5's stubs use Python 3.12 syntax, which mypy rejects when it checks for
+        # Python 3.10; 2.4 is the newest release that also installs on pre-commit.ci's 3.14.
+        additional_dependencies: [numpy==2.4.6]
+
   - repo: https://github.com/rhysd/actionlint
     rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # frozen: v1.7.12
     hooks:

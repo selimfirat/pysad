@@ -34,10 +34,11 @@ def _returns_float_score(method: Callable[..., Any]) -> Callable[..., float]:
     """Wraps a single-instance scoring method so that it returns a Python float."""
 
     @wraps(method)
-    def wrapper(self, *args, **kwargs) -> float:
+    def wrapper(self: BaseModel, *args: Any, **kwargs: Any) -> float:
         return _to_float_score(method(self, *args, **kwargs))
 
-    wrapper._returns_float_score = True
+    # Marks the method as wrapped, so that __init_subclass__ doesn't wrap it twice.
+    wrapper._returns_float_score = True  # type: ignore[attr-defined]
     return wrapper
 
 

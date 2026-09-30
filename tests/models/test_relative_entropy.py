@@ -1,7 +1,9 @@
 import pytest
 
 
-def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52, step=1, c_th=1):
+def _reference_fit_scores(
+    x, min_val, max_val, num_bins=5, window_size=52, step=1, c_th=1, alpha=0.01
+):
     """Loop-based reference for `RelativeEntropy.fit_score_partial`: NAB's `handleRecord`
     (nab/detectors/relative_entropy/relative_entropy_detector.py), adapted to take a plain float
     per record and return a scalar score, with the paper's quantizer (Fig. 1, steps 3-4b: bucket
@@ -9,7 +11,8 @@ def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52, step=
     1..num_bins), the relative entropy written out as in the paper instead of calling
     scipy.stats.entropy, and windows that end at the `window_size`-th value and every `step`
     values after it (`step=1` gives NAB's sliding windows, `step=window_size` the paper's
-    non-overlapping ones), with the rarity threshold `c_th` that NAB fixes at 1 as an argument.
+    non-overlapping ones), with the rarity threshold `c_th` that NAB fixes at 1 and the
+    significance level `alpha` that NAB fixes at 0.01 as arguments.
 
     Returns:
         tuple: `(scores, c, P)`, the score of every value, and the count and histogram of every
@@ -22,7 +25,7 @@ def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52, step=
 
     N_bins = num_bins
     W = window_size
-    T = stats.chi2.isf(0.01, N_bins - 1)
+    T = stats.chi2.isf(alpha, N_bins - 1)
     stepSize = (max_val - min_val) / N_bins
 
     util = []
@@ -89,8 +92,9 @@ def _reference_fit_scores(x, min_val, max_val, num_bins=5, window_size=52, step=
 @pytest.mark.parametrize("window_size", [1, 2, 3, 52])
 @pytest.mark.parametrize("step", [1, None, 7])  # 7 divides none of the window sizes
 @pytest.mark.parametrize("c_th", [1, 3])
+@pytest.mark.parametrize("alpha", [0.01, 0.05])
 @pytest.mark.parametrize("driver", ["fit_score_partial", "score_partial_then_fit_partial"])
-def test_relative_entropy_matches_reference(window_size, step, c_th, driver):
+def test_relative_entropy_matches_reference(window_size, step, c_th, alpha, driver):
     import numpy as np
 
     from pysad.models import RelativeEntropy
@@ -109,10 +113,13 @@ def test_relative_entropy_matches_reference(window_size, step, c_th, driver):
         window_size=window_size,
         step=window_size if step is None else step,
         c_th=c_th,
+        alpha=alpha,
     )
 
     # score_partial followed by fit_partial must score and learn exactly as fit_score_partial.
-    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size, step=step, c_th=c_th)
+    model = RelativeEntropy(
+        min_val=0.0, max_val=1.0, window_size=window_size, step=step, c_th=c_th, alpha=alpha
+    )
     scores = []
     for v in x:
         xi = np.array([v])
@@ -513,6 +520,80 @@ def test_relative_entropy_accepts_numpy_integer_c_th():
     model = RelativeEntropy(min_val=0.0, max_val=1.0, c_th=np.int64(3))
 
     assert type(model.c_th) is int and model.c_th == 3
+
+
+def test_relative_entropy_default_alpha_keeps_nab_threshold():
+    from scipy import stats
+
+    from pysad.models import RelativeEntropy
+
+    model = RelativeEntropy(min_val=0.0, max_val=1.0)
+
+    assert model.alpha == 0.01
+    assert model.T == stats.chi2.isf(0.01, 4)
+
+
+@pytest.mark.parametrize(
+    "alpha, flagged",
+    [pytest.param(0.01, [], id="alpha=0.01"), pytest.param(0.05, [39], id="alpha=0.05")],
+)
+def test_relative_entropy_alpha_sets_how_large_a_shift_is_flagged(alpha, flagged):
+    import numpy as np
+    from scipy import stats
+
+    from pysad.models import RelativeEntropy
+
+    # Two buckets, (0, 0.5] and (0.5, 1]. The first window of 20 values splits 10/10 and is
+    # learned; the second splits 15/5, and its test statistic 2 * 20 * D([0.75, 0.25] || [0.5, 0.5])
+    # = 5.23 lies between T at alpha=0.05 (3.84) and T at alpha=0.01 (6.63).
+    x = np.r_[np.full(10, 0.25), np.full(10, 0.75), np.full(15, 0.25), np.full(5, 0.75)]
+
+    model = RelativeEntropy(
+        min_val=0.0, max_val=1.0, num_bins=2, window_size=20, step=20, alpha=alpha
+    )
+    assert model.T == stats.chi2.isf(alpha, 1)
+    scores = model.fit_score(x.reshape(-1, 1))
+
+    expected = np.zeros(len(x))
+    expected[flagged] = 1.0
+    assert scores.tolist() == expected.tolist()
+
+
+@pytest.mark.parametrize("alpha", [0.0, 1.0, -0.1, 1.5])
+def test_relative_entropy_alpha_outside_zero_one_raises_value_error(alpha):
+    from pysad.models import RelativeEntropy
+
+    # alpha=0 would make T infinite (every window agrees), and alpha=1 would make it 0 (none do).
+    with pytest.raises(ValueError, match=f"alpha must be strictly between 0 and 1, got {alpha}"):
+        RelativeEntropy(min_val=0.0, max_val=1.0, alpha=alpha)
+
+
+@pytest.mark.parametrize("alpha", [float("nan"), float("inf")])
+def test_relative_entropy_non_finite_alpha_raises_value_error(alpha):
+    from pysad.models import RelativeEntropy
+
+    with pytest.raises(ValueError, match=f"alpha must be finite, got {alpha}"):
+        RelativeEntropy(min_val=0.0, max_val=1.0, alpha=alpha)
+
+
+@pytest.mark.parametrize("alpha", [None, "0.05", True])
+def test_relative_entropy_non_real_alpha_raises_type_error(alpha):
+    import re
+
+    from pysad.models import RelativeEntropy
+
+    with pytest.raises(TypeError, match=re.escape(f"alpha must be a real number, got {alpha!r}")):
+        RelativeEntropy(min_val=0.0, max_val=1.0, alpha=alpha)
+
+
+def test_relative_entropy_accepts_numpy_alpha():
+    import numpy as np
+
+    from pysad.models import RelativeEntropy
+
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, alpha=np.float64(0.05))
+
+    assert type(model.alpha) is float and model.alpha == 0.05
 
 
 @pytest.mark.parametrize("method", ["fit_partial", "score_partial", "fit_score_partial"])

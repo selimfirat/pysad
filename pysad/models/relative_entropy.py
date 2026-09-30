@@ -68,9 +68,10 @@ class RelativeEntropy(BaseModel):
         window_size (int): The size of the window (Default=52). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
         step (int or None): Number of values between the ends of consecutive tested windows. `1` (default) gives NAB's sliding windows, which move by one value at a time; `window_size` (or `None`, which resolves to it) gives the paper's non-overlapping windows. Only the value that closes a tested window can score nonzero, so the default is the setting for per-value scores and for fitting and scoring separately. Must be `None` or an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
         c_th (int): The paper's rarity threshold (Default=1): a window that agrees with a hypothesis scores 1.0 if fewer than `c_th` earlier windows created or agreed with that hypothesis, so a new state keeps being flagged until it has recurred. The default `1`, as in NAB, never flags a window that agrees with a hypothesis. Counts go up once per tested window, so with the default `step=1` they count values rather than the paper's non-overlapping windows. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
+        alpha (float): Significance level of the goodness-of-fit test (Default=0.01). The threshold `T` is the `1 - alpha` quantile of the chi-squared distribution with `num_bins - 1` degrees of freedom, and a window agrees with a hypothesis when its test statistic is below `T`. The paper sets `T` at 0.95 or 0.99, i.e. `alpha=0.05` or `alpha=0.01` (the default, as in NAB). A larger `alpha` lowers `T`, so smaller changes in the distribution of the values are flagged. Treat it as a sensitivity setting rather than a false alarm rate: each hypothesis is learned from a single window, so a window drawn from the same distribution disagrees with it far more often than `alpha`. Must be a finite real number strictly between 0 and 1 (a NumPy number is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for other values.
     """
 
-    def __init__(self, min_val, max_val, num_bins=5, window_size=52, step=1, c_th=1):
+    def __init__(self, min_val, max_val, num_bins=5, window_size=52, step=1, c_th=1, alpha=0.01):
         min_val = _finite_float(min_val, "min_val")
         max_val = _finite_float(max_val, "max_val")
         if min_val > max_val:
@@ -82,6 +83,9 @@ class RelativeEntropy(BaseModel):
         if step is not None:
             step = _int_at_least(step, "step", 1, expected="None or an int")
         c_th = _int_at_least(c_th, "c_th", 1)
+        alpha = _finite_float(alpha, "alpha")
+        if not 0.0 < alpha < 1.0:
+            raise ValueError(f"alpha must be strictly between 0 and 1, got {alpha}.")
 
         # Stored as Python floats even when given as ints or NumPy numbers
         self.min_val = min_val
@@ -105,10 +109,13 @@ class RelativeEntropy(BaseModel):
         # NAB's sliding windows; None resolves to W (the paper's non-overlapping windows).
         self.step = self.W if step is None else step
 
+        # Significance level of the goodness-of-fit test, stored as a Python float
+        self.alpha = alpha
+
         # Threshold against which the test statistic is compared. It is set to
         # the point in the chi-squared cdf with N-bins -1 degrees of freedom that
-        #  corresponds to 0.99.
-        self.T = stats.chi2.isf(0.01, self.N_bins - 1)
+        # corresponds to 1 - alpha (0.99 by default, as in NAB).
+        self.T = stats.chi2.isf(self.alpha, self.N_bins - 1)
 
         # Tracks the current number of null hypothesis
         self.m = 0

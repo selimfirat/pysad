@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from pysad.models import KitNet
 
@@ -44,3 +45,18 @@ def test_scores_start_once_the_autoencoders_train():
     np.testing.assert_array_equal(scores[:6], 0.0)
     assert np.isfinite(scores).all()
     assert (scores[6:] > 0.0).all()
+
+
+def test_inputs_constant_in_training_are_not_scaled_by_1e16():
+    """Regression test for #226: 0-1 normalization divided by max - min + 1e-16, so an input whose
+    range was still zero was scaled by 1e16 as soon as it changed. That hit every input of the
+    output layer after its first instance, and a feature that was constant in training."""
+    X = _stream()
+    X[:, 1] = 0.0
+    model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0)
+    scores = model.fit_score(X)
+    x = X[-1].copy()
+    x[1] = 0.001
+
+    assert scores.max() < 10.0
+    assert model.score_partial(x) == pytest.approx(scores[-1], rel=0.05)

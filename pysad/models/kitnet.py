@@ -3,7 +3,7 @@ from pysad.models.kitnet_model import KitNET as kit
 
 
 class KitNet(BaseModel):
-    """KitNET is a lightweight online anomaly detection algorithm based on an ensemble of autoencoders :cite:`mirsky2018kitsune`. This model directly uses the implementation from `KitNET-py <https://github.com/ymirsky/KitNET-py>`_.
+    """KitNET is a lightweight online anomaly detection algorithm based on an ensemble of autoencoders :cite:`mirsky2018kitsune`. This model uses the implementation from `KitNET-py <https://github.com/ymirsky/KitNET-py>`_, except that the 0-1 normalization only shifts an input that was constant in training, which KitNET-py divides by 1e-16.
 
     Args:
         max_size_ae (int): The maximum size of any autoencoder in the ensemble layer (Default=10).

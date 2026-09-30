@@ -33,7 +33,6 @@ Alternatively, you can install the library directly using the source code in Git
 
 * rrcf: 0.4.4 (``pip install pysad[rrcf]``, for ``pysad.models.robust_random_cut_forest.RobustRandomCutForest``)
 * PyNomaly: 0.4.0 (``pip install pysad[slop]``, for ``pysad.models.LocalOutlierProbability``)
-* mmh3: 5.3.0 (``pip install pysad[xStream]``, for ``pysad.models.xstream.xStream``)
 * pandas: >=2.2.2 (``pip install pysad[pandas]``, for ``pysad.utils.pandas_streamer.PandasStreamer``)
 
-Install all optional dependencies at once with ``pip install "pysad[rrcf,slop,xStream,pandas]"``.
+Install all optional dependencies at once with ``pip install "pysad[rrcf,slop,pandas]"``.

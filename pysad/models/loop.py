@@ -1,3 +1,5 @@
+import numpy as np
+
 from pysad.core.base_model import BaseModel
 
 
@@ -38,4 +40,8 @@ class LocalOutlierProbability(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        return self.model.stream(X)
+        # When the reference PLOFs have no spread (e.g. identical initial instances), PyNomaly
+        # divides by a zero normalization; the score is then its limit, 1 for any instance with a
+        # positive PLOF, so the warning is noise.
+        with np.errstate(divide="ignore"):
+            return self.model.stream(X)

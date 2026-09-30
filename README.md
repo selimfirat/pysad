@@ -64,7 +64,7 @@ Batch detectors assume you have the whole dataset. On a stream you don't: points
 </td>
 <td valign="top">
 
-**Evaluate as you stream**<br>Stream simulators replay data one instance at a time, and metrics (AUROC, AUPR, precision, recall, and a windowed variant for drifting streams) update after every point.
+**Evaluate as you stream**<br>Stream simulators replay data one instance at a time, and 17 labelled benchmark datasets download on first use. Metrics (AUROC, AUPR, precision, recall, and a windowed variant for drifting streams) update after every point.
 
 </td>
 </tr>
@@ -90,7 +90,7 @@ Batch detectors assume you have the whole dataset. On a stream you don't: points
 pip install pysad
 ```
 
-pysad supports Python 3.10+ on Linux, macOS and Windows. Some detectors need an optional extra:
+pysad supports Python 3.10+ on Linux, macOS and Windows. Some classes need an optional extra:
 
 | Extra | Enables | Install |
 |---|---|---|
@@ -126,12 +126,12 @@ for x, label in ArrayStreamer().iter(X, y):
     score = model.fit_score_partial(x)  # update the model with x, then score it
     metric.update(label, score)
 
-print(f"AUROC: {metric.get():.3f}")  # about 0.95; LODA is randomized, so it varies a little
+print(f"AUROC: {metric.get():.3f}")  # about 0.96; LODA is randomized, so it varies a little
 ```
 
 ### Turn scores into alerts
 
-Raw scores have no fixed scale. A conformal calibrator converts each score into a p-value: the share of recent scores at least as high. Continuing the example above, alert when it's small:
+A higher score means a more anomalous point, but raw scores have no fixed scale. A conformal calibrator converts each score into a p-value: the share of recent scores at least as high. Continuing the example above, alert when it's small:
 
 ```python
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
@@ -205,18 +205,18 @@ These are starting points drawn from each method's design, not benchmark ranking
 | `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) | |
 | `ExactStorm` | Exact-STORM distance-based outliers (Angiulli & Fassetti, CIKM 2007) | |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) | `slop` |
-| `Inqmad` | InQMAD quantum-measurement density (Gallego-Mejia et al., ICDMW 2022) | `inqmad` |
+| `Inqmad` | InQMAD quantum-measurement density (Gallego-Mejia et al., ICDMW 2022) | |
 
 **Univariate**
 
-| Class | Method | Extra |
-|---|---|---|
-| `SeasonalHybridESD` | Seasonal Hybrid ESD (Hochenbaum et al., 2017) | |
-| `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) | |
-| `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) | |
-| `RelativeEntropy` | Relative entropy over windows (Wang et al., IM 2011) | |
-| `MedianAbsoluteDeviation` | Running median absolute deviation (Hochenbaum et al., 2017) | |
-| `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) | |
+| Class | Method |
+|---|---|
+| `SeasonalHybridESD` | Seasonal Hybrid ESD (Hochenbaum et al., 2017) |
+| `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
+| `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
+| `RelativeEntropy` | Relative entropy over windows (Wang et al., IM 2011) |
+| `MedianAbsoluteDeviation` | Running median absolute deviation (Hochenbaum et al., 2017) |
+| `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 
 Plus `ReferenceWindowModel` and `OneFitModel`, which run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. Full references and parameters are in the [API documentation](https://pysad.readthedocs.io/en/latest/api.html).
 
@@ -230,7 +230,7 @@ Plus `ReferenceWindowModel` and `OneFitModel`, which run any [PyOD](https://gith
 | Calibration | `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator` |
 | Ensembling | Average, maximum, median, average-of-maximum and maximum-of-average score ensemblers |
 | Evaluation | `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric` |
-| Streaming data | `ArrayStreamer`, `PandasStreamer` |
+| Streaming data | `ArrayStreamer`, `PandasStreamer`, and `Data` for 17 labelled ODDS benchmark datasets, downloaded on first use |
 | Statistics | Running mean, variance, median, min, max, sum and count trackers |
 
 ## Contributing

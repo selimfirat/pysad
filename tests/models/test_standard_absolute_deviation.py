@@ -143,3 +143,15 @@ def test_standard_absolute_deviation_first_score_is_zero():
     score = StandardAbsoluteDeviation().fit_score(X)[0]
     # Single observation: deviation from its own mean is 0; variance is 0.
     assert score == 0.0
+
+
+def test_standard_absolute_deviation_scores_zero_on_a_constant_stream():
+    """#224: the variance went negative after three instances of 0.1, so the score was nan."""
+    import numpy as np
+
+    from pysad.models import StandardAbsoluteDeviation
+
+    scores = StandardAbsoluteDeviation().fit_score(np.full((10, 1), 0.1))
+
+    # Not exactly 0: the running mean of 0.1s is off by a rounding error, divided by the 1e-10 floor.
+    np.testing.assert_allclose(scores, np.zeros(10), atol=1e-6)

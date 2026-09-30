@@ -1,0 +1,32 @@
+name: all checks
+
+# The single status check the branch rules require. The other workflows skip themselves on
+# pull requests that don't touch their paths, so requiring them directly would leave those
+# pull requests waiting forever. This job always runs: it waits for every check run on the
+# pull request's head commit and fails if any of them did not succeed. Skipped runs count as
+# passed. Commit statuses such as pre-commit.ci's are not check runs; the rules require those
+# separately.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # No `name:` on purpose: the action skips its own check run by matching the job id.
+  all-checks:
+    runs-on: ubuntu-latest
+    permissions:
+      # Reads the check runs of the pull request's head commit.
+      checks: read
+    steps:
+      - uses: poseidon/wait-for-status-checks@e7e24423722c5b8e97a6dd5848827d2a412f812d # v0.7.0
+        with:
+          token: ${{ github.token }}
+          # Gives the other workflows and Azure Pipelines time to register their check runs.
+          delay: 30s
+          interval: 20s

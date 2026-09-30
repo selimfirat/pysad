@@ -59,8 +59,12 @@ class dA:
 
         self.hbias = numpy.zeros(self.params.n_hidden)  # initialize h bias 0
         self.vbias = numpy.zeros(self.params.n_visible)  # initialize v bias 0
-        self.W_prime = self.W.T
 
+    # The decoder weights are the encoder weights transposed. A property rather than a stored view,
+    # which pickling and deepcopy would turn into a separate copy that stops following W.
+    @property
+    def W_prime(self):
+        return self.W.T
 
     # 0-1 normalize with the ranges seen in training. An attribute that has been constant so far is only
     # shifted, as scikit-learn's MinMaxScaler does with constant features, since dividing by the 1e-16

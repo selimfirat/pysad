@@ -1,7 +1,5 @@
 """Stream a pandas DataFrame through PySAD and print anomaly alerts."""
 
-# Pandas is optional. Install it with: pip install pysad[pandas]
-
 import numpy as np
 import pandas as pd
 

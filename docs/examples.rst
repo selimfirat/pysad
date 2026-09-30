@@ -57,12 +57,6 @@ Pandas DataFrame Streaming
 ``PandasStreamer`` iterates over a pandas DataFrame row by row, making it
 possible to score tabular time-series data with PySAD streaming models.
 
-Pandas is an optional dependency. Install it with:
-
-.. code-block:: bash
-
-   pip install pysad[pandas]
-
 The following example creates a small DataFrame with a ``DatetimeIndex`` and
 injected CPU and latency spikes, then prints the timestamps with the highest
 anomaly scores.

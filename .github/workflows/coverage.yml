@@ -85,7 +85,7 @@ jobs:
           cache-dependency-glob: "pyproject.toml"
       - name: Install unpinned dependencies
         run: |
-          uv pip install --system -e ".[rrcf,slop,pandas]" --group test
+          uv pip install --system -e . --group test
       - name: Test
         run: pytest -n auto
 
@@ -108,6 +108,6 @@ jobs:
         # lowest-direct installs the floor of every dependency pyproject.toml names, on the
         # oldest supported Python, and the newest versions of their own dependencies.
         run: |
-          uv pip install --system --resolution lowest-direct -e ".[rrcf,slop,pandas]" --group test
+          uv pip install --system --resolution lowest-direct -e . --group test
       - name: Test
         run: pytest -n auto

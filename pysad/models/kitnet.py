@@ -3,7 +3,7 @@ from pysad.models.kitnet_model import KitNET as kit
 
 
 class KitNet(BaseModel):
-    """KitNET is a lightweight online anomaly detection algorithm based on an ensemble of autoencoders :cite:`mirsky2018kitsune`. This model directly uses the implementation from `KitNET-py <https://github.com/ymirsky/KitNET-py>`_.
+    """KitNET is a lightweight online anomaly detection algorithm based on an ensemble of autoencoders :cite:`mirsky2018kitsune`. This model uses the implementation from `KitNET-py <https://github.com/ymirsky/KitNET-py>`_ with two changes: the 0-1 normalization only shifts an input that was constant in training, which KitNET-py divides by 1e-16, and the feature mapping learns from ``grace_feature_mapping`` instances instead of one more.
 
     Args:
         max_size_ae (int): The maximum size of any autoencoder in the ensemble layer (Default=10).
@@ -37,7 +37,7 @@ class KitNet(BaseModel):
 
         The first ``grace_feature_mapping`` instances learn the feature mapping;
         the next ``grace_anomaly_detector`` instances train the autoencoders.
-        Until the feature mapping is built, :meth:`score_partial` returns ``0.0``.
+        Until the autoencoders have trained on an instance, :meth:`score_partial` returns ``0.0``.
         While the autoencoders are still training, it returns real scores from
         partially trained autoencoders, so they are unreliable for alerting.
         After both grace periods the model stops learning and only scores.
@@ -61,7 +61,9 @@ class KitNet(BaseModel):
                 random_state=self.random_state,
             )
             self.to_init = False
-        self.model.process(X)
+        # After both grace periods KitNET only scores, which is score_partial's job.
+        if self.model.inGrace():
+            self.model.train(X)
 
         return self
 
@@ -74,9 +76,9 @@ class KitNet(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        if self.model.v is None:
-            # The feature map is not discovered (i.e., still the grace period),
-            # thus, KitNet gives an error.
+        if self.model.outputLayer is None:
+            # KitNET builds its autoencoders on the first instance after the feature mapping, and
+            # there is nothing to score with before that.
             return 0.0
         else:
             return self.model.execute(X)

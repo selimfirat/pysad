@@ -35,6 +35,8 @@ class corClust:
 
     # clusters the features together, having no more than maxClust features per cluster
     def cluster(self,maxClust):
+        if self.n == 1: #a single feature has a single mapping, and linkage cannot cluster one observation
+            return [[0]]
         D = self.corrDist()
         Z = linkage(D[np.triu_indices(self.n, 1)])  # create a linkage matrix based on the distance matrix
         if maxClust < 1:

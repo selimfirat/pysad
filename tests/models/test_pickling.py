@@ -30,6 +30,8 @@ MODEL_PARAMS = {
     },
     "IForestASD": {"window_size": 32},
     "Inqmad": {"input_shape": 3, "dim_x": 32, "gamma": 100},
+    # Its autoencoders still train on the instances scored after the round trip.
+    "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 50},
     "KNNCAD": {"probationary_period": 50},
     # Non-overlapping windows of 5 close 4 times among the NUM_NEXT compared values, and 80 buckets
     # split the noise so that some of them score 1.0 (see test_relative_entropy_compared_scores_use_learned_state).

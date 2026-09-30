@@ -37,18 +37,6 @@ MODELS = {
 }
 
 NAMES = list(MODELS)
-PICKLABLE_NAMES = [
-    pytest.param(
-        name,
-        marks=pytest.mark.xfail(
-            strict=True,
-            reason="dA.W_prime is a view of dA.W that pickling turns into a copy, so training after loading diverges.",
-        ),
-    )
-    if name == "KitNet"
-    else name
-    for name in MODELS
-]
 
 
 def _data():
@@ -110,7 +98,7 @@ def test_default_draws_from_global_state(name):
     )
 
 
-@pytest.mark.parametrize("name", PICKLABLE_NAMES)
+@pytest.mark.parametrize("name", NAMES)
 def test_seeded_model_pickles_with_its_generator(name):
     data = _data()
     model = MODELS[name](random_state=5)

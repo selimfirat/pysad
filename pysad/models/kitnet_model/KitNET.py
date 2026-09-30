@@ -55,12 +55,12 @@ class KitNET:
 
     #whether KitNET still learns from the next instance, i.e. FM_grace_period+AD_grace_period has not passed yet
     def inGrace(self):
-        return self.n_trained <= self.FM_grace_period + self.AD_grace_period
+        return self.n_trained < self.FM_grace_period + self.AD_grace_period
 
     #force train KitNET on x
     #returns the anomaly score of x during training (do not use for alerting)
     def train(self,x):
-        if self.n_trained <= self.FM_grace_period and self.v is None: #If the FM is in train-mode, and the user has not supplied a feature mapping
+        if self.n_trained < self.FM_grace_period and self.v is None: #If the FM is in train-mode, and the user has not supplied a feature mapping
             #update the incremetnal correlation matrix
             self.FM.update(x)
         else: #train

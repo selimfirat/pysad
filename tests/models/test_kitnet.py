@@ -41,10 +41,10 @@ def test_scores_start_once_the_autoencoders_train():
         _stream()
     )
 
-    # The feature mapper learns from the first 6 instances, and the autoencoders from the next.
-    np.testing.assert_array_equal(scores[:6], 0.0)
+    # The feature mapper learns from the first 5 instances, and the autoencoders from the next.
+    np.testing.assert_array_equal(scores[:5], 0.0)
     assert np.isfinite(scores).all()
-    assert (scores[6:] > 0.0).all()
+    assert (scores[5:] > 0.0).all()
 
 
 def test_inputs_constant_in_training_are_not_scaled_by_1e16():
@@ -60,3 +60,17 @@ def test_inputs_constant_in_training_are_not_scaled_by_1e16():
 
     assert scores.max() < 10.0
     assert model.score_partial(x) == pytest.approx(scores[-1], rel=0.05)
+
+
+def test_grace_periods_last_the_given_numbers_of_instances():
+    """The feature mapping used to learn from grace_feature_mapping + 1 instances."""
+    X = _stream()
+    model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=7, random_state=0)
+
+    model.fit(X[:5])
+    assert model.model.FM.N == 5
+    assert model.model.outputLayer is None
+
+    model.fit(X[5:])
+    assert model.model.FM.N == 5
+    assert model.model.outputLayer.n == 7

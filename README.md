@@ -90,15 +90,7 @@ Batch detectors assume you have the whole dataset. On a stream you don't: points
 pip install pysad
 ```
 
-pysad supports Python 3.10+ on Linux, macOS and Windows. Some classes need an optional extra:
-
-| Extra | Enables | Install |
-|---|---|---|
-| `rrcf` | `RobustRandomCutForest` | `pip install "pysad[rrcf]"` |
-| `slop` | `LocalOutlierProbability` | `pip install "pysad[slop]"` |
-| `pandas` | `PandasStreamer` | `pip install "pysad[pandas]"` |
-
-Install everything with `pip install "pysad[rrcf,slop,pandas]"`.
+pysad supports Python 3.10+ on Linux, macOS and Windows.
 
 ## Quick start
 
@@ -194,18 +186,18 @@ These are starting points drawn from each method's design, not benchmark ranking
 
 **Multivariate**
 
-| Class | Method | Extra |
-|---|---|---|
-| `xStream` | xStream (Manzoor et al., KDD 2018) | |
-| `LODA` | Lightweight on-line detector of anomalies (Pevný, *Machine Learning* 2016) | |
-| `HalfSpaceTrees` | Half-Space Trees (Tan et al., IJCAI 2011) | |
-| `RobustRandomCutForest` | Robust Random Cut Forest (Guha et al., ICML 2016) | `rrcf` |
-| `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) | |
-| `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) | |
-| `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) | |
-| `ExactStorm` | Exact-STORM distance-based outliers (Angiulli & Fassetti, CIKM 2007) | |
-| `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) | `slop` |
-| `Inqmad` | InQMAD quantum-measurement density (Gallego-Mejia et al., ICDMW 2022) | |
+| Class | Method |
+|---|---|
+| `xStream` | xStream (Manzoor et al., KDD 2018) |
+| `LODA` | Lightweight on-line detector of anomalies (Pevný, *Machine Learning* 2016) |
+| `HalfSpaceTrees` | Half-Space Trees (Tan et al., IJCAI 2011) |
+| `RobustRandomCutForest` | Robust Random Cut Forest (Guha et al., ICML 2016) |
+| `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) |
+| `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
+| `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) |
+| `ExactStorm` | Exact-STORM distance-based outliers (Angiulli & Fassetti, CIKM 2007) |
+| `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
+| `Inqmad` | InQMAD quantum-measurement density (Gallego-Mejia et al., ICDMW 2022) |
 
 **Univariate**
 

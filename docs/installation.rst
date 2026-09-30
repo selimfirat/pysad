@@ -28,11 +28,6 @@ Alternatively, you can install the library directly using the source code in Git
 * scipy: >=1.13.0
 * statsmodels: >=0.14.2 (for ``pysad.models.SeasonalESD``, ``pysad.models.SeasonalHybridESD`` and ``pysad.transform.preprocessing.ModifiedSTLResidualTransformer``)
 * pyod: >=3.6.2
-
-**Optional Dependencies:**
-
-* rrcf: 0.4.4 (``pip install pysad[rrcf]``, for ``pysad.models.robust_random_cut_forest.RobustRandomCutForest``)
-* PyNomaly: 0.4.0 (``pip install pysad[slop]``, for ``pysad.models.LocalOutlierProbability``)
-* pandas: >=2.2.2 (``pip install pysad[pandas]``, for ``pysad.utils.pandas_streamer.PandasStreamer``)
-
-Install all optional dependencies at once with ``pip install "pysad[rrcf,slop,pandas]"``.
+* rrcf: >=0.4.4 (for ``pysad.models.robust_random_cut_forest.RobustRandomCutForest``)
+* PyNomaly: >=0.4.0 (for ``pysad.models.LocalOutlierProbability``)
+* pandas: >=2.2.2 (for ``pysad.utils.pandas_streamer.PandasStreamer``)

@@ -1,5 +1,6 @@
 import math
 import numbers
+from collections import deque
 
 import numpy as np
 from scipy import stats
@@ -84,8 +85,12 @@ class RelativeEntropy(BaseModel):
         self.min_val = min_val
         self.max_val = max_val
 
-        # Timeseries of the metric on which anomaly needs to be detected
-        self.util = []
+        # The last `window_size` values of the metric on which anomaly needs to be detected: the
+        # values of the current window, which are the only ones the model reads
+        self.util = deque(maxlen=window_size)
+
+        # Number of values fitted so far, i.e. the position in the stream of the last value in util
+        self.num_fitted = 0
 
         # Number of bins into which util is to be quantized, stored as a Python int even when
         # given as a NumPy integer
@@ -121,7 +126,7 @@ class RelativeEntropy(BaseModel):
         self.c_th = 1
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance: appends `X` to the window buffer and, when `X` closes a window (the window is full and ends `step` values after the previous tested window, counting from the first full window), either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise. Values that don't close a window are only appended to the window buffer; the learned hypotheses and counts are unchanged.
+        """Fits the model to next instance: appends `X` to the window buffer, which keeps only the last `window_size` values, and, when `X` closes a window (the window is full and ends `step` values after the previous tested window, counting from the first full window), either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise. Values that don't close a window are only appended to the window buffer; the learned hypotheses and counts are unchanged.
 
         Args:
             X (float): The instance to fit. Note that this model is univariate.
@@ -135,9 +140,10 @@ class RelativeEntropy(BaseModel):
         """
         x = self._value(X)
         self.util.append(x)
+        self.num_fitted += 1
 
-        if self.stepSize != 0.0 and self._closes_window(len(self.util)):
-            P_hat, index = self._window_index(self.util[-self.W :])
+        if self.stepSize != 0.0 and self._closes_window(self.num_fitted):
+            P_hat, index = self._window_index(self.util)
             self._fit_window(P_hat, index)
 
         return self
@@ -156,11 +162,11 @@ class RelativeEntropy(BaseModel):
         """
         x = self._value(X)
 
-        if self.stepSize == 0.0 or not self._closes_window(len(self.util) + 1) or self.m == 0:
+        if self.stepSize == 0.0 or not self._closes_window(self.num_fitted + 1) or self.m == 0:
             return 0.0
 
         start = max(0, len(self.util) - self.W + 1)
-        window = self.util[start:] + [x]
+        window = list(self.util)[start:] + [x]
 
         _, index = self._window_index(window)
 
@@ -181,14 +187,15 @@ class RelativeEntropy(BaseModel):
         """
         x = self._value(X)
         self.util.append(x)
+        self.num_fitted += 1
 
-        if self.stepSize == 0.0 or not self._closes_window(len(self.util)):
+        if self.stepSize == 0.0 or not self._closes_window(self.num_fitted):
             return 0.0
 
         # Computed once and shared: the score reads `index` before `_fit_window` changes
         # `self.P`/`self.c`/`self.m`, matching the score-then-fit order of `score_partial`
         # followed by `fit_partial`.
-        P_hat, index = self._window_index(self.util[-self.W :])
+        P_hat, index = self._window_index(self.util)
         score = 0.0 if self.m == 0 else self._score_window(index)
         self._fit_window(P_hat, index)
 
@@ -213,28 +220,28 @@ class RelativeEntropy(BaseModel):
 
         return x
 
-    def _closes_window(self, length):
-        """Whether the value bringing `util` to `length` closes a tested window: the window must
+    def _closes_window(self, position):
+        """Whether the value at `position` in the stream closes a tested window: the window must
         be full and its end must land `step` values past the end of the previous tested window,
         counting from the first full window. With the default `step == 1` this is true for every
         value from the first full window on (NAB's sliding windows); with `step == W` it is true
         once per `W` values (the paper's non-overlapping windows).
 
         Args:
-            length (int): The number of values in `util` counting the value that would close the
-                window, i.e. `len(self.util)` in `fit_partial`/`fit_score_partial`, or
-                `len(self.util) + 1` for the hypothetical window in `score_partial`.
+            position (int): The number of values fitted counting the value that would close the
+                window, i.e. `num_fitted` in `fit_partial`/`fit_score_partial`, or
+                `num_fitted + 1` for the hypothetical window in `score_partial`.
 
         Returns:
-            bool: True if the window ending at `length` should be fitted/scored.
+            bool: True if the window ending at `position` should be fitted/scored.
         """
-        return length >= self.W and (length - self.W) % self.step == 0
+        return position >= self.W and (position - self.W) % self.step == 0
 
     def _window_index(self, window):
         """Computes a window's empirical histogram and the index of the hypothesis it agrees with.
 
         Args:
-            window (list of float): The values in the window, in order.
+            window (sequence of float): The values in the window, in order.
 
         Returns:
             tuple: `(P_hat, index)`, where `P_hat` is the np.float64 array of shape `(N_bins,)`
@@ -288,7 +295,7 @@ class RelativeEntropy(BaseModel):
         """Computes the empirical frequency histogram `P_hat` of a window.
 
         Args:
-            window (list of float): The values in the window, in order.
+            window (sequence of float): The values in the window, in order.
 
         Returns:
             np.float64 array of shape (N_bins,): The empirical frequencies of the quantized window.

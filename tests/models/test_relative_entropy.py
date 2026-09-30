@@ -471,7 +471,8 @@ def test_relative_entropy_rejects_nan_without_changing_the_model(method, num_fit
     with pytest.raises(ValueError, match="RelativeEntropy does not accept NaN values"):
         getattr(model, method)(np.array([np.nan]))
 
-    assert model.util == util_before
+    assert list(model.util) == util_before
+    assert model.num_fitted == num_fitted
     np.testing.assert_array_equal(model.P, P_before)
     assert model.c == c_before
     assert model.m == m_before
@@ -479,7 +480,25 @@ def test_relative_entropy_rejects_nan_without_changing_the_model(method, num_fit
     # The rejected value leaves nothing behind that breaks later windows.
     for _ in range(10):
         model.fit_score_partial(np.array([0.9]))
-    assert len(model.util) == num_fitted + 10
+    assert model.num_fitted == num_fitted + 10
+
+
+@pytest.mark.parametrize("step", [1, None, 7])
+@pytest.mark.parametrize("method", ["fit", "fit_score"])
+def test_relative_entropy_keeps_only_the_current_window(method, step):
+    import numpy as np
+
+    from pysad.models import RelativeEntropy
+
+    # Only the last window_size values are ever read, so the model must not keep the whole stream.
+    rng = np.random.default_rng(0)
+    x = rng.random(1000)
+
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=52, step=step)
+    getattr(model, method)(x.reshape(-1, 1))
+
+    assert model.num_fitted == 1000
+    assert list(model.util) == x[-52:].tolist()
 
 
 @pytest.mark.parametrize("step", [0, -1])

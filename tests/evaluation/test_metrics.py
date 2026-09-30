@@ -300,3 +300,23 @@ def test_precision_recall_without_threshold_reject_scores():
         metric.update(0, 0.2)
         with pytest.raises(ValueError):
             metric.get()
+
+
+def test_empty_metric_contract():
+    """Test the empty metric contract for all evaluation metrics."""
+    import pytest
+
+    from pysad.evaluation import AUPRMetric, AUROCMetric, PrecisionMetric, RecallMetric
+
+    # Precision and Recall return 0.0 before any samples
+    assert PrecisionMetric().get() == 0.0
+    assert PrecisionMetric(threshold=0.5).get() == 0.0
+    assert RecallMetric().get() == 0.0
+    assert RecallMetric(threshold=0.5).get() == 0.0
+
+    # AUROC and AUPR raise ValueError before any samples
+    with pytest.raises(ValueError, match="Only one class present in y_true"):
+        AUROCMetric().get()
+
+    with pytest.raises(ValueError, match="No samples recorded"):
+        AUPRMetric().get()

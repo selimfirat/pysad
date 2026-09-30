@@ -49,7 +49,8 @@ classifiers = [
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13"
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14"
     ]
 
 [project.optional-dependencies]
@@ -73,7 +74,8 @@ Changelog = "https://github.com/selimfirat/pysad/blob/master/CHANGES.txt"
 runtime = [
   "numpy==2.2.6",
   "scikit-learn==1.7.2",
-  "scipy==1.15.3",
+  "scipy==1.15.3; python_version < '3.11'",
+  "scipy>=1.15.4; python_version >= '3.11'",
   "statsmodels==0.15.0",
   "pyod>=3.6.2",
   "pandas==2.3.3",

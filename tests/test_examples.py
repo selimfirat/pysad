@@ -11,7 +11,6 @@ EXAMPLES = sorted(
     for name in os.listdir(EXAMPLES_DIR)
     if name.startswith("example_") and name.endswith(".py")
 )
-OPTIONAL_DEPENDENCIES = {"example_usage_inqmad.py": "jax"}
 
 
 def run_python(*args):
@@ -30,9 +29,6 @@ def run_python(*args):
 @pytest.mark.examples
 @pytest.mark.parametrize("example", EXAMPLES)
 def test_example_runs(example):
-    if example in OPTIONAL_DEPENDENCIES:
-        pytest.importorskip(OPTIONAL_DEPENDENCIES[example])
-
     result = run_python(example)
 
     assert result.returncode == 0, f"{example} failed:\n{result.stderr[-3000:]}"

@@ -5,8 +5,7 @@ The :mod:`pysad.models` module includes anomaly detection models to score the an
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
-from .inqmad import JAX_AVAILABLE as _has_inqmad
-from .inqmad import Inqmad  # noqa: F401 -- exported below when JAX is installed
+from .inqmad import Inqmad
 from .kitnet import KitNet
 from .knn_cad import KNNCAD
 from .loda import LODA
@@ -26,6 +25,7 @@ __all__ = [
     "ExactStorm",
     "HalfSpaceTrees",
     "IForestASD",
+    "Inqmad",
     "KitNet",
     "KNNCAD",
     "LODA",
@@ -42,9 +42,3 @@ __all__ = [
     "StandardAbsoluteDeviation",
     "xStream",
 ]
-
-# Inqmad needs JAX, which is optional. The class is always importable; without
-# JAX its constructor raises an ImportError with the install hint (#174), and it
-# is only listed in __all__ when JAX is installed.
-if _has_inqmad:
-    __all__.append("Inqmad")

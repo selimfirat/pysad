@@ -1,3 +1,4 @@
+import math
 import numbers
 
 import numpy as np
@@ -6,12 +7,13 @@ from scipy import stats
 from pysad.core.base_model import BaseModel
 
 
-def _positive_int(value, name, expected="an int"):
-    """Returns `value` as a Python int, or raises if it is not an integer >= 1 (NumPy integers are accepted, bools are not).
+def _int_at_least(value, name, minimum, expected="an int"):
+    """Returns `value` as a Python int, or raises if it is not an integer >= `minimum` (NumPy integers are accepted, bools are not).
 
     Args:
         value (object): The value to check.
         name (str): The parameter name to put in the error message.
+        minimum (int): The smallest accepted value.
         expected (str): What the parameter accepts, for the `TypeError` message (Default="an int").
 
     Returns:
@@ -19,14 +21,38 @@ def _positive_int(value, name, expected="an int"):
 
     Raises:
         TypeError: If `value` is a bool or not an integer.
-        ValueError: If `value` is below 1.
+        ValueError: If `value` is below `minimum`.
     """
     if isinstance(value, bool) or not isinstance(value, numbers.Integral):
         raise TypeError(f"{name} must be {expected}, got {value!r}.")
 
     value = int(value)
-    if value < 1:
-        raise ValueError(f"{name} must be at least 1, got {value}.")
+    if value < minimum:
+        raise ValueError(f"{name} must be at least {minimum}, got {value}.")
+
+    return value
+
+
+def _finite_float(value, name):
+    """Returns `value` as a Python float, or raises if it is not a finite real number (NumPy numbers are accepted, bools are not).
+
+    Args:
+        value (object): The value to check.
+        name (str): The parameter name to put in the error message.
+
+    Returns:
+        float: `value` as a Python float.
+
+    Raises:
+        TypeError: If `value` is a bool or not a real number.
+        ValueError: If `value` is NaN or infinite.
+    """
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        raise TypeError(f"{name} must be a real number, got {value!r}.")
+
+    value = float(value)
+    if not math.isfinite(value):
+        raise ValueError(f"{name} must be finite, got {value}.")
 
     return value
 
@@ -35,25 +61,34 @@ class RelativeEntropy(BaseModel):
     """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. By default (`step=1`) windows slide one value at a time, as in NAB, so every value from the `window_size`-th on is tested against the hypotheses. Pass `step=window_size` (or `step=None`, which resolves to it) for the paper's non-overlapping windows, where each value belongs to exactly one tested window. Each tested window's score goes to the value that closes it and every other value scores 0.0 (NAB tests a window at every value, and the paper flags windows rather than values), so with `step=window_size` only one value in every `window_size` can score nonzero, and per-value metrics are not meaningful. For the same reason, `score` on held-out values after `fit` scores each of them as the value following the fitted ones and, with `step > 1`, returns 0.0 unless that value would close a window (with `step=window_size`, unless the number of fitted values is one short of a multiple of `window_size`); the default `step=1` is the setting for fitting and scoring separately. Unlike NAB, whose histogram puts the top two quantization levels in one bin, this implementation gives each of the `num_bins` equal-width buckets its own bin, as in the paper (Fig. 1, steps 3-4b), so its scores differ from NAB's. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, and 0.0 otherwise. With NAB's rarity threshold `c_th` kept at 1, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
 
     Args:
-        min_val (float): Minimum value of the univariate stream. Values below this are clipped to it.
-        max_val (float): Maximum value of the univariate stream. Values above this are clipped to it.
-        num_bins (int): Number of bins (Default=5).
+        min_val (float): Minimum value of the univariate stream. Values below this are clipped to it. Must be a finite real number (a NumPy number is accepted, but not a bool) and at most `max_val`: `TypeError` is raised for other types and `ValueError` for NaN, infinity or a value above `max_val`.
+        max_val (float): Maximum value of the univariate stream. Values above this are clipped to it. Must be a finite real number (a NumPy number is accepted, but not a bool) and at least `min_val`: `TypeError` is raised for other types and `ValueError` for NaN, infinity or a value below `min_val`. If it equals `min_val`, the buckets have no width and every value scores 0.0, as NAB does for a constant data file.
+        num_bins (int): Number of equal-width buckets between `min_val` and `max_val` that the values are quantized into (Default=5). Must be an int >= 2 (a NumPy integer is accepted, but not a bool), since the test threshold `T` comes from the chi-squared distribution with `num_bins - 1` degrees of freedom: `TypeError` is raised for other types and `ValueError` for values below 2.
         window_size (int): The size of the window (Default=52). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
         step (int or None): Number of values between the ends of consecutive tested windows. `1` (default) gives NAB's sliding windows, which move by one value at a time; `window_size` (or `None`, which resolves to it) gives the paper's non-overlapping windows. Only the value that closes a tested window can score nonzero, so the default is the setting for per-value scores and for fitting and scoring separately. Must be `None` or an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
     """
 
     def __init__(self, min_val, max_val, num_bins=5, window_size=52, step=1):
-        window_size = _positive_int(window_size, "window_size")
+        min_val = _finite_float(min_val, "min_val")
+        max_val = _finite_float(max_val, "max_val")
+        if min_val > max_val:
+            raise ValueError(
+                f"min_val must not exceed max_val, got min_val={min_val} and max_val={max_val}."
+            )
+        num_bins = _int_at_least(num_bins, "num_bins", 2)
+        window_size = _int_at_least(window_size, "window_size", 1)
         if step is not None:
-            step = _positive_int(step, "step", expected="None or an int")
+            step = _int_at_least(step, "step", 1, expected="None or an int")
 
+        # Stored as Python floats even when given as ints or NumPy numbers
         self.min_val = min_val
         self.max_val = max_val
 
         # Timeseries of the metric on which anomaly needs to be detected
         self.util = []
 
-        # Number of bins into which util is to be quantized
+        # Number of bins into which util is to be quantized, stored as a Python int even when
+        # given as a NumPy integer
         self.N_bins = num_bins
 
         # Window size, stored as a Python int even when given as a NumPy integer

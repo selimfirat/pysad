@@ -1,0 +1,66 @@
+name: pr labels
+
+# Labels pull requests from the type in their conventional-commit titles, which
+# .github/release.yml uses to group the generated release notes:
+#   feat -> enhancement, fix -> bug, docs -> documentation, build -> build, ci -> ci,
+#   and "type!:" adds breaking. Other types get no type label.
+on:
+  # pull_request_target runs in the base repository's context so the token can label
+  # pull requests from forks. Nothing from the pull request is checked out or executed,
+  # and the title only reaches the script through an environment variable, which is why
+  # zizmor's dangerous-triggers finding is ignored here.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  label:
+    # Editing only the description does not change the labels.
+    if: github.event.action != 'edited' || github.event.changes.title
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Label from the title
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          CURRENT: ${{ join(github.event.pull_request.labels.*.name, '|') }}
+        run: |
+          type=""
+          breaking=""
+          pattern='^([a-z]+)(\([^)]*\))?(!)?: '
+          if [[ "$TITLE" =~ $pattern ]]; then
+            type="${BASH_REMATCH[1]}"
+            breaking="${BASH_REMATCH[3]}"
+          fi
+          declare -A wanted=()
+          case "$type" in
+            feat) wanted[enhancement]=1 ;;
+            fix) wanted[bug]=1 ;;
+            docs) wanted[documentation]=1 ;;
+            build | ci) wanted[$type]=1 ;;
+          esac
+          if [ -n "$breaking" ]; then
+            wanted[breaking]=1
+          fi
+          # Remove type labels that no longer match the title; other labels are left alone.
+          args=()
+          for label in enhancement bug documentation build ci breaking; do
+            present=""
+            if [[ "|$CURRENT|" == *"|$label|"* ]]; then
+              present=1
+            fi
+            if [ -n "${wanted[$label]:-}" ] && [ -z "$present" ]; then
+              args+=(--add-label "$label")
+            elif [ -z "${wanted[$label]:-}" ] && [ -n "$present" ]; then
+              args+=(--remove-label "$label")
+            fi
+          done
+          if [ "${#args[@]}" -gt 0 ]; then
+            gh pr edit "$PR_NUMBER" "${args[@]}"
+          fi

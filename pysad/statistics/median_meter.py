@@ -13,8 +13,8 @@ class MedianMeter(UnivariateStatistic):
         lst (list[float]): The list of values that are used to update the statistic. It is necessary for windowing operations.
     """
 
-    def __init__(self):
-        self.lst = []
+    def __init__(self) -> None:
+        self.lst: list[float] = []
         self.num_items = 0
 
     def update(self, num: float) -> MedianMeter:

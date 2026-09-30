@@ -14,7 +14,7 @@ class VarianceMeter(UnivariateStatistic):
         m2 (float): The sum of squared deviations of the values from their mean.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.count = 0
         self.mean = 0.0
         self.m2 = 0.0

@@ -16,10 +16,10 @@ class MinMeter(UnivariateStatistic):
         lst (list[float]): The list of values that are used to update the statistic. It is necessary for windowing operations.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.min = math.inf
 
-        self.lst = []
+        self.lst: list[float] = []
 
     def update(self, num: float) -> MinMeter:
         """Updates the statistic with the value for a timestep.

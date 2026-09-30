@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pysad.core.base_statistic import BaseStatistic, UnivariateStatistic
 
 
@@ -15,7 +17,9 @@ class RunningStatistic(BaseStatistic):
         ValueError: If window_size is less than 1.
     """
 
-    def __init__(self, statistic_cls: type[UnivariateStatistic], window_size: int, **kwargs):
+    def __init__(
+        self, statistic_cls: type[UnivariateStatistic], window_size: int, **kwargs: Any
+    ) -> None:
         if window_size < 1:
             raise ValueError("window_size must be a positive integer.")
 

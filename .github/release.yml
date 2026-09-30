@@ -1,0 +1,31 @@
+# Sorts the pull requests in generated release notes ("Generate release notes" on the
+# release form, or `gh api repos/selimfirat/pysad/releases/generate-notes`). Pull requests
+# are grouped by label; .github/workflows/pr-labels.yml labels them from their titles.
+# A pull request goes in the first category whose labels it has.
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: Breaking changes
+      labels:
+        - breaking
+    - title: New features
+      labels:
+        - enhancement
+    - title: Bug fixes
+      labels:
+        - bug
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Dependencies
+      labels:
+        - dependencies
+    - title: Build and CI
+      labels:
+        - build
+        - ci
+    - title: Other changes
+      labels:
+        - "*"

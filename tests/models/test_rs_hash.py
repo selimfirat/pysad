@@ -132,10 +132,20 @@ def test_rs_hash_num_hash_fns_changes_scores_with_small_hash_range():
             num_hash_fns=num_hash_fns,
             hash_range=17,
         )
-        return np.array([model.fit_score_partial(x) for x in X])
+        scores = np.array([model.fit_score_partial(x) for x in X])
+        return model, scores
 
-    scores_w1 = run(1)
-    scores_w3 = run(3)
+    model_w1, scores_w1 = run(1)
+    model_w3, scores_w3 = run(3)
+
+    # num_hash_fns must not perturb the sampled subspaces (V) or shifts (alpha) under a fixed
+    # seed, or a difference below could come from a different grid instead of from the sketch
+    # actually reading more tables.
+    assert len(model_w1.V) == len(model_w3.V)
+    for v1, v3 in zip(model_w1.V, model_w3.V):
+        np.testing.assert_array_equal(v1, v3)
+    for a1, a3 in zip(model_w1.alpha, model_w3.alpha):
+        np.testing.assert_array_equal(a1, a3)
 
     assert not np.array_equal(scores_w1, scores_w3)
 

@@ -66,6 +66,8 @@ class PrecisionMetric(BaseSKLearnMetric):
 
     Precision is defined on predicted classes. With the default ``threshold=None``, ``y_pred`` must be 0 or 1 and is used as given. To pass anomaly scores, set ``threshold``. Scores at or above it are predicted anomalous (1) and the rest normal (0).
 
+    Calling ``get()`` before any samples have been recorded returns ``0.0``.
+
     Args:
         threshold (float | None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions. (Default=None).
     """
@@ -85,6 +87,8 @@ class RecallMetric(BaseSKLearnMetric):
 
     Recall is defined on predicted classes. With the default ``threshold=None``, ``y_pred`` must be 0 or 1 and is used as given. To pass anomaly scores, set ``threshold``. Scores at or above it are predicted anomalous (1) and the rest normal (0).
 
+    Calling ``get()`` before any samples have been recorded returns ``0.0``.
+
     Args:
         threshold (float | None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions. (Default=None).
     """
@@ -100,7 +104,10 @@ class RecallMetric(BaseSKLearnMetric):
 
 
 class AUROCMetric(BaseSKLearnMetric):
-    """Area under roc curve wrapper class for sklearn."""
+    """Area under ROC curve wrapper class for sklearn.
+
+    Calling ``get()`` before any samples have been recorded, or when fewer than two distinct classes are present in the recorded labels, raises a :class:`ValueError`.
+    """
 
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
         # Check if only one class is present
@@ -112,7 +119,10 @@ class AUROCMetric(BaseSKLearnMetric):
 
 
 class AUPRMetric(BaseSKLearnMetric):
-    """Area under PR curve wrapper class for sklearn."""
+    """Area under PR curve wrapper class for sklearn.
+
+    Calling ``get()`` before any samples have been recorded raises a :class:`ValueError`.
+    """
 
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
         if not y_true:

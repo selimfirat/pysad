@@ -97,10 +97,9 @@ pysad supports Python 3.10+ on Linux, macOS and Windows. Some detectors need an 
 | `rrcf` | `RobustRandomCutForest` | `pip install "pysad[rrcf]"` |
 | `xStream` | `xStream` | `pip install "pysad[xStream]"` |
 | `slop` | `LocalOutlierProbability` | `pip install "pysad[slop]"` |
-| `inqmad` | `Inqmad` (uses JAX) | `pip install "pysad[inqmad]"` |
 | `pandas` | `PandasStreamer` | `pip install "pysad[pandas]"` |
 
-Install everything with `pip install "pysad[rrcf,xStream,slop,inqmad,pandas]"`.
+Install everything with `pip install "pysad[rrcf,xStream,slop,pandas]"`.
 
 ## Quick start
 

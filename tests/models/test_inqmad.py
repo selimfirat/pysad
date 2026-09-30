@@ -1,10 +1,11 @@
+import gc
+import weakref
+
 import numpy as np
 import pytest
 from sklearn.metrics import roc_auc_score
 
-pytest.importorskip("jax")
-
-from pysad.models.inqmad import Inqmad, InqMeasurement
+from pysad.models import Inqmad
 
 
 def test_score_partial_follows_later_training():
@@ -102,21 +103,21 @@ def test_far_point_fitted_last_scores_above_inliers():
 
 
 def test_density_matrix_is_mean_of_fitted_states():
-    """Regression test for #120: per-instance fits and the batches of a
-    single multi-row fit_partial call both add to the density matrix.
+    """Regression test for #120: per-instance fits and a single multi-row
+    fit_partial call both add to the density matrix.
     """
     rng = np.random.default_rng(0)
     a = rng.random((7, 3))
     b = rng.random((5, 3)) + 5.0
 
-    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0, random_state=0, batch_size=2)
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0, random_state=0)
     model.fit(a)
-    model.fit_partial(b)  # three batches in one update
+    model.fit_partial(b)
 
-    states = np.asarray(model.inqmad.fm_x(np.vstack([a, b])), dtype=np.float64)
-    rho = np.asarray(model.inqmad.rho_res, dtype=np.float64) / model.inqmad.num_samples
+    states = model._states(np.vstack([a, b]))
+    rho = model.rho / model.num_fitted
 
-    np.testing.assert_allclose(rho, np.einsum("ni,nj->ij", states, states) / 12, atol=1e-6)
+    np.testing.assert_allclose(rho, np.einsum("ni,nj->ij", states, states) / 12, atol=1e-12)
 
 
 def test_score_partial_is_negated_paper_density():
@@ -128,24 +129,11 @@ def test_score_partial_is_negated_paper_density():
     model = Inqmad(input_shape=3, dim_x=32, gamma=1.0, random_state=0).fit(rng.random((50, 3)))
     q = rng.random(3)
 
-    psi = np.asarray(model.inqmad.fm_x(q[None, :]), dtype=np.float64)[0]
-    rho = np.asarray(model.inqmad.rho_res, dtype=np.float64) / model.inqmad.num_samples
+    psi = np.cos(q @ model.weights + model.offset)
+    psi /= np.linalg.norm(psi)
+    rho = model.rho / model.num_fitted
 
-    assert model.score_partial(q) == pytest.approx(-np.einsum("i,ij,j->", psi, rho, psi), rel=1e-5)
-
-
-def test_score_partial_after_int32_max_fitted_instances():
-    """Regression test for #120: the fitted-instance count reaches the
-    jitted scorer without overflowing a 32-bit integer.
-    """
-    rng = np.random.default_rng(0)
-    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0, random_state=0).fit(rng.random((5, 3)))
-    model.inqmad.num_samples = 2**31
-
-    score = model.score_partial(np.array([0.5, 0.5, 0.5]))
-
-    assert isinstance(score, float)
-    assert np.isfinite(score)
+    assert model.score_partial(q) == pytest.approx(-np.einsum("i,ij,j->", psi, rho, psi), rel=1e-12)
 
 
 @pytest.mark.parametrize("num_fitted", [0, 5])
@@ -227,10 +215,63 @@ def test_fit_score_partial_leaves_out_the_instances_own_state():
     assert score > with_self_term + 0.09
 
 
-@pytest.mark.parametrize("cls", [Inqmad, InqMeasurement])
-def test_docstring_keeps_math_backslashes(cls):
+def test_docstring_keeps_math_backslashes():
     """Regression test for #120: LaTeX such as \\rho and \\tau must not
     turn into carriage returns or tabs in the rendered docstring.
     """
-    assert "\r" not in cls.__doc__
-    assert "\t" not in cls.__doc__
+    assert "\r" not in Inqmad.__doc__
+    assert "\t" not in Inqmad.__doc__
+
+
+def test_scores_use_the_current_random_features():
+    """Regression test for #171: the random Fourier features are read on
+    every call, so replacing them after the model has scored takes effect
+    instead of being ignored by a compiled trace.
+    """
+    rng = np.random.default_rng(0)
+    X = rng.random((50, 3))
+    q = np.array([0.5, 0.5, 0.5])
+
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0, random_state=0).fit(X)
+    model.score_partial(q)
+    other = Inqmad(input_shape=3, dim_x=32, gamma=1.0, random_state=1).fit(X)
+
+    model.weights, model.offset = other.weights, other.offset
+    model.rho, model.num_fitted = np.zeros_like(model.rho), 0
+    model.fit(X)
+
+    assert model.score_partial(q) == other.score_partial(q)
+
+
+def test_deleted_model_is_garbage_collected():
+    """Regression test for #173: nothing at class or module level keeps a
+    model or its random features alive after its last reference is gone
+    (the jit caches used to hold every model's feature map).
+    """
+    rng = np.random.default_rng(0)
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0, random_state=0).fit(rng.random((5, 3)))
+    model.score_partial(rng.random(3))
+    refs = [weakref.ref(model), weakref.ref(model.weights), weakref.ref(model.rho)]
+
+    del model
+    gc.collect()
+
+    assert all(ref() is None for ref in refs)
+
+
+def test_density_matrix_keeps_precision_on_long_streams():
+    """Regression test for #175: rho accumulates in float64, so a million
+    fits of the same instance still average to that instance's psi psi^T
+    (float32 accumulation was off by about 5e-5 here).
+    """
+    x = np.array([0.1, 0.2, 0.3])
+    model = Inqmad(input_shape=3, dim_x=32, gamma=1.0, random_state=0)
+    for _ in range(100):
+        model.fit_partial(np.tile(x, (10_000, 1)))
+
+    psi = model._states(x)[0]
+
+    assert model.rho.dtype == np.float64
+    np.testing.assert_allclose(
+        model.rho / model.num_fitted, np.outer(psi, psi), rtol=1e-9, atol=1e-12
+    )

@@ -47,9 +47,7 @@ MODEL_PARAMS = {
     "xStream": {"n_chains": 10, "depth": 10, "window_size": 20},
 }
 
-PICKLE_XFAIL_MODELS = {
-    "Inqmad": "Inqmad keeps jax-jitted functions as attributes, which cannot be pickled.",
-}
+PICKLE_XFAIL_MODELS = {}
 
 
 def _data(model_name):

@@ -50,7 +50,6 @@ FINITE_VALUES = st.one_of(
 
 PROPERTIES = settings(
     max_examples=MAX_EXAMPLES,
-    # The first call of a model (e.g. Inqmad's jitted functions) can take seconds.
     deadline=None,
     suppress_health_check=[HealthCheck.too_slow],
     # The same examples on every run, so a failure in CI reproduces locally.
@@ -73,11 +72,7 @@ KNOWN_FAILURES = {
 }
 # Known failures that do not depend on the data, where shrinking the failing example only costs
 # time. They are tracked by a strict xfail elsewhere.
-SKIPPED = {
-    "test_pickling_mid_stream_keeps_later_scores": {
-        "Inqmad": "#159: Inqmad cannot be pickled at all; test_pickling.py xfails it.",
-    },
-}
+SKIPPED = {}
 
 
 def _model_params(model_name, num_features, data):
@@ -99,7 +94,7 @@ def _model_params(model_name, num_features, data):
             "max_depth": 5,
         },
         "IForestASD": {"window_size": 20, "n_estimators": 10},
-        "Inqmad": {"input_shape": num_features, "dim_x": 16, "gamma": 1.0, "batch_size": 8},
+        "Inqmad": {"input_shape": num_features, "dim_x": 16, "gamma": 1.0},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
         "LODA": {"num_bins": 5, "num_random_cuts": 10},

@@ -78,6 +78,11 @@ def _model_specs():
             lambda: RobustRandomCutForest(num_trees=4, tree_size=32),
             NUM_FEATURES,
         ),
+        (
+            "Inqmad",
+            lambda: models.Inqmad(input_shape=NUM_FEATURES, dim_x=32, gamma=10),
+            NUM_FEATURES,
+        ),
         ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
         ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=2), 1),
         (
@@ -97,15 +102,6 @@ def _model_specs():
             NUM_FEATURES,
         ),
     ]
-
-    if getattr(models, "_has_inqmad", False):
-        specs.append(
-            (
-                "Inqmad",
-                lambda: models.Inqmad(input_shape=NUM_FEATURES, dim_x=32, gamma=10),
-                NUM_FEATURES,
-            )
-        )
 
     return specs
 

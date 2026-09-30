@@ -13,7 +13,6 @@ from pysad.models import (
     RSHash,
     xStream,
 )
-from pysad.models.inqmad import JAX_AVAILABLE
 from pysad.utils import fix_seed
 
 NUM_FEATURES = 3
@@ -37,12 +36,7 @@ MODELS = {
     "xStream": lambda **kw: xStream(n_chains=10, depth=10, window_size=20, **kw),
 }
 
-NAMES = [
-    pytest.param(name, marks=pytest.mark.skipif(not JAX_AVAILABLE, reason="needs jax"))
-    if name == "Inqmad"
-    else name
-    for name in MODELS
-]
+NAMES = list(MODELS)
 PICKLABLE_NAMES = [
     pytest.param(
         name,
@@ -54,7 +48,6 @@ PICKLABLE_NAMES = [
     if name == "KitNet"
     else name
     for name in MODELS
-    if name != "Inqmad"  # See PICKLE_XFAIL_MODELS in test_pickling.py.
 ]
 
 

@@ -39,10 +39,8 @@ class KitNET:
         self.n_trained = 0 # the number of training instances so far
         self.n_executed = 0 # the number of executed instances so far
         self.v = feature_map
-        if self.v is not None:
-            self.__createAD__()
         self.FM = CC.corClust(self.n) #incremental feature cluatering for the feature mapping process
-        self.ensembleLayer = []
+        self.ensembleLayer = [] #the autoencoders are built on the first instance they train on (see train)
         self.outputLayer = None
 
     #If FM_grace_period+AM_grace_period has passed, then this function executes KitNET on x. Otherwise, this function learns from x.
@@ -65,10 +63,11 @@ class KitNET:
         if self.n_trained <= self.FM_grace_period and self.v is None: #If the FM is in train-mode, and the user has not supplied a feature mapping
             #update the incremetnal correlation matrix
             self.FM.update(x)
-            if self.n_trained == self.FM_grace_period: #If the feature mapping should be instantiated
-                self.v = self.FM.cluster(self.m)
-                self.__createAD__()
         else: #train
+            if self.outputLayer is None: #Build the autoencoders on the first instance they train on, so that none is executed before it has seen a range to normalize with
+                if self.v is None:
+                    self.v = self.FM.cluster(self.m)
+                self.__createAD__()
             ## Ensemble Layer
             S_l1 = np.zeros(len(self.ensembleLayer))
             for a in range(len(self.ensembleLayer)):
@@ -81,8 +80,8 @@ class KitNET:
 
     #force execute KitNET on x
     def execute(self,x):
-        if self.v is None:
-            raise RuntimeError('KitNET Cannot execute x, because a feature mapping has not yet been learned or provided. Try running process(x) instead.')
+        if self.outputLayer is None:
+            raise RuntimeError('KitNET Cannot execute x, because its autoencoders have not trained on an instance yet. Try running process(x) instead.')
         else:
             self.n_executed += 1
             ## Ensemble Layer

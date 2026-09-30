@@ -115,12 +115,8 @@ class dA:
         if self.n < self.params.gracePeriod:
             return 0.0
         else:
-            # 0-1 normalize. If execute() is called before this autoencoder has ever
-            # trained (n == 0), norm_min/norm_max are still their +inf/-inf initial
-            # values, so the division is an inf/inf that is undefined by construction;
-            # the resulting nan is expected and propagates unchanged.
-            with numpy.errstate(invalid='ignore'):
-                x = (x - self.norm_min) / (self.norm_max - self.norm_min + 0.0000000000000001)
+            # 0-1 normalize
+            x = (x - self.norm_min) / (self.norm_max - self.norm_min + 0.0000000000000001)
             z = self.reconstruct(x)
             rmse = numpy.sqrt(((x - z) ** 2).mean()) #MSE
             return rmse

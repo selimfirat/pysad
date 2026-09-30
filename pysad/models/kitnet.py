@@ -37,7 +37,7 @@ class KitNet(BaseModel):
 
         The first ``grace_feature_mapping`` instances learn the feature mapping;
         the next ``grace_anomaly_detector`` instances train the autoencoders.
-        Until the feature mapping is built, :meth:`score_partial` returns ``0.0``.
+        Until the autoencoders have trained on an instance, :meth:`score_partial` returns ``0.0``.
         While the autoencoders are still training, it returns real scores from
         partially trained autoencoders, so they are unreliable for alerting.
         After both grace periods the model stops learning and only scores.
@@ -76,9 +76,9 @@ class KitNet(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        if self.model.v is None:
-            # The feature map is not discovered (i.e., still the grace period),
-            # thus, KitNet gives an error.
+        if self.model.outputLayer is None:
+            # KitNET builds its autoencoders on the first instance after the feature mapping, and
+            # there is nothing to score with before that.
             return 0.0
         else:
             return self.model.execute(X)

@@ -30,3 +30,17 @@ def test_fit_partial_does_not_score_after_the_grace_periods():
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit(_stream())
 
     assert model.model.n_executed == 0
+
+
+def test_scores_start_once_the_autoencoders_train():
+    """Regression test for #226: the instance that ended the feature mapping was scored by
+    autoencoders that had not trained yet, whose ranges for 0-1 normalization were still
+    (inf, -inf), so its score was nan."""
+    scores = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit_score(
+        _stream()
+    )
+
+    # The feature mapper learns from the first 6 instances, and the autoencoders from the next.
+    np.testing.assert_array_equal(scores[:6], 0.0)
+    assert np.isfinite(scores).all()
+    assert (scores[6:] > 0.0).all()

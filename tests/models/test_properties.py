@@ -59,9 +59,6 @@ PROPERTIES = settings(
 # Open bugs that a property finds, by test and model. Each is a strict xfail, so the test starts
 # failing once the bug is fixed, as a reminder to remove it here.
 KNOWN_FAILURES = {
-    "test_scores_are_finite_floats": {
-        "KitNet": "#226: it scores nan before its autoencoders train.",
-    },
     "test_pickling_mid_stream_keeps_later_scores": {
         "KitNet": "#227: unpickling unties its decoder weights.",
     },

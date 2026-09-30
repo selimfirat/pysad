@@ -5,11 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pysad"
 dynamic = ["version"]
+# The floors are the first releases of scipy, scikit-learn, statsmodels and pandas built
+# for NumPy 2, so no allowed combination pairs NumPy 2 with an older build compiled for
+# NumPy 1. The lowest-versions job in .github/workflows/coverage.yml tests them.
 dependencies = [
-  "numpy",
-  "scikit-learn",
-  "scipy",
-  "statsmodels",
+  "numpy>=1.22.4",
+  "scikit-learn>=1.4.2",
+  "scipy>=1.13.0",
+  "statsmodels>=0.14.2",
   "pyod>=3.6.2",
 ]
 requires-python = ">=3.10"
@@ -57,7 +60,7 @@ classifiers = [
 rrcf = ["rrcf==0.4.4"]
 slop = ["PyNomaly==0.4.0"]
 xStream = ["mmh3==5.3.0"]
-pandas = ["pandas"]
+pandas = ["pandas>=2.2.2"]
 
 [project.urls]
 Homepage = "https://github.com/selimfirat/pysad"
@@ -66,7 +69,7 @@ Repository = "https://github.com/selimfirat/pysad.git"
 "Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
 Changelog = "https://github.com/selimfirat/pysad/blob/master/CHANGES.txt"
 
-# PEP 735 dependency groups. The runtime dependencies stay unpinned in [project]; these
+# PEP 735 dependency groups. The runtime dependencies only have floors in [project]; these
 # groups pin what CI, Read the Docs and contributors install, and Dependabot bumps them.
 # Install with `pip install -e . --group dev` (pip 25.1+) or `uv sync --group dev`.
 [dependency-groups]

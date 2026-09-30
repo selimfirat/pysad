@@ -37,7 +37,7 @@
   <img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/images/stream.svg" alt="Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point as it arrives, and conformal calibration raises alerts at a spike, a level shift and a dip." width="100%">
 </p>
 
-<p align="center"><sub>A Robust Random Cut Forest scores three sensors one point at a time, and a conformal p-value turns its scores into alerts. Synthetic data.</sub></p>
+<p align="center"><sub>A Robust Random Cut Forest scores three sensors one point at a time, and conformal calibration turns its scores into alerts. Synthetic data.</sub></p>
 
 ## Why pysad
 
@@ -59,7 +59,7 @@ Batch detectors assume you have the whole dataset. On a stream you don't: points
 <tr>
 <td valign="top">
 
-**From scores to alerts**<br>Conformal and Gaussian-tail calibrators turn raw scores into p-values, so a threshold such as `p <= 0.01` means the same thing for every detector.
+**From scores to alerts**<br>Conformal and Gaussian-tail calibrators turn raw scores into the share of recent scores they exceed, so a threshold such as `0.99` means the same thing for every detector.
 
 </td>
 <td valign="top">
@@ -131,7 +131,7 @@ print(f"AUROC: {metric.get():.3f}")  # about 0.96; LODA is randomized, so it var
 
 ### Turn scores into alerts
 
-A higher score means a more anomalous point, but raw scores have no fixed scale. A conformal calibrator converts each score into a p-value: the share of recent scores at least as high. Continuing the example above, alert when it's small:
+A higher score means a more anomalous point, but raw scores have no fixed scale. A conformal calibrator converts each score into the share of recent scores below it, so higher still means more anomalous. Continuing the example above, alert when it's close to 1:
 
 ```python
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
@@ -141,9 +141,9 @@ calibrator = ConformalProbabilityCalibrator(window_size=500)
 
 for t, x in enumerate(ArrayStreamer().iter(X)):
     score = model.fit_score_partial(x)
-    p_value = calibrator.fit_transform_partial(score)
-    if t >= 200 and p_value <= 0.01:  # skip a short warm-up
-        print(f"alert at t={t} (p={p_value:.3f})")
+    calibrated = calibrator.fit_transform_partial(score)
+    if t >= 200 and calibrated >= 0.99:  # skip a short warm-up
+        print(f"alert at t={t}: higher than {calibrated:.1%} of recent scores")
 ```
 
 ### Stream your own data

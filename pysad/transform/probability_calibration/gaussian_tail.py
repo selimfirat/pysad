@@ -10,6 +10,7 @@ from pysad.statistics.variance_meter import VarianceMeter
 
 class GaussianTailProbabilityCalibrator(BasePostprocessor):
     """Assuming that the scores follow normal distribution, this class provides an interface to convert the scores into probabilities via Q-function, i.e., the tail function of Gaussian distribution :cite:`ahmad2017unsupervised`.
+    This calibrator transforms a score into the probability that a normal variable with the mean and variance of the fitted scores is lower than the score, i.e. one minus its Gaussian tail p-value. As for model scores, higher values mean more anomalous, e.g. alert when the calibrated score is above 0.95.
 
     Args:
         running_statistics (bool): Whether to calculate the mean and variance through running window. The window size is defined by the `window_size` parameter.
@@ -47,7 +48,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
             score (float): Input score.
 
         Returns:
-            float: Processed score.
+            float: One minus the Gaussian tail p-value of the score.
         """
         mean = self.avg_meter.get()
         var = self.var_meter.get()

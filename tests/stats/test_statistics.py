@@ -144,3 +144,51 @@ def test_running_statistic_passes_kwargs():
         stat.update(num)
 
     assert np.isclose(stat.get(), 3.0 * (2.0 + 4.0) / 2)
+
+
+def test_variance_meter_is_zero_on_a_constant_stream():
+    """#224: the sum-of-squares formula went negative here, from three instances of 0.1."""
+    from pysad.statistics import VarianceMeter
+
+    for value in [0.1, 316551.4375]:
+        stat = VarianceMeter()
+        for _ in range(100):
+            assert stat.update(value).get() == 0.0
+
+
+def test_variance_meter_keeps_precision_on_large_values():
+    import numpy as np
+
+    from pysad.statistics import VarianceMeter
+
+    arr = 1e9 + np.arange(10, dtype=np.float64)
+    stat = VarianceMeter()
+    for num in arr:
+        stat.update(num)
+
+    assert np.isclose(stat.get(), np.var(arr), rtol=1e-12)
+
+
+def test_running_variance_is_not_negative_when_the_window_turns_constant():
+    import numpy as np
+
+    from pysad.statistics import VarianceMeter
+
+    window_size = 5
+    running_stat = RunningStatistic(VarianceMeter, window_size=window_size)
+    arr = np.concatenate([[3.7, 1e3, -2.2], np.full(20, 0.1)])
+    for i, num in enumerate(arr):
+        variance = running_stat.update(num).get()
+        assert variance >= 0.0
+        assert np.isclose(variance, np.var(arr[max(0, i - window_size + 1) : i + 1]), atol=1e-9)
+
+
+def test_variance_meter_restarts_after_removing_every_value():
+    from pysad.statistics import VarianceMeter
+
+    stat = VarianceMeter()
+    stat.update(3.0).update(5.0)
+    stat.remove(3.0).remove(5.0)
+    stat.update(1.0).update(2.0)
+
+    assert stat.get() == 0.25

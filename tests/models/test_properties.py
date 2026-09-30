@@ -63,7 +63,6 @@ KITNET_ONE_FEATURE = "#225: KitNet crashes on a stream with one feature."
 KNOWN_FAILURES = {
     "test_scores_are_finite_floats": {
         "KitNet": f"{KITNET_ONE_FEATURE} #226: it scores nan before its autoencoders train.",
-        "StandardAbsoluteDeviation": "#224: VarianceMeter goes negative on a constant stream.",
     },
     "test_batch_methods_agree_with_partial_methods": {"KitNet": KITNET_ONE_FEATURE},
     "test_pickling_mid_stream_keeps_later_scores": {

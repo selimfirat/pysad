@@ -124,17 +124,19 @@ def test_zscore_postprocessors_output_values():
 def test_zscore_postprocessors_return_zero_for_constant_stream():
     import numpy as np
 
-    scores = np.full(10, 3.5)
+    # 0.1 is inexact in binary; its sum-of-squares variance went negative, giving nan (#224).
+    for value in [3.5, 0.1]:
+        scores = np.full(10, value)
 
-    for postprocessor in [
-        ZScorePostprocessor(),
-        RunningZScorePostprocessor(window_size=WINDOW_SIZE),
-    ]:
-        np.testing.assert_array_equal(
-            postprocessor.fit_transform(scores),
-            np.zeros_like(scores),
-            err_msg=type(postprocessor).__name__,
-        )
+        for postprocessor in [
+            ZScorePostprocessor(),
+            RunningZScorePostprocessor(window_size=WINDOW_SIZE),
+        ]:
+            np.testing.assert_array_equal(
+                postprocessor.fit_transform(scores),
+                np.zeros_like(scores),
+                err_msg=f"{type(postprocessor).__name__} on {value}",
+            )
 
 
 def test_postprocessors_partial_matches_batch():

@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" width="960" height="330" role="img" aria-labelledby="t d">
 <title id="t">pysad scoring a stream as it arrives</title>
-<desc id="d">Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point as it arrives, and conformal calibration raises an alert (red) at p at most 0.005: at a spike on sensor 1, a level shift on sensor 2 and a dip on sensor 3. Synthetic data.</desc>
+<desc id="d">Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point as it arrives, and conformal calibration raises an alert (red) when the calibrated score reaches 0.995: at a spike on sensor 1, a level shift on sensor 2 and a dip on sensor 3. Synthetic data.</desc>
 <style>text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:12px;fill:#8b949e}.m{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}</style>
 <defs><clipPath id="reveal"><rect x="42" y="0" width="904" height="330"><animate attributeName="width" values="0;904;904" keyTimes="0;0.750;1" dur="10.0s" repeatCount="indefinite"/></rect></clipPath></defs>
 <rect x="44" y="28" width="150.1" height="264" fill="#8b949e" opacity="0.08" rx="4"/>
 <text x="52" y="42">warm-up</text>
 <text x="44" y="18">3 sensors, one point at a time</text>
-<text x="44" y="218">calibrated anomaly score: Robust Random Cut Forest + conformal p-value</text>
+<text x="44" y="218">calibrated anomaly score: Robust Random Cut Forest + conformal calibration</text>
 <line x1="44" y1="243.8" x2="944" y2="243.8" stroke="#ef4444" stroke-opacity="0.55" stroke-dasharray="5 4"/>
 <text x="944" y="238.8" text-anchor="end" style="fill:#ef4444;opacity:.8">alert threshold</text>
 <line x1="44" y1="292.5" x2="944" y2="292.5" stroke="#8b949e" stroke-opacity="0.35"/>
@@ -20,6 +20,6 @@
 <g><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.400;0.420;1" dur="10.0s" repeatCount="indefinite"/><line x1="524.4" y1="28" x2="524.4" y2="292" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.7"/><circle cx="524.4" cy="52.2" r="5" fill="#ef4444"/><circle cx="524.4" cy="233.2" r="4" fill="#ef4444"/><text class="m" x="531.4" y="42" style="fill:#ef4444">alert t=640</text></g>
 <g><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.563;0.583;1" dur="10.0s" repeatCount="indefinite"/><line x1="719.6" y1="28" x2="719.6" y2="292" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.7"/><circle cx="719.6" cy="184.8" r="5" fill="#ef4444"/><circle cx="719.6" cy="242.7" r="4" fill="#ef4444"/><text class="m" x="726.6" y="42" style="fill:#ef4444">alert t=900</text></g>
 <line y1="28" y2="292" stroke="#8b949e" stroke-width="1" opacity="0"><animate attributeName="x1" values="44;944;944" keyTimes="0;0.750;1" dur="10.0s" repeatCount="indefinite"/><animate attributeName="x2" values="44;944;944" keyTimes="0;0.750;1" dur="10.0s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0.8;0;0" keyTimes="0;0.750;0.760;1" dur="10.0s" repeatCount="indefinite"/></line>
-<circle cx="48" cy="314" r="4" fill="#ef4444"/><text x="58" y="318">alert: conformal p ≤ 0.005</text>
+<circle cx="48" cy="314" r="4" fill="#ef4444"/><text x="58" y="318">alert: calibrated score ≥ 0.995</text>
 <text x="944" y="318" text-anchor="end">synthetic 3-sensor stream · 1,200 points · higher = more anomalous</text>
 </svg>

@@ -40,13 +40,13 @@ def test_running_statistic_with_single_item_window():
 def test_conformal_calibrator_with_single_item_window():
     calibrator = ConformalProbabilityCalibrator(window_size=1)
     for value in [1.0, 3.0, 2.0]:
-        assert calibrator.fit_transform_partial(value) == 1.0
+        assert calibrator.fit_transform_partial(value) == 0.0
         assert calibrator.window.get() == [value]
 
 
 @pytest.mark.parametrize("window_size", [0, -1, None])
 def test_unwindowed_calibrator_ignores_window_size(window_size):
     calibrator = ConformalProbabilityCalibrator(windowed=False, window_size=window_size)
-    assert calibrator.fit_transform_partial(1.0) == 1.0
+    assert calibrator.fit_transform_partial(1.0) == 0.0
     assert calibrator.fit_transform_partial(3.0) == 0.5
     assert calibrator.window.get() == [1.0, 3.0]

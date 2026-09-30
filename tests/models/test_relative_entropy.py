@@ -523,6 +523,74 @@ def test_relative_entropy_non_integer_window_size_raises_type_error(window_size)
         RelativeEntropy(min_val=0.0, max_val=1.0, window_size=window_size)
 
 
+@pytest.mark.parametrize("num_bins", [1, 0, -2])
+def test_relative_entropy_num_bins_below_two_raises_value_error(num_bins):
+    from pysad.models import RelativeEntropy
+
+    # The threshold T has num_bins - 1 degrees of freedom: num_bins=1 made it nan, so every window
+    # disagreed with every hypothesis and scored 1.0; 0 and -2 failed with unrelated errors.
+    with pytest.raises(ValueError, match=f"num_bins must be at least 2, got {num_bins}"):
+        RelativeEntropy(min_val=0.0, max_val=1.0, num_bins=num_bins)
+
+
+@pytest.mark.parametrize("num_bins", [5.0, 2.5, None, "5", True])
+def test_relative_entropy_non_integer_num_bins_raises_type_error(num_bins):
+    import re
+
+    from pysad.models import RelativeEntropy
+
+    with pytest.raises(TypeError, match=re.escape(f"num_bins must be an int, got {num_bins!r}")):
+        RelativeEntropy(min_val=0.0, max_val=1.0, num_bins=num_bins)
+
+
+@pytest.mark.parametrize("name", ["min_val", "max_val"])
+@pytest.mark.parametrize("value", [None, "0.5", True, [0.5]])
+def test_relative_entropy_non_real_bounds_raise_type_error(name, value):
+    import re
+
+    from pysad.models import RelativeEntropy
+
+    bounds = {"min_val": 0.0, "max_val": 1.0, name: value}
+    with pytest.raises(TypeError, match=re.escape(f"{name} must be a real number, got {value!r}")):
+        RelativeEntropy(**bounds)
+
+
+@pytest.mark.parametrize("name", ["min_val", "max_val"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_relative_entropy_non_finite_bounds_raise_value_error(name, value):
+    from pysad.models import RelativeEntropy
+
+    bounds = {"min_val": 0.0, "max_val": 1.0, name: value}
+    with pytest.raises(ValueError, match=f"{name} must be finite, got {value}"):
+        RelativeEntropy(**bounds)
+
+
+def test_relative_entropy_min_val_above_max_val_raises_value_error():
+    import re
+
+    from pysad.models import RelativeEntropy
+
+    # A negative bucket width put every value in the top bucket, so no window was ever flagged.
+    with pytest.raises(
+        ValueError,
+        match=re.escape("min_val must not exceed max_val, got min_val=1.0 and max_val=0.0"),
+    ):
+        RelativeEntropy(min_val=1.0, max_val=0.0)
+
+
+def test_relative_entropy_accepts_numpy_bounds_and_num_bins():
+    import numpy as np
+
+    from pysad.models import RelativeEntropy
+
+    model = RelativeEntropy(min_val=np.float32(0.0), max_val=np.int64(100), num_bins=np.uint8(5))
+
+    assert type(model.min_val) is float and model.min_val == 0.0
+    assert type(model.max_val) is float and model.max_val == 100.0
+    assert type(model.N_bins) is int and model.N_bins == 5
+    assert model.stepSize == 20.0
+
+
 def test_relative_entropy_accepts_numpy_integer_window_size_and_step():
     import numpy as np
 

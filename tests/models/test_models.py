@@ -116,3 +116,15 @@ def test_relative_entropy_no_warnings():
         # Assert no scalar conversion warnings occurred
         assert len(scalar_warnings) == 0, f"Found {len(scalar_warnings)} scalar conversion warnings"
         assert y_pred.shape == (X.shape[0],)
+
+
+def test_kitnet_sigmoid_does_not_overflow():
+    """KitNET's sigmoid saturates to 0 for large negative inputs without an overflow warning."""
+    import numpy as np
+
+    from pysad.models.kitnet_model.utils import sigmoid
+
+    with np.errstate(over="raise"):
+        y = sigmoid(np.array([-1000.0, 0.0, 1000.0]))
+
+    np.testing.assert_array_equal(y, [0.0, 0.5, 1.0])

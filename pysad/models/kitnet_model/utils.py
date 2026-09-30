@@ -1,5 +1,6 @@
 
 import numpy
+from scipy.special import expit
 from scipy.stats import norm
 
 def pdf(x,mu,sigma): #normal distribution pdf
@@ -11,7 +12,8 @@ def invLogCDF(x,mu,sigma): #normal distribution cdf
     return norm.logcdf(-x) #note: we mutiple by -1 after normalization to better get the 1-cdf
 
 def sigmoid(x):
-    return 1. / (1 + numpy.exp(-x))
+    # same values as 1. / (1 + numpy.exp(-x)), without overflowing for large -x
+    return expit(x)
 
 
 def dsigmoid(x):

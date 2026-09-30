@@ -39,11 +39,8 @@ class KitNET:
         self.n_trained = 0 # the number of training instances so far
         self.n_executed = 0 # the number of executed instances so far
         self.v = feature_map
-        if self.v is None:
-            print("Feature-Mapper: train-mode, Anomaly-Detector: off-mode")
-        else:
+        if self.v is not None:
             self.__createAD__()
-            print("Feature-Mapper: execute-mode, Anomaly-Detector: train-mode")
         self.FM = CC.corClust(self.n) #incremental feature cluatering for the feature mapping process
         self.ensembleLayer = []
         self.outputLayer = None
@@ -67,8 +64,6 @@ class KitNET:
             if self.n_trained == self.FM_grace_period: #If the feature mapping should be instantiated
                 self.v = self.FM.cluster(self.m)
                 self.__createAD__()
-                print("The Feature-Mapper found a mapping: "+str(self.n)+" features to "+str(len(self.v))+" autoencoders.")
-                print("Feature-Mapper: execute-mode, Anomaly-Detector: train-mode")
         else: #train
             ## Ensemble Layer
             S_l1 = np.zeros(len(self.ensembleLayer))
@@ -78,8 +73,6 @@ class KitNET:
                 S_l1[a] = self.ensembleLayer[a].train(xi)
             ## OutputLayer
             self.outputLayer.train(S_l1)
-            if self.n_trained == self.AD_grace_period+self.FM_grace_period:
-                print("Feature-Mapper: execute-mode, Anomaly-Detector: exeute-mode")
         self.n_trained += 1
 
     #force execute KitNET on x

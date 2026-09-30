@@ -59,7 +59,7 @@ def _finite_float(value, name):
 
 
 class RelativeEntropy(BaseModel):
-    """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. By default (`step=1`) windows slide one value at a time, as in NAB, so every value from the `window_size`-th on is tested against the hypotheses. Pass `step=window_size` (or `step=None`, which resolves to it) for the paper's non-overlapping windows, where each value belongs to exactly one tested window. Each tested window's score goes to the value that closes it and every other value scores 0.0 (NAB tests a window at every value, and the paper flags windows rather than values), so with `step=window_size` only one value in every `window_size` can score nonzero, and per-value metrics are not meaningful. For the same reason, `score` on held-out values after `fit` scores each of them as the value following the fitted ones and, with `step > 1`, returns 0.0 unless that value would close a window (with `step=window_size`, unless the number of fitted values is one short of a multiple of `window_size`); the default `step=1` is the setting for fitting and scoring separately. Unlike NAB, whose histogram puts the top two quantization levels in one bin, this implementation gives each of the `num_bins` equal-width buckets its own bin, as in the paper (Fig. 1, steps 3-4b), so its scores differ from NAB's. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, or when the hypothesis it agrees with was created or agreed with by fewer than `c_th` earlier windows (Fig. 1, step 4e), and 0.0 otherwise. A new state is thus flagged in its first `c_th` windows and scores 0.0 from then on; the first hypothesis gets no exemption, so with `c_th > 1` the `c_th - 1` windows after the first one that agree with it are flagged as well. With the default `c_th=1`, as in NAB, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
+    """Relative entropy based anomaly detection model on univariate stream :cite:`wang2011statistical`, using the multinomial goodness-of-fit test with multiple null hypotheses (Fig. 1 of the paper), as evaluated in NAB :cite:`ahmad2017unsupervised`. The implementation is based on `NAB-relative_entropy <https://github.com/numenta/NAB/blob/master/nab/detectors/relative_entropy/relative_entropy_detector.py>`_. This model is univariate: each instance must hold exactly one value, and an instance with more raises `ValueError`. By default (`step=1`) windows slide one value at a time, as in NAB, so every value from the `window_size`-th on is tested against the hypotheses. Pass `step=window_size` (or `step=None`, which resolves to it) for the paper's non-overlapping windows, where each value belongs to exactly one tested window. Each tested window's score goes to the value that closes it and every other value scores 0.0 (NAB tests a window at every value, and the paper flags windows rather than values), so with `step=window_size` only one value in every `window_size` can score nonzero, and per-value metrics are not meaningful. For the same reason, `score` on held-out values after `fit` scores each of them as the value following the fitted ones and, with `step > 1`, returns 0.0 unless that value would close a window (with `step=window_size`, unless the number of fitted values is one short of a multiple of `window_size`); the default `step=1` is the setting for fitting and scoring separately. Unlike NAB, whose histogram puts the top two quantization levels in one bin, this implementation gives each of the `num_bins` equal-width buckets its own bin, as in the paper (Fig. 1, steps 3-4b), so its scores differ from NAB's. It follows NAB in scoring the first window 0.0, a case the paper is silent on. Following NAB, the anomaly score is 0.0 or 1.0: a window's histogram is compared against the learned hypotheses, and the score is 1.0 when the window agrees with no hypothesis, which is then added as a new hypothesis, or when the hypothesis it agrees with was created or agreed with by fewer than `c_th` earlier windows (Fig. 1, step 4e), and 0.0 otherwise. A new state is thus flagged in its first `c_th` windows and scores 0.0 from then on; the first hypothesis gets no exemption, so with `c_th > 1` the `c_th - 1` windows after the first one that agree with it are flagged as well. With the default `c_th=1`, as in NAB, a window that agrees with an existing hypothesis always scores 0.0, since a hypothesis's count starts at 1 and is incremented before the comparison.
 
     Args:
         min_val (float): Minimum value of the univariate stream. Values below this are clipped to it. Must be a finite real number (a NumPy number is accepted, but not a bool) and at most `max_val`: `TypeError` is raised for other types and `ValueError` for NaN, infinity or a value above `max_val`.
@@ -139,14 +139,14 @@ class RelativeEntropy(BaseModel):
         """Fits the model to next instance: appends `X` to the window buffer, which keeps only the last `window_size` values, and, when `X` closes a window (the window is full and ends `step` values after the previous tested window, counting from the first full window), either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise. Values that don't close a window are only appended to the window buffer; the learned hypotheses and counts are unchanged.
 
         Args:
-            X (float): The instance to fit. Note that this model is univariate.
+            X (float or np.float64 array): The instance to fit, holding exactly one value.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
             object: Returns the self.
 
         Raises:
-            ValueError: If `X` is NaN. The model is left unchanged.
+            ValueError: If `X` holds more than one value or is NaN. The model is left unchanged.
         """
         x = self._value(X)
         self.util.append(x)
@@ -162,13 +162,13 @@ class RelativeEntropy(BaseModel):
         """Scores the window ending with the given instance, i.e., the last `W - 1` fitted values followed by `X`, if `X` would close a window. This method does not change the model, so `score` after `fit` scores every row as the value following the fitted ones: with the default `step=1` that value always closes a window, whereas with `step=window_size` it returns all 0.0 unless the number of fitted values is one short of a multiple of `window_size`.
 
         Args:
-            X (float): The instance to score. Note that this model is univariate.
+            X (float or np.float64 array): The instance to score, holding exactly one value.
 
         Returns:
             float: 1.0 if the window agrees with no hypothesis, or with one that fewer than `c_th` earlier windows created or agreed with (never, at the default `c_th=1`), and 0.0 if it agrees with another hypothesis. Also 0.0 before the window is full, when `X` doesn't close a window (per `step`, only the value that closes a window gets its score), before any hypothesis has been learned, or when `min_val == max_val` (bucket width `stepSize` is 0).
 
         Raises:
-            ValueError: If `X` is NaN.
+            ValueError: If `X` holds more than one value or is NaN.
         """
         x = self._value(X)
 
@@ -186,14 +186,14 @@ class RelativeEntropy(BaseModel):
         """Scores the window ending with the given instance and then fits the model to it, as NAB's detector does for each record. Only a value that closes a window (per `step`) gets that window's score and has the window fitted; any other value scores 0.0 and is only appended to the window buffer.
 
         Args:
-            X (float): The instance to fit and score. Note that this model is univariate.
+            X (float or np.float64 array): The instance to fit and score, holding exactly one value.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
             float: The anomalousness score of the input instance, as in `score_partial`.
 
         Raises:
-            ValueError: If `X` is NaN. The model is left unchanged.
+            ValueError: If `X` holds more than one value or is NaN. The model is left unchanged.
         """
         x = self._value(X)
         self.util.append(x)
@@ -213,19 +213,26 @@ class RelativeEntropy(BaseModel):
 
     @staticmethod
     def _value(X):
-        """Reads the single value of an instance, rejecting NaN before it can reach the window.
+        """Reads the single value of a univariate instance, rejecting NaN before it can reach the window.
 
         Args:
-            X (float): The instance. Note that this model is univariate.
+            X (float or np.float64 array): The instance, holding exactly one value, e.g. a scalar or an array of shape (1,) or (1, 1).
 
         Returns:
-            float: The value of `X` as a Python scalar.
+            float: The value of the instance.
 
         Raises:
-            ValueError: If the value is NaN, which has no quantization level.
+            ValueError: If the instance does not hold exactly one value, or if the value is NaN, which has no quantization level.
         """
-        x = np.asarray(X).item()
-        if np.isnan(x):
+        values = np.asarray(X, dtype=np.float64).ravel()
+        if values.size != 1:
+            raise ValueError(
+                "RelativeEntropy is univariate: expected an instance with one value, "
+                f"got an instance of shape {np.shape(X)}."
+            )
+
+        x = float(values[0])
+        if math.isnan(x):
             raise ValueError("RelativeEntropy does not accept NaN values.")
 
         return x

@@ -631,6 +631,64 @@ def test_relative_entropy_rejects_nan_without_changing_the_model(method, num_fit
     assert model.num_fitted == num_fitted + 10
 
 
+def test_relative_entropy_accepts_scalar_and_single_value_instances():
+    import numpy as np
+
+    from pysad.models import RelativeEntropy
+
+    rng = np.random.default_rng(5)
+    x = np.clip(rng.normal(0.5, 0.15, 300), 0, 1)
+    kwargs = dict(min_val=0.0, max_val=1.0, window_size=10)
+    expected = RelativeEntropy(**kwargs).fit_score(x.reshape(-1, 1))
+    assert expected.max() == 1.0
+
+    for instances in (x, [v.reshape(1, 1) for v in x], x.tolist()):
+        model = RelativeEntropy(**kwargs)
+        actual = np.array([model.fit_score_partial(v) for v in instances])
+        np.testing.assert_array_equal(actual, expected)
+
+    # The batch path hands each row of a 1-D stream to the model as a scalar.
+    np.testing.assert_array_equal(RelativeEntropy(**kwargs).fit_score(x), expected)
+
+
+def test_relative_entropy_rejects_multivariate_instances_without_changing_the_model():
+    import re
+
+    import numpy as np
+
+    from pysad.models import RelativeEntropy
+
+    rng = np.random.default_rng(6)
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=10)
+    for v in rng.random(50):
+        model.fit_score_partial(np.array([v]))
+    util, num_fitted, P, c, m = (
+        list(model.util),
+        model.num_fitted,
+        model.P.copy(),
+        list(model.c),
+        model.m,
+    )
+
+    for bad in (np.array([0.1, 0.2]), np.zeros((1, 2)), np.array([])):
+        message = re.escape(
+            "RelativeEntropy is univariate: expected an instance with one value, "
+            f"got an instance of shape {bad.shape}."
+        )
+        for method in (model.fit_partial, model.score_partial, model.fit_score_partial):
+            with pytest.raises(ValueError, match=message):
+                method(bad)
+
+    assert list(model.util) == util
+    assert model.num_fitted == num_fitted
+    np.testing.assert_array_equal(model.P, P)
+    assert model.c == c
+    assert model.m == m
+
+    with pytest.raises(ValueError, match="RelativeEntropy is univariate"):
+        RelativeEntropy(min_val=0.0, max_val=1.0).fit_score(rng.random((100, 3)))
+
+
 @pytest.mark.parametrize("step", [1, None, 7])
 @pytest.mark.parametrize("method", ["fit", "fit_score"])
 def test_relative_entropy_keeps_only_the_current_window(method, step):

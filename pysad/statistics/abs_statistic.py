@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pysad.core.base_statistic import UnivariateStatistic
 
 
@@ -11,7 +13,7 @@ class AbsStatistic(UnivariateStatistic):
         **kwargs (Keyword arguments): The keyword arguments that is input to the statistic_cls.
     """
 
-    def __init__(self, statistic_cls: type[UnivariateStatistic], **kwargs):
+    def __init__(self, statistic_cls: type[UnivariateStatistic], **kwargs: Any) -> None:
         self.statistic_cls = statistic_cls
 
         self.statistic = self.statistic_cls(**kwargs)

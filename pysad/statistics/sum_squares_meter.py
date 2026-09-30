@@ -11,7 +11,7 @@ class SumSquaresMeter(UnivariateStatistic):
         num_items (int): The number of items that are used to update the statistic.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sum_squares = 0.0
         self.num_items = 0
 

@@ -177,10 +177,10 @@ exclude = ["^pysad/models/kitnet_model/"]
 warn_unused_ignores = true
 warn_redundant_casts = true
 
-# The base classes are fully annotated; keep them that way. Add packages here as their
+# These packages are fully annotated; keep them that way. Add packages here as their
 # type hints are completed.
 [[tool.mypy.overrides]]
-module = ["pysad.core.*"]
+module = ["pysad.core.*", "pysad.evaluation.*", "pysad.statistics.*", "pysad.utils.*"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true

@@ -10,7 +10,7 @@ class CountMeter(UnivariateStatistic):
         count (int): The number of items that are used to update the statistic.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.count = 0
 
     def update(self, num: float) -> CountMeter:

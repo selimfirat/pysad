@@ -128,3 +128,16 @@ def test_kitnet_sigmoid_does_not_overflow():
         y = sigmoid(np.array([-1000.0, 0.0, 1000.0]))
 
     np.testing.assert_array_equal(y, [0.0, 0.5, 1.0])
+
+
+def test_loop_scores_without_divide_warning_on_constant_reference():
+    """LoOP with identical initial instances scores new instances without a divide-by-zero warning."""
+    import numpy as np
+
+    from pysad.models import LocalOutlierProbability
+
+    model = LocalOutlierProbability(np.zeros((20, 2)))
+
+    with np.errstate(divide="raise"):
+        assert model.score_partial(np.zeros(2)) == 0.0
+        assert model.score_partial(np.ones(2)) == 1.0

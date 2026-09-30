@@ -61,7 +61,9 @@ class KitNet(BaseModel):
                 random_state=self.random_state,
             )
             self.to_init = False
-        self.model.process(X)
+        # After both grace periods KitNET only scores, which is score_partial's job.
+        if self.model.inGrace():
+            self.model.train(X)
 
         return self
 

@@ -22,3 +22,11 @@ def test_does_not_print(capsys):
     KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit(_stream())
 
     assert capsys.readouterr().out == ""
+
+
+def test_fit_partial_does_not_score_after_the_grace_periods():
+    """fit_partial used to run the autoencoders on every instance after the grace periods and
+    discard the score, so each instance went through them twice with fit_score_partial."""
+    model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit(_stream())
+
+    assert model.model.n_executed == 0

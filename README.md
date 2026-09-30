@@ -95,11 +95,10 @@ pysad supports Python 3.10+ on Linux, macOS and Windows. Some detectors need an 
 | Extra | Enables | Install |
 |---|---|---|
 | `rrcf` | `RobustRandomCutForest` | `pip install "pysad[rrcf]"` |
-| `xStream` | `xStream` | `pip install "pysad[xStream]"` |
 | `slop` | `LocalOutlierProbability` | `pip install "pysad[slop]"` |
 | `pandas` | `PandasStreamer` | `pip install "pysad[pandas]"` |
 
-Install everything with `pip install "pysad[rrcf,xStream,slop,pandas]"`.
+Install everything with `pip install "pysad[rrcf,slop,pandas]"`.
 
 ## Quick start
 
@@ -197,7 +196,7 @@ These are starting points drawn from each method's design, not benchmark ranking
 
 | Class | Method | Extra |
 |---|---|---|
-| `xStream` | xStream (Manzoor et al., KDD 2018) | `xStream` |
+| `xStream` | xStream (Manzoor et al., KDD 2018) | |
 | `LODA` | Lightweight on-line detector of anomalies (Pevný, *Machine Learning* 2016) | |
 | `HalfSpaceTrees` | Half-Space Trees (Tan et al., IJCAI 2011) | |
 | `RobustRandomCutForest` | Robust Random Cut Forest (Guha et al., ICML 2016) | `rrcf` |

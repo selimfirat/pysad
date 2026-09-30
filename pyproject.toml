@@ -59,7 +59,6 @@ classifiers = [
 [project.optional-dependencies]
 rrcf = ["rrcf==0.4.4"]
 slop = ["PyNomaly==0.4.0"]
-xStream = ["mmh3==5.3.0"]
 pandas = ["pandas>=2.2.2"]
 
 [project.urls]
@@ -84,13 +83,14 @@ runtime = [
   "pandas==2.3.3",
   "rrcf==0.4.4",
   "PyNomaly==0.4.0",
-  "mmh3==5.3.0",
   "setuptools>=84.0.0,<85.0.0",
   # Security floor for pillow, a transitive dependency via matplotlib.
   "pillow>=12.3.0",
 ]
 test = [
   "hypothesis==6.168.3",
+  # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
+  "mmh3==5.3.0",
   "pytest==9.1.1",
   "pytest-cov==7.1.0",
   "pytest-xdist==3.8.0",

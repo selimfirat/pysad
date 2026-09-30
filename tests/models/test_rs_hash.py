@@ -220,6 +220,47 @@ def test_rs_hash_builds_where_randint_defaults_to_32_bit_ints(monkeypatch):
     assert isinstance(model.fit_score_partial(np.array([0.1, 0.2, 0.3])), float)
 
 
+def test_rs_hash_accepts_numpy_integer_sketch_sizes():
+    import numpy as np
+
+    from pysad.models import RSHash
+    from pysad.utils import fix_seed
+
+    X = np.random.default_rng(0).random((50, 3))
+
+    def run(num_hash_fns, hash_range):
+        fix_seed(0)
+        model = RSHash(
+            feature_mins=np.zeros(3),
+            feature_maxes=np.ones(3),
+            num_components=10,
+            num_hash_fns=num_hash_fns,
+            hash_range=hash_range,
+        )
+        return model.fit_score(X)
+
+    expected = run(2, 97)
+    # A NumPy integer narrower than 64 bits used to overflow in the slot arithmetic on the first fit.
+    for int_type in (np.int16, np.uint16, np.int32, np.int64):
+        np.testing.assert_array_equal(run(int_type(2), int_type(97)), expected)
+
+
+def test_rs_hash_rejects_invalid_sketch_sizes():
+    import numpy as np
+    import pytest
+
+    from pysad.models import RSHash
+
+    for name in ("num_hash_fns", "hash_range"):
+        for value in (0, -1, np.int32(0)):
+            with pytest.raises(ValueError, match=f"{name} must be at least 1"):
+                RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), **{name: value})
+
+        for value in (True, np.bool_(True), 2.0, 2.5, "4", None):
+            with pytest.raises(TypeError, match=f"{name} must be an int"):
+                RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), **{name: value})
+
+
 def test_rs_hash_sampling_points_warns_and_has_no_effect():
     import warnings
 

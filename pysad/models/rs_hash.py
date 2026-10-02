@@ -15,7 +15,7 @@ class RSHash(BaseModel):
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
         feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
         sampling_points (int): Deprecated. Has no effect.
-        decay (float): The decay hyperparameter (Default=0.015).
+        decay (float): The positive decay hyperparameter (Default=0.015).
         num_components (int): The number of ensemble components (Default=100).
         num_hash_fns (int): The number of hashing functions (Default=1).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the grid sizes, subspaces and shifts of the ensemble components. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
@@ -51,10 +51,12 @@ class RSHash(BaseModel):
         self.m = num_components
         self.dim = len(self.minimum)
         self.decay = decay
+        if self.decay <= 0:
+            raise ValueError(f"decay must be positive, got {decay!r}.")
         self.scores = []
         self.num_hash = num_hash_fns
         self.cmsketches = []
-        self.effS = max(1000, 1.0 / (1 - np.power(2, -self.decay)))
+        self.effS = max(1000, 1.0 / (1 - np.power(2.0, -self.decay)))
         self.random_state = random_state
         rng = check_random_state(random_state)
 
@@ -186,7 +188,7 @@ class RSHash(BaseModel):
         tstamp = value[0]
         wt = value[1]
 
-        return wt * np.power(2, -self.decay * (self.index - tstamp))
+        return wt * np.power(2.0, -self.decay * (self.index - tstamp))
 
     def _sample_shifts(self, rng):
         alpha = []

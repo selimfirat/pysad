@@ -287,24 +287,24 @@ def test_rs_hash_cells_at_minus_one_and_minus_two_do_not_share_slots():
     assert model.score_partial(x_minus_two) == 0.0
 
 
-def test_rs_hash_builds_where_randint_defaults_to_32_bit_ints(monkeypatch):
+def test_rs_hash_builds_where_randint_defaults_to_32_bit_ints():
     import numpy as np
 
     from pysad.models import RSHash
-    from pysad.utils import fix_seed
 
-    # np.random.randint defaults to the C long, which is 32 bits on Windows, so drawing the hash
+    # RandomState.randint defaults to the C long, which is 32 bits on Windows, so drawing the hash
     # parameters below the 61-bit prime without an explicit 64-bit dtype raises there. Emulate that
     # default so that a missing dtype fails this test on every platform, not only on Windows.
-    randint = np.random.randint
+    class RandomStateWith32BitDefault(np.random.RandomState):
+        def randint(self, low, high=None, size=None, dtype=int):
+            return super().randint(low, high, size, dtype=np.int32 if dtype is int else dtype)
 
-    def randint_with_32_bit_default(low, high=None, size=None, dtype=int):
-        return randint(low, high, size, dtype=np.int32 if dtype is int else dtype)
-
-    monkeypatch.setattr(np.random, "randint", randint_with_32_bit_default)
-
-    fix_seed(0)
-    model = RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), num_hash_fns=3)
+    model = RSHash(
+        feature_mins=np.zeros(3),
+        feature_maxes=np.ones(3),
+        num_hash_fns=3,
+        random_state=RandomStateWith32BitDefault(0),
+    )
 
     params = [value for pair in model._hash_params for value in pair]
     assert all(0 <= value < model._prime for value in params)

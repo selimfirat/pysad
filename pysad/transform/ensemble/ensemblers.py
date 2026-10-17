@@ -8,7 +8,7 @@ from ._combination import aom, average, maximization, median, moa
 
 
 class PYODScoreEnsembler(BasePostprocessor):
-    """Abstract base class for the scoring ensembling methods for the scoring based ensemblers of the `PyOD <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_."""
+    """Abstract base class for the scoring ensembling methods for the scoring based ensemblers of the combo library :cite:`zhao2020combo`, which PyOD also uses."""
 
     @abstractmethod
     def _combine(self, scores):
@@ -51,7 +51,7 @@ class PYODScoreEnsembler(BasePostprocessor):
 
 
 class AverageScoreEnsembler(PYODScoreEnsembler):
-    """A wrapper class that results in the weighted average of the anomaly scores from multiple anomaly detectors. For more details, see `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_.
+    """A wrapper class that results in the weighted average of the anomaly scores from multiple anomaly detectors. For more details, see the combo library :cite:`zhao2020combo`.
 
     Args:
         estimator_weights (np array of shape (1, num_anomaly_detectors)): The weights for detectors. If None, uniform weights are assigned.
@@ -136,7 +136,7 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
 
 
 class AverageOfMaximumScoreEnsembler(_BucketScoreEnsembler):
-    """Average of maximum scores ensembler that outputs the average of maximum. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler first divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
+    """Average of maximum scores ensembler that outputs the average of maximum. For more details, see :cite:`aggarwal2015theoretical` and the combo library :cite:`zhao2020combo`. The ensembler first divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
 
     Args:
         n_buckets (int): The number of subgroups to build (Default=5).
@@ -148,7 +148,7 @@ class AverageOfMaximumScoreEnsembler(_BucketScoreEnsembler):
 
 
 class MaximumOfAverageScoreEnsembler(_BucketScoreEnsembler):
-    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_. The ensembler first divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
+    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and the combo library :cite:`zhao2020combo`. The ensembler first divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
 
     Args:
         n_buckets (int): The number of subgroups to build (Default=5).

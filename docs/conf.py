@@ -41,6 +41,9 @@ intersphinx_mapping = {
 
 bibtex_bibfiles = ["refs.bib"]
 
+# The ODDS site blocks automated clients by IP address through Cloudflare.
+linkcheck_ignore = [r"https?://odds\.cs\.stonybrook\.edu/?"]
+
 # Copy only the code from prompts such as ">>> " and "$ ".
 copybutton_prompt_text = r">>> |\.\.\. |\$ "
 copybutton_prompt_is_regexp = True

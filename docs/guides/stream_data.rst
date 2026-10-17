@@ -106,7 +106,7 @@ To stream a 1-D array with :class:`~pysad.utils.ArrayStreamer`, reshape it to on
 Benchmark datasets
 ------------------
 
-:class:`~pysad.utils.Data` loads 17 labeled datasets from the `ODDS <https://odds.cs.stonybrook.edu/>`_ benchmark: ``arrhythmia``, ``cardio``, ``glass``, ``ionosphere``, ``letter``, ``lympho``, ``mnist``, ``musk``, ``optdigits``, ``pendigits``, ``pima``, ``satellite``, ``satimage-2``, ``shuttle``, ``vertebral``, ``vowels`` and ``wbc``.
+:class:`~pysad.utils.Data` loads 17 labeled datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ benchmark: ``arrhythmia``, ``cardio``, ``glass``, ``ionosphere``, ``letter``, ``lympho``, ``mnist``, ``musk``, ``optdigits``, ``pendigits``, ``pima``, ``satellite``, ``satimage-2``, ``shuttle``, ``vertebral``, ``vowels`` and ``wbc``.
 
 .. code-block:: python
 

@@ -1,4 +1,6 @@
-.. image:: logo.png
+.. image:: logo.svg
+    :alt: PySAD
+    :width: 400px
     :align: center
 
 ===============================

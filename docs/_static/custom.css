@@ -1,0 +1,111 @@
+/* Brand: blue #0741ad, red #fc3636, ink #0e1a33, paper #fffef7. */
+
+.hero {
+  text-align: center;
+  margin: 1rem 0 2rem;
+}
+
+.hero .tagline {
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.hero .tagline::after {
+  content: "";
+  display: inline-block;
+  width: 0.42em;
+  height: 0.42em;
+  margin-left: 0.15em;
+  border-radius: 50%;
+  background: #fc3636;
+}
+
+.hero .lead {
+  font-size: 1.15rem;
+  color: var(--color-foreground-secondary);
+  max-width: 38rem;
+  margin: 0 auto;
+}
+
+/* Card grid: a ".. container:: cards" with one ".. container:: card" per card. */
+.cards.container {
+  padding: 0;
+  overflow: visible;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.card.container {
+  margin: 0;
+  width: auto;
+  overflow: visible;
+  border: 1px solid var(--color-background-border);
+  border-top: 3px solid var(--color-brand-primary);
+  border-radius: 0.5rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--color-background-primary);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 14px rgb(14 26 51 / 12%);
+  transform: translateY(-2px);
+}
+
+.card p {
+  margin: 0.3rem 0;
+}
+
+.card p:first-child {
+  font-weight: 650;
+  font-size: 1.05rem;
+}
+
+.card p:first-child a {
+  text-decoration: none;
+}
+
+/* Diagram that keeps its own light and dark colors. */
+.stream-figure img {
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+.mascot {
+  text-align: center;
+  margin-top: 3rem;
+  color: var(--color-foreground-secondary);
+}
+
+table.docutils {
+  width: 100%;
+}
+
+/* Keep the column widths that a list-table sets with :widths:. On a phone,
+   keep the table readable and let its wrapper scroll sideways instead. */
+table.docutils:has(col[style]) {
+  table-layout: fixed;
+}
+
+@media (max-width: 46em) {
+  table.docutils:has(col[style]) {
+    min-width: 40rem;
+  }
+}
+
+table.docutils th {
+  text-align: left;
+}
+
+table.docutils td {
+  vertical-align: top;
+}
+
+/* The landing page shows the logo instead of its title. */
+section#pysad > h1 {
+  display: none;
+}

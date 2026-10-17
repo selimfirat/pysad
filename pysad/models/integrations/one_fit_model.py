@@ -2,7 +2,7 @@ from .pyod_model import PYODModel
 
 
 class OneFitModel(PYODModel):
-    """The wrapper model fits the `model_cls` to the initial instnaces. Then it scores all incoming instances, with this fitted model.
+    """The wrapper model fits the `model_cls` to the initial instances. Then it scores all incoming instances with this fitted model.
 
     Args:
         model_cls (class):     The model class to be instantiated.

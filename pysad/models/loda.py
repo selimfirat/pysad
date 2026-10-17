@@ -13,10 +13,10 @@ class LODA(BaseModel):
 
     The score of an instance is the mean over the projections of the negative log of the estimated density ``(count + 1) / ((num_seen + num_bins) * bin_width)`` of its bin, so higher scores are more anomalous. Values outside the current range are treated as falling into an empty bin. Instances with non-finite values are not fitted.
 
-        Args:
-            num_bins (int): The number of bins of each histogram.
-            num_random_cuts (int): The number of random projections, i.e. histograms.
-            random_state (int, np.random.RandomState or None): Seed or random number generator for the projections. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
+    Args:
+        num_bins (int): The number of bins of each histogram.
+        num_random_cuts (int): The number of random projections, i.e. histograms.
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the projections. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
     def __init__(self, num_bins=10, num_random_cuts=100, random_state=None):

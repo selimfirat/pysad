@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 # No abstract methods on purpose: UnivariateStatistic declares them, and RunningStatistic
 # delegates them to the statistic it wraps.
 class BaseStatistic(ABC):  # noqa: B024
-    """Abstact base class for the statistics."""
+    """Abstract base class for the statistics."""
 
     pass
 

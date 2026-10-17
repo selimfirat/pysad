@@ -1,256 +1,220 @@
-API Reference
+API reference
 =============
 
-This is the API documentation for ``PySAD``.
+This page lists every public class and function, grouped by module. Import each name from the module in its section, for example ``from pysad.models import LODA``.
 
+Detectors
+---------
 
-Core
-^^^^
+.. currentmodule:: pysad.models
 
-.. automodule:: pysad.core
-    :no-members:
-    :no-inherited-members:
-
-.. currentmodule:: pysad
+``pysad.models``: Streaming anomaly detectors. :doc:`detectors` compares them.
 
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: generated
 
-   core.BaseMetric
-   core.BaseModel
-   core.BasePostprocessor
-   core.BaseStatistic
-   core.BaseStreamer
-   core.BaseTransformer
+   ExactStorm
+   HalfSpaceTrees
+   IForestASD
+   Inqmad
+   KitNet
+   KNNCAD
+   LODA
+   LocalOutlierProbability
+   MedianAbsoluteDeviation
+   RelativeEntropy
+   RobustRandomCutForest
+   RSHash
+   SeasonalESD
+   SeasonalHybridESD
+   StandardAbsoluteDeviation
+   xStream
+   NullModel
+   PerfectModel
+   RandomModel
 
+PyOD integrations
+-----------------
 
-Individual Anomaly Models
-^^^^^^^^^^^^^^^^^^^^^^^^^
+.. currentmodule:: pysad.models.integrations
 
-.. automodule:: pysad.models
-    :no-members:
-    :no-inherited-members:
-
-.. currentmodule:: pysad
-
-.. autosummary::
-   :nosignatures:
-   :template: class.rst
-   :toctree: generated
-
-    models.ExactStorm
-    models.HalfSpaceTrees
-    models.IForestASD
-    models.Inqmad
-    models.KitNet
-    models.KNNCAD
-    models.LODA
-    models.LocalOutlierProbability
-    models.MedianAbsoluteDeviation
-    models.NullModel
-    models.PerfectModel
-    models.RandomModel
-    models.RelativeEntropy
-    models.RobustRandomCutForest
-    models.RSHash
-    models.SeasonalESD
-    models.SeasonalHybridESD
-    models.StandardAbsoluteDeviation
-    models.xStream
-
-
-Integration Models
-^^^^^^^^^^^^^^^^^^
-
-
-.. automodule:: pysad.models.integrations
-    :no-members:
-    :no-inherited-members:
-
-.. currentmodule:: pysad
+``pysad.models.integrations``: Wrappers that run PyOD batch detectors on a stream.
 
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: generated
 
-    models.integrations.ReferenceWindowModel
-    models.integrations.OneFitModel
+   ReferenceWindowModel
+   OneFitModel
 
+Preprocessing
+-------------
 
-Score Ensemblers
-^^^^^^^^^^^^^^^^
+.. currentmodule:: pysad.transform.preprocessing
 
-
-.. automodule:: pysad.transform.ensemble
-    :no-members:
-    :no-inherited-members:
-
-.. currentmodule:: pysad
+``pysad.transform.preprocessing``: Transformers that change each point before the detector gets it.
 
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: generated
 
-    transform.ensemble.MaximumScoreEnsembler
-    transform.ensemble.MedianScoreEnsembler
-    transform.ensemble.AverageScoreEnsembler
-    transform.ensemble.MaximumOfAverageScoreEnsembler
-    transform.ensemble.AverageOfMaximumScoreEnsembler
+   IdentityScaler
+   InstanceStandardScaler
+   InstanceUnitNormScaler
+   ModifiedSTLResidualTransformer
+   SeasonalTrendDecomposer
 
+Projection
+----------
 
-Probability Calibrators
-^^^^^^^^^^^^^^^^^^^^^^^
+.. currentmodule:: pysad.transform.projection
 
-.. automodule:: pysad.transform.probability_calibration
-    :no-members:
-    :no-inherited-members:
-
-.. currentmodule:: pysad
+``pysad.transform.projection``: Random projections that reduce the number of features.
 
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: generated
 
-    transform.probability_calibration.ConformalProbabilityCalibrator
-    transform.probability_calibration.GaussianTailProbabilityCalibrator
+   GaussianRandomProjector
+   SparseRandomProjector
+   StreamhashProjector
 
+Postprocessing
+--------------
 
-Projectors
-^^^^^^^^^^
+.. currentmodule:: pysad.transform.postprocessing
 
-.. automodule:: pysad.transform.projection
-    :no-members:
-    :no-inherited-members:
-
-.. currentmodule:: pysad
+``pysad.transform.postprocessing``: Postprocessors that smooth or normalize scores, over the full stream or over a window.
 
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: generated
 
-    transform.projection.StreamhashProjector
-    transform.projection.GaussianRandomProjector
-    transform.projection.SparseRandomProjector
+   AveragePostprocessor
+   MaxPostprocessor
+   MedianPostprocessor
+   ZScorePostprocessor
+   RunningAveragePostprocessor
+   RunningMaxPostprocessor
+   RunningMedianPostprocessor
+   RunningZScorePostprocessor
 
+Ensembling
+----------
 
-Preprocessors
-^^^^^^^^^^^^^
+.. currentmodule:: pysad.transform.ensemble
 
-.. automodule:: pysad.transform.preprocessing
-    :no-members:
-    :no-inherited-members:
-
-.. currentmodule:: pysad
-
-.. autosummary::
-   :nosignatures:
-   :template: class.rst
-   :toctree: generated
-
-    transform.preprocessing.IdentityScaler
-    transform.preprocessing.InstanceStandardScaler
-    transform.preprocessing.InstanceUnitNormScaler
-    transform.preprocessing.ModifiedSTLResidualTransformer
-    transform.preprocessing.SeasonalTrendDecomposer
-
-
-Postprocessors
-^^^^^^^^^^^^^^
-
-.. automodule:: pysad.transform.postprocessing
-    :no-members:
-    :no-inherited-members:
-
-.. currentmodule:: pysad
+``pysad.transform.ensemble``: Ensemblers that combine the scores of several detectors into one score.
 
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: generated
 
-    transform.postprocessing.AveragePostprocessor
-    transform.postprocessing.MaxPostprocessor
-    transform.postprocessing.MedianPostprocessor
-    transform.postprocessing.ZScorePostprocessor
-    transform.postprocessing.RunningAveragePostprocessor
-    transform.postprocessing.RunningMaxPostprocessor
-    transform.postprocessing.RunningMedianPostprocessor
-    transform.postprocessing.RunningZScorePostprocessor
+   AverageScoreEnsembler
+   MaximumScoreEnsembler
+   MedianScoreEnsembler
+   AverageOfMaximumScoreEnsembler
+   MaximumOfAverageScoreEnsembler
 
+Calibration
+-----------
+
+.. currentmodule:: pysad.transform.probability_calibration
+
+``pysad.transform.probability_calibration``: Calibrators that convert scores into values between 0 and 1. Higher values mean more anomalous points.
+
+.. autosummary::
+   :nosignatures:
+   :template: class.rst
+   :toctree: generated
+
+   ConformalProbabilityCalibrator
+   GaussianTailProbabilityCalibrator
+
+Evaluation
+----------
+
+.. currentmodule:: pysad.evaluation
+
+``pysad.evaluation``: Metrics that update one point at a time.
+
+.. autosummary::
+   :nosignatures:
+   :template: class.rst
+   :toctree: generated
+
+   AUROCMetric
+   AUPRMetric
+   PrecisionMetric
+   RecallMetric
+   WindowedMetric
+   BaseSKLearnMetric
 
 Statistics
-^^^^^^^^^^
+----------
 
-.. automodule:: pysad.statistics
-    :no-members:
-    :no-inherited-members:
+.. currentmodule:: pysad.statistics
 
-.. currentmodule:: pysad
+``pysad.statistics``: Running statistics with ``update``, ``remove`` and ``get``.
 
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: generated
 
-    statistics.AbsStatistic
-    statistics.RunningStatistic
-    statistics.AverageMeter
-    statistics.CountMeter
-    statistics.MaxMeter
-    statistics.MedianMeter
-    statistics.MinMeter
-    statistics.SumMeter
-    statistics.SumSquaresMeter
-    statistics.VarianceMeter
-
-
-Evaluators
-^^^^^^^^^^
-
-.. automodule:: pysad.evaluation
-    :no-members:
-    :no-inherited-members:
-
-.. currentmodule:: pysad
-
-.. autosummary::
-   :nosignatures:
-   :template: class.rst
-   :toctree: generated
-
-    evaluation.BaseSKLearnMetric
-    evaluation.PrecisionMetric
-    evaluation.RecallMetric
-    evaluation.AUROCMetric
-    evaluation.AUPRMetric
-    evaluation.WindowedMetric
-
+   AverageMeter
+   CountMeter
+   MaxMeter
+   MedianMeter
+   MinMeter
+   SumMeter
+   SumSquaresMeter
+   VarianceMeter
+   AbsStatistic
+   RunningStatistic
 
 Utilities
-^^^^^^^^^
+---------
 
-.. automodule:: pysad.utils
-    :no-members:
-    :no-inherited-members:
+.. currentmodule:: pysad.utils
 
-.. currentmodule:: pysad
+``pysad.utils``: Streamers, benchmark datasets and helpers.
 
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: generated
 
-    utils.Window
-    utils.Data
-    utils.ArrayStreamer
-    utils.PandasStreamer
-    utils._iterate
-    utils.get_minmax_array
-    utils.get_minmax_scalar
-    utils.fix_seed
+   ArrayStreamer
+   PandasStreamer
+   Data
+   Window
+   fix_seed
+   get_minmax_array
+   get_minmax_scalar
+
+Base classes
+------------
+
+.. currentmodule:: pysad.core
+
+``pysad.core``: Abstract base classes. Subclass them to write your own components, as :doc:`guides/custom_model` shows.
+
+.. autosummary::
+   :nosignatures:
+   :template: class.rst
+   :toctree: generated
+
+   BaseModel
+   BaseTransformer
+   BasePostprocessor
+   BaseMetric
+   BaseStatistic
+   BaseStreamer

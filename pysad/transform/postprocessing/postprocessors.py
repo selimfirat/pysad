@@ -89,21 +89,21 @@ class _ZScorePostprocessor(BasePostprocessor):
 
 
 class AveragePostprocessor(_MeterPostprocessor):
-    """A postprocessor that convert a score to the average of of all previous scores."""
+    """A postprocessor that converts a score to the average of all previous scores."""
 
     def __init__(self):
         super().__init__(AverageMeter())
 
 
 class MaxPostprocessor(_MeterPostprocessor):
-    """A postprocessor that convert a score to the maximum of of all previous scores."""
+    """A postprocessor that converts a score to the maximum of all previous scores."""
 
     def __init__(self):
         super().__init__(MaxMeter())
 
 
 class MedianPostprocessor(_MeterPostprocessor):
-    """A postprocessor that convert a score to the median of of all previous scores."""
+    """A postprocessor that converts a score to the median of all previous scores."""
 
     def __init__(self):
         super().__init__(MedianMeter())

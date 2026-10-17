@@ -51,7 +51,7 @@ class PYODScoreEnsembler(BasePostprocessor):
 
 
 class AverageScoreEnsembler(PYODScoreEnsembler):
-    """An wrapper class that results in the weighted average of the anomaly scores from multiple anomaly detectors. For more details, see `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_.
+    """A wrapper class that results in the weighted average of the anomaly scores from multiple anomaly detectors. For more details, see `PyOD documentation <https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.combination>`_.
 
     Args:
         estimator_weights (np array of shape (1, num_anomaly_detectors)): The weights for detectors. If None, uniform weights are assigned.

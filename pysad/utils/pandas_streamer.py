@@ -38,7 +38,7 @@ class PandasStreamer(BaseStreamer):
     def iter(
         self, X: pd.DataFrame, y: pd.DataFrame | pd.Series | None = None
     ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
-        """Iterates pandas dataframes of of features and possibly labels.
+        """Iterates pandas dataframes of features and possibly labels.
 
         Args:
             X: Pandas Dataframe for features.

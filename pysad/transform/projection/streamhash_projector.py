@@ -59,7 +59,7 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
 
 
 class StreamhashProjector(BaseTransformer):
-    """Streamhash projection method  from Manzoor et. al.that is similar (or equivalent) to SparseRandomProjection. :cite:`xstream` The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
+    """Streamhash projection method from Manzoor et al. that is similar (or equivalent) to SparseRandomProjection. :cite:`xstream` The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
 
     Args:
         num_components (int): The number of dimensions that the target will be projected into.

@@ -3,58 +3,57 @@
 Contributing
 ============
 
-You are welcome to contribute this project.
+Code is not the only way to help. Bug reports, answers to questions, documentation and examples are all contributions. I aim to reply to new issues and pull requests within a few days.
 
-Code is not the only way to help the project. Reviewing pull
-requests, answering questions to help others on mailing lists or
-issues, organizing and teaching tutorials, working on the website,
-improving the documentation, are all priceless contributions.
+We follow the `Python Software Foundation Code of Conduct <https://policies.python.org/python.org/code-of-conduct/>`_.
 
-We abide by the principles of openness, respect, and consideration of
-others of the Python Software Foundation:
-https://www.python.org/psf/codeofconduct/
+Where to start
+--------------
 
-In case you experience issues using this package, do not hesitate to submit a
-ticket to the
-`GitHub issue tracker
-<https://github.com/selimfirat/pysad/issues>`_. You are also
-welcome to post feature requests or pull requests.
+- To report a bug, open an `issue <https://github.com/selimfirat/pysad/issues/new/choose>`_ with your PySAD version, your Python version and a short script that shows the problem.
+- To request a feature, open an `issue <https://github.com/selimfirat/pysad/issues/new/choose>`_ that describes your use case.
+- To ask a question or share an idea, start a thread in `Discussions <https://github.com/selimfirat/pysad/discussions>`_.
+- For a first contribution, choose an issue with the `good first issue <https://github.com/selimfirat/pysad/labels/good%20first%20issue>`_ label.
 
-I aim to reply to new issues and pull requests within a few days.
+Set up the development environment
+----------------------------------
 
-For any questions, you may open issue on Github or drop me an email at `yilmazselimfirat (at)gmail(you know the rest)`.
+You need pip 25.1 or newer for the ``--group`` option.
 
-Development Style
-^^^^^^^^^^^^^^^^^
+.. code-block:: console
 
-PySAD follows `Trunk-based development <https://trunkbaseddevelopment.com/>`_. All development is conducted using short-lived branches integrated into the trunk (``master``) via pull requests. Pull requests should be kept small and focused, and must pass automated testing and linting in continuous integration to ensure that the trunk remains continuously releasable.
+   $ git clone https://github.com/selimfirat/pysad.git
+   $ cd pysad
+   $ pip install --upgrade pip
+   $ pip install -e . --group dev
+   $ pre-commit install
 
-Pull Request Checklist
-^^^^^^^^^^^^^^^^^^^^^^
+The ``dev`` group installs the pinned runtime dependencies, pytest, Sphinx and pre-commit. ``pre-commit install`` lints and formats your changes on every commit.
 
-* Do the features/fixes in your pull request match the aim of this framework?
-* Does your code pass the linters? You may check via ``pre-commit run --all-files``.
-* Does your submission pass all tests (including CI)?
-* Have you checked the active `pull requests <https://github.com/selimfirat/pysad/pulls>`_ and `issues <https://github.com/selimfirat/pysad/issues>`_ so that your contribution does not overlap significantly with these?
-* **For new features** Have you implemented tests so that your new code has more than 95% test coverage and the tests are reasonable?
-* **For new features** Have you implemented examples demonstrating the usage of your new feature?
+Check your change
+-----------------
 
-Development Instructions
-^^^^^^^^^^^^^^^^^^^^^^^^
-To install requirements of development environment, run the following bash code:
+Before you open a pull request, run these commands from the repository root:
 
-.. code-block:: bash
+.. code-block:: console
 
-    pip install --upgrade pip # --group needs pip 25.1 or newer.
-    pip install -e . --group dev # Runtime pins, pytest, Sphinx and pre-commit.
-    pre-commit install # Linting and formatting on every commit.
+   $ pre-commit run --all-files
+   $ pytest --cov=pysad
+   $ pytest -m examples
+   $ bash build_docs.sh
 
-After you have done writing code, run the following bash code for checking:
+The commands run the linters and the formatter, the unit tests, every script in ``examples/`` and the documentation build. `pre-commit.ci <https://pre-commit.ci>`_ also runs the hooks on every pull request and pushes a commit with the fixes that it can make. Pull before you push again.
 
-.. code-block:: bash
+Development style
+-----------------
 
-    bash build_docs.sh # Building docs.
-    pre-commit run --all-files # Linting and formatting with ruff.
-    pytest --cov=pysad # Running tests.
+PySAD follows `trunk-based development <https://trunkbaseddevelopment.com/>`_. Each change goes to ``master`` through a short-lived branch, for example ``fix/123-short-name``, and a pull request. CI tests and lints every pull request, so ``master`` is always ready to release. Keep each pull request small and about one topic.
 
-`pre-commit.ci <https://pre-commit.ci>`_ also runs the hooks on every pull request and pushes a commit with the fixes it can make.
+Pull request checklist
+----------------------
+
+- The change fits the aim of PySAD: anomaly detection on streaming data.
+- ``pre-commit run --all-files`` and all tests pass, also in CI.
+- No open pull request or issue covers the same work.
+- A new feature has tests and an example or documentation that shows how to use it.
+- A new detector cites its paper and meets the :doc:`inclusion_criteria`. :doc:`guides/custom_model` lists the steps.

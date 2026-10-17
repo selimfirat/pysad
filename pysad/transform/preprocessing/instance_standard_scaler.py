@@ -2,7 +2,7 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class InstanceStandardScaler(BaseTransformer):
-    """Standard deviation scaling per instance. Not that the variance and mean is calculated per instance, for which the scaling is done with.
+    """Standard deviation scaling per instance. Note that the variance and mean are calculated per instance, for which the scaling is done with.
     The method substracts mean and divides with the standard deviation of the features, separately for each instance.
     """
 

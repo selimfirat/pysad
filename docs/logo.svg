@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120" role="img" aria-labelledby="t">
+<title id="t">PySAD</title>
+<style>.d{fill:#0741ad}.o{fill:#fc3636}text{fill:#0e1a33;font-family:Inter,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:64px;font-weight:600;letter-spacing:-1px}</style>
+<g class="d"><circle cx="140.0" cy="60.0" r="3.9"/><circle cx="137.6" cy="50.6" r="3.9"/><circle cx="131.2" cy="43.2" r="3.9"/><circle cx="122.2" cy="39.3" r="3.9"/><circle cx="103.1" cy="41.9" r="3.9"/><circle cx="94.6" cy="46.9" r="3.9"/><circle cx="87.0" cy="53.1" r="3.9"/><circle cx="80.0" cy="60.0" r="3.9"/><circle cx="72.9" cy="66.9" r="3.9"/><circle cx="65.4" cy="73.1" r="3.9"/><circle cx="56.9" cy="78.1" r="3.9"/><circle cx="47.5" cy="80.9" r="3.9"/><circle cx="37.7" cy="80.6" r="3.9"/><circle cx="28.8" cy="76.8" r="3.9"/><circle cx="22.4" cy="69.4" r="3.9"/><circle cx="20.0" cy="60.0" r="3.9"/><circle cx="22.4" cy="50.6" r="3.9"/><circle cx="28.8" cy="43.2" r="3.9"/><circle cx="37.8" cy="39.3" r="3.9"/><circle cx="47.5" cy="39.1" r="3.9"/><circle cx="56.9" cy="41.9" r="3.9"/><circle cx="65.4" cy="46.9" r="3.9"/><circle cx="73.0" cy="53.1" r="3.9"/><circle cx="87.1" cy="66.9" r="3.9"/><circle cx="94.6" cy="73.1" r="3.9"/><circle cx="103.1" cy="78.1" r="3.9"/><circle cx="112.5" cy="80.9" r="3.9"/><circle cx="122.3" cy="80.6" r="3.9"/><circle cx="131.2" cy="76.8" r="3.9"/><circle cx="137.6" cy="69.4" r="3.9"/></g>
+<circle class="o" cx="110.9" cy="25.8" r="3.9"/>
+<text x="168" y="83">PySAD</text>
+</svg>

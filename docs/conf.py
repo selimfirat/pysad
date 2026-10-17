@@ -88,7 +88,7 @@ html_theme_options = {
     "prev_next_buttons_location": "bottom",
     "style_external_links": False,
     #'vcs_pageview_mode': '',
-    #'style_nav_header_background': 'white',
+    "style_nav_header_background": "#fffef7",
     # Toc options
     "collapse_navigation": True,
     "sticky_navigation": True,
@@ -96,8 +96,8 @@ html_theme_options = {
     "includehidden": True,
     "titles_only": False,
 }
-html_logo = "logo.png"
-html_favicon = "infinity.png"
+html_logo = "logo.svg"
+html_favicon = "favicon.svg"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

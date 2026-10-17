@@ -98,7 +98,7 @@ class BaseModel(ABC):
 
         Args:
             X (np.float64 array of shape (num_instances, num_features)): The instances in order to fit.
-            y (int): The labels of the instances in order to fit (Optional for unsupervised models, default=None).
+            y (np.int32 array of shape (num_instances,)): The labels of the instances in order to fit (Optional for unsupervised models, default=None).
 
         Returns:
             object: Fitted model.

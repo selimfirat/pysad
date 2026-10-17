@@ -19,7 +19,7 @@ Make a stream
 
 A stream is a sequence of data points that arrive one at a time. Each point is a NumPy array of features. In a real system, the points come from sensors, logs or a message queue. In this tutorial, you make a synthetic stream so that you know which points are anomalies.
 
-The stream has 2,000 points with 4 features. Every 50th point is an anomaly: its first two features are shifted by 3.
+The stream has 2,000 points with 4 features. Every 50th point is an anomaly: the code adds 3 to its first two features.
 
 .. code-block:: python
 
@@ -51,7 +51,7 @@ Make a detector and feed it the stream one point at a time. This tutorial uses :
        score = model.fit_score_partial(x)
        scores.append(score)
 
-:class:`~pysad.utils.ArrayStreamer` replays an array as a stream, one row at a time. For each point, :meth:`~pysad.core.BaseModel.fit_score_partial` updates the model with the point and then gives the point an anomaly score. The score is a Python ``float``. A higher score means a more anomalous point.
+:class:`~pysad.utils.ArrayStreamer` replays an array as a stream, one row at a time. For each point, :meth:`~pysad.core.BaseModel.fit_score_partial` updates the model with the point and gives the point an anomaly score. LODA learns from the point first and then scores it. The score is a Python ``float``. A higher score means a more anomalous point.
 
 Compare the average score of the normal points and of the anomalies:
 
@@ -71,7 +71,7 @@ The anomalies get higher scores. The detector learned what normal data looks lik
 Measure the detector
 --------------------
 
-A metric tells you how well the scores separate anomalies from normal points. The area under the ROC curve (AUROC) is 1.0 for a perfect detector and 0.5 for random scores.
+A metric tells you how well the scores separate anomalies from normal points. AUROC (the area under the ROC curve) is the probability that a random anomaly gets a higher score than a random normal point. It is 1.0 for a perfect detector and 0.5 for random scores.
 
 PySAD metrics update one point at a time, so you can measure the detector while it streams:
 
@@ -92,12 +92,12 @@ PySAD metrics update one point at a time, so you can measure the detector while 
 
    AUROC: 0.960
 
-The metric gets each score while the stream runs, and the detector never sees a label. The detector works in the same conditions as in a live system. :doc:`concepts` explains this evaluation method, prequential evaluation, in more detail.
+The metric gets each score while the stream runs, and the detector never sees a label. The detector works in the same conditions as in a live system. :doc:`concepts` explains this learn-then-score order and how it relates to prequential evaluation (score each point, then learn from it).
 
 Raise alerts
 ------------
 
-Raw scores have no fixed scale. A score of 2.5 can be high for one detector and low for another. To decide when to alert, convert each score into the share of recent scores that it exceeds. A calibrator does this.
+Raw scores have no fixed scale. A score of 2.5 can be high for one detector and low for another. To decide when to alert, convert each score into the fraction of recent scores that it exceeds. A calibrator does this.
 
 .. code-block:: python
 
@@ -119,7 +119,7 @@ Raw scores have no fixed scale. A score of 2.5 can be high for one detector and 
 
    20 alerts, 15 of them true anomalies
 
-A calibrated value of 0.99 means that the score is higher than 99% of the last 500 scores. The threshold has the same meaning for every detector. The loop skips the first 200 points because the model and the calibrator need some data before their output is stable.
+A calibrated value of 0.99 means that the score is higher than 99% of the last 500 scores. The threshold has the same meaning for every detector. The loop skips the first 200 points, a short warm-up. The model and the calibrator need some data before their output is stable.
 
 Try real data
 -------------

@@ -6,7 +6,7 @@ A PySAD detector is a subclass of :class:`~pysad.core.BaseModel` with two method
 Implement the two methods
 -------------------------
 
-This detector keeps an exponentially weighted mean and variance of each feature. It scores a point by its largest z-score, the distance from the mean in standard deviations:
+This detector keeps a mean and a variance of each feature that give more weight to recent points (exponentially weighted). It scores a point by its largest z-score, the distance from the mean in standard deviations:
 
 .. code-block:: python
 
@@ -58,10 +58,10 @@ You get the rest from :class:`~pysad.core.BaseModel`:
 - ``fit``, ``score`` and ``fit_score`` process a 2-D array row by row.
 - ``score_partial`` and ``fit_score_partial`` return a Python ``float``, also when your method returns a NumPy scalar or a one-element array.
 
-Use it
-------
+Run your detector on a stream
+-----------------------------
 
-Use the detector like any other PySAD detector. ``cardio`` has all its anomalies at the end, so this example streams the points in a fixed random order:
+Use the detector like any other PySAD detector. ``cardio`` has all its anomalies at the end, so this example shuffles the points with a fixed seed:
 
 .. code-block:: python
 
@@ -112,6 +112,17 @@ PySAD accepts published detectors with 50 or more citations. See :doc:`/inclusio
 #. Cite the paper in the class docstring with ``:cite:`` and add the BibTeX entry to ``docs/refs.bib``.
 #. Document each difference from the paper in the docstring.
 #. Add the class to ``pysad/models/__init__.py``, to ``__all__`` and to ``docs/api.rst``.
-#. Add the class to the shared tests in ``tests/models``. They check the score type, pickling, ``random_state`` and general properties of every detector.
+#. Add the class to the shared tests in ``tests/models``: ``test_models.py``, ``test_score_types.py``, ``test_random_state.py`` and ``test_properties.py``. Search these files for an existing detector, such as ``LODA``, to see where. ``test_pickling.py`` tests every class in ``pysad.models.__all__``. If your detector has required arguments, add them to ``MODEL_PARAMS`` in that file. The tests check the score type, pickling, ``random_state`` and general properties of every detector.
+#. Run the tests for your detector:
+
+   .. code-block:: console
+
+      $ pytest tests/models -k EWMAZScore
 
 :doc:`/contributing` explains how to set up the development environment and open a pull request.
+
+Next steps
+----------
+
+- :doc:`evaluate` measures your detector.
+- :doc:`/contributing` explains how to open a pull request.

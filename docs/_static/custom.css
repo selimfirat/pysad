@@ -3,7 +3,113 @@
 
 .hero {
   text-align: center;
-  margin: 1rem 0 2rem;
+  margin: 0 0 1.5rem;
+  padding: 2rem 1rem 1.5rem;
+  border-radius: 0.9rem;
+  /* A faint risograph halftone, as on the brand board. */
+  background: radial-gradient(rgb(7 65 173 / 7%) 1px, transparent 1.3px) 0 0 / 9px 9px;
+}
+
+.hero img {
+  margin-inline: auto;
+}
+
+/* Call to action: a filled cobalt button and an outline button. */
+.actions.container {
+  margin: 1.4rem 0 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.actions a {
+  display: inline-block;
+  margin: 0.3rem;
+  padding: 0.6rem 1.3rem;
+  border: 2px solid var(--color-brand-primary);
+  border-radius: 0.6rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.actions a:first-child {
+  background: var(--color-brand-primary);
+  color: var(--color-background-primary);
+}
+
+.actions a:hover {
+  filter: brightness(1.1);
+}
+
+.stream-figure .caption {
+  font-size: 0.85rem;
+  color: var(--color-foreground-secondary);
+  text-align: center;
+  margin-top: 0.4rem;
+}
+
+/* Brand syntax colors: cobalt keywords, a lighter blue for strings, muted comments.
+   Furo's Pygments rules are more specific, so these rules use !important. */
+.highlight :is(.k, .kn, .kc, .kd, .ow) {
+  color: var(--color-brand-primary) !important;
+  font-weight: 500 !important;
+}
+
+.highlight :is(.s, .s1, .s2, .sa, .si, .sd, .mi, .mf) {
+  color: var(--color-code-string) !important;
+}
+
+.highlight :is(.c, .c1, .cm) {
+  color: var(--color-foreground-muted) !important;
+  font-style: italic;
+}
+
+.highlight :is(.nb, .bp, .o, .p, .nn, .n, .nf, .nc, .gp) {
+  color: inherit !important;
+  font-weight: inherit !important;
+}
+
+.highlight a {
+  text-decoration: none !important;
+}
+
+/* Code blocks as rounded panels, and printed output in a dashed panel. */
+div.highlight {
+  border-radius: 0.6rem;
+}
+
+div.highlight-text div.highlight {
+  background: transparent;
+  border: 1px dashed var(--color-background-border);
+}
+
+/* Stats row in the brand "Essence" style. */
+.stats.container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+  padding: 0;
+  overflow: visible;
+}
+
+.stat.container {
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  text-align: center;
+}
+
+.stat p {
+  margin: 0;
+  color: var(--color-foreground-secondary);
+}
+
+.stat .number {
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--color-brand-primary);
 }
 
 .hero .tagline {
@@ -134,9 +240,21 @@ body .highlight pre {
 }
 
 .card p:first-child {
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 600;
   padding-right: 2rem;
+}
+
+/* The whole card is the link. */
+.card p:first-child a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.card:focus-within {
+  outline: 2px solid var(--color-brand-primary);
 }
 
 .card p:first-child a {
@@ -183,6 +301,10 @@ table.docutils th {
 
 table.docutils td {
   vertical-align: top;
+}
+
+table.docutils td:first-child code {
+  white-space: nowrap;
 }
 
 /* The landing page shows the logo instead of its title. */

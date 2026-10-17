@@ -28,6 +28,8 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
+# Single backticks in docstrings mean code.
+default_role = "code"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 autosummary_generate = True
@@ -37,6 +39,9 @@ autodoc_typehints = "none"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
 }
 
 bibtex_bibfiles = ["refs.bib"]
@@ -60,6 +65,13 @@ html_css_files = [
 ]
 
 html_theme_options = {
+    # Read the Docs builds "latest" from master, which can differ from the release on PyPI.
+    "announcement": (
+        "These pages describe the development version on GitHub. For the release on PyPI, read the "
+        '<a href="https://pysad.readthedocs.io/en/stable/">stable documentation</a>.'
+        if os.environ.get("READTHEDOCS_VERSION") == "latest"
+        else None
+    ),
     "light_logo": "logo.svg",
     "dark_logo": "logo-dark.svg",
     "sidebar_hide_name": True,
@@ -76,6 +88,10 @@ html_theme_options = {
         "color-background-secondary": "#efebdf",
         "color-background-border": "#e2ddcd",
         "color-code-background": "#f6f3ea",
+        "color-code-string": "#3f6fd0",
+        "color-highlight-on-target": "#e6ecf8",
+        "color-api-name": "#0e1a33",
+        "color-api-pre-name": "#5a6478",
         "color-brand-primary": "#0741ad",
         "color-brand-content": "#0741ad",
         "color-brand-visited": "#0741ad",
@@ -86,6 +102,10 @@ html_theme_options = {
         "color-background-secondary": "#0a1428",
         "color-background-border": "#22304f",
         "color-code-background": "#0a1428",
+        "color-code-string": "#b6c9f7",
+        "color-highlight-on-target": "#1c2b4d",
+        "color-api-name": "#eef1f8",
+        "color-api-pre-name": "#a3adc2",
         "color-brand-primary": "#7c9ff0",
         "color-brand-content": "#7c9ff0",
         "color-brand-visited": "#7c9ff0",

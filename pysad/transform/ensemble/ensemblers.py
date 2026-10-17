@@ -12,11 +12,10 @@ class PYODScoreEnsembler(BasePostprocessor):
 
     @abstractmethod
     def _combine(self, scores):
-        """Abstract method that directly uses  of our framework to be filled.
+        """Combines the scores of multiple anomaly detectors.
 
         Args:
-            scores: np.float64 array of shape (1, num_scores)
-                List of scores from multiple anomaly detectors.
+            scores (np.float64 array of shape (1, num_anomaly_detectors)): Scores from multiple anomaly detectors.
 
         Returns:
             float: Resulting anomaly score.
@@ -27,8 +26,7 @@ class PYODScoreEnsembler(BasePostprocessor):
         """Fits particular (next) timestep's score to train the ensembler. For PYOD based ensemblers, this method does not affect anything and returns self directly.
 
         Args:
-            scores: np.float64 array of shape (num_anomaly_detectors, )
-                List of scores from multiple anomaly detectors.
+            scores (np.float64 array of shape (num_anomaly_detectors,)): Scores from multiple anomaly detectors.
 
         Returns:
             object: The fitted ensembler.
@@ -39,8 +37,7 @@ class PYODScoreEnsembler(BasePostprocessor):
         """Combines anomaly scores from multiple anomaly detectors for a particular timestep.
 
         Args:
-            scores: np.float64 array of shape (num_anomaly_detectors, )
-                List of scores from multiple anomaly detectors.
+            scores (np.float64 array of shape (num_anomaly_detectors,)): Scores from multiple anomaly detectors.
 
         Returns:
             float: Resulting anomaly score.
@@ -51,11 +48,10 @@ class PYODScoreEnsembler(BasePostprocessor):
 
 
 class AverageScoreEnsembler(PYODScoreEnsembler):
-    """A wrapper class that results in the weighted average of the anomaly scores from multiple anomaly detectors. For more details, see the combo library :cite:`zhao2020combo`.
+    """Combines the scores of multiple anomaly detectors for the current instance by taking their weighted average :cite:`zhao2020combo`.
 
     Args:
-        estimator_weights (np array of shape (1, num_anomaly_detectors)): The weights for detectors. If None, uniform weights are assigned.
-
+        estimator_weights (np.float64 array of shape (1, num_anomaly_detectors) or None): The weights for detectors. If None, the detectors get uniform weights (Default=None).
     """
 
     def __init__(self, estimator_weights=None):
@@ -75,13 +71,13 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
 
 
 class MaximumScoreEnsembler(PYODScoreEnsembler):
-    """An ensembler that results the maximum of the previous scores."""
+    """Combines the scores of multiple anomaly detectors for the current instance by taking their maximum :cite:`zhao2020combo`."""
 
     def _combine(self, scores):
-        """
-        Wrapping for PyOD the ensembler.
+        """Wrapping for PyOD the ensembler.
+
         Args:
-            scores (np.float64 array of shape (num_anomaly_detectors, )) List of scores from multiple anomaly detectors.
+            scores (np.float64 array of shape (num_anomaly_detectors, )): List of scores from multiple anomaly detectors.
 
         Returns:
             float: Resulting anomaly score.
@@ -90,13 +86,13 @@ class MaximumScoreEnsembler(PYODScoreEnsembler):
 
 
 class MedianScoreEnsembler(PYODScoreEnsembler):
-    """An ensembler that results the median of the previous scores."""
+    """Combines the scores of multiple anomaly detectors for the current instance by taking their median :cite:`zhao2020combo`."""
 
     def _combine(self, scores):
-        """
-        Helper method to wrap the PyOD ensembler.
+        """Helper method to wrap the PyOD ensembler.
+
         Args:
-            scores (np.float64 array of shape (num_anomaly_detectors, )) : List of scores from multiple anomaly detectors.
+            scores (np.float64 array of shape (num_anomaly_detectors, )): List of scores from multiple anomaly detectors.
 
         Returns:
             float: Resulting anomaly score.
@@ -108,8 +104,8 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
     """Base class for the PyOD ensemblers that combine scores in buckets.
 
     Args:
-        n_buckets (int): The number of subgroups to build (Default=5).
-        method (str):  {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (Default='static').
+        n_buckets (int): The number of buckets (Default=5).
+        method (str): Either ``'static'`` or ``'dynamic'``. If ``'dynamic'``, the ensembler builds buckets randomly with a dynamic bucket size (Default='static').
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 
@@ -136,11 +132,13 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
 
 
 class AverageOfMaximumScoreEnsembler(_BucketScoreEnsembler):
-    """Average of maximum scores ensembler that outputs the average of maximum. For more details, see :cite:`aggarwal2015theoretical` and the combo library :cite:`zhao2020combo`. The ensembler first divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
+    """Combines the scores of multiple anomaly detectors by the average of the bucket maxima (AOM) :cite:`aggarwal2015theoretical,zhao2020combo`.
+
+    The ensembler first divides the scores into buckets and takes the maximum for each bucket. Then, the ensembler outputs the average of all these maximum scores of buckets.
 
     Args:
-        n_buckets (int): The number of subgroups to build (Default=5).
-        method (str):  {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (Default='static').
+        n_buckets (int): The number of buckets (Default=5).
+        method (str): Either ``'static'`` or ``'dynamic'``. If ``'dynamic'``, the ensembler builds buckets randomly with a dynamic bucket size (Default='static').
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 
@@ -148,11 +146,13 @@ class AverageOfMaximumScoreEnsembler(_BucketScoreEnsembler):
 
 
 class MaximumOfAverageScoreEnsembler(_BucketScoreEnsembler):
-    """Maximum of average scores ensembler that outputs the maximum of average. For more details, see :cite:`aggarwal2015theoretical` and the combo library :cite:`zhao2020combo`. The ensembler first divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
+    """Combines the scores of multiple anomaly detectors by the maximum of the bucket averages (MOA) :cite:`aggarwal2015theoretical,zhao2020combo`.
+
+    The ensembler first divides the scores into buckets and takes the average for each bucket. Then, the ensembler outputs the maximum of all these average scores of buckets.
 
     Args:
-        n_buckets (int): The number of subgroups to build (Default=5).
-        method (str): {'static', 'dynamic'}, if 'dynamic', build subgroups randomly with dynamic bucket size (Default='static').
+        n_buckets (int): The number of buckets (Default=5).
+        method (str): Either ``'static'`` or ``'dynamic'``. If ``'dynamic'``, the ensembler builds buckets randomly with a dynamic bucket size (Default='static').
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 

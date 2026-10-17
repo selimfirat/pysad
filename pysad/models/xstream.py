@@ -10,7 +10,9 @@ from pysad.utils import get_minmax_array
 
 
 class xStream(BaseModel):
-    """The xStream model for row-streaming data :cite:`xstream`. It first projects the data via streamhash projection. It then fits half space chains by reference windowing. It scores the instances using the window fitted to the reference window.
+    """Scores each instance by its density in half-space chains over StreamHash projections (xStream) :cite:`xstream`.
+
+    It first projects the data via streamhash projection. It then fits half space chains by reference windowing. It scores the instances using the window fitted to the reference window.
 
     Args:
         num_components (int): The number of components for streamhash projection (Default=100).
@@ -71,7 +73,7 @@ class xStream(BaseModel):
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score (float): The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance.
         """
         X = self.streamhash.fit_transform_partial(X)
         X = X.reshape(1, -1)

@@ -1,7 +1,7 @@
 Detectors
 =========
 
-PySAD has 16 streaming detectors. This page lists the input that each detector takes, what it needs before the stream starts and the memory that it keeps. For the parameters, follow the link to the API reference. For help to choose, see :doc:`guides/choose_detector`.
+PySAD has 16 streaming detectors. This page lists the input that each detector takes, what it needs before the stream starts and the memory that it keeps. For the parameters, follow the link to the API reference. To choose a detector, see :doc:`guides/choose_detector`.
 
 In the memory column, "fixed" means that the memory has an upper limit that does not depend on the length of the stream.
 
@@ -12,7 +12,7 @@ These detectors take points with one or more features.
 
 .. list-table::
    :header-rows: 1
-   :widths: 22 30 24 24
+   :widths: 28 30 20 22
 
    * - Detector
      - Method
@@ -45,7 +45,7 @@ These detectors take points with one or more features.
    * - :class:`~pysad.models.KitNet`
      - Ensemble of autoencoders :cite:`mirsky2018kitsune`
      - Nothing
-     - Fixed. Learns only during its grace periods (100,000 points with the defaults) and scores 0 during the first one
+     - Fixed. Learns only during its grace periods, the first points of the stream (100,000 with the defaults). Gives 0 during the first grace period
    * - :class:`~pysad.models.ExactStorm`
      - Neighbor counts in a sliding window :cite:`angiulli2007detecting`
      - Nothing
@@ -56,7 +56,7 @@ These detectors take points with one or more features.
      - Fixed: the initial points. Does not learn from the stream
    * - :class:`~pysad.models.Inqmad`
      - Quantum measurement density estimation :cite:`gallego2022inqmad`
-     - The number of features and the kernel bandwidth
+     - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``)
      - Fixed: a ``dim_x`` by ``dim_x`` matrix
 
 Univariate detectors
@@ -66,31 +66,31 @@ These detectors take points with exactly one feature. Give each value as an arra
 
 .. list-table::
    :header-rows: 1
-   :widths: 22 30 24 24
+   :widths: 28 30 20 22
 
    * - Detector
      - Method
      - Needs before the stream
      - Memory
    * - :class:`~pysad.models.SeasonalHybridESD`
-     - STL residuals and a robust generalized ESD test :cite:`hochenbaum2017automatic`
-     - The period of the cycle
+     - STL (seasonal-trend decomposition) residuals and a robust generalized ESD (extreme Studentized deviate) test :cite:`hochenbaum2017automatic`
+     - The period, the window size and the maximum number of anomalies per window
      - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.SeasonalESD`
      - STL residuals and a generalized ESD test :cite:`hochenbaum2017automatic`
-     - The period of the cycle
+     - The period, the window size and the maximum number of anomalies per window
      - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.MedianAbsoluteDeviation`
-     - Distance from the running median in MADs :cite:`hochenbaum2017automatic`
+     - Distance from the running median in median absolute deviations (MADs) :cite:`hochenbaum2017automatic`
      - Nothing
-     - Grows: keeps every value
+     - Grows: keeps every value, and the time per point grows with the stream
    * - :class:`~pysad.models.StandardAbsoluteDeviation`
      - Distance from the running mean in standard deviations :cite:`hochenbaum2017automatic`
      - Nothing
      - Fixed with the default mean. Grows with ``subtracted_statistic="median"``
    * - :class:`~pysad.models.KNNCAD`
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`
-     - A probationary period of at least 48 values
+     - A probationary period: at least 48 values that it learns from before it scores
      - Grows: keeps every value
    * - :class:`~pysad.models.RelativeEntropy`
      - Relative entropy of windowed histograms :cite:`wang2011statistical`

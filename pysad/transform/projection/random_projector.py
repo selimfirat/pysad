@@ -41,6 +41,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         Args:
             X (np.float64 array of shape (num_instances, num_features)): Input feature vectors.
+
         Returns:
             object: self.
         """
@@ -77,7 +78,8 @@ class BaseSKLearnProjector(BaseTransformer):
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
-            X (np.float64 array of shape (num_components,)): Input feature vector.
+            X (np.float64 array of shape (num_features,)): Input feature vector.
+
         Returns:
             object: self.
         """
@@ -93,8 +95,7 @@ class BaseSKLearnProjector(BaseTransformer):
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            projected_X: np.float64 array of shape (num_components,)
-                Projected feature vector.
+            np.float64 array of shape (num_components,): Projected feature vector.
         """
         if self._components is None:
             self._fit_projector(X.reshape(1, -1))
@@ -105,30 +106,13 @@ class BaseSKLearnProjector(BaseTransformer):
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):
-    """Reduces dimensionality through Gaussian random projection. The components of the random matrix are drawn from N(0, 1 / num_components). This text is taken from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.GaussianRandomProjection.html#sklearn.random_projection.GaussianRandomProjection>`_.
+    """Reduces dimensionality through Gaussian random projection.
+
+    The components of the random matrix are drawn from N(0, 1 / num_components). This text is taken from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.GaussianRandomProjection.html#sklearn.random_projection.GaussianRandomProjection>`_.
 
     Args:
-        num_components (int or 'auto'): Dimensionality of the target projection space, optional (default = 'auto').
-
-            num_components can be automatically adjusted according to the
-            number of samples in the dataset and the bound given by the
-            Johnson-Lindenstrauss lemma. In that case the quality of the
-            embedding is controlled by the ``eps`` parameter.
-
-            It should be noted that Johnson-Lindenstrauss lemma can yield
-            very conservative estimated of the required number of components
-            as it makes no assumption on the structure of the dataset.
-
-            'auto' needs the number of instances, so fit the projector on a batch with fit or fit_transform first.
-
-        eps (strictly positive float, optional): (default=0.1)
-            Parameter to control the quality of the embedding according to
-            the Johnson-Lindenstrauss lemma when num_components is set to
-            'auto'.
-
-            Smaller values lead to better embedding and higher number of
-            dimensions (num_components) in the target projection space.
-
+        num_components (int or 'auto'): Dimensionality of the target projection space. If ``'auto'``, the projector sets it from the number of instances and the bound of the Johnson-Lindenstrauss lemma, and ``eps`` controls the quality of the embedding. The Johnson-Lindenstrauss lemma can give very conservative estimates of the required number of components, because it makes no assumption on the structure of the dataset. ``'auto'`` needs the number of instances, so fit the projector on a batch with ``fit`` or ``fit_transform`` first (Default='auto').
+        eps (float): Strictly positive value that controls the quality of the embedding by the Johnson-Lindenstrauss lemma when ``num_components`` is ``'auto'``. Smaller values give a better embedding and more dimensions in the target projection space (Default=0.1).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the random matrix. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
 
     """
@@ -146,37 +130,14 @@ class GaussianRandomProjector(BaseSKLearnProjector):
 
 
 class SparseRandomProjector(BaseSKLearnProjector):
-    """The wrapper method for Sklearn's SparseRandomProjection. Reduces dimensionality through sparse random projection. The random matrix is sparse, which is cheaper to store and to multiply than a dense Gaussian matrix while keeping similar embedding quality. This text is adapted from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.SparseRandomProjection.html#sklearn.random_projection.SparseRandomProjection>`_.
+    """Reduces dimensionality through sparse random projection with Sklearn's ``SparseRandomProjection``.
+
+    The random matrix is sparse, which is cheaper to store and to multiply than a dense Gaussian matrix while keeping similar embedding quality. This text is adapted from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.SparseRandomProjection.html#sklearn.random_projection.SparseRandomProjection>`_.
 
     Args:
-        num_components (int or 'auto'): Optional (default = 'auto')
-            Dimensionality of the target projection space.
-
-            num_components can be automatically adjusted according to the
-            number of samples in the dataset and the bound given by the
-            Johnson-Lindenstrauss lemma. In that case the quality of the
-            embedding is controlled by the ``eps`` parameter.
-
-            It should be noted that Johnson-Lindenstrauss lemma can yield
-            very conservative estimated of the required number of components
-            as it makes no assumption on the structure of the dataset.
-
-            'auto' needs the number of instances, so fit the projector on a batch with fit or fit_transform first.
-
-        density (float in range (0, 1] or 'auto'): Ratio of non-zero components in the random projection matrix, optional (default='auto').
-
-            If 'auto', it is set to the minimum density recommended by Ping Li et al., 1 / sqrt(num_features).
-
-            Use density = 1 / 3.0 for Achlioptas' original construction, or density = 1.0 for a dense matrix.
-
-        eps (strictly positive float): Optional (default=0.1)
-            Parameter to control the quality of the embedding according to
-            the Johnson-Lindenstrauss lemma when num_components is set to
-            'auto'.
-
-            Smaller values lead to better embedding and higher number of
-            dimensions (num_components) in the target projection space.
-
+        num_components (int or 'auto'): Dimensionality of the target projection space. If ``'auto'``, the projector sets it from the number of instances and the bound of the Johnson-Lindenstrauss lemma, and ``eps`` controls the quality of the embedding. The Johnson-Lindenstrauss lemma can give very conservative estimates of the required number of components, because it makes no assumption on the structure of the dataset. ``'auto'`` needs the number of instances, so fit the projector on a batch with ``fit`` or ``fit_transform`` first (Default='auto').
+        density (float in range (0, 1] or 'auto'): Ratio of non-zero components in the random projection matrix. If ``'auto'``, the projector uses the minimum density that Ping Li et al. recommend, ``1 / sqrt(num_features)``. Use ``1 / 3`` for the original construction of Achlioptas, or ``1.0`` for a dense matrix (Default='auto').
+        eps (float): Strictly positive value that controls the quality of the embedding by the Johnson-Lindenstrauss lemma when ``num_components`` is ``'auto'``. Smaller values give a better embedding and more dimensions in the target projection space (Default=0.1).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the random matrix. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
 
     """

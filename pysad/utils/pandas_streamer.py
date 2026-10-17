@@ -16,7 +16,7 @@ class PandasStreamer(BaseStreamer):
     """Simulator class to iterate dataframe(s).
 
     Args:
-        shuffle (bool): Whether shuffle the data initially (Default=False).
+        shuffle (bool): Whether to shuffle the data initially (Default=False).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the shuffling. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
@@ -41,8 +41,8 @@ class PandasStreamer(BaseStreamer):
         """Iterates pandas dataframes of features and possibly labels.
 
         Args:
-            X: Pandas Dataframe for features.
-            y: Pandas dataframe for labels.
+            X (pd.DataFrame): The features of the instances to iterate.
+            y (pd.DataFrame, pd.Series or None): If not None, the labels to iterate in the same order (Default=None).
         """
         if y is None:
             for x in self.array_iterator.iter(X.to_numpy()):

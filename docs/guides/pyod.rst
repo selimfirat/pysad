@@ -3,10 +3,21 @@ Run a PyOD model on a stream
 
 `PyOD <https://github.com/yzhao062/pyod>`_ has many batch detectors. A batch detector trains on a fixed dataset and cannot learn from one point at a time. PySAD has two wrappers that run a PyOD detector on a stream.
 
+The examples on this page use a synthetic stream. Replace ``X`` with your own data:
+
+.. code-block:: python
+
+   import numpy as np
+
+   from pysad.utils import ArrayStreamer
+
+   X = np.random.default_rng(42).normal(size=(2000, 4))
+   streamer = ArrayStreamer()
+
 Refit on a sliding window
 -------------------------
 
-:class:`~pysad.models.integrations.ReferenceWindowModel` keeps a window of recent points. It scores each point with a detector that it trained on the window, and it trains a new detector on the window at a fixed interval:
+:class:`~pysad.models.integrations.ReferenceWindowModel` keeps a window of recent points. It trains a detector on the window and scores each new point with that detector. Every ``sliding_size`` points, it trains a new detector on the current window:
 
 .. code-block:: python
 
@@ -29,7 +40,7 @@ Refit on a sliding window
    The number of recent points that the detector trains on.
 
 ``sliding_size``
-   The number of points between two trainings. A smaller value follows changes in the data faster, but each training takes time.
+   The number of points between two training runs. A smaller value follows changes in the data faster, but each training run takes time.
 
 ``initial_window_X``
    Points to train the first detector on. Without them, the wrapper trains a new detector for each of the first ``window_size`` points, which is slow.
@@ -56,4 +67,10 @@ Train once
    for x in streamer.iter(X[500:]):
        score = model.fit_score_partial(x)
 
-This wrapper is fast, but it does not follow changes in the data. Use it when normal behavior does not change, or as a baseline.
+This wrapper is fast, but it does not follow changes in the data. If normal behavior does not change, use it. You can also use it as a baseline.
+
+Next steps
+----------
+
+- :doc:`choose_detector` compares the wrapper with streaming detectors.
+- :doc:`production` explains the time per point in production.

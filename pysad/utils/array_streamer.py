@@ -11,7 +11,7 @@ class ArrayStreamer(BaseStreamer):
     """Simulator class to iterate array(s).
 
     Args:
-        shuffle (bool): Whether shuffle the data initially (Default=False).
+        shuffle (bool): Whether to shuffle the data initially (Default=False).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the shuffling. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
@@ -34,7 +34,7 @@ class ArrayStreamer(BaseStreamer):
 
         Args:
             X (np.array of shape (num_instances, num_features)): The features array.
-            y (np.array of shape (num_instances, ): The array containing labels (Default=None).
+            y (np.array of shape (num_instances,)): The array containing labels (Default=None).
         """
         indices = list(range(len(X)))
         if self.shuffle:

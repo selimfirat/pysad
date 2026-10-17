@@ -3,10 +3,19 @@ Build a pipeline
 
 A pipeline adds stages before and after the detector. Each stage is an object that learns from the stream, so you call it once per point, in the same loop as the detector. :doc:`/concepts` shows the stages in order.
 
+The examples on this page use the ``arrhythmia`` benchmark dataset, which has 274 features:
+
+.. code-block:: python
+
+   from pysad.utils import ArrayStreamer, Data
+
+   X, y = Data().get_data("arrhythmia.mat")
+   streamer = ArrayStreamer()
+
 Preprocess, detect, postprocess
 -------------------------------
 
-This pipeline scales each point to unit length, projects it to 20 features, scores it and smooths the score:
+This pipeline scales each point to length 1, projects it to 20 features, scores it and smooths the score:
 
 .. code-block:: python
 
@@ -28,14 +37,14 @@ This pipeline scales each point to unit length, projects it to 20 features, scor
 
 Preprocessors and projectors return a NumPy array, and postprocessors return a ``float``. Each ``fit_transform_partial`` call updates the stage with its input and then transforms the input.
 
-Use a projection when the points have many features. A detector needs less time per point on fewer features, and random projections keep the distances between points approximately the same.
+If the points have many features, use a projection. A detector needs less time per point on fewer features, and random projections keep the distances between points approximately the same.
 
 Combine several detectors
 -------------------------
 
 An ensemble combines the scores of several detectors into one score. It is usually more stable than each of its detectors.
 
-The raw scores of different detectors have different scales. Normalize the scores of each detector first, for example with a running z-score:
+The raw scores of different detectors have different scales. Normalize the scores of each detector first, for example with a running z-score, the distance from the recent mean in standard deviations:
 
 .. code-block:: python
 
@@ -72,7 +81,7 @@ PySAD has five ensemblers in :mod:`pysad.transform.ensemble`:
    * - :class:`~pysad.transform.ensemble.AverageScoreEnsembler`
      - The average, or a weighted average, of the scores
    * - :class:`~pysad.transform.ensemble.MaximumScoreEnsembler`
-     - The highest score, which reacts to every detector
+     - The highest score, which is high if any detector gives a high score
    * - :class:`~pysad.transform.ensemble.MedianScoreEnsembler`
      - The median score, which ignores a single outlying detector
    * - :class:`~pysad.transform.ensemble.AverageOfMaximumScoreEnsembler`
@@ -85,17 +94,26 @@ For the last two ensemblers, the number of detectors must be a multiple of ``n_b
 Track running statistics
 ------------------------
 
-The statistics in :mod:`pysad.statistics` track a value over a stream, for example to monitor the scores. Each one has ``update``, ``remove`` and ``get``:
+The statistics in :mod:`pysad.statistics` track a value over a stream, for example to monitor the scores. Each meter has ``update``, ``remove`` and ``get``. :class:`~pysad.statistics.RunningStatistic` wraps a meter over a window and has ``update`` and ``get``:
 
 .. code-block:: python
 
+   from pysad.models import LODA
    from pysad.statistics import AverageMeter, RunningStatistic, VarianceMeter
 
+   model = LODA()
    mean = AverageMeter()  # over the full stream
    recent_variance = RunningStatistic(VarianceMeter, window_size=100)  # over the last 100 values
 
-   for score in scores:
+   for x in streamer.iter(X):
+       score = model.fit_score_partial(x)
        mean.update(score)
        recent_variance.update(score)
 
-   print(mean.get(), recent_variance.get())
+   print(f"mean: {mean.get():.2f}, recent variance: {recent_variance.get():.2f}")
+
+Next steps
+----------
+
+- :doc:`alerts` calibrates the output of a pipeline.
+- :doc:`evaluate` measures whether a stage improves the result.

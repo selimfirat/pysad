@@ -1,16 +1,15 @@
-# Import modules.
+"""Score a benchmark dataset point by point and measure AUROC."""
+
 from pysad.evaluation import AUROCMetric
 from pysad.models import LODA
 from pysad.utils import Data
 
-model = LODA()  # Init model
-metric = AUROCMetric()  # Init area under receiver-operating- characteristics curve metric
-streaming_data = Data().get_iterator("arrhythmia.mat")  # Get data streamer.
+if __name__ == "__main__":
+    model = LODA()
+    metric = AUROCMetric()
 
-for x, y_true in streaming_data:  # Stream data.
-    anomaly_score = model.fit_score_partial(x)  # Fit the instance to model and score the instance.
+    for x, label in Data().get_iterator("arrhythmia.mat"):
+        score = model.fit_score_partial(x)  # learn from x, then score it
+        metric.update(label, score)
 
-    metric.update(y_true, anomaly_score)  # Update the AUROC metric.
-
-# Output the resulting AUROCMetric.
-print(f"Area under ROC metric is {metric.get()}.")
+    print(f"AUROC: {metric.get():.3f}")

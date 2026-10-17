@@ -1,31 +1,19 @@
-# Import modules.
+"""Find spikes in a series with a daily cycle with Seasonal ESD and Seasonal Hybrid ESD."""
+
 import numpy as np
 
 from pysad.models import SeasonalESD, SeasonalHybridESD
-from pysad.utils import ArrayStreamer
 
-# This example demonstrates the usage of SeasonalESD and SeasonalHybridESD on a synthetic seasonal series.
 if __name__ == "__main__":
-    np.random.seed(61)  # Fix random seed.
+    period = 24  # hourly values with a daily cycle
+    t = np.arange(400)
+    rng = np.random.default_rng(61)
+    values = np.sin(2 * np.pi * t / period) + 0.1 * rng.normal(size=t.size)
+    spikes = [150, 260, 340]
+    values[spikes] += 4.0
 
-    period = (
-        24  # Number of observations in one seasonal period (e.g., hourly data with a daily cycle).
-    )
-    n_points = 400
-    t = np.arange(n_points)
-    X_all = np.sin(2 * np.pi * t / period) + 0.1 * np.random.randn(
-        n_points
-    )  # Seasonal series with noise.
-    y_all = np.zeros(n_points)
-    spikes = [150, 260, 340]  # Positions of the injected anomalies.
-    X_all[spikes] += 4.0  # Inject spikes.
-    y_all[spikes] = 1
-    X_all = X_all.reshape(-1, 1)
-
-    # window_size: number of recent observations used for STL decomposition and the ESD test.
-    # max_anomalies: maximum number of anomalies tested per window.
-    # Constructor constraints: window_size >= 2 * period and max_anomalies <= 0.49 * window_size.
-    # SeasonalHybridESD uses median/MAD instead of mean/std, so it is more sensitive and may flag more points.
+    # window_size must be at least 2 * period, and max_anomalies at most 0.49 * window_size.
+    # SeasonalHybridESD uses the median and the MAD, so it flags more values close to a spike.
     models = {
         "SeasonalESD": SeasonalESD(period=period, window_size=100, max_anomalies=3, alpha=0.001),
         "SeasonalHybridESD": SeasonalHybridESD(
@@ -33,15 +21,9 @@ if __name__ == "__main__":
         ),
     }
 
-    iterator = ArrayStreamer(shuffle=False)  # Create streamer to simulate streaming data.
-
     for name, model in models.items():
-        detected = []
-        for i, (X, y) in enumerate(iterator.iter(X_all, y_all)):  # Iterate over examples.
-            score = model.fit_score_partial(X)  # Fit to the example and get its anomaly score.
-
-            if score > 0:  # A positive score means the ESD test flagged the latest point.
-                detected.append(i)
-
-        # Output detected anomaly indices.
-        print(name, "flagged indices:", detected, "| true anomalies:", spikes)
+        # A score above 0 means that the test flagged the newest value.
+        flagged = [
+            i for i, value in enumerate(values) if model.fit_score_partial(np.array([value])) > 0
+        ]
+        print(f"{name} flagged {flagged}, true anomalies {spikes}")

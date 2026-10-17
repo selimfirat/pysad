@@ -5,7 +5,9 @@ from pysad.core.base_model import BaseModel
 
 
 class LODA(BaseModel):
-    """The LODA model :cite:`pevny2016loda`. The implementation is adapted to the streaming framework from the `PyOD framework <https://pyod.readthedocs.io/en/latest/_modules/pyod/models/loda.html#LODA>`_.
+    """Scores each point by its density in histograms of sparse random projections :cite:`pevny2016loda`.
+
+    The implementation is adapted to the streaming framework from the `PyOD framework <https://pyod.readthedocs.io/en/latest/_modules/pyod/models/loda.html#LODA>`_.
 
     The model keeps ``num_random_cuts`` sparse random projections and a one-dimensional histogram on each of them. The projections are drawn once, when the first instance arrives: each has ``int(sqrt(num_features))`` non-zero components drawn from N(0, 1) and zeros elsewhere.
 
@@ -14,8 +16,8 @@ class LODA(BaseModel):
     The score of an instance is the mean over the projections of the negative log of the estimated density ``(count + 1) / ((num_seen + num_bins) * bin_width)`` of its bin, so higher scores are more anomalous. Values outside the current range are treated as falling into an empty bin. Instances with non-finite values are not fitted.
 
     Args:
-        num_bins (int): The number of bins of each histogram.
-        num_random_cuts (int): The number of random projections, i.e. histograms.
+        num_bins (int): The number of bins of each histogram (Default=10).
+        num_random_cuts (int): The number of random projections, i.e. histograms (Default=100).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the projections. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 

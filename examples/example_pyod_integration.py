@@ -1,36 +1,26 @@
-# Import modules.
-import numpy as np
+"""Run a batch PyOD Isolation Forest on a stream with a sliding reference window."""
+
 from pyod.models.iforest import IForest
-from sklearn.utils import shuffle
 
 from pysad.evaluation import AUROCMetric
 from pysad.models.integrations import ReferenceWindowModel
 from pysad.utils import ArrayStreamer, Data
 
-# This example demonstrates the integration of a PyOD model via ReferenceWindowModel.
 if __name__ == "__main__":
-    np.random.seed(61)  # Fix seed.
+    X, y = Data().get_data("arrhythmia.mat")
 
-    # Get data to stream.
-    data = Data("data")
-    X_all, y_all = data.get_data("arrhythmia.mat")
-    X_all, y_all = shuffle(X_all, y_all)
-    iterator = ArrayStreamer(shuffle=False)
-
-    # Fit reference window integration to first 100 instances initially.
+    # Train on the first 100 points, then retrain on the last 240 points every 30 points.
     model = ReferenceWindowModel(
-        model_cls=IForest, window_size=240, sliding_size=30, initial_window_X=X_all[:100]
+        IForest,
+        window_size=240,
+        sliding_size=30,
+        initial_window_X=X[:100],
+        random_state=61,
     )
+    metric = AUROCMetric()
 
-    auroc = (
-        AUROCMetric()
-    )  # Init area under receiver-operating-characteristics curve metric tracker.
+    for x, label in ArrayStreamer().iter(X[100:], y[100:]):
+        score = model.fit_score_partial(x)
+        metric.update(label, score)
 
-    for X, y in iterator.iter(X_all[100:], y_all[100:]):
-        model.fit_partial(X)  # Fit to the instance.
-        score = model.score_partial(X)  # Score the instance.
-
-        auroc.update(y, score)  # Update the metric.
-
-    # Output AUROC metric.
-    print("AUROC: ", auroc.get())
+    print(f"AUROC: {metric.get():.3f}")

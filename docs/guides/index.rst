@@ -1,15 +1,9 @@
-All guides
-==========
+Overview
+========
 
 Each guide solves one task. The guides assume that you know the basic loop from :doc:`/getting_started`.
 
 .. container:: cards
-
-   .. container:: card
-
-      :doc:`choose_detector`
-
-      Find candidate detectors for your data and compare them.
 
    .. container:: card
 
@@ -19,21 +13,27 @@ Each guide solves one task. The guides assume that you know the basic loop from 
 
    .. container:: card
 
+      :doc:`choose_detector`
+
+      Find candidate detectors for your data and compare them.
+
+   .. container:: card
+
       :doc:`alerts`
 
       Calibrate scores, choose a threshold and keep anomalies out of the model.
 
    .. container:: card
 
-      :doc:`pipelines`
-
-      Add preprocessing, projections, postprocessing and ensembles.
-
-   .. container:: card
-
       :doc:`evaluate`
 
       Choose a metric, follow performance over time and report stable results.
+
+   .. container:: card
+
+      :doc:`pipelines`
+
+      Add preprocessing, projections, postprocessing and ensembles.
 
    .. container:: card
 
@@ -46,6 +46,12 @@ Each guide solves one task. The guides assume that you know the basic loop from 
       :doc:`pyod`
 
       Run a PyOD batch detector on a stream.
+
+   .. container:: card
+
+      :doc:`production`
+
+      Start from history, save state, run one detector per source and control latency.
 
    .. container:: card
 

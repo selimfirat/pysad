@@ -9,12 +9,13 @@ from pysad.statistics.variance_meter import VarianceMeter
 
 
 class GaussianTailProbabilityCalibrator(BasePostprocessor):
-    """Assuming that the scores follow normal distribution, this class provides an interface to convert the scores into probabilities via Q-function, i.e., the tail function of Gaussian distribution :cite:`ahmad2017unsupervised`.
-    This calibrator transforms a score into the probability that a normal variable with the mean and variance of the fitted scores is lower than the score, i.e. one minus its Gaussian tail p-value. As for model scores, higher values mean more anomalous, e.g. alert when the calibrated score is above 0.95.
+    """Converts each score into a probability with the Gaussian tail function (Q-function) of the fitted scores :cite:`ahmad2017unsupervised`.
+
+    The calibrator assumes that the scores follow a normal distribution. It transforms a score into the probability that a normal variable with the mean and variance of the fitted scores is lower than the score, i.e. one minus its Gaussian tail p-value. As for model scores, higher values mean more anomalous, e.g. alert when the calibrated score is above 0.95.
 
     Args:
-        running_statistics (bool): Whether to calculate the mean and variance through running window. The window size is defined by the `window_size` parameter.
-        window_size (int): The size of window for running average and std. Ignored if `running_statistics` parameter is False.
+        running_statistics (bool): Whether to calculate the mean and variance over a running window of ``window_size`` scores (Default=True).
+        window_size (int): The size of the window for the running mean and variance. Ignored if ``running_statistics`` is False (Default=6400).
     """
 
     def __init__(self, running_statistics=True, window_size=6400):
@@ -33,6 +34,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
         Args:
             score (float): Input score.
+
         Returns:
             object: self.
         """

@@ -15,7 +15,7 @@ Choose a metric
    * - :class:`~pysad.evaluation.AUROCMetric`
      - Measure how well the scores rank anomalies above normal points. 1.0 is perfect and 0.5 is random. It does not need a threshold.
    * - :class:`~pysad.evaluation.AUPRMetric`
-     - Measure the ranking when anomalies are rare. A random detector gets the fraction of anomalies in the stream, so compare AUPR only on the same data.
+     - Measure the ranking when anomalies are rare. AUPR is the area under the precision-recall curve. A random detector gets the fraction of anomalies in the stream, so compare AUPR only on the same data.
    * - :class:`~pysad.evaluation.PrecisionMetric`
      - Measure the fraction of alerts that are true anomalies, for a given threshold.
    * - :class:`~pysad.evaluation.RecallMetric`
@@ -24,7 +24,7 @@ Choose a metric
 Measure several metrics at once
 -------------------------------
 
-Update every metric with the same score. Precision and recall need a threshold. Here, they use the calibrated score, so the threshold 0.95 has the same meaning for every detector:
+Update every metric with the same score. Precision and recall need a threshold. In this example, the metrics get the calibrated value, so the threshold 0.95 has the same meaning for every detector:
 
 .. code-block:: python
 
@@ -59,28 +59,37 @@ Update every metric with the same score. Precision and recall need a threshold. 
    Precision: 0.435
       Recall: 0.381
 
-The AUROC of the calibrated scores is lower than that of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores, and during this block most recent scores are anomalous too.
+The AUROC of the calibrated scores is lower than that of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores, and during this final run of anomalies, most recent scores are anomalous too.
 
-A metric keeps every label and score that it gets, and ``get`` computes the metric over all of them. Call ``get`` at the end of the stream or at intervals, not for every point.
+A metric keeps every label and score that it gets, and ``get`` computes the metric over all of them. Each ``get`` call takes longer as the stream grows, so call ``get`` at the end of the stream or at intervals, not for every point.
 
 Follow the performance over time
 --------------------------------
 
-A metric over the full stream hides changes over time, for example a detector that gets worse after the data drifts. :class:`~pysad.evaluation.WindowedMetric` computes a metric on each window of the stream on its own and gives the average over the windows:
+A metric over the full stream hides changes over time, for example a detector that gets worse after the data drifts. To see the change, compute the metric on each window of the stream on its own. Start a new metric every 300 points:
 
 .. code-block:: python
 
-   from pysad.evaluation import AUROCMetric, WindowedMetric
-
    model = LODA(random_state=0)
-   metric = WindowedMetric(AUROCMetric, window_size=300)
+   metric = AUROCMetric()
+   per_window = []
 
-   for x, label in ArrayStreamer(shuffle=True, random_state=0).iter(X, y):
+   stream = ArrayStreamer(shuffle=True, random_state=0).iter(X, y)
+   for t, (x, label) in enumerate(stream, start=1):
        metric.update(label, model.fit_score_partial(x))
+       if t % 300 == 0:  # close the window and start a new metric
+           per_window.append(round(metric.get(), 2))
+           metric = AUROCMetric()
 
-   print(f"windowed AUROC: {metric.get():.3f}")
+   print(per_window)
 
-Each window must contain at least one anomaly and one normal point. Otherwise, AUROC is not defined and the metric raises an error. AUPR gives 0 for a window without anomalies and lowers the average. This example shuffles ``cardio`` because all its anomalies are at the end.
+.. code-block:: text
+
+   [0.89, 0.93, 0.92, 0.93, 0.92, 0.94]
+
+The first window has the lowest AUROC, because the detector is still warming up. This example shuffles ``cardio`` because all its anomalies are at the end. Each window must contain at least one anomaly and one normal point. Otherwise, AUROC is not defined and ``get`` raises an error.
+
+:class:`~pysad.evaluation.WindowedMetric` computes the same values and gives only their average, here 0.923. Use it to report one number that weights each period of the stream equally. AUPR gives 0 for a window without anomalies and lowers this average.
 
 Report a stable result
 ----------------------
@@ -105,4 +114,10 @@ Randomized detectors give a different result for each seed. Report the mean and 
 
    AUROC: 0.956 ± 0.008
 
-To compare detectors, use the same stream in the same order, and the same evaluation order for every detector. :doc:`/concepts` explains why the order matters.
+To compare detectors, give every detector the same points in the same stream order. ``fit_score_partial`` learns and scores in the evaluation order of each detector's paper, and :doc:`/concepts` explains when this evaluation order matters.
+
+Next steps
+----------
+
+- :doc:`choose_detector` compares several detectors.
+- :doc:`production` prepares a detector for a live stream.

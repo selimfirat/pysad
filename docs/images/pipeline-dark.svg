@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 230" width="960" height="230" role="img" aria-labelledby="t d">
+<title id="t">The PySAD pipeline</title>
+<desc id="d">A point flows from the stream through optional preprocessing to a detector, which gives it an anomaly score. Optional postprocessing and ensembling smooth or combine the scores, a calibrator converts the score into a value between 0 and 1, and a threshold raises an alert. A metric measures the scores against the labels while the stream runs.</desc>
+<style>
+text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;fill:#0e1a33;text-anchor:middle}
+.m{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;font-weight:400;fill:#5a6478}
+.b{fill:#fffef7;stroke:#0741ad;stroke-width:2}
+.o{stroke-dasharray:6 4}
+.k{fill:#0741ad;stroke:none}
+.kt{fill:#fffef7}.km{fill:#dfe7fb}.h{fill:#0741ad}
+.a{stroke:#0741ad;stroke-width:2;fill:none}
+.r{fill:#fc3636}
+.e{stroke:#8aa8e6;stroke-width:2;fill:none;stroke-dasharray:3 4}
+text{fill:#e8ecf5}.m{fill:#a3adc2}.b{fill:#131c2e;stroke:#7c9ff0}.k{fill:#7c9ff0}.kt{fill:#0e1a33}.km{fill:#1c2b4d}.h{fill:#7c9ff0}.a{stroke:#7c9ff0}
+</style>
+<defs><marker id="h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="h" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<g>
+<rect class="b" x="10" y="40" width="128" height="72" rx="10"/>
+<text x="74" y="72">Stream</text><text class="m" x="74" y="94">ArrayStreamer</text>
+
+<rect class="b o" x="168" y="40" width="128" height="72" rx="10"/>
+<text x="232" y="72">Preprocess</text><text class="m" x="232" y="94">InstanceUnitNorm…</text>
+
+<rect class="k" x="326" y="30" width="148" height="92" rx="12"/>
+<text class="kt" x="400" y="70">Detector</text><text class="m km" x="400" y="94">fit_score_partial</text>
+
+<rect class="b o" x="504" y="40" width="128" height="72" rx="10"/>
+<text x="568" y="64">Postprocess</text><text x="568" y="82" style="font-size:13px;font-weight:400">or ensemble</text><text class="m" x="568" y="100">RunningAverage…</text>
+
+<rect class="b" x="662" y="40" width="128" height="72" rx="10"/>
+<text x="726" y="72">Calibrate</text><text class="m" x="726" y="94">Conformal…</text>
+
+<circle class="r" cx="880" cy="76" r="36"/>
+<text x="880" y="81" style="fill:#fffef7">Alert</text>
+
+<path class="a" d="M138,76 H164" marker-end="url(#h)"/>
+<path class="a" d="M296,76 H322" marker-end="url(#h)"/>
+<path class="a" d="M474,76 H500" marker-end="url(#h)"/>
+<path class="a" d="M632,76 H658" marker-end="url(#h)"/>
+<path class="a" d="M790,76 H840" marker-end="url(#h)"/>
+<text class="m" x="815" y="66">≥ 0.99</text>
+
+<path class="e" d="M400,122 V170"/>
+<rect class="b" x="306" y="170" width="188" height="48" rx="10" style="stroke:#8aa8e6"/>
+<text x="400" y="192" style="font-size:14px">Evaluate</text><text class="m" x="400" y="209">AUROCMetric.update</text>
+<text class="m" x="248" y="140" style="text-anchor:start">dashed = optional</text>
+</g>
+</svg>

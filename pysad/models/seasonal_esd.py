@@ -7,19 +7,22 @@ from pysad.utils import Window
 
 
 class SeasonalESD(BaseModel):
-    """Window-based Seasonal ESD model :cite:`hochenbaum2017automatic`.
+    """Flags seasonal anomalies in a univariate stream with the Seasonal ESD (S-ESD) test over a sliding window :cite:`hochenbaum2017automatic`.
 
-    This is the paper's S-ESD method: compute the modified STL residual
-    ``X - seasonal - median(X)`` over a fixed-size PySAD window, then apply
-    generalized ESD with mean and standard deviation to the residuals.
+    This is the S-ESD method of the paper. It computes the modified STL residual ``X - seasonal - median(X)`` over a fixed-size window, then applies generalized ESD with the mean and the standard deviation to the residuals. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
+
+    The score of an instance is the ESD test statistic of the newest value if the test flags it as an anomaly, else 0.0. The score is 0.0 until the window holds ``window_size`` values.
 
     Args:
-        period (int): Number of observations in one seasonal period.
-        window_size (int): Number of recent observations used for STL and ESD.
-        max_anomalies (int): Maximum number of anomalies tested by ESD.
-        alpha (float): ESD significance level. (Default=0.05).
-        robust (bool): Whether to use robust STL fitting. (Default=True).
-        **stl_kwargs: Additional keyword arguments passed to STL.
+        period (int): Number of observations in one seasonal period. It must be at least 2.
+        window_size (int): Number of recent observations used for STL and ESD. It must be at least ``2 * period``.
+        max_anomalies (int): Maximum number of anomalies that ESD tests in each window. It must be between 1 and ``int(0.49 * window_size)``.
+        alpha (float): ESD significance level, strictly between 0 and 1 (Default=0.05).
+        robust (bool): Whether to use robust STL fitting (Default=True).
+        **stl_kwargs: Additional keyword arguments passed to ``statsmodels.tsa.seasonal.STL``.
+
+    Raises:
+        ValueError: If ``period`` is less than 2, ``window_size`` is less than ``2 * period``, ``max_anomalies`` is less than 1 or greater than ``int(0.49 * window_size)``, or ``alpha`` is not strictly between 0 and 1.
     """
 
     def __init__(self, period, window_size, max_anomalies, alpha=0.05, robust=True, **stl_kwargs):
@@ -100,7 +103,15 @@ class SeasonalESD(BaseModel):
         return candidates[:selected_count]
 
     def fit_partial(self, X, y=None):
-        """Adds the next instance to the model window."""
+        """Adds the next instance to the model window.
+
+        Args:
+            X (np.float64 array of shape (1,)): The next univariate value.
+            y (int or None): Ignored. Present for API consistency (Default=None).
+
+        Returns:
+            object: self.
+        """
         self.window.update(self._as_value(X))
         return self
 
@@ -119,21 +130,47 @@ class SeasonalESD(BaseModel):
         return 0.0
 
     def score_partial(self, X):
-        """Scores whether the next instance is anomalous in a candidate window."""
+        """Scores the next instance in the window that ends with it, without adding it to the window.
+
+        Args:
+            X (np.float64 array of shape (1,)): The next univariate value.
+
+        Returns:
+            float: The ESD test statistic of ``X`` if the test flags it as an anomaly, else 0.0.
+        """
         return self._score_window(self._candidate_window(X))
 
     def fit_score_partial(self, X, y=None):
-        """Adds and scores the next instance without adding it twice."""
+        """Adds the next instance to the window and scores it.
+
+        Args:
+            X (np.float64 array of shape (1,)): The next univariate value.
+            y (int or None): Ignored. Present for API consistency (Default=None).
+
+        Returns:
+            float: The ESD test statistic of ``X`` if the test flags it as an anomaly, else 0.0.
+        """
         self.fit_partial(X, y)
         return self._score_window(self._current_window())
 
 
 class SeasonalHybridESD(SeasonalESD):
-    """Window-based Seasonal Hybrid ESD model :cite:`hochenbaum2017automatic`.
+    """Flags seasonal anomalies in a univariate stream with the Seasonal Hybrid ESD (S-H-ESD) test over a sliding window :cite:`hochenbaum2017automatic`.
 
-    This is the paper's S-H-ESD method: use the same modified STL residual as
-    :class:`SeasonalESD`, then replace ESD's mean and standard deviation with
-    median and MAD-based scale in the test statistic.
+    This is the S-H-ESD method of the paper. It uses the same modified STL residual as :class:`SeasonalESD`, then replaces the mean and the standard deviation of ESD with the median and the MAD-based scale in the test statistic. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
+
+    The score of an instance is the test statistic of the newest value if the test flags it as an anomaly, else 0.0. The score is 0.0 until the window holds ``window_size`` values.
+
+    Args:
+        period (int): Number of observations in one seasonal period. It must be at least 2.
+        window_size (int): Number of recent observations used for STL and ESD. It must be at least ``2 * period``.
+        max_anomalies (int): Maximum number of anomalies that ESD tests in each window. It must be between 1 and ``int(0.49 * window_size)``.
+        alpha (float): ESD significance level, strictly between 0 and 1 (Default=0.05).
+        robust (bool): Whether to use robust STL fitting (Default=True).
+        **stl_kwargs: Additional keyword arguments passed to ``statsmodels.tsa.seasonal.STL``.
+
+    Raises:
+        ValueError: If ``period`` is less than 2, ``window_size`` is less than ``2 * period``, ``max_anomalies`` is less than 1 or greater than ``int(0.49 * window_size)``, or ``alpha`` is not strictly between 0 and 1.
     """
 
     def _center_scale(self, values):

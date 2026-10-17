@@ -4,10 +4,10 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class InstanceUnitNormScaler(BaseTransformer):
-    """A scaler that makes the instance feature vector's norm equal to 1, i.e., the unit vector.
+    """Scales each feature vector to unit norm.
 
     Args:
-        pow (float): The power, for which the norm is calculated. pow=2 is equivalent to the euclidean distance.
+        pow (float): The order of the norm. ``pow=2`` gives the Euclidean norm (Default=2).
     """
 
     def __init__(self, pow=2):
@@ -32,7 +32,7 @@ class InstanceUnitNormScaler(BaseTransformer):
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            scaled_X (np.float64 array of shape (features,)): Scaled feature vector.
+            np.float64 array of shape (num_features,): Scaled feature vector.
         """
         X_norm = np.linalg.norm(X, ord=self.pow)
 

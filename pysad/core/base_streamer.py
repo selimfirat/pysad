@@ -10,7 +10,7 @@ class BaseStreamer(abc.ABC):
     """Abstract base class to simulate the streaming data.
 
     Args:
-        shuffle (bool): Whether shuffle the data initially (Optional, default=False).
+        shuffle (bool): Whether to shuffle the data initially (Default=False).
     """
 
     def __init__(self, shuffle: bool = False) -> None:
@@ -30,6 +30,6 @@ class BaseStreamer(abc.ABC):
 
         Args:
             X (np.array of shape (num_instances, num_features)): The features of instances to iterate.
-            y: (Optional, default=None) If not None, iterates labels with the same order.
+            y (np.array of shape (num_instances,) or None): If not None, the labels to iterate in the same order (Default=None).
         """
         pass

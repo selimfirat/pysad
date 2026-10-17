@@ -110,7 +110,7 @@ class MedianPostprocessor(_MeterPostprocessor):
 
 
 class ZScorePostprocessor(_ZScorePostprocessor):
-    """A postprocessor that normalize the score via Z-score normalization."""
+    """A postprocessor that normalizes the score via Z-score normalization."""
 
     def __init__(self):
         super().__init__(VarianceMeter(), AverageMeter())

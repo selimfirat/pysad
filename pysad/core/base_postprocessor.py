@@ -51,7 +51,7 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies transform_partial to all instances in order.
 
         Args:
-            np.float64 array of shape (num_instances,): Input scores.
+            scores (np.float64 array of shape (num_instances,)): Input scores.
 
         Returns:
             np.float64 array of shape (num_instances,): Processed scores.
@@ -62,7 +62,7 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies fit_partial to all instances in order.
 
         Args:
-            np.float64 array of shape (num_instances,): Input scores.
+            scores (np.float64 array of shape (num_instances,)): Input scores.
 
         Returns:
             object: self.
@@ -77,7 +77,7 @@ class BasePostprocessor(ABC):
         """Shortcut method that iteratively applies fit_transform_partial to all instances in order.
 
         Args:
-            np.float64 array of shape (num_instances,): Input scores.
+            scores (np.float64 array of shape (num_instances,)): Input scores.
 
         Returns:
             np.float64 array of shape (num_instances,): Processed scores.

@@ -13,24 +13,24 @@ Find candidates
    * - Your data
      - Start with
      - Why
-   * - One metric with daily or weekly cycles
+   * - One series of values with daily or weekly cycles
      - :class:`~pysad.models.SeasonalHybridESD`
-     - Removes the seasonal pattern, and earlier anomalies in the window have little effect on it
-   * - One metric without a strong cycle
-     - :class:`~pysad.models.MedianAbsoluteDeviation`
-     - A robust baseline that works with its default parameters
+     - Removes the cycle. Earlier anomalies in the window have little effect on the detector
+   * - One series of values without a strong cycle
+     - :class:`~pysad.models.MedianAbsoluteDeviation`, or :class:`~pysad.models.StandardAbsoluteDeviation` for a long stream
+     - Outliers in the history have little effect on MAD, but it keeps every value, so its time per point grows with the stream. The standard deviation version takes constant time
    * - Several features, first try
      - :class:`~pysad.models.LODA`
      - Fast, has few parameters and learns from every point
    * - Features with known value ranges
      - :class:`~pysad.models.HalfSpaceTrees`
-     - Constant time per point over a sliding window
-   * - Many features, or features that appear and disappear
+     - Uses the range of each feature. Constant time per point, scored against the previous window
+   * - Many features
      - :class:`~pysad.models.xStream`
-     - Designed for high-dimensional streams whose features change
+     - Projects the points to fewer features with hashing, so it handles many features
    * - Network traffic
      - :class:`~pysad.models.KitNet`
-     - Designed for online network intrusion detection
+     - Designed for live network intrusion detection. With the defaults, it gives 0 for the first 50,000 points and stops learning after 100,000. Lower ``grace_feature_mapping`` and ``grace_anomaly_detector`` for a shorter stream
    * - A PyOD model that you already use
      - :class:`~pysad.models.integrations.ReferenceWindowModel`
      - Refits the model on a sliding window, see :doc:`pyod`
@@ -64,13 +64,22 @@ Run each candidate on a labeled part of your data and compare a metric. This exa
            metric.update(label, model.fit_score_partial(x))
        print(f"{name:>15}: AUROC {metric.get():.3f}")
 
+.. code-block:: text
+
+              LODA: AUROC 0.951
+           xStream: AUROC 0.598
+    HalfSpaceTrees: AUROC 0.823
+            RSHash: AUROC 0.700
+
+The streamer keeps the order of the file, and in ``cardio`` all anomalies are at the end. ``fit_score_partial`` uses the evaluation order of each detector's paper: :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` score each point before they learn from it, and :class:`~pysad.models.LODA` and :class:`~pysad.models.xStream` learn first. The results on your data can be very different, so run the comparison on your own stream.
+
 :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` need the range of each feature. :func:`~pysad.utils.get_minmax_array` computes it from data. In production, compute the range from historical data or use known physical limits.
 
 Follow these rules to make the comparison fair:
 
 - Use the same stream, in the same order, for every detector.
 - Fix ``random_state``, and repeat the comparison with three to five seeds. Randomized detectors give different results for each seed.
-- If you have no labels, inject synthetic anomalies into a copy of your data, or label a sample of the alerts by hand.
+- If you have no labels, add synthetic anomalies to a copy of your data. Or label some of the alerts by hand.
 
 :doc:`evaluate` explains the metrics.
 
@@ -87,3 +96,9 @@ Most detectors work with their default parameters. These parameters have the lar
 
 ``period``
    For seasonal detectors, the number of points in one cycle. For example, use 24 for hourly data with a daily cycle.
+
+Next steps
+----------
+
+- :doc:`evaluate` explains the metrics for the comparison.
+- :doc:`alerts` turns the scores into alerts.

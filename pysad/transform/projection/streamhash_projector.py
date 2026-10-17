@@ -59,11 +59,13 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
 
 
 class StreamhashProjector(BaseTransformer):
-    """Streamhash projection method from Manzoor et al. that is similar (or equivalent) to SparseRandomProjection. :cite:`xstream` The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
+    """Projects each feature vector with the sparse StreamHash random projection of Manzoor et al. :cite:`xstream`.
+
+    StreamHash builds each entry of the projection matrix from a hash of the feature index, so the projector accepts any number of features. The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
 
     Args:
         num_components (int): The number of dimensions that the target will be projected into.
-        density (float): Density parameter of the streamhash projection.
+        density (float): Fraction of non-zero entries in the projection matrix (Default=1/3).
     """
 
     # Defaults for instances unpickled from older pysad versions, whose __dict__ predates
@@ -84,7 +86,7 @@ class StreamhashProjector(BaseTransformer):
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
-            X (np.float64 array of shape (n_components,)): Input feature vector.
+            X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
             object: self.
@@ -98,7 +100,7 @@ class StreamhashProjector(BaseTransformer):
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            projected_X (np.float64 array of shape (num_components,)): Projected feature vector.
+            np.float64 array of shape (num_components,): Projected feature vector.
         """
         X = X.reshape(1, -1)
 

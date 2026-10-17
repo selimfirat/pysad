@@ -21,7 +21,7 @@ class BaseMetric(ABC):
 
     @abstractmethod
     def get(self) -> float | None:
-        """Gets the current value of the score. Note that some methods such as AUPR and AUROC gives exception when used with only one class exist in the list of previous y_trues.
+        """Gets the current value of the score. Some metrics, such as AUPR and AUROC, raise an exception when the previous ``y_true`` values contain only one class.
 
         Returns:
             float: The current score.

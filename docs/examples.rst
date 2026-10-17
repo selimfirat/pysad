@@ -1,7 +1,7 @@
 Examples
 ========
 
-These scripts come from the `examples folder <https://github.com/selimfirat/pysad/tree/master/examples>`_ on GitHub. CI runs each one end to end, so they work with the current release. To run one, download it and run ``python <script>.py``. The scripts download the benchmark datasets that they need.
+These scripts come from the `examples folder <https://github.com/selimfirat/pysad/tree/master/examples>`_ on GitHub. The automatic tests run each one end to end on the ``master`` branch. To run one, download it and run ``python <script>.py``. The scripts download the benchmark datasets that they need.
 
 To try PySAD in the browser without an installation, open the `quick start notebook in Colab <https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb>`_.
 
@@ -32,7 +32,7 @@ Convert scores into values between 0 and 1 and alert above a threshold. See :doc
 Combine detectors
 -----------------
 
-Average the scores of two detectors with an ensembler.
+Normalize the scores of two detectors and average them with an ensembler.
 
 .. literalinclude:: ../examples/example_ensemble.py
    :language: python
@@ -59,6 +59,14 @@ Stream a pandas DataFrame
 Score the rows of a DataFrame with a time index and print the timestamps with the highest scores.
 
 .. literalinclude:: ../examples/example_pandas_streamer.py
+   :language: python
+
+Use a density detector
+----------------------
+
+Scale each point and score it with Inqmad, which estimates how dense the stream is near each point.
+
+.. literalinclude:: ../examples/example_usage_inqmad.py
    :language: python
 
 Track running statistics

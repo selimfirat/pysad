@@ -210,7 +210,7 @@ These are starting points drawn from each method's design, not benchmark ranking
 | `MedianAbsoluteDeviation` | Running median absolute deviation (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 
-Plus `ReferenceWindowModel` and `OneFitModel`, which run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. Full references and parameters are in the [API documentation](https://pysad.readthedocs.io/en/latest/api.html).
+Plus `ReferenceWindowModel` and `OneFitModel`, which run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. The [detector catalog](https://pysad.readthedocs.io/en/latest/detectors.html) lists the input, memory and paper of each detector, and the [API documentation](https://pysad.readthedocs.io/en/latest/api.html) lists every parameter.
 
 ## Beyond detectors
 

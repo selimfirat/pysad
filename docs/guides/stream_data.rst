@@ -26,7 +26,7 @@ Read the file row by row, so that the file can be larger than memory:
 From a pandas DataFrame
 -----------------------
 
-:class:`~pysad.utils.PandasStreamer` gives the rows of a DataFrame as NumPy arrays. Keep the index separately if you need the timestamps:
+:class:`~pysad.utils.PandasStreamer` gives the rows of a DataFrame as NumPy arrays. If you need the timestamps, keep the index separately:
 
 .. code-block:: python
 
@@ -44,7 +44,7 @@ From a pandas DataFrame
 From a message queue or a socket
 --------------------------------
 
-Convert each message into a NumPy array of floats. This sketch uses a Kafka consumer, but the pattern is the same for every source:
+Convert each message into a NumPy array of floats. This example uses a Kafka consumer, but the pattern is the same for every source:
 
 .. code-block:: python
 
@@ -106,7 +106,7 @@ To stream a 1-D array with :class:`~pysad.utils.ArrayStreamer`, reshape it to on
 Benchmark datasets
 ------------------
 
-:class:`~pysad.utils.Data` loads 17 labeled datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ benchmark: ``arrhythmia``, ``cardio``, ``glass``, ``ionosphere``, ``letter``, ``lympho``, ``mnist``, ``musk``, ``optdigits``, ``pendigits``, ``pima``, ``satellite``, ``satimage-2``, ``shuttle``, ``vertebral``, ``vowels`` and ``wbc``.
+:class:`~pysad.utils.Data` loads 17 labeled datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ benchmark. Pass the file name, with the ``.mat`` suffix: ``arrhythmia.mat``, ``cardio.mat``, ``glass.mat``, ``ionosphere.mat``, ``letter.mat``, ``lympho.mat``, ``mnist.mat``, ``musk.mat``, ``optdigits.mat``, ``pendigits.mat``, ``pima.mat``, ``satellite.mat``, ``satimage-2.mat``, ``shuttle.mat``, ``vertebral.mat``, ``vowels.mat`` and ``wbc.mat``.
 
 .. code-block:: python
 
@@ -121,3 +121,9 @@ Benchmark datasets
 ``get_iterator`` gives the points in a random order. For the order of the file, use ``get_iterator("arrhythmia.mat", shuffle=False)``.
 
 ``Data`` downloads a dataset the first time you use it. It caches the file in ``~/.cache/pysad``. To use a different folder, set the ``PYSAD_DATA_DIR`` environment variable, or pass the folder: ``Data("path/to/folder")``.
+
+Next steps
+----------
+
+- :doc:`choose_detector` finds a detector for your data.
+- :doc:`alerts` turns the scores into alerts.

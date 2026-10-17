@@ -4,12 +4,14 @@ from pysad.core.base_model import BaseModel
 
 
 class LocalOutlierProbability(BaseModel):
-    """The implementation of streaming Local Outlier Probabilities method :cite:`kriegel2009loop`, which uses the implementation of PyNomaly library :cite:`constantinou2018pynomaly`.
+    """Scores each instance by its local outlier probability against an initial reference set :cite:`kriegel2009loop`.
+
+    The model uses the implementation of the PyNomaly library :cite:`constantinou2018pynomaly`.
 
     Args:
         initial_X (np.float64 array of shape (num_instances, num_features)): Initial training data to calibrate the model.
         num_neighbors (int): The total number of neighbors to consider w.r.t. each sample (Default=10).
-        extent (int): an integer value that controls the statistical extent, e.g. lambda times the standard deviation from the mean (Default=3).
+        extent (int): The statistical extent lambda, the number of standard deviations from the mean that the probabilistic distance covers. PyNomaly accepts 1, 2 or 3, and warns for other values (Default=3).
     """
 
     def __init__(self, initial_X, num_neighbors=10, extent=3):

@@ -7,7 +7,7 @@ class PYODModel(BaseModel):
 
         Args:
             model_cls (class): The model class to be instantiated.
-            **kwargs (Keyword arguments): Keyword arguments that is passed to the `model_cls`.
+            **kwargs (Keyword arguments): Keyword arguments that are passed to the ``model_cls``.
         """
         self.model_cls = model_cls
         self.kwargs = kwargs

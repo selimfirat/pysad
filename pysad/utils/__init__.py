@@ -40,9 +40,9 @@ def get_minmax_array(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
     Args:
         X (np.float64 array of shape (num_instances, num_features)): The input array.
+
     Returns:
-        min (np.float64 array of shape (num_features,)): Minimum values for each feature in array.
-        max (np.float64 array of shape (num_features,)): Maximum values for each feature in array.
+        tuple[np.ndarray, np.ndarray]: The minimum and the maximum of each feature, each a np.float64 array of shape (num_features,).
     """
     min = np.min(X, axis=0)
     max = np.max(X, axis=0)
@@ -55,9 +55,9 @@ def get_minmax_scalar(x: np.ndarray) -> tuple[Any, Any]:
 
     Args:
         x (np.float64 array of any shape): Input array.
+
     Returns:
-        float: Minimum value in array.
-        float: Maximum value in array.
+        tuple[float, float]: The minimum and the maximum value in the array.
     """
     min = np.min(x)
     max = np.max(x)
@@ -70,7 +70,7 @@ def _iterate(X: np.ndarray, y: np.ndarray | None = None) -> Iterator[tuple[np.nd
 
     Args:
         X (np.array of shape (num_instances, num_features)): The features array.
-        y (np.array of shape (num_instances, ): The array containing labels (Default=None).
+        y (np.array of shape (num_instances,)): The array containing labels (Default=None).
     """
 
     iterator = ArrayStreamer(shuffle=False)

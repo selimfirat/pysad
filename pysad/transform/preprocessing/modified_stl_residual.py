@@ -5,22 +5,20 @@ from pysad.utils import Window
 
 
 class ModifiedSTLResidualTransformer(BaseTransformer):
-    """Modified STL residual transformer used by S-ESD and S-H-ESD.
+    """Removes the seasonal component and the median from a univariate series, as S-ESD and S-H-ESD do :cite:`hochenbaum2017automatic`.
 
-    The transformer follows the residual construction in
-    :cite:`hochenbaum2017automatic`: estimate the seasonal component with STL,
-    replace STL's trend component with the median of the raw series, and return
-    ``X - seasonal - median(X)``. It owns only the paper's residual step; use
-    :class:`pysad.models.SeasonalESD` or
-    :class:`pysad.models.SeasonalHybridESD` for the full detector.
+    The transformer follows the residual construction of the paper. It estimates the seasonal component with STL, replaces the trend component of STL with the median of the raw series, and returns ``X - seasonal - median(X)``. It does only the residual step of the paper. Use :class:`pysad.models.SeasonalESD` or :class:`pysad.models.SeasonalHybridESD` for the full detector.
+
+    The partial transforms return 0.0 until the window holds at least ``2 * period`` observations, because STL needs two full periods.
 
     Args:
         period (int): Number of observations in one seasonal period.
-        window_size (int): Number of recent observations used for partial
-            transforms.
-        robust (bool): Whether to use robust STL fitting. (Default=True).
-        **stl_kwargs: Additional keyword arguments passed to
-            ``statsmodels.tsa.seasonal.STL``.
+        window_size (int or None): Number of recent observations used for partial transforms. If None, only ``transform_window`` works, and the partial methods raise ``ValueError`` (Default=None).
+        robust (bool): Whether to use robust STL fitting (Default=True).
+        **stl_kwargs: Additional keyword arguments passed to ``statsmodels.tsa.seasonal.STL``.
+
+    Raises:
+        ValueError: If ``period`` is less than 2, or if ``window_size`` is not None and less than ``2 * period``.
     """
 
     def __init__(self, period, window_size=None, robust=True, **stl_kwargs):
@@ -52,11 +50,13 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         """Transforms a full window into modified STL residuals.
 
         Args:
-            X (np.float64 array of shape (num_instances,) or
-                (num_instances, 1)): Window of univariate values.
+            X (np.float64 array of shape (num_instances,) or (num_instances, 1)): Window of univariate values.
 
         Returns:
-            residual_X (np.float64 array of shape (num_instances,)): Modified STL residuals.
+            np.float64 array of shape (num_instances,): Modified STL residuals.
+
+        Raises:
+            ValueError: If the window has fewer than ``2 * period`` observations.
         """
         from statsmodels.tsa.seasonal import STL
 
@@ -69,7 +69,14 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         return X - seasonal - np.median(X)
 
     def fit_partial(self, X):
-        """Fits the next timestep by adding it to the residual window."""
+        """Fits the next timestep by adding it to the residual window.
+
+        Args:
+            X (np.float64 array of shape (1,)): The next univariate value.
+
+        Returns:
+            object: self.
+        """
         if self.window is None:
             raise ValueError("window_size is required for partial fitting.")
 
@@ -104,13 +111,27 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         return residuals[-1]
 
     def transform_partial(self, X):
-        """Returns the latest residual for the next candidate window."""
+        """Returns the residual of the next value in the window that ends with it, without adding it to the window.
+
+        Args:
+            X (np.float64 array of shape (1,)): The next univariate value.
+
+        Returns:
+            float: The modified STL residual of ``X``, or 0.0 if the window has fewer than ``2 * period`` observations.
+        """
         if self.window is None:
             raise ValueError("window_size is required for partial transforms.")
 
         return self._latest_residual(self._candidate_values(X))
 
     def fit_transform_partial(self, X):
-        """Adds and transforms the next timestep without adding it twice."""
+        """Adds the next value to the window and returns its residual.
+
+        Args:
+            X (np.float64 array of shape (1,)): The next univariate value.
+
+        Returns:
+            float: The modified STL residual of ``X``, or 0.0 if the window has fewer than ``2 * period`` observations.
+        """
         self.fit_partial(X)
         return self._latest_residual(self._current_values())

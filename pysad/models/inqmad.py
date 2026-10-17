@@ -6,14 +6,16 @@ from pysad.models.relative_entropy import _int_at_least
 
 
 class Inqmad(BaseModel):
-    r"""The Inqmad (incremental quantum measurement anomaly detection) model for row-streaming data :cite:`gallego2022inqmad`. Each instance is mapped to a state :math:`\psi` with random Fourier features, the model keeps a density matrix :math:`\rho` that averages :math:`\psi \psi^\top` over every fitted instance, and the anomaly score is the negated density estimate :math:`-\psi^\top \rho \psi` of the paper's Eq. 3 (without its normalization constant), so higher scores mean more anomalous instances. As in the paper, which measures the density against :math:`\rho_t` before updating it, `fit_score_partial` scores each instance before fitting it, so the instance's own state does not add to its density; before anything has been fitted, :math:`\rho` is zero and the score is 0.0 (density 0), the most anomalous possible score. Unlike the paper, the random Fourier features are fixed rather than adaptive, there is no :math:`\tau` threshold, every fitted instance updates :math:`\rho` rather than only those classified as normal, and :math:`\rho` is a uniform running average rather than the paper's :math:`\alpha`-forgetting update.
+    r"""Scores each instance by its negated density under a running density matrix of random Fourier features (Inqmad) :cite:`gallego2022inqmad`.
+
+    Inqmad stands for incremental quantum measurement anomaly detection. Each instance is mapped to a state :math:`\psi` with random Fourier features, the model keeps a density matrix :math:`\rho` that averages :math:`\psi \psi^\top` over every fitted instance, and the anomaly score is the negated density estimate :math:`-\psi^\top \rho \psi` of the paper's Eq. 3 (without its normalization constant), so higher scores mean more anomalous instances. As in the paper, which measures the density against :math:`\rho_t` before updating it, `fit_score_partial` scores each instance before fitting it, so the instance's own state does not add to its density; before anything has been fitted, :math:`\rho` is zero and the score is 0.0 (density 0), the most anomalous possible score. Unlike the paper, the random Fourier features are fixed rather than adaptive, there is no :math:`\tau` threshold, every fitted instance updates :math:`\rho` rather than only those classified as normal, and :math:`\rho` is a uniform running average rather than the paper's :math:`\alpha`-forgetting update.
 
     The kernel bandwidth ``gamma`` has to be tuned to the scale of the inputs: too large a value makes every instance about equally dense.
 
     Args:
         input_shape (int): Number of features. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1. Every instance must be an array of shape (input_shape,) or (1, input_shape), or `ValueError` is raised before the model changes.
         dim_x (int): Random Fourier features dimension. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
-        gamma (float): kernel parameter for the random Fourier features
+        gamma (float): Kernel bandwidth of the random Fourier features.
         random_state (int, np.random.RandomState or None): Seed or random number generator for the random Fourier features. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
@@ -57,14 +59,14 @@ class Inqmad(BaseModel):
         return -np.einsum("ni,ij,nj->n", psi, self.rho, psi) / self.num_fitted
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
 
         Raises:
             ValueError: If `X` is not of shape (input_shape,) or (1, input_shape). The model is left unchanged.
@@ -80,7 +82,7 @@ class Inqmad(BaseModel):
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
 
         Returns:
-            score (float): The negative of the estimated density for the input instance, as a Python float. Higher scores (lower estimated density) represent more anomalous instances. Before anything has been fitted, the density is 0 and the score is 0.0, the most anomalous possible score.
+            float: The negative of the estimated density for the input instance, as a Python float. Higher scores (lower estimated density) represent more anomalous instances. Before anything has been fitted, the density is 0 and the score is 0.0, the most anomalous possible score.
 
         Raises:
             ValueError: If `X` is not of shape (input_shape,) or (1, input_shape).

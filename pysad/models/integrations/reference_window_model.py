@@ -4,15 +4,17 @@ from .pyod_model import PYODModel
 
 
 class ReferenceWindowModel(PYODModel):
-    """This PyOD model wrapper wraps the batch anomaly detectors. This wrapper keeps track of the reference window of size `window_size`. For every `sliding_size` instances, it resets the model by training new `model_cls` instance with the reference window. This implementation is based on the reference windowing described in :cite:`xstream`.
+    """Runs a batch model on a stream by retraining it on a reference window at regular intervals :cite:`xstream`.
+
+    This wrapper keeps track of the reference window of size ``window_size``. For every ``sliding_size`` instances, it resets the model by training a new ``model_cls`` instance on the reference window. This implementation is based on the reference windowing described in :cite:`xstream`.
 
     Args:
         model_cls (class): The model class to be instantiated.
         window_size (int): The size of each window.
         sliding_size (int): The sliding length of the windows.
         initial_window_X (np.float64 array of shape (num_initial_instances, num_features)): Initial instances to fit (Default=None).
-        initial_window_y (np.int32 array of shape (num_initial_instances,)): Initial window's ground truth labels. Used if not None. Needs to be `None` for the unsupervised `model_cls` models. (Default=None).
-        **kwargs (Keyword arguments): Keyword arguments that is passed to the `model_cls`.
+        initial_window_y (np.int32 array of shape (num_initial_instances,)): Initial window's ground truth labels. Used if not None. Needs to be ``None`` for the unsupervised ``model_cls`` models (Default=None).
+        **kwargs (Keyword arguments): Keyword arguments that are passed to the ``model_cls``.
     """
 
     def __init__(
@@ -42,7 +44,7 @@ class ReferenceWindowModel(PYODModel):
             self.initial_ref_window = False
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.

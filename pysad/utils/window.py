@@ -33,7 +33,7 @@ class Window:
         """Method to obtain the window list.
 
         Returns:
-            window (list): List containing the items in window
+            list: The items in the window.
         """
         return self.window
 

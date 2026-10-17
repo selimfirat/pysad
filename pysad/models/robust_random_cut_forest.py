@@ -33,10 +33,12 @@ def _import_rrcf():
 
 
 class RobustRandomCutForest(BaseModel):
-    """Robust Random Cut Forest model :cite:`guha2016robust`. The implementation uses `rrcf library <https://github.com/kLabUM/rrcf>`_ :cite:`bartos_2019_rrcf`.
+    """Scores each instance by its collusive displacement in a forest of robust random cut trees over shingled inputs :cite:`guha2016robust`.
+
+    The implementation uses `rrcf library <https://github.com/kLabUM/rrcf>`_ :cite:`bartos_2019_rrcf`.
 
     Args:
-        num_trees (int): The number of trees.
+        num_trees (int): The number of trees (Default=4).
         shingle_size (int): The shingle size (Default=4).
         tree_size (int): The tree size (Default=256).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the cuts of the trees, which all share it. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
@@ -82,14 +84,14 @@ class RobustRandomCutForest(BaseModel):
         self.__dict__.update(state)
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         for tree in self.forest:
             if len(tree.leaves) > self.tree_size:

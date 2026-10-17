@@ -3,58 +3,146 @@
 Contributing
 ============
 
-You are welcome to contribute this project.
+Code is not the only way to help. We aim to reply to new issues and pull requests within a few days. The project follows the `Python Software Foundation Code of Conduct <https://policies.python.org/python.org/code-of-conduct/>`_.
 
-Code is not the only way to help the project. Reviewing pull
-requests, answering questions to help others on mailing lists or
-issues, organizing and teaching tutorials, working on the website,
-improving the documentation, are all priceless contributions.
+Help without code
+-----------------
 
-We abide by the principles of openness, respect, and consideration of
-others of the Python Software Foundation:
-https://www.python.org/psf/codeofconduct/
+- Answer questions in `Discussions <https://github.com/selimfirat/pysad/discussions>`_.
+- Report a bug that you found.
+- Tell us about a part of the documentation that is not clear.
+- Share a project that uses PySAD in `Discussions <https://github.com/selimfirat/pysad/discussions>`_.
 
-In case you experience issues using this package, do not hesitate to submit a
-ticket to the
-`GitHub issue tracker
-<https://github.com/selimfirat/pysad/issues>`_. You are also
-welcome to post feature requests or pull requests.
+Report a bug or ask a question
+------------------------------
 
-I aim to reply to new issues and pull requests within a few days.
+- If you found a bug, open a `bug report <https://github.com/selimfirat/pysad/issues/new/choose>`_. Include your PySAD version, your Python version and a short script that shows the problem.
+- If you want a new feature or detector, open a `feature request <https://github.com/selimfirat/pysad/issues/new/choose>`_. A new detector must meet the :doc:`inclusion_criteria`.
+- If you have a question, start a thread in `Discussions <https://github.com/selimfirat/pysad/discussions>`_.
+- If you found a security problem, do not open a public issue. Follow the `security policy <https://github.com/selimfirat/pysad/security/policy>`_.
 
-For any questions, you may open issue on Github or drop me an email at `yilmazselimfirat (at)gmail(you know the rest)`.
+For a first contribution, choose an issue with the `good first issue <https://github.com/selimfirat/pysad/labels/good%20first%20issue>`_ label.
 
-Development Style
-^^^^^^^^^^^^^^^^^
+Open a pull request
+-------------------
 
-PySAD follows `Trunk-based development <https://trunkbaseddevelopment.com/>`_. All development is conducted using short-lived branches integrated into the trunk (``master``) via pull requests. Pull requests should be kept small and focused, and must pass automated testing and linting in continuous integration to ensure that the trunk remains continuously releasable.
+PySAD uses trunk-based development: each change goes to the ``master`` branch through a short-lived branch and a pull request. Each pull request fixes one issue.
 
-Pull Request Checklist
-^^^^^^^^^^^^^^^^^^^^^^
+You need git, Python 3.10 or newer, and pip 25.1 or newer.
 
-* Do the features/fixes in your pull request match the aim of this framework?
-* Does your code pass the linters? You may check via ``pre-commit run --all-files``.
-* Does your submission pass all tests (including CI)?
-* Have you checked the active `pull requests <https://github.com/selimfirat/pysad/pulls>`_ and `issues <https://github.com/selimfirat/pysad/issues>`_ so that your contribution does not overlap significantly with these?
-* **For new features** Have you implemented tests so that your new code has more than 95% test coverage and the tests are reasonable?
-* **For new features** Have you implemented examples demonstrating the usage of your new feature?
+Set up once
+~~~~~~~~~~~
 
-Development Instructions
-^^^^^^^^^^^^^^^^^^^^^^^^
-To install requirements of development environment, run the following bash code:
+#. Fork `the repository <https://github.com/selimfirat/pysad>`_ on GitHub.
+#. Clone your fork. Replace ``<user>`` with your GitHub user name:
 
-.. code-block:: bash
+   .. code-block:: console
 
-    pip install --upgrade pip # --group needs pip 25.1 or newer.
-    pip install -e . --group dev # Runtime pins, pytest, Sphinx and pre-commit.
-    pre-commit install # Linting and formatting on every commit.
+      $ git clone https://github.com/<user>/pysad.git
 
-After you have done writing code, run the following bash code for checking:
+#. Go into the repository root. Run all the other commands from there:
 
-.. code-block:: bash
+   .. code-block:: console
 
-    bash build_docs.sh # Building docs.
-    pre-commit run --all-files # Linting and formatting with ruff.
-    pytest --cov=pysad # Running tests.
+      $ cd pysad
 
-`pre-commit.ci <https://pre-commit.ci>`_ also runs the hooks on every pull request and pushes a commit with the fixes it can make.
+#. Upgrade pip. The ``--group`` option in the next step needs pip 25.1 or newer:
+
+   .. code-block:: console
+
+      $ pip install --upgrade pip
+
+#. Install PySAD in editable mode with the ``dev`` dependency group. The group pins the runtime dependencies and adds pytest, Sphinx and pre-commit:
+
+   .. code-block:: console
+
+      $ pip install -e . --group dev
+
+   If you use uv, run ``uv sync --group dev`` instead.
+
+#. Install the git hook of pre-commit. pre-commit is a tool that runs the linters and the formatter on each commit:
+
+   .. code-block:: console
+
+      $ pre-commit install
+
+Make the change
+~~~~~~~~~~~~~~~
+
+#. If no issue describes your change, open one first.
+#. Make a branch named ``<type>/<issue>-<slug>``, for example ``fix/123-loda-nan-scores``:
+
+   .. code-block:: console
+
+      $ git switch -c fix/123-loda-nan-scores
+
+#. Change the code. If you add a detector, follow the steps in :doc:`guides/custom_model`.
+#. Add tests that check scores, shapes and return types, not private state. If a test uses random numbers, give it a fixed seed.
+
+`AGENTS.md <https://github.com/selimfirat/pysad/blob/master/AGENTS.md>`_ in the repository root lists all the rules for code, tests and naming.
+
+Check the change
+~~~~~~~~~~~~~~~~
+
+#. Run the linters, the formatter, mypy and the file checks:
+
+   .. code-block:: console
+
+      $ pre-commit run --all-files
+
+#. Run the unit tests. Add ``-n auto`` to run them in parallel:
+
+   .. code-block:: console
+
+      $ pytest
+
+#. Run every script in ``examples/``. The plain ``pytest`` command skips them:
+
+   .. code-block:: console
+
+      $ pytest -m examples
+
+#. If you changed a docstring or a file in ``docs/``, build the documentation. CI does not build it for each pull request:
+
+   .. code-block:: console
+
+      $ bash build_docs.sh
+
+   Open ``docs/_build/html/index.html`` to read the result.
+
+Send the change
+~~~~~~~~~~~~~~~
+
+#. Push your branch to your fork.
+#. Open a pull request into ``master``. If the change is not ready for review, open it as a draft.
+#. Write the title as a conventional commit: ``<type>: <summary>``, for example ``fix: return finite LODA scores for constant features``.
+
+   Use one of these types: ``feat``, ``fix``, ``docs``, ``build``, ``ci``, ``refactor``, ``test``, ``style`` or ``chore``. For a breaking change, put ``!`` before the colon, for example ``feat!:``. A workflow labels the pull request from the type, and the release notes group the pull requests by these labels.
+
+#. Wait for CI. CI (continuous integration) is the set of checks that GitHub runs on each pull request. `pre-commit.ci <https://pre-commit.ci>`_ also pushes a commit with the fixes that it can make. If it does, pull before you push again.
+
+Review checklist
+----------------
+
+We apply this checklist to each pull request:
+
+- The change fits the aim of PySAD: anomaly detection on streaming data.
+- The pull request fixes one issue, and no other open pull request covers the same work.
+- All CI checks pass.
+- New behavior has tests. A new feature also has an example or documentation.
+- A new public class is in the ``__init__.py`` and ``__all__`` of its subpackage, and in the page of its module in ``docs/api/``.
+- A new detector meets the :doc:`inclusion_criteria` and follows the steps in :doc:`guides/custom_model`.
+- If the change touches a detector, the description gives AUROC and time per instance before and after the change. Measure them with ``fit_score_partial`` on the ODDS ``arrhythmia``, ``cardio`` and ``vowels`` datasets with seeds 0 to 4.
+- The change does not keep old behavior through deprecation aliases or compatibility code.
+
+AI tools
+--------
+
+You can use AI tools to write issues, pull requests, reviews and code. These rules apply:
+
+- Put the text that an AI tool writes in a quote block or a code block.
+- Add your own comment that tells why the AI text is relevant.
+- Read and understand all the code that you submit.
+- Do not let an AI agent open an issue or a non-draft pull request, or comment, before you approve the exact content.
+
+We close contributions that an AI agent generated with no human review.

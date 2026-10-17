@@ -7,7 +7,7 @@ from pysad.transform.postprocessing.postprocessors import _MeterPostprocessor, _
 
 
 class RunningAveragePostprocessor(_MeterPostprocessor):
-    """A postprocessor that convert a score to the average of of all previous scores in the window.
+    """A postprocessor that converts a score to the average of all previous scores in the window.
 
     Args:
         window_size (int): Length of the window
@@ -18,7 +18,8 @@ class RunningAveragePostprocessor(_MeterPostprocessor):
 
 
 class RunningMaxPostprocessor(_MeterPostprocessor):
-    """A postprocessor that convert a score to the maximum of of all previous scores in the window.
+    """A postprocessor that converts a score to the maximum of all previous scores in the window.
+
     Args:
         window_size (int): Length of the window
     """
@@ -28,7 +29,8 @@ class RunningMaxPostprocessor(_MeterPostprocessor):
 
 
 class RunningMedianPostprocessor(_MeterPostprocessor):
-    """A postprocessor that convert a score to the median of of all previous scores in the window.
+    """A postprocessor that converts a score to the median of all previous scores in the window.
+
     Args:
         window_size (int): Length of the window
     """

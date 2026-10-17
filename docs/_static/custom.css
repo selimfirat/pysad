@@ -1,0 +1,470 @@
+/* Brand (loops/brand): cobalt #0741ad, coral #fc3636 only for the outlier,
+   paper #fffef7 panels on an ivory #efebdf canvas, ink #0e1a33 text. */
+
+.hero {
+  text-align: center;
+  margin: 0 0 1.5rem;
+  padding: 2rem 1rem 1.5rem;
+  border-radius: 0.9rem;
+  /* A faint risograph halftone, as on the brand board. */
+  background: radial-gradient(rgb(7 65 173 / 7%) 1px, transparent 1.3px) 0 0 / 9px 9px;
+}
+
+.hero img {
+  margin-inline: auto;
+}
+
+/* Call to action: a filled cobalt button and an outline button. */
+.actions.container {
+  margin: 1.4rem 0 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.actions a {
+  display: inline-block;
+  margin: 0.3rem;
+  padding: 0.6rem 1.3rem;
+  border: 2px solid var(--color-brand-primary);
+  border-radius: 0.6rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.actions a:first-child {
+  background: var(--color-brand-primary);
+  color: var(--color-background-primary);
+}
+
+.actions a:hover {
+  filter: brightness(1.1);
+}
+
+.stream-figure .caption {
+  font-size: 0.85rem;
+  color: var(--color-foreground-secondary);
+  text-align: center;
+  margin-top: 0.4rem;
+}
+
+/* Brand syntax colors: cobalt keywords, a lighter blue for strings, muted comments.
+   Furo's Pygments rules are more specific, so these rules use !important. */
+.highlight :is(.k, .kn, .kc, .kd, .ow) {
+  color: var(--color-brand-primary) !important;
+  font-weight: 500 !important;
+}
+
+.highlight :is(.s, .s1, .s2, .sa, .si, .sd, .mi, .mf) {
+  color: var(--color-code-string) !important;
+}
+
+.highlight :is(.c, .c1, .cm) {
+  color: var(--color-foreground-muted) !important;
+  font-style: italic;
+}
+
+.highlight :is(.nb, .bp, .o, .p, .nn, .n, .nf, .nc, .gp) {
+  color: inherit !important;
+  font-weight: inherit !important;
+  text-decoration: none !important;
+}
+
+/* In dark mode, dim plain code text a little, so that keywords and strings stand out. */
+body[data-theme="dark"] .highlight pre {
+  color: #c9d1e3;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .highlight pre {
+    color: #c9d1e3;
+  }
+}
+
+.highlight a {
+  text-decoration: none !important;
+}
+
+/* Code blocks as rounded panels, and printed output in a dashed panel. */
+div.highlight {
+  border-radius: 0.6rem;
+}
+
+div.highlight-text div.highlight {
+  background: transparent;
+  border: 1px dashed var(--color-background-border);
+}
+
+/* Stats row in the brand "Essence" style. */
+.stats.container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+  padding: 0;
+  overflow: visible;
+}
+
+.stat.container {
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  text-align: center;
+}
+
+.stat p {
+  margin: 0;
+  color: var(--color-foreground-secondary);
+}
+
+.stat .number {
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--color-brand-primary);
+}
+
+.hero .tagline {
+  color: var(--color-brand-primary);
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin: 0.75rem 0 0.5rem;
+}
+
+.hero .lead {
+  font-size: 1.15rem;
+  color: var(--color-foreground-secondary);
+  max-width: 38rem;
+  margin: 0 auto;
+}
+
+/* Code blocks on the warm brand tints instead of the Pygments gray. */
+body .highlight,
+body .highlight pre {
+  background: var(--color-code-background);
+}
+
+/* Terminal: a cobalt window with a coral block cursor. */
+.terminal.container {
+  max-width: 26rem;
+  margin: 1.5rem auto;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--color-brand-primary);
+  border-radius: 0.6rem;
+}
+
+.terminal.container::before {
+  content: "";
+  display: block;
+  height: 1.6rem;
+  background:
+    radial-gradient(circle, #fffef7 0.22rem, transparent 0.24rem) 0.7rem 50% / 0.8rem 0.8rem no-repeat,
+    radial-gradient(circle, #fffef7 0.22rem, transparent 0.24rem) 1.5rem 50% / 0.8rem 0.8rem no-repeat,
+    radial-gradient(circle, #fffef7 0.22rem, transparent 0.24rem) 2.3rem 50% / 0.8rem 0.8rem no-repeat,
+    var(--color-brand-primary);
+}
+
+.terminal .highlight,
+.terminal .highlight pre {
+  margin: 0;
+  border-radius: 0;
+  background: var(--color-background-primary);
+}
+
+.terminal .highlight pre {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.2rem;
+  font-size: 1.15rem;
+  color: var(--color-brand-primary);
+}
+
+.terminal .highlight pre span {
+  color: var(--color-brand-primary);
+}
+
+.terminal .highlight pre::after {
+  content: "";
+  width: 0.6em;
+  height: 1.2em;
+  margin-left: 0.1em;
+  background: #fc3636;
+  animation: blink 1.1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal .highlight pre::after {
+    animation: none;
+  }
+}
+
+/* Cards: rounded panels with a small label and a page number, as on the brand board.
+   A ".. container:: cards" holds one ".. container:: card" per card. */
+.cards.container {
+  counter-reset: card;
+  padding: 0;
+  overflow: visible;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.card.container {
+  counter-increment: card;
+  position: relative;
+  margin: 0;
+  width: auto;
+  overflow: visible;
+  border: 1px solid var(--color-background-border);
+  border-radius: 0.9rem;
+  padding: 1rem 1.2rem;
+  background: var(--color-background-primary);
+  box-shadow: 0 1px 2px rgb(14 26 51 / 6%);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.card.container::after {
+  content: counter(card, decimal-leading-zero);
+  position: absolute;
+  top: 1rem;
+  right: 1.2rem;
+  font-size: 0.75rem;
+  color: var(--color-foreground-muted);
+}
+
+.card:hover {
+  box-shadow: 0 6px 18px rgb(14 26 51 / 12%);
+  transform: translateY(-2px);
+}
+
+.card p {
+  margin: 0.3rem 0;
+}
+
+.card p:first-child {
+  font-size: 1rem;
+  font-weight: 600;
+  padding-right: 2rem;
+}
+
+/* The whole card is the link. */
+.card p:first-child a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.card:focus-within {
+  outline: 2px solid var(--color-brand-primary);
+}
+
+.card p:first-child a {
+  color: var(--color-foreground-primary);
+  text-decoration: none;
+}
+
+.card p:first-child a::after {
+  content: "\00a0→";
+  color: var(--color-brand-primary);
+}
+
+/* Diagram that keeps its own light and dark colors. */
+.stream-figure img {
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+.mascot {
+  text-align: center;
+  margin-top: 3rem;
+  color: var(--color-foreground-secondary);
+}
+
+table.docutils {
+  width: 100%;
+}
+
+/* Keep the column widths that a list-table sets with :widths:. On a phone,
+   keep the table readable and let its wrapper scroll sideways instead. */
+table.docutils:has(col[style]) {
+  table-layout: fixed;
+}
+
+@media (max-width: 46em) {
+  table.docutils:has(col[style]) {
+    min-width: 48rem;
+  }
+
+  /* On a phone, show the vertical pipeline diagram instead of the wide one. */
+  html body img.pipeline-wide.pipeline-wide,
+  html body img.chart-wide.chart-wide {
+    display: none !important;
+  }
+}
+
+/* Furo shows .only-light and .only-dark images with !important, so these rules need a higher specificity. */
+@media (min-width: 46.01em) {
+  html body img.pipeline-narrow.pipeline-narrow,
+  html body img.chart-narrow.chart-narrow {
+    display: none !important;
+  }
+}
+
+img.pipeline-narrow {
+  max-width: 360px;
+  margin-inline: auto;
+}
+
+table.docutils th {
+  text-align: left;
+}
+
+table.docutils td {
+  vertical-align: top;
+}
+
+table.docutils td:first-child code {
+  white-space: nowrap;
+}
+
+/* The landing page shows the logo instead of its title. */
+section#pysad > h1 {
+  display: none;
+}
+
+/* FAQ page: a grid of links to the question groups, and each question as a
+   separate item with a cobalt marker. */
+section#frequently-asked-questions p,
+section#frequently-asked-questions li {
+  max-width: 44rem;
+}
+
+section#frequently-asked-questions .faq-groups ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0 2rem;
+  padding: 0;
+  list-style: none;
+}
+
+section#frequently-asked-questions .faq-groups li {
+  position: relative;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--color-background-border);
+  border-left: 3px solid var(--color-brand-primary);
+  border-radius: 0.6rem;
+  background: var(--color-background-primary);
+  transition: box-shadow 0.15s ease;
+}
+
+section#frequently-asked-questions .faq-groups li:hover {
+  box-shadow: 0 4px 14px rgb(14 26 51 / 10%);
+}
+
+section#frequently-asked-questions .faq-groups li:focus-within {
+  outline: 2px solid var(--color-brand-primary);
+}
+
+section#frequently-asked-questions .faq-groups p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-foreground-secondary);
+}
+
+section#frequently-asked-questions .faq-groups p:first-child {
+  margin-bottom: 0.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+section#frequently-asked-questions .faq-groups a {
+  color: var(--color-foreground-primary);
+  text-decoration: none;
+}
+
+/* The whole tile is the link. */
+section#frequently-asked-questions .faq-groups a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+section#frequently-asked-questions .faq-groups a::after {
+  content: "\00a0→";  /* no line break before the arrow */
+  color: var(--color-brand-primary);
+}
+
+/* Group headings: a cobalt rule under each group title, as wide as the text. */
+section#frequently-asked-questions > section > h2 {
+  margin: 2.75rem 0 0.5rem;
+  padding-inline: 0;
+  padding-bottom: 0.4rem;
+  border-radius: 0;
+  border-bottom: 2px solid var(--color-brand-primary);
+}
+
+/* One question: a thin rule above it and a cobalt bar before its heading. */
+section#frequently-asked-questions section section {
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--color-background-border);
+}
+
+section#frequently-asked-questions > section > h2 + section,
+section#frequently-asked-questions > section > span:first-child + h2 + section {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* Furo pulls headings 0.5rem into the left margin, so the bar sits in that gap. */
+section#frequently-asked-questions section section > h3 {
+  position: relative;
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+section#frequently-asked-questions section section > h3::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.2em;
+  bottom: 0.2em;
+  width: 0.2rem;
+  border-radius: 0.1rem;
+  background: var(--color-brand-primary);
+}
+
+/* On a phone, show the group names only, in two columns. */
+@media (max-width: 40em) {
+  section#frequently-asked-questions .faq-groups ul {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  section#frequently-asked-questions .faq-groups li {
+    padding: 0.6rem 0.75rem;
+  }
+
+  section#frequently-asked-questions .faq-groups p:first-child {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  section#frequently-asked-questions .faq-groups p:not(:first-child) {
+    display: none;
+  }
+}

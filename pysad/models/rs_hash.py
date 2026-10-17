@@ -9,7 +9,9 @@ _UNSET = object()
 
 
 class RSHash(BaseModel):
-    """Subspace outlier detection in linear time with randomized hashing :cite:`sathe2016subspace`. This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_ and follows the streaming variant (RS-Stream) of the paper. Instances are normalized with `feature_mins` and `feature_maxes`, and the score is the negated average of log2(1 + c) over the ensemble, where c is the time-decayed count of the instance's grid cell, so that higher scores are more anomalous.
+    """Scores each instance by the time-decayed counts of its cells in randomized subspace grids (RS-Hash) :cite:`sathe2016subspace`.
+
+    This implementation is adapted from `cmuxstream-baselines <https://github.com/cmuxstream/cmuxstream-baselines/blob/master/Dynamic/RS_Hash/sparse_stream_RSHash.py>`_ and follows the streaming variant (RS-Stream) of the paper. Instances are normalized with `feature_mins` and `feature_maxes`, and the score is the negated average of log2(1 + c) over the ensemble, where c is the time-decayed count of the instance's grid cell, so that higher scores are more anomalous.
 
     Args:
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
@@ -72,14 +74,14 @@ class RSHash(BaseModel):
         self.index = 1
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         self._fit_keys(self._cell_keys(X))
 

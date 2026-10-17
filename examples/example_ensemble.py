@@ -1,41 +1,30 @@
-# Import modules.
+"""Average the scores of two detectors with an ensembler."""
+
 import numpy as np
-from sklearn.utils import shuffle
 
 from pysad.evaluation import AUROCMetric
 from pysad.models import LODA, xStream
 from pysad.transform.ensemble import AverageScoreEnsembler
+from pysad.transform.postprocessing import RunningZScorePostprocessor
 from pysad.utils import ArrayStreamer, Data
 
-# This example demonstrates the usage of an ensembling method.
 if __name__ == "__main__":
-    np.random.seed(61)  # Fix random seed.
+    X, y = Data().get_data("arrhythmia.mat")
 
-    data = Data("data")
-    X_all, y_all = data.get_data("arrhythmia.mat")  # Load Aryhytmia data.
-    X_all, y_all = shuffle(X_all, y_all)  # Shuffle data.
-    iterator = ArrayStreamer(shuffle=False)  # Create streamer to simulate streaming data.
-    auroc = AUROCMetric()  # Tracker of area under receiver-operating- characteristics curve metric.
+    models = [xStream(random_state=0), LODA(random_state=0)]
+    # Raw scores of different detectors have different scales, so normalize each one first.
+    normalizers = [RunningZScorePostprocessor(window_size=200) for _ in models]
+    ensembler = AverageScoreEnsembler()
+    metric = AUROCMetric()
 
-    models = [  # Models to be ensembled.
-        xStream(),
-        LODA(),
-    ]
-    ensembler = AverageScoreEnsembler()  # Ensembler module.
+    for x, label in ArrayStreamer().iter(X, y):
+        scores = np.array(
+            [
+                normalizer.fit_transform_partial(model.fit_score_partial(x))
+                for model, normalizer in zip(models, normalizers, strict=True)
+            ]
+        )
+        score = ensembler.fit_transform_partial(scores)
+        metric.update(label, score)
 
-    for X, y in iterator.iter(X_all, y_all):  # Iterate over examples.
-        model_scores = np.empty(len(models), dtype=np.float64)
-
-        # Fit & Score via for each model.
-        for i, model in enumerate(models):
-            model.fit_partial(X)
-            model_scores[i] = model.score_partial(X)
-
-        score = ensembler.fit_transform_partial(
-            model_scores
-        )  # fit to ensembler model and get ensembled score.
-
-        auroc.update(y, score)  # update AUROC metric.
-
-    # Output score.
-    print("AUROC: ", auroc.get())
+    print(f"AUROC: {metric.get():.3f}")

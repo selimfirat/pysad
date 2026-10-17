@@ -7,13 +7,15 @@ from pysad.statistics.average_meter import AverageMeter
 
 
 class WindowedMetric(BaseMetric):
-    """A helper class to evaluate windowed metrics. The distributions of the streaming model scores often change due to model collapse (i.e. becoming closer to the always loss=0) or appearing nonstationarities. Thus, the metrics such as ROC or AUC scores may change drastically. To prevent their effect, this class creates windows of size `window_size`. After each `window_size`th object, a new instance of the `metric_cls` is being created. Lastly, the metrics from all windows are averaged :cite:`xstream,gokcesu2017online`.
+    """Evaluates a metric on consecutive windows of the stream and averages the window results :cite:`xstream,gokcesu2017online`.
+
+    The distributions of the streaming model scores often change due to model collapse (i.e. becoming closer to the always loss=0) or appearing nonstationarities. Thus, the metrics such as ROC or AUC scores may change drastically. To prevent their effect, this class creates windows of size ``window_size``. It creates a new instance of ``metric_cls`` after every ``window_size`` instances. Lastly, the metrics from all windows are averaged.
 
     Args:
         metric_cls (class): The metric class to be windowed.
         window_size (int): The window size.
-        ignore_nonempty_last (bool): Whether to ignore the score of the nonempty last window. Note that the empty last window is always ignored.
-        **kwargs: Keyword arguments passed to `metric_cls` for every window, e.g. ``threshold`` for :class:`pysad.evaluation.PrecisionMetric`.
+        ignore_nonempty_last (bool): Whether to ignore the score of the nonempty last window. The empty last window is always ignored (Default=True).
+        **kwargs: Keyword arguments passed to ``metric_cls`` for every window, e.g. ``threshold`` for :class:`pysad.evaluation.PrecisionMetric`.
     """
 
     def __init__(
@@ -43,10 +45,8 @@ class WindowedMetric(BaseMetric):
         """Updates the score with new true label and predicted score/label.
 
         Args:
-            y_true : float
-                The ground truth score for the incoming instance.
-            y_pred : float
-                The predicted score for the incoming instance.
+            y_true (int): The ground truth label for the incoming instance.
+            y_pred (float): The predicted score or label for the incoming instance.
 
         Returns:
             object: self.

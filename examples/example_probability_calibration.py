@@ -1,25 +1,22 @@
-# Import modules.
-import numpy as np
+"""Convert scores into values between 0 and 1 and raise alerts above a threshold."""
 
-from pysad.models import xStream
+from pysad.models import LODA
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
-from pysad.utils import Data
+from pysad.utils import ArrayStreamer, Data
 
-# This example demonstrates the usage of the probability calibrators.
 if __name__ == "__main__":
-    np.random.seed(61)  # Fix seed.
+    X, y = Data().get_data("arrhythmia.mat")
 
-    model = xStream()  # Init model.
-    calibrator = ConformalProbabilityCalibrator(
-        windowed=True, window_size=300
-    )  # Init probability calibrator.
-    streaming_data = Data().get_iterator("arrhythmia.mat")  # Get streamer.
+    model = LODA(random_state=0)
+    calibrator = ConformalProbabilityCalibrator(window_size=300)
 
-    for i, (x, y_true) in enumerate(streaming_data):  # Stream data.
-        anomaly_score = model.fit_score_partial(x)  # Fit to an instance x and score it.
+    alerts = []
+    for t, x in enumerate(ArrayStreamer().iter(X)):
+        score = model.fit_score_partial(x)
+        calibrated = calibrator.fit_transform_partial(score)
+        # 0.95 means that the score is higher than 95% of the last 300 scores.
+        # Skip the first 100 points, while the model and the calibrator warm up.
+        if t >= 100 and calibrated >= 0.95:
+            alerts.append(t)
 
-        calibrated_score = calibrator.fit_transform_partial(anomaly_score)  # Fit & calibrate score.
-
-        # Output if the instance is anomalous.
-        if calibrated_score > 0.95:  # If the score is higher than 95% of the window's scores.
-            print(f"Alert: {i}th data point is anomalous.")
+    print(f"{len(alerts)} alerts, {int(y[alerts].sum())} of them true anomalies")

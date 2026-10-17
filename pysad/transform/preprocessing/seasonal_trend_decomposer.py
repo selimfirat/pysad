@@ -6,7 +6,7 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class SeasonalTrendDecomposer(BaseTransformer):
-    """Streaming seasonal and trend decomposition preprocessor.
+    """Removes a rolling trend and a running seasonal estimate from each feature vector.
 
     The transformer subtracts a rolling mean trend estimate and a running
     average seasonal estimate for each position in the season. This is an
@@ -17,8 +17,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
     Args:
         season_length (int): Number of observations in one seasonal period.
-        trend_window (int): Number of recent observations used to estimate the
-            trend. If None, defaults to ``season_length``.
+        trend_window (int or None): Number of recent observations used to estimate the trend. If None, the decomposer uses ``season_length`` (Default=None).
     """
 
     def __init__(self, season_length, trend_window=None):
@@ -92,7 +91,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            residual_X (np.float64 array of shape (num_features,)): Residual feature vector.
+            np.float64 array of shape (num_features,): Residual feature vector.
         """
         X = self._as_array(X)
 
@@ -109,7 +108,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            residual_X (np.float64 array of shape (num_features,)): Residual feature vector.
+            np.float64 array of shape (num_features,): Residual feature vector.
         """
         X = self._as_array(X)
 

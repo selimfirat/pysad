@@ -9,8 +9,8 @@ class AbsStatistic(UnivariateStatistic):
     """The absolute value of the statistic that is tracked.
 
     Args:
-        statistic_cls (class): The class of the statistic to be instiantiated.
-        **kwargs (Keyword arguments): The keyword arguments that is input to the statistic_cls.
+        statistic_cls (class): The class of the statistic to be instantiated.
+        **kwargs (Keyword arguments): The keyword arguments that are passed to ``statistic_cls``.
     """
 
     def __init__(self, statistic_cls: type[UnivariateStatistic], **kwargs: Any) -> None:

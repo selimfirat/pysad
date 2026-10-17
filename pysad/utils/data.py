@@ -35,9 +35,7 @@ class Data:
     ``data_base_path``.
 
     Args:
-        data_base_path (str | None): Base directory containing data files or where
-            downloaded datasets should be cached. If None, defaults to the directory
-            in ``PYSAD_DATA_DIR`` if set, or ``~/.cache/pysad``.
+        data_base_path (str or None): Base directory that contains the data files and caches the downloaded datasets. If None, the class uses the directory in ``PYSAD_DATA_DIR`` if set, or ``~/.cache/pysad`` (Default=None).
     """
 
     def __init__(self, data_base_path: str | None = None) -> None:
@@ -106,7 +104,7 @@ class Data:
             path (str): The path of data.
 
         Returns:
-            X (np.float64 array of shape (num_instances, num_features)): Feature vectors.
+            np.float64 array of shape (num_instances, num_features): Feature vectors.
         """
         X = np.loadtxt(path, delimiter=",")
 
@@ -120,8 +118,7 @@ class Data:
             download (bool): Whether to download the dataset if not present locally (Default=True).
 
         Returns:
-            X (np.ndarray of shape (num_instances, num_features)): Feature vectors.
-            y (np.ndarray of shape (num_instances,)): Labels.
+            tuple[np.ndarray, np.ndarray]: The feature vectors of shape (num_instances, num_features) and the labels of shape (num_instances,).
         """
         if os.path.exists(data_file):
             data_path = data_file
@@ -176,16 +173,16 @@ class Data:
         seed: int | None = None,
         download: bool = True,
     ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
-        """The iterator function
+        """Returns an iterator over the instances and labels of a dataset, in shuffled order by default.
 
         Args:
             data_file (str): Path or filename of data.
-            shuffle (bool): Whether to shuffle (Default=True).
-            seed (int | None): Random seed (Default=None).
+            shuffle (bool): Whether to shuffle the instances (Default=True).
+            seed (int or None): Seed for NumPy's global random state. The shuffling and the models that use ``random_state=None`` draw from this state (Default=None).
             download (bool): Whether to download the dataset if not present locally (Default=True).
 
         Returns:
-            iterator (The iterator): pysad.utils.array_streamer.ArrayStreamer.iter method applied with (X, y), where X is the variable containing feature vectors and y is the variable containing labels.
+            Iterator[tuple[np.ndarray, Any]]: Iterator over ``(X, y)`` pairs, where ``X`` is the feature vector of shape (num_features,) and ``y`` is its label.
         """
         if seed is not None:
             np.random.seed(seed)  # noqa: NPY002 - also seeds the models that draw from the global state.

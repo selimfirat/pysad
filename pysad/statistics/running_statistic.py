@@ -11,7 +11,7 @@ class RunningStatistic(BaseStatistic):
     Args:
         statistic_cls (class): The class to be instantiated and to be windowed.
         window_size (int): The window size. Must be at least 1.
-        **kwargs (Keyword arguments): The keyword arguments that is input to the statistic_cls.
+        **kwargs (Keyword arguments): The keyword arguments that are passed to ``statistic_cls``.
 
     Raises:
         ValueError: If window_size is less than 1.

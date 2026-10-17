@@ -2,7 +2,7 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class IdentityScaler(BaseTransformer):
-    """A scaler that does not modify the input, which is added for convenience."""
+    """Returns each feature vector unchanged, for pipelines that need a scaler slot."""
 
     def __init__(self):
         super().__init__(-1)
@@ -25,6 +25,6 @@ class IdentityScaler(BaseTransformer):
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            X (np.float64 array of shape (features,)): The exact same input feature vector.
+            np.float64 array of shape (num_features,): The exact same input feature vector.
         """
         return X

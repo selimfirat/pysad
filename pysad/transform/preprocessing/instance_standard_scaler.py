@@ -2,8 +2,9 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class InstanceStandardScaler(BaseTransformer):
-    """Standard deviation scaling per instance. Not that the variance and mean is calculated per instance, for which the scaling is done with.
-    The method substracts mean and divides with the standard deviation of the features, separately for each instance.
+    """Scales each feature vector to zero mean and unit standard deviation across its features.
+
+    The scaler computes the mean and the standard deviation per instance, over the features of that instance. It subtracts the mean from each feature and divides the result by the standard deviation. It learns nothing from previous instances.
     """
 
     def __init__(self):
@@ -14,6 +15,7 @@ class InstanceStandardScaler(BaseTransformer):
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.
+
         Returns:
             object: self.
         """
@@ -26,7 +28,7 @@ class InstanceStandardScaler(BaseTransformer):
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            scaled_X (np.float64 array of shape (features,)): Scaled feature vector.
+            np.float64 array of shape (num_features,): Scaled feature vector.
         """
 
         X_mean = X.mean()

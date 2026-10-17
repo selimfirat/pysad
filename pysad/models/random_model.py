@@ -4,7 +4,7 @@ from pysad.core.base_model import BaseModel
 
 
 class RandomModel(BaseModel):
-    """Random scorer that chooses a score between 0 and 1 ignoring the input.
+    """Returns a random score between 0 and 1 for every instance. Use it as a baseline.
 
     Args:
         random_state (int, np.random.RandomState or None): Seed or random number generator for the scores. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
@@ -23,7 +23,7 @@ class RandomModel(BaseModel):
             y: any
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         return self
 

@@ -1,6 +1,11 @@
-Inclusion Criteria
+Inclusion criteria
 ==================
 
-Similarly to the `Sklearn's inclusion criteria <https://scikit-learn.org/stable/faq.html#what-are-the-inclusion-criteria-for-new-algorithms>`_ and `PyOD inclusion criteria <https://pyod.readthedocs.io/en/latest/faq.html#inclusion-criteria>`_, we include well-established models with at least 50+ citations.
+PySAD includes only well-established detectors. A detector must come from a paper with 50 or more citations. `scikit-learn <https://scikit-learn.org/stable/faq.html#what-are-the-inclusion-criteria-for-new-algorithms>`_ and `PyOD <https://pyod.readthedocs.io/en/latest/>`_ use similar rules.
 
-We encourage researchers to share their code in a format that can be used through PySAD framework, i.e., extending :class:`pysad.core.base_model`. We are open to promote these models through documentation. For any questions, you may open issue on Github or email to `yilmaselimfirat (at) gmail`.
+If you published a streaming detector, you can make it work with PySAD before it meets this rule:
+
+#. Extend :class:`~pysad.core.BaseModel`, as :doc:`guides/custom_model` shows.
+#. Share your code.
+
+We can then add a link to your detector in the documentation. To ask a question, open an `issue <https://github.com/selimfirat/pysad/issues>`_ or start a thread in `Discussions <https://github.com/selimfirat/pysad/discussions>`_.

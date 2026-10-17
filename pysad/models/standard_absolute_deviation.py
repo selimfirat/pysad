@@ -5,7 +5,9 @@ from pysad.statistics.variance_meter import VarianceMeter
 
 
 class StandardAbsoluteDeviation(BaseModel):
-    """The model that assigns the deviation from the mean (or median) and divides with the standard deviation. This model is based on the 3-Sigma rule described in :cite:`hochenbaum2017automatic`.
+    """Scores each value by its deviation from the running mean (or median), divided by the running standard deviation.
+
+    This model is based on the 3-Sigma rule described in :cite:`hochenbaum2017automatic`.
 
     This is a streaming standard-deviation score component, not the paper's
     S-ESD method. It does not apply STL decomposition or generalized ESD
@@ -29,14 +31,14 @@ class StandardAbsoluteDeviation(BaseModel):
             raise ValueError("Unknown subtracted_statistic value! Please choose median or mean.")
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (1,)): The instance to fit. Note that this model is univariate.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         if len(X) != 1:
             raise ValueError("StandardAbsoluteDeviation supports univariate inputs.")

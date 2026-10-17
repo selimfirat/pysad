@@ -141,7 +141,7 @@ What PySAD contains
 
          60+
 
-      `publications that cite PySAD <https://scholar.google.com/scholar?q=%22PySAD%3A+A+Streaming+Anomaly+Detection+Framework+in+Python%22>`_
+      `publications that cite PySAD <https://scholar.google.com/scholar?cites=3884618599898298487>`_
 
 - The detectors use robust statistics, random forests, random projections and other methods. :doc:`detectors` lists each detector with its method, input and memory.
 - The conformal calibrator converts each raw score into the fraction of recent scores that it exceeds. As a result, one alert threshold works for every detector.

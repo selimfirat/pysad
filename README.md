@@ -41,7 +41,7 @@
 
 ## Why PySAD
 
-A batch detector needs the whole dataset before it can score a point. A stream does not give you the whole dataset. Points arrive one at a time, the data drifts (its distribution changes over time), and you must decide about each point before the next point arrives. PySAD is built for this setting. More than 60 publications on [Google Scholar](https://scholar.google.com/scholar?q=%22PySAD%3A+A+Streaming+Anomaly+Detection+Framework+in+Python%22) cite it, and [30+ public repositories](https://github.com/selimfirat/pysad/network/dependents) on GitHub use it.
+A batch detector needs the whole dataset before it can score a point. A stream does not give you the whole dataset. Points arrive one at a time, the data drifts (its distribution changes over time), and you must decide about each point before the next point arrives. PySAD is built for this setting. More than 60 publications on [Google Scholar](https://scholar.google.com/scholar?cites=3884618599898298487) cite it, and [30+ public repositories](https://github.com/selimfirat/pysad/network/dependents) on GitHub use it.
 
 <table>
 <tr>

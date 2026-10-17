@@ -3,7 +3,7 @@ Utilities
 
 .. module:: pysad.utils
 
-This module holds streamers, benchmark datasets and helper functions. See :doc:`/guides/stream_data`.
+This module holds streamers, benchmark datasets and helper functions. A streamer gives the points of a dataset one at a time. See :doc:`/guides/stream_data`.
 
 .. autosummary::
    :nosignatures:

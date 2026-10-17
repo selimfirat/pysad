@@ -20,7 +20,7 @@ class ExactStorm(BaseModel):
         self.window = Window(window_size=window_size)
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance. Simply, adds the instance to the window.
+        """Updates the model with the next instance by adding it to the window.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.

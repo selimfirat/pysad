@@ -3,7 +3,7 @@ Evaluation
 
 .. module:: pysad.evaluation
 
-This module holds metrics that update one point at a time. See :doc:`/guides/evaluate`.
+This module holds streaming metrics. Each metric updates its value one point at a time. See :doc:`/guides/evaluate`.
 
 .. autosummary::
    :nosignatures:

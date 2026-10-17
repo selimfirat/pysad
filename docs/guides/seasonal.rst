@@ -1,7 +1,7 @@
 Detect anomalies in seasonal series
 ===================================
 
-Many measurements repeat a cycle, for example the traffic of a website every day. A value that is normal at noon can be an anomaly at midnight. Seasonal detectors remove the cycle first and then look for anomalies in what is left.
+Many series of measurements repeat a cycle, for example the traffic of a website every day. Such a series is seasonal. A value that is normal at noon can be an anomaly at midnight. Seasonal detectors remove the cycle first and then look for anomalies in what is left.
 
 Detect anomalies in an hourly series
 ------------------------------------
@@ -32,7 +32,7 @@ This example makes two weeks of hourly values with a daily cycle and three anoma
    anomaly at hour 250: 7.6
    anomaly at hour 300: 15.4
 
-The detector tests each new value when it arrives, so ``max_anomalies=2`` limits the outliers that the test checks in one window, not in the whole series. The detector finds the low value at hour 250 too. A fixed threshold on the raw values cannot find it, because the same value is normal at another time of day.
+The detector tests each new value when it arrives. As a result, ``max_anomalies=2`` limits the anomalies that the test looks for in one window, not in the whole series. The detector finds the low value at hour 250 too. A fixed threshold on the raw values cannot find it, because the same value is normal at another time of day.
 
 How SeasonalHybridESD scores a value
 ------------------------------------
@@ -40,10 +40,10 @@ How SeasonalHybridESD scores a value
 For each new value, the detector uses the last ``window_size`` values:
 
 #. It removes the cycle and the median with STL, a method that splits a series into trend, cycle and remainder.
-#. It runs the generalized ESD (extreme Studentized deviate) test on the remaining values. The test removes the most extreme value again and again, up to ``max_anomalies`` times, and checks each one.
-#. If the test marks the new value as an outlier, the score is the test statistic: the distance of the value from the median, in median absolute deviations. Otherwise, the score is 0.
+#. It runs the generalized ESD (extreme Studentized deviate) test on the remaining values. The test removes the most extreme value again and again, up to ``max_anomalies`` times, and tests each one.
+#. If the test marks the new value as an anomaly, the score is the test statistic: the distance of the value from the median, in median absolute deviations. Otherwise, the score is 0.
 
-So a score above 0 is an alert, and you do not need a calibrator.
+As a result, a score above 0 is an alert. You do not need a calibrator, which maps scores to values between 0 and 1.
 
 Set the parameters
 ------------------
@@ -64,14 +64,14 @@ Choose the variant
 ------------------
 
 :class:`~pysad.models.SeasonalHybridESD`
-   Uses the median and the median absolute deviation in the test. Earlier anomalies in the window have little effect on it. Use it first.
+   Uses the median and the median absolute deviation in the test. Earlier anomalies in the window have little effect on it. Use this variant first.
 
 :class:`~pysad.models.SeasonalESD`
    Uses the mean and the standard deviation. Many anomalies in the window can hide each other.
 
 For a series without a cycle, use :class:`~pysad.models.MedianAbsoluteDeviation` or :class:`~pysad.models.StandardAbsoluteDeviation`.
 
-To use another univariate detector on a seasonal series, remove the cycle first with :class:`~pysad.transform.preprocessing.SeasonalTrendDecomposer`:
+A univariate detector scores points with one feature. To use another univariate detector on a seasonal series, remove the cycle first with :class:`~pysad.transform.preprocessing.SeasonalTrendDecomposer`:
 
 .. code-block:: python
 

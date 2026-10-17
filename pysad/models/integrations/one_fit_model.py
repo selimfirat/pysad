@@ -28,7 +28,7 @@ class OneFitModel(PYODModel):
             y (int or None): Ignored (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         return self
 

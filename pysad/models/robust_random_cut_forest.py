@@ -84,14 +84,14 @@ class RobustRandomCutForest(BaseModel):
         self.__dict__.update(state)
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         for tree in self.forest:
             if len(tree.leaves) > self.tree_size:

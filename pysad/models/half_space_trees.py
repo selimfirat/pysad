@@ -141,14 +141,14 @@ class HalfSpaceTrees(BaseModel):
             self._update_mass(x, target_node)
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         self.step += 1
 

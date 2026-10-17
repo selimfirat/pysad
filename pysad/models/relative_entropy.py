@@ -138,14 +138,14 @@ class RelativeEntropy(BaseModel):
         self.c_th = c_th
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance: appends `X` to the window buffer, which keeps only the last `window_size` values, and, when `X` closes a window (the window is full and ends `step` values after the previous tested window, counting from the first full window), either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise. Values that don't close a window are only appended to the window buffer; the learned hypotheses and counts are unchanged.
+        """Updates the model with the next instance. It appends `X` to the window buffer, which keeps only the last `window_size` values, and, when `X` closes a window (the window is full and ends `step` values after the previous tested window, counting from the first full window), either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise. Values that don't close a window are only appended to the window buffer; the learned hypotheses and counts are unchanged.
 
         Args:
             X (float or np.float64 array): The instance to fit, holding exactly one value.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
 
         Raises:
             ValueError: If `X` holds more than one value or is NaN. The model is left unchanged.

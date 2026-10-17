@@ -15,7 +15,7 @@ class PerfectModel(BaseModel):
             y (int): The true label.
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         if y is None:
             raise ValueError("y should be the true score")

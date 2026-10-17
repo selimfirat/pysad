@@ -31,14 +31,14 @@ class StandardAbsoluteDeviation(BaseModel):
             raise ValueError("Unknown subtracted_statistic value! Please choose median or mean.")
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (1,)): The instance to fit. Note that this model is univariate.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         if len(X) != 1:
             raise ValueError("StandardAbsoluteDeviation supports univariate inputs.")

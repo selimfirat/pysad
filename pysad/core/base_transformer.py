@@ -43,7 +43,7 @@ class BaseTransformer(ABC):
         pass
 
     def fit_transform_partial(self, X: np.ndarray) -> np.ndarray:
-        """Shortcut method that iteratively applies fit_partial and transform_partial, respectively.
+        """Updates the transformer with the next instance and transforms the instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.

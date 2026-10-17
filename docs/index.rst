@@ -21,7 +21,7 @@ PySAD
 
    .. rst-class:: lead
 
-      Streaming anomaly detection in Python. PySAD scores each data point when it arrives, with 16 streaming detectors, calibrated alerts and streaming evaluation.
+      PySAD is a Python library that finds anomalies (unusual data points) in data streams. It scores each point when the point arrives. It has 16 streaming detectors, calibrated alerts and streaming evaluation.
 
    .. container:: actions
 
@@ -55,18 +55,18 @@ PySAD
 .. container:: stream-figure
 
    .. image:: images/stream-light.svg
-      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when it arrives, and conformal calibration raises alerts at a spike, a level shift and a dip.
+      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when the point arrives. Conformal calibration raises alerts at a spike, a level shift and a dip.
       :class: only-light
 
    .. image:: images/stream-dark.svg
-      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when it arrives, and conformal calibration raises alerts at a spike, a level shift and a dip.
+      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when the point arrives. Conformal calibration raises alerts at a spike, a level shift and a dip.
       :class: only-dark
 
    .. rst-class:: caption
 
-      A Robust Random Cut Forest scores three synthetic sensors one point at a time, and conformal calibration raises an alert when the calibrated value reaches 0.995.
+      A Robust Random Cut Forest scores three synthetic sensors one point at a time. Conformal calibration converts each score into the fraction of recent scores that it exceeds. It raises an alert when this calibrated value reaches 0.995.
 
-A batch detector needs the whole dataset before it can score a point. A stream does not give you the whole dataset. Points arrive one at a time, the data drifts, and you must decide before the next point arrives. Every PySAD detector takes one point at a time, and most keep a fixed amount of memory.
+A batch detector needs the whole dataset before it can score a point. A stream does not give you the whole dataset. Points arrive one at a time, and the data drifts (its distribution changes over time). You must decide about each point before the next point arrives. Every PySAD detector takes one point at a time, and most detectors keep a fixed amount of memory.
 
 .. container:: cards
 
@@ -80,13 +80,13 @@ A batch detector needs the whole dataset before it can score a point. A stream d
 
       :doc:`How-to guides <guides/index>`
 
-      Recipes for real tasks: choose a detector, stream your data, run PyOD models, write your own detector.
+      Steps for real tasks: choose a detector, stream your data, run PyOD models and write your own detector.
 
    .. container:: card
 
       :doc:`concepts`
 
-      How streaming detection works: the model interface, prequential evaluation, calibration and memory.
+      How streaming detection works: the detector interface, prequential evaluation (score each point, then learn from it), calibration and memory.
 
    .. container:: card
 
@@ -133,13 +133,14 @@ What PySAD contains
 
          60+
 
-      publications that cite PySAD
+      `publications that cite PySAD <https://scholar.google.com/scholar?q=%22PySAD%3A+A+Streaming+Anomaly+Detection+Framework+in+Python%22>`_
 
-- Detectors from robust statistics to random forests and random projections. :doc:`detectors` lists each one with its method, input and memory.
-- Calibrators convert raw scores into the fraction of recent scores that they exceed, so one threshold works for every detector.
-- Streamers replay arrays and DataFrames as streams. Metrics update after every point: :doc:`guides/evaluate` explains each one.
-- Preprocessors, random projections, score postprocessors and ensemblers work with every detector.
-- :class:`~pysad.models.integrations.ReferenceWindowModel` runs any `PyOD <https://github.com/yzhao062/pyod>`_ detector on a sliding window.
+- The detectors use robust statistics, random forests, random projections and other methods. :doc:`detectors` lists each detector with its method, input and memory.
+- The conformal calibrator converts each raw score into the fraction of recent scores that it exceeds. As a result, one alert threshold works for every detector.
+- Streamers replay arrays and DataFrames as streams.
+- Metrics update after every point. :doc:`guides/evaluate` explains each metric.
+- Preprocessors, random projections, score postprocessors and ensemblers work with every detector. Preprocessors change each point before the detector scores it. Postprocessors change the scores, for example to smooth them. Ensemblers combine the scores of several detectors.
+- :class:`~pysad.models.integrations.ReferenceWindowModel` runs any `PyOD <https://github.com/yzhao062/pyod>`_ detector on a sliding window (the most recent points).
 
 PySAD is free software under the BSD 3-Clause License. If you use it in research, see :doc:`citing`.
 

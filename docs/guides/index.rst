@@ -1,7 +1,7 @@
 Overview
 ========
 
-Each guide solves one task. The guides assume that you know the basic loop from :doc:`/getting_started`.
+Each guide shows how to do one task. Before you use a guide, learn the basic loop in :doc:`/getting_started`.
 
 .. container:: cards
 
@@ -51,7 +51,7 @@ Each guide solves one task. The guides assume that you know the basic loop from 
 
       :doc:`production`
 
-      Start from history, save state, run one detector per source and control latency.
+      Start from historical data, save the state, run one detector per source and control the time per point.
 
    .. container:: card
 

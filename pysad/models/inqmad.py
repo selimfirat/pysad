@@ -59,14 +59,14 @@ class Inqmad(BaseModel):
         return -np.einsum("ni,ij,nj->n", psi, self.rho, psi) / self.num_fitted
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
 
         Raises:
             ValueError: If `X` is not of shape (input_shape,) or (1, input_shape). The model is left unchanged.

@@ -6,7 +6,7 @@ A PySAD detector is a subclass of :class:`~pysad.core.BaseModel` with two method
 Implement the two methods
 -------------------------
 
-This detector keeps a mean and a variance of each feature that give more weight to recent points (exponentially weighted). It scores a point by its largest z-score, the distance from the mean in standard deviations:
+This detector keeps an exponentially weighted mean and variance of each feature. These statistics give more weight to recent points. The detector scores a point by its largest z-score over the features. A z-score is the distance from the mean in standard deviations:
 
 .. code-block:: python
 
@@ -47,21 +47,21 @@ This detector keeps a mean and a variance of each feature that give more weight 
 
 Follow these rules:
 
-- ``fit_partial(X, y=None)`` takes one point of shape ``(num_features,)``, updates the state and returns ``self``. Unsupervised detectors ignore ``y``.
+- ``fit_partial(X, y=None)`` takes one point of shape ``(num_features,)``, updates the state and returns ``self``. A detector that does not use labels ignores ``y``.
 - ``score_partial(X)`` returns a score for one point. A higher score means a more anomalous point. It must not change the state.
-- Keep the state bounded. Store a window or summary statistics, not every point.
+- Keep the state at a fixed maximum size. Store a window or summary statistics, not every point.
 - If the detector uses random numbers, take a ``random_state`` parameter and resolve it with :func:`sklearn.utils.check_random_state`.
 
 You get the rest from :class:`~pysad.core.BaseModel`:
 
 - ``fit_score_partial`` calls ``fit_partial`` and then ``score_partial``.
 - ``fit``, ``score`` and ``fit_score`` process a 2-D array row by row.
-- ``score_partial`` and ``fit_score_partial`` return a Python ``float``, also when your method returns a NumPy scalar or a one-element array.
+- ``score_partial`` and ``fit_score_partial`` return a Python ``float``, even if your method returns a NumPy scalar or a one-element array.
 
 Run your detector on a stream
 -----------------------------
 
-Use the detector like any other PySAD detector. ``cardio`` has all its anomalies at the end, so this example shuffles the points with a fixed seed:
+Use the detector like any other PySAD detector. The ``cardio`` dataset has all its anomalies at the end, so this example shuffles the points with a fixed seed:
 
 .. code-block:: python
 
@@ -106,13 +106,14 @@ The other component types follow the same pattern. Subclass the base class from 
 Add your detector to PySAD
 --------------------------
 
-PySAD accepts published detectors with 50 or more citations. See :doc:`/inclusion_criteria`. To contribute one:
+PySAD accepts published detectors with 50 or more citations. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, do these steps:
 
 #. Implement the detector as its paper describes, in a new module in ``pysad/models``.
 #. Cite the paper in the class docstring with ``:cite:`` and add the BibTeX entry to ``docs/refs.bib``.
 #. Document each difference from the paper in the docstring.
 #. Add the class to ``pysad/models/__init__.py``, to ``__all__`` and to ``docs/api.rst``.
-#. Add the class to the shared tests in ``tests/models``: ``test_models.py``, ``test_score_types.py``, ``test_random_state.py`` and ``test_properties.py``. Search these files for an existing detector, such as ``LODA``, to see where. ``test_pickling.py`` tests every class in ``pysad.models.__all__``. If your detector has required arguments, add them to ``MODEL_PARAMS`` in that file. The tests check the score type, pickling, ``random_state`` and general properties of every detector.
+#. Add the class to the shared tests in ``tests/models``: ``test_models.py``, ``test_score_types.py``, ``test_random_state.py`` and ``test_properties.py``. To find the correct place, search these files for an existing detector, such as ``LODA``.
+#. If your detector has required arguments, add them to ``MODEL_PARAMS`` in ``test_pickling.py``. This file tests every class in ``pysad.models.__all__``. Together, the shared tests cover the score type, pickling, ``random_state`` and general properties of every detector.
 #. Run the tests for your detector:
 
    .. code-block:: console

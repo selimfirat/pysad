@@ -1,7 +1,7 @@
 API reference
 =============
 
-Each page lists the public classes and functions of one module, with a one-line summary. Import each name from the module of its page, for example ``from pysad.models import LODA``.
+Each page lists the public classes and functions of one module. Each name has a one-line summary. Import each name from the module that its page documents, for example ``from pysad.models import LODA``.
 
 .. list-table::
    :header-rows: 1

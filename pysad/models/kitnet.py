@@ -49,7 +49,7 @@ class KitNet(BaseModel):
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         if self.to_init:
             self.num_features = X.shape[0]

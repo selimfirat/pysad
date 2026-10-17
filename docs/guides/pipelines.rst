@@ -1,7 +1,7 @@
 Build a pipeline
 ================
 
-A pipeline adds stages before and after the detector. Each stage is an object that learns from the stream, so you call it once per point, in the same loop as the detector. :doc:`/concepts` shows the stages in order.
+A pipeline adds stages before and after the detector. Each stage is an object that learns from the stream. You call each stage once per point, in the same loop as the detector. :doc:`/concepts` shows the stages in order.
 
 The examples on this page use the ``arrhythmia`` benchmark dataset, which has 274 features:
 
@@ -37,14 +37,14 @@ This pipeline scales each point to length 1, projects it to 20 features, scores 
 
 Preprocessors and projectors return a NumPy array, and postprocessors return a ``float``. Each ``fit_transform_partial`` call updates the stage with its input and then transforms the input.
 
-If the points have many features, use a projection. A detector needs less time per point on fewer features, and random projections keep the distances between points approximately the same.
+If the points have many features, project them to fewer features. A detector needs less time per point on fewer features. Random projections keep the distances between points approximately the same.
 
 Combine several detectors
 -------------------------
 
 An ensemble combines the scores of several detectors into one score. It is usually more stable than each of its detectors.
 
-The raw scores of different detectors have different scales. Normalize the scores of each detector first, for example with a running z-score, the distance from the recent mean in standard deviations:
+The raw scores of different detectors have different scales. Before you combine the scores, normalize the scores of each detector. This example uses a running z-score, the distance from the recent mean in standard deviations:
 
 .. code-block:: python
 
@@ -83,7 +83,7 @@ PySAD has five ensemblers in :mod:`pysad.transform.ensemble`:
    * - :class:`~pysad.transform.ensemble.MaximumScoreEnsembler`
      - The highest score, which is high if any detector gives a high score
    * - :class:`~pysad.transform.ensemble.MedianScoreEnsembler`
-     - The median score, which ignores a single outlying detector
+     - The median score, which ignores one detector with an extreme score
    * - :class:`~pysad.transform.ensemble.AverageOfMaximumScoreEnsembler`
      - The average of the maximum score of random groups of detectors
    * - :class:`~pysad.transform.ensemble.MaximumOfAverageScoreEnsembler`
@@ -94,7 +94,7 @@ For the last two ensemblers, the number of detectors must be a multiple of ``n_b
 Track running statistics
 ------------------------
 
-The statistics in :mod:`pysad.statistics` track a value over a stream, for example to monitor the scores. Each meter has ``update``, ``remove`` and ``get``. :class:`~pysad.statistics.RunningStatistic` wraps a meter over a window and has ``update`` and ``get``:
+A meter tracks one statistic of a stream of values, for example the mean of the scores. The meters are in :mod:`pysad.statistics`. Each meter has ``update``, ``remove`` and ``get``. :class:`~pysad.statistics.RunningStatistic` applies a meter to a window of recent values and has ``update`` and ``get``:
 
 .. code-block:: python
 

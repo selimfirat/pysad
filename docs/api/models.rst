@@ -1,9 +1,9 @@
-Detectors
-=========
+Models
+======
 
 .. module:: pysad.models
 
-This module holds the streaming anomaly detectors. :doc:`/detectors` compares them, and :doc:`/guides/choose_detector` helps you choose one.
+This module holds the streaming anomaly detectors. :doc:`/detectors` compares them. :doc:`/guides/choose_detector` helps you choose one.
 
 .. autosummary::
    :nosignatures:

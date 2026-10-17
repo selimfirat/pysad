@@ -19,16 +19,16 @@ text{fill:#e8ecf5}.m{fill:#a3adc2}.b{fill:#131c2e;stroke:#7c9ff0}.k{fill:#7c9ff0
 <text x="74" y="72">Stream</text><text class="m" x="74" y="94">ArrayStreamer</text>
 
 <rect class="b o" x="168" y="40" width="128" height="72" rx="10"/>
-<text x="232" y="72">Preprocess</text><text class="m" x="232" y="94">InstanceUnitNorm…</text>
+<text x="232" y="72">Preprocess</text><text class="m" x="232" y="94">scale, project</text>
 
 <rect class="k" x="326" y="30" width="148" height="92" rx="12"/>
 <text class="kt" x="400" y="70">Detector</text><text class="m km" x="400" y="94">fit_score_partial</text>
 
 <rect class="b o" x="504" y="40" width="128" height="72" rx="10"/>
-<text x="568" y="64">Postprocess</text><text x="568" y="82" style="font-size:13px;font-weight:400">or ensemble</text><text class="m" x="568" y="100">RunningAverage…</text>
+<text x="568" y="64">Postprocess</text><text x="568" y="82" style="font-size:13px;font-weight:400">or ensemble</text><text class="m" x="568" y="100">smooth, combine</text>
 
-<rect class="b" x="662" y="40" width="128" height="72" rx="10"/>
-<text x="726" y="72">Calibrate</text><text class="m" x="726" y="94">Conformal…</text>
+<rect class="b o" x="662" y="40" width="128" height="72" rx="10"/>
+<text x="726" y="72">Calibrate</text><text class="m" x="726" y="94">score → 0..1</text>
 
 <circle class="r" cx="880" cy="76" r="36"/>
 <text x="880" y="81" style="fill:#fffef7">Alert</text>
@@ -41,7 +41,7 @@ text{fill:#e8ecf5}.m{fill:#a3adc2}.b{fill:#131c2e;stroke:#7c9ff0}.k{fill:#7c9ff0
 <text class="m" x="815" y="66">≥ 0.99</text>
 
 <path class="e" d="M400,122 V170"/>
-<rect class="b" x="306" y="170" width="188" height="48" rx="10" style="stroke:#8aa8e6"/>
+<rect class="b o" x="306" y="170" width="188" height="48" rx="10"/>
 <text x="400" y="192" style="font-size:14px">Evaluate</text><text class="m" x="400" y="209">AUROCMetric.update</text>
 <text class="m" x="248" y="140" style="text-anchor:start">dashed = optional</text>
 </g>

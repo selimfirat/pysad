@@ -6,15 +6,15 @@ This page explains the ideas behind PySAD. It shows how a streaming detector dif
 Streaming anomaly detection
 ---------------------------
 
-An anomaly is a data point that does not fit the pattern of the other points. Examples are a spike in a sensor reading, a fraudulent payment or a failing server.
+A stream is data that arrives one point at a time and does not end. A point is one record of the data, for example one sensor reading. An anomaly is a point that does not fit the pattern of the other points. Examples are a spike in a sensor reading, a fraudulent payment or a failing server.
 
-A batch detector, such as the detectors in `PyOD <https://github.com/yzhao062/pyod>`_, trains on a complete dataset and then scores it. A stream has no complete dataset. Streams set three constraints:
+A batch detector, such as the detectors in `PyOD <https://github.com/yzhao062/pyod>`_, trains on a complete dataset and then scores it. A stream has no complete dataset. A stream sets three constraints:
 
 - Points arrive one at a time, and the detector must score each point before the next one arrives.
 - The stream does not end, so the detector cannot keep every point in memory.
-- The data drifts. Normal behavior changes over time, and the detector must follow the change.
+- The data drifts: normal behavior changes over time. The detector must follow the change.
 
-A streaming detector learns from each point once and keeps a summary of the stream instead of the full stream. The summary is often a window: the most recent points or scores, up to a fixed number. It updates its model of normal behavior as the stream goes on.
+A streaming detector learns from each point once and keeps a summary of the stream instead of the full stream. The summary is often a window: the most recent points or scores, up to a fixed number. The detector updates its model of normal behavior with each new point. It gives each point an anomaly score: a number that is higher for a more anomalous point.
 
 The pipeline
 ------------
@@ -22,11 +22,11 @@ The pipeline
 A PySAD pipeline is a loop over the stream. Each point goes through the same stages:
 
 .. image:: images/pipeline-light.svg
-   :alt: A point flows from the stream through optional preprocessing to a detector, which gives it an anomaly score. Optional postprocessing and ensembling smooth or combine the scores, a calibrator converts the score into a value between 0 and 1, and a threshold raises an alert. A metric measures the scores while the stream runs.
+   :alt: A point flows from the stream through optional preprocessing to a detector, which gives it an anomaly score. Optional postprocessing and ensembling smooth or combine the scores. A calibrator converts the score into a value between 0 and 1, and a threshold raises an alert. A metric measures the scores while the stream runs.
    :class: only-light
 
 .. image:: images/pipeline-dark.svg
-   :alt: A point flows from the stream through optional preprocessing to a detector, which gives it an anomaly score. Optional postprocessing and ensembling smooth or combine the scores, a calibrator converts the score into a value between 0 and 1, and a threshold raises an alert. A metric measures the scores while the stream runs.
+   :alt: A point flows from the stream through optional preprocessing to a detector, which gives it an anomaly score. Optional postprocessing and ensembling smooth or combine the scores. A calibrator converts the score into a value between 0 and 1, and a threshold raises an alert. A metric measures the scores while the stream runs.
    :class: only-dark
 
 Only the stream and the detector are necessary. Each stage is an object with its own state, so you can add, remove or replace a stage without a change to the other stages.
@@ -58,7 +58,7 @@ Only the stream and the detector are necessary. Each stage is an object with its
      - Converts a score into a value between 0 and 1 with the same meaning for every detector.
    * - Evaluate
      - :mod:`pysad.evaluation`
-     - Measures the scores against labels, one point at a time.
+     - Measures the scores against labels (anomaly or normal), one point at a time.
 
 .. _model-interface:
 
@@ -75,18 +75,18 @@ Every detector extends :class:`~pysad.core.BaseModel` and has two single-point m
 
 ``fit_score_partial(x)`` learns from ``x`` and scores it, in the order that the detector's paper uses. By default, it calls ``fit_partial`` and then ``score_partial``. :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.RSHash`, :class:`~pysad.models.Inqmad`, :class:`~pysad.models.RelativeEntropy` and :class:`~pysad.models.KNNCAD` score the point before they learn from it. :class:`~pysad.models.ExactStorm` does not count the point as its own neighbor. Most loops use ``fit_score_partial``.
 
-:class:`~pysad.core.BaseModel` builds the batch methods ``fit(X)``, ``score(X)`` and ``fit_score(X)`` from the single-point methods. They take an array of shape ``(num_instances, num_features)``, one row per point, and process its rows in order, as if they were a stream. Batch scores are a NumPy ``float64`` array of shape ``(num_instances,)``.
+:class:`~pysad.core.BaseModel` builds the batch methods ``fit(X)``, ``score(X)`` and ``fit_score(X)`` from the single-point methods. They take an array of shape ``(num_instances, num_features)``, one row per point, and process its rows in order, like a stream. Batch scores are a NumPy ``float64`` array of shape ``(num_instances,)``.
 
-Preprocessors, projectors, postprocessors, ensemblers and calibrators follow the same pattern with ``fit_partial``, ``transform_partial`` and ``fit_transform_partial``. Statistics use ``update`` and ``get``, and most also have ``remove``.
+Preprocessors, projectors, postprocessors, ensemblers and calibrators follow the same pattern with ``fit_partial``, ``transform_partial`` and ``fit_transform_partial``. Running statistics, for example a running mean, use ``update`` and ``get``. Most of them also have ``remove``.
 
-Because ``score_partial`` does not change the model, you can score a point without learning from it. For example, you can freeze a model after a training period and only score from then on.
+Because ``score_partial`` does not change the model, you can score a point without learning from it. For example, you can stop calls to ``fit_partial`` after a training period and only call ``score_partial`` after it.
 
 Higher means more anomalous
 ---------------------------
 
-Every output in PySAD has the same direction: a higher value means a more anomalous point. This rule applies to detectors, postprocessors, ensemblers and calibrators. You can replace one component with another, and your threshold logic still works.
+Every output in PySAD has the same direction: a higher value means a more anomalous point. This rule applies to detectors, postprocessors, ensemblers and calibrators. A threshold is the value at or above which you raise an alert. You can replace one component with another, and the same threshold logic still works.
 
-The scale of the raw scores is different for each detector. Some detectors give a negative log density, which is high where points are rare. Some give a count and some give 0 or 1. Do not compare raw scores of two different detectors. Calibrate them first.
+The scale of the raw scores is different for each detector. Some detectors give a negative log density, which is high where points are rare. Some give a count and some give 0 or 1. Do not compare raw scores of two different detectors. Calibrate the scores first.
 
 Calibration
 -----------
@@ -99,12 +99,12 @@ A calibrator converts a raw score into a value between 0 and 1. PySAD has two ca
 :class:`~pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator`
    Fits a Gaussian (bell-shaped) distribution to the mean and variance of recent scores. It gives the probability that a value from this distribution is lower than the new score. It assumes that the scores are approximately Gaussian.
 
-With the conformal calibrator, a threshold such as 0.99 has the same meaning for every detector: if most recent scores come from normal points, about 1% of normal points raise an alert. To get fewer false alerts, increase the threshold.
+With the conformal calibrator, a threshold such as 0.99 has the same meaning for every detector. If most recent scores come from normal points, about 1% of normal points raise an alert. A false alert is an alert for a normal point. To get fewer false alerts, increase the threshold.
 
 Prequential evaluation
 ----------------------
 
-Prequential evaluation (predict, then train) is the standard way to measure a detector on a stream. The detector scores each point first, the metric records the score, and then the detector learns from the point. Each score comes from a model that did not see the point before, so the measurement shows how the detector does on new data.
+Prequential evaluation (predict, then train) is the standard way to measure a detector on a stream. A metric is a measure of how well the scores find the anomalies. In prequential evaluation, the detector scores each point first, the metric records the score, and then the detector learns from the point. Each score comes from a model that did not see the point before, so the measurement shows how the detector does on new data.
 
 .. code-block:: python
 
@@ -113,9 +113,9 @@ Prequential evaluation (predict, then train) is the standard way to measure a de
        model.fit_partial(x)
        metric.update(label, score)
 
-Most examples in this documentation call ``fit_score_partial`` instead. It uses the order of each detector's paper, as :ref:`the model interface <model-interface>` explains, and it matches a live system, where the detector learns from every point that it scores. The orders give similar results for most detectors. But a detector can give a lower score to a point that it learned from a moment before. For a strict predict-then-train comparison, call ``score_partial`` before ``fit_partial`` for every detector.
+Most examples in this documentation call ``fit_score_partial`` instead. It uses the order of each detector's paper, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores. The two orders give similar results for most detectors. But a detector can give a lower score to a point that it learned from a moment before. For a strict predict-then-train comparison, call ``score_partial`` before ``fit_partial`` for every detector.
 
-Detectors need some data before their scores are stable. A metric over the full stream includes this warm-up period. To see how the performance changes over time, compute the metric on each window of the stream on its own, as :doc:`guides/evaluate` shows.
+Detectors need some data before their scores are stable. This first part of the stream is the warm-up period. A metric over the full stream includes the warm-up period. To see how the results change over time, compute the metric separately on consecutive parts of the stream, as :doc:`guides/evaluate` shows.
 
 Memory and time
 ---------------
@@ -132,7 +132,7 @@ For these detectors, the memory has a fixed upper limit, and the time to process
 Drift and forgetting
 --------------------
 
-Normal behavior changes over time. This change is called drift. A detector follows drift only if it forgets old data. PySAD detectors forget in three ways:
+Normal behavior changes over time. This change is drift. A detector follows drift only if it forgets old data. PySAD detectors handle old data in three ways:
 
 .. list-table::
    :header-rows: 1
@@ -151,21 +151,18 @@ Normal behavior changes over time. This change is called drift. A detector follo
      - :class:`~pysad.models.LODA`, :class:`~pysad.models.Inqmad`, :class:`~pysad.models.MedianAbsoluteDeviation`, :class:`~pysad.models.StandardAbsoluteDeviation`, :class:`~pysad.models.RelativeEntropy`
      - Every point since the start counts equally, so the detector reacts more slowly to drift as the stream grows.
 
-:class:`~pysad.models.KitNet` learns only during its grace periods, and :class:`~pysad.models.LocalOutlierProbability` learns only from its initial data. After that, they do not follow drift.
+:class:`~pysad.models.KitNet` learns only during its grace periods, the first points of the stream. :class:`~pysad.models.LocalOutlierProbability` learns only from its initial points. After that, these two detectors do not follow drift.
 
 A detector that does not forget can still follow a large, permanent change if you start a new detector after the change. :doc:`guides/production` shows how.
 
 Reproducible results
 --------------------
 
-Some detectors use random numbers, for example to draw projections or tree splits. Each of them takes a ``random_state`` parameter:
-
-- An ``int`` gives the same result on every run.
-- ``None``, the default, draws from the global NumPy random state.
+Some detectors use random numbers, for example to draw projections or tree splits. Each of them takes a ``random_state`` parameter. An ``int`` gives the same result on every run. ``None``, the default, draws from the global NumPy random state.
 
 To make a complete script reproducible, pass ``random_state`` to each component, or call :func:`pysad.utils.fix_seed` once at the start. ``fix_seed`` seeds the global state that ``random_state=None`` uses.
 
 Labels
 ------
 
-Most detectors are unsupervised: they learn without labels. The ``y`` parameter of ``fit_partial`` exists so that every detector has the same interface. Unsupervised detectors ignore it. Metrics use labels to measure a detector, and the detector never sees them.
+A label tells whether a point is an anomaly or normal. Most detectors are unsupervised: they learn without labels. The ``y`` parameter of ``fit_partial`` exists so that every detector has the same interface. Unsupervised detectors ignore it. Metrics use labels to measure a detector. The detector never sees the labels.

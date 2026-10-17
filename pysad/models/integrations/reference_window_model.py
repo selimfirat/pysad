@@ -44,7 +44,7 @@ class ReferenceWindowModel(PYODModel):
             self.initial_ref_window = False
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.

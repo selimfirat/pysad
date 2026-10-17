@@ -120,14 +120,14 @@ class KNNCAD(BaseModel):
         return self.scores
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance. Note that this model is univariate.
+        """Updates the model with the next instance. Note that this model is univariate.
 
         Args:
             X (float or np.float64 array): The instance to fit, holding exactly one value (e.g. a scalar or an array of shape (1,) or (1, 1)).
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
 
         Raises:
             ValueError: If `X` does not hold exactly one value.

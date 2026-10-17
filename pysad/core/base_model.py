@@ -58,14 +58,14 @@ class BaseModel(ABC):
 
     @abstractmethod
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> BaseModel:
-        """Fits the model to next instance.
+        """Updates the model with the next instance.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int): The label of the instance (Optional for unsupervised models, default=None).
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         pass
 
@@ -82,7 +82,7 @@ class BaseModel(ABC):
         pass
 
     def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
-        """Applies fit_partial and score_partial to the next instance, respectively.
+        """Updates the model with the next instance and scores it.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit and score.
@@ -97,8 +97,8 @@ class BaseModel(ABC):
         """Fits the model to all instances in order.
 
         Args:
-            X (np.float64 array of shape (num_instances, num_features)): The instances in order to fit.
-            y (np.int32 array of shape (num_instances,)): The labels of the instances in order to fit (Optional for unsupervised models, default=None).
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
+            y (np.int32 array of shape (num_instances,)): The labels of the instances, in order (Optional for unsupervised models, default=None).
 
         Returns:
             object: Fitted model.
@@ -112,7 +112,7 @@ class BaseModel(ABC):
         """Scores all instances via score_partial iteratively.
 
         Args:
-            X (np.float64 array of shape (num_instances, num_features)): The instances in order to score.
+            X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order.
 
         Returns:
             np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
@@ -124,11 +124,11 @@ class BaseModel(ABC):
         return y_pred
 
     def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
-        """This helper method applies fit_score_partial to all instances in order.
+        """Applies ``fit_score_partial`` to each instance in order and returns the scores.
 
         Args:
-            X (np.float64 array of shape (num_instances, num_features)): The instances in order to fit.
-            y (np.int32 array of shape (num_instances, )): The labels of the instances in order to fit (Optional for unsupervised models, default=None).
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
+            y (np.int32 array of shape (num_instances, )): The labels of the instances, in order (Optional for unsupervised models, default=None).
 
         Returns:
             np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.

@@ -15,7 +15,7 @@ class NullModel(BaseModel):
             y: any
 
         Returns:
-            object: Returns the self.
+            object: The model itself.
         """
         return self
 

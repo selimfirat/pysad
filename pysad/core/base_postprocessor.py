@@ -37,7 +37,7 @@ class BasePostprocessor(ABC):
         pass
 
     def fit_transform_partial(self, score: float) -> float:
-        """Shortcut method that iteratively applies fit_partial and transform_partial, respectively.
+        """Updates the postprocessor with the next score and transforms the score.
 
         Args:
             score (float): Input score.

@@ -30,7 +30,7 @@ To change the code, see :doc:`contributing`.
 Dependencies
 ------------
 
-pip installs these packages with PySAD. PySAD has no optional extras: every detector works after ``pip install pysad``.
+pip installs these packages with PySAD. PySAD has no optional extras, so you do not install other packages. Every detector works after ``pip install pysad``.
 
 .. list-table::
    :header-rows: 1
@@ -64,10 +64,10 @@ pip installs these packages with PySAD. PySAD has no optional extras: every dete
      - 0.4.0
      - :class:`~pysad.models.LocalOutlierProbability`
 
-Check the installation
-----------------------
+Test the installation
+---------------------
 
-Run this command. It prints the installed version:
+To test the installation, run this command. It prints the installed version:
 
 .. code-block:: console
 

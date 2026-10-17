@@ -12,6 +12,6 @@ If you use PySAD in a scientific publication, cite the paper:
      year={2020}
    }
 
-To cite a specific version of the software, use its Zenodo DOI. The DOI `10.5281/zenodo.22983312 <https://doi.org/10.5281/zenodo.22983312>`_ always resolves to the latest release, and each release has its own DOI on that page.
+To cite a specific version of the software, use its Zenodo DOI. The DOI `10.5281/zenodo.22983312 <https://doi.org/10.5281/zenodo.22983312>`_ always points to the latest release. That page also lists a separate DOI for each release.
 
-Also cite the paper of each detector that you use. :doc:`detectors` lists them, and :doc:`references` gives the full entries.
+Also cite the paper of each detector that you use. :doc:`detectors` lists these papers. :doc:`references` gives the full entries.

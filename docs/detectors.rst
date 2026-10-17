@@ -3,12 +3,12 @@ Detectors
 
 PySAD has 16 streaming detectors. This page lists the input that each detector takes, what it needs before the stream starts and the memory that it keeps. For the parameters, follow the link to the API reference. To choose a detector, see :doc:`guides/choose_detector`.
 
-In the memory column, "fixed" means that the memory has an upper limit that does not depend on the length of the stream.
+In the memory column, "fixed" means that the memory has an upper limit that does not depend on the length of the stream. A window is the most recent points, up to a fixed number.
 
 Multivariate detectors
 ----------------------
 
-These detectors take points with one or more features.
+These detectors take points with one or more features. A feature is one measured value of a point.
 
 .. list-table::
    :header-rows: 1
@@ -91,7 +91,7 @@ These detectors take points with exactly one feature. Give each value as an arra
    * - :class:`~pysad.models.KNNCAD`
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`
      - A probationary period: at least 48 values that it learns from before it scores
-     - Grows: keeps every value
+     - Grows: keeps every value in a buffer, but scores only against its recent training and calibration windows
    * - :class:`~pysad.models.RelativeEntropy`
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values
@@ -100,7 +100,7 @@ These detectors take points with exactly one feature. Give each value as an arra
 PyOD integrations
 -----------------
 
-These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod>`_ on a stream. See :doc:`guides/pyod`.
+These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod>`_ on a stream. A batch detector trains on a complete dataset. For instructions, see :doc:`guides/pyod`.
 
 .. list-table::
    :header-rows: 1
@@ -109,7 +109,7 @@ These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod
    * - Wrapper
      - Behavior
    * - :class:`~pysad.models.integrations.ReferenceWindowModel`
-     - Trains the detector on a sliding window and trains it again every ``sliding_size`` points :cite:`xstream`.
+     - Trains the detector on a window of recent points and trains it again every ``sliding_size`` points :cite:`xstream`.
    * - :class:`~pysad.models.integrations.OneFitModel`
      - Trains the detector once on initial points and then only scores.
 
@@ -129,4 +129,4 @@ These models do not detect anomalies. Use them to test a pipeline or as a refere
    * - :class:`~pysad.models.RandomModel`
      - A random value between 0 and 1.
    * - :class:`~pysad.models.PerfectModel`
-     - The label of the point. It gives the best possible result for a metric.
+     - The label of the point (the known answer: anomaly or normal). It gives the best possible result for a metric.

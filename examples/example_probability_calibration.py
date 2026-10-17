@@ -16,7 +16,7 @@ if __name__ == "__main__":
         calibrated = calibrator.fit_transform_partial(score)
         # 0.95 means that the score is higher than 95% of the last 300 scores.
         # Skip the first 100 points, while the model and the calibrator warm up.
-        if t >= 100 and calibrated > 0.95:
+        if t >= 100 and calibrated >= 0.95:
             alerts.append(t)
 
     print(f"{len(alerts)} alerts at points {alerts}")

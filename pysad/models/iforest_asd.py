@@ -19,7 +19,7 @@ class IForestASD(ReferenceWindowModel):
         # TODO: implement concept drift method
 
     def fit_partial(self, X, y=None):
-        """Fits the model to next instance. `y` is accepted for API consistency but always
+        """Updates the model with the next instance. `y` is accepted for API consistency but always
         ignored, since the wrapped `IForest` is unsupervised and PyOD warns whenever a
         non-`None` `y` reaches its `fit`.
 

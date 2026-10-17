@@ -66,6 +66,18 @@
 .highlight :is(.nb, .bp, .o, .p, .nn, .n, .nf, .nc, .gp) {
   color: inherit !important;
   font-weight: inherit !important;
+  text-decoration: none !important;
+}
+
+/* In dark mode, dim plain code text a little, so that keywords and strings stand out. */
+body[data-theme="dark"] .highlight pre {
+  color: #c9d1e3;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) .highlight pre {
+    color: #c9d1e3;
+  }
 }
 
 .highlight a {
@@ -291,7 +303,16 @@ table.docutils:has(col[style]) {
 
 @media (max-width: 46em) {
   table.docutils:has(col[style]) {
-    min-width: 40rem;
+    min-width: 48rem;
+  }
+
+  /* Keep the hero chart readable on a phone: it scrolls sideways instead of shrinking. */
+  .stream-figure {
+    overflow-x: auto;
+  }
+
+  .stream-figure img {
+    min-width: 640px;
   }
 }
 
@@ -310,4 +331,130 @@ table.docutils td:first-child code {
 /* The landing page shows the logo instead of its title. */
 section#pysad > h1 {
   display: none;
+}
+
+/* FAQ page: a grid of links to the question groups, and each question as a
+   separate item with a cobalt marker. */
+section#frequently-asked-questions p,
+section#frequently-asked-questions li {
+  max-width: 44rem;
+}
+
+section#frequently-asked-questions .faq-groups ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0 2rem;
+  padding: 0;
+  list-style: none;
+}
+
+section#frequently-asked-questions .faq-groups li {
+  position: relative;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--color-background-border);
+  border-left: 3px solid var(--color-brand-primary);
+  border-radius: 0.6rem;
+  background: var(--color-background-primary);
+  transition: box-shadow 0.15s ease;
+}
+
+section#frequently-asked-questions .faq-groups li:hover {
+  box-shadow: 0 4px 14px rgb(14 26 51 / 10%);
+}
+
+section#frequently-asked-questions .faq-groups li:focus-within {
+  outline: 2px solid var(--color-brand-primary);
+}
+
+section#frequently-asked-questions .faq-groups p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-foreground-secondary);
+}
+
+section#frequently-asked-questions .faq-groups p:first-child {
+  margin-bottom: 0.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+section#frequently-asked-questions .faq-groups a {
+  color: var(--color-foreground-primary);
+  text-decoration: none;
+}
+
+/* The whole tile is the link. */
+section#frequently-asked-questions .faq-groups a::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+section#frequently-asked-questions .faq-groups a::after {
+  content: "\00a0→";  /* no line break before the arrow */
+  color: var(--color-brand-primary);
+}
+
+/* Group headings: a cobalt rule under each group title, as wide as the text. */
+section#frequently-asked-questions > section > h2 {
+  margin: 2.75rem 0 0.5rem;
+  padding-inline: 0;
+  padding-bottom: 0.4rem;
+  border-radius: 0;
+  border-bottom: 2px solid var(--color-brand-primary);
+}
+
+/* One question: a thin rule above it and a cobalt bar before its heading. */
+section#frequently-asked-questions section section {
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--color-background-border);
+}
+
+section#frequently-asked-questions > section > h2 + section,
+section#frequently-asked-questions > section > span:first-child + h2 + section {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* Furo pulls headings 0.5rem into the left margin, so the bar sits in that gap. */
+section#frequently-asked-questions section section > h3 {
+  position: relative;
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+section#frequently-asked-questions section section > h3::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.2em;
+  bottom: 0.2em;
+  width: 0.2rem;
+  border-radius: 0.1rem;
+  background: var(--color-brand-primary);
+}
+
+/* On a phone, show the group names only, in two columns. */
+@media (max-width: 40em) {
+  section#frequently-asked-questions .faq-groups ul {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  section#frequently-asked-questions .faq-groups li {
+    padding: 0.6rem 0.75rem;
+  }
+
+  section#frequently-asked-questions .faq-groups p:first-child {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  section#frequently-asked-questions .faq-groups p:not(:first-child) {
+    display: none;
+  }
 }

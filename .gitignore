@@ -147,3 +147,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Pickled models from running the docs examples.
+*.pkl

@@ -11,7 +11,7 @@ from pysad.utils import ArrayStreamer, Data
 if __name__ == "__main__":
     X, y = Data().get_data("arrhythmia.mat")
 
-    models = [xStream(random_state=61), LODA(random_state=61)]
+    models = [xStream(random_state=0), LODA(random_state=0)]
     # Raw scores of different detectors have different scales, so normalize each one first.
     normalizers = [RunningZScorePostprocessor(window_size=200) for _ in models]
     ensembler = AverageScoreEnsembler()

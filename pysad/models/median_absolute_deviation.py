@@ -22,7 +22,7 @@ class MedianAbsoluteDeviation(BaseModel):
         """Updates the model with the next instance.
 
         Args:
-            X (float): The instance to fit. Note that this model is univariate.
+            X (np.float64 array of shape (1,)): The instance to fit. This model is univariate.
             y (int): Ignored since the model is unsupervised (Default=None).
 
         Returns:
@@ -41,7 +41,7 @@ class MedianAbsoluteDeviation(BaseModel):
         """Scores the anomalousness of the next instance.
 
         Args:
-            X (float): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances. Note that this model is univariate.
+            X (np.float64 array of shape (1,)): The instance to score. This model is univariate.
 
         Returns:
             float: The anomalousness score of the input instance.

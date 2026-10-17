@@ -22,7 +22,7 @@ It prints:
 Build a full pipeline
 ---------------------
 
-This script scales each point, scores it with xStream and smooths the score. :doc:`guides/pipelines` explains each stage.
+This script shows how the stages of a pipeline connect. It scales each point, scores it with xStream and smooths the score. It does not tune the stages, so its AUROC is lower than the plain loop above. Measure each stage on your data, as :doc:`guides/evaluate` shows. :doc:`guides/pipelines` explains each stage.
 
 .. literalinclude:: ../examples/example_usage.py
    :language: python
@@ -45,7 +45,7 @@ It prints:
 
 .. code-block:: text
 
-   29 alerts at points [102, 141, 187, 189, 190, 198, 204, 207, 218, 252, 253, 257, 293, 297, 303, 312, 313, 316, 354, 356, 370, 379, 388, 395, 403, 424, 427, 430, 449]
+   27 alerts, 17 of them true anomalies
 
 Combine detectors
 -----------------
@@ -59,7 +59,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.801
+   AUROC: 0.789
 
 Run a PyOD model
 ----------------
@@ -73,7 +73,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.819
+   AUROC: 0.807
 
 Find anomalies in a seasonal series
 -----------------------------------
@@ -88,7 +88,9 @@ It prints:
 .. code-block:: text
 
    SeasonalESD flagged [150, 260, 340, 364], true anomalies [150, 260, 340]
-   SeasonalHybridESD flagged [150, 260, 265, 266, 267, 340, 364], true anomalies [150, 260, 340]
+   SeasonalHybridESD flagged [150, 232, 260, 340, 364], true anomalies [150, 260, 340]
+
+Both variants find the three spikes. Each variant also flags a few normal values. To raise fewer false alerts, lower ``alpha``. :doc:`guides/seasonal` explains when to use each variant.
 
 Stream a pandas DataFrame
 -------------------------
@@ -121,7 +123,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.803
+   AUROC: 0.794
 
 Track running statistics
 ------------------------
@@ -135,4 +137,4 @@ It prints:
 
 .. code-block:: text
 
-   mean: -0.039, standard deviation: 1.006
+   mean: -0.048, standard deviation: 0.977

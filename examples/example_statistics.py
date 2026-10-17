@@ -5,7 +5,7 @@ import numpy as np
 from pysad.statistics import AverageMeter, VarianceMeter
 
 if __name__ == "__main__":
-    values = np.random.default_rng(61).normal(size=1000)  # mean 0, standard deviation 1
+    values = np.random.default_rng(0).normal(size=1000)  # mean 0, standard deviation 1
 
     mean = AverageMeter()
     variance = VarianceMeter()

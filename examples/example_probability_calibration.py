@@ -7,7 +7,7 @@ from pysad.utils import ArrayStreamer, Data
 if __name__ == "__main__":
     X, y = Data().get_data("arrhythmia.mat")
 
-    model = LODA(random_state=61)
+    model = LODA(random_state=0)
     calibrator = ConformalProbabilityCalibrator(window_size=300)
 
     alerts = []
@@ -19,4 +19,4 @@ if __name__ == "__main__":
         if t >= 100 and calibrated >= 0.95:
             alerts.append(t)
 
-    print(f"{len(alerts)} alerts at points {alerts}")
+    print(f"{len(alerts)} alerts, {int(y[alerts].sum())} of them true anomalies")

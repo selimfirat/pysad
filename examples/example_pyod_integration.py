@@ -15,7 +15,7 @@ if __name__ == "__main__":
         window_size=240,
         sliding_size=30,
         initial_window_X=X[:100],
-        random_state=61,
+        random_state=0,
     )
     metric = AUROCMetric()
 

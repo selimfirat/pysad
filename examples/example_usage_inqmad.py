@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     scaler = InstanceUnitNormScaler()
     # gamma is the kernel bandwidth. Tune it to the scale of the scaled points.
-    model = Inqmad(input_shape=X.shape[1], dim_x=128, gamma=10, random_state=61)
+    model = Inqmad(input_shape=X.shape[1], dim_x=128, gamma=10, random_state=0)
     metric = AUROCMetric()
 
     for x, label in ArrayStreamer().iter(X, y):

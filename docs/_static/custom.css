@@ -307,14 +307,16 @@ table.docutils:has(col[style]) {
   }
 
   /* On a phone, show the vertical pipeline diagram instead of the wide one. */
-  html body img.pipeline-wide.pipeline-wide {
+  html body img.pipeline-wide.pipeline-wide,
+  html body img.chart-wide.chart-wide {
     display: none !important;
   }
 }
 
 /* Furo shows .only-light and .only-dark images with !important, so these rules need a higher specificity. */
 @media (min-width: 46.01em) {
-  html body img.pipeline-narrow.pipeline-narrow {
+  html body img.pipeline-narrow.pipeline-narrow,
+  html body img.chart-narrow.chart-narrow {
     display: none !important;
   }
 }

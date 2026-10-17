@@ -45,7 +45,7 @@ These detectors take points with one or more features. A feature is one measured
    * - :class:`~pysad.models.KitNet`
      - Ensemble of autoencoders :cite:`mirsky2018kitsune`
      - Nothing
-     - Fixed. Learns only during its grace periods, the first points of the stream (100,000 with the defaults). Gives 0 during the first grace period
+     - Fixed. Learns only during its grace periods (100,000 points by default)
    * - :class:`~pysad.models.ExactStorm`
      - Neighbor counts in a sliding window :cite:`angiulli2007detecting`
      - Nothing
@@ -81,7 +81,7 @@ These detectors take points with exactly one feature. Give each value as an arra
      - The period, the window size and the maximum number of anomalies per window
      - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.MedianAbsoluteDeviation`
-     - Distance from the running median in median absolute deviations (MADs) :cite:`hochenbaum2017automatic`
+     - Distance from the running median in scaled median absolute deviations (1.4826 × MAD) :cite:`hochenbaum2017automatic`
      - Nothing
      - Grows: keeps every value, and the time per point grows with the stream
    * - :class:`~pysad.models.StandardAbsoluteDeviation`

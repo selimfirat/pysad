@@ -62,7 +62,7 @@ class BaseModel(ABC):
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
-            y (int): The label of the instance (Optional for unsupervised models, default=None).
+            y (int or None): The label of the instance. Models that do not use labels ignore it (Default=None).
 
         Returns:
             object: The model itself.
@@ -86,7 +86,7 @@ class BaseModel(ABC):
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit and score.
-            y (int): The label of the instance (Optional for unsupervised models, default=None).
+            y (int or None): The label of the instance. Models that do not use labels ignore it (Default=None).
 
         Returns:
             float: The anomalousness score of the input instance.
@@ -98,10 +98,10 @@ class BaseModel(ABC):
 
         Args:
             X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
-            y (np.int32 array of shape (num_instances,)): The labels of the instances, in order (Optional for unsupervised models, default=None).
+            y (np.int32 array of shape (num_instances,)): The labels of the instances, in order. Models that do not use labels ignore them (Default=None).
 
         Returns:
-            object: Fitted model.
+            object: The model itself.
         """
         for xi, yi in _iterate(X, y):
             self.fit_partial(xi, yi)
@@ -109,7 +109,7 @@ class BaseModel(ABC):
         return self
 
     def score(self, X: np.ndarray) -> np.ndarray:
-        """Scores all instances via score_partial iteratively.
+        """Scores all instances in order with ``score_partial``.
 
         Args:
             X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order.
@@ -128,7 +128,7 @@ class BaseModel(ABC):
 
         Args:
             X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
-            y (np.int32 array of shape (num_instances, )): The labels of the instances, in order (Optional for unsupervised models, default=None).
+            y (np.int32 array of shape (num_instances, )): The labels of the instances, in order. Models that do not use labels ignore them (Default=None).
 
         Returns:
             np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.

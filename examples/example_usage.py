@@ -10,7 +10,7 @@ if __name__ == "__main__":
     X, y = Data().get_data("arrhythmia.mat")
 
     scaler = InstanceUnitNormScaler()
-    model = xStream(random_state=61)
+    model = xStream(random_state=0)
     smoother = RunningAveragePostprocessor(window_size=5)
     metric = AUROCMetric()
 

@@ -55,12 +55,20 @@ PySAD
 .. container:: stream-figure
 
    .. image:: images/stream-light.svg
-      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when the point arrives. Conformal calibration raises alerts at a spike, a level shift and a dip.
-      :class: only-light
+      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when the point arrives. Conformal calibration raises alerts at a spike, a short plateau and a dip.
+      :class: only-light chart-wide
 
    .. image:: images/stream-dark.svg
-      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when the point arrives. Conformal calibration raises alerts at a spike, a level shift and a dip.
-      :class: only-dark
+      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when the point arrives. Conformal calibration raises alerts at a spike, a short plateau and a dip.
+      :class: only-dark chart-wide
+
+   .. image:: images/stream-narrow-light.svg
+      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when the point arrives. Conformal calibration raises alerts at a spike, a short plateau and a dip.
+      :class: only-light chart-narrow
+
+   .. image:: images/stream-narrow-dark.svg
+      :alt: Three sensor readings stream in from left to right. A Robust Random Cut Forest scores each point when the point arrives. Conformal calibration raises alerts at a spike, a short plateau and a dip.
+      :class: only-dark chart-narrow
 
    .. rst-class:: caption
 
@@ -74,7 +82,7 @@ A batch detector needs the whole dataset before it can score a point. A stream d
 
       :doc:`getting_started`
 
-      Build your first streaming detector in ten minutes: score, measure and alert.
+      Run your first streaming detector in ten minutes: score, measure and alert.
 
    .. container:: card
 

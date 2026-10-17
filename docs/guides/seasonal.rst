@@ -39,9 +39,9 @@ How SeasonalHybridESD scores a value
 
 For each new value, the detector uses the last ``window_size`` values:
 
-#. It removes the cycle and the median with STL, a method that splits a series into trend, cycle and remainder.
+#. It removes the cycle with STL, a method that splits a series into trend, cycle and remainder. Then it subtracts the median of the window.
 #. It runs the generalized ESD (extreme Studentized deviate) test on the remaining values. The test removes the most extreme value again and again, up to ``max_anomalies`` times, and tests each one.
-#. If the test marks the new value as an anomaly, the score is the test statistic: the distance of the value from the median, in median absolute deviations. Otherwise, the score is 0.
+#. If the test marks the new value as an anomaly, the score is the test statistic: the distance of the value from the median, in scaled median absolute deviations (1.4826 × MAD, a robust estimate of the standard deviation). Otherwise, the score is 0.
 
 As a result, a score above 0 is an alert. You do not need a calibrator, which maps scores to values between 0 and 1.
 

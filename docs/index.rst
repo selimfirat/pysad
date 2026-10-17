@@ -17,7 +17,7 @@ PySAD
 
    .. rst-class:: tagline
 
-      One pass. Every outlier
+      One pass. Every outlier.
 
    .. rst-class:: lead
 
@@ -30,9 +30,11 @@ PySAD
 
 A batch detector needs the whole dataset before it can score a point. A stream does not give you the whole dataset: points arrive one at a time, the data drifts, and you must decide before the next point arrives. Every PySAD detector learns from one point at a time, and most keep a fixed amount of memory.
 
-.. code-block:: console
+.. container:: terminal
 
-   $ pip install pysad
+   .. code-block:: console
+
+      $ pip install pysad
 
 .. code-block:: python
 

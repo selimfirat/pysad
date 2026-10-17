@@ -1,4 +1,5 @@
-/* Brand: blue #0741ad, red #fc3636, ink #0e1a33, paper #fffef7. */
+/* Brand (loops/brand): cobalt #0741ad, coral #fc3636 only for the outlier,
+   paper #fffef7 panels on an ivory #efebdf canvas, ink #0e1a33 text. */
 
 .hero {
   text-align: center;
@@ -6,20 +7,12 @@
 }
 
 .hero .tagline {
-  font-size: 1.9rem;
+  color: var(--color-brand-primary);
+  font-size: 2.2rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0.5rem 0 0.25rem;
-}
-
-.hero .tagline::after {
-  content: "";
-  display: inline-block;
-  width: 0.42em;
-  height: 0.42em;
-  margin-left: 0.15em;
-  border-radius: 50%;
-  background: #fc3636;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin: 0.75rem 0 0.5rem;
 }
 
 .hero .lead {
@@ -29,8 +22,77 @@
   margin: 0 auto;
 }
 
-/* Card grid: a ".. container:: cards" with one ".. container:: card" per card. */
+/* Code blocks on the warm brand tints instead of the Pygments gray. */
+body .highlight,
+body .highlight pre {
+  background: var(--color-code-background);
+}
+
+/* Terminal: a cobalt window with a coral block cursor. */
+.terminal.container {
+  max-width: 26rem;
+  margin: 1.5rem auto;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--color-brand-primary);
+  border-radius: 0.6rem;
+}
+
+.terminal.container::before {
+  content: "";
+  display: block;
+  height: 1.6rem;
+  background:
+    radial-gradient(circle, #fffef7 0.22rem, transparent 0.24rem) 0.7rem 50% / 0.8rem 0.8rem no-repeat,
+    radial-gradient(circle, #fffef7 0.22rem, transparent 0.24rem) 1.5rem 50% / 0.8rem 0.8rem no-repeat,
+    radial-gradient(circle, #fffef7 0.22rem, transparent 0.24rem) 2.3rem 50% / 0.8rem 0.8rem no-repeat,
+    var(--color-brand-primary);
+}
+
+.terminal .highlight,
+.terminal .highlight pre {
+  margin: 0;
+  border-radius: 0;
+  background: var(--color-background-primary);
+}
+
+.terminal .highlight pre {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.2rem;
+  font-size: 1.15rem;
+  color: var(--color-brand-primary);
+}
+
+.terminal .highlight pre span {
+  color: var(--color-brand-primary);
+}
+
+.terminal .highlight pre::after {
+  content: "";
+  width: 0.6em;
+  height: 1.2em;
+  margin-left: 0.1em;
+  background: #fc3636;
+  animation: blink 1.1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal .highlight pre::after {
+    animation: none;
+  }
+}
+
+/* Cards: rounded panels with a small label and a page number, as on the brand board.
+   A ".. container:: cards" holds one ".. container:: card" per card. */
 .cards.container {
+  counter-reset: card;
   padding: 0;
   overflow: visible;
   display: grid;
@@ -40,19 +102,30 @@
 }
 
 .card.container {
+  counter-increment: card;
+  position: relative;
   margin: 0;
   width: auto;
   overflow: visible;
   border: 1px solid var(--color-background-border);
-  border-top: 3px solid var(--color-brand-primary);
-  border-radius: 0.5rem;
-  padding: 0.9rem 1.1rem;
+  border-radius: 0.9rem;
+  padding: 1rem 1.2rem;
   background: var(--color-background-primary);
+  box-shadow: 0 1px 2px rgb(14 26 51 / 6%);
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
+.card.container::after {
+  content: counter(card, decimal-leading-zero);
+  position: absolute;
+  top: 1rem;
+  right: 1.2rem;
+  font-size: 0.75rem;
+  color: var(--color-foreground-muted);
+}
+
 .card:hover {
-  box-shadow: 0 4px 14px rgb(14 26 51 / 12%);
+  box-shadow: 0 6px 18px rgb(14 26 51 / 12%);
   transform: translateY(-2px);
 }
 
@@ -61,12 +134,19 @@
 }
 
 .card p:first-child {
-  font-weight: 650;
-  font-size: 1.05rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding-right: 2rem;
 }
 
 .card p:first-child a {
+  color: var(--color-foreground-primary);
   text-decoration: none;
+}
+
+.card p:first-child a::after {
+  content: " →";
+  color: var(--color-brand-primary);
 }
 
 /* Diagram that keeps its own light and dark colors. */

@@ -51,7 +51,10 @@ html_theme = "furo"
 html_title = f"PySAD {release}"
 html_favicon = "favicon.svg"
 html_static_path = ["_static"]
-html_css_files = ["custom.css"]
+html_css_files = [
+    "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap",
+    "custom.css",
+]
 
 html_theme_options = {
     "light_logo": "logo.svg",
@@ -60,13 +63,26 @@ html_theme_options = {
     "source_repository": "https://github.com/selimfirat/pysad/",
     "source_branch": "master",
     "source_directory": "docs/",
+    # Brand colors: cobalt #0741ad, coral #fc3636, paper #fffef7, ivory #efebdf and ink #0e1a33.
     "light_css_variables": {
+        "font-stack": 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif',
+        "font-stack--monospace": '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+        "font-stack--headings": "var(--font-stack)",
+        "color-foreground-primary": "#0e1a33",
+        "color-background-primary": "#fffef7",
+        "color-background-secondary": "#efebdf",
+        "color-background-border": "#e2ddcd",
+        "color-code-background": "#f6f3ea",
         "color-brand-primary": "#0741ad",
         "color-brand-content": "#0741ad",
         "color-brand-visited": "#0741ad",
-        "color-background-secondary": "#fffef7",
     },
     "dark_css_variables": {
+        "color-foreground-primary": "#eef1f8",
+        "color-background-primary": "#0e1a33",
+        "color-background-secondary": "#0a1428",
+        "color-background-border": "#22304f",
+        "color-code-background": "#0a1428",
         "color-brand-primary": "#7c9ff0",
         "color-brand-content": "#7c9ff0",
         "color-brand-visited": "#7c9ff0",

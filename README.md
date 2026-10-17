@@ -259,6 +259,10 @@ pysad is released under the [BSD 3-Clause License](https://github.com/selimfirat
 ---
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/images/tripod.svg" alt="Tripod, the pysad mascot: a tripodfish that stands still on three long fins and waits for what the current brings." width="96">
+</p>
+
+<p align="center">
   If pysad is useful to you, a star helps other people find it.<br>
   To hear about new detectors and releases, choose <b>Watch → Custom → Releases</b>.
 </p>

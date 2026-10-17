@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="250 160 570 740" width="570" height="740" role="img" aria-labelledby="t">
+<title id="t">Tripod, the pysad tripodfish</title>
+<style>.l{fill:none;stroke:#0741ad;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}.s{stroke-width:20}.e{fill:#0741ad}.f{fill:#fc3636}@media (prefers-color-scheme:dark){.l{stroke:#7c9ff0}.e{fill:#7c9ff0}}</style>
+<path class="f" d="M478,246 A64,64 0 1 1 606,266 Q545,248 478,246 Z"/>
+<path class="l" d="M478,246 A64,64 0 1 1 606,266"/>
+<path class="l s" d="M352,592 L284,840 M496,590 L544,872 M712,478 L712,824"/>
+<path class="l" d="M716,402 C650,300 560,240 450,240 C340,240 262,320 262,420 C262,520 340,604 470,608 C580,612 670,560 720,462 C760,500 800,530 795,495 C790,470 770,450 762,430 C775,400 800,370 798,345 C795,325 760,345 716,402 Z"/>
+<circle class="e" cx="318" cy="413" r="21"/><circle class="e" cx="444" cy="416" r="21"/>
+<path class="l" d="M542,512 C552,562 612,566 600,486"/>
+</svg>

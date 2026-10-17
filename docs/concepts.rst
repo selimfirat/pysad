@@ -23,11 +23,19 @@ A PySAD pipeline is a loop over the stream. Each point goes through the same sta
 
 .. image:: images/pipeline-light.svg
    :alt: A point flows from the stream through optional preprocessing to a detector, which gives it an anomaly score. Optional postprocessing and ensembling smooth or combine the scores. A calibrator converts the score into a value between 0 and 1, and a threshold raises an alert. A metric measures the scores while the stream runs.
-   :class: only-light
+   :class: only-light pipeline-wide
 
 .. image:: images/pipeline-dark.svg
    :alt: A point flows from the stream through optional preprocessing to a detector, which gives it an anomaly score. Optional postprocessing and ensembling smooth or combine the scores. A calibrator converts the score into a value between 0 and 1, and a threshold raises an alert. A metric measures the scores while the stream runs.
-   :class: only-dark
+   :class: only-dark pipeline-wide
+
+.. image:: images/pipeline-vertical-light.svg
+   :alt: A point flows from the stream through optional preprocessing to a detector, which gives it an anomaly score. Optional postprocessing and ensembling smooth or combine the scores. A calibrator converts the score into a value between 0 and 1, and a threshold raises an alert. A metric measures the scores while the stream runs.
+   :class: only-light pipeline-narrow
+
+.. image:: images/pipeline-vertical-dark.svg
+   :alt: A point flows from the stream through optional preprocessing to a detector, which gives it an anomaly score. Optional postprocessing and ensembling smooth or combine the scores. A calibrator converts the score into a value between 0 and 1, and a threshold raises an alert. A metric measures the scores while the stream runs.
+   :class: only-dark pipeline-narrow
 
 Only the stream and the detector are necessary. Each stage is an object with its own state, so you can add, remove or replace a stage without a change to the other stages.
 
@@ -65,7 +73,7 @@ Only the stream and the detector are necessary. Each stage is an object with its
 The model interface
 -------------------
 
-Every detector extends :class:`~pysad.core.BaseModel` and has two single-point methods:
+Every detector extends :class:`~pysad.core.BaseModel` and has two single-point methods. The API reference calls a point an instance:
 
 ``fit_partial(x)``
    Updates the model with the point ``x``, a NumPy array of shape ``(num_features,)``.
@@ -113,7 +121,7 @@ Prequential evaluation (predict, then train) is the standard way to measure a de
        model.fit_partial(x)
        metric.update(label, score)
 
-Most examples in this documentation call ``fit_score_partial`` instead. It uses the order of each detector's paper, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores. The two orders give similar results for most detectors. But a detector can give a lower score to a point that it learned from a moment before. For a strict predict-then-train comparison, call ``score_partial`` before ``fit_partial`` for every detector.
+Most examples in this documentation call ``fit_score_partial`` instead. It uses the order of each detector's paper, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores. The two orders give similar results for most detectors. But a detector can give a lower score to a point that it learned from a moment before. For a strict predict-then-train comparison, call ``score_partial`` before ``fit_partial`` for every detector. Fit the first point before you score, because some detectors raise an error if they score before any fit: :class:`~pysad.models.RobustRandomCutForest`, :class:`~pysad.models.IForestASD`, :class:`~pysad.models.integrations.ReferenceWindowModel`, :class:`~pysad.models.KitNet`, :class:`~pysad.models.MedianAbsoluteDeviation` and :class:`~pysad.models.StandardAbsoluteDeviation`.
 
 Detectors need some data before their scores are stable. This first part of the stream is the warm-up period. A metric over the full stream includes the warm-up period. To see how the results change over time, compute the metric separately on consecutive parts of the stream, as :doc:`guides/evaluate` shows.
 

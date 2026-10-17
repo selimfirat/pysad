@@ -78,7 +78,9 @@ If single noisy points raise alerts, average the scores over a short window befo
 
    from pysad.transform.postprocessing import RunningAveragePostprocessor
 
+   model = LODA()
    smoother = RunningAveragePostprocessor(window_size=5)
+   calibrator = ConformalProbabilityCalibrator(window_size=1000)
 
    for x in streamer.iter(X):
        score = model.fit_score_partial(x)
@@ -93,6 +95,9 @@ Keep anomalies out of the model
 With ``fit_score_partial``, the model learns from every point, and also from anomalies. As a result, a long anomaly can become normal for the model. To prevent this, score each point first. Then learn from the point only if it does not raise an alert:
 
 .. code-block:: python
+
+   model = LODA()
+   calibrator = ConformalProbabilityCalibrator(window_size=1000)
 
    alerts = []
    for t, x in enumerate(streamer.iter(X)):

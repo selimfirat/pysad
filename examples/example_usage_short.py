@@ -5,10 +5,10 @@ from pysad.models import LODA
 from pysad.utils import Data
 
 if __name__ == "__main__":
-    model = LODA()
+    model = LODA(random_state=0)
     metric = AUROCMetric()
 
-    for x, label in Data().get_iterator("arrhythmia.mat"):
+    for x, label in Data().get_iterator("arrhythmia.mat", shuffle=False):
         score = model.fit_score_partial(x)  # learn from x, then score it
         metric.update(label, score)
 

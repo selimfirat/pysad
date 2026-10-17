@@ -66,7 +66,7 @@ These detectors take points with exactly one feature. Give each value as an arra
 
 .. list-table::
    :header-rows: 1
-   :widths: 28 30 20 22
+   :widths: 31 27 20 22
 
    * - Detector
      - Method

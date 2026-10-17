@@ -130,7 +130,7 @@ We apply this checklist to each pull request:
 - The pull request fixes one issue, and no other open pull request covers the same work.
 - All CI checks pass.
 - New behavior has tests. A new feature also has an example or documentation.
-- A new public class is in the ``__init__.py`` and ``__all__`` of its subpackage, and in ``docs/api.rst``.
+- A new public class is in the ``__init__.py`` and ``__all__`` of its subpackage, and in the page of its module in ``docs/api/``.
 - A new detector meets the :doc:`inclusion_criteria` and follows the steps in :doc:`guides/custom_model`.
 - If the change touches a detector, the description gives AUROC and time per instance before and after the change. Measure them with ``fit_score_partial`` on the ODDS ``arrhythmia``, ``cardio`` and ``vowels`` datasets with seeds 0 to 4.
 - The change does not keep old behavior through deprecation aliases or compatibility code.

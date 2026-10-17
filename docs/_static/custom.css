@@ -275,7 +275,7 @@ body .highlight pre {
 }
 
 .card p:first-child a::after {
-  content: " →";
+  content: "\00a0→";
   color: var(--color-brand-primary);
 }
 
@@ -306,14 +306,22 @@ table.docutils:has(col[style]) {
     min-width: 48rem;
   }
 
-  /* Keep the hero chart readable on a phone: it scrolls sideways instead of shrinking. */
-  .stream-figure {
-    overflow-x: auto;
+  /* On a phone, show the vertical pipeline diagram instead of the wide one. */
+  html body img.pipeline-wide.pipeline-wide {
+    display: none !important;
   }
+}
 
-  .stream-figure img {
-    min-width: 640px;
+/* Furo shows .only-light and .only-dark images with !important, so these rules need a higher specificity. */
+@media (min-width: 46.01em) {
+  html body img.pipeline-narrow.pipeline-narrow {
+    display: none !important;
   }
+}
+
+img.pipeline-narrow {
+  max-width: 360px;
+  margin-inline: auto;
 }
 
 table.docutils th {

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 500" width="360" height="500" role="img" aria-labelledby="t">
+<title id="t">The PySAD pipeline</title>
+<style>
+text{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;fill:#0e1a33;text-anchor:middle}
+.m{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;font-weight:400;fill:#5a6478}
+.b{fill:#fffef7;stroke:#0741ad;stroke-width:2}
+.o{stroke-dasharray:6 4}
+.k{fill:#0741ad;stroke:none}
+.kt{fill:#fffef7}.km{fill:#dfe7fb}.h{fill:#0741ad}
+.a{stroke:#0741ad;stroke-width:2;fill:none}
+.r{fill:#fc3636}
+.e{stroke:#8aa8e6;stroke-width:2;fill:none;stroke-dasharray:3 4}
+text{fill:#e8ecf5}.m{fill:#a3adc2}.b{fill:#131c2e;stroke:#7c9ff0}.k{fill:#7c9ff0}.kt{fill:#0e1a33}.km{fill:#1c2b4d}.h{fill:#7c9ff0}.a{stroke:#7c9ff0}
+</style>
+<defs><marker id="h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="h" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<g>
+<rect class="b" x="20" y="10" width="210" height="58" rx="10"/>
+<text x="125.0" y="35">Stream</text><text class="m" x="125.0" y="55">ArrayStreamer</text>
+<path class="a" d="M125.0,68 V90" marker-end="url(#h)"/>
+<rect class="b o" x="20" y="94" width="210" height="58" rx="10"/>
+<text x="125.0" y="119">Preprocess</text><text class="m" x="125.0" y="139">scale, project</text>
+<path class="a" d="M125.0,152 V174" marker-end="url(#h)"/>
+<rect class="k" x="20" y="178" width="210" height="58" rx="10"/>
+<text class="kt" x="125.0" y="203">Detector</text><text class="m km" x="125.0" y="223">fit_score_partial</text>
+<path class="e" d="M230,207.0 H252"/>
+<rect class="b o" x="252" y="184" width="102" height="46" rx="10"/>
+<text x="303.0" y="205" style="font-size:13px">Evaluate</text><text class="m" x="303.0" y="220" style="font-size:9.5px">metric.update</text>
+<path class="a" d="M125.0,236 V258" marker-end="url(#h)"/>
+<rect class="b o" x="20" y="262" width="210" height="58" rx="10"/>
+<text x="125.0" y="287">Postprocess</text><text class="m" x="125.0" y="307">smooth, combine</text>
+<path class="a" d="M125.0,320 V342" marker-end="url(#h)"/>
+<rect class="b o" x="20" y="346" width="210" height="58" rx="10"/>
+<text x="125.0" y="371">Calibrate</text><text class="m" x="125.0" y="391">score → 0..1</text>
+<path class="a" d="M125.0,404 V426" marker-end="url(#h)"/>
+<text class="m" x="165.0" y="422" style="text-anchor:start">≥ 0.99</text>
+<circle class="r" cx="125.0" cy="460" r="30"/><text x="125.0" y="465" style="fill:#fffef7">Alert</text>
+<text class="m" x="350" y="465" style="text-anchor:end">dashed = optional</text>
+</g>
+</svg>

@@ -111,7 +111,7 @@ PySAD accepts published detectors with 50 or more citations. :doc:`/inclusion_cr
 #. Implement the detector as its paper describes, in a new module in ``pysad/models``.
 #. Cite the paper in the class docstring with ``:cite:`` and add the BibTeX entry to ``docs/refs.bib``.
 #. Document each difference from the paper in the docstring.
-#. Add the class to ``pysad/models/__init__.py``, to ``__all__`` and to ``docs/api.rst``.
+#. Add the class to ``pysad/models/__init__.py``, to ``__all__`` and to ``docs/api/models.rst``.
 #. Add the class to the shared tests in ``tests/models``: ``test_models.py``, ``test_score_types.py``, ``test_random_state.py`` and ``test_properties.py``. To find the correct place, search these files for an existing detector, such as ``LODA``.
 #. If your detector has required arguments, add them to ``MODEL_PARAMS`` in ``test_pickling.py``. This file tests every class in ``pysad.models.__all__``. Together, the shared tests cover the score type, pickling, ``random_state`` and general properties of every detector.
 #. Run the tests for your detector:

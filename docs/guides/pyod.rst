@@ -72,5 +72,5 @@ This wrapper is fast, but it does not follow changes in the data. If normal beha
 Next steps
 ----------
 
-- :doc:`choose_detector` compares the wrapper with streaming detectors.
+- :doc:`choose_detector` helps you choose between the wrapper and a streaming detector.
 - :doc:`production` explains the time per point in production.

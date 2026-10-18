@@ -126,6 +126,55 @@ def test_knn_cad_score_partial_is_nab_p_value():
     np.testing.assert_array_equal(actual, expected)
 
 
+@pytest.mark.parametrize("period", [48, 75, 100])
+def test_knn_cad_matches_nab_on_long_stream(period):
+    import numpy as np
+
+    from pysad.models import KNNCAD
+
+    # Twenty probationary periods or more: many rotations of the training and calibration sets,
+    # many sigma refreshes and many alarms, long after the buffer is full.
+    rng = np.random.RandomState(7)
+    X = np.sin(np.arange(2000) / 10.0) + rng.normal(0.0, 0.1, 2000)
+    X[rng.choice(2000, 12, replace=False)] += 6.0
+    reference = NABKNNCAD(probationary_period=period)
+    model = KNNCAD(probationary_period=period)
+
+    expected_p, actual_p, expected, actual = [], [], [], []
+    for x in X:
+        actual_p.append(model.score_partial(x))
+        actual.append(model.fit_score_partial(x))
+        expected.append(reference.handle_record(x))
+        expected_p.append(reference.result)
+
+    np.testing.assert_array_equal(actual_p, expected_p)
+    np.testing.assert_array_equal(actual, expected)
+
+
+def test_knn_cad_memory_does_not_grow_with_stream():
+    import pickle
+
+    import numpy as np
+
+    from pysad.models import KNNCAD
+
+    rng = np.random.RandomState(0)
+    X = np.sin(np.arange(3000) / 10.0) + rng.normal(0.0, 0.1, 3000)
+    model = KNNCAD(probationary_period=100)
+
+    sizes = []
+    for i, x in enumerate(X, 1):
+        model.fit_score_partial(x)
+        if i in (1000, 3000):
+            assert len(model.buf) == model.dim
+            assert len(model.training) == 100 - model.dim
+            assert len(model.calibration) == 100
+            assert len(model.scores) == 100 - model.dim
+            sizes.append(len(pickle.dumps(model)))
+
+    assert sizes[0] == sizes[1]
+
+
 def test_knn_cad_score_partial_has_no_side_effects():
     import copy
 
@@ -293,7 +342,7 @@ def test_knn_cad_rejects_multivariate_instances_without_changing_state():
         for method in (model.fit_partial, model.score_partial, model.fit_score_partial):
             with pytest.raises(ValueError, match="univariate"):
                 method(bad)
-    assert model.buf == buf
+    assert list(model.buf) == buf
     assert model.record_count == record_count
 
     with pytest.raises(ValueError, match="univariate"):

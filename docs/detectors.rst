@@ -91,7 +91,7 @@ These detectors take points with exactly one feature. Give each value as an arra
    * - :class:`~pysad.models.KNNCAD`
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`
      - A probationary period: at least 48 values that it learns from before it scores
-     - Grows: keeps every value in a buffer, but scores only against its recent training and calibration windows
+     - Fixed: the last 19 values and about 2 × ``probationary_period`` training and calibration windows of 19 values
    * - :class:`~pysad.models.RelativeEntropy`
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values

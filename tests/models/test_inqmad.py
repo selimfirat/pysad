@@ -7,7 +7,7 @@ from sklearn.metrics import roc_auc_score
 
 from pysad.models import Inqmad
 
-PARAMS = {"input_shape": 3, "dim_x": 32, "gamma": 1.0, "initial_size": 20, "random_state": 0}
+PARAMS = {"input_shape": 3, "dim_x": 32, "initial_size": 20, "random_state": 0}
 
 
 def _model(**kwargs):
@@ -15,22 +15,26 @@ def _model(**kwargs):
 
 
 def _states(model, X):
-    psi = np.cos(np.atleast_2d(X) @ model.weights + model.offset)
+    """The states of the rows of X, min-max scaled with the initial sample."""
+    X = (np.atleast_2d(X) - model.feature_min) / model.feature_range
+    psi = np.cos(X @ model.weights + model.offset)
     return psi / np.linalg.norm(psi, axis=1, keepdims=True)
 
 
 def test_initial_sample_sets_rho_to_its_mean_state_and_tau_to_its_beta_quantile():
     """Paper Eq. 2 and Algorithm 1, step 6: once the initial sample is
-    complete, rho is the mean of its psi psi^T and tau is the beta quantile
-    of its densities psi^T rho psi.
+    complete, it sets the min-max scaling, rho is the mean of its scaled
+    psi psi^T and tau is the beta quantile of its densities psi^T rho psi.
     """
-    X = np.random.default_rng(0).random((20, 3))
+    X = np.random.default_rng(0).random((20, 3)) * [1.0, 10.0, 100.0] - 3.0
     model = _model(beta=0.2)
     model.fit(X[:19])
     assert model.rho is None
 
     model.fit_partial(X[19])
 
+    np.testing.assert_array_equal(model.feature_min, X.min(axis=0))
+    np.testing.assert_array_equal(model.feature_range, np.ptp(X, axis=0))
     psi = _states(model, X)
     rho = psi.T @ psi / 20
     np.testing.assert_allclose(model.rho, rho, atol=1e-12)
@@ -85,16 +89,50 @@ def test_score_partial_is_negated_paper_density():
 def test_score_during_initial_sample_is_mean_squared_kernel():
     """While the initial sample fills up, an instance scores the negated
     mean of k(x, x_i)^2 over the sample so far, the density that
-    psi^T rho psi approximates with rho the mean state of the sample.
+    psi^T rho psi approximates with rho the mean state of the sample, on
+    instances min-max scaled with the sample so far. A feature with no
+    range is not scaled.
     """
     rng = np.random.default_rng(0)
-    X = rng.random((5, 3))
+    X = rng.random((5, 3)) * [2.0, 3.0, 0.0]
     q = rng.random(3)
-    model = _model(gamma=0.7).fit(X)
+    model = _model(sigma=0.5).fit(X)
 
-    expected = -np.mean(np.exp(-0.7 * np.sum((X - q) ** 2, axis=1)) ** 2)
+    scaled_range = np.ptp(X, axis=0) + [0.0, 0.0, 1.0]
+    sq_dists = np.sum(((X - q) / scaled_range) ** 2, axis=1)
+    expected = -np.mean(np.exp(-sq_dists / (2 * 0.5**2)) ** 2)
 
     assert model.score_partial(q) == pytest.approx(expected, rel=1e-12)
+
+
+def test_defaults_follow_the_paper():
+    """The paper uses D = 2000 features and gamma = 1 / (2 sigma^2)."""
+    model = Inqmad(input_shape=3)
+
+    assert model.weights.shape == (3, 2000)
+    assert model.gamma == 0.5
+    assert (model.initial_size, model.alpha, model.beta) == (256, 0.01, 0.1)
+
+
+def test_scores_do_not_depend_on_the_scale_of_the_features():
+    """The instances are min-max scaled with the initial sample, so an
+    affine change of each feature leaves every score unchanged, except for
+    the second instance, scored against a single instance with no range.
+    """
+    rng = np.random.default_rng(0)
+    X = rng.random((60, 3))
+    X[[25, 45]] += 2.0
+
+    scores = _model().fit_score(X)
+    rescaled = _model().fit_score(X * [10.0, 0.01, 3.0] + [5.0, -1.0, 0.0])
+
+    np.testing.assert_allclose(np.delete(rescaled, 1), np.delete(scores, 1), atol=1e-9)
+
+
+@pytest.mark.parametrize("value", [0.0, -1.0, np.nan, np.inf])
+def test_rejects_sigma_that_is_not_positive(value):
+    with pytest.raises(ValueError, match="sigma must be"):
+        _model(sigma=value)
 
 
 def test_first_instance_scores_zero():

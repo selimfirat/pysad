@@ -41,7 +41,7 @@ def test_unsupervised_models():
         StandardAbsoluteDeviation: [{}, {"absolute": False}],
         xStream: {},
         RobustRandomCutForest: {},
-        Inqmad: {"input_shape": X.shape[1], "dim_x": 128, "gamma": 100},
+        Inqmad: {"input_shape": X.shape[1], "dim_x": 128},
     }
 
     for model_cls, params_dict in model_classes.items():

@@ -83,7 +83,7 @@ def _model_params(model_name, num_features, data):
             "max_depth": 5,
         },
         "IForestASD": {"window_size": 20, "n_estimators": 10},
-        "Inqmad": {"input_shape": num_features, "dim_x": 16, "gamma": 1.0},
+        "Inqmad": {"input_shape": num_features, "dim_x": 16},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
         "LODA": {"num_bins": 5, "num_random_cuts": 10},

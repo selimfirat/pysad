@@ -26,9 +26,7 @@ MODELS = {
         max_depth=8,
         **kw,
     ),
-    "Inqmad": lambda **kw: Inqmad(
-        input_shape=NUM_FEATURES, dim_x=32, gamma=100, initial_size=20, **kw
-    ),
+    "Inqmad": lambda **kw: Inqmad(input_shape=NUM_FEATURES, dim_x=32, initial_size=20, **kw),
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": lambda **kw: KitNet(grace_feature_mapping=20, grace_anomaly_detector=30, **kw),
     "LODA": lambda **kw: LODA(num_random_cuts=20, **kw),

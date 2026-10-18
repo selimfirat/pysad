@@ -6,7 +6,7 @@ from pysad.core.base_model import BaseModel
 class LocalOutlierProbability(BaseModel):
     """Scores each instance by its local outlier probability against an initial reference set :cite:`kriegel2009loop`.
 
-    The model uses the implementation of the PyNomaly library :cite:`constantinou2018pynomaly`.
+    The model uses the incremental and approximate version of LoOP by Hamlet et al. :cite:`hamlet2017incremental`, as the PyNomaly library :cite:`constantinou2018pynomaly` implements it. The model fits LoOP once on ``initial_X``. Then it scores each instance with values from that fit, for example a global expected value of the probabilistic distance. The model does not learn from the stream, so ``fit_partial`` does nothing.
 
     Args:
         initial_X (np.float64 array of shape (num_instances, num_features)): Initial training data to calibrate the model.

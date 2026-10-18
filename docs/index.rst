@@ -131,9 +131,17 @@ What PySAD contains
 
       .. rst-class:: number
 
-         850
+         1
 
-      runs in the :doc:`benchmark`: 10 detectors, 17 datasets, 5 seeds
+      line to change to :doc:`try another detector <guides/choose_detector>`
+
+   .. container:: stat
+
+      .. rst-class:: number
+
+         1
+
+      alert threshold for every detector, after :doc:`conformal calibration <guides/alerts>`
 
    .. container:: stat
 

@@ -1,73 +1,61 @@
-import os
+from collections import Counter, defaultdict
 
 import numpy as np
-import pytest
-
-from pysad.utils import fix_seed
-
-# Bin counts and scores produced by the original per-chain, per-depth loop implementation of xStream. The
-# vectorized implementation must reproduce them for the same seeds.
-REFERENCE_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "data", "xstream_reference_scores.npz"
-)
 
 
-def _uniform_one_feature(model_cls):
-    fix_seed(61)
-    X = np.random.rand(150, 1)
+class _ReferenceChains:
+    # A direct port of chains_add in the authors' code (cmuxstream-core, cpp/chain.cpp). The bin widths
+    # and shifts are set once from the first window, as compute_deltamax in cpp/main.cpp does.
 
-    return model_cls().fit_score(X)
+    def __init__(self, first_window, fs, rand_arr):
+        self.fs = fs
+        self.deltamax = (first_window.max(axis=0) - first_window.min(axis=0)) / 2.0
+        self.deltamax[np.abs(self.deltamax) <= 0.0001] = 1.0
+        self.shift = rand_arr * self.deltamax
+        self.counts = defaultdict(Counter)
+
+    def add(self, y, update):
+        # Returns the score negated, so that higher is more anomalous.
+        n_chains, depth = self.fs.shape
+        total = 0.0
+        for c in range(n_chains):
+            prebin = np.zeros(len(y))
+            used = np.zeros(len(y), dtype=bool)
+            best = np.inf
+            for d in range(depth):
+                f = self.fs[c, d]
+                if not used[f]:
+                    prebin[f] = (y[f] + self.shift[c, f]) / self.deltamax[f]
+                    used[f] = True
+                else:
+                    prebin[f] = 2.0 * prebin[f] - self.shift[c, f] / self.deltamax[f]
+                key = tuple(np.floor(prebin).astype(int))
+                if update:
+                    self.counts[c, d][key] += 1
+                best = min(best, np.log2(self.counts[c, d][key] + 1) + d + 1)
+            total += best
+        return -total / n_chains
 
 
-def _five_features_small_window(model_cls):
-    fix_seed(61)
-    X = np.random.randn(300, 5)
-
-    # 300 / 20 = 15 swaps of the reference and current windows.
-    return model_cls(window_size=20).fit_score(X)
-
-
-def _three_features_separate_fit_and_score(model_cls):
-    fix_seed(61)
-    X = np.random.randn(200, 3)
-    X[::25] *= 10.0
-
-    model = model_cls(num_components=20, n_chains=30, depth=10, window_size=50)
-    scores_before_fit = model.score(X[:10])
-    scores_after_fit = model.fit(X).score(X)
-
-    return np.concatenate([scores_before_fit, scores_after_fit])
-
-
-SCENARIOS = {
-    "uniform_one_feature": _uniform_one_feature,
-    "five_features_small_window": _five_features_small_window,
-    "three_features_separate_fit_and_score": _three_features_separate_fit_and_score,
-}
-
-
-@pytest.mark.parametrize("name", sorted(SCENARIOS))
-def test_xstream_matches_reference(name, monkeypatch):
+def _model_and_projections(X, window_size):
     from pysad.models import xStream
-    from pysad.models.xstream import _HSChains
 
-    # Record the (n, nchains, depth) bin counts of every score call.
-    recorded_counts = []
-    bin_counts = _HSChains._bin_counts
+    model = xStream(num_components=8, n_chains=6, depth=10, window_size=window_size, random_state=0)
+    Y = np.vstack([model.streamhash.transform_partial(x) for x in X])
+    return model, Y
 
-    def recording_bin_counts(self, X):
-        counts = bin_counts(self, X)
-        recorded_counts.append(counts)
-        return counts
 
-    monkeypatch.setattr(_HSChains, "_bin_counts", recording_bin_counts)
+def test_xstream_scores_with_the_bins_of_the_first_window():
+    rng = np.random.RandomState(0)
+    X = rng.randn(61, 6)
+    Z = 2.0 * rng.randn(30, 6)
+    model, Y = _model_and_projections(X, window_size=30)
 
-    with np.load(REFERENCE_PATH) as reference:
-        expected_counts = reference[name + "_counts"]
-        expected_scores = reference[name + "_scores"]
+    # After 61 instances, the reference is the second window.
+    model.fit(X)
+    reference = _ReferenceChains(Y[:30], model.hs_chains.fs, model.hs_chains.rand_arr)
+    for y in Y[30:60]:
+        reference.add(y, update=True)
+    expected = [reference.add(model.streamhash.transform_partial(z), update=False) for z in Z]
 
-    scores = SCENARIOS[name](xStream)
-
-    assert np.array_equal(np.concatenate(recorded_counts), expected_counts)
-    # log2 may differ by an ulp across platforms, so only the bin counts are pinned exactly.
-    np.testing.assert_allclose(scores, expected_scores, rtol=1e-12, atol=0)
+    np.testing.assert_allclose(model.score(Z), expected, rtol=1e-12, atol=0)

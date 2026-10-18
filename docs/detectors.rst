@@ -21,7 +21,7 @@ These detectors take points with one or more features. A feature is one measured
    * - :class:`~pysad.models.xStream`
      - Half-space chains on streamhash projections :cite:`xstream`
      - Nothing
-     - Fixed: two windows of ``window_size`` points and the chain counts
+     - Fixed: the chain counts of two windows, and the points of the first window until it is full
    * - :class:`~pysad.models.LODA`
      - Histograms on sparse random projections :cite:`pevny2016loda`
      - Nothing

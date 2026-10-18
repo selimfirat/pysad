@@ -12,7 +12,7 @@ from pysad.utils import get_minmax_array
 class xStream(BaseModel):
     """Scores each instance by its density in half-space chains over StreamHash projections (xStream) :cite:`xstream`.
 
-    It first projects the data via streamhash projection. It then fits half space chains by reference windowing. It scores the instances using the window fitted to the reference window.
+    It projects each instance with StreamHash and bins it in half-space chains. The chains count the instances of the current window and score each instance with the counts of the previous (reference) window, and the two windows swap every ``window_size`` instances. As in the paper and the authors' code, the initial bin widths (half the range of each projected feature) and the shifts are estimated once from the first window and kept for the rest of the stream, so every window is binned the same way. Until the first window is full, the instances are binned with width 0.5 and scored with the counts of the first window so far. When it is full, the first window is counted again with the estimated widths.
 
     Args:
         num_components (int): The number of components for streamhash projection (Default=100).
@@ -26,17 +26,18 @@ class xStream(BaseModel):
         self, num_components=100, n_chains=100, depth=25, window_size=25, random_state=None
     ):
         self.streamhash = StreamhashProjector(num_components=num_components)
-        deltamax = np.ones(num_components) * 0.5
-        deltamax[np.abs(deltamax) <= 0.0001] = 1.0
         self.window_size = window_size
         self.random_state = random_state
+        # The bin widths are estimated from the first window once it is full.
         self.hs_chains = _HSChains(
-            deltamax=deltamax, n_chains=n_chains, depth=depth, random_state=random_state
+            deltamax=np.full(num_components, 0.5),
+            n_chains=n_chains,
+            depth=depth,
+            random_state=random_state,
         )
 
         self.step = 0
-        self.cur_window = []
-        self.ref_window = None
+        self.first_window = []
 
     def fit_partial(self, X, y=None):
         """Updates the model with the next instance.
@@ -53,15 +54,15 @@ class xStream(BaseModel):
         X = self.streamhash.fit_transform_partial(X)
 
         X = X.reshape(1, -1)
-        self.cur_window.append(X)
+        if self.first_window is not None:
+            self.first_window.append(X)
 
         self.hs_chains.fit(X)
 
         if self.step % self.window_size == 0:
-            self.ref_window = self.cur_window
-            self.cur_window = []
-            deltamax = self._compute_deltamax()
-            self.hs_chains.set_deltamax(deltamax)
+            if self.first_window is not None:
+                self._set_bin_widths(np.concatenate(self.first_window, axis=0))
+                self.first_window = None
             self.hs_chains.next_window()
 
         return self
@@ -81,15 +82,14 @@ class xStream(BaseModel):
 
         return score
 
-    def _compute_deltamax(self):
-        # mx = np.max(np.concatenate(self.ref_window, axis=0), axis=0)
-        # mn = np.min(np.concatenate(self.ref_window, axis=0), axis=0)
-        mn, mx = get_minmax_array(np.concatenate(self.ref_window, axis=0))
-
+    def _set_bin_widths(self, window):
+        # Sets the bin widths to half the range of the first window and counts the first window again with them.
+        mn, mx = get_minmax_array(window)
         deltamax = (mx - mn) / 2.0
         deltamax[np.abs(deltamax) <= 0.0001] = 1.0
 
-        return deltamax
+        self.hs_chains.set_deltamax(deltamax)
+        self.hs_chains.counts_cur = Counter(self.hs_chains._bin_keys(window))
 
 
 class _HSChains:

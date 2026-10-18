@@ -69,7 +69,7 @@ Run each candidate on a labeled part of your data. Then compare the candidates w
 .. code-block:: text
 
               LODA: AUROC 0.951
-           xStream: AUROC 0.598
+           xStream: AUROC 0.637
     HalfSpaceTrees: AUROC 0.823
             RSHash: AUROC 0.700
 

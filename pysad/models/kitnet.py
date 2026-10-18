@@ -7,7 +7,7 @@ class KitNet(BaseModel):
 
     This model uses the implementation from `KitNET-py <https://github.com/ymirsky/KitNET-py>`_ with two changes: the 0-1 normalization only shifts an input that was constant in training, which KitNET-py divides by 1e-16, and the feature mapping learns from ``grace_feature_mapping`` instances instead of one more.
 
-    As in the paper, the model learns only during two grace periods at the start of the stream and then only scores. The first ``grace_feature_mapping`` instances learn which features go to which autoencoder, and their scores are 0. The next ``grace_anomaly_detector`` instances train the autoencoders, and their scores come from autoencoders that are still training. Choose both so that their sum is a small part of the stream and still covers its normal behavior. The defaults, 100 and 1,000 instances, keep the 1:10 ratio of the KitNET-py example (5,000 and 50,000 on a capture of 100,000 packets), scaled down so that a stream of a few hundred instances gets real scores. For a long stream whose start is free of anomalies, such as the paper's network captures (it trains on the first million packets), longer grace periods give the autoencoders more normal behavior to learn.
+    As in the paper, the model learns only during two grace periods at the start of the stream and then only scores. The first ``grace_feature_mapping`` instances learn which features go to which autoencoder. KitNET-py scores them 0. This model scores them with temporary autoencoders on the feature mapping so far, which it builds again each time the number of instances doubles (1, 2, 4, 8 and so on). After the feature mapping, it builds the autoencoders again on the final mapping, so the model after the grace periods is the same as without the temporary autoencoders. The next ``grace_anomaly_detector`` instances train the autoencoders, and their scores come from autoencoders that are still training. Choose both so that their sum is a small part of the stream and still covers its normal behavior. The defaults, 100 and 1,000 instances, keep the 1:10 ratio of the KitNET-py example (5,000 and 50,000 on a capture of 100,000 packets), scaled down so that a stream of a few hundred instances gets real scores. For a long stream whose start is free of anomalies, such as the paper's network captures (it trains on the first million packets), longer grace periods give the autoencoders more normal behavior to learn.
 
     Args:
         max_size_ae (int): The maximum size of any autoencoder in the ensemble layer (Default=10).
@@ -41,8 +41,8 @@ class KitNet(BaseModel):
 
         The first ``grace_feature_mapping`` instances learn the feature mapping;
         the next ``grace_anomaly_detector`` instances train the autoencoders.
-        Until the autoencoders have trained on an instance, :meth:`score_partial` returns ``0.0``.
-        While the autoencoders are still training, it returns real scores from
+        Before the first instance, :meth:`score_partial` returns ``0.0``.
+        During both grace periods, it returns real scores from temporary or
         partially trained autoencoders, so they are unreliable for alerting.
         After both grace periods the model stops learning and only scores.
 
@@ -81,8 +81,8 @@ class KitNet(BaseModel):
             float: The anomalousness score of the input instance.
         """
         if self.to_init or self.model.outputLayer is None:
-            # KitNET builds its autoencoders on the first instance after the feature mapping, and
-            # there is nothing to score with before that.
+            # KitNET builds its first autoencoders on the first instance, and there is nothing to
+            # score with before that.
             return 0.0
         else:
             return self.model.execute(X)

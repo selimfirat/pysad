@@ -56,3 +56,17 @@ def test_rrcf_large_time_decay_keeps_the_latest_instances():
 
     for tree in model.forest:
         assert sorted(tree.leaves) == list(range(30, 40))
+
+
+def test_rrcf_scores_before_fitting():
+    from pysad.models import RobustRandomCutForest
+
+    # With this time_decay, every new instance replaces the oldest one in each tree.
+    model = RobustRandomCutForest(num_trees=3, tree_size=8, time_decay=50.0, random_state=0)
+
+    assert model.fit_score_partial(np.zeros(1)) == 0.0
+    for _ in range(19):
+        model.fit_partial(np.zeros(1))
+
+    # Scored before it replaces one of the 8 zeros, the new instance is cut off from all 8 of them.
+    assert model.fit_score_partial(np.ones(1)) == 8.0

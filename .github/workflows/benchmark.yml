@@ -1,7 +1,9 @@
 name: benchmark
 
 # Reruns the detectors that a pull request can change and fails if their results differ from
-# docs/benchmark/. benchmarks/benchmark.py --check chooses the detectors from the changed files.
+# docs/benchmark/. The select job picks the detectors from the changed files, with
+# changed_detectors in benchmarks/benchmark.py. Each picked detector then runs in its own job,
+# because all of them take more than 4 CPU-hours.
 on:
   pull_request:
     paths:
@@ -20,11 +22,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  benchmark:
+  select:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 10
     permissions:
       contents: read
+    outputs:
+      detectors: ${{ steps.select.outputs.detectors }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - name: Install dependencies
+        run: uv pip install --system --group runtime -e .
+      - name: Pick the detectors
+        id: select
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+          fi
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, sys
+          sys.path.insert(0, "benchmarks")
+          import benchmark
+          base = os.environ["BASE_REF"]
+          detectors = benchmark.changed_detectors(f"origin/{base}") if base else list(benchmark.DETECTORS)
+          print("detectors=" + json.dumps(detectors))
+          PY
+          cat "$GITHUB_OUTPUT"
+
+  benchmark:
+    needs: select
+    if: needs.select.outputs.detectors != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        detector: ${{ fromJSON(needs.select.outputs.detectors) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -44,11 +90,5 @@ jobs:
           key: pysad-data-${{ hashFiles('pysad/utils/data.py') }}
       - name: Compare with docs/benchmark/
         env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          if [ -n "$BASE_REF" ]; then
-            git fetch --depth=1 origin "$BASE_REF"
-            python benchmarks/benchmark.py --check "origin/$BASE_REF"
-          else
-            python benchmarks/benchmark.py --check
-          fi
+          DETECTOR: ${{ matrix.detector }}
+        run: python benchmarks/benchmark.py --check --detectors "$DETECTOR"

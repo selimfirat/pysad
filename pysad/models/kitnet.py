@@ -80,7 +80,7 @@ class KitNet(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        if self.model.outputLayer is None:
+        if self.to_init or self.model.outputLayer is None:
             # KitNET builds its autoencoders on the first instance after the feature mapping, and
             # there is nothing to score with before that.
             return 0.0

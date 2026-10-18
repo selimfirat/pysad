@@ -49,13 +49,6 @@ class xStream(BaseModel):
         Returns:
             object: The model itself.
         """
-        # The windows swap on the arrival of the first instance after a full window, before it is counted.
-        if self.step > 0 and self.step % self.window_size == 0:
-            if self.first_window is not None:
-                self._set_bin_widths(np.concatenate(self.first_window, axis=0))
-                self.first_window = None
-            self.hs_chains.next_window()
-
         self.step += 1
 
         X = self.streamhash.fit_transform_partial(X)
@@ -65,6 +58,14 @@ class xStream(BaseModel):
             self.first_window.append(X)
 
         self.hs_chains.fit(X)
+
+        # The windows swap after the last instance of a full window, so that the next instance
+        # is scored against the window that just ended.
+        if self.step % self.window_size == 0:
+            if self.first_window is not None:
+                self._set_bin_widths(np.concatenate(self.first_window, axis=0))
+                self.first_window = None
+            self.hs_chains.next_window()
 
         return self
 

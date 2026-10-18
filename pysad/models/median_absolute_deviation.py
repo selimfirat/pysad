@@ -59,8 +59,8 @@ class MedianAbsoluteDeviation(BaseModel):
         Raises:
             ValueError: If the model has not been fitted on any value yet.
         """
-        if not self.window:
-            raise ValueError("Call fit_partial before score_partial.")
+        if not self.window:  # there is no median before the first value
+            return 0.0
 
         window = np.asarray(self.window)
         median = np.median(window)

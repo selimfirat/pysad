@@ -24,6 +24,20 @@ class PerfectModel(BaseModel):
 
         return self
 
+    def fit_score_partial(self, X, y=None):
+        """Stores the ground truth label of the next instance, and then returns it as the score.
+
+        The model needs the label before it can score, so it fits first, unlike the default of :class:`~pysad.core.BaseModel`.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): Ignored.
+            y (int): The true label.
+
+        Returns:
+            float: The true label.
+        """
+        return float(self.fit_partial(X, y).score_partial(X))
+
     def score_partial(self, X):
         """Returns the oldest stored label that the model has not returned yet.
 

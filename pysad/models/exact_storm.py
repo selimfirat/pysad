@@ -68,21 +68,6 @@ class ExactStorm(BaseModel):
 
         return self._score(window[max(len(window) - self.window.window_size + 1, 0) :], X)
 
-    def fit_score_partial(self, X, y=None):
-        """Scores the instance against the other instances in the window, as `score_partial` does, and then adds it to the window.
-
-        Args:
-            X (np.float64 array of shape (num_features,)): The instance to fit and score.
-            y (int): Ignored since the model is unsupervised (Default=None).
-
-        Returns:
-            float: The anomalousness score of the input instance.
-        """
-        score = self.score_partial(X)
-        self.fit_partial(X, y)
-
-        return score
-
     def _score(self, window, X):
         if len(window) == 0 or self.radius_ is None:
             return 1.0

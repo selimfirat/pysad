@@ -42,7 +42,7 @@ class RobustRandomCutForest(BaseModel):
     The implementation uses `rrcf library <https://github.com/kLabUM/rrcf>`_ :cite:`bartos_2019_rrcf`.
 
     Args:
-        num_trees (int): The number of trees (Default=4).
+        num_trees (int): The number of trees. The paper uses 100 (synthetic data) and 200 (taxi data) (Default=100).
         shingle_size (int): The number of consecutive instances in a shingle, so each point of the trees has ``shingle_size * num_features`` values. The paper shingles a univariate stream with 4 (synthetic data) and 48 (taxi data) values. Until ``shingle_size - 1`` instances are fitted, there is no shingle and the score is 0. 1 uses each instance as it is (Default=1).
         tree_size (int): The number of instances in the sample of each tree (Default=256).
         time_decay (float): How strongly the samples favor recent instances. An instance that came ``k`` instances later is ``exp(time_decay * k)`` times as likely to be kept. 0 keeps a uniform sample of the whole stream (Default=0.0).
@@ -50,7 +50,7 @@ class RobustRandomCutForest(BaseModel):
     """
 
     def __init__(
-        self, num_trees=4, shingle_size=1, tree_size=256, time_decay=0.0, random_state=None
+        self, num_trees=100, shingle_size=1, tree_size=256, time_decay=0.0, random_state=None
     ):
         rrcf = _import_rrcf()
 

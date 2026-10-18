@@ -29,7 +29,7 @@ These detectors take points with one or more features. A feature is one measured
    * - :class:`~pysad.models.HalfSpaceTrees`
      - Mass profiles of random half-space trees :cite:`tan2011fast`
      - The range of each feature
-     - Fixed: ``num_trees`` full trees of depth ``max_depth``, about 1.6 million nodes with the defaults
+     - Fixed: ``num_trees`` full trees of depth ``max_depth``, about 11 MB with the defaults
    * - :class:`~pysad.models.RobustRandomCutForest`
      - Collusive displacement in random cut trees :cite:`guha2016robust`
      - Nothing

@@ -8,13 +8,16 @@ def _score_against(model, reference_X, x):
     masses the model has recorded.
     """
     score = 0.0
-    for root in model.roots:
-        node, in_node = root, list(reference_X)
-        while node is not None:
-            score += len(in_node) * 2**node.k
-            goes_right = x[node.split_att] > node.split_value
-            in_node = [r for r in in_node if (r[node.split_att] > node.split_value) == goes_right]
-            node = node.right if goes_right else node.left
+    for atts, values in zip(model.split_atts, model.split_values, strict=True):
+        node, in_node = 0, list(reference_X)
+        for k in range(model.max_depth + 1):
+            score += len(in_node) * 2**k
+            if k == model.max_depth:
+                break
+            att, value = atts[node], values[node]
+            goes_right = x[att] > value
+            in_node = [r for r in in_node if (r[att] > value) == goes_right]
+            node = 2 * node + 1 + goes_right
 
     return -score
 
@@ -210,11 +213,7 @@ def test_half_space_trees_window_swap_replaces_the_reference_with_the_last_windo
     model = _new_hst(window_size=window_size, num_trees=5, max_depth=6)
 
     def root_masses():
-        # The swap is applied lazily, so bring the roots up to the open window before reading them.
-        for root in model.roots:
-            if root.window != model.current_window:
-                model._roll_masses(root)
-        return [(root.r_mass, root.l_mass) for root in model.roots]
+        return list(zip(model.r_mass[:, 0], model.l_mass[:, 0], strict=True))
 
     # The instance that closes a window belongs to the reference that window becomes.
     model.fit(X[:window_size])
@@ -294,7 +293,7 @@ def test_half_space_trees_accepts_numpy_integer_hyperparameters():
 
     model = _new_hst(window_size=np.int64(10), num_trees=np.int32(3), max_depth=np.uint8(1))
 
-    assert len(model.roots) == 3
+    assert model.split_values.shape == (3, 1)
     assert model.fit_score(np.random.uniform(size=(25, 2))).shape == (25,)
 
 
@@ -324,12 +323,7 @@ def test_half_space_trees_integer_bounds_build_the_same_trees_as_float_bounds():
         model = _new_hst(
             feature_mins=feature_mins, feature_maxes=feature_maxes, num_trees=5, max_depth=6
         )
-        values, nodes = [], list(model.roots)
-        while nodes:
-            node = nodes.pop()
-            values.append(node.split_value)
-            nodes.extend(child for child in (node.left, node.right) if child is not None)
-        return values
+        return model.split_values.tolist()
 
     # Integer arrays used to truncate every split value written back into them.
     float_splits = split_values(np.array([0.0, -3.0]), np.array([10.0, 3.0]))
@@ -366,14 +360,9 @@ def test_half_space_trees_differ_on_one_dimensional_streams():
     fix_seed(0)
     model = _new_hst(feature_mins=[0.0], feature_maxes=[1.0], num_trees=10, max_depth=5)
 
-    def splits(node):
-        return (
-            [] if node.left is None else [node.split_value] + splits(node.left) + splits(node.right)
-        )
-
     # Without a work space per tree, every tree halved [0, 1] at the same points (0.5, 0.25, 0.75, ...).
-    assert len({tuple(splits(root)) for root in model.roots}) == 10
-    assert len({root.split_value for root in model.roots}) == 10
+    assert len({tuple(values) for values in model.split_values}) == 10
+    assert len(set(model.split_values[:, 0])) == 10
 
 
 def test_half_space_trees_without_random_work_space_split_the_feature_ranges():
@@ -387,35 +376,13 @@ def test_half_space_trees_without_random_work_space_split_the_feature_ranges():
 
     np.testing.assert_array_equal(mins, [0.0, 2.0])
     np.testing.assert_array_equal(maxes, [1.0, 6.0])
-    assert {root.split_value for root in model.roots} <= {0.5, 4.0}
+    assert set(model.split_values[:, 0]) <= {0.5, 4.0}
 
 
 @pytest.mark.parametrize("value", [0, 1, None, "yes"])
 def test_half_space_trees_rejects_a_non_bool_random_work_space(value):
     with pytest.raises(ValueError, match="random_work_space must be a bool"):
         _new_hst(random_work_space=value)
-
-
-def test_half_space_trees_closing_a_window_touches_no_node():
-    import numpy as np
-
-    from pysad.utils import fix_seed
-
-    fix_seed(0)
-    model = _new_hst(window_size=10, num_trees=3, max_depth=6)
-    model.fit(np.random.uniform(size=(10, 2)))
-
-    def windows_of_all_nodes():
-        windows, nodes = [], list(model.roots)
-        while nodes:
-            node = nodes.pop()
-            windows.append(node.window)
-            nodes.extend(child for child in (node.left, node.right) if child is not None)
-        return windows
-
-    # The r <- l swap is deferred: closing the window only advances the window index.
-    assert model.current_window == 1
-    assert set(windows_of_all_nodes()) == {0}
 
 
 def test_half_space_trees_forgets_regions_left_empty_for_a_whole_window():
@@ -438,31 +405,54 @@ def test_half_space_trees_forgets_regions_left_empty_for_a_whole_window():
         assert model.score_partial(x) == _score_against(model, high[window_size:], x)
 
 
-def test_half_space_trees_model_saved_before_the_lazy_swap_continues_the_stream():
+def test_half_space_trees_match_a_recursive_build():
     import numpy as np
 
     from pysad.utils import fix_seed
 
-    window_size = 10
+    def recursive_build(model, mins, maxes, depth, rng):
+        """Builds a tree the straightforward way: draw a feature, halve its range, recurse left then right."""
+        if depth == model.max_depth:
+            return []
+        q = rng.randint(model.num_dimensions)
+        p = (maxes[q] + mins[q]) / 2.0
+        upper, maxes[q] = maxes[q], p
+        left = recursive_build(model, mins, maxes, depth + 1, rng)
+        maxes[q], lower, mins[q] = upper, mins[q], p
+        right = recursive_build(model, mins, maxes, depth + 1, rng)
+        mins[q] = lower
+        # Interleave the levels of both subtrees, so that the splits come out in heap order.
+        levels = [[(q, p)]]
+        for k in range(model.max_depth - depth - 1):
+            levels.append(left[2**k - 1 : 2 ** (k + 1) - 1] + right[2**k - 1 : 2 ** (k + 1) - 1])
+        return [split for level in levels for split in level]
 
-    fix_seed(0)
-    X = np.random.uniform(size=(5 * window_size, 2))
+    for num_features, random_work_space in [(1, True), (3, True), (3, False)]:
+        fix_seed(0)
+        model = _new_hst(
+            feature_mins=[0.0] * num_features,
+            feature_maxes=[1.0] * num_features,
+            num_trees=4,
+            max_depth=7,
+            random_work_space=random_work_space,
+        )
+        fix_seed(0)
+        rng = np.random.mtrand._rand
+        for atts, values in zip(model.split_atts, model.split_values, strict=True):
+            expected = recursive_build(model, *model._work_space(rng), 0, rng)
+            assert list(zip(atts.tolist(), values.tolist(), strict=True)) == expected
 
-    def new_fitted_model():
-        fix_seed(1)
-        return _new_hst(window_size=window_size, num_trees=5, max_depth=6).fit(X[:25])
 
-    model = new_fitted_model()
-    old_model = new_fitted_model()
-    # Rebuild the state a model saved before the lazy swap held: every swap applied eagerly, and no
-    # window indices on the model or its nodes.
-    nodes = list(old_model.roots)
-    while nodes:
-        node = nodes.pop()
-        if node.window != old_model.current_window:
-            old_model._roll_masses(node)
-        del node.window
-        nodes.extend(child for child in (node.left, node.right) if child is not None)
-    del old_model.current_window
+def test_half_space_trees_default_trees_take_about_11_mb():
+    import pickle
 
-    np.testing.assert_array_equal(old_model.fit_score(X[25:]), model.fit_score(X[25:]))
+    import numpy as np
+
+    from pysad.models import HalfSpaceTrees
+
+    model = HalfSpaceTrees(feature_mins=np.zeros(21), feature_maxes=np.ones(21), random_state=0)
+
+    # 25 trees of depth 15: one byte and one float64 for each of the 32,767 splits per tree, and two
+    # one-byte masses for each of the 65,535 nodes per tree, since a node holds at most 250 instances.
+    assert model.split_atts.dtype == model.l_mass.dtype == model.r_mass.dtype == np.uint8
+    assert len(pickle.dumps(model)) < 11_000_000

@@ -7,7 +7,7 @@ from pysad.utils import Window
 class ModifiedSTLResidualTransformer(BaseTransformer):
     """Removes the seasonal component and the median from a univariate series, as S-ESD and S-H-ESD do :cite:`hochenbaum2017automatic`.
 
-    The transformer follows the residual construction of the paper. It estimates the seasonal component with STL, replaces the trend component of STL with the median of the raw series, and returns ``X - seasonal - median(X)``. It does only the residual step of the paper. Use :class:`pysad.models.SeasonalESD` or :class:`pysad.models.SeasonalHybridESD` for the full detector.
+    The transformer follows the residual construction of the paper. It estimates the seasonal component with periodic STL, replaces the trend component of STL with the median of the raw series, and returns ``X - seasonal - median(X)``. Periodic STL is what the reference implementation of the paper uses (``stl(s.window = "periodic")`` in R): the seasonal smoother is a constant (degree 0) LOESS with a span of ``10 * n + 1`` for ``n`` observations, so the seasonal component repeats exactly in every period and a few anomalous periods cannot bend it. It does only the residual step of the paper. Use :class:`pysad.models.SeasonalESD` or :class:`pysad.models.SeasonalHybridESD` for the full detector.
 
     The partial transforms return 0.0 until the window holds at least ``2 * period`` observations, because STL needs two full periods.
 
@@ -15,7 +15,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         period (int): Number of observations in one seasonal period.
         window_size (int or None): Number of recent observations used for partial transforms. If None, only ``transform_window`` works, and the partial methods raise ``ValueError`` (Default=None).
         robust (bool): Whether to use robust STL fitting (Default=True).
-        **stl_kwargs: Additional keyword arguments passed to ``statsmodels.tsa.seasonal.STL``.
+        **stl_kwargs: Additional keyword arguments passed to ``statsmodels.tsa.seasonal.STL``. They override the periodic defaults ``seasonal=10 * n + 1`` and ``seasonal_deg=0``.
 
     Raises:
         ValueError: If ``period`` is less than 2, or if ``window_size`` is not None and less than ``2 * period``.
@@ -65,7 +65,9 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         if X.shape[0] < 2 * self.period:
             raise ValueError("At least 2 * period observations are required for STL.")
 
-        seasonal = STL(X, period=self.period, robust=self.robust, **self.stl_kwargs).fit().seasonal
+        # s.window = "periodic" of R's stl, as in the reference implementation of the paper.
+        stl_kwargs = {"seasonal": 10 * X.shape[0] + 1, "seasonal_deg": 0, **self.stl_kwargs}
+        seasonal = STL(X, period=self.period, robust=self.robust, **stl_kwargs).fit().seasonal
         return X - seasonal - np.median(X)
 
     def fit_partial(self, X):

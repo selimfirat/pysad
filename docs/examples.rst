@@ -87,10 +87,10 @@ It prints:
 
 .. code-block:: text
 
-   SeasonalESD flagged [150, 260, 340, 364], true anomalies [150, 260, 340]
-   SeasonalHybridESD flagged [150, 232, 260, 340, 364], true anomalies [150, 260, 340]
+   SeasonalESD flagged [150, 260, 340], true anomalies [150, 260, 340]
+   SeasonalHybridESD flagged [150, 260, 340], true anomalies [150, 260, 340]
 
-Both variants find the three spikes. Each variant also flags a few normal values. To raise fewer false alerts, lower ``alpha``. :doc:`guides/seasonal` explains when to use each variant.
+Both variants find the three spikes and flag no normal values. :doc:`guides/seasonal` explains when to use each variant.
 
 Stream a pandas DataFrame
 -------------------------

@@ -9,7 +9,7 @@ from pysad.utils import Window
 class SeasonalESD(BaseModel):
     """Flags seasonal anomalies in a univariate stream with the Seasonal ESD (S-ESD) test over a sliding window :cite:`hochenbaum2017automatic`.
 
-    This is the S-ESD method of the paper. It computes the modified STL residual ``X - seasonal - median(X)`` over a fixed-size window, then applies generalized ESD with the mean and the standard deviation to the residuals. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
+    This is the S-ESD method of the paper. It computes the modified STL residual ``X - seasonal - median(X)`` over a fixed-size window, with the periodic STL of the reference implementation (see :class:`pysad.transform.preprocessing.ModifiedSTLResidualTransformer`), then applies two-sided generalized ESD with the mean and the standard deviation to the residuals. Two-sided means that the test flags both high and low values; the R package of the paper looks only at high values by default. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
 
     The score of an instance is the ESD test statistic of the newest value if the test flags it as an anomaly, else 0.0. The score is 0.0 until the window holds ``window_size`` values.
 
@@ -157,7 +157,7 @@ class SeasonalESD(BaseModel):
 class SeasonalHybridESD(SeasonalESD):
     """Flags seasonal anomalies in a univariate stream with the Seasonal Hybrid ESD (S-H-ESD) test over a sliding window :cite:`hochenbaum2017automatic`.
 
-    This is the S-H-ESD method of the paper. It uses the same modified STL residual as :class:`SeasonalESD`, then replaces the mean and the standard deviation of ESD with the median and the MAD-based scale in the test statistic. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
+    This is the S-H-ESD method of the paper. It uses the same periodic modified STL residual as :class:`SeasonalESD`, then replaces the mean and the standard deviation of ESD with the median and the MAD-based scale in the two-sided test statistic. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
 
     The score of an instance is the test statistic of the newest value if the test flags it as an anomaly, else 0.0. The score is 0.0 until the window holds ``window_size`` values.
 

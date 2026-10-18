@@ -29,17 +29,18 @@ This example makes two weeks of hourly values with a daily cycle and three anoma
 .. code-block:: text
 
    anomaly at hour 200: 16.4
+   anomaly at hour 219: 13.0
    anomaly at hour 250: 7.6
    anomaly at hour 300: 15.4
 
-The detector tests each new value when it arrives. As a result, ``max_anomalies=2`` limits the anomalies that the test looks for in one window, not in the whole series. The detector finds the low value at hour 250 too. A fixed threshold on the raw values cannot find it, because the same value is normal at another time of day.
+The detector tests each new value when it arrives. As a result, ``max_anomalies=2`` limits the anomalies that the test looks for in one window, not in the whole series. The detector finds the low value at hour 250 too. A fixed threshold on the raw values cannot find it, because the same value is normal at another time of day. Hour 219 is a false alert: its noise is three standard deviations above the cycle. A smaller ``alpha`` raises fewer such alerts.
 
 How SeasonalHybridESD scores a value
 ------------------------------------
 
 For each new value, the detector uses the last ``window_size`` values:
 
-#. It removes the cycle with STL, a method that splits a series into trend, cycle and remainder. Then it subtracts the median of the window.
+#. It removes the cycle with STL, a method that splits a series into trend, cycle and remainder. The cycle is the same in every period, so a few anomalies barely change it. Then it subtracts the median of the window.
 #. It runs the generalized ESD (extreme Studentized deviate) test on the remaining values. The test removes the most extreme value again and again, up to ``max_anomalies`` times, and tests each one.
 #. If the test marks the new value as an anomaly, the score is the test statistic: the distance of the value from the median, in scaled median absolute deviations (1.4826 × MAD, a robust estimate of the standard deviation). Otherwise, the score is 0.
 

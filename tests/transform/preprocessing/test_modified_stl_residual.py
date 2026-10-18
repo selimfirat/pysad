@@ -6,12 +6,11 @@ def test_modified_stl_residual_transformer_uses_paper_residual(monkeypatch):
 
     from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 
+    seen_kwargs = []
+
     class DummySTL:
         def __init__(self, X, period, robust, **kwargs):
-            self.X = X
-            self.period = period
-            self.robust = robust
-            self.kwargs = kwargs
+            seen_kwargs.append(kwargs)
 
         def fit(self):
             class Result:
@@ -31,8 +30,29 @@ def test_modified_stl_residual_transformer_uses_paper_residual(monkeypatch):
     transformer = ModifiedSTLResidualTransformer(period=2)
 
     residuals = transformer.transform_window(X)
+    ModifiedSTLResidualTransformer(period=2, seasonal=7).transform_window(X)
 
     assert np.all(np.isclose(residuals, X - np.array([0.0, 1.0, 0.0, 1.0]) - np.median(X)))
+    # Periodic STL (s.window = "periodic" in R) by default; STL keyword arguments override it.
+    assert seen_kwargs == [{"seasonal": 41, "seasonal_deg": 0}, {"seasonal": 7, "seasonal_deg": 0}]
+
+
+def test_modified_stl_residual_uses_periodic_seasonal_component():
+    import numpy as np
+
+    from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
+
+    # A level shift in the last 8 values of a noiseless seasonal series. Periodic STL keeps the
+    # seasonal component equal in every period, so the residual is the shift and 0 elsewhere.
+    t = np.arange(24 * 14)
+    X = 10 + 3 * np.sin(2 * np.pi * t / 24) + np.cos(4 * np.pi * t / 24)
+    X[-8:] += 2.0
+
+    residuals = ModifiedSTLResidualTransformer(period=24).transform_window(X)
+
+    expected = np.zeros(t.size)
+    expected[-8:] = 2.0
+    assert np.allclose(residuals - np.median(residuals), expected, atol=1e-3)
 
 
 def test_modified_stl_residual_validates_inputs():

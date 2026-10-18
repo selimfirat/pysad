@@ -188,7 +188,7 @@ The [getting started tutorial](https://pysad.readthedocs.io/en/latest/getting_st
 | Your data | Start with | Why |
 |---|---|---|
 | One series of values with daily or weekly cycles | `SeasonalHybridESD` | Removes the cycle. Earlier anomalies in the window have little effect on it |
-| One series of values without a strong cycle | `MedianAbsoluteDeviation`, or `StandardAbsoluteDeviation` for a long stream | MAD is robust but keeps every value. The standard deviation version takes constant time |
+| One series of values without a strong cycle | `MedianAbsoluteDeviation` | Anomalies in the window have little effect on it. It uses only recent values, so it follows drift |
 | Several features, first try | `LODA` | Fast, has few parameters and learns from every point |
 | Features with known value ranges | `HalfSpaceTrees` | Constant time per point, scored against the previous window |
 | Many features | `xStream` | Projects the points to fewer features with hashing |
@@ -222,7 +222,7 @@ These starting points come from the design of each method. They are not benchmar
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
 | `RelativeEntropy` | Relative entropy over windows (Wang et al., IM 2011) |
-| `MedianAbsoluteDeviation` | Running median absolute deviation (Hochenbaum et al., 2017) |
+| `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 
 `ReferenceWindowModel` and `OneFitModel` run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. The [detector catalog](https://pysad.readthedocs.io/en/latest/detectors.html) lists the input, setup and memory of each detector, and the [API reference](https://pysad.readthedocs.io/en/latest/api.html) lists every parameter.

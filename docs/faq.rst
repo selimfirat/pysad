@@ -37,7 +37,7 @@ Getting started
 Which detector do I start with?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For data with several features, start with :class:`~pysad.models.LODA`. For a single series of values with a daily or weekly cycle, start with :class:`~pysad.models.SeasonalHybridESD`. If the series has no cycle, start with :class:`~pysad.models.MedianAbsoluteDeviation` for a short stream, or :class:`~pysad.models.StandardAbsoluteDeviation` for a long one. Then compare two or three detectors on your data. See :doc:`guides/choose_detector`.
+For data with several features, start with :class:`~pysad.models.LODA`. For a single series of values with a daily or weekly cycle, start with :class:`~pysad.models.SeasonalHybridESD`. If the series has no cycle, start with :class:`~pysad.models.MedianAbsoluteDeviation`. Then compare two or three detectors on your data. See :doc:`guides/choose_detector`.
 
 Do I need a GPU?
 ~~~~~~~~~~~~~~~~
@@ -231,7 +231,6 @@ How fast is a detector, and how much memory does it use?
 Most detectors take between 0.005 and 1 millisecond per point. We measured this on the 21 features of ``cardio`` on an Apple silicon laptop. Some detectors take longer:
 
 - :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` take about 4 milliseconds, because they decompose the full window for each point.
-- :class:`~pysad.models.MedianAbsoluteDeviation` keeps every value, so it gets slower as the stream grows.
 - :class:`~pysad.models.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` retrain at a fixed interval, so a few points take much longer than the others.
 
 Most detectors keep a fixed amount of memory, and :doc:`detectors` gives the memory of each one. To measure the time per point on your own data, see :doc:`guides/production`.

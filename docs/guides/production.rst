@@ -105,7 +105,7 @@ Measure the time per point on your own data before you go live:
        model.fit_score_partial(x)
    print(f"{(time.perf_counter() - start) / len(X_sample) * 1e6:.0f} µs per point")
 
-Most detectors take about the same time for every point. :class:`~pysad.models.MedianAbsoluteDeviation` is an exception: its time per point grows with the stream. :class:`~pysad.models.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` train a new batch model at a fixed interval, so a few points take much longer than the others.
+Most detectors take about the same time for every point. :class:`~pysad.models.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` train a new batch model at a fixed interval, so a few points take much longer than the others.
 
 If a detector is too slow, use fewer ensemble members: ``num_trees`` for the tree-based detectors, ``num_random_cuts`` for LODA, ``n_chains`` for xStream or ``num_components`` for RSHash. You can also project the points to fewer features, as :doc:`pipelines` shows.
 

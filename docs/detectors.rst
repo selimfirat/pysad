@@ -81,9 +81,9 @@ These detectors take points with exactly one feature. Give each value as an arra
      - The period, the window size and the maximum number of anomalies per window
      - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.MedianAbsoluteDeviation`
-     - Distance from the running median in scaled median absolute deviations (1.4826 × MAD) :cite:`hochenbaum2017automatic`
+     - Distance from the median of the last ``window_size`` values, in scaled median absolute deviations of those values (1.4826 × MAD) :cite:`hochenbaum2017automatic`
      - Nothing
-     - Grows: keeps every value, and the time per point grows with the stream
+     - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.StandardAbsoluteDeviation`
      - Distance from the running mean in standard deviations :cite:`hochenbaum2017automatic`
      - Nothing

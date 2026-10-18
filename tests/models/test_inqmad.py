@@ -6,6 +6,7 @@ import pytest
 from sklearn.metrics import roc_auc_score
 
 from pysad.models import Inqmad
+from pysad.models.inqmad import _adapt_features
 
 PARAMS = {"input_shape": 3, "dim_x": 32, "initial_size": 20, "random_state": 0}
 
@@ -111,7 +112,12 @@ def test_defaults_follow_the_paper():
 
     assert model.weights.shape == (3, 2000)
     assert model.gamma == 0.5
-    assert (model.initial_size, model.alpha, model.beta) == (256, 0.01, 0.1)
+    assert (model.initial_size, model.alpha, model.beta, model.learning_rate) == (
+        256,
+        0.01,
+        0.1,
+        1e-3,
+    )
 
 
 def test_scores_do_not_depend_on_the_scale_of_the_features():
@@ -129,10 +135,11 @@ def test_scores_do_not_depend_on_the_scale_of_the_features():
     np.testing.assert_allclose(np.delete(rescaled, 1), np.delete(scores, 1), atol=1e-9)
 
 
+@pytest.mark.parametrize("name", ["sigma", "learning_rate"])
 @pytest.mark.parametrize("value", [0.0, -1.0, np.nan, np.inf])
-def test_rejects_sigma_that_is_not_positive(value):
-    with pytest.raises(ValueError, match="sigma must be"):
-        _model(sigma=value)
+def test_rejects_bandwidth_and_learning_rate_that_are_not_positive(name, value):
+    with pytest.raises(ValueError, match=f"{name} must be"):
+        _model(**{name: value})
 
 
 def test_first_instance_scores_zero():
@@ -206,20 +213,17 @@ def test_docstring_keeps_math_backslashes():
 
 
 def test_scores_use_the_current_random_features():
-    """Regression test for #171: the random Fourier features are read on
-    every call, so replacing them takes effect.
+    """Regression test for #171: the Fourier features are read on every
+    call, so replacing them after the model has scored takes effect.
     """
     rng = np.random.default_rng(0)
     X = rng.random((30, 3))
     q = np.array([0.5, 0.5, 0.5])
-
-    model = _model()
+    model = _model().fit(X)
+    other = _model(random_state=1).fit(X)
     model.score_partial(q)
-    other = _model(random_state=1)
 
-    model.weights, model.offset = other.weights, other.offset
-    model.fit(X)
-    other.fit(X)
+    model.weights, model.offset, model.rho = other.weights, other.offset, other.rho
 
     assert model.score_partial(q) == other.score_partial(q)
 
@@ -325,3 +329,60 @@ def test_accepts_one_row_instances(method):
     for score, rho in results[1:]:
         assert score == results[0][0]
         np.testing.assert_array_equal(rho, results[0][1])
+
+
+def _kernel_mse(X, Y, weights, offset, gamma):
+    approx = np.sum(_rff_states(X, weights, offset) * _rff_states(Y, weights, offset), axis=1)
+    return np.mean((np.exp(-gamma * np.sum((X - Y) ** 2, axis=1)) - approx) ** 2)
+
+
+def _rff_states(X, weights, offset):
+    psi = np.cos(X @ weights + offset)
+    return psi / np.linalg.norm(psi, axis=1, keepdims=True)
+
+
+def test_adaptive_features_step_follows_the_kernel_error_gradient():
+    """Paper Section 3.1: the features are fitted by gradient descent on the
+    squared error between the kernel and the inner product of the states.
+    Adam's first step moves every parameter by the learning rate against
+    the sign of its gradient, which a finite difference checks here.
+    """
+    rng = np.random.default_rng(0)
+    X = rng.random((40, 3))
+    model = _model(dim_x=8)
+    weights, offset = model.weights, model.offset
+    x, y = X[np.random.RandomState(1).randint(40, size=(2, 16))]
+
+    new_weights, new_offset = _adapt_features(
+        X, weights, offset, model.gamma, 1e-4, np.random.RandomState(1), num_steps=1, batch_size=16
+    )
+
+    for param, new in ((weights, new_weights), (offset, new_offset)):
+        numeric = np.zeros_like(param)
+        for i in np.ndindex(param.shape):
+            delta = np.zeros_like(param)
+            delta[i] = 1e-6
+            w, o = (weights + delta, offset) if param is weights else (weights, offset + delta)
+            w2, o2 = (weights - delta, offset) if param is weights else (weights, offset - delta)
+            numeric[i] = (
+                _kernel_mse(x, y, w, o, model.gamma) - _kernel_mse(x, y, w2, o2, model.gamma)
+            ) / 2e-6
+        np.testing.assert_allclose(new - param, -1e-4 * np.sign(numeric), rtol=1e-3)
+
+
+def test_adaptive_features_lower_the_kernel_error_on_the_initial_sample():
+    """Completing the initial sample fits the features, which then
+    approximate the kernel on the scaled sample better than the random
+    features they start from.
+    """
+    X = np.random.default_rng(0).random((20, 3))
+    model = _model(dim_x=16, learning_rate=1e-2)
+    weights, offset = model.weights.copy(), model.offset.copy()
+    i, j = np.triu_indices(20, k=1)
+
+    model.fit(X)
+
+    scaled = (X - model.feature_min) / model.feature_range
+    before = _kernel_mse(scaled[i], scaled[j], weights, offset, model.gamma)
+    after = _kernel_mse(scaled[i], scaled[j], model.weights, model.offset, model.gamma)
+    assert after < 0.9 * before

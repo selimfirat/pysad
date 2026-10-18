@@ -131,9 +131,9 @@ What PySAD contains
 
       .. rst-class:: number
 
-         17
+         850
 
-      labeled benchmark datasets, downloaded on first use
+      runs in the :doc:`benchmark`: 10 detectors, 17 datasets, 5 seeds
 
    .. container:: stat
 

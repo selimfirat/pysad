@@ -112,4 +112,4 @@ To run some detectors again, give their names with ``--detectors``. The script r
 
 Commit your code changes before you run the benchmark. If you do not, the commit in the results ends with ``-dirty``.
 
-The ``benchmark`` workflow runs on each pull request that changes ``pysad/``. It runs again only the detectors that the change can affect. If a result moves by more than 0.002, the check fails. The output of the check gives the command that updates ``docs/benchmark/``.
+The ``benchmark`` workflow runs on each pull request that changes ``pysad/``. It runs again only the detectors that the change can affect. Each seed runs in its own job. If an AUROC moves by more than 0.005, the check fails. The output of the check gives the command that updates ``docs/benchmark/``. The check does not compare AUPR, because other platforms round differently. On a small dataset, such a difference can swap one anomaly with one normal point, and that moves AUPR much more than AUROC.

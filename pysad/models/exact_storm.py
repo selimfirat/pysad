@@ -34,7 +34,9 @@ class ExactStorm(BaseModel):
         return self
 
     def score_partial(self, X):
-        """Scores the anomalousness of the next instance against all instances in the window.
+        """Scores the anomalousness of the next instance as if it arrived, without adding it to the window.
+
+        When the instance arrives, the oldest instance of a full window expires, so the instance is scored against the `window_size - 1` most recent instances. This gives the same score as `fit_score_partial`.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
@@ -42,7 +44,9 @@ class ExactStorm(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        return self._score(self.window.get(), X)
+        window = self.window.get()
+
+        return self._score(window[max(len(window) - self.window.window_size + 1, 0) :], X)
 
     def fit_score_partial(self, X, y=None):
         """Adds the instance to the window and scores it against the other instances in the window, so that the instance is not counted as its own neighbor.

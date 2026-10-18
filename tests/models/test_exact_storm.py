@@ -46,15 +46,17 @@ def test_exact_storm_neighbor_counting():
 
     from pysad.models import ExactStorm
 
-    model = ExactStorm(window_size=4, max_radius=1.0)
+    model = ExactStorm(window_size=5, max_radius=1.0)
     model.fit(np.array([[0.0], [1.0], [5.0], [6.0]]))
 
-    # Neighbors are at distance not greater than max_radius, and every instance in the window counts when only scoring.
+    # Neighbors are at distance not greater than max_radius, and every instance in the window counts while the window is not full.
     assert_almost_equal(model.score_partial(np.array([0.0])), 0.5)
     assert_almost_equal(model.score_partial(np.array([20.0])), 1.0)
 
-    # The fitted instance is not its own neighbor: of the other three instances in the window, only 5.0 and 6.0 are neighbors of itself.
-    assert_almost_equal(model.fit_score_partial(np.array([5.5])), 1.0 / 3.0)
+    model.fit_partial(np.array([10.0]))
+
+    # The fitted instance is not its own neighbor: after 0.0 expires, only 5.0 and 6.0 of the other four instances in the window are neighbors of itself.
+    assert_almost_equal(model.fit_score_partial(np.array([5.5])), 0.5)
 
 
 def test_exact_storm_empty_window():
@@ -65,3 +67,46 @@ def test_exact_storm_empty_window():
     # With no instances to be neighbors of, an instance has fewer than k neighbors for any k, so it gets the maximum score.
     assert ExactStorm().score_partial(np.array([0.0, 0.0])) == 1.0
     assert ExactStorm().fit_score_partial(np.array([0.0, 0.0])) == 1.0
+
+
+def test_exact_storm_score_partial_skips_the_expiring_instance():
+    import copy
+
+    import numpy as np
+
+    from pysad.models import ExactStorm
+
+    model = ExactStorm(window_size=3, max_radius=0.5).fit(np.array([[0.0], [5.0], [10.0]]))
+
+    # When 0.0 arrives again, the first 0.0 expires, so it is not a neighbor.
+    assert model.score_partial(np.array([0.0])) == 1.0
+    assert copy.deepcopy(model).fit_score_partial(np.array([0.0])) == 1.0
+    assert model.score_partial(np.array([5.0])) == 0.5
+
+
+def test_exact_storm_score_partial_matches_fit_score_partial():
+    import copy
+
+    import numpy as np
+
+    from pysad.models import ExactStorm
+
+    rng = np.random.RandomState(61)
+    X = rng.normal(size=(100, 2))
+    model = ExactStorm(window_size=20, max_radius=0.5)
+
+    for x in X:
+        assert model.score_partial(x) == copy.deepcopy(model).fit_score_partial(x)
+        model.fit_partial(x)
+
+
+def test_exact_storm_window_of_one():
+    import numpy as np
+
+    from pysad.models import ExactStorm
+
+    # A window of one holds only the scored instance, so no other instance can be its neighbor.
+    model = ExactStorm(window_size=1, max_radius=1.0).fit(np.array([[0.0]]))
+
+    assert model.score_partial(np.array([0.0])) == 1.0
+    assert model.fit_score_partial(np.array([0.0])) == 1.0

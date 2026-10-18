@@ -42,9 +42,10 @@ def test_scores_start_once_the_autoencoders_train():
     )
 
     # The feature mapper learns from the first 5 instances, and the autoencoders from the next.
-    np.testing.assert_array_equal(scores[:5], 0.0)
+    # Temporary autoencoders score the feature mapping instances, so only the first one scores 0.
+    assert scores[0] == 0.0
     assert np.isfinite(scores).all()
-    assert (scores[5:] > 0.0).all()
+    assert (scores[1:] > 0.0).all()
 
 
 def test_inputs_constant_in_training_are_not_scaled_by_1e16():
@@ -58,7 +59,9 @@ def test_inputs_constant_in_training_are_not_scaled_by_1e16():
     x = X[-1].copy()
     x[1] = 0.001
 
-    assert scores.max() < 10.0
+    # The autoencoders score the seventh instance after they trained on one instance, so its
+    # score is high, but far below the 1e16 scale of the bug.
+    assert scores.max() < 1e3
     assert model.score_partial(x) == pytest.approx(scores[-1], rel=0.05)
 
 
@@ -69,10 +72,11 @@ def test_grace_periods_last_the_given_numbers_of_instances():
 
     model.fit(X[:5])
     assert model.model.FM.N == 5
-    assert model.model.outputLayer is None
+    assert model.model.temporary
 
     model.fit(X[5:])
     assert model.model.FM.N == 5
+    assert not model.model.temporary
     assert model.model.outputLayer.n == 7
 
 
@@ -121,6 +125,35 @@ def test_default_grace_periods_score_a_short_stream():
     model = KitNet(random_state=0)
     scores = model.fit_score(_stream(num_instances=1500))
 
-    np.testing.assert_array_equal(scores[:100], 0.0)
-    assert (scores[100:] > 0.0).all()
+    # Only the first instance has no autoencoders to score it.
+    assert scores[0] == 0.0
+    assert (scores[1:] > 0.0).all()
     assert not model.model.inGrace()
+
+
+def test_temporary_autoencoders_do_not_change_the_final_model():
+    """During the feature mapping, temporary autoencoders are built at 1, 2, 4, ... instances.
+    After it, the autoencoders are built again on the final mapping and train on the same
+    instances as a KitNET that is given that mapping, so the two score the same."""
+    from pysad.models.kitnet_model.KitNET import KitNET
+
+    X = _stream(num_instances=30)
+    model = KitNET(3, 2, FM_grace_period=8, AD_grace_period=8, random_state=0)
+    built = []
+    create = model.__createAD__
+    model.__createAD__ = lambda m, temporary: (
+        built.append(model.n_trained + 1),
+        create(m, temporary),
+    )
+    for x in X[:16]:
+        model.train(x)
+    given_map = KitNET(
+        3, 2, FM_grace_period=0, AD_grace_period=8, feature_map=model.v, random_state=0
+    )
+    for x in X[8:16]:
+        given_map.train(x)
+
+    assert built == [1, 2, 4, 8, 9]
+    assert not model.temporary
+    for x in X[16:]:
+        assert model.execute(x) == given_map.execute(x)

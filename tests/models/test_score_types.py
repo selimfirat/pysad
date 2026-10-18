@@ -157,6 +157,22 @@ def test_batch_methods_return_1d_arrays(name, factory, num_features):
     assert scores.shape == (10,)
 
 
+@pytest.mark.parametrize(
+    "name,factory,num_features", MODEL_SPECS, ids=[spec[0] for spec in MODEL_SPECS]
+)
+def test_score_partial_before_the_first_fit_returns_a_score(name, factory, num_features):
+    """Regression test for #266: fit_score_partial scores each instance before it fits it, so
+    every detector must score the first instance without an error."""
+    if name == "PerfectModel":  # returns the labels that it was fitted with
+        pytest.skip("PerfectModel needs a label before it can score")
+    X, _ = _data(name, num_features)
+
+    score = factory().score_partial(X[0])
+
+    assert type(score) is float
+    assert np.isfinite(score)
+
+
 def test_one_element_array_scores_are_converted():
     from pysad.core.base_model import BaseModel
 

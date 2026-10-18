@@ -82,7 +82,9 @@ class BaseModel(ABC):
         pass
 
     def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
-        """Updates the model with the next instance and scores it.
+        """Scores the next instance with the model from the earlier instances, and then updates the model with it.
+
+        This order is prequential evaluation, also called test-then-train. The model never scores an instance that it learned from.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit and score.
@@ -91,7 +93,10 @@ class BaseModel(ABC):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        return _to_float_score(self.fit_partial(X, y).score_partial(X))
+        score = self.score_partial(X)
+        self.fit_partial(X, y)
+
+        return _to_float_score(score)
 
     def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> BaseModel:
         """Fits the model to all instances in order.

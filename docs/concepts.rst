@@ -81,7 +81,7 @@ Every detector extends :class:`~pysad.core.BaseModel` and has two single-point m
 ``score_partial(x)``
    Gives ``x`` an anomaly score, a Python ``float``. This method does not change the model.
 
-``fit_score_partial(x)`` learns from ``x`` and scores it, in the order that the detector's paper uses. By default, it calls ``fit_partial`` and then ``score_partial``. :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.RSHash`, :class:`~pysad.models.LODA`, :class:`~pysad.models.Inqmad`, :class:`~pysad.models.RelativeEntropy` and :class:`~pysad.models.KNNCAD` score the point before they learn from it. :class:`~pysad.models.ExactStorm` does not count the point as its own neighbor. Most loops use ``fit_score_partial``.
+``fit_score_partial(x)`` scores ``x`` with the model from the earlier points, and then learns from ``x``. This order is called prequential evaluation, or test-then-train. Stream libraries and most detector papers use it, and a detector never scores a point that it learned from. Before a detector learns from any point, it gives a fixed score, usually 0. :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` are the exceptions: as in the paper, they test the window that holds the newest value. Most loops use ``fit_score_partial``.
 
 :class:`~pysad.core.BaseModel` builds the batch methods ``fit(X)``, ``score(X)`` and ``fit_score(X)`` from the single-point methods. They take an array of shape ``(num_instances, num_features)``, one row per point, and process its rows in order, like a stream. Batch scores are a NumPy ``float64`` array of shape ``(num_instances,)``.
 
@@ -121,7 +121,7 @@ Prequential evaluation (predict, then train) is the standard way to measure a de
        model.fit_partial(x)
        metric.update(label, score)
 
-Most examples in this documentation call ``fit_score_partial`` instead. It uses the order of each detector's paper, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores. The two orders give similar results for most detectors. But a detector can give a lower score to a point that it learned from a moment before. For a strict predict-then-train comparison, call ``score_partial`` before ``fit_partial`` for every detector. Fit the first point before you score, because some detectors raise an error if they score before any fit: :class:`~pysad.models.IForestASD`, :class:`~pysad.models.integrations.ReferenceWindowModel`, :class:`~pysad.models.KitNet`, :class:`~pysad.models.MedianAbsoluteDeviation` and :class:`~pysad.models.StandardAbsoluteDeviation`.
+Most examples in this documentation call ``fit_score_partial`` instead. It scores each point before the detector learns from it, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores.
 
 Detectors need some data before their scores are stable. This first part of the stream is the warm-up period. A metric over the full stream includes the warm-up period. To see how the results change over time, compute the metric separately on consecutive parts of the stream, as :doc:`guides/evaluate` shows.
 

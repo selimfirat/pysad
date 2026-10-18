@@ -57,6 +57,9 @@ class StandardAbsoluteDeviation(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
+        if self.sub_meter.num_items == 0:  # there is no mean before the first value
+            return 0.0
+
         sub = self.sub_meter.get()
         dev = self.variance_meter.get() ** 0.5
 

@@ -160,7 +160,7 @@ No. A detector sees only the order of the points, not their time stamps. A seaso
 Can I use labels to train a detector?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Not directly. Most detectors are unsupervised: they learn without labels and ignore the ``y`` argument of ``fit_partial``. If you know which points are normal, call ``fit_partial`` only for those points, and ``score_partial`` for every point. The detector then learns only normal behavior. Fit at least one normal point before you score, because some detectors raise an error if they score before any fit. See :doc:`concepts`.
+Not directly. Most detectors are unsupervised: they learn without labels and ignore the ``y`` argument of ``fit_partial``. If you know which points are normal, call ``fit_partial`` only for those points, and ``score_partial`` for every point. The detector then learns only normal behavior. Before the first fit, a detector gives a fixed score, usually 0. See :doc:`concepts`.
 
 .. _faq-scores:
 

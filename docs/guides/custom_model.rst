@@ -54,7 +54,7 @@ Follow these rules:
 
 You get the rest from :class:`~pysad.core.BaseModel`:
 
-- ``fit_score_partial`` calls ``fit_partial`` and then ``score_partial``.
+- ``fit_score_partial`` calls ``score_partial`` and then ``fit_partial``. Thus ``score_partial`` must work before the first ``fit_partial``, for example with a score of 0.
 - ``fit``, ``score`` and ``fit_score`` process a 2-D array row by row.
 - ``score_partial`` and ``fit_score_partial`` return a Python ``float``, even if your method returns a NumPy scalar or a one-element array.
 

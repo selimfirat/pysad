@@ -114,23 +114,6 @@ class LODA(BaseModel):
 
         return self
 
-    def fit_score_partial(self, X, y=None):
-        """Scores the next instance, then fits the model to it.
-
-        The paper uses Loda on a stream "by first classifying a new sample and then updating all histograms" (Pevný 2016, §3).
-
-        Args:
-            X (np.float64 array of shape (num_features,)): The instance to score and fit.
-            y (int): Ignored since the model is unsupervised (Default=None).
-
-        Returns:
-            float: The anomalousness score of the input instance, as in `score_partial`.
-        """
-        score = self.score_partial(X)
-        self.fit_partial(X, y)
-
-        return score
-
     def score_partial(self, X):
         """Scores the anomalousness of the next instance.
 

@@ -84,9 +84,9 @@ test = [
   "pyod>=3.6.2",
   # Security floor for pillow, a transitive dependency of pyod via matplotlib.
   "pillow>=12.3.0",
-  "hypothesis==6.168.3",
+  "hypothesis==6.168.5",
   # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
-  "mmh3==5.3.0",
+  "mmh3==5.3.1",
   "pytest==9.1.1",
   "pytest-cov==7.1.0",
   "pytest-xdist==3.8.0",

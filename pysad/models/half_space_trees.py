@@ -196,18 +196,3 @@ class HalfSpaceTrees(BaseModel):
             s *= self.window_size / self.step
 
         return 0.0 - s
-
-    def fit_score_partial(self, X, y=None):
-        """Scores the next instance against the reference mass profile built from the previous window (during the first window, against the partial profile gathered so far, rescaled to a full window, as in `score_partial`), and then fits it, as Algorithm 3 does (score before updating the mass profile, and swap in the updated profile only at the end of a window).
-
-        Args:
-            X (np.float64 array of shape (num_features,)): The instance to fit and score.
-            y (int): Ignored since the model is unsupervised (Default=None).
-
-        Returns:
-            float: The anomalousness score of the input instance, as in `score_partial`.
-        """
-        score = self.score_partial(X)
-        self.fit_partial(X, y)
-
-        return score

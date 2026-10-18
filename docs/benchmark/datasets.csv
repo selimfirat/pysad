@@ -1,0 +1,18 @@
+Dataset,Points,Points used,Features,Anomalies (%)
+arrhythmia,452,452,274,14.6
+cardio,1831,1831,21,9.6
+glass,214,214,9,4.2
+ionosphere,351,351,33,35.9
+letter,1600,1600,32,6.2
+lympho,148,148,18,4.1
+mnist,7603,5000,100,9.2
+musk,3062,3062,166,3.2
+optdigits,5216,5000,64,2.9
+pendigits,6870,5000,16,2.3
+pima,768,768,8,34.9
+satellite,6435,5000,36,31.6
+satimage-2,5803,5000,36,1.2
+shuttle,49097,5000,9,7.2
+vertebral,240,240,6,12.5
+vowels,1456,1456,12,3.4
+wbc,378,378,30,5.6

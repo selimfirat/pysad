@@ -1,0 +1,54 @@
+name: benchmark
+
+# Reruns the detectors that a pull request can change and fails if their results differ from
+# docs/benchmark/. benchmarks/benchmark.py --check chooses the detectors from the changed files.
+on:
+  pull_request:
+    paths:
+      - "pysad/**"
+      - "benchmarks/**"
+      - "docs/benchmark/**"
+      - "pyproject.toml"
+      - ".github/workflows/benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - name: Install dependencies
+        run: uv pip install --system --group runtime -e .
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pysad
+          key: pysad-data-${{ hashFiles('pysad/utils/data.py') }}
+      - name: Compare with docs/benchmark/
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            python benchmarks/benchmark.py --check "origin/$BASE_REF"
+          else
+            python benchmarks/benchmark.py --check
+          fi

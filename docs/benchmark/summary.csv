@@ -1,0 +1,11 @@
+Detector,Mean rank,Mean AUROC,Mean AUPR,Time per point (ms)
+:class:`~pysad.models.IForestASD`,3.2,0.806,0.484,56.08
+:class:`~pysad.models.LocalOutlierProbability`,3.2,0.832,0.485,0.29
+:class:`~pysad.models.LODA`,4.4,0.788,0.463,0.07
+:class:`~pysad.models.HalfSpaceTrees`,4.4,0.797,0.435,0.15
+:class:`~pysad.models.RSHash`,4.5,0.793,0.336,0.74
+:class:`~pysad.models.Inqmad`,5.1,0.767,0.339,21.09
+:class:`~pysad.models.RobustRandomCutForest`,5.5,0.772,0.403,24.92
+:class:`~pysad.models.xStream`,7.1,0.734,0.275,1.11
+:class:`~pysad.models.KitNet`,8.4,0.657,0.244,0.13
+:class:`~pysad.models.ExactStorm`,9.3,0.513,0.129,0.12

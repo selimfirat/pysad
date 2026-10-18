@@ -118,7 +118,7 @@ In particular, you the agent MUST obey these rules while interacting on GitHub:
 - Vectorize across ensemble members, projections, trees, and features. Prefer batched NumPy operations over Python loops where the formulation stays clear.
 - Avoid per-instance allocations in hot paths. Update preallocated arrays in place.
 - Avoid duplicate passes over the window in hot paths.
-- Benchmark model changes before and after. Run `fit_score_partial` on the ODDS `arrhythmia`, `cardio`, and `vowels` datasets with seeds 0 to 4. Run the configurations one after another, not in parallel, so that the timings are comparable. Report AUROC and time per instance.
+- Benchmark model changes. Run `python benchmarks/benchmark.py --detectors <Model>` and commit `docs/benchmark/`. The diff of `docs/benchmark/results.csv` gives AUROC, AUPR, and time per point before and after. For a change that targets speed, add `--jobs 1` before and after, so that the timings are comparable. The `benchmark` workflow fails if the results are out of date.
 
 # Naming Policy
 

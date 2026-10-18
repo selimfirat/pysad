@@ -19,8 +19,8 @@ In the table, a window is the set of the most recent points that a detector keep
      - :class:`~pysad.models.SeasonalHybridESD`
      - Removes the cycle. Earlier anomalies in the window have little effect on the detector
    * - One series of values without a strong cycle
-     - :class:`~pysad.models.MedianAbsoluteDeviation`, or :class:`~pysad.models.StandardAbsoluteDeviation` for a long stream
-     - Anomalies in the history have little effect on the median absolute deviation (MAD). But MAD keeps every value, so its time per point grows with the stream. The standard deviation version takes constant time
+     - :class:`~pysad.models.MedianAbsoluteDeviation`
+     - Anomalies in the window have little effect on the median absolute deviation (MAD). It uses only the last ``window_size`` values, so it follows drift
    * - Several features, first try
      - :class:`~pysad.models.LODA`
      - Is fast, has few parameters and learns from every point

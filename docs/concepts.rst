@@ -150,13 +150,13 @@ Normal behavior changes over time. This change is drift. A detector follows drif
      - Detectors
      - Effect
    * - A window of recent data
-     - :class:`~pysad.models.xStream`, :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.ExactStorm`, :class:`~pysad.models.IForestASD`, :class:`~pysad.models.SeasonalESD`, :class:`~pysad.models.SeasonalHybridESD`, :class:`~pysad.models.KNNCAD`
+     - :class:`~pysad.models.xStream`, :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.ExactStorm`, :class:`~pysad.models.IForestASD`, :class:`~pysad.models.SeasonalESD`, :class:`~pysad.models.SeasonalHybridESD`, :class:`~pysad.models.KNNCAD`, :class:`~pysad.models.MedianAbsoluteDeviation`
      - Data older than the window has no effect. A smaller window follows drift faster.
    * - Time decay
      - :class:`~pysad.models.RSHash`, :class:`~pysad.models.RobustRandomCutForest`
      - Old points count less and less. A larger ``decay`` (``time_decay`` for :class:`~pysad.models.RobustRandomCutForest`) follows drift faster. With the default ``time_decay=0``, :class:`~pysad.models.RobustRandomCutForest` keeps a uniform sample of the whole stream and does not forget.
    * - No forgetting
-     - :class:`~pysad.models.LODA`, :class:`~pysad.models.Inqmad`, :class:`~pysad.models.MedianAbsoluteDeviation`, :class:`~pysad.models.StandardAbsoluteDeviation`, :class:`~pysad.models.RelativeEntropy`
+     - :class:`~pysad.models.LODA`, :class:`~pysad.models.Inqmad`, :class:`~pysad.models.StandardAbsoluteDeviation`, :class:`~pysad.models.RelativeEntropy`
      - Every point since the start counts equally, so the detector reacts more slowly to drift as the stream grows.
 
 :class:`~pysad.models.KitNet` learns only during its grace periods, the first points of the stream. :class:`~pysad.models.LocalOutlierProbability` learns only from its initial points. After that, these two detectors do not follow drift.

@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 from sklearn.utils import check_random_state
 from . import dA as AE
@@ -40,6 +42,8 @@ class KitNET:
         self.n_executed = 0 # the number of executed instances so far
         self.v = feature_map
         self.FM = CC.corClust(self.n) #incremental feature cluatering for the feature mapping process
+        self.map = None #the feature map of the current autoencoders
+        self.temporary = False #whether the current autoencoders are temporary ones of the feature mapping phase (see train)
         self.ensembleLayer = [] #the autoencoders are built on the first instance they train on (see train)
         self.outputLayer = None
 
@@ -63,19 +67,23 @@ class KitNET:
         if self.n_trained < self.FM_grace_period and self.v is None: #If the FM is in train-mode, and the user has not supplied a feature mapping
             #update the incremetnal correlation matrix
             self.FM.update(x)
-        else: #train
-            if self.outputLayer is None: #Build the autoencoders on the first instance they train on, so that none is executed before it has seen a range to normalize with
-                if self.v is None:
-                    self.v = self.FM.cluster(self.m)
-                self.__createAD__()
-            ## Ensemble Layer
-            S_l1 = np.zeros(len(self.ensembleLayer))
-            for a in range(len(self.ensembleLayer)):
-                # make sub instance for autoencoder 'a'
-                xi = x[self.v[a]]
-                S_l1[a] = self.ensembleLayer[a].train(xi)
-            ## OutputLayer
-            self.outputLayer.train(S_l1)
+            #Until the feature mapping is learned, temporary autoencoders on the mapping so far give the scores.
+            #They are built again each time the number of instances doubles (1, 2, 4, ...), and they train on the instances in between.
+            if (self.n_trained + 1) & self.n_trained == 0:
+                self.__createAD__(self.FM.cluster(self.m), temporary=True)
+        elif self.outputLayer is None or self.temporary: #Build the autoencoders on the first instance they train on, so that none is executed before it has seen a range to normalize with
+            if self.v is None:
+                self.v = self.FM.cluster(self.m)
+            #The temporary autoencoders are dropped, so the model after the grace periods does not depend on them
+            self.__createAD__(self.v, temporary=False)
+        ## Ensemble Layer
+        S_l1 = np.zeros(len(self.ensembleLayer))
+        for a in range(len(self.ensembleLayer)):
+            # make sub instance for autoencoder 'a'
+            xi = x[self.map[a]]
+            S_l1[a] = self.ensembleLayer[a].train(xi)
+        ## OutputLayer
+        self.outputLayer.train(S_l1)
         self.n_trained += 1
 
     #force execute KitNET on x
@@ -88,22 +96,27 @@ class KitNET:
             S_l1 = np.zeros(len(self.ensembleLayer))
             for a in range(len(self.ensembleLayer)):
                 # make sub inst
-                xi = x[self.v[a]]
+                xi = x[self.map[a]]
                 S_l1[a] = self.ensembleLayer[a].execute(xi)
             ## OutputLayer
             return self.outputLayer.execute(S_l1)
 
-    def __createAD__(self):
+    def __createAD__(self, feature_map, temporary):
         # Resolved here, when the autoencoders are built, so that None follows the global state at that time.
         rng = check_random_state(self.random_state)
+        if temporary: #a copy, so that the temporary autoencoders do not change the weights of the final ones
+            rng = copy.deepcopy(rng)
+        self.map = feature_map
+        self.temporary = temporary
 
         # construct ensemble layer
-        for map in self.v:
+        self.ensembleLayer = []
+        for map in feature_map:
             params = AE.dA_params(n_visible=len(map), n_hidden=0, lr=self.lr, corruption_level=0, gracePeriod=0, hiddenRatio=self.hr)
             self.ensembleLayer.append(AE.dA(params, rng))
 
         # construct output layer
-        params = AE.dA_params(len(self.v), n_hidden=0, lr=self.lr, corruption_level=0, gracePeriod=0, hiddenRatio=self.hr)
+        params = AE.dA_params(len(feature_map), n_hidden=0, lr=self.lr, corruption_level=0, gracePeriod=0, hiddenRatio=self.hr)
         self.outputLayer = AE.dA(params, rng)
 
 # Copyright (c) 2017 Yisroel Mirsky

@@ -51,7 +51,7 @@ Make a detector. Then give it the stream one point at a time. This tutorial uses
        score = model.fit_score_partial(x)
        scores.append(score)
 
-:class:`~pysad.utils.ArrayStreamer` replays an array as a stream, one row at a time. For each point, :meth:`~pysad.core.BaseModel.fit_score_partial` updates the detector with the point and gives the point an anomaly score. LODA learns from the point first and then scores it. The score is a Python ``float``. A higher score means a more anomalous point.
+:class:`~pysad.utils.ArrayStreamer` replays an array as a stream, one row at a time. For each point, :meth:`~pysad.core.BaseModel.fit_score_partial` updates the detector with the point and gives the point an anomaly score. LODA scores the point first and then learns from it, as its paper does. The score is a Python ``float``. A higher score means a more anomalous point.
 
 Compare the average score of the normal points and of the anomalies:
 
@@ -63,8 +63,8 @@ Compare the average score of the normal points and of the anomalies:
 
 .. code-block:: text
 
-   normal: 1.48
-   anomalies: 2.58
+   normal: 1.50
+   anomalies: 2.63
 
 The anomalies get higher scores. The detector learned what normal data looks like from the stream itself, without labels.
 
@@ -92,7 +92,7 @@ PySAD metrics update one point at a time, so you can measure the detector while 
 
    AUROC: 0.960
 
-The metric gets each score while the stream runs. The detector never sees a label. As a result, the detector works under the same conditions as in a live system. :doc:`concepts` explains this learn-then-score order and how it relates to prequential evaluation (score each point, then learn from it).
+The metric gets each score while the stream runs. The detector never sees a label. As a result, the detector works under the same conditions as in a live system. This score-then-learn order is called prequential evaluation. :doc:`concepts` explains it.
 
 Raise alerts
 ------------
@@ -143,7 +143,7 @@ Try real data
 
 .. code-block:: text
 
-   AUROC on cardio: 0.951
+   AUROC on cardio: 0.946
 
 You built the full workflow: stream the data, score each point, measure the detector and raise alerts. The same loop works with every detector in PySAD.
 

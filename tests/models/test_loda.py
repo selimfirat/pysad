@@ -146,3 +146,20 @@ def test_loda_score_before_fit_and_non_finite_values():
     assert model.num_seen_ == 50
     np.testing.assert_array_equal(model.histograms_.sum(axis=1), 50)
     assert np.isfinite(model.score_partial(np.array([np.inf, 0.0, 0.0, 0.0])))
+
+
+def test_loda_fit_score_partial_scores_before_fitting():
+    import numpy as np
+
+    from pysad.models import LODA
+
+    X = np.random.default_rng(0).normal(size=(300, 4))
+    X[-1] = 6.0  # an outlier, which must not lower its own score
+    model, reference = LODA(random_state=0), LODA(random_state=0)
+
+    for x in X:
+        expected = reference.score_partial(x)
+        reference.fit_partial(x)
+        assert model.fit_score_partial(x) == expected
+
+    np.testing.assert_array_equal(model.histograms_, reference.histograms_)

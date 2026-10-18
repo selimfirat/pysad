@@ -81,7 +81,7 @@ Every detector extends :class:`~pysad.core.BaseModel` and has two single-point m
 ``score_partial(x)``
    Gives ``x`` an anomaly score, a Python ``float``. This method does not change the model.
 
-``fit_score_partial(x)`` learns from ``x`` and scores it, in the order that the detector's paper uses. By default, it calls ``fit_partial`` and then ``score_partial``. :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.RSHash`, :class:`~pysad.models.Inqmad`, :class:`~pysad.models.RelativeEntropy` and :class:`~pysad.models.KNNCAD` score the point before they learn from it. :class:`~pysad.models.ExactStorm` does not count the point as its own neighbor. Most loops use ``fit_score_partial``.
+``fit_score_partial(x)`` learns from ``x`` and scores it, in the order that the detector's paper uses. By default, it calls ``fit_partial`` and then ``score_partial``. :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.RSHash`, :class:`~pysad.models.LODA`, :class:`~pysad.models.Inqmad`, :class:`~pysad.models.RelativeEntropy` and :class:`~pysad.models.KNNCAD` score the point before they learn from it. :class:`~pysad.models.ExactStorm` does not count the point as its own neighbor. Most loops use ``fit_score_partial``.
 
 :class:`~pysad.core.BaseModel` builds the batch methods ``fit(X)``, ``score(X)`` and ``fit_score(X)`` from the single-point methods. They take an array of shape ``(num_instances, num_features)``, one row per point, and process its rows in order, like a stream. Batch scores are a NumPy ``float64`` array of shape ``(num_instances,)``.
 

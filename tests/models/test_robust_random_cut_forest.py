@@ -70,3 +70,19 @@ def test_rrcf_scores_before_fitting():
 
     # Scored before it replaces one of the 8 zeros, the new instance is cut off from all 8 of them.
     assert model.fit_score_partial(np.ones(1)) == 8.0
+
+
+def test_rrcf_trees_hold_shingles_of_consecutive_instances():
+    from pysad.models import RobustRandomCutForest
+
+    X = np.arange(10.0).reshape(5, 2)
+    model = RobustRandomCutForest(num_trees=2, shingle_size=3, random_state=0)
+
+    scores = [model.fit_score_partial(x) for x in X]
+
+    assert scores[:2] == [0.0, 0.0]
+    for tree in model.forest:
+        np.testing.assert_array_equal(
+            np.array([leaf.x for _, leaf in sorted(tree.leaves.items())]),
+            [[0, 1, 2, 3, 4, 5], [2, 3, 4, 5, 6, 7], [4, 5, 6, 7, 8, 9]],
+        )

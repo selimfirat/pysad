@@ -67,7 +67,7 @@ The benchmark follows the rules of :doc:`guides/evaluate`. For each dataset, eac
 
 #. It loads the dataset with :class:`~pysad.utils.Data`. Then it shuffles the points with ``ArrayStreamer(shuffle=True, random_state=seed)``. Many of the files put all the anomalies at the end, so the order of the file is not a fair stream.
 #. It keeps the first 5,000 points of the shuffled stream.
-#. It scales each feature to the range from 0 to 1, with the minimum and the maximum from :func:`~pysad.utils.get_minmax_array`. The default parameters of some detectors, for example the radius of :class:`~pysad.models.ExactStorm`, assume features of about this size.
+#. It scales each feature to the range from 0 to 1, with the minimum and the maximum from :func:`~pysad.utils.get_minmax_array`. HST and :class:`~pysad.models.RSHash` require the range of each feature in advance, and after the scaling, this range is from 0 to 1.
 #. It makes the detector with its default parameters and ``random_state=seed``. Some detectors also get the arguments that they require. HST and :class:`~pysad.models.RSHash` get the range from 0 to 1 for each feature. :class:`~pysad.models.Inqmad` gets the number of features. LoOP fits on the first 256 points of the stream.
 #. It gives each point to ``fit_score_partial``, which trains the detector on the point and scores the point.
 #. It computes AUROC and AUPR over the scores of all the points.
@@ -91,7 +91,7 @@ What the results do not show
 - The univariate detectors take one value per point, so the benchmark does not run them. These detectors are :class:`~pysad.models.MedianAbsoluteDeviation`, :class:`~pysad.models.StandardAbsoluteDeviation`, :class:`~pysad.models.KNNCAD`, :class:`~pysad.models.RelativeEntropy`, :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD`.
 - :class:`~pysad.models.integrations.ReferenceWindowModel` runs a PyOD model, so its results depend on that model. :class:`~pysad.models.IForestASD` is one example of it.
 - The points of these datasets are independent, and the benchmark puts them in a random order. The streams have no drift and no seasonality. Thus the results do not show how a detector follows changes over time.
-- Tuned parameters can give very different results. For example, the default radius of :class:`~pysad.models.ExactStorm` finds no neighbors on most of these datasets, so its AUROC is near 0.5. :doc:`guides/choose_detector` names the parameters with the largest effect.
+- Tuned parameters can give very different results. For example, :class:`~pysad.models.KitNet` trains on its first 1,100 points by default. 7 of these datasets have fewer points, so on them, KitNet never ends its training. :doc:`guides/choose_detector` names the parameters with the largest effect.
 
 Run the benchmark
 -----------------

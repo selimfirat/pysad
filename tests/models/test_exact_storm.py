@@ -110,3 +110,26 @@ def test_exact_storm_window_of_one():
 
     assert model.score_partial(np.array([0.0])) == 1.0
     assert model.fit_score_partial(np.array([0.0])) == 1.0
+
+
+def test_exact_storm_sets_the_radius_from_the_first_instances():
+    import copy
+
+    import numpy as np
+
+    from pysad.models import ExactStorm
+
+    X = np.random.RandomState(0).normal(size=(60, 3))
+    model = ExactStorm(calibration_size=40)
+
+    # Until two instances arrive, there is no radius.
+    assert model.fit_score_partial(X[0]) == 1.0
+    assert model.radius_ is None
+    for i, x in enumerate(X[1:], start=1):
+        # Each instance is scored with the radius from the instances before it.
+        assert model.score_partial(x) == copy.deepcopy(model).fit_score_partial(x)
+        model.fit_partial(x)
+        first = X[: min(i + 1, 40)]
+        dists = np.linalg.norm(first[:, None] - first[None], axis=2)
+        np.fill_diagonal(dists, np.inf)
+        assert np.isclose(model.radius_, np.quantile(dists.min(axis=1), 0.95))

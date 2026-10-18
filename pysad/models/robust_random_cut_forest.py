@@ -1,6 +1,7 @@
 import copy
 import sys
 import types
+from collections import deque
 from importlib.metadata import version
 
 import numpy as np
@@ -62,6 +63,8 @@ class RobustRandomCutForest(BaseModel):
             self.forest.append(tree)
 
         self.index = 0
+        # Buffer of recent instances for shingling (rolling window of size shingle_size)
+        self._shingle_buffer = deque(maxlen=self.shingle_size)
 
     def __getstate__(self):
         # rrcf.RCTree keeps a reference to the ``numpy.random`` module as its random number generator,
@@ -83,6 +86,37 @@ class RobustRandomCutForest(BaseModel):
 
         self.__dict__.update(state)
 
+
+    def _make_shingle(self, X, update=True):
+        """Build the shingled point from recent instances + X.
+
+        For shingle_size == 1 returns X unchanged.
+        When update=True (normal fit path) the buffer is advanced.
+        When update=False the buffer is left unchanged (used when scoring
+        an already-fitted point or for pure score_partial calls).
+        """
+        X = np.asarray(X, dtype=float)
+        if X.ndim == 0:
+            X = X.reshape(1)
+        if self.shingle_size <= 1:
+            return X
+
+        if update:
+            self._shingle_buffer.append(X)
+
+        window = list(self._shingle_buffer)
+        if not update:
+            # Simulate appending for the purpose of scoring without mutating
+            window = window + [X]
+            if len(window) > self.shingle_size:
+                window = window[-self.shingle_size:]
+
+        if len(window) < self.shingle_size:
+            pad = [np.zeros_like(X)] * (self.shingle_size - len(window))
+            window = pad + window
+
+        return np.concatenate(window)
+
     def fit_partial(self, X, y=None):
         """Updates the model with the next instance.
 
@@ -93,11 +127,12 @@ class RobustRandomCutForest(BaseModel):
         Returns:
             object: The model itself.
         """
+        point = self._make_shingle(X, update=True)
         for tree in self.forest:
             if len(tree.leaves) > self.tree_size:
                 tree.forget_point(self.index - self.tree_size)
 
-            tree.insert_point(X, index=self.index)
+            tree.insert_point(point, index=self.index)
 
         self.index += 1
 
@@ -113,11 +148,12 @@ class RobustRandomCutForest(BaseModel):
             float: The anomalousness score of the input instance.
         """
 
+        point = self._make_shingle(X, update=False)
         score = 0.0
         for tree in self.forest:
-            leaf = tree.find_duplicate(X)
+            leaf = tree.find_duplicate(point)
             if leaf is None:
-                tree.insert_point(X, index="test_point")
+                tree.insert_point(point, index="test_point")
                 score += 1.0 * tree.codisp("test_point") / self.num_trees
                 tree.forget_point("test_point")
             else:

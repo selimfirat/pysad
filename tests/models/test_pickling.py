@@ -29,7 +29,8 @@ MODEL_PARAMS = {
         "max_depth": 8,
     },
     "IForestASD": {"window_size": 32},
-    "Inqmad": {"input_shape": 3, "dim_x": 32, "gamma": 100},
+    # The initial sample completes before the round trip, so the restored model has rho and tau.
+    "Inqmad": {"input_shape": 3, "dim_x": 32, "gamma": 1.0, "initial_size": 30},
     # Its autoencoders still train on the instances scored after the round trip.
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 50},
     "KNNCAD": {"probationary_period": 50},

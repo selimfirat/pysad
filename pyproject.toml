@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pysad"
 dynamic = ["version"]
-# The floors are the first releases of scipy, scikit-learn, statsmodels and pandas built
+# The floors are the first releases of scipy, scikit-learn and statsmodels built
 # for NumPy 2, so no allowed combination pairs NumPy 2 with an older build compiled for
 # NumPy 1. The lowest-versions job in .github/workflows/coverage.yml tests them.
 dependencies = [
@@ -13,8 +13,6 @@ dependencies = [
   "scikit-learn>=1.4.2",
   "scipy>=1.13.0",
   "statsmodels>=0.14.2",
-  "pyod>=3.6.2",
-  "pandas>=2.2.2",
   "PyNomaly>=0.4.0",
   "rrcf>=0.4.4",
 ]
@@ -77,15 +75,16 @@ runtime = [
   "scipy==1.15.3; python_version < '3.11'",
   "scipy>=1.15.4; python_version >= '3.11'",
   "statsmodels==0.15.0",
-  "pyod>=3.6.2",
   "pandas==2.3.3",
   "rrcf==0.4.4",
   "PyNomaly==0.4.0",
   "setuptools>=84.0.0,<85.0.0",
-  # Security floor for pillow, a transitive dependency via matplotlib.
-  "pillow>=12.3.0",
 ]
 test = [
+  # The batch detectors that the tests and examples run through pysad.models.integrations.
+  "pyod>=3.6.2",
+  # Security floor for pillow, a transitive dependency of pyod via matplotlib.
+  "pillow>=12.3.0",
   "hypothesis==6.168.3",
   # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
   "mmh3==5.3.0",
@@ -187,5 +186,5 @@ check_untyped_defs = true
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]
-module = ["pandas.*", "PyNomaly.*", "pyod.*", "rrcf", "scipy.*", "sklearn.*", "statsmodels.*"]
+module = ["pandas.*", "PyNomaly.*", "rrcf", "scipy.*", "sklearn.*", "statsmodels.*"]
 ignore_missing_imports = true

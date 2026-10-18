@@ -1,7 +1,7 @@
 Run a PyOD model on a stream
 ============================
 
-`PyOD <https://github.com/yzhao062/pyod>`_ has many batch detectors. A batch detector trains on a fixed dataset and cannot learn from one point at a time. PySAD has two wrappers that run a PyOD detector on a stream.
+`PyOD <https://github.com/yzhao062/pyod>`_ has many batch detectors. A batch detector trains on a fixed dataset and cannot learn from one point at a time. PySAD has two wrappers that run a PyOD detector on a stream. PySAD does not install PyOD. Install it with ``pip install pyod``.
 
 The examples on this page use a synthetic stream. Replace ``X`` with your own data:
 

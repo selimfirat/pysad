@@ -8,7 +8,6 @@ logic is unchanged. For licensing information, see the end of this file.
 
 import numpy as np
 from numpy.random import RandomState
-from pyod.utils.utility import check_parameter
 from sklearn.utils import check_array, shuffle
 from sklearn.utils.random import sample_without_replacement
 
@@ -104,9 +103,8 @@ def _aom_moa_helper(mode, scores, n_buckets, method, bootstrap_estimators, rando
 
     scores = check_array(scores)
     n_estimators = scores.shape[1]
-    check_parameter(
-        n_buckets, 2, n_estimators, include_left=True, include_right=True, param_name="n_buckets"
-    )
+    if not 2 <= n_buckets <= n_estimators:
+        raise ValueError(f"n_buckets must be between 2 and {n_estimators}, got {n_buckets}.")
 
     scores_buckets = np.zeros([scores.shape[0], n_buckets])
 

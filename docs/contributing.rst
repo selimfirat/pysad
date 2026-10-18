@@ -102,7 +102,7 @@ Check the change
 
       $ pytest -m examples
 
-#. If you changed a multivariate detector, run the :doc:`benchmark` for it and commit ``docs/benchmark/``. Replace ``LODA`` with the class name of the detector:
+#. If you changed a multivariate detector, commit the change. Then run the :doc:`benchmark` for the detector, and commit ``docs/benchmark/``. The results record the commit that they ran on. Replace ``LODA`` with the class name of the detector:
 
    .. code-block:: console
 

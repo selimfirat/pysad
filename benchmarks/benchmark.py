@@ -52,7 +52,14 @@ DETECTORS = {
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
     "xStream": lambda X, seed: models.xStream(random_state=seed),
 }
-FIELDS = ["dataset", "detector", "seed", "auroc", "aupr", "ms_per_point"]
+# The per-dataset tables use these names, which are common in the papers, to fit the page.
+SHORT_NAMES = {
+    "HalfSpaceTrees": "HST",
+    "LocalOutlierProbability": "LoOP",
+    "RobustRandomCutForest": "RRCF",
+}
+FIELDS = ["dataset", "detector", "seed", "auroc", "aupr", "ms_per_point", "commit"]
+COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
 
 
 def load(dataset, seed):
@@ -105,62 +112,77 @@ def write_csv(name, header, rows):
 def write_tables(results):
     detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
     rows = sorted(results.values(), key=lambda r: (DATASETS.index(r["dataset"]), r["detector"]))
-    write_csv("results.csv", FIELDS, [[r[f] for f in FIELDS] for r in rows])
+    write_csv("results.csv", FIELDS, [[r.get(f, "") for f in FIELDS] for r in rows])
 
     def mean(metric, dataset, detector):
         return np.mean(
             [float(r[metric]) for k, r in results.items() if k[:2] == (dataset, detector)]
         )
 
-    summary = {}
-    for metric in ["auroc", "aupr"]:
-        table = np.array([[mean(metric, ds, d) for d in detectors] for ds in DATASETS])
-        write_csv(
-            f"{metric}.csv",
-            ["Dataset", *detectors],
-            [[ds, *(f"{v:.3f}" for v in row)] for ds, row in zip(DATASETS, table, strict=True)],
-        )
-        summary[metric] = np.nanmean(table, axis=0)
-        if metric == "auroc":  # rank 1 is the highest AUROC of a dataset
-            summary["rank"] = np.mean([rankdata(-np.nan_to_num(row)) for row in table], axis=0)
+    tables = {
+        metric: np.array([[mean(metric, ds, d) for d in detectors] for ds in DATASETS])
+        for metric in ["auroc", "aupr"]
+    }
+    rank = np.mean([rankdata(-np.nan_to_num(row)) for row in tables["auroc"]], axis=0)
     ms = [
         np.median([float(r["ms_per_point"]) for k, r in results.items() if k[1] == d])
         for d in detectors
     ]
-    order = np.argsort(summary["rank"])
+    order = np.argsort(rank)  # rank 1 is the highest AUROC of a dataset
     write_csv(
         "summary.csv",
-        ["Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)"],
+        ["Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)", "Commit"],
         [
             [
                 f":class:`~pysad.models.{detectors[i]}`",
-                f"{summary['rank'][i]:.1f}",
-                f"{summary['auroc'][i]:.3f}",
-                f"{summary['aupr'][i]:.3f}",
+                f"{rank[i]:.1f}",
+                f"{np.nanmean(tables['auroc'][:, i]):.3f}",
+                f"{np.nanmean(tables['aupr'][:, i]):.3f}",
                 f"{ms[i]:.2f}",
+                ", ".join(
+                    f"`{c} <{COMMIT_URL}{c.removesuffix('-dirty')}>`__"
+                    for c in sorted(
+                        {r.get("commit") or "" for k, r in results.items() if k[1] == detectors[i]}
+                    )
+                    if c
+                ),
             ]
             for i in order
         ],
     )
+    for metric, table in tables.items():  # the columns in the order of the summary
+        rows = []
+        for ds, row in zip(DATASETS, table[:, order], strict=True):
+            cells = [f"{v:.3f}" for v in row]
+            best = f"{np.nanmax(row):.3f}"
+            rows.append([ds, *(f"**{c}**" if c == best else c for c in cells)])
+        header = [SHORT_NAMES.get(detectors[i], detectors[i]) for i in order]
+        write_csv(f"{metric}.csv", ["Dataset", *header], rows)
 
     datasets = []
     for ds in DATASETS:
         X, y = Data().get_data(f"{ds}.mat")
         n = min(len(X), MAX_POINTS)
-        datasets.append([ds, len(X), n, X.shape[1], f"{100 * y.mean():.1f}"])
+        datasets.append([ds, f"{len(X):,}", f"{n:,}", X.shape[1], f"{100 * y.mean():.1f}"])
     write_csv(
         "datasets.csv", ["Dataset", "Points", "Points used", "Features", "Anomalies (%)"], datasets
     )
 
 
+def git(*args):
+    return subprocess.run(
+        ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout
+
+
+def commit():
+    """The commit that the run uses, with -dirty when the code has changes that are not committed."""
+    dirty = git("status", "--porcelain", "--", "pysad", "benchmarks", "pyproject.toml").strip()
+    return git("rev-parse", "--short", "HEAD").strip() + ("-dirty" if dirty else "")
+
+
 def changed_detectors(base):
     """The detectors whose results a change since ``base`` can move."""
-
-    def git(*args):
-        return subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
-        ).stdout
-
     files = git("diff", "--name-only", base).split()
     common = pysad_files([ArrayStreamer, Data, fix_seed, get_minmax_array])
     if common & set(files) or "benchmarks/benchmark.py" in files or "pyproject.toml" in files:
@@ -252,7 +274,8 @@ def main():
         print("The results in docs/benchmark/ are up to date.")
         return
 
-    results.update(new)
+    sha = commit()
+    results.update({k: {**row, "commit": sha} for k, row in new.items()})
     OUT.mkdir(parents=True, exist_ok=True)
     write_tables(results)
 

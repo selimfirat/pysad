@@ -468,3 +468,25 @@ section#frequently-asked-questions section section > h3::before {
     display: none;
   }
 }
+
+/* Benchmark tables: numbers align on the right, with digits of equal width. */
+table.benchmark-table {
+  font-size: 0.85rem;
+}
+
+table.benchmark-table th,
+table.benchmark-table td {
+  padding: 0 0.45rem;
+  white-space: nowrap;
+}
+
+table.benchmark-table th p,
+table.benchmark-table td p {
+  margin: 0.2rem 0;
+}
+
+table.benchmark-table td:not(:first-child),
+table.benchmark-table th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

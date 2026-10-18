@@ -88,6 +88,8 @@ A univariate detector scores points with one feature. To use another univariate 
 
 The decomposer subtracts a running estimate of the trend and of the cycle. It is faster than STL but less exact.
 
+:class:`~pysad.transform.preprocessing.ModifiedSTLResidualTransformer` gives the residual that :class:`~pysad.models.SeasonalESD` tests, and it plugs into the same loop: ``ModifiedSTLResidualTransformer(period=24, window_size=24 * 14)`` in place of the decomposer. It fits STL again on the last ``window_size`` values for each new value, so it is slower.
+
 Next steps
 ----------
 

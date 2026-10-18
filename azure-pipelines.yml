@@ -7,6 +7,11 @@
 trigger:
 - master
 
+# Draft pull requests get no run. When a draft becomes ready, Azure Pipelines would cancel its
+# run on the draft, and the all-checks gate would fail on the cancelled checks (#267).
+pr:
+  drafts: false
+
 strategy:
   matrix:
     linux310:

@@ -31,7 +31,7 @@ OUT = ROOT / "docs" / "benchmark"
 DATASETS = [name.removesuffix(".mat") for name in Data()._get_data_files()]
 SEEDS = range(5)
 MAX_POINTS = 5000  # the first points of each shuffled stream
-INITIAL_POINTS = 256  # the points that LocalOutlierProbability fits on
+WARMUP_POINTS = 256  # the scores of the first points do not count, see warmup()
 # --check accepts this difference in AUROC. Other platforms round differently, and on a small
 # dataset that can swap one anomaly with one normal point. AUPR moves too much for such a swap.
 TOLERANCE = 0.005
@@ -49,7 +49,7 @@ DETECTORS = {
     "Inqmad": lambda X, seed: models.Inqmad(X.shape[1], random_state=seed),
     "KitNet": lambda X, seed: models.KitNet(random_state=seed),
     "LODA": lambda X, seed: models.LODA(random_state=seed),
-    "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[:INITIAL_POINTS]),
+    "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[: warmup(len(X))]),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
     "xStream": lambda X, seed: models.xStream(random_state=seed),
@@ -62,6 +62,15 @@ SHORT_NAMES = {
 }
 FIELDS = ["dataset", "detector", "seed", "auroc", "aupr", "ms_per_point", "commit"]
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
+
+
+def warmup(n):
+    """The number of first points of a stream whose scores do not count in the metrics.
+
+    A detector learns from these points, but it has little or no model yet when it scores them.
+    It is 256 points, or a quarter of a stream with fewer than 1,024 points.
+    """
+    return min(WARMUP_POINTS, n // 4)
 
 
 def load(dataset, seed):
@@ -81,6 +90,7 @@ def run(job):
     with np.errstate(all="ignore"):  # a score that is not finite makes the metrics NaN
         scores = np.array([float(model.fit_score_partial(x)) for x in X])
     seconds = time.perf_counter() - start
+    scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
     valid = np.isfinite(scores).all()
     return {
         "dataset": dataset,
@@ -170,9 +180,13 @@ def write_tables(results):
     for ds in DATASETS:
         X, y = Data().get_data(f"{ds}.mat")
         n = min(len(X), MAX_POINTS)
-        datasets.append([ds, f"{len(X):,}", f"{n:,}", X.shape[1], f"{100 * y.mean():.1f}"])
+        datasets.append(
+            [ds, f"{len(X):,}", f"{n:,}", f"{n - warmup(n):,}", X.shape[1], f"{100 * y.mean():.1f}"]
+        )
     write_csv(
-        "datasets.csv", ["Dataset", "Points", "Points used", "Features", "Anomalies (%)"], datasets
+        "datasets.csv",
+        ["Dataset", "Points", "Points used", "Points evaluated", "Features", "Anomalies (%)"],
+        datasets,
     )
 
 

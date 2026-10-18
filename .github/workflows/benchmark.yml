@@ -2,7 +2,7 @@ name: benchmark
 
 # Reruns the detectors that a pull request can change and fails if their results differ from
 # docs/benchmark/. benchmarks/benchmark.py --check picks the detectors from the changed files.
-# Each seed runs in its own job, because all the detectors take more than 4 CPU-hours.
+# Each seed runs in its own job, because all the detectors take about 2.5 CPU-hours.
 on:
   pull_request:
     paths:

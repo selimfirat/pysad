@@ -102,7 +102,7 @@ Install PySAD in editable mode, as :doc:`contributing` shows. Then run the bench
 
    $ python benchmarks/benchmark.py
 
-The first run downloads the datasets. The script writes the results to ``docs/benchmark/``, and this page shows them. A full run takes about 4.5 CPU-hours, which is 30 minutes on 10 cores. The ``--jobs`` option sets the number of processes. The default is the number of CPU cores.
+The first run downloads the datasets. The script writes the results to ``docs/benchmark/``, and this page shows them. A full run takes about 2.5 CPU-hours, which is 21 minutes on 10 cores. The ``--jobs`` option sets the number of processes. The default is the number of CPU cores.
 
 To run some detectors again, give their names with ``--detectors``. The script replaces the results of these detectors and keeps the other results:
 

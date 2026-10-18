@@ -8,6 +8,9 @@ name: all checks
 # separately.
 on:
   pull_request:
+    # ready_for_review starts the gate again when a draft becomes ready. Azure Pipelines then
+    # cancels its run on the draft, and the old gate run would fail on that cancelled run.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read

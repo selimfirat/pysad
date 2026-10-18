@@ -21,4 +21,4 @@ def test_loop_matches_pynomaly(num_neighbors, extent):
 
     scores = LocalOutlierProbability(initial_X, num_neighbors=num_neighbors, extent=extent).score(X)
 
-    assert np.allclose(scores, expected, rtol=0, atol=1e-12)
+    assert np.array_equal(scores, expected)

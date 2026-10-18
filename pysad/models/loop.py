@@ -62,10 +62,19 @@ class LocalOutlierProbability(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        # Adapted from LocalOutlierProbability.stream of PyNomaly 0.4.0.
-        distances = np.sqrt(((self.initial_X - X) ** 2).sum(axis=1))
-        neighbor_distances = np.partition(distances, self.num_neighbors - 1)[: self.num_neighbors]
-        prob_distance = self.extent * np.sqrt((neighbor_distances**2).sum() / self.num_neighbors)
+        # Adapted from LocalOutlierProbability.stream of PyNomaly 0.4.0, with the same operations so
+        # that the scores are bit-identical: one dot product per instance on its own difference
+        # array (BLAS rounds row views differently), and the neighbor distances in the order of
+        # the replace-the-largest loop, which their sum depends on.
+        neighbor_distances = np.full(self.num_neighbors, 9e10)
+        for instance in self.initial_X:
+            diff = instance - X
+            distance = np.dot(diff, diff) ** 0.5
+            largest = neighbor_distances.argmax()
+            if distance < neighbor_distances[largest]:
+                neighbor_distances[largest] = distance
+        ssd = (neighbor_distances**2).sum()
+        prob_distance = self.extent * np.sqrt(ssd / self.num_neighbors)
         plof = self._prob_outlier_factor(prob_distance, self.prob_distance_ev_)
         if plof == self.norm_prob_outlier_factor_:
             return 0.0

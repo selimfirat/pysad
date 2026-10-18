@@ -8,6 +8,8 @@ class ReferenceWindowModel(PYODModel):
 
     This wrapper keeps track of the reference window of size ``window_size``. For every ``sliding_size`` instances, it resets the model by training a new ``model_cls`` instance on the reference window. This implementation is based on the reference windowing described in :cite:`xstream`.
 
+    Without ``initial_window_X``, there is no reference window at the start. Until the first window is full, the model trains on all the instances so far when their number is a power of two (1, 2, 4, 8 and so on).
+
     Args:
         model_cls (class): The model class to be instantiated.
         window_size (int): The size of each window.
@@ -63,9 +65,12 @@ class ReferenceWindowModel(PYODModel):
             and len(self.cur_window_X) < self.window_size
             and (self.reference_window_X is None or len(self.reference_window_X) < self.window_size)
         ):
-            self.reference_window_X = self.cur_window_X.copy()
-            self.reference_window_y = self.cur_window_y.copy() if y is not None else None
-            self._fit_model()
+            # Until the first window is full, the model trains on the instances so far each time
+            # their number doubles, so that the first window costs about log2(window_size) fits.
+            if len(self.cur_window_X) & (len(self.cur_window_X) - 1) == 0:
+                self.reference_window_X = self.cur_window_X.copy()
+                self.reference_window_y = self.cur_window_y.copy() if y is not None else None
+                self._fit_model()
         elif len(self.cur_window_X) % self.sliding_size == 0:
             self.reference_window_X = np.concatenate(
                 [self.reference_window_X, self.cur_window_X], axis=0

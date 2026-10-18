@@ -390,3 +390,25 @@ def test_iforest_asd_scores_before_it_fits():
         expected = reference.score_partial(x)
         reference.fit_partial(x)
         assert scored.fit_score_partial(x) == expected
+
+
+def test_reference_window_model_refits_when_the_first_window_doubles():
+    """Until the first window is full, the model refits only when the number of instances
+    is a power of two, and then once for each sliding window."""
+    import numpy as np
+
+    from pysad.models import IForestASD
+
+    model = IForestASD(window_size=16, random_state=0)
+    sizes = []
+    fit_model = model._fit_model
+
+    def counting_fit_model():
+        sizes.append(len(model.reference_window_X))
+        fit_model()
+
+    model._fit_model = counting_fit_model
+    for x in np.random.default_rng(0).random((40, 3)):
+        model.fit_partial(x)
+
+    assert sizes == [1, 2, 4, 8, 16, 16]

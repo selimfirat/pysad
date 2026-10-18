@@ -88,6 +88,23 @@ class ReferenceWindowModel(PYODModel):
 
         return self
 
+    def fit_score_partial(self, X, y=None):
+        """Scores the next instance with the current model, then fits the model to it.
+
+        The current model never trained on the instance, as in the reference windowing of :cite:`xstream`. Before the first fit, there is no model, and the score is 0.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and fit.
+            y (int): The label of the instance (Optional for unsupervised models, default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance, as in `score_partial`.
+        """
+        score = 0.0 if self.model is None else self.score_partial(X)
+        self.fit_partial(X, y)
+
+        return score
+
     def _fit_model(self):
         self.reset_model()
 

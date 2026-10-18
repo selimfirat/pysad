@@ -371,3 +371,22 @@ def test_reference_window_model_issue_25_fix():
     assert len(ref_values) == window_size, (
         f"Reference window should maintain size {window_size}, got {len(ref_values)}"
     )
+
+
+def test_iforest_asd_scores_before_it_fits():
+    """fit_score_partial scores each instance with the model from before the instance, so the
+    model never scores an instance that it trained on. The first instance has no model yet."""
+    import numpy as np
+
+    from pysad.models import IForestASD
+
+    X = np.random.default_rng(0).random((40, 3))
+    scored = IForestASD(window_size=16, random_state=0)
+    reference = IForestASD(window_size=16, random_state=0)
+
+    assert scored.fit_score_partial(X[0]) == 0.0
+    reference.fit_partial(X[0])
+    for x in X[1:]:
+        expected = reference.score_partial(x)
+        reference.fit_partial(x)
+        assert scored.fit_score_partial(x) == expected

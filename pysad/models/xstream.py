@@ -12,18 +12,18 @@ from pysad.utils import get_minmax_array
 class xStream(BaseModel):
     """Scores each instance by its density in half-space chains over StreamHash projections (xStream) :cite:`xstream`.
 
-    It projects each instance with StreamHash and bins it in half-space chains. The chains count the instances of the current window and score each instance with the counts of the previous (reference) window, and the two windows swap when the instance after a full window arrives, before it is counted (Algorithm 1 of the paper). As in the paper and the authors' code, the initial bin widths (half the range of each projected feature) and the shifts are estimated once from the first window and kept for the rest of the stream, so every window is binned the same way. Until the first window is full, the instances are binned with width 0.5 and scored with the counts of the first window so far. When it is full, the first window is counted again with the estimated widths.
+    It projects each instance with StreamHash and bins it in half-space chains. The chains count the instances of the current window and score each instance with the counts of the previous (reference) window, and the two windows swap when the instance after a full window arrives, before it is counted (Algorithm 1 of the paper). As in the paper and the authors' code, the initial bin widths (half the range of each projected feature) and the shifts are estimated once from the first window and kept for the rest of the stream, so every window is binned the same way. Until the first window is full, the instances are binned with width 0.5 and scored with the counts of the first window so far. When it is full, the first window is counted again with the estimated widths. The defaults are 100 projections, 100 chains, depth 15 and a window of 256, as in the code of the authors. The paper uses a window of 25 in its experiments on evolving streams. For a short stream of a few thousand instances or fewer, a window of 25 can give better scores.
 
     Args:
         num_components (int): The number of components for streamhash projection (Default=100).
         n_chains (int): The number of half-space chains (Default=100).
-        depth (int): The maximum depth for the chains (Default=25).
-        window_size (int): The size (and the sliding length) of the reference window (Default=25).
+        depth (int): The maximum depth for the chains (Default=15).
+        window_size (int): The size (and the sliding length) of the reference window. For a short stream of a few thousand instances or fewer, use 25 (Default=256).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the split features and shifts of the chains. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
     def __init__(
-        self, num_components=100, n_chains=100, depth=25, window_size=25, random_state=None
+        self, num_components=100, n_chains=100, depth=15, window_size=256, random_state=None
     ):
         self.streamhash = StreamhashProjector(num_components=num_components)
         self.window_size = window_size
@@ -99,7 +99,7 @@ class _HSChains:
     At depth `d`, a chain assigns an instance to the bin given by the floored values of the (shifted and repeatedly halved) features it split on up to `d`. The bin counts of all chains and depths are kept in a single `Counter` keyed by the bytes of `(chain * depth + d, bin)`.
     """
 
-    def __init__(self, deltamax, n_chains=100, depth=25, random_state=None):
+    def __init__(self, deltamax, n_chains=100, depth=15, random_state=None):
         k = len(deltamax)
         rng = check_random_state(random_state)
 

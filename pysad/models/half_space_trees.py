@@ -14,7 +14,7 @@ class HalfSpaceTrees(BaseModel):
     Args:
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features. Integer arrays are converted to float.
         feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features, at least `feature_mins`. Integer arrays are converted to float.
-        window_size (int): The size of the window. Must be a positive integer (Default=100).
+        window_size (int): The size of the window. Must be a positive integer (Default=250, as in the paper).
         num_trees (int): The number of trees. Must be a positive integer (Default=25).
         max_depth (int): Maximum depth of the trees. Must be a positive integer (Default=15).
         initial_window_X (np.float64 array of shape (num_initial_instances,num_features)): The initial window to fit for initial calibration period. As in Algorithm 3 of :cite:`tan2011fast`, it holds the first `window_size` instances of the stream. The model fits them to build the reference mass profile and does not score them (Default=None).
@@ -33,7 +33,7 @@ class HalfSpaceTrees(BaseModel):
         self,
         feature_mins,
         feature_maxes,
-        window_size=100,
+        window_size=250,
         num_trees=25,
         max_depth=15,
         initial_window_X=None,

@@ -46,11 +46,19 @@ class corClust:
         map = self.__breakClust__(to_tree(Z),maxClust)
         return map
 
-    # a recursive helper function which breaks down the dendrogram branches until all clusters have no more than maxClust elements
+    # breaks down the dendrogram branches until all clusters have no more than maxClust elements, left to right.
+    # A stack instead of recursion, since single linkage can chain a dendrogram deeper than Python's recursion limit
     def __breakClust__(self,dendro,maxClust):
-        if dendro.count <= maxClust: #base case: we found a minimal cluster, so mark it
-            return [dendro.pre_order()] #return the origional ids of the features in this cluster
-        return self.__breakClust__(dendro.get_left(),maxClust) + self.__breakClust__(dendro.get_right(),maxClust)
+        clusters = []
+        stack = [dendro]
+        while stack:
+            node = stack.pop()
+            if node.count <= maxClust: #we found a minimal cluster, so mark it
+                clusters.append(node.pre_order()) #the origional ids of the features in this cluster
+            else: #the left branch goes on top, so that it is broken down first
+                stack.append(node.get_right())
+                stack.append(node.get_left())
+        return clusters
 
 # Copyright (c) 2017 Yisroel Mirsky
 #

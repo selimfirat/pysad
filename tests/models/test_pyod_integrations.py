@@ -371,3 +371,44 @@ def test_reference_window_model_issue_25_fix():
     assert len(ref_values) == window_size, (
         f"Reference window should maintain size {window_size}, got {len(ref_values)}"
     )
+
+
+def test_iforest_asd_scores_before_it_fits():
+    """fit_score_partial scores each instance with the model from before the instance, so the
+    model never scores an instance that it trained on. The first instance has no model yet."""
+    import numpy as np
+
+    from pysad.models import IForestASD
+
+    X = np.random.default_rng(0).random((40, 3))
+    scored = IForestASD(window_size=16, random_state=0)
+    reference = IForestASD(window_size=16, random_state=0)
+
+    assert scored.fit_score_partial(X[0]) == 0.0
+    reference.fit_partial(X[0])
+    for x in X[1:]:
+        expected = reference.score_partial(x)
+        reference.fit_partial(x)
+        assert scored.fit_score_partial(x) == expected
+
+
+def test_reference_window_model_refits_when_the_first_window_doubles():
+    """Until the first window is full, the model refits only when the number of instances
+    is a power of two, and then once for each sliding window."""
+    import numpy as np
+
+    from pysad.models import IForestASD
+
+    model = IForestASD(window_size=16, random_state=0)
+    sizes = []
+    fit_model = model._fit_model
+
+    def counting_fit_model():
+        sizes.append(len(model.reference_window_X))
+        fit_model()
+
+    model._fit_model = counting_fit_model
+    for x in np.random.default_rng(0).random((40, 3)):
+        model.fit_partial(x)
+
+    assert sizes == [1, 2, 4, 8, 16, 16]

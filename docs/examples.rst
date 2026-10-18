@@ -31,7 +31,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.695
+   AUROC: 0.702
 
 Raise alerts with a calibrator
 ------------------------------
@@ -59,7 +59,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.793
+   AUROC: 0.791
 
 Run a PyOD model
 ----------------

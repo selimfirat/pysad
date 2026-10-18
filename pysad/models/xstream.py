@@ -12,7 +12,7 @@ from pysad.utils import get_minmax_array
 class xStream(BaseModel):
     """Scores each instance by its density in half-space chains over StreamHash projections (xStream) :cite:`xstream`.
 
-    It projects each instance with StreamHash and bins it in half-space chains. The chains count the instances of the current window and score each instance with the counts of the previous (reference) window, and the two windows swap every ``window_size`` instances. As in the paper and the authors' code, the initial bin widths (half the range of each projected feature) and the shifts are estimated once from the first window and kept for the rest of the stream, so every window is binned the same way. Until the first window is full, the instances are binned with width 0.5 and scored with the counts of the first window so far. When it is full, the first window is counted again with the estimated widths.
+    It projects each instance with StreamHash and bins it in half-space chains. The chains count the instances of the current window and score each instance with the counts of the previous (reference) window, and the two windows swap when the instance after a full window arrives, before it is counted (Algorithm 1 of the paper). As in the paper and the authors' code, the initial bin widths (half the range of each projected feature) and the shifts are estimated once from the first window and kept for the rest of the stream, so every window is binned the same way. Until the first window is full, the instances are binned with width 0.5 and scored with the counts of the first window so far. When it is full, the first window is counted again with the estimated widths.
 
     Args:
         num_components (int): The number of components for streamhash projection (Default=100).
@@ -49,6 +49,13 @@ class xStream(BaseModel):
         Returns:
             object: The model itself.
         """
+        # The windows swap on the arrival of the first instance after a full window, before it is counted.
+        if self.step > 0 and self.step % self.window_size == 0:
+            if self.first_window is not None:
+                self._set_bin_widths(np.concatenate(self.first_window, axis=0))
+                self.first_window = None
+            self.hs_chains.next_window()
+
         self.step += 1
 
         X = self.streamhash.fit_transform_partial(X)
@@ -58,12 +65,6 @@ class xStream(BaseModel):
             self.first_window.append(X)
 
         self.hs_chains.fit(X)
-
-        if self.step % self.window_size == 0:
-            if self.first_window is not None:
-                self._set_bin_widths(np.concatenate(self.first_window, axis=0))
-                self.first_window = None
-            self.hs_chains.next_window()
 
         return self
 

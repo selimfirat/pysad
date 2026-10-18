@@ -59,3 +59,27 @@ def test_xstream_scores_with_the_bins_of_the_first_window():
     expected = [reference.add(model.streamhash.transform_partial(z), update=False) for z in Z]
 
     np.testing.assert_allclose(model.score(Z), expected, rtol=1e-12, atol=0)
+
+
+def test_xstream_scores_each_instance_with_the_previous_window():
+    # The windowed mode of cpp/main.cpp: each instance after the first window is scored with the counts
+    # of the previous full window, and the counts are rebuilt once the current window is full.
+    rng = np.random.RandomState(0)
+    X = rng.randn(130, 6)
+    X[::17] += 4.0
+    model, Y = _model_and_projections(X, window_size=20)
+
+    scores = model.fit_score(X)
+
+    reference = _ReferenceChains(Y[:20], model.hs_chains.fs, model.hs_chains.rand_arr)
+    for y in Y[:20]:
+        reference.add(y, update=True)
+    expected = []
+    for start in range(20, 130, 20):
+        window = Y[start : start + 20]
+        expected += [reference.add(y, update=False) for y in window]
+        reference.counts.clear()
+        for y in window:
+            reference.add(y, update=True)
+
+    np.testing.assert_allclose(scores[20:], expected, rtol=1e-12, atol=0)

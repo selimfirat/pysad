@@ -51,7 +51,7 @@ These detectors take points with one or more features. A feature is one measured
      - Nothing
      - Fixed: a window of ``window_size`` points
    * - :class:`~pysad.models.LocalOutlierProbability`
-     - Local outlier probability :cite:`kriegel2009loop`, with PyNomaly :cite:`constantinou2018pynomaly`
+     - Local outlier probability :cite:`kriegel2009loop`, as in PyNomaly :cite:`constantinou2018pynomaly`
      - Initial points (``initial_X``)
      - Fixed: the initial points. Does not learn from the stream
    * - :class:`~pysad.models.Inqmad`

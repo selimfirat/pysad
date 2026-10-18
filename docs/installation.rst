@@ -47,16 +47,7 @@ pip installs these packages with PySAD. PySAD has no optional extras, so you do 
      - Random state handling, random projections, random Fourier features, metrics and the Isolation Forest in :class:`~pysad.models.IForestASD`
    * - SciPy
      - 1.13.0
-     - Statistical tests, distances and loading the benchmark datasets
-   * - statsmodels
-     - 0.14.2
-     - STL decomposition (split of a series into trend, cycle and remainder) in :class:`~pysad.models.SeasonalESD`, :class:`~pysad.models.SeasonalHybridESD` and :class:`~pysad.transform.preprocessing.ModifiedSTLResidualTransformer`
-   * - rrcf
-     - 0.4.4
-     - :class:`~pysad.models.RobustRandomCutForest`
-   * - PyNomaly
-     - 0.4.0
-     - :class:`~pysad.models.LocalOutlierProbability`
+     - Statistical tests, distances, the error function and loading the benchmark datasets
 
 Test the installation
 ---------------------

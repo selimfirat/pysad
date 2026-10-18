@@ -19,13 +19,12 @@ class SeasonalESD(BaseModel):
         max_anomalies (int): Maximum number of anomalies that ESD tests in each window. It must be between 1 and ``int(0.49 * window_size)``.
         alpha (float): ESD significance level, strictly between 0 and 1 (Default=0.05).
         robust (bool): Whether to use robust STL fitting (Default=True).
-        **stl_kwargs: Additional keyword arguments passed to ``statsmodels.tsa.seasonal.STL``.
 
     Raises:
         ValueError: If ``period`` is less than 2, ``window_size`` is less than ``2 * period``, ``max_anomalies`` is less than 1 or greater than ``int(0.49 * window_size)``, or ``alpha`` is not strictly between 0 and 1.
     """
 
-    def __init__(self, period, window_size, max_anomalies, alpha=0.05, robust=True, **stl_kwargs):
+    def __init__(self, period, window_size, max_anomalies, alpha=0.05, robust=True):
         if max_anomalies < 1:
             raise ValueError("max_anomalies must be greater than 0.")
 
@@ -44,7 +43,7 @@ class SeasonalESD(BaseModel):
         self.alpha = alpha
         self.window = Window(window_size)
         self.residual_transformer = ModifiedSTLResidualTransformer(
-            period=period, window_size=window_size, robust=robust, **stl_kwargs
+            period=period, window_size=window_size, robust=robust
         )
 
     def _as_value(self, X):
@@ -167,7 +166,6 @@ class SeasonalHybridESD(SeasonalESD):
         max_anomalies (int): Maximum number of anomalies that ESD tests in each window. It must be between 1 and ``int(0.49 * window_size)``.
         alpha (float): ESD significance level, strictly between 0 and 1 (Default=0.05).
         robust (bool): Whether to use robust STL fitting (Default=True).
-        **stl_kwargs: Additional keyword arguments passed to ``statsmodels.tsa.seasonal.STL``.
 
     Raises:
         ValueError: If ``period`` is less than 2, ``window_size`` is less than ``2 * period``, ``max_anomalies`` is less than 1 or greater than ``int(0.49 * window_size)``, or ``alpha`` is not strictly between 0 and 1.

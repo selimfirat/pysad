@@ -102,6 +102,20 @@ Check the change
 
       $ pytest -m examples
 
+#. If your change affects a multivariate detector, commit the change. This includes a change to shared code that the detector uses, for example :class:`~pysad.core.BaseModel`. To list the affected detectors, run the check against ``master``:
+
+   .. code-block:: console
+
+      $ python benchmarks/benchmark.py --check origin/master
+
+   Then run the :doc:`benchmark` for the affected detectors, and commit ``docs/benchmark/``. The results record the commit that they ran on. Replace ``LODA,RSHash`` with the class names of the detectors:
+
+   .. code-block:: console
+
+      $ python benchmarks/benchmark.py --detectors LODA,RSHash
+
+   CI runs the same benchmark and fails if the results in ``docs/benchmark/`` are out of date.
+
 #. If you changed a docstring or a file in ``docs/``, build the documentation. CI does not build it for each pull request:
 
    .. code-block:: console
@@ -132,7 +146,7 @@ We apply this checklist to each pull request:
 - New behavior has tests. A new feature also has an example or documentation.
 - A new public class is in the ``__init__.py`` and ``__all__`` of its subpackage, and in the page of its module in ``docs/api/``.
 - A new detector meets the :doc:`inclusion_criteria` and follows the steps in :doc:`guides/custom_model`.
-- If the change touches a detector, the description gives AUROC and time per instance before and after the change. Measure them with ``fit_score_partial`` on the ODDS ``arrhythmia``, ``cardio`` and ``vowels`` datasets with seeds 0 to 4.
+- If the change moves the results of a detector, the pull request updates ``docs/benchmark/``. The diff of ``docs/benchmark/results.csv`` shows AUROC, AUPR and time per point before and after the change.
 - The change does not keep old behavior through deprecation aliases or compatibility code.
 
 AI tools

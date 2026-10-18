@@ -197,7 +197,7 @@ The [getting started tutorial](https://pysad.readthedocs.io/en/latest/getting_st
 | Network traffic | `KitNet` | Built for network intrusion detection. Gives 0 for the first 100 points by default |
 | A PyOD model that you already use | `ReferenceWindowModel` | Trains it again on a sliding window |
 
-These starting points come from the design of each method. They are not benchmark rankings. Compare two or three detectors on your own data, as the [guide to choosing a detector](https://pysad.readthedocs.io/en/latest/guides/choose_detector.html) shows.
+These starting points come from the design of each method. They are not benchmark rankings. The [benchmark](https://pysad.readthedocs.io/en/latest/benchmark.html) gives the results of each multivariate detector on 17 datasets. Compare two or three detectors on your own data, as the [guide to choosing a detector](https://pysad.readthedocs.io/en/latest/guides/choose_detector.html) shows.
 
 ### All detectors
 

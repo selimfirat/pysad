@@ -131,9 +131,17 @@ What PySAD contains
 
       .. rst-class:: number
 
-         17
+         1
 
-      labeled benchmark datasets, downloaded on first use
+      line to change to :doc:`try another detector <guides/choose_detector>`
+
+   .. container:: stat
+
+      .. rst-class:: number
+
+         1
+
+      alert threshold for every detector, after :doc:`conformal calibration <guides/alerts>`
 
    .. container:: stat
 
@@ -189,6 +197,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    :caption: Reference
 
    detectors
+   benchmark
    api
    references
 

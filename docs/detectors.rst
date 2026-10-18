@@ -1,7 +1,7 @@
 Detectors
 =========
 
-PySAD has 16 streaming detectors. This page lists the input that each detector takes, what it needs before the stream starts and the memory that it keeps. For the parameters, follow the link to the API reference. To choose a detector, see :doc:`guides/choose_detector`.
+PySAD has 16 streaming detectors. This page lists the input that each detector takes, what it needs before the stream starts and the memory that it keeps. For the parameters, follow the link to the API reference. To choose a detector, see :doc:`guides/choose_detector`. To compare the results of the multivariate detectors, see :doc:`benchmark`.
 
 In the memory column, "fixed" means that the memory has an upper limit that does not depend on the length of the stream. A window is the most recent points, up to a fixed number.
 

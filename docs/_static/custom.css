@@ -41,7 +41,7 @@
 }
 
 .stream-figure .caption {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--color-foreground-secondary);
   text-align: center;
   margin-top: 0.4rem;
@@ -380,7 +380,7 @@ section#frequently-asked-questions .faq-groups li:focus-within {
 
 section#frequently-asked-questions .faq-groups p {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--color-foreground-secondary);
 }
 
@@ -467,4 +467,26 @@ section#frequently-asked-questions section section > h3::before {
   section#frequently-asked-questions .faq-groups p:not(:first-child) {
     display: none;
   }
+}
+
+/* Benchmark tables: numbers align on the right, with digits of equal width. */
+table.benchmark-table {
+  font-size: 0.8rem;
+}
+
+table.benchmark-table th,
+table.benchmark-table td {
+  padding: 0 0.35rem;
+  white-space: nowrap;
+}
+
+table.benchmark-table th p,
+table.benchmark-table td p {
+  margin: 0.2rem 0;
+}
+
+table.benchmark-table td:not(:first-child),
+table.benchmark-table th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }

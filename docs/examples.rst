@@ -114,7 +114,7 @@ It prints:
 Use a density detector
 ----------------------
 
-This script scales each point and scores it with Inqmad. Inqmad estimates how dense the stream is near each point.
+This script scores each point with Inqmad. Inqmad estimates how dense the stream is near each point. It scales the features with its first points, so it takes the raw points.
 
 .. literalinclude:: ../examples/example_usage_inqmad.py
    :language: python
@@ -123,7 +123,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.815
+   AUROC: 0.740
 
 Track running statistics
 ------------------------

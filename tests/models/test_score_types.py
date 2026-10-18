@@ -80,7 +80,7 @@ def _model_specs():
         ),
         (
             "Inqmad",
-            lambda: models.Inqmad(input_shape=NUM_FEATURES, dim_x=32, gamma=10),
+            lambda: models.Inqmad(input_shape=NUM_FEATURES, dim_x=32),
             NUM_FEATURES,
         ),
         ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),

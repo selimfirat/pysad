@@ -118,7 +118,7 @@ class RobustRandomCutForest(BaseModel):
         return self
 
     def score_partial(self, X):
-        """Scores the anomalousness of the next instance.
+        """Scores the next instance by its collusive displacement in each tree after it is inserted there, averaged over the trees. The instance is removed from the trees again, so only the random cuts of the insertions draw from the random number generator.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
@@ -126,15 +126,25 @@ class RobustRandomCutForest(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-
         score = 0.0
         for tree in self.forest:
-            leaf = tree.find_duplicate(X)
-            if leaf is None:
-                tree.insert_point(X, index="test_point")
-                score += 1.0 * tree.codisp("test_point") / self.num_trees
-                tree.forget_point("test_point")
-            else:
-                score += 1.0 * tree.codisp(leaf) / self.num_trees
+            tree.insert_point(X, index="test_point")
+            score += tree.codisp("test_point")
+            tree.forget_point("test_point")
+
+        return score / self.num_trees
+
+    def fit_score_partial(self, X, y=None):
+        """Scores the next instance with the trees built on the previous instances, and then fits it, as in the experiments of the paper (Section 5).
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance, as in `score_partial`.
+        """
+        score = self.score_partial(X)
+        self.fit_partial(X, y)
 
         return score

@@ -70,7 +70,7 @@ Run each candidate on a labeled part of your data. Then compare the candidates w
 
               LODA: AUROC 0.951
            xStream: AUROC 0.637
-    HalfSpaceTrees: AUROC 0.823
+    HalfSpaceTrees: AUROC 0.928
             RSHash: AUROC 0.700
 
 The streamer keeps the order of the file. In ``cardio``, all anomalies are at the end. ``fit_score_partial`` uses the evaluation order (score first or learn first) from the paper of each detector. :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` score each point before they learn from it. :class:`~pysad.models.LODA` and :class:`~pysad.models.xStream` learn from each point first. The results on your data can be very different, so run the comparison on your own stream.

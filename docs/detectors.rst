@@ -45,7 +45,7 @@ These detectors take points with one or more features. A feature is one measured
    * - :class:`~pysad.models.KitNet`
      - Ensemble of autoencoders :cite:`mirsky2018kitsune`
      - Nothing
-     - Fixed. Learns only during its grace periods (100,000 points by default)
+     - Fixed. Learns only during its grace periods (1,100 points by default)
    * - :class:`~pysad.models.ExactStorm`
      - Neighbor counts in a sliding window :cite:`angiulli2007detecting`
      - Nothing

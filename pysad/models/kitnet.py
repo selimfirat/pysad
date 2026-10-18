@@ -7,10 +7,12 @@ class KitNet(BaseModel):
 
     This model uses the implementation from `KitNET-py <https://github.com/ymirsky/KitNET-py>`_ with two changes: the 0-1 normalization only shifts an input that was constant in training, which KitNET-py divides by 1e-16, and the feature mapping learns from ``grace_feature_mapping`` instances instead of one more.
 
+    As in the paper, the model learns only during two grace periods at the start of the stream and then only scores. The first ``grace_feature_mapping`` instances learn which features go to which autoencoder, and their scores are 0. The next ``grace_anomaly_detector`` instances train the autoencoders, and their scores come from autoencoders that are still training. Choose both so that their sum is a small part of the stream and still covers its normal behavior. The defaults, 100 and 1,000 instances, keep the 1:10 ratio of the KitNET-py example (5,000 and 50,000 on a capture of 100,000 packets), scaled down so that a stream of a few hundred instances gets real scores. For a long stream whose start is free of anomalies, such as the paper's network captures (it trains on the first million packets), longer grace periods give the autoencoders more normal behavior to learn.
+
     Args:
         max_size_ae (int): The maximum size of any autoencoder in the ensemble layer (Default=10).
-        grace_feature_mapping (int): The number of instances used to learn the feature mapping. If ``None``, the feature mapping and anomaly detector grace periods are equal (Default=None).
-        grace_anomaly_detector (int): The number of instances used to train the autoencoders after the feature mapping is learned (Default=50000).
+        grace_feature_mapping (int): The number of instances used to learn the feature mapping. If ``None``, the feature mapping and anomaly detector grace periods are equal (Default=100).
+        grace_anomaly_detector (int): The number of instances used to train the autoencoders after the feature mapping is learned (Default=1000).
         learning_rate (float): The default stochastic gradient descent learning rate for all autoencoders in the KitNET instance (Default=0.1).
         hidden_ratio (float): The default ratio of hidden to visible neurons. E.g., 0.75 will cause roughly a 25% compression in the hidden layer (Default=0.75).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the initial weights of the autoencoders, which all share it. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
@@ -19,8 +21,8 @@ class KitNet(BaseModel):
     def __init__(
         self,
         max_size_ae=10,
-        grace_feature_mapping=None,
-        grace_anomaly_detector=50000,
+        grace_feature_mapping=100,
+        grace_anomaly_detector=1000,
         learning_rate=0.1,
         hidden_ratio=0.75,
         random_state=None,

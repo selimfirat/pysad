@@ -32,7 +32,7 @@ In the table, a window is the set of the most recent points that a detector keep
      - Projects the points to fewer features with hashing, so it can use many features
    * - Network traffic
      - :class:`~pysad.models.KitNet`
-     - Its authors made it for live detection of network intrusions. With the defaults, it gives 0 for the first 50,000 points and stops learning after 100,000. For a shorter stream, lower ``grace_feature_mapping`` and ``grace_anomaly_detector``
+     - Its authors made it for live detection of network intrusions. With the defaults, it gives 0 for the first 100 points and stops learning after 1,100. Set ``grace_feature_mapping`` and ``grace_anomaly_detector`` for the length of the stream
    * - A PyOD model that you already use
      - :class:`~pysad.models.integrations.ReferenceWindowModel`
      - Fits the model again on a sliding window. See :doc:`pyod`

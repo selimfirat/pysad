@@ -182,7 +182,7 @@ Why are all or most scores 0?
 
 Some detectors give 0 by design, during a warm-up or for every point that is not anomalous:
 
-- :class:`~pysad.models.KitNet` gives 0 during its first grace period, the first 50,000 points with the defaults. For a shorter stream, lower ``grace_feature_mapping`` and ``grace_anomaly_detector``.
+- :class:`~pysad.models.KitNet` gives 0 during its first grace period, the first 100 points with the defaults. For a short stream, lower ``grace_feature_mapping`` and ``grace_anomaly_detector``.
 - :class:`~pysad.models.KNNCAD` gives 0 until it gets ``probationary_period`` points.
 - :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` give 0 until the window is full. After that, they give 0 for every point that their test does not flag.
 - :class:`~pysad.models.RelativeEntropy` gives only 0 or 1. It gives 1 only when the values of the window have a new distribution.

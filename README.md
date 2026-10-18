@@ -194,7 +194,7 @@ The [getting started tutorial](https://pysad.readthedocs.io/en/latest/getting_st
 | Several features, first try | `LODA` | Fast, has few parameters and learns from every point |
 | Features with known value ranges | `HalfSpaceTrees` | Constant time per point, scored against the previous window |
 | Many features | `xStream` | Projects the points to fewer features with hashing |
-| Network traffic | `KitNet` | Built for network intrusion detection. Gives 0 for the first 50,000 points by default |
+| Network traffic | `KitNet` | Built for network intrusion detection. Gives 0 for the first 100 points by default |
 | A PyOD model that you already use | `ReferenceWindowModel` | Trains it again on a sliding window |
 
 These starting points come from the design of each method. They are not benchmark rankings. Compare two or three detectors on your own data, as the [guide to choosing a detector](https://pysad.readthedocs.io/en/latest/guides/choose_detector.html) shows.

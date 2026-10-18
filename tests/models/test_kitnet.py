@@ -113,3 +113,14 @@ def test_feature_mapping_of_a_wide_stream_does_not_recurse():
 
     assert sorted(i for cluster in model.model.v for i in cluster) == list(range(2000))
     assert all(len(cluster) <= 10 for cluster in model.model.v)
+
+
+def test_default_grace_periods_score_a_short_stream():
+    """Regression test for #312: the defaults gave 0 for the first 50,000
+    instances, so every score of a stream shorter than that was 0."""
+    model = KitNet(random_state=0)
+    scores = model.fit_score(_stream(num_instances=1500))
+
+    np.testing.assert_array_equal(scores[:100], 0.0)
+    assert (scores[100:] > 0.0).all()
+    assert not model.model.inGrace()

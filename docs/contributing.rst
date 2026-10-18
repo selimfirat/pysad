@@ -102,11 +102,17 @@ Check the change
 
       $ pytest -m examples
 
-#. If you changed a multivariate detector, commit the change. Then run the :doc:`benchmark` for the detector, and commit ``docs/benchmark/``. The results record the commit that they ran on. Replace ``LODA`` with the class name of the detector:
+#. If your change affects a multivariate detector, commit the change. This includes a change to shared code that the detector uses, for example :class:`~pysad.core.BaseModel`. To list the affected detectors, run the check against ``master``:
 
    .. code-block:: console
 
-      $ python benchmarks/benchmark.py --detectors LODA
+      $ python benchmarks/benchmark.py --check origin/master
+
+   Then run the :doc:`benchmark` for the affected detectors, and commit ``docs/benchmark/``. The results record the commit that they ran on. Replace ``LODA,RSHash`` with the class names of the detectors:
+
+   .. code-block:: console
+
+      $ python benchmarks/benchmark.py --detectors LODA,RSHash
 
    CI runs the same benchmark and fails if the results in ``docs/benchmark/`` are out of date.
 

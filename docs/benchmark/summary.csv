@@ -1,6 +1,6 @@
 Detector,Mean rank,Mean AUROC,Mean AUPR,Time per point (ms),Commit
-:class:`~pysad.models.IForestASD`,3.4,0.806,0.484,73.55,`8c719c5 <https://github.com/selimfirat/pysad/commit/8c719c5>`__
 :class:`~pysad.models.LocalOutlierProbability`,3.4,0.832,0.485,0.40,`8c719c5 <https://github.com/selimfirat/pysad/commit/8c719c5>`__
+:class:`~pysad.models.IForestASD`,3.4,0.806,0.484,73.55,`8c719c5 <https://github.com/selimfirat/pysad/commit/8c719c5>`__
 :class:`~pysad.models.LODA`,4.6,0.788,0.463,0.08,`8c719c5 <https://github.com/selimfirat/pysad/commit/8c719c5>`__
 :class:`~pysad.models.HalfSpaceTrees`,4.8,0.797,0.435,0.29,`8c719c5 <https://github.com/selimfirat/pysad/commit/8c719c5>`__
 :class:`~pysad.models.RSHash`,4.9,0.793,0.336,1.44,`8c719c5 <https://github.com/selimfirat/pysad/commit/8c719c5>`__

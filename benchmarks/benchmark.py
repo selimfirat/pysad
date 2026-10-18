@@ -130,7 +130,12 @@ def write_tables(results):
         np.median([float(r["ms_per_point"]) for k, r in results.items() if k[1] == d])
         for d in detectors
     ]
-    order = np.argsort(rank)  # rank 1 is the highest AUROC of a dataset
+    auroc, aupr = (np.nanmean(tables[metric], axis=0) for metric in ["auroc", "aupr"])
+    # Rank 1 is the highest AUROC of a dataset. Equal mean ranks, as the page rounds them, go by
+    # mean AUROC, then mean AUPR, then time per point.
+    order = sorted(
+        range(len(detectors)), key=lambda i: (round(rank[i], 1), -auroc[i], -aupr[i], ms[i])
+    )
     write_csv(
         "summary.csv",
         ["Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)", "Commit"],
@@ -138,8 +143,8 @@ def write_tables(results):
             [
                 f":class:`~pysad.models.{detectors[i]}`",
                 f"{rank[i]:.1f}",
-                f"{np.nanmean(tables['auroc'][:, i]):.3f}",
-                f"{np.nanmean(tables['aupr'][:, i]):.3f}",
+                f"{auroc[i]:.3f}",
+                f"{aupr[i]:.3f}",
                 f"{ms[i]:.2f}",
                 ", ".join(
                     f"`{c} <{COMMIT_URL}{c.removesuffix('-dirty')}>`__"

@@ -1,4 +1,5 @@
 import copy
+import heapq
 import sys
 import types
 from importlib.metadata import version
@@ -35,21 +36,27 @@ def _import_rrcf():
 class RobustRandomCutForest(BaseModel):
     """Scores each instance by its collusive displacement in a forest of robust random cut trees over shingled inputs :cite:`guha2016robust`.
 
+    Each tree is built on its own random sample of the stream, as in Section 2 of the paper: every instance gets the key ``time_decay * t + G`` in each tree, where ``t`` is its position in the stream and ``G`` is a standard Gumbel draw, and each tree keeps the ``tree_size`` instances with the largest keys. This is the weighted reservoir sample of :cite:`efraimidis2006weighted` with weights ``exp(time_decay * t)``. ``time_decay=0`` keeps a uniform random sample of the whole stream, as in the paper's synthetic experiment (reservoir sampling), and a larger ``time_decay`` favors recent instances, as in its taxi experiment.
+
     The implementation uses `rrcf library <https://github.com/kLabUM/rrcf>`_ :cite:`bartos_2019_rrcf`.
 
     Args:
         num_trees (int): The number of trees (Default=4).
         shingle_size (int): The shingle size (Default=4).
-        tree_size (int): The tree size (Default=256).
-        random_state (int, np.random.RandomState or None): Seed or random number generator for the cuts of the trees, which all share it. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
+        tree_size (int): The number of instances in the sample of each tree (Default=256).
+        time_decay (float): How strongly the samples favor recent instances. An instance that came ``k`` instances later is ``exp(time_decay * k)`` times as likely to be kept. 0 keeps a uniform sample of the whole stream (Default=0.0).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the cuts and the samples of the trees, which all share it. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    def __init__(self, num_trees=4, shingle_size=4, tree_size=256, random_state=None):
+    def __init__(
+        self, num_trees=4, shingle_size=4, tree_size=256, time_decay=0.0, random_state=None
+    ):
         rrcf = _import_rrcf()
 
         self.tree_size = tree_size
         self.shingle_size = shingle_size
         self.num_trees = num_trees
+        self.time_decay = time_decay
         self.random_state = random_state
 
         # A seed is turned into one generator shared by all trees, since trees seeded alike would cut alike.
@@ -61,6 +68,8 @@ class RobustRandomCutForest(BaseModel):
             tree = rrcf.RCTree(random_state=rng)
             self.forest.append(tree)
 
+        # The (key, index) pairs of the instances in each tree, as a min-heap on the key.
+        self.samples = [[] for _ in range(self.num_trees)]
         self.index = 0
 
     def __getstate__(self):
@@ -93,9 +102,14 @@ class RobustRandomCutForest(BaseModel):
         Returns:
             object: The model itself.
         """
-        for tree in self.forest:
-            if len(tree.leaves) > self.tree_size:
-                tree.forget_point(self.index - self.tree_size)
+        for tree, sample in zip(self.forest, self.samples, strict=True):
+            key = (self.time_decay * self.index + tree.rng.gumbel(), self.index)
+            if len(sample) < self.tree_size:
+                heapq.heappush(sample, key)
+            elif key > sample[0]:
+                tree.forget_point(heapq.heapreplace(sample, key)[1])
+            else:
+                continue
 
             tree.insert_point(X, index=self.index)
 

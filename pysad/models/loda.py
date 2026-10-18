@@ -15,6 +15,8 @@ class LODA(BaseModel):
 
     The score of an instance is the mean over the projections of the negative log of the estimated density ``(count + 1) / ((num_seen + num_bins) * bin_width)`` of its bin, so higher scores are more anomalous. Values outside the current range are treated as falling into an empty bin. Instances with non-finite values are not fitted.
 
+    As in the paper, ``fit_score_partial`` scores an instance before it updates the histograms with it.
+
     Args:
         num_bins (int): The number of bins of each histogram (Default=10).
         num_random_cuts (int): The number of random projections, i.e. histograms (Default=100).
@@ -111,6 +113,23 @@ class LODA(BaseModel):
         self.num_seen_ += 1
 
         return self
+
+    def fit_score_partial(self, X, y=None):
+        """Scores the next instance, then fits the model to it.
+
+        The paper uses Loda on a stream "by first classifying a new sample and then updating all histograms" (Pevný 2016, §3).
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance, as in `score_partial`.
+        """
+        score = self.score_partial(X)
+        self.fit_partial(X, y)
+
+        return score
 
     def score_partial(self, X):
         """Scores the anomalousness of the next instance.

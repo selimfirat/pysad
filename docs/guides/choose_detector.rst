@@ -68,12 +68,12 @@ Run each candidate on a labeled part of your data. Then compare the candidates w
 
 .. code-block:: text
 
-              LODA: AUROC 0.951
+              LODA: AUROC 0.946
            xStream: AUROC 0.637
     HalfSpaceTrees: AUROC 0.823
             RSHash: AUROC 0.700
 
-The streamer keeps the order of the file. In ``cardio``, all anomalies are at the end. ``fit_score_partial`` uses the evaluation order (score first or learn first) from the paper of each detector. :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` score each point before they learn from it. :class:`~pysad.models.LODA` and :class:`~pysad.models.xStream` learn from each point first. The results on your data can be very different, so run the comparison on your own stream.
+The streamer keeps the order of the file. In ``cardio``, all anomalies are at the end. ``fit_score_partial`` uses the evaluation order (score first or learn first) from the paper of each detector. :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.RSHash` and :class:`~pysad.models.LODA` score each point before they learn from it. :class:`~pysad.models.xStream` learns from each point first. The results on your data can be very different, so run the comparison on your own stream.
 
 :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` need the range of each feature. :func:`~pysad.utils.get_minmax_array` computes the range from an array. In production, compute the range from historical data, or use known physical limits.
 

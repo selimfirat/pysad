@@ -127,7 +127,7 @@ model = LODA(random_state=0)
 metric = AUROCMetric()
 
 for x, label in ArrayStreamer().iter(X, y):
-    score = model.fit_score_partial(x)  # learn from x, then score it
+    score = model.fit_score_partial(x)  # score x, then learn from it
     metric.update(label, score)
 
 print(f"AUROC: {metric.get():.3f}")  # prints AUROC: 0.960

@@ -43,14 +43,14 @@ PySAD
    metric = AUROCMetric()
 
    for x, label in Data().get_iterator("cardio.mat", shuffle=False):
-       score = model.fit_score_partial(x)  # learn from x, then score it
+       score = model.fit_score_partial(x)  # score x, then learn from it
        metric.update(label, score)
 
    print(f"AUROC: {metric.get():.3f}")
 
 .. code-block:: text
 
-   AUROC: 0.951
+   AUROC: 0.946
 
 .. container:: stream-figure
 

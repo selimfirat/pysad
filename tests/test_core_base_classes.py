@@ -398,3 +398,23 @@ class TestAbstractClassInstantiation:
         """Test that BaseTransformer cannot be instantiated directly."""
         with pytest.raises(TypeError):
             BaseTransformer()
+
+
+def test_base_model_fit_score_partial_scores_before_it_fits():
+    """The default fit_score_partial is prequential: each instance is scored by the model
+    from the instances before it."""
+
+    class LastValueModel(BaseModel):
+        def __init__(self):
+            self.last = 0.0
+
+        def fit_partial(self, X, y=None):
+            self.last = float(X[0])
+            return self
+
+        def score_partial(self, X):
+            return abs(float(X[0]) - self.last)
+
+    scores = LastValueModel().fit_score(np.array([[1.0], [3.0], [6.0]]))
+
+    np.testing.assert_array_equal(scores, [1.0, 2.0, 3.0])

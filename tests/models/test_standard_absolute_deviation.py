@@ -41,11 +41,15 @@ def _expected_scores(values, statistic="mean", absolute=True):
 
     values = np.asarray(values, dtype=float)
     scores = []
-    for t in range(1, len(values) + 1):
+    for t in range(len(values)):
+        # fit_score_partial scores each value against the values before it.
         window = values[:t]
+        if len(window) == 0:
+            scores.append(0.0)
+            continue
         center = np.mean(window) if statistic == "mean" else np.median(window)
         std = np.std(window, ddof=0)
-        score = (values[t - 1] - center) / (std + 1e-10)
+        score = (values[t] - center) / (std + 1e-10)
         scores.append(abs(score) if absolute else score)
     return np.asarray(scores)
 

@@ -264,21 +264,6 @@ class RobustRandomCutForest(BaseModel):
 
         return score / self.num_trees
 
-    def fit_score_partial(self, X, y=None):
-        """Scores the next instance with the trees built on the previous instances, and then fits it, as in the experiments of the paper (Section 5).
-
-        Args:
-            X (np.float64 array of shape (num_features,)): The instance to score and fit.
-            y (int): Ignored since the model is unsupervised (Default=None).
-
-        Returns:
-            float: The anomalousness score of the input instance, as in `score_partial`.
-        """
-        score = self.score_partial(X)
-        self.fit_partial(X, y)
-
-        return score
-
 
 # _RCTree is adapted from rrcf 0.4.4, which is distributed under the following license:
 #

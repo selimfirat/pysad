@@ -51,7 +51,7 @@ Make a detector. Then give it the stream one point at a time. This tutorial uses
        score = model.fit_score_partial(x)
        scores.append(score)
 
-:class:`~pysad.utils.ArrayStreamer` replays an array as a stream, one row at a time. For each point, :meth:`~pysad.core.BaseModel.fit_score_partial` updates the detector with the point and gives the point an anomaly score. LODA scores the point first and then learns from it, as its paper does. The score is a Python ``float``. A higher score means a more anomalous point.
+:class:`~pysad.utils.ArrayStreamer` replays an array as a stream, one row at a time. For each point, :meth:`~pysad.core.BaseModel.fit_score_partial` gives the point an anomaly score, and then the detector learns from the point. The score is a Python ``float``. A higher score means a more anomalous point.
 
 Compare the average score of the normal points and of the anomalies:
 

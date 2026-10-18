@@ -42,9 +42,10 @@ def test_scores_start_once_the_autoencoders_train():
     )
 
     # The feature mapper learns from the first 5 instances, and the autoencoders from the next.
-    np.testing.assert_array_equal(scores[:5], 0.0)
+    # Each instance is scored before the model learns it, so the sixth one still scores 0.
+    np.testing.assert_array_equal(scores[:6], 0.0)
     assert np.isfinite(scores).all()
-    assert (scores[5:] > 0.0).all()
+    assert (scores[6:] > 0.0).all()
 
 
 def test_inputs_constant_in_training_are_not_scaled_by_1e16():
@@ -58,7 +59,9 @@ def test_inputs_constant_in_training_are_not_scaled_by_1e16():
     x = X[-1].copy()
     x[1] = 0.001
 
-    assert scores.max() < 10.0
+    # The autoencoders score the seventh instance after they trained on one instance, so its
+    # score is high, but far below the 1e16 scale of the bug.
+    assert scores.max() < 1e3
     assert model.score_partial(x) == pytest.approx(scores[-1], rel=0.05)
 
 
@@ -121,6 +124,8 @@ def test_default_grace_periods_score_a_short_stream():
     model = KitNet(random_state=0)
     scores = model.fit_score(_stream(num_instances=1500))
 
-    np.testing.assert_array_equal(scores[:100], 0.0)
-    assert (scores[100:] > 0.0).all()
+    # The first 100 instances train the feature mapper, and the next one builds the autoencoders.
+    # Each instance is scored before the model learns it, so these 101 instances score 0.
+    np.testing.assert_array_equal(scores[:101], 0.0)
+    assert (scores[101:] > 0.0).all()
     assert not model.model.inGrace()

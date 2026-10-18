@@ -9,7 +9,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
 
     The transformer follows the residual construction of the paper. It estimates the seasonal component with periodic STL, replaces the trend component of STL with the median of the raw series, and returns ``X - seasonal - median(X)``. Periodic STL is what the reference implementation of the paper uses (``stl(s.window = "periodic")`` in R): the seasonal smoother is a constant (degree 0) LOESS with a span of ``10 * n + 1`` for ``n`` observations, so the seasonal component repeats exactly in every period and a few anomalous periods cannot bend it. It does only the residual step of the paper. Use :class:`pysad.models.SeasonalESD` or :class:`pysad.models.SeasonalHybridESD` for the full detector.
 
-    The partial transforms return 0.0 until the window holds at least ``2 * period`` observations, because STL needs two full periods.
+    The partial transforms return ``[0.0]`` until the window holds at least ``2 * period`` observations, because STL needs two full periods.
 
     Args:
         period (int): Number of observations in one seasonal period.
@@ -107,10 +107,9 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
 
     def _latest_residual(self, values):
         if values.shape[0] < 2 * self.period:
-            return 0.0
+            return np.zeros(1)
 
-        residuals = self.transform_window(values)
-        return residuals[-1]
+        return self.transform_window(values)[-1:]
 
     def transform_partial(self, X):
         """Returns the residual of the next value in the window that ends with it, without adding it to the window.
@@ -119,7 +118,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
             X (np.float64 array of shape (1,)): The next univariate value.
 
         Returns:
-            float: The modified STL residual of ``X``, or 0.0 if the window has fewer than ``2 * period`` observations.
+            np.float64 array of shape (1,): The modified STL residual of ``X``, or ``[0.0]`` if the window has fewer than ``2 * period`` observations.
         """
         if self.window is None:
             raise ValueError("window_size is required for partial transforms.")
@@ -133,7 +132,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
             X (np.float64 array of shape (1,)): The next univariate value.
 
         Returns:
-            float: The modified STL residual of ``X``, or 0.0 if the window has fewer than ``2 * period`` observations.
+            np.float64 array of shape (1,): The modified STL residual of ``X``, or ``[0.0]`` if the window has fewer than ``2 * period`` observations.
         """
         self.fit_partial(X)
         return self._latest_residual(self._current_values())

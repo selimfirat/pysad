@@ -120,7 +120,7 @@ def test_modified_stl_residual_transform_partial_includes_repeated_candidate(mon
     transformer.fit(np.array([[1.0], [2.0], [3.0]]))
     residual = transformer.transform_partial(np.array([3.0]))
 
-    assert residual == 3.0
+    assert np.array_equal(residual, np.array([3.0]))
     assert np.array_equal(seen_windows[0], np.array([1.0, 2.0, 3.0, 3.0]))
 
 
@@ -145,7 +145,7 @@ def test_modified_stl_residual_fit_transform_partial_does_not_double_append(monk
     transformer.fit(np.array([[1.0], [2.0], [3.0]]))
     residual = transformer.fit_transform_partial(np.array([3.0]))
 
-    assert residual == 3.0
+    assert np.array_equal(residual, np.array([3.0]))
     assert np.array_equal(seen_windows[0], np.array([1.0, 2.0, 3.0, 3.0]))
 
 
@@ -172,3 +172,33 @@ def test_modified_stl_residual_fit_transform_cold_starts_until_enough_values(mon
     assert np.array_equal(residuals.ravel(), np.array([0.0, 0.0, 0.0, 4.0]))
     assert len(seen_windows) == 1
     assert np.array_equal(seen_windows[0], np.array([1.0, 2.0, 3.0, 4.0]))
+
+
+def test_modified_stl_residual_partial_output_feeds_univariate_detector():
+    import numpy as np
+
+    from pysad.models import MedianAbsoluteDeviation
+    from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
+
+    t = np.arange(40)
+    X = 10 + 3 * np.sin(2 * np.pi * t / 4)
+    transformer = ModifiedSTLResidualTransformer(period=4, window_size=16)
+    model = MedianAbsoluteDeviation()
+
+    for i, value in enumerate(X):
+        candidate = transformer.transform_partial(np.array([value]))
+        residual = transformer.fit_transform_partial(np.array([value]))
+
+        for output in (candidate, residual):
+            assert isinstance(output, np.ndarray)
+            assert output.dtype == np.float64
+            assert output.shape == (1,)
+
+        assert np.array_equal(candidate, residual)
+        if i < 7:
+            assert np.array_equal(residual, np.zeros(1))
+        else:
+            expected = transformer.transform_window(X[max(0, i - 15) : i + 1])[-1]
+            assert residual[0] == expected
+
+        assert np.isfinite(model.fit_score_partial(residual))

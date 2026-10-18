@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.spatial.distance import cdist
+from scipy.special import erf
 
 from pysad.core.base_model import BaseModel
 
@@ -9,17 +11,35 @@ class LocalOutlierProbability(BaseModel):
     The model uses the incremental and approximate version of LoOP by Hamlet et al. :cite:`hamlet2017incremental`, as the PyNomaly library :cite:`constantinou2018pynomaly` implements it. The model fits LoOP once on ``initial_X``. Then it scores each instance with values from that fit, for example a global expected value of the probabilistic distance. The model does not learn from the stream, so ``fit_partial`` does nothing.
 
     Args:
-        initial_X (np.float64 array of shape (num_instances, num_features)): Initial training data to calibrate the model.
+        initial_X (np.float64 array of shape (num_instances, num_features)): Initial training data to calibrate the model. It must have more than ``num_neighbors`` instances.
         num_neighbors (int): The total number of neighbors to consider w.r.t. each sample (Default=10).
-        extent (int): The statistical extent lambda, the number of standard deviations from the mean that the probabilistic distance covers. PyNomaly accepts 1, 2 or 3, and warns for other values (Default=3).
+        extent (int): The statistical extent lambda, the number of standard deviations from the mean that the probabilistic distance covers, usually 1, 2 or 3 (Default=3).
     """
 
     def __init__(self, initial_X, num_neighbors=10, extent=3):
-        from PyNomaly import loop
+        # Adapted from LocalOutlierProbability.fit of PyNomaly 0.4.0 (PyNomaly/loop.py,
+        # https://github.com/vc1492a/PyNomaly) for a single cluster. For licensing information,
+        # see the end of this file.
+        self.initial_X = np.asarray(initial_X, dtype=np.float64)
+        self.num_neighbors = num_neighbors
+        self.extent = extent
 
-        self.model = loop.LocalOutlierProbability(
-            initial_X, extent=extent, n_neighbors=num_neighbors
-        ).fit()
+        distances = cdist(self.initial_X, self.initial_X)
+        np.fill_diagonal(distances, np.inf)
+        neighbors = np.argpartition(distances, num_neighbors, axis=1)[:, :num_neighbors]
+        neighbor_distances = np.take_along_axis(distances, neighbors, axis=1)
+        prob_distances = extent * np.sqrt((neighbor_distances**2).sum(axis=1) / num_neighbors)
+        prob_distances_ev = prob_distances[neighbors].mean(axis=1)
+        plofs = self._prob_outlier_factor(prob_distances, prob_distances_ev)
+        self.prob_distance_ev_ = prob_distances_ev.mean()
+        self.norm_prob_outlier_factor_ = extent * np.sqrt((plofs**2).sum() / plofs.size)
+
+    @staticmethod
+    def _prob_outlier_factor(prob_distance, prob_distance_ev):
+        if np.all(prob_distance == prob_distance_ev):
+            return np.zeros(np.shape(prob_distance))
+        prob_distance_ev = np.where(prob_distance_ev == 0.0, 1.0e-8, prob_distance_ev)
+        return prob_distance / prob_distance_ev - 1.0
 
     def fit_partial(self, X, y=None):
         """Updates the model with the next instance.
@@ -42,8 +62,32 @@ class LocalOutlierProbability(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        # When the reference PLOFs have no spread (e.g. identical initial instances), PyNomaly
-        # divides by a zero normalization; the score is then its limit, 1 for any instance with a
-        # positive PLOF, so the warning is noise.
-        with np.errstate(divide="ignore"):
-            return self.model.stream(X)
+        # Adapted from LocalOutlierProbability.stream of PyNomaly 0.4.0.
+        distances = np.sqrt(((self.initial_X - X) ** 2).sum(axis=1))
+        neighbor_distances = np.partition(distances, self.num_neighbors - 1)[: self.num_neighbors]
+        prob_distance = self.extent * np.sqrt((neighbor_distances**2).sum() / self.num_neighbors)
+        plof = self._prob_outlier_factor(prob_distance, self.prob_distance_ev_)
+        if plof == self.norm_prob_outlier_factor_:
+            return 0.0
+        # When the reference PLOFs have no spread (e.g. identical initial instances), the
+        # normalization is zero and the score is its limit, 1 for any positive PLOF.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return np.maximum(0.0, erf(plof / (self.norm_prob_outlier_factor_ * np.sqrt(2.0))))
+
+
+# The fit and score code above is adapted from PyNomaly 0.4.0 and rewritten in vectorized
+# NumPy. PyNomaly is distributed under the following license:
+#
+# Copyright 2017 Valentino Constantinou.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.

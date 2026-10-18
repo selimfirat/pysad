@@ -5,16 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pysad"
 dynamic = ["version"]
-# The floors are the first releases of scipy, scikit-learn and statsmodels built
+# The floors are the first releases of scipy and scikit-learn built
 # for NumPy 2, so no allowed combination pairs NumPy 2 with an older build compiled for
 # NumPy 1. The lowest-versions job in .github/workflows/coverage.yml tests them.
 dependencies = [
   "numpy>=1.22.4",
   "scikit-learn>=1.4.2",
   "scipy>=1.13.0",
-  "statsmodels>=0.14.2",
-  "PyNomaly>=0.4.0",
-  "rrcf>=0.4.4",
 ]
 requires-python = ">=3.10"
 authors = [
@@ -74,13 +71,15 @@ runtime = [
   "scikit-learn==1.7.2",
   "scipy==1.15.3; python_version < '3.11'",
   "scipy>=1.15.4; python_version >= '3.11'",
-  "statsmodels==0.15.0",
-  "pandas==2.3.3",
-  "rrcf==0.4.4",
-  "PyNomaly==0.4.0",
   "setuptools>=84.0.0,<85.0.0",
 ]
 test = [
+  # PandasStreamer takes DataFrames.
+  "pandas==2.3.3",
+  # The references that the periodic STL of ModifiedSTLResidualTransformer and
+  # LocalOutlierProbability are tested against.
+  "statsmodels==0.15.0",
+  "PyNomaly==0.4.0",
   # The batch detectors that the tests and examples run through pysad.models.integrations.
   "pyod>=3.6.2",
   # Security floor for pillow, a transitive dependency of pyod via matplotlib.
@@ -186,5 +185,5 @@ check_untyped_defs = true
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]
-module = ["pandas.*", "PyNomaly.*", "rrcf", "scipy.*", "sklearn.*", "statsmodels.*"]
+module = ["pandas.*", "scipy.*", "sklearn.*"]
 ignore_missing_imports = true

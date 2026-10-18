@@ -1,40 +1,28 @@
-def test_modified_stl_residual_transformer_uses_paper_residual(monkeypatch):
-    import sys
-    import types
+import pytest
 
+
+@pytest.mark.parametrize("robust", [True, False])
+@pytest.mark.parametrize("period", [2, 7, 24])
+def test_modified_stl_residual_matches_statsmodels_periodic_stl(period, robust):
     import numpy as np
+    from statsmodels.tsa.seasonal import STL
 
     from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 
-    seen_kwargs = []
+    rng = np.random.default_rng(period)
+    for n in [2 * period, 2 * period + 1, 10 * period + 3]:
+        t = np.arange(n)
+        X = 3 * np.sin(2 * np.pi * t / period) + 0.05 * t + rng.normal(size=n)
+        # Outliers give robustness weights of 0, up to a whole cycle-subseries.
+        X[rng.integers(0, n, size=3)] += 30
+        X[period - 1 :: period] += 50
 
-    class DummySTL:
-        def __init__(self, X, period, robust, **kwargs):
-            seen_kwargs.append(kwargs)
+        # Periodic STL, as s.window = "periodic" in R's stl.
+        seasonal = STL(X, period=period, seasonal=10 * n + 1, seasonal_deg=0, robust=robust)
+        expected = X - seasonal.fit().seasonal - np.median(X)
+        residuals = ModifiedSTLResidualTransformer(period=period, robust=robust).transform_window(X)
 
-        def fit(self):
-            class Result:
-                seasonal = np.array([0.0, 1.0, 0.0, 1.0])
-
-            return Result()
-
-    statsmodels_module = types.ModuleType("statsmodels")
-    tsa_module = types.ModuleType("statsmodels.tsa")
-    seasonal_module = types.ModuleType("statsmodels.tsa.seasonal")
-    seasonal_module.STL = DummySTL
-    monkeypatch.setitem(sys.modules, "statsmodels", statsmodels_module)
-    monkeypatch.setitem(sys.modules, "statsmodels.tsa", tsa_module)
-    monkeypatch.setitem(sys.modules, "statsmodels.tsa.seasonal", seasonal_module)
-
-    X = np.array([10.0, 12.0, 14.0, 16.0])
-    transformer = ModifiedSTLResidualTransformer(period=2)
-
-    residuals = transformer.transform_window(X)
-    ModifiedSTLResidualTransformer(period=2, seasonal=7).transform_window(X)
-
-    assert np.all(np.isclose(residuals, X - np.array([0.0, 1.0, 0.0, 1.0]) - np.median(X)))
-    # Periodic STL (s.window = "periodic" in R) by default; STL keyword arguments override it.
-    assert seen_kwargs == [{"seasonal": 41, "seasonal_deg": 0}, {"seasonal": 7, "seasonal_deg": 0}]
+        assert np.allclose(residuals, expected, rtol=0, atol=1e-9)
 
 
 def test_modified_stl_residual_uses_periodic_seasonal_component():
@@ -67,31 +55,10 @@ def test_modified_stl_residual_validates_inputs():
         ModifiedSTLResidualTransformer(period=3, window_size=5)
 
 
-def test_modified_stl_residual_fit_handles_base_transformer_tuple(monkeypatch):
-    import sys
-    import types
-
+def test_modified_stl_residual_fit_handles_base_transformer_tuple():
     import numpy as np
 
     from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
-
-    class DummySTL:
-        def __init__(self, X, period, robust, **kwargs):
-            self.X = X
-
-        def fit(self):
-            class Result:
-                seasonal = np.zeros(4)
-
-            return Result()
-
-    statsmodels_module = types.ModuleType("statsmodels")
-    tsa_module = types.ModuleType("statsmodels.tsa")
-    seasonal_module = types.ModuleType("statsmodels.tsa.seasonal")
-    seasonal_module.STL = DummySTL
-    monkeypatch.setitem(sys.modules, "statsmodels", statsmodels_module)
-    monkeypatch.setitem(sys.modules, "statsmodels.tsa", tsa_module)
-    monkeypatch.setitem(sys.modules, "statsmodels.tsa.seasonal", seasonal_module)
 
     transformer = ModifiedSTLResidualTransformer(period=2, window_size=4)
     transformer.fit(np.array([[1.0], [2.0], [3.0], [4.0]]))

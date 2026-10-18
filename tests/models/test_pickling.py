@@ -152,8 +152,6 @@ def test_rrcf_pickle_round_trip():
     assert restored.index == model.index == NUM_FIT
     assert len(restored.forest) == model.num_trees
     for original_tree, restored_tree in zip(model.forest, restored.forest, strict=True):
-        assert original_tree.rng is np.random
-        assert restored_tree.rng is np.random
         assert sorted(restored_tree.leaves) == sorted(original_tree.leaves)
 
     # tree_size < NUM_FIT, so the next instances also exercise forgetting old points after restoring.

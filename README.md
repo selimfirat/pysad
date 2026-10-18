@@ -169,6 +169,8 @@ for message in consumer:  # for example, a Kafka consumer
 
 ### Use a PyOD model on a stream
 
+Install PyOD first with `pip install pyod`.
+
 ```python
 from pyod.models.iforest import IForest
 from pysad.models.integrations import ReferenceWindowModel

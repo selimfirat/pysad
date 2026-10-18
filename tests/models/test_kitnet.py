@@ -74,3 +74,42 @@ def test_grace_periods_last_the_given_numbers_of_instances():
     model.fit(X[5:])
     assert model.model.FM.N == 5
     assert model.model.outputLayer.n == 7
+
+
+def _break_recursively(dendro, max_size):
+    """The recursive dendrogram split of KitNET-py's corClust."""
+    if dendro.count <= max_size:
+        return [dendro.pre_order()]
+    return _break_recursively(dendro.get_left(), max_size) + _break_recursively(
+        dendro.get_right(), max_size
+    )
+
+
+@pytest.mark.parametrize("seed", range(5))
+@pytest.mark.parametrize("max_size", [1, 3, 10, 50])
+def test_feature_mapping_matches_the_recursive_split(seed, max_size):
+    from scipy.cluster.hierarchy import linkage, to_tree
+
+    from pysad.models.kitnet_model.corClust import corClust
+
+    rng = np.random.RandomState(seed)
+    X = rng.rand(30, 60) @ rng.rand(60, 60)
+    clusterer = corClust(X.shape[1])
+    for x in X:
+        clusterer.update(x)
+    D = clusterer.corrDist()
+    dendro = to_tree(linkage(D[np.triu_indices(X.shape[1], 1)]))
+
+    assert clusterer.cluster(max_size) == _break_recursively(dendro, max_size)
+
+
+def test_feature_mapping_of_a_wide_stream_does_not_recurse():
+    """Regression test for #311: constant features are all at distance 1, so single
+    linkage chains them into a dendrogram deeper than Python's recursion limit, which the
+    recursive split hit."""
+    X = np.ones((10, 2000))
+
+    model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit(X)
+
+    assert sorted(i for cluster in model.model.v for i in cluster) == list(range(2000))
+    assert all(len(cluster) <= 10 for cluster in model.model.v)

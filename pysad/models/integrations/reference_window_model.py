@@ -1,5 +1,7 @@
 import numpy as np
 
+from pysad.utils import _iterate
+
 from .pyod_model import PYODModel
 
 
@@ -116,3 +118,57 @@ class ReferenceWindowModel(PYODModel):
         score = self.model.decision_function([X])[0]
 
         return score
+
+    def score(self, X):
+        """Scores all instances in order.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order.
+
+        Returns:
+            np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
+        """
+        if len(X) == 0:
+            return np.empty(0, dtype=np.float64)
+
+        if self.model is None:
+            return np.zeros(len(X), dtype=np.float64)
+
+        return np.asarray(self.model.decision_function(X), dtype=np.float64).reshape(-1)
+
+    def fit_score(self, X, y=None):
+        """Applies ``fit_score_partial`` to each instance in order and returns the scores.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
+            y (np.int32 array of shape (num_instances,)): The labels of the instances, in order (Default=None).
+
+        Returns:
+            np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
+        """
+        y_pred = np.empty(len(X), dtype=np.float64)
+        start = 0
+        for i, (xi, yi) in enumerate(_iterate(X, y)):
+            next_len = len(self.cur_window_X) + 1
+            if (
+                not self.initial_ref_window
+                and next_len < self.window_size
+                and (
+                    self.reference_window_X is None
+                    or len(self.reference_window_X) < self.window_size
+                )
+            ):
+                refit = (next_len & (next_len - 1)) == 0
+            else:
+                refit = next_len % self.sliding_size == 0
+
+            if refit:
+                y_pred[start : i + 1] = self.score(X[start : i + 1])
+                start = i + 1
+
+            self.fit_partial(xi, yi)
+
+        if start < len(X):
+            y_pred[start:] = self.score(X[start:])
+
+        return y_pred

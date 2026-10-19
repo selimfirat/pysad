@@ -1,10 +1,10 @@
 import heapq
-from collections import deque
 
 import numpy as np
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
+from pysad.transform.preprocessing import ShingleTransformer
 
 
 class _Node:
@@ -178,7 +178,7 @@ class _RCTree:
 class RobustRandomCutForest(BaseModel):
     """Scores each instance by its collusive displacement in a forest of robust random cut trees over shingled inputs :cite:`guha2016robust`.
 
-    Each point of the trees is a shingle, the concatenation of the last ``shingle_size`` instances, as in the experiments of the paper. Each tree is built on its own random sample of the stream, as in Section 2 of the paper: every instance gets the key ``time_decay * t + G`` in each tree, where ``t`` is its position in the stream and ``G`` is a standard Gumbel draw, and each tree keeps the ``tree_size`` instances with the largest keys. This is the weighted reservoir sample of :cite:`efraimidis2006weighted` with weights ``exp(time_decay * t)``. ``time_decay=0`` keeps a uniform random sample of the whole stream, as in the paper's synthetic experiment (reservoir sampling), and a larger ``time_decay`` favors recent instances, as in its taxi experiment.
+    Each point of the trees is a shingle, the concatenation of the last ``shingle_size`` instances, as in the experiments of the paper. :class:`~pysad.transform.preprocessing.ShingleTransformer` builds the shingles, but the model uses no copies at the start of the stream. Each tree is built on its own random sample of the stream, as in Section 2 of the paper: every instance gets the key ``time_decay * t + G`` in each tree, where ``t`` is its position in the stream and ``G`` is a standard Gumbel draw, and each tree keeps the ``tree_size`` instances with the largest keys. This is the weighted reservoir sample of :cite:`efraimidis2006weighted` with weights ``exp(time_decay * t)``. ``time_decay=0`` keeps a uniform random sample of the whole stream, as in the paper's synthetic experiment (reservoir sampling), and a larger ``time_decay`` favors recent instances, as in its taxi experiment.
 
     The trees follow the RCTree class of the `rrcf library <https://github.com/kLabUM/rrcf>`_ :cite:`bartos_2019_rrcf`.
 
@@ -206,7 +206,7 @@ class RobustRandomCutForest(BaseModel):
         # The (key, index) pairs of the instances in each tree, as a min-heap on the key.
         self.samples = [[] for _ in range(self.num_trees)]
         # The last shingle_size - 1 fitted instances, which start the shingle of the next instance.
-        self.recent = deque(maxlen=shingle_size - 1)
+        self.shingler = ShingleTransformer(shingle_size)
         self.index = 0
 
     def __getstate__(self):
@@ -222,10 +222,10 @@ class RobustRandomCutForest(BaseModel):
 
     def _shingle(self, X):
         # The shingle that ends with X, or None while fewer than shingle_size - 1 instances are fitted.
-        if len(self.recent) < self.shingle_size - 1:
+        if not self.shingler.full:
             return None
 
-        return np.concatenate([*self.recent, np.ravel(X)])
+        return self.shingler.transform_partial(X)
 
     def fit_partial(self, X, y=None):
         """Updates the model with the next instance.
@@ -238,7 +238,7 @@ class RobustRandomCutForest(BaseModel):
             object: The model itself.
         """
         point = self._shingle(X)
-        self.recent.append(np.ravel(X).copy())
+        self.shingler.fit_partial(X)
         if point is None:
             return self
 

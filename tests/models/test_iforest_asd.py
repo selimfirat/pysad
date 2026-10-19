@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-from sklearn.ensemble import IsolationForest
 
 from pysad.models import IForestASD
 from pysad.models.integrations import ReferenceWindowModel

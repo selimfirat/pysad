@@ -76,9 +76,7 @@ runtime = [
 test = [
   # PandasStreamer takes DataFrames.
   "pandas==2.3.3",
-  # The references that the periodic STL of ModifiedSTLResidualTransformer and
-  # LocalOutlierProbability are tested against.
-  "statsmodels==0.15.0",
+  # The reference that LocalOutlierProbability is tested against.
   "PyNomaly==0.4.0",
   # The batch detectors that the tests and examples run through pysad.models.integrations.
   "pyod>=3.6.2",

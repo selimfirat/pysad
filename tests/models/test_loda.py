@@ -154,6 +154,8 @@ def test_loda_fit_score_partial_scores_before_fitting():
     from pysad.models import LODA
 
     X = np.random.default_rng(0).normal(size=(300, 4))
+    X[1] = X[0]  # repeated initial value before bin widths are set
+    X[10] = np.nan  # non-finite instance, scored without fitting
     X[-1] = 6.0  # an outlier, which must not lower its own score
     model, reference = LODA(random_state=0), LODA(random_state=0)
 

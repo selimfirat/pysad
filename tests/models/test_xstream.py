@@ -83,3 +83,19 @@ def test_xstream_scores_each_instance_with_the_previous_window():
             reference.add(y, update=True)
 
     np.testing.assert_allclose(scores[20:], expected, rtol=1e-12, atol=0)
+
+
+def test_xstream_fit_score_partial_matches_score_then_fit():
+    from pysad.models import xStream
+
+    X = np.random.RandomState(0).randn(65, 6)
+    model = xStream(num_components=8, n_chains=6, depth=10, window_size=20, random_state=0)
+    reference = xStream(num_components=8, n_chains=6, depth=10, window_size=20, random_state=0)
+
+    for x in X:
+        expected = reference.score_partial(x)
+        reference.fit_partial(x)
+        assert model.fit_score_partial(x) == expected
+
+    assert model.hs_chains.counts == reference.hs_chains.counts
+    assert model.hs_chains.counts_cur == reference.hs_chains.counts_cur

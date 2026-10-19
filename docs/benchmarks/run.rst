@@ -12,7 +12,7 @@ Install PySAD in editable mode, as :doc:`/contributing` shows. Then run the benc
 
    $ python benchmarks/benchmark.py
 
-The first run downloads the datasets into ``~/.cache/pysad``: the |num_datasets| ODDS datasets, the NAB and UCR series, and the streams with drift. The UCR archive (184 MB) and the KDD Cup 99 file (74 MB) are the largest downloads. The script writes the CSV tables to ``docs/benchmark/``, which the benchmark pages render. A full run takes about 50 minutes on 10 cores. The multivariate detectors on the NAB series take most of this time. The ``--jobs`` option sets the number of processes. The default is the number of CPU cores.
+The first run downloads the datasets into ``~/.cache/pysad``: the |num_datasets| ODDS datasets, the NAB and UCR series, and the streams with drift. The UCR archive (184 MB) and the KDD Cup 99 file (74 MB) are the largest downloads. The script writes the CSV tables to ``docs/benchmark/``, which the benchmark pages render. A full run takes about 50 minutes on 10 cores. The multivariate detectors on the NAB series take most of this time. The ``--jobs`` option sets the number of processes. The default is the number of CPU cores. While the benchmark runs, it prints the number of runs that are done and the runs that remain, so that a slow run shows in the output.
 
 The ``--parts`` option runs only some parts of the benchmark, for example ``--parts drift``. These are the parts:
 

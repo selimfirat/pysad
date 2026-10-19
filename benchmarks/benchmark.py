@@ -23,7 +23,8 @@ import os
 import subprocess
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor
+from collections import Counter
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from types import ModuleType
 
@@ -755,6 +756,17 @@ def changed_detectors(base, path=None):
     ]
 
 
+def progress(done, total, seconds, remaining):
+    """Prints how many runs are done, and which runs remain, so that a slow run shows in the log."""
+    line = f"{done}/{total} runs done ({100 * done // total}%) after {seconds:.0f} s."
+    if remaining and len(remaining) <= 5:
+        line += " Remaining: " + ", ".join(f"{d} on {ds}" for ds, d, *_ in remaining) + "."
+    elif remaining:
+        counts = Counter(d for _, d, *_ in remaining).most_common()
+        line += " Remaining: " + ", ".join(f"{d} {n}" for d, n in counts) + "."
+    print(line, flush=True)
+
+
 def compare(before, after):
     """Prints the runs whose AUROC or solved series differ between two --ci runs.
 
@@ -878,8 +890,16 @@ def main():
         jobs += [(series, d, 0, points) for d in multivariate for series in nab_series()]
     if "shingles" in parts:
         jobs += [(series, d + SHINGLED, 0, points) for d in multivariate for series in nab_series()]
+    new = {}
     with ProcessPoolExecutor(args.jobs) as pool:
-        new = {key(row): row for row in pool.map(run, jobs)}
+        remaining = {pool.submit(run, job): job for job in jobs}
+        start, step = time.perf_counter(), max(1, len(jobs) // 20)
+        for future in as_completed(list(remaining)):
+            row = future.result()
+            new[key(row)] = row
+            del remaining[future]
+            if len(new) % step == 0 or not remaining:
+                progress(len(new), len(jobs), time.perf_counter() - start, remaining.values())
     nab = {} if args.ci else nab_rows(new)  # the NAB score needs the whole series
     for row in new.values():
         row.pop("_nab", None)

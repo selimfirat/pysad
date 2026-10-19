@@ -28,11 +28,11 @@ from pysad.transform.probability_calibration import (
     ConformalProbabilityCalibrator,
     GaussianTailProbabilityCalibrator,
 )
-from pysad.utils import ArrayStreamer, Data, fix_seed, get_minmax_array
+from pysad.utils import Data, fix_seed
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "benchmark"
-DATASETS = [name.removesuffix(".mat") for name in Data()._get_data_files()]
+DATASETS = [name.removesuffix(".mat") for name in Data.datasets()]
 SEEDS = range(5)
 MAX_POINTS = 5000  # the first points of each shuffled stream
 WARMUP_POINTS = 256  # the scores of the first points do not count, see warmup()
@@ -93,11 +93,7 @@ def warmup(n):
 
 
 def load(dataset, seed):
-    X, y = Data().get_data(f"{dataset}.mat")
-    stream = list(ArrayStreamer(shuffle=True, random_state=seed).iter(X, y))[:MAX_POINTS]
-    X, y = np.array([x for x, _ in stream]), np.array([label for _, label in stream])
-    mins, maxes = get_minmax_array(X)
-    return (X - mins) / np.where(maxes > mins, maxes - mins, 1.0), y
+    return Data().get_stream(f"{dataset}.mat", random_state=seed, max_points=MAX_POINTS, scale=True)
 
 
 def run(job):
@@ -300,7 +296,7 @@ def commit():
 def changed_detectors(base):
     """The detectors whose results a change since ``base`` can move."""
     files = git("diff", "--name-only", base).split()
-    common = pysad_files([ArrayStreamer, Data, fix_seed, get_minmax_array, *CALIBRATORS.values()])
+    common = pysad_files([Data, fix_seed, *CALIBRATORS.values()])
     if common & set(files) or "benchmarks/benchmark.py" in files or "pyproject.toml" in files:
         return list(DETECTORS)
     edited = set()  # detectors whose committed results changed, so that every row comes from a run

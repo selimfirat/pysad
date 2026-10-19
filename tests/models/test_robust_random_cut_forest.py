@@ -62,3 +62,66 @@ def test_rrcf_trees_hold_shingles_of_consecutive_instances():
             np.array([leaf.x for _, leaf in sorted(tree.leaves.items())]),
             [[0, 1, 2, 3, 4, 5], [2, 3, 4, 5, 6, 7], [4, 5, 6, 7, 8, 9]],
         )
+
+
+def _tree_snapshot(node):
+    if node is None:
+        return None
+    return (
+        id(node),
+        node.dim,
+        node.cut,
+        node.count,
+        node.bbox.tolist(),
+        _tree_snapshot(node.left),
+        _tree_snapshot(node.right),
+    )
+
+
+def _insert_codisp_forget(tree, x, rng):
+    tree.insert(x, "test_point", rng)
+    node = tree.leaves["test_point"]
+    result = 0.0
+    while node.parent is not None:
+        parent = node.parent
+        sibling = parent.right if node is parent.left else parent.left
+        result = max(result, sibling.count / node.count)
+        node = parent
+    tree.forget("test_point")
+    return result
+
+
+def test_rrcf_score_partial_matches_insert_and_forget_without_mutating_trees():
+    import copy
+
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=5, tree_size=10, random_state=0)
+
+    # Empty trees return 0.0 without drawing from the random number generator.
+    rng_state = model.rng.get_state()[1].copy()
+    assert model.score_partial(np.zeros(2)) == 0.0
+    np.testing.assert_array_equal(model.rng.get_state()[1], rng_state)
+
+    points = np.random.RandomState(0).rand(25, 2)
+    for x in points[:15]:
+        model.fit_partial(x)
+
+    # Test duplicate points (already in the trees), interior points, and far-away outliers.
+    candidates = [points[14], points[10], points[15], np.full(2, 100.0), np.full(2, -100.0)]
+    for candidate in candidates:
+        ref_model = copy.deepcopy(model)
+        snapshots = [_tree_snapshot(tree.root) for tree in model.forest]
+        leaves = [dict(tree.leaves) for tree in model.forest]
+
+        score = model.score_partial(candidate)
+        expected = 0.0
+        for tree in ref_model.forest:
+            expected += _insert_codisp_forget(tree, candidate, ref_model.rng)
+        expected /= ref_model.num_trees
+
+        assert score == expected
+        np.testing.assert_array_equal(model.rng.get_state()[1], ref_model.rng.get_state()[1])
+        for tree, snap, leaf_map in zip(model.forest, snapshots, leaves, strict=True):
+            assert tree.leaves == leaf_map
+            assert _tree_snapshot(tree.root) == snap

@@ -125,3 +125,17 @@ def test_rrcf_score_partial_matches_insert_and_forget_without_mutating_trees():
         for tree, snap, leaf_map in zip(model.forest, snapshots, leaves, strict=True):
             assert tree.leaves == leaf_map
             assert _tree_snapshot(tree.root) == snap
+
+
+def test_rrcf_cuts_on_varying_feature_at_leaf():
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=20, tree_size=2, random_state=0)
+    model.fit_partial(np.array([0.0, 0.0]))
+    model.fit_partial(np.array([0.0, 1.0]))
+
+    for tree in model.forest:
+        assert tree.root.dim == 1
+        assert 0.0 <= tree.root.cut <= 1.0
+        np.testing.assert_array_equal(tree.root.left.x, [0.0, 0.0])
+        np.testing.assert_array_equal(tree.root.right.x, [0.0, 1.0])

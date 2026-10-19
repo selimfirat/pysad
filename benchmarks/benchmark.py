@@ -173,7 +173,9 @@ def nab_probation(n):
 
 
 # These detectors give scores from 0 to 1, as NAB's detectors do. The scores of the others have
-# another scale on each series, so they are calibrated before NAB uses one threshold for all.
+# another scale on each series, so they are calibrated before NAB uses one threshold for all. The
+# calibrator compares each score with all the earlier scores of the series. With the default window
+# of 300 scores, its values have steps of 1/300, and many points tie at the highest value.
 NAB_UNIT_SCORES = ["KNNCAD", "RelativeEntropy"]
 
 # NAB's scoring, ported from nab/sweeper.py and nab/optimizer.py of the Numenta Anomaly Benchmark
@@ -301,7 +303,7 @@ def run_univariate(series, detector):
     if detector in NAB_UNIT_SCORES:
         nab = (scores, y)
     else:
-        transform = ConformalProbabilityCalibrator().fit_transform_partial
+        transform = ConformalProbabilityCalibrator(window_size=len(X)).fit_transform_partial
         with np.errstate(all="ignore"):
             nab = (np.array([transform(s) for s in scores]), y)
     scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]

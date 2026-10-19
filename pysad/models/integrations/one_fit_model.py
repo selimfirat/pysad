@@ -1,3 +1,5 @@
+import numpy as np
+
 from .pyod_model import PYODModel
 
 
@@ -53,3 +55,29 @@ class OneFitModel(PYODModel):
         score = self.model.decision_function([X])[0]
 
         return score
+
+    def score(self, X):
+        """Scores all instances in order.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order.
+
+        Returns:
+            np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
+        """
+        if len(X) == 0:
+            return np.empty(0, dtype=np.float64)
+
+        return np.asarray(self.model.decision_function(X), dtype=np.float64).reshape(-1)
+
+    def fit_score(self, X, y=None):
+        """Scores all instances in order without updating the model.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order.
+            y (np.int32 array of shape (num_instances,)): Ignored (Default=None).
+
+        Returns:
+            np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
+        """
+        return self.score(X)

@@ -412,3 +412,131 @@ def test_reference_window_model_refits_when_the_first_window_doubles():
         model.fit_partial(x)
 
     assert sizes == [1, 2, 4, 8, 16, 16]
+
+
+def test_one_fit_model_batch_score_and_fit_score():
+    """OneFitModel.score and OneFitModel.fit_score match point-by-point scoring."""
+    import numpy as np
+    from pyod.models.iforest import IForest
+
+    from pysad.models.integrations import OneFitModel
+
+    rng = np.random.default_rng(42)
+    initial_X = rng.random((30, 3))
+    X = rng.random((20, 3))
+    y = rng.integers(0, 2, size=20)
+
+    model = OneFitModel(IForest, initial_X=initial_X, random_state=42)
+    expected_scores = np.array([model.score_partial(xi) for xi in X])
+
+    np.testing.assert_allclose(model.score(X), expected_scores, rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(model.fit_score(X, y), expected_scores, rtol=1e-12, atol=1e-12)
+    np.testing.assert_array_equal(model.score(np.empty((0, 3))), np.empty(0, dtype=np.float64))
+
+
+def test_reference_window_model_batch_score_and_fit_score():
+    """ReferenceWindowModel.score and fit_score match point-by-point evaluation and state."""
+    import warnings
+
+    import numpy as np
+    from pyod.models.iforest import IForest
+
+    from pysad.models.integrations import ReferenceWindowModel
+
+    rng = np.random.default_rng(42)
+    X = rng.random((25, 3))
+    y = rng.integers(0, 2, size=25)
+    initial_X = rng.random((12, 3))
+    initial_y = rng.integers(0, 2, size=12)
+
+    # Without initial_window_X (including empty and pre-fit score calls, and exact-boundary fit_score)
+    unfitted = ReferenceWindowModel(IForest, window_size=8, sliding_size=4, random_state=42)
+    np.testing.assert_array_equal(unfitted.score(np.empty((0, 3))), np.empty(0, dtype=np.float64))
+    np.testing.assert_array_equal(unfitted.score(X[:5]), np.zeros(5, dtype=np.float64))
+
+    for n in (16, 25):
+        batch_model = ReferenceWindowModel(IForest, window_size=8, sliding_size=4, random_state=42)
+        partial_model = ReferenceWindowModel(
+            IForest, window_size=8, sliding_size=4, random_state=42
+        )
+
+        batch_scores = batch_model.fit_score(X[:n])
+        partial_scores = np.array([partial_model.fit_score_partial(xi) for xi in X[:n]])
+
+        np.testing.assert_allclose(batch_scores, partial_scores, rtol=1e-12, atol=1e-12)
+        np.testing.assert_array_equal(batch_model.cur_window_X, partial_model.cur_window_X)
+        np.testing.assert_array_equal(
+            batch_model.reference_window_X, partial_model.reference_window_X
+        )
+        np.testing.assert_allclose(
+            batch_model.score(X),
+            np.array([partial_model.score_partial(xi) for xi in X]),
+            rtol=1e-12,
+            atol=1e-12,
+        )
+
+    # With initial_window_X and labels y provided
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message="y should not be presented in unsupervised learning"
+        )
+        batch_labeled = ReferenceWindowModel(
+            IForest,
+            window_size=10,
+            sliding_size=4,
+            initial_window_X=initial_X,
+            initial_window_y=initial_y,
+            random_state=42,
+        )
+        partial_labeled = ReferenceWindowModel(
+            IForest,
+            window_size=10,
+            sliding_size=4,
+            initial_window_X=initial_X,
+            initial_window_y=initial_y,
+            random_state=42,
+        )
+
+        batch_scores = batch_labeled.fit_score(X, y)
+        partial_scores = np.array(
+            [partial_labeled.fit_score_partial(xi, yi) for xi, yi in zip(X, y, strict=True)]
+        )
+
+    np.testing.assert_allclose(batch_scores, partial_scores, rtol=1e-12, atol=1e-12)
+    np.testing.assert_array_equal(batch_labeled.cur_window_X, partial_labeled.cur_window_X)
+    np.testing.assert_array_equal(
+        batch_labeled.reference_window_X, partial_labeled.reference_window_X
+    )
+    np.testing.assert_array_equal(batch_labeled.cur_window_y, partial_labeled.cur_window_y)
+    np.testing.assert_array_equal(
+        batch_labeled.reference_window_y, partial_labeled.reference_window_y
+    )
+
+
+def test_iforest_asd_batch_fit_score():
+    """IForestASD.fit_score matches fit_score_partial and ignores y without warning."""
+    import warnings
+
+    import numpy as np
+
+    from pysad.models import IForestASD
+
+    rng = np.random.default_rng(61)
+    X = rng.random((40, 3))
+    y = rng.integers(0, 2, size=40)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error", message="y should not be presented", category=UserWarning)
+        batch_model = IForestASD(window_size=16, random_state=61)
+        batch_scores = batch_model.fit_score(X, y)
+
+    partial_model = IForestASD(window_size=16, random_state=61)
+    partial_scores = np.array(
+        [partial_model.fit_score_partial(xi, yi) for xi, yi in zip(X, y, strict=True)]
+    )
+
+    np.testing.assert_allclose(batch_scores, partial_scores, rtol=1e-12, atol=1e-12)
+    np.testing.assert_array_equal(batch_model.cur_window_X, partial_model.cur_window_X)
+    np.testing.assert_array_equal(batch_model.reference_window_X, partial_model.reference_window_X)
+    assert batch_model.cur_window_y == []
+    assert batch_model.reference_window_y is None

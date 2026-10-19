@@ -1,7 +1,7 @@
 Detector,Standard,AUROC
 :class:`~pysad.models.RelativeEntropy`,66.0,0.504
+:class:`~pysad.models.StandardAbsoluteDeviation`,58.5,0.524
 :class:`~pysad.models.KNNCAD`,57.0,0.482
-:class:`~pysad.models.SeasonalESD`,24.9,0.494
-:class:`~pysad.models.MedianAbsoluteDeviation`,14.2,0.509
-:class:`~pysad.models.StandardAbsoluteDeviation`,6.0,0.524
+:class:`~pysad.models.SeasonalESD`,39.8,0.494
+:class:`~pysad.models.MedianAbsoluteDeviation`,22.4,0.509
 :class:`~pysad.models.SeasonalHybridESD`,0.0,0.500

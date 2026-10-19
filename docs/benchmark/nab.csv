@@ -1,7 +1,7 @@
 detector,series,standard,reward_low_fp,reward_low_fn,seasonal_standard
 KNNCAD,52,58.42,44.26,65.1,57.05
-MedianAbsoluteDeviation,52,0.0,0.0,21.55,14.18
+MedianAbsoluteDeviation,52,34.18,20.91,40.89,22.38
 RelativeEntropy,52,59.06,53.61,62.65,66.03
-StandardAbsoluteDeviation,52,0.0,0.0,24.5,5.96
-SeasonalESD,5,24.88,0.0,40.83,24.88
+StandardAbsoluteDeviation,52,42.09,31.97,48.98,58.52
+SeasonalESD,5,39.77,22.15,47.73,39.77
 SeasonalHybridESD,5,0.0,0.0,0.0,0.0

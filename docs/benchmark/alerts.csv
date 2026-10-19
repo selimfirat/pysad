@@ -1,0 +1,9 @@
+Calibrator,Threshold,Expected false alerts,False alerts,Range over detectors,Precision,Recall,F1
+:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.95,0.050,0.027,0.018 to 0.046,0.423,0.274,0.251
+:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.99,0.010,0.004,0.002 to 0.008,0.539,0.089,0.126
+:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.995,0.005,0.001,0.001 to 0.002,0.547,0.030,0.051
+:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,1 - anomaly rate,,0.063,0.041 to 0.103,0.426,0.345,0.358
+:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,0.95,0.050,0.028,0.002 to 0.070,0.409,0.269,0.228
+:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,0.99,0.010,0.010,0.001 to 0.033,0.501,0.167,0.171
+:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,0.995,0.005,0.007,0.000 to 0.028,0.522,0.136,0.148
+:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,1 - anomaly rate,,0.053,0.002 to 0.089,0.412,0.326,0.295

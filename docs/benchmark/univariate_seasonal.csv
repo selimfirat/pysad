@@ -2,6 +2,26 @@ Detector,Standard,AUROC
 :class:`~pysad.models.RelativeEntropy`,66.0,0.504
 :class:`~pysad.models.StandardAbsoluteDeviation`,58.5,0.524
 :class:`~pysad.models.KNNCAD`,57.0,0.482
+:class:`~pysad.models.RobustRandomCutForest`,56.0,0.541
+:class:`~pysad.models.RSHash`,47.8,0.541
+:class:`~pysad.models.xStream`,43.0,0.489
+:class:`~pysad.models.LODA`,39.4,0.584
+:class:`~pysad.models.HalfSpaceTrees`,38.8,0.520
+":class:`~pysad.models.LODA`, shingles",37.4,0.576
+":class:`~pysad.models.xStream`, shingles",35.7,0.495
+:class:`~pysad.models.Inqmad`,35.2,0.536
+":class:`~pysad.models.RobustRandomCutForest`, shingles",34.0,0.529
+:class:`~pysad.models.ExactStorm`,31.9,0.564
+:class:`~pysad.models.KitNet`,31.8,0.534
+":class:`~pysad.models.ExactStorm`, shingles",31.7,0.525
 :class:`~pysad.models.SeasonalESD`,30.3,0.493
+":class:`~pysad.models.RSHash`, shingles",29.2,0.490
+":class:`~pysad.models.HalfSpaceTrees`, shingles",25.4,0.490
+":class:`~pysad.models.Inqmad`, shingles",23.7,0.534
 :class:`~pysad.models.MedianAbsoluteDeviation`,22.4,0.509
+":class:`~pysad.models.KitNet`, shingles",21.2,0.562
+":class:`~pysad.models.LocalOutlierProbability`, shingles",19.1,0.496
+:class:`~pysad.models.IForestASD`,11.9,0.599
+":class:`~pysad.models.IForestASD`, shingles",11.4,0.567
 :class:`~pysad.models.SeasonalHybridESD`,0.0,0.497
+:class:`~pysad.models.LocalOutlierProbability`,0.0,0.511

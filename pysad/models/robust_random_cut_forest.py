@@ -151,14 +151,28 @@ class _RCTree:
             self._children_bbox(node, out=node.bbox)
             node = node.parent
 
-    def codisp(self, leaf):
-        # The largest ratio of sibling size to subtree size on the path from the leaf to the root.
-        result = 0
-        node = leaf
+    def score(self, x, rng):
+        # The collusive displacement of x if it were inserted: the largest ratio of sibling size
+        # to subtree size on the path from the leaf of x to the root, without modifying the tree.
+        if self.root is None:
+            return 0.0
+
+        node = self.find_duplicate(x)
+        if node is not None:
+            result = 0.0
+        else:
+            node = self.root
+            while True:
+                dim, cut = self._cut(x, node.bbox, rng)
+                if cut <= node.bbox[0, dim] or cut >= node.bbox[-1, dim]:
+                    break
+                node = node.left if x[node.dim] <= node.cut else node.right
+            result = float(node.count)
+
         while node.parent is not None:
             parent = node.parent
             sibling = parent.right if node is parent.left else parent.left
-            result = max(result, sibling.count / node.count)
+            result = max(result, sibling.count / (node.count + 1))
             node = parent
         return result
 
@@ -246,7 +260,7 @@ class RobustRandomCutForest(BaseModel):
         return self
 
     def score_partial(self, X):
-        """Scores the shingle that ends with the next instance by its collusive displacement in each tree after it is inserted there, averaged over the trees. The shingle is removed from the trees again, so only the random cuts of the insertions draw from the random number generator.
+        """Scores the shingle that ends with the next instance by the collusive displacement it would have in each tree if it were inserted there, averaged over the trees. The trees are not modified, so only the random cuts draw from the random number generator.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
@@ -260,9 +274,7 @@ class RobustRandomCutForest(BaseModel):
 
         score = 0.0
         for tree in self.forest:
-            tree.insert(point, "test_point", self.rng)
-            score += tree.codisp(tree.leaves["test_point"])
-            tree.forget("test_point")
+            score += tree.score(point, self.rng)
 
         return score / self.num_trees
 

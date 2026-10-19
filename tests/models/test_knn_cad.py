@@ -166,7 +166,7 @@ def test_knn_cad_memory_does_not_grow_with_stream():
     for i, x in enumerate(X, 1):
         model.fit_score_partial(x)
         if i in (1000, 3000):
-            assert len(model.buf) == model.dim
+            assert len(model.shingler.recent) == model.dim - 1
             assert len(model.training) == 100 - model.dim
             assert len(model.calibration) == 100
             assert len(model.scores) == 100 - model.dim
@@ -198,7 +198,10 @@ def test_knn_cad_score_partial_has_no_side_effects():
             assert first == second
             assert before.keys() == after.keys()
             for key in before:
-                np.testing.assert_equal(after[key], before[key], err_msg=key)
+                if key == "shingler":  # compare the history, not the objects
+                    np.testing.assert_equal(list(after[key].recent), list(before[key].recent))
+                else:
+                    np.testing.assert_equal(after[key], before[key], err_msg=key)
 
         model.fit_score_partial(x)
 
@@ -336,13 +339,13 @@ def test_knn_cad_rejects_multivariate_instances_without_changing_state():
     model = KNNCAD(probationary_period=100)
     for x in X[:150]:
         model.fit_score_partial(x)
-    buf, record_count = list(model.buf), model.record_count
+    recent, record_count = list(model.shingler.recent), model.record_count
 
     for bad in (np.array([0.1, 0.2, 0.3]), np.zeros((1, 2)), np.array([])):
         for method in (model.fit_partial, model.score_partial, model.fit_score_partial):
             with pytest.raises(ValueError, match="univariate"):
                 method(bad)
-    assert list(model.buf) == buf
+    np.testing.assert_equal(list(model.shingler.recent), recent)
     assert model.record_count == record_count
 
     with pytest.raises(ValueError, match="univariate"):

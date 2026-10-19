@@ -1,11 +1,11 @@
 Detector,Mean rank,Mean AUROC,Mean AUPR,Time per point (ms),Commit
-:class:`~pysad.models.RSHash`,3.6,0.816,0.487,0.29,`1d5580a <https://github.com/selimfirat/pysad/commit/1d5580a>`__
+:class:`~pysad.models.RSHash`,3.7,0.816,0.487,0.29,`1d5580a <https://github.com/selimfirat/pysad/commit/1d5580a>`__
 :class:`~pysad.models.LocalOutlierProbability`,4.0,0.825,0.494,0.35,`8bae9ae <https://github.com/selimfirat/pysad/commit/8bae9ae>`__
 :class:`~pysad.models.IForestASD`,4.4,0.805,0.485,3.37,`8bae9ae <https://github.com/selimfirat/pysad/commit/8bae9ae>`__
 :class:`~pysad.models.Inqmad`,5.1,0.779,0.415,27.54,`8bae9ae <https://github.com/selimfirat/pysad/commit/8bae9ae>`__
 :class:`~pysad.models.LODA`,5.2,0.794,0.474,0.09,`8bae9ae <https://github.com/selimfirat/pysad/commit/8bae9ae>`__
 :class:`~pysad.models.ExactStorm`,5.5,0.805,0.332,0.23,`8bae9ae <https://github.com/selimfirat/pysad/commit/8bae9ae>`__
-:class:`~pysad.models.HalfSpaceTrees`,5.8,0.799,0.474,0.22,`8bae9ae <https://github.com/selimfirat/pysad/commit/8bae9ae>`__
-:class:`~pysad.models.RobustRandomCutForest`,5.9,0.787,0.420,23.32,`1d5580a <https://github.com/selimfirat/pysad/commit/1d5580a>`__
+:class:`~pysad.models.RobustRandomCutForest`,5.6,0.794,0.428,14.51,`398b479 <https://github.com/selimfirat/pysad/commit/398b479>`__
+:class:`~pysad.models.HalfSpaceTrees`,5.9,0.799,0.474,0.22,`8bae9ae <https://github.com/selimfirat/pysad/commit/8bae9ae>`__
 :class:`~pysad.models.xStream`,6.8,0.777,0.404,1.46,`8bae9ae <https://github.com/selimfirat/pysad/commit/8bae9ae>`__
 :class:`~pysad.models.KitNet`,8.8,0.714,0.293,0.38,`8bae9ae <https://github.com/selimfirat/pysad/commit/8bae9ae>`__

@@ -44,9 +44,7 @@ class _RCTree:
         # The InsertPoint cut: a dimension drawn in proportion to its span and a uniform value in it.
         # The trees run this for every node on every path, so it makes as few NumPy calls as it can.
         high = np.maximum(bbox[-1], x)
-        # A leaf has a box of one row, where rrcf 0.4.4 writes the maximum over the minimum, so the
-        # span is 0 and the cut falls on the first feature. This keeps that behavior until #331.
-        low = high if len(bbox) == 1 else np.minimum(bbox[0], x)
+        low = np.minimum(bbox[0], x)
         span = high - low
         r = rng.uniform(0, span.sum())
         span_sum = span.cumsum()

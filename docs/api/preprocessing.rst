@@ -15,3 +15,4 @@ This module holds transformers that change each point before the detector gets i
    InstanceUnitNormScaler
    ModifiedSTLResidualTransformer
    SeasonalTrendDecomposer
+   ShingleTransformer

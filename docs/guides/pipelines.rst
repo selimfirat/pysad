@@ -35,9 +35,31 @@ This pipeline scales each point to length 1, projects it to 20 features, scores 
        score = model.fit_score_partial(x)
        score = smoother.fit_transform_partial(score)
 
-Preprocessors and projectors return a NumPy array, and postprocessors return a ``float``. Each ``fit_transform_partial`` call updates the stage with its input and then transforms the input.
+Preprocessors and projectors return a NumPy array, and postprocessors return a ``float``. Each ``fit_transform_partial`` call updates the stage with its input and then transforms the input. :class:`~pysad.transform.preprocessing.ShingleTransformer` is the exception, as the next section explains.
 
 If the points have many features, project them to fewer features. A detector needs less time per point on fewer features. Random projections keep the distances between points approximately the same.
+
+Give a detector the recent history
+----------------------------------
+
+A detector of single points sees only the values of each point. But many anomalies of a time series are a normal value at the wrong time, for example a high value at night. :class:`~pysad.transform.preprocessing.ShingleTransformer` turns each point into a shingle, the last ``shingle_size`` points side by side, so that the detector sees the recent pattern:
+
+.. code-block:: python
+
+   import numpy as np
+
+   from pysad.models import LODA
+   from pysad.transform.preprocessing import ShingleTransformer
+
+   x = np.sin(np.arange(1000) * 2 * np.pi / 24)  # a daily cycle of 24 points
+   shingler = ShingleTransformer(shingle_size=24)
+   model = LODA(random_state=0)
+
+   for value in x:
+       shingle = shingler.fit_transform_partial(np.array([value]))  # the last 24 values
+       score = model.fit_score_partial(shingle)
+
+Choose ``shingle_size`` so that a shingle holds a typical pattern, for example one period of a seasonal series. ``fit_transform_partial`` of this stage builds the shingle first and then adds the point to its history, so a shingle holds only the point and the points before it.
 
 Combine several detectors
 -------------------------

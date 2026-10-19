@@ -235,7 +235,7 @@ How fast is a detector, and how much memory does it use?
 
 Most detectors take between 0.005 and 1 millisecond per point. We measured this on the 21 features of ``cardio`` on an Apple silicon laptop. Some detectors take longer:
 
-- :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` take about 4 milliseconds, because they decompose the full window for each point.
+- :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` take about 1.5 milliseconds with a window of one week of hourly values, because they decompose the full window for each point.
 - :class:`~pysad.models.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` retrain at a fixed interval, so a few points take much longer than the others.
 
 Most detectors keep a fixed amount of memory, and :doc:`detectors` gives the memory of each one. To measure the time per point on your own data, see :doc:`guides/production`.

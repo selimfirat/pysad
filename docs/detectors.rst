@@ -74,11 +74,11 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Memory
    * - :class:`~pysad.models.SeasonalHybridESD`
      - STL (seasonal-trend decomposition) residuals and a robust generalized ESD (extreme Studentized deviate) test :cite:`hochenbaum2017automatic`
-     - The period, the window size and the maximum number of anomalies per window
+     - The period and the window size
      - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.SeasonalESD`
      - STL residuals and a generalized ESD test :cite:`hochenbaum2017automatic`
-     - The period, the window size and the maximum number of anomalies per window
+     - The period and the window size
      - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.MedianAbsoluteDeviation`
      - Distance from the median of the last ``window_size`` values, in scaled median absolute deviations of those values (1.4826 × MAD) :cite:`hochenbaum2017automatic`

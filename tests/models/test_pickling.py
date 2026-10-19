@@ -45,8 +45,8 @@ MODEL_PARAMS = {
     },
     "RobustRandomCutForest": {"tree_size": 32},
     "RSHash": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0]},
-    "SeasonalESD": {"period": 4, "window_size": 16, "max_anomalies": 3},
-    "SeasonalHybridESD": {"period": 4, "window_size": 16, "max_anomalies": 3},
+    "SeasonalESD": {"period": 4, "window_size": 16, "max_anomalies": 0.19},
+    "SeasonalHybridESD": {"period": 4, "window_size": 16, "max_anomalies": 0.19},
     "xStream": {"n_chains": 10, "depth": 10, "window_size": 20},
 }
 

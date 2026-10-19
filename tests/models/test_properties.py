@@ -94,8 +94,8 @@ def _model_params(model_name, num_features, data):
             "feature_maxes": np.array(ones),
             "num_components": 10,
         },
-        "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 2},
-        "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 2},
+        "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
+        "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
     }
 

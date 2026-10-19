@@ -208,7 +208,7 @@ Report AUROC and AUPR, because they need no threshold. AUROC measures how well t
 Which detector is the best?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-No detector is the best for all data. The :doc:`benchmark <benchmark>` gives the results of each multivariate detector with its default parameters on 17 datasets. Use them to find candidates, and then compare the candidates on your own data. See :doc:`guides/choose_detector`.
+No detector is the best for all data. The :doc:`benchmark <benchmark>` gives the results of each multivariate detector with its default parameters on |num_datasets| datasets. Use them to find candidates, and then compare the candidates on your own data. See :doc:`guides/choose_detector`.
 
 Why do I get a different result on each run?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

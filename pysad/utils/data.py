@@ -208,6 +208,20 @@ class Data:
 
         return ArrayStreamer(shuffle=shuffle, random_state=random_state).iter(X, y)
 
+    def describe(self, data_file: str, download: bool = True) -> dict[str, Any]:
+        """Returns the number of points, the number of features and the anomaly rate of a dataset.
+
+        Args:
+            data_file (str): Path or filename of data.
+            download (bool): Whether to download the dataset if not present locally (Default=True).
+
+        Returns:
+            dict: ``points`` (int), ``features`` (int) and ``anomaly_rate`` (float, the fraction of points with label 1).
+        """
+        X, y = self.get_data(data_file, download=download)
+
+        return {"points": len(X), "features": X.shape[1], "anomaly_rate": float(np.mean(y))}
+
     def get_stream(
         self,
         data_file: str,

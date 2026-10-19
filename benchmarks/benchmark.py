@@ -227,10 +227,17 @@ def write_tables(results):
 
     datasets = []
     for ds in DATASETS:
-        X, y = Data().get_data(f"{ds}.mat")
-        n = min(len(X), MAX_POINTS)
+        facts = Data().describe(f"{ds}.mat")
+        n = min(facts["points"], MAX_POINTS)
         datasets.append(
-            [ds, f"{len(X):,}", f"{n:,}", f"{n - warmup(n):,}", X.shape[1], f"{100 * y.mean():.1f}"]
+            [
+                ds,
+                f"{facts['points']:,}",
+                f"{n:,}",
+                f"{n - warmup(n):,}",
+                facts["features"],
+                f"{100 * facts['anomaly_rate']:.1f}",
+            ]
         )
     write_csv(
         "datasets.csv",

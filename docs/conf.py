@@ -6,7 +6,11 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
+from pysad.utils import Data
 from pysad.version import __version__
+
+# The docs write the number of datasets as |num_datasets|, so that it follows Data.datasets().
+rst_epilog = f"\n.. |num_datasets| replace:: {len(Data.datasets())}\n"
 
 # -- Project information -----------------------------------------------------
 

@@ -274,3 +274,25 @@ def test_download_with_a_wrong_checksum_raises_and_leaves_no_file(tmp_path, monk
     with pytest.raises(ValueError, match="SHA-256"):
         data.get_data("cardio.mat")
     assert list(tmp_path.iterdir()) == []
+
+
+def test_describe_gives_the_facts_of_a_dataset():
+    d = Data()
+    d.get_data = lambda data_file, download=True: (
+        np.zeros((8, 3)),
+        np.array([0, 0, 1, 0, 0, 0, 1, 0]),
+    )
+
+    assert d.describe("dummy.txt") == {"points": 8, "features": 3, "anomaly_rate": 0.25}
+
+
+def test_readme_counts_the_datasets_of_data():
+    """The docs take the number of datasets from Data.datasets(), and the README must match it."""
+    import pathlib
+    import re
+
+    readme = (pathlib.Path(__file__).parents[2] / "README.md").read_text()
+    counts = {int(n) for n in re.findall(r"(\d+) labeled", readme)}
+    counts |= {int(n) for n in re.findall(r"on (\d+) datasets", readme)}
+
+    assert counts == {len(Data.datasets())}

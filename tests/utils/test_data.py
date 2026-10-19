@@ -336,3 +336,47 @@ def test_nab_series_are_labeled_by_their_anomaly_windows(tmp_path):
 
     np.testing.assert_array_equal(X[:, 0], [1, 2, 30, 4, 5])
     np.testing.assert_array_equal(y, [0, 1, 1, 0, 0])
+
+
+def test_ucr_datasets_are_listed_by_source():
+    names = Data.datasets("ucr")
+
+    assert len(names) == 250
+    assert names[0] == "ucr/001_UCR_Anomaly_DISTORTED1sddb40_35000_52000_52620.txt"
+    assert all(name.startswith("ucr/") and name.endswith(".txt") for name in names)
+
+
+def test_ucr_series_come_from_the_archive_and_are_labeled_by_their_names(tmp_path, monkeypatch):
+    """The last two numbers of a name are the first and the last anomaly point, counted from 1."""
+    import zipfile
+
+    name = "001_UCR_Anomaly_test_2_3_4.txt"
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as z:
+        # Some files have one value on each line, and others have all the values on one line.
+        z.writestr(pysad.utils.data._UCR_FOLDER + name, "1\n2\n3\n4\n5\n6\n")
+    content = archive.getvalue()
+    downloads = []
+
+    class Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    def urlopen(req):
+        downloads.append(req.full_url)
+        return Response(content)
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(pysad.utils.data, "_UCR_CHECKSUM", hashlib.sha256(content).hexdigest())
+    monkeypatch.setattr(pysad.utils.data, "_UCR_SERIES", [name])
+    data = Data(data_base_path=str(tmp_path))
+
+    X, y = data.get_data("ucr/" + name)
+    data.get_data("ucr/" + name)
+
+    np.testing.assert_array_equal(X[:, 0], [1, 2, 3, 4, 5, 6])
+    np.testing.assert_array_equal(y, [0, 0, 1, 1, 0, 0])
+    assert downloads == [pysad.utils.data._UCR]  # the second call reads the extracted file

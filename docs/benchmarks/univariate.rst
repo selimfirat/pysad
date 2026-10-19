@@ -1,7 +1,7 @@
 Univariate detectors
 ====================
 
-This page compares the univariate detectors of PySAD on the series of the Numenta Anomaly Benchmark (NAB), with the score of NAB. A univariate detector takes one value for each point. Each detector uses its default parameters, plus the arguments that it requires. Use the results to find two or three candidates. Then compare the candidates on your own data, as :doc:`/guides/choose_detector` shows.
+This page compares the univariate detectors of PySAD on the series of the Numenta Anomaly Benchmark (NAB), with the score of NAB. It also compares them on the series of the UCR Time Series Anomaly Archive :cite:`wu2021current`. A univariate detector takes one value for each point. Each detector uses its default parameters, plus the arguments that it requires. Use the results to find two or three candidates. Then compare the candidates on your own data, as :doc:`/guides/choose_detector` shows.
 
 The NAB score
 -------------
@@ -54,6 +54,16 @@ The ESD detectors run on fewer series than the others, so the summary does not c
    :header-rows: 1
    :class: benchmark-table
 
+UCR series
+~~~~~~~~~~
+
+Each UCR series has one anomaly. Its first part is a training part with no anomalies. A detector solves a series when its highest score after the training part is at most 100 points from the anomaly. The authors of the archive use this rule. The table shows the percentage of the series that each detector solves, and the mean AUROC after the training part. The ESD detectors do not run on these series, because the archive does not give their periods.
+
+.. csv-table::
+   :file: ../benchmark/univariate_ucr.csv
+   :header-rows: 1
+   :class: benchmark-table
+
 How the benchmark works
 -----------------------
 
@@ -70,6 +80,8 @@ With these steps, :class:`~pysad.models.KNNCAD` gets NAB scores of 58.4, 44.3 an
 
 The mean AUROC leaves out the first 256 points of each series, as the :doc:`methodology` of the multivariate benchmark does. None of these detectors draws random numbers, so each one runs once on each series, with no seeds.
 
+The UCR archive has 250 series with 19.4 million points in total. The benchmark uses the 84 series with at most 20,000 points, which have 772,539 points in total, so that a run stays short. It loads each series with ``Data().get_data(name)``, for a name from ``Data.datasets("ucr")``. The archive has no license that lets PySAD copy it, so :class:`~pysad.utils.Data` downloads it from the site of its authors. Then the benchmark does the steps 2, 3 and 4 above, with the raw scores. The training part of each UCR series has at least 1,000 points, so the first 256 points never count.
+
 The period of a seasonal series is one day, in points. A series counts as seasonal when the correlation of its values with the values one day earlier is at least 0.5. The ESD detectors run on the 5 seasonal series with a period of 24 or 48 points. Nine more series have a daily period of 288 points. A window of 3 such periods makes the STL decomposition of each point too slow for this benchmark, so the ESD detectors do not run on them.
 
 What the results do not show
@@ -78,3 +90,4 @@ What the results do not show
 - The NAB scoreboard has no results for MAD, SAD and the ESD detectors. Their scores here depend on the conformal calibration, which NAB does not use.
 - The ESD detectors differ from the R package of their paper in some settings, for example in their STL settings and in the direction of the test.
 - The periods come from the data, not from NAB. NAB gives no periods.
+- The UCR results come from the short series only. A longer series can be harder for a detector.

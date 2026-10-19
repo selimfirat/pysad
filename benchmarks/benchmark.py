@@ -1,7 +1,8 @@
 """Benchmark the detectors and the calibrators of PySAD on the datasets of ``pysad.utils.Data``.
 
 The multivariate detectors and the calibrators run on the ODDS datasets, and the univariate
-detectors on the series of the Numenta Anomaly Benchmark (NAB).
+detectors on the series of the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly
+Archive.
 
 Run it from the repository root:
 
@@ -112,6 +113,21 @@ def series_of(detector):
     return list(PERIODS) if detector in SEASONAL else nab_series()
 
 
+# The UCR series with at most this many points, 84 of the 250, keep the run short. The ESD detectors
+# do not run on them, because the archive does not give the periods.
+UCR_MAX_POINTS = 20_000
+# A run solves a UCR series when its highest score after the training part is at most this many
+# points from the anomaly, the rule of the authors of the archive.
+UCR_MARGIN = 100
+
+
+@functools.cache
+def ucr_series():
+    return [
+        name for name in Data.datasets("ucr") if len(Data().get_data(name)[0]) <= UCR_MAX_POINTS
+    ]
+
+
 # Each calibrator, with its defaults, turns the scores of every run into alerts at each threshold,
 # as the alerts guide does: an alert when the calibrated score is at least the threshold.
 CALIBRATORS = {
@@ -124,7 +140,17 @@ CALIBRATOR_NAMES = {"conformal": "Conformal", "gaussian": "Gaussian tail"}  # sh
 THRESHOLDS = [0.95, 0.99, 0.995, "rate"]
 ALERT_METRICS = ["false_alerts", "precision", "recall"]
 ALERT_FIELDS = [f"{c}_{t}_{m}" for c in CALIBRATORS for t in THRESHOLDS for m in ALERT_METRICS]
-FIELDS = ["dataset", "detector", "seed", "auroc", "aupr", "ms_per_point", *ALERT_FIELDS, "commit"]
+FIELDS = [
+    "dataset",
+    "detector",
+    "seed",
+    "auroc",
+    "aupr",
+    "ms_per_point",
+    "solved",  # UCR series only
+    *ALERT_FIELDS,
+    "commit",
+]
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
 
 
@@ -290,8 +316,38 @@ def run_univariate(series, detector):
     }
 
 
+def run_ucr(series, detector):
+    """Runs a detector on a UCR series, with the arguments that it gets on NAB, and the raw scores."""
+    X, y = Data().get_data(series)
+    span = X.max() - X.min()
+    X = (X - X.min()) / (span if span > 0 else 1.0)
+    model = UNIVARIATE[detector](len(X), None)
+    start = time.perf_counter()
+    with np.errstate(all="ignore"):
+        scores = np.array([float(model.fit_score_partial(x)) for x in X])
+    seconds = time.perf_counter() - start
+    valid = np.isfinite(scores).all()
+    train = int(series.split("_")[-3])  # the training part has no anomalies, so it does not count
+    anomaly = np.flatnonzero(y)
+    top = train + np.argmax(scores[train:])
+    scores, y = scores[train:], y[train:]
+    return {
+        "dataset": series,
+        "detector": detector,
+        "seed": 0,
+        "auroc": round(roc_auc_score(y, scores), 4) if valid else np.nan,
+        "aupr": round(average_precision_score(y, scores), 4) if valid else np.nan,
+        "ms_per_point": round(1000 * seconds / len(X), 3),
+        "solved": int(anomaly[0] - UCR_MARGIN <= top <= anomaly[-1] + UCR_MARGIN)
+        if valid
+        else np.nan,
+    }
+
+
 def run(job):
     dataset, detector, seed = job
+    if dataset.startswith("ucr/"):
+        return run_ucr(dataset, detector)
     if detector in UNIVARIATE:
         return run_univariate(dataset, detector)
     X, y = load(dataset, seed)
@@ -490,6 +546,24 @@ def write_univariate_tables(results, nab):
             for d in sorted(detectors, key=lambda d: -score(d, "standard"))
         ],
     )
+    ucr = [d for d in detectors if d not in SEASONAL]
+    write_csv(
+        "univariate_ucr.csv",
+        ["Detector", "Series", "Solved (%)", "AUROC"],
+        sorted(
+            (
+                [
+                    f":class:`~pysad.models.{d}`",
+                    len(ucr_series()),
+                    f"{100 * np.nanmean([number(results[s, d, 0]['solved']) for s in ucr_series()]):.1f}",
+                    f"{mean_auroc(d, ucr_series()):.3f}",
+                ]
+                for d in ucr
+                if all((s, d, 0) in results for s in ucr_series())
+            ),
+            key=lambda row: -float(row[2]),
+        ),
+    )
     write_csv(
         "univariate_seasonal.csv",
         ["Detector", "Standard", "AUROC"],
@@ -628,10 +702,17 @@ def main():
     for dataset in DATASETS:  # download each file once, before the workers start
         Data().get_data(f"{dataset}.mat")
     nab_series()
+    ucr_series()
     seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else SEEDS
     jobs = [(ds, d, s) for d in detectors if d in DETECTORS for ds in DATASETS for s in seeds]
     if 0 in seeds:  # the univariate detectors are not random, so they run once, with seed 0
         jobs += [(series, d, 0) for d in detectors if d in UNIVARIATE for series in series_of(d)]
+        jobs += [
+            (s, d, 0)
+            for d in detectors
+            if d in UNIVARIATE and d not in SEASONAL
+            for s in ucr_series()
+        ]
     with ProcessPoolExecutor(args.jobs) as pool:
         new = {key(row): row for row in pool.map(run, jobs)}
     nab = nab_rows(new)
@@ -654,6 +735,9 @@ def main():
                 )
                 for f in ALERT_FIELDS
                 if f.endswith("false_alerts")
+            )
+            or not np.isclose(
+                number(results[k].get("solved")), row.get("solved", np.nan), equal_nan=True
             )
         ]
         for k, old, row in changed:

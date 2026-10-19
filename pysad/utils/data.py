@@ -5,6 +5,7 @@ import os
 import shutil
 import tempfile
 import urllib.request
+import zipfile
 from collections.abc import Iterator
 from typing import Any
 
@@ -104,6 +105,268 @@ _NAB_CHECKSUMS = {
     "realTweets/Twitter_volume_UPS.csv": "be50f06bbb9d020f37653c8c5cf19af63f77aa0019d8cf10849d91f4af455af4",
 }
 
+# The UCR Time Series Anomaly Archive of 2021. Data downloads the archive from the site of its
+# authors, because the archive has no license that lets PySAD copy it. The name of each series is
+# "<number>_UCR_Anomaly_<name>_<end of training part>_<first anomaly point>_<last anomaly point>.txt".
+_UCR = "https://www.cs.ucr.edu/~eamonn/time_series_data_2018/UCR_TimeSeriesAnomalyDatasets2021.zip"
+_UCR_ARCHIVE = "ucr/UCR_TimeSeriesAnomalyDatasets2021.zip"
+_UCR_CHECKSUM = "ac4b991c701e620ae9cc5ebd57ae45593a36cc9c0b6ed5e3c4b7e466cf4783d4"
+_UCR_FOLDER = (
+    "AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData/"
+)
+_UCR_SERIES = """
+001_UCR_Anomaly_DISTORTED1sddb40_35000_52000_52620.txt
+002_UCR_Anomaly_DISTORTED2sddb40_35000_56600_56900.txt
+003_UCR_Anomaly_DISTORTED3sddb40_35000_46600_46900.txt
+004_UCR_Anomaly_DISTORTEDBIDMC1_2500_5400_5600.txt
+005_UCR_Anomaly_DISTORTEDCIMIS44AirTemperature1_4000_5391_5392.txt
+006_UCR_Anomaly_DISTORTEDCIMIS44AirTemperature2_4000_5703_5727.txt
+007_UCR_Anomaly_DISTORTEDCIMIS44AirTemperature3_4000_6520_6544.txt
+008_UCR_Anomaly_DISTORTEDCIMIS44AirTemperature4_4000_5549_5597.txt
+009_UCR_Anomaly_DISTORTEDCIMIS44AirTemperature5_4000_4852_4900.txt
+010_UCR_Anomaly_DISTORTEDCIMIS44AirTemperature6_4000_6006_6054.txt
+011_UCR_Anomaly_DISTORTEDECG1_10000_11800_12100.txt
+012_UCR_Anomaly_DISTORTEDECG2_15000_16000_16100.txt
+013_UCR_Anomaly_DISTORTEDECG3_15000_16000_16100.txt
+014_UCR_Anomaly_DISTORTEDECG3_8000_17000_17100.txt
+015_UCR_Anomaly_DISTORTEDECG4_5000_16800_17100.txt
+016_UCR_Anomaly_DISTORTEDECG4_5000_16900_17100.txt
+017_UCR_Anomaly_DISTORTEDECG4_5000_17000_17100.txt
+018_UCR_Anomaly_DISTORTEDECG4_8000_17000_17100.txt
+019_UCR_Anomaly_DISTORTEDGP711MarkerLFM5z1_5000_6168_6212.txt
+020_UCR_Anomaly_DISTORTEDGP711MarkerLFM5z2_5000_7175_7388.txt
+021_UCR_Anomaly_DISTORTEDGP711MarkerLFM5z3_5000_5948_5993.txt
+022_UCR_Anomaly_DISTORTEDGP711MarkerLFM5z4_4000_6527_6645.txt
+023_UCR_Anomaly_DISTORTEDGP711MarkerLFM5z5_5000_8612_8716.txt
+024_UCR_Anomaly_DISTORTEDInternalBleeding10_3200_4526_4556.txt
+025_UCR_Anomaly_DISTORTEDInternalBleeding14_2800_5607_5634.txt
+026_UCR_Anomaly_DISTORTEDInternalBleeding15_1700_5684_5854.txt
+027_UCR_Anomaly_DISTORTEDInternalBleeding16_1200_4187_4199.txt
+028_UCR_Anomaly_DISTORTEDInternalBleeding17_1600_3198_3309.txt
+029_UCR_Anomaly_DISTORTEDInternalBleeding18_2300_4485_4587.txt
+030_UCR_Anomaly_DISTORTEDInternalBleeding19_3000_4187_4197.txt
+031_UCR_Anomaly_DISTORTEDInternalBleeding20_2700_5759_5919.txt
+032_UCR_Anomaly_DISTORTEDInternalBleeding4_1000_4675_5033.txt
+033_UCR_Anomaly_DISTORTEDInternalBleeding5_4000_6200_6370.txt
+034_UCR_Anomaly_DISTORTEDInternalBleeding6_1500_3474_3629.txt
+035_UCR_Anomaly_DISTORTEDInternalBleeding8_2500_5865_5974.txt
+036_UCR_Anomaly_DISTORTEDInternalBleeding9_4200_6599_6681.txt
+037_UCR_Anomaly_DISTORTEDLab2Cmac011215EPG1_5000_17210_17260.txt
+038_UCR_Anomaly_DISTORTEDLab2Cmac011215EPG2_5000_27862_27932.txt
+039_UCR_Anomaly_DISTORTEDLab2Cmac011215EPG3_5000_16390_16420.txt
+040_UCR_Anomaly_DISTORTEDLab2Cmac011215EPG4_6000_17390_17520.txt
+041_UCR_Anomaly_DISTORTEDLab2Cmac011215EPG5_7000_17390_17520.txt
+042_UCR_Anomaly_DISTORTEDLab2Cmac011215EPG6_7000_12190_12420.txt
+043_UCR_Anomaly_DISTORTEDMesoplodonDensirostris_10000_19280_19440.txt
+044_UCR_Anomaly_DISTORTEDPowerDemand1_9000_18485_18821.txt
+045_UCR_Anomaly_DISTORTEDPowerDemand2_14000_23357_23717.txt
+046_UCR_Anomaly_DISTORTEDPowerDemand3_16000_23405_23477.txt
+047_UCR_Anomaly_DISTORTEDPowerDemand4_18000_24005_24077.txt
+048_UCR_Anomaly_DISTORTEDTkeepFifthMARS_3500_5988_6085.txt
+049_UCR_Anomaly_DISTORTEDTkeepFirstMARS_3500_5365_5380.txt
+050_UCR_Anomaly_DISTORTEDTkeepForthMARS_3500_5988_6085.txt
+051_UCR_Anomaly_DISTORTEDTkeepSecondMARS_3500_9330_9340.txt
+052_UCR_Anomaly_DISTORTEDTkeepThirdMARS_3500_4711_4809.txt
+053_UCR_Anomaly_DISTORTEDWalkingAceleration1_1500_2764_2995.txt
+054_UCR_Anomaly_DISTORTEDWalkingAceleration5_2700_5920_5979.txt
+055_UCR_Anomaly_DISTORTEDapneaecg2_10000_20950_21100.txt
+056_UCR_Anomaly_DISTORTEDapneaecg3_5000_11111_11211.txt
+057_UCR_Anomaly_DISTORTEDapneaecg4_6000_16000_16100.txt
+058_UCR_Anomaly_DISTORTEDapneaecg_10000_12240_12308.txt
+059_UCR_Anomaly_DISTORTEDgait1_20000_38500_38800.txt
+060_UCR_Anomaly_DISTORTEDgait2_22000_46500_46800.txt
+061_UCR_Anomaly_DISTORTEDgait3_24500_59900_60500.txt
+062_UCR_Anomaly_DISTORTEDgaitHunt1_18500_33070_33180.txt
+063_UCR_Anomaly_DISTORTEDgaitHunt2_18500_31200_31850.txt
+064_UCR_Anomaly_DISTORTEDgaitHunt3_23400_38400_39200.txt
+065_UCR_Anomaly_DISTORTEDinsectEPG1_3000_7000_7030.txt
+066_UCR_Anomaly_DISTORTEDinsectEPG2_3700_8000_8025.txt
+067_UCR_Anomaly_DISTORTEDinsectEPG3_5200_7000_7050.txt
+068_UCR_Anomaly_DISTORTEDinsectEPG4_1300_6508_6558.txt
+069_UCR_Anomaly_DISTORTEDinsectEPG5_3200_8500_8501.txt
+070_UCR_Anomaly_DISTORTEDltstdbs30791AI_17555_52600_52800.txt
+071_UCR_Anomaly_DISTORTEDltstdbs30791AS_23000_52600_52800.txt
+072_UCR_Anomaly_DISTORTEDltstdbs30791ES_20000_52600_52800.txt
+073_UCR_Anomaly_DISTORTEDpark3m_60000_72150_72495.txt
+074_UCR_Anomaly_DISTORTEDqtdbSel1005V_4000_12400_12800.txt
+075_UCR_Anomaly_DISTORTEDqtdbSel100MLII_4000_13400_13800.txt
+076_UCR_Anomaly_DISTORTEDresperation10_48000_130700_131880.txt
+077_UCR_Anomaly_DISTORTEDresperation11_58000_110800_110801.txt
+078_UCR_Anomaly_DISTORTEDresperation1_100000_110260_110412.txt
+079_UCR_Anomaly_DISTORTEDresperation2_30000_168250_168250.txt
+080_UCR_Anomaly_DISTORTEDresperation2_30000_168250_168251.txt
+081_UCR_Anomaly_DISTORTEDresperation3_45000_158250_158251.txt
+082_UCR_Anomaly_DISTORTEDresperation4_70000_128430_128431.txt
+083_UCR_Anomaly_DISTORTEDresperation9_38000_143411_143511.txt
+084_UCR_Anomaly_DISTORTEDs20101mML2_12000_35774_35874.txt
+085_UCR_Anomaly_DISTORTEDs20101m_10000_35774_35874.txt
+086_UCR_Anomaly_DISTORTEDsddb49_20000_67950_68200.txt
+087_UCR_Anomaly_DISTORTEDsel840mECG1_17000_51370_51740.txt
+088_UCR_Anomaly_DISTORTEDsel840mECG2_20000_49370_49740.txt
+089_UCR_Anomaly_DISTORTEDtiltAPB1_100000_114283_114350.txt
+090_UCR_Anomaly_DISTORTEDtiltAPB2_50000_124159_124985.txt
+091_UCR_Anomaly_DISTORTEDtiltAPB3_40000_114000_114370.txt
+092_UCR_Anomaly_DISTORTEDtiltAPB4_20000_67995_67996.txt
+093_UCR_Anomaly_NOISE1sddb40_35000_52000_52620.txt
+094_UCR_Anomaly_NOISEBIDMC1_2500_5400_5600.txt
+095_UCR_Anomaly_NOISECIMIS44AirTemperature4_4000_5549_5597.txt
+096_UCR_Anomaly_NOISEECG4_5000_16900_17100.txt
+097_UCR_Anomaly_NOISEGP711MarkerLFM5z3_5000_5948_5993.txt
+098_UCR_Anomaly_NOISEInternalBleeding16_1200_4187_4199.txt
+099_UCR_Anomaly_NOISEInternalBleeding6_1500_3474_3629.txt
+100_UCR_Anomaly_NOISELab2Cmac011215EPG1_5000_17210_17260.txt
+101_UCR_Anomaly_NOISELab2Cmac011215EPG4_6000_17390_17520.txt
+102_UCR_Anomaly_NOISEMesoplodonDensirostris_10000_19280_19440.txt
+103_UCR_Anomaly_NOISETkeepThirdMARS_3500_4711_4809.txt
+104_UCR_Anomaly_NOISEapneaecg4_6000_16000_16100.txt
+105_UCR_Anomaly_NOISEgait3_24500_59900_60500.txt
+106_UCR_Anomaly_NOISEgaitHunt2_18500_31200_31850.txt
+107_UCR_Anomaly_NOISEinsectEPG3_5200_7000_7050.txt
+108_UCR_Anomaly_NOISEresperation2_30000_168250_168250.txt
+109_UCR_Anomaly_1sddb40_35000_52000_52620.txt
+110_UCR_Anomaly_2sddb40_35000_56600_56900.txt
+111_UCR_Anomaly_3sddb40_35000_46600_46900.txt
+112_UCR_Anomaly_BIDMC1_2500_5400_5600.txt
+113_UCR_Anomaly_CIMIS44AirTemperature1_4000_5391_5392.txt
+114_UCR_Anomaly_CIMIS44AirTemperature2_4000_5703_5727.txt
+115_UCR_Anomaly_CIMIS44AirTemperature3_4000_6520_6544.txt
+116_UCR_Anomaly_CIMIS44AirTemperature4_4000_5549_5597.txt
+117_UCR_Anomaly_CIMIS44AirTemperature5_4000_4852_4900.txt
+118_UCR_Anomaly_CIMIS44AirTemperature6_4000_6006_6054.txt
+119_UCR_Anomaly_ECG1_10000_11800_12100.txt
+120_UCR_Anomaly_ECG2_15000_16000_16100.txt
+121_UCR_Anomaly_ECG3_15000_16000_16100.txt
+122_UCR_Anomaly_ECG3_8000_17000_17100.txt
+123_UCR_Anomaly_ECG4_5000_16800_17100.txt
+124_UCR_Anomaly_ECG4_5000_16900_17100.txt
+125_UCR_Anomaly_ECG4_5000_17000_17100.txt
+126_UCR_Anomaly_ECG4_8000_17000_17100.txt
+127_UCR_Anomaly_GP711MarkerLFM5z1_5000_6168_6212.txt
+128_UCR_Anomaly_GP711MarkerLFM5z2_5000_7175_7388.txt
+129_UCR_Anomaly_GP711MarkerLFM5z3_5000_5948_5993.txt
+130_UCR_Anomaly_GP711MarkerLFM5z4_4000_6527_6645.txt
+131_UCR_Anomaly_GP711MarkerLFM5z5_5000_8612_8716.txt
+132_UCR_Anomaly_InternalBleeding10_3200_4526_4556.txt
+133_UCR_Anomaly_InternalBleeding14_2800_5607_5634.txt
+134_UCR_Anomaly_InternalBleeding15_1700_5684_5854.txt
+135_UCR_Anomaly_InternalBleeding16_1200_4187_4199.txt
+136_UCR_Anomaly_InternalBleeding17_1600_3198_3309.txt
+137_UCR_Anomaly_InternalBleeding18_2300_4485_4587.txt
+138_UCR_Anomaly_InternalBleeding19_3000_4187_4197.txt
+139_UCR_Anomaly_InternalBleeding20_2700_5759_5919.txt
+140_UCR_Anomaly_InternalBleeding4_1000_4675_5033.txt
+141_UCR_Anomaly_InternalBleeding5_4000_6200_6370.txt
+142_UCR_Anomaly_InternalBleeding6_1500_3474_3629.txt
+143_UCR_Anomaly_InternalBleeding8_2500_5865_5974.txt
+144_UCR_Anomaly_InternalBleeding9_4200_6599_6681.txt
+145_UCR_Anomaly_Lab2Cmac011215EPG1_5000_17210_17260.txt
+146_UCR_Anomaly_Lab2Cmac011215EPG2_5000_27862_27932.txt
+147_UCR_Anomaly_Lab2Cmac011215EPG3_5000_16390_16420.txt
+148_UCR_Anomaly_Lab2Cmac011215EPG4_6000_17390_17520.txt
+149_UCR_Anomaly_Lab2Cmac011215EPG5_7000_17390_17520.txt
+150_UCR_Anomaly_Lab2Cmac011215EPG6_7000_12190_12420.txt
+151_UCR_Anomaly_MesoplodonDensirostris_10000_19280_19440.txt
+152_UCR_Anomaly_PowerDemand1_9000_18485_18821.txt
+153_UCR_Anomaly_PowerDemand2_14000_23357_23717.txt
+154_UCR_Anomaly_PowerDemand3_16000_23405_23477.txt
+155_UCR_Anomaly_PowerDemand4_18000_24005_24077.txt
+156_UCR_Anomaly_TkeepFifthMARS_3500_5988_6085.txt
+157_UCR_Anomaly_TkeepFirstMARS_3500_5365_5380.txt
+158_UCR_Anomaly_TkeepForthMARS_3500_5988_6085.txt
+159_UCR_Anomaly_TkeepSecondMARS_3500_9330_9340.txt
+160_UCR_Anomaly_TkeepThirdMARS_3500_4711_4809.txt
+161_UCR_Anomaly_WalkingAceleration1_1500_2764_2995.txt
+162_UCR_Anomaly_WalkingAceleration5_2700_5920_5979.txt
+163_UCR_Anomaly_apneaecg2_10000_20950_21100.txt
+164_UCR_Anomaly_apneaecg3_5000_11111_11211.txt
+165_UCR_Anomaly_apneaecg4_6000_16000_16100.txt
+166_UCR_Anomaly_apneaecg_10000_12240_12308.txt
+167_UCR_Anomaly_gait1_20000_38500_38800.txt
+168_UCR_Anomaly_gait2_22000_46500_46800.txt
+169_UCR_Anomaly_gait3_24500_59900_60500.txt
+170_UCR_Anomaly_gaitHunt1_18500_33070_33180.txt
+171_UCR_Anomaly_gaitHunt2_18500_31200_31850.txt
+172_UCR_Anomaly_gaitHunt3_23400_38400_39200.txt
+173_UCR_Anomaly_insectEPG1_3000_7000_7030.txt
+174_UCR_Anomaly_insectEPG2_3700_8000_8025.txt
+175_UCR_Anomaly_insectEPG3_5200_7000_7050.txt
+176_UCR_Anomaly_insectEPG4_1300_6508_6558.txt
+177_UCR_Anomaly_insectEPG5_3200_8500_8501.txt
+178_UCR_Anomaly_ltstdbs30791AI_17555_52600_52800.txt
+179_UCR_Anomaly_ltstdbs30791AS_23000_52600_52800.txt
+180_UCR_Anomaly_ltstdbs30791ES_20000_52600_52800.txt
+181_UCR_Anomaly_park3m_60000_72150_72495.txt
+182_UCR_Anomaly_qtdbSel1005V_4000_12400_12800.txt
+183_UCR_Anomaly_qtdbSel100MLII_4000_13400_13800.txt
+184_UCR_Anomaly_resperation10_48000_130700_131880.txt
+185_UCR_Anomaly_resperation11_58000_110800_110801.txt
+186_UCR_Anomaly_resperation1_100000_110260_110412.txt
+187_UCR_Anomaly_resperation2_30000_168250_168250.txt
+188_UCR_Anomaly_resperation2_30000_168250_168251.txt
+189_UCR_Anomaly_resperation3_45000_158250_158251.txt
+190_UCR_Anomaly_resperation4_70000_128430_128431.txt
+191_UCR_Anomaly_resperation9_38000_143411_143511.txt
+192_UCR_Anomaly_s20101mML2_12000_35774_35874.txt
+193_UCR_Anomaly_s20101m_10000_35774_35874.txt
+194_UCR_Anomaly_sddb49_20000_67950_68200.txt
+195_UCR_Anomaly_sel840mECG1_17000_51370_51740.txt
+196_UCR_Anomaly_sel840mECG2_20000_49370_49740.txt
+197_UCR_Anomaly_tiltAPB1_100000_114283_114350.txt
+198_UCR_Anomaly_tiltAPB2_50000_124159_124985.txt
+199_UCR_Anomaly_tiltAPB3_40000_114000_114370.txt
+200_UCR_Anomaly_tiltAPB4_20000_67995_67996.txt
+201_UCR_Anomaly_CHARISfive_10000_17001_17016.txt
+202_UCR_Anomaly_CHARISfive_10411_10998_11028.txt
+203_UCR_Anomaly_CHARISfive_10500_10995_11028.txt
+204_UCR_Anomaly_CHARISfive_12412_15000_15070.txt
+205_UCR_Anomaly_CHARISfive_9812_28995_29085.txt
+206_UCR_Anomaly_CHARISten_25130_29080_29140.txt
+207_UCR_Anomaly_CHARISten_3165_26929_26989.txt
+208_UCR_Anomaly_CHARISten_5130_27929_27989.txt
+209_UCR_Anomaly_Fantasia_19000_26970_27270.txt
+210_UCR_Anomaly_Italianpowerdemand_36123_74900_74996.txt
+211_UCR_Anomaly_Italianpowerdemand_38113_39240_39336.txt
+212_UCR_Anomaly_Italianpowerdemand_8913_29480_29504.txt
+213_UCR_Anomaly_STAFFIIIDatabase_33211_126920_127370.txt
+214_UCR_Anomaly_STAFFIIIDatabase_34211_125720_126370.txt
+215_UCR_Anomaly_STAFFIIIDatabase_36276_106720_107370.txt
+216_UCR_Anomaly_STAFFIIIDatabase_37216_160720_161370.txt
+217_UCR_Anomaly_STAFFIIIDatabase_38211_150720_151370.txt
+218_UCR_Anomaly_STAFFIIIDatabase_41117_210720_211370.txt
+219_UCR_Anomaly_STAFFIIIDatabase_41612_64632_64852.txt
+220_UCR_Anomaly_STAFFIIIDatabase_43217_250720_251370.txt
+221_UCR_Anomaly_STAFFIIIDatabase_45616_163632_164852.txt
+222_UCR_Anomaly_mit14046longtermecg_56123_91200_91700.txt
+223_UCR_Anomaly_mit14046longtermecg_74123_131200_131700.txt
+224_UCR_Anomaly_mit14046longtermecg_76123_191200_191700.txt
+225_UCR_Anomaly_mit14046longtermecg_81214_143000_143300.txt
+226_UCR_Anomaly_mit14046longtermecg_96123_123000_123300.txt
+227_UCR_Anomaly_mit14134longtermecg_11231_29000_29100.txt
+228_UCR_Anomaly_mit14134longtermecg_11361_47830_47850.txt
+229_UCR_Anomaly_mit14134longtermecg_16363_57960_57970.txt
+230_UCR_Anomaly_mit14134longtermecg_19363_19510_19610.txt
+231_UCR_Anomaly_mit14134longtermecg_8763_47530_47790.txt
+232_UCR_Anomaly_mit14134longtermecg_8763_57530_57790.txt
+233_UCR_Anomaly_mit14157longtermecg_18913_24500_24501.txt
+234_UCR_Anomaly_mit14157longtermecg_18913_24600_24601.txt
+235_UCR_Anomaly_mit14157longtermecg_18913_75450_75451.txt
+236_UCR_Anomaly_mit14157longtermecg_19313_46350_46390.txt
+237_UCR_Anomaly_mit14157longtermecg_19313_89560_90370.txt
+238_UCR_Anomaly_mit14157longtermecg_21311_72600_72780.txt
+239_UCR_Anomaly_taichidbS0715Master_190037_593450_593514.txt
+240_UCR_Anomaly_taichidbS0715Master_240030_884100_884200.txt
+241_UCR_Anomaly_taichidbS0715Master_250000_837400_839100.txt
+242_UCR_Anomaly_tilt12744mtable_100000_104630_104890.txt
+243_UCR_Anomaly_tilt12744mtable_100000_203355_203400.txt
+244_UCR_Anomaly_tilt12754table_100013_104630_104890.txt
+245_UCR_Anomaly_tilt12754table_100211_270800_271070.txt
+246_UCR_Anomaly_tilt12755mtable_100211_270800_271070.txt
+247_UCR_Anomaly_tilt12755mtable_50211_121900_121980.txt
+248_UCR_Anomaly_weallwalk_2000_4702_4707.txt
+249_UCR_Anomaly_weallwalk_2753_8285_8315.txt
+250_UCR_Anomaly_weallwalk_2951_7290_7296.txt
+""".split()
+
 
 def _source(name: str) -> tuple[str, str]:
     """The URL and the SHA-256 checksum of a remote file of a dataset."""
@@ -111,6 +374,8 @@ def _source(name: str) -> tuple[str, str]:
         return _NAB + "labels/combined_windows.json", _NAB_WINDOWS
     if name.startswith("nab/"):
         return _NAB + "data/" + name[len("nab/") :], _NAB_CHECKSUMS[name[len("nab/") :]]
+    if name == _UCR_ARCHIVE:
+        return _UCR, _UCR_CHECKSUM
 
     return _MIRROR + name, _CHECKSUMS[name]
 
@@ -129,10 +394,11 @@ def _get_default_data_dir() -> str:
 class Data:
     """A helper class to load and stream anomaly detection datasets.
 
-    Datasets are loaded from the local filesystem or downloaded on demand from
-    the Outlier Detection DataSets (ODDS) repository mirror
-    (:cite:`rayana2016odds`, hosted in the PyOD repository at a fixed commit). Each
-    download must match a SHA-256 checksum. :meth:`datasets` lists the datasets, and
+    Datasets are loaded from the local filesystem or downloaded on demand. The multivariate
+    datasets come from the Outlier Detection DataSets (ODDS) repository mirror
+    (:cite:`rayana2016odds`, hosted in the PyOD repository at a fixed commit). The univariate
+    series come from the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly Archive.
+    Each download must match a SHA-256 checksum. :meth:`datasets` lists the datasets, and
     :meth:`get_stream` gives the stream of a run of the PySAD benchmark.
 
     Downloaded datasets are cached in a local directory. The cache directory
@@ -153,19 +419,25 @@ class Data:
         """Returns the names of the datasets that this class can download.
 
         Args:
-            source (str): ``"odds"`` for the 17 multivariate datasets of ODDS, for example ``"cardio.mat"``, or ``"nab"`` for the 58 univariate series of the Numenta Anomaly Benchmark, for example ``"nab/realKnownCause/nyc_taxi.csv"`` (Default="odds").
+            source (str): The collection of the datasets (Default="odds"). These are the collections:
+
+                - ``"odds"``: the 17 multivariate datasets of ODDS, for example ``"cardio.mat"``.
+                - ``"nab"``: the 58 univariate series of the Numenta Anomaly Benchmark, for example ``"nab/realKnownCause/nyc_taxi.csv"``. The points in an anomaly window of NAB have the label 1.
+                - ``"ucr"``: the 250 univariate series of the UCR Time Series Anomaly Archive, for example ``"ucr/025_UCR_Anomaly_DISTORTEDInternalBleeding14_2800_5607_5634.txt"``. The last two numbers of a name are the first and the last point of the anomaly, counted from 1. These points have the label 1. The number before them is the length of the training part, which has no anomalies. The first series download the archive of 184 MB.
 
         Returns:
             list[str]: The names of the datasets, which :meth:`get_data` accepts.
 
         Raises:
-            ValueError: If ``source`` is not ``"odds"`` or ``"nab"``.
+            ValueError: If ``source`` is not ``"odds"``, ``"nab"`` or ``"ucr"``.
         """
         if source == "odds":
             return list(_CHECKSUMS)
         if source == "nab":
             return ["nab/" + name for name in _NAB_CHECKSUMS]
-        raise ValueError(f"source must be 'odds' or 'nab', got {source!r}.")
+        if source == "ucr":
+            return ["ucr/" + name for name in _UCR_SERIES]
+        raise ValueError(f"source must be 'odds', 'nab' or 'ucr', got {source!r}.")
 
     def _download(self, file_name: str, target_path: str) -> None:
         """Downloads a dataset file from the remote mirror into target_path atomically.
@@ -231,8 +503,9 @@ class Data:
         else:
             data_path = os.path.join(self.data_base_path, data_file)
 
-        # An ODDS dataset is known by its file name, and a NAB series by its full name.
-        file_name = data_file if data_file.startswith("nab/") else os.path.basename(data_file)
+        # An ODDS dataset is known by its file name, and a NAB or UCR series by its full name.
+        series = data_file.startswith(("nab/", "ucr/"))
+        file_name = data_file if series else os.path.basename(data_file)
 
         if not os.path.exists(data_path):
             if self._is_default_path:
@@ -250,16 +523,21 @@ class Data:
                     f"Dataset file '{data_file}' was not found at '{data_path}' and download=False."
                 )
 
-            if file_name not in self.datasets() + self.datasets("nab"):
+            if file_name not in self.datasets() + self.datasets("nab") + self.datasets("ucr"):
                 raise FileNotFoundError(
                     f"Dataset file '{data_file}' was not found at '{data_path}' and is not a known remote dataset. "
-                    f"Available datasets: {self.datasets()}, and the NAB series of datasets('nab')."
+                    f"Available datasets: {self.datasets()}, and the series of datasets('nab') and datasets('ucr')."
                 )
 
-            self._download(file_name, data_path)
+            if file_name.startswith("ucr/"):
+                self._extract_ucr(file_name, data_path)
+            else:
+                self._download(file_name, data_path)
 
         if file_name.startswith("nab/"):
             return self._load_nab(file_name, data_path, download)
+        if file_name.startswith("ucr/"):
+            return self._load_ucr(file_name, data_path)
         if data_path.endswith(".mat"):
             from scipy.io import loadmat
 
@@ -295,6 +573,29 @@ class Data:
             y[(times >= np.datetime64(start)) & (times <= np.datetime64(end))] = 1
 
         return np.array([[float(row[1])] for row in rows]), y
+
+    def _extract_ucr(self, name: str, data_path: str) -> None:
+        """Copies a UCR series out of the archive, and downloads the archive if it is not present."""
+        archive = os.path.join(self.data_base_path, _UCR_ARCHIVE)
+        if not os.path.exists(archive):
+            self._download(_UCR_ARCHIVE, archive)
+        with zipfile.ZipFile(archive) as z, z.open(_UCR_FOLDER + name[len("ucr/") :]) as f:
+            content = f.read()
+        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        with open(data_path, "wb") as f:
+            f.write(content)
+
+    def _load_ucr(self, name: str, data_path: str) -> tuple[np.ndarray, np.ndarray]:
+        """Loads a UCR series and labels the points of its anomaly with 1."""
+        with open(data_path) as f:
+            X = np.array(f.read().split(), dtype=np.float64).reshape(
+                -1, 1
+            )  # some files use one line
+        first, last = map(int, name.removesuffix(".txt").split("_")[-2:])
+        y = np.zeros(len(X), dtype=int)
+        y[first - 1 : last] = 1
+
+        return X, y
 
     def get_iterator(
         self,

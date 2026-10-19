@@ -1,9 +1,20 @@
+from functools import lru_cache
+
 import numpy as np
 from scipy.stats import t
 
 from pysad.core.base_model import BaseModel
 from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 from pysad.utils import Window
+
+
+@lru_cache(maxsize=1024)
+def _critical_value(alpha, n, i):
+    # The critical value of the i-th ESD test on n values. It depends only on these numbers, so it
+    # is computed once instead of once per scored instance.
+    p = 1.0 - alpha / (2.0 * (n - i + 1))
+    t_value = t.ppf(p, n - i - 1)
+    return ((n - i) * t_value) / np.sqrt((n - i - 1 + t_value**2) * (n - i + 1))
 
 
 class SeasonalESD(BaseModel):
@@ -68,9 +79,7 @@ class SeasonalESD(BaseModel):
         return np.asarray(self.window.get(), dtype=np.float64)
 
     def _critical_value(self, n, i):
-        p = 1.0 - self.alpha / (2.0 * (n - i + 1))
-        t_value = t.ppf(p, n - i - 1)
-        return ((n - i) * t_value) / np.sqrt((n - i - 1 + t_value**2) * (n - i + 1))
+        return _critical_value(self.alpha, n, i)
 
     def _esd(self, values):
         remaining_values = np.asarray(values, dtype=np.float64)

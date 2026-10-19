@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import numpy as np
 
 from pysad.core.base_transformer import BaseTransformer
@@ -9,14 +11,24 @@ from pysad.utils import Window
 # estimation points. For licensing information, see the end of this file.
 
 
-def _loess(Y, J, xs, h, degree, rng, rw=None):
-    # One LOESS estimate per row, as STL._est: Y and J (num_points, width) hold the values and
-    # the 1-based positions of each window, xs and h (num_points,) the estimation position and
-    # the half width. Entries outside a window have J = inf. Rows without weight give NaN.
+def _tricube(J, xs, h):
+    # The tricube weights of the LOESS windows, before the robustness weights. They depend only on
+    # the positions, so the callers compute them once for each window shape.
     r = np.abs(J - xs[:, None])
     with np.errstate(divide="ignore", invalid="ignore"):
         w = np.where(r <= 0.001 * h[:, None], 1.0, (1.0 - (r / h[:, None]) ** 3) ** 3)
-        w[r > 0.999 * h[:, None]] = 0.0
+    w[r > 0.999 * h[:, None]] = 0.0
+    w.flags.writeable = False
+    return w
+
+
+def _loess(Y, J, xs, h, degree, rng, rw=None, base=None):
+    # One LOESS estimate per row, as STL._est: Y and J (num_points, width) hold the values and
+    # the 1-based positions of each window, xs and h (num_points,) the estimation position and
+    # the half width. Entries outside a window have J = inf. Rows without weight give NaN.
+    # ``base`` holds the tricube weights of these positions, which _tricube computes.
+    w = (_tricube(J, xs, h) if base is None else base).copy()
+    with np.errstate(divide="ignore", invalid="ignore"):
         if rw is not None:
             w *= rw
         total = w.sum(axis=1)
@@ -34,16 +46,26 @@ def _loess(Y, J, xs, h, degree, rng, rw=None):
     return ys
 
 
-def _smooth(y, length, degree, rw=None):
-    # LOESS of the whole series over windows of `length` points, as STL._ess with a jump of 1.
-    n = y.shape[0]
+@lru_cache(maxsize=64)
+def _smooth_geometry(n, length):
+    # The windows, positions, half widths and tricube weights of _smooth for n points.
     i = np.arange(n)
     width = min(length, n)
     nleft = np.clip(i + 1 - (length + 2) // 2, 0, n - width)
     idx = nleft[:, None] + np.arange(width)  # (n, width)
     xs = i + 1.0
     h = np.maximum(xs - (nleft + 1), nleft + width - xs) + max(length - n, 0) // 2
-    ys = _loess(y[idx], idx + 1.0, xs, h, degree, n - 1.0, None if rw is None else rw[idx])
+    J = idx + 1.0
+    for array in (idx, xs, h, J):
+        array.flags.writeable = False
+    return idx, J, xs, h, _tricube(J, xs, h)
+
+
+def _smooth(y, length, degree, rw=None):
+    # LOESS of the whole series over windows of `length` points, as STL._ess with a jump of 1.
+    n = y.shape[0]
+    idx, J, xs, h, base = _smooth_geometry(n, length)
+    ys = _loess(y[idx], J, xs, h, degree, n - 1.0, None if rw is None else rw[idx], base)
     return np.where(np.isnan(ys), y, ys)
 
 
@@ -51,14 +73,11 @@ def _moving_average(x, length):
     return np.convolve(x, np.full(length, 1.0 / length), mode="valid")
 
 
-def _periodic_stl_seasonal(y, period, robust):
-    # The seasonal component of STL(y, period, seasonal=10 * n + 1, seasonal_deg=0, robust).fit().
-    n = y.shape[0]
+@lru_cache(maxsize=64)
+def _cycle_geometry(n, period):
+    # The cycle-subseries layout and the seasonal LOESS weights of _periodic_stl_seasonal for n
+    # points. They depend only on n and the period, so they are computed once for each window.
     seasonal_length = 10 * n + 1
-    trend_length = int(np.ceil(1.5 * period / (1 - 1.5 / seasonal_length)))
-    trend_length += trend_length % 2 == 0
-    low_pass_length = period + 1 + period % 2
-    num_inner, num_outer = (2, 15) if robust else (5, 0)
 
     # Row j of the cycle-subseries holds y[j::period] in its first k[j] columns. The seasonal
     # smoother runs over the whole subseries at positions 0 to k[j] + 1, so it extends each
@@ -77,6 +96,24 @@ def _periodic_stl_seasonal(y, period, robust):
     out_valid = np.arange(num_cycles + 2) <= k[:, None] + 1  # (period, num_cycles + 2)
     out_idx = (np.arange(period)[:, None] + period * np.arange(num_cycles + 2))[out_valid]
     rows = np.arange(period)
+    arrays = (k, valid, cycle_idx, J, xs, h, out_valid, out_idx, rows)
+    for array in arrays:
+        array.flags.writeable = False
+    return (*arrays, shape, _tricube(J, xs, h))
+
+
+def _periodic_stl_seasonal(y, period, robust):
+    # The seasonal component of STL(y, period, seasonal=10 * n + 1, seasonal_deg=0, robust).fit().
+    n = y.shape[0]
+    seasonal_length = 10 * n + 1
+    trend_length = int(np.ceil(1.5 * period / (1 - 1.5 / seasonal_length)))
+    trend_length += trend_length % 2 == 0
+    low_pass_length = period + 1 + period % 2
+    num_inner, num_outer = (2, 15) if robust else (5, 0)
+    k, valid, cycle_idx, J, xs, h, out_valid, out_idx, rows, shape, base = _cycle_geometry(
+        n, period
+    )
+    num_cycles = -(-n // period)
 
     trend = np.zeros(n)
     rw = None
@@ -92,6 +129,7 @@ def _periodic_stl_seasonal(y, period, robust):
                 degree=0,
                 rng=None,
                 rw=None if cycle_rw is None else cycle_rw.reshape(-1, num_cycles),
+                base=base,
             ).reshape(period, num_cycles + 2)
             # Without weight, a subseries value keeps its own value and an end copies its neighbor.
             inner = cycle[:, 1:-1]
@@ -124,7 +162,7 @@ def _periodic_stl_seasonal(y, period, robust):
 class ModifiedSTLResidualTransformer(BaseTransformer):
     """Removes the seasonal component and the median from a univariate series, as S-ESD and S-H-ESD do :cite:`hochenbaum2017automatic`.
 
-    The transformer follows the residual construction of the paper. It estimates the seasonal component with periodic STL, replaces the trend component of STL with the median of the raw series, and returns ``X - seasonal - median(X)``. Periodic STL is what the reference implementation of the paper uses (``stl(s.window = "periodic")`` in R): the seasonal smoother is a constant (degree 0) LOESS with a span of ``10 * n + 1`` for ``n`` observations, so the seasonal component repeats exactly in every period and a few anomalous periods cannot bend it. It does only the residual step of the paper. Use :class:`pysad.models.SeasonalESD` or :class:`pysad.models.SeasonalHybridESD` for the full detector.
+    The transformer follows the residual construction of the paper. It estimates the seasonal component with periodic STL, replaces the trend component of STL with the median of the raw series, and returns ``X - seasonal - median(X)``. Periodic STL is what the reference implementation of the paper uses (``stl(s.window = "periodic")`` in R): the seasonal smoother is a constant (degree 0) LOESS with a span of ``10 * n + 1`` for ``n`` observations, so the seasonal component is almost the same in every period and a few anomalous periods cannot bend it. The other settings of STL follow statsmodels, not R's ``stl()``: two inner iterations in robust mode, a low-pass window of ``period + 1 + period % 2``, no jumps, and no final averaging of each position in the period. It does only the residual step of the paper. Use :class:`pysad.models.SeasonalESD` or :class:`pysad.models.SeasonalHybridESD` for the full detector.
 
     The partial transforms return ``[0.0]`` until the window holds at least ``2 * period`` observations, because STL needs two full periods.
 

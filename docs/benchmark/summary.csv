@@ -1,11 +1,11 @@
 Detector,Mean rank,Mean AUROC,Mean AUPR,Time per point (ms),Commit
-:class:`~pysad.models.RSHash`,3.7,0.816,0.487,0.99,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
-:class:`~pysad.models.LocalOutlierProbability`,4.0,0.825,0.494,0.68,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
-:class:`~pysad.models.IForestASD`,4.4,0.805,0.485,7.51,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
-:class:`~pysad.models.Inqmad`,5.1,0.779,0.415,22.61,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
-:class:`~pysad.models.LODA`,5.2,0.794,0.474,0.08,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
-:class:`~pysad.models.ExactStorm`,5.5,0.805,0.332,0.45,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
-:class:`~pysad.models.RobustRandomCutForest`,5.6,0.794,0.428,25.13,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
-:class:`~pysad.models.HalfSpaceTrees`,5.9,0.799,0.474,0.23,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
-:class:`~pysad.models.xStream`,6.8,0.777,0.404,4.15,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
-:class:`~pysad.models.KitNet`,8.8,0.714,0.293,1.00,`8c2a26a <https://github.com/selimfirat/pysad/commit/8c2a26a>`__
+:class:`~pysad.models.RSHash`,3.7,0.816,0.487,0.24,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__
+:class:`~pysad.models.LocalOutlierProbability`,4.0,0.825,0.494,0.34,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__
+:class:`~pysad.models.IForestASD`,4.4,0.805,0.485,2.50,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__
+:class:`~pysad.models.Inqmad`,5.1,0.779,0.415,13.78,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__
+:class:`~pysad.models.LODA`,5.2,0.794,0.474,0.04,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__
+:class:`~pysad.models.ExactStorm`,5.5,0.805,0.332,0.15,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__
+:class:`~pysad.models.RobustRandomCutForest`,5.6,0.794,0.428,13.85,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__
+:class:`~pysad.models.HalfSpaceTrees`,5.9,0.799,0.474,0.09,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__
+:class:`~pysad.models.xStream`,6.8,0.777,0.404,0.99,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__
+:class:`~pysad.models.KitNet`,8.8,0.714,0.293,0.36,`58dc2c9 <https://github.com/selimfirat/pysad/commit/58dc2c9>`__

@@ -42,7 +42,7 @@ Streams with drift
 The streams with drift come from three sources, and :class:`~pysad.utils.Data` loads each one in its time order, for example with ``Data().get_data("insects/abrupt.csv")``:
 
 - ``Data.datasets("kddcup99")`` gives the http connections of logged in users from the 10% file of KDD Cup 99, as scikit-learn's ``fetch_kddcup99`` does. Its 3 features are the logarithms of the duration and of the bytes in each direction. The attacks have the label 1.
-- ``Data.datasets("insects")`` gives the 4 INSECTS streams of the ARCUS paper. ARCUS kept 1.2% of the points of the southern house mosquito as anomalies.
+- ``Data.datasets("insects")`` gives the 4 INSECTS streams of the ARCUS paper. The anomalies are the points of the southern house mosquito, 1.2% of each stream.
 - ``Data.datasets("smd")`` gives the test halves of the 28 machines of SMD. The benchmark uses the first machine of each of the 3 groups of machines. The first half of each machine has no labels, so the benchmark does not use it.
 
 For each stream and each detector, the benchmark does the steps of the protocol above with seed 0, with two changes. It keeps the time order of the points. And instead of the first 5,000 points, it keeps every k-th point, with the smallest k that leaves at most 10,000 points. Thus the stream keeps all its drifts, and the run stays short. The first 256 points are the warm-up.

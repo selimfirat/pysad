@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
+from pysad.utils.validation import check_feature_bounds
 
 
 class HalfSpaceTrees(BaseModel):
@@ -47,29 +48,13 @@ class HalfSpaceTrees(BaseModel):
         if not isinstance(random_work_space, (bool, np.bool_)):
             raise ValueError(f"random_work_space must be a bool, got {random_work_space!r}.")
 
-        # Float copies, so that integer bounds do not truncate the split values.
-        feature_mins = np.array(feature_mins, dtype=np.float64)
-        feature_maxes = np.array(feature_maxes, dtype=np.float64)
-        if (
-            feature_mins.ndim != 1
-            or feature_mins.shape != feature_maxes.shape
-            or feature_mins.size == 0
-        ):
-            raise ValueError(
-                "feature_mins and feature_maxes must be non-empty 1-D arrays of the same length."
-            )
-        if not (np.all(np.isfinite(feature_mins)) and np.all(np.isfinite(feature_maxes))):
-            raise ValueError("feature_mins and feature_maxes must be finite.")
-        if np.any(feature_mins > feature_maxes):
-            raise ValueError("feature_mins must not exceed feature_maxes.")
+        self.feature_mins, self.feature_maxes = check_feature_bounds(feature_mins, feature_maxes)
 
         self.window_size = int(window_size)
         self.max_depth = int(max_depth)
         self.num_trees = int(num_trees)
         self.random_work_space = bool(random_work_space)
         self.random_state = random_state
-        self.feature_maxes = feature_maxes
-        self.feature_mins = feature_mins
 
         self.num_dimensions = len(self.feature_maxes)
 

@@ -101,12 +101,10 @@ UNIVARIATE = {
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
     "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
     "StandardAbsoluteDeviation": lambda n, period: models.StandardAbsoluteDeviation(),
-    # A window of 3 periods, because R's stl() needs more than 2 periods, and at most 10% of the
-    # window as anomalies, the default of the R package of the paper.
-    "SeasonalESD": lambda n, period: models.SeasonalESD(period, 3 * period, int(0.3 * period)),
-    "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(
-        period, 3 * period, int(0.3 * period)
-    ),
+    # A window of 3 periods and one point, because R's stl() needs more than 2 periods, and an odd
+    # window makes the robust STL match R.
+    "SeasonalESD": lambda n, period: models.SeasonalESD(period, 3 * period + 1),
+    "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(period, 3 * period + 1),
 }
 # The ESD detectors need the period of a series, so they run only on these series. Each period is a
 # day, where the autocorrelation at a lag of one day is at least 0.5. Nine more NAB series have a
@@ -123,8 +121,8 @@ SEASONAL = ["SeasonalESD", "SeasonalHybridESD"]
 
 @functools.cache
 def nab_series():
-    """The NAB series that have anomalies. AUROC and AUPR need both kinds of points."""
-    return [name for name in Data.datasets("nab") if Data().get_data(name)[1].any()]
+    """All the NAB series, as NAB scores them. 6 of them have no anomalies, so their AUROC is NaN."""
+    return Data.datasets("nab")
 
 
 def series_of(detector):
@@ -331,13 +329,14 @@ def run_univariate(series, detector):
         with np.errstate(all="ignore"):
             nab = (np.array([transform(s) for s in scores]), y)
     scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
+    both = valid and 0 < y.sum() < len(y)  # AUROC and AUPR need both kinds of points
     return {
         "_nab": nab,
         "dataset": series,
         "detector": detector,
         "seed": 0,
-        "auroc": round(roc_auc_score(y, scores), 4) if valid else np.nan,
-        "aupr": round(average_precision_score(y, scores), 4) if valid else np.nan,
+        "auroc": round(roc_auc_score(y, scores), 4) if both else np.nan,
+        "aupr": round(average_precision_score(y, scores), 4) if both else np.nan,
         "ms_per_point": round(1000 * seconds / len(X), 3),
     }
 

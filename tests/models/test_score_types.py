@@ -84,10 +84,10 @@ def _model_specs():
             NUM_FEATURES,
         ),
         ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
-        ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=2), 1),
+        ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=0.17), 1),
         (
             "SeasonalHybridESD",
-            lambda: SeasonalHybridESD(period=4, window_size=12, max_anomalies=2),
+            lambda: SeasonalHybridESD(period=4, window_size=12, max_anomalies=0.17),
             1,
         ),
         ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),

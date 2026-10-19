@@ -11,17 +11,20 @@ import numpy as np
 from .array_streamer import ArrayStreamer
 from .data import Data
 from .pandas_streamer import PandasStreamer
+from .validation import check_feature_bounds, check_univariate
 from .window import Window
 
 __all__ = [
+    "ArrayStreamer",
+    "Data",
+    "PandasStreamer",
+    "Window",
+    "_iterate",
+    "check_feature_bounds",
+    "check_univariate",
     "fix_seed",
     "get_minmax_array",
     "get_minmax_scalar",
-    "_iterate",
-    "ArrayStreamer",
-    "PandasStreamer",
-    "Window",
-    "Data",
 ]
 
 

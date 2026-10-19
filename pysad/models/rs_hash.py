@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
-from pysad.models.relative_entropy import _finite_float, _int_at_least
+from pysad.utils.validation import _finite_float, _int_at_least, check_feature_bounds
 
 
 class RSHash(BaseModel):
@@ -46,23 +46,7 @@ class RSHash(BaseModel):
         num_hash_fns = _int_at_least(num_hash_fns, "num_hash_fns", 1)
         hash_range = _int_at_least(hash_range, "hash_range", 1)
 
-        feature_mins = np.array(feature_mins, dtype=np.float64)
-        feature_maxes = np.array(feature_maxes, dtype=np.float64)
-        if (
-            feature_mins.ndim != 1
-            or feature_mins.shape != feature_maxes.shape
-            or feature_mins.size == 0
-        ):
-            raise ValueError(
-                "feature_mins and feature_maxes must be non-empty 1-D arrays of the same length."
-            )
-        if not (np.all(np.isfinite(feature_mins)) and np.all(np.isfinite(feature_maxes))):
-            raise ValueError("feature_mins and feature_maxes must be finite.")
-        if np.any(feature_mins > feature_maxes):
-            raise ValueError("feature_mins must not exceed feature_maxes.")
-
-        self.minimum = feature_mins
-        self.maximum = feature_maxes
+        self.minimum, self.maximum = check_feature_bounds(feature_mins, feature_maxes)
         self.range = self.maximum - self.minimum
         self.range[self.range == 0] = 1.0
 

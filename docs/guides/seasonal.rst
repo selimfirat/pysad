@@ -19,7 +19,7 @@ This example makes two weeks of hourly values with a daily cycle and three anoma
    values = 10 + 3 * np.sin(2 * np.pi * t / 24) + rng.normal(scale=0.3, size=t.size)
    values[[200, 250, 300]] += [4, -4, 5]  # three anomalies
 
-   model = SeasonalHybridESD(period=24, window_size=24 * 7, max_anomalies=2, alpha=0.001)
+   model = SeasonalHybridESD(period=24, window_size=24 * 7, direction="both", alpha=0.001)
 
    for i, value in enumerate(values):
        score = model.fit_score_partial(np.array([value]))
@@ -33,7 +33,7 @@ This example makes two weeks of hourly values with a daily cycle and three anoma
    anomaly at hour 250: 7.6
    anomaly at hour 300: 15.4
 
-The detector tests each new value when it arrives. As a result, ``max_anomalies=2`` limits the anomalies that the test looks for in one window, not in the whole series. The detector finds the low value at hour 250 too. A fixed threshold on the raw values cannot find it, because the same value is normal at another time of day. Hour 219 is a false alert: its noise is three standard deviations above the cycle. A smaller ``alpha`` raises fewer such alerts.
+The detector tests each new value when it arrives. With ``direction="both"``, it finds the low value at hour 250 too. By default, it flags only high values, as the R package of the paper does. A fixed threshold on the raw values cannot find it, because the same value is normal at another time of day. Hour 219 is a false alert: its noise is three standard deviations above the cycle. A smaller ``alpha`` raises fewer such alerts.
 
 How SeasonalHybridESD scores a value
 ------------------------------------
@@ -41,7 +41,7 @@ How SeasonalHybridESD scores a value
 For each new value, the detector uses the last ``window_size`` values:
 
 #. It removes the cycle with STL, a method that splits a series into trend, cycle and remainder. The cycle is the same in every period, so a few anomalies barely change it. Then it subtracts the median of the window.
-#. It runs the generalized ESD (extreme Studentized deviate) test on the remaining values. The test removes the most extreme value again and again, up to ``max_anomalies`` times, and tests each one.
+#. It runs the generalized ESD (extreme Studentized deviate) test on the remaining values. The test removes the most extreme value again and again, up to ``max_anomalies * window_size`` times, and tests each one.
 #. If the test marks the new value as an anomaly, the score is the test statistic: the distance of the value from the median, in scaled median absolute deviations (1.4826 × MAD, a robust estimate of the standard deviation). Otherwise, the score is 0.
 
 As a result, a score above 0 is an alert. You do not need a calibrator, which maps scores to values between 0 and 1.
@@ -53,10 +53,13 @@ Set the parameters
    The number of values in one cycle. For hourly data with a daily cycle, use 24. For daily data with a weekly cycle, use 7.
 
 ``window_size``
-   The number of recent values that the detector uses. It must be at least ``2 * period``. One or two weeks of data is a good start. The detector gives 0 until the window is full.
+   The number of recent values that the detector uses. It must be greater than ``2 * period``. One or two weeks of data is a good start. The detector gives 0 until the window is full.
 
 ``max_anomalies``
-   The largest number of anomalies that the test looks for in one window. It must be at most ``0.49 * window_size``. A larger value finds more anomalies and raises more false alerts.
+   The largest fraction of the window that the test looks for as anomalies, 0.1 by default. It must be at most 0.49. The test looks for at least one anomaly. A larger value finds more anomalies and raises more false alerts.
+
+``direction``
+   ``"pos"`` flags only high values, ``"neg"`` only low values, and ``"both"`` both. The default is ``"pos"``.
 
 ``alpha``
    The significance level of the test, which controls its false alert rate. A smaller value raises fewer alerts.

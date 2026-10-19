@@ -1,4 +1,4 @@
-Detector,NAB standard,Mean AUROC
+Detector,Standard,AUROC
 :class:`~pysad.models.RelativeEntropy`,66.0,0.504
 :class:`~pysad.models.KNNCAD`,57.0,0.482
 :class:`~pysad.models.SeasonalESD`,24.9,0.494

@@ -27,13 +27,13 @@ The summary has one row for each detector, from the highest standard NAB score t
 Series
    The number of NAB series that the detector ran on. The ESD detectors need the period of a series, so they run only on the seasonal series.
 
-NAB standard, NAB low false alerts, NAB low misses
+Standard, Low false alerts, Low misses
    The NAB score with each profile.
 
-Mean AUROC
+AUROC
    The mean AUROC over the series, with each point of a window as an anomaly. NAB windows hold many points that look normal, so the AUROC of every detector is near 0.5. The NAB score is the better measure for these series.
 
-Time per point
+Time
    The median time of one ``fit_score_partial`` call, in milliseconds.
 
 Commit
@@ -47,7 +47,7 @@ Commit
 Seasonal series
 ~~~~~~~~~~~~~~~
 
-The ESD detectors run on fewer series than the others, so the summary does not compare them on equal terms. This table compares all the detectors on the 5 seasonal series only, with the standard profile.
+The ESD detectors run on fewer series than the others, so the summary does not compare them on equal terms. This table compares all the detectors on the 5 seasonal series only, with the standard NAB score and the mean AUROC.
 
 .. csv-table::
    :file: ../benchmark/univariate_seasonal.csv

@@ -471,11 +471,11 @@ def write_univariate_tables(results, nab):
         [
             "Detector",
             "Series",
-            "NAB standard",
-            "NAB low false alerts",
-            "NAB low misses",
-            "Mean AUROC",
-            "Time per point (ms)",
+            "Standard",
+            "Low false alerts",
+            "Low misses",
+            "AUROC",
+            "Time (ms)",
             "Commit",
         ],
         [
@@ -492,7 +492,7 @@ def write_univariate_tables(results, nab):
     )
     write_csv(
         "univariate_seasonal.csv",
-        ["Detector", "NAB standard", "Mean AUROC"],
+        ["Detector", "Standard", "AUROC"],
         [
             [
                 f":class:`~pysad.models.{d}`",

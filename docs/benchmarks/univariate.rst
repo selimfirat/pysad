@@ -31,7 +31,7 @@ Commit
 Seasonal series
 ~~~~~~~~~~~~~~~
 
-The ESD detectors run on fewer series than the others, so the summary does not compare them on equal terms. This table compares all the detectors on the 14 seasonal series only.
+The ESD detectors run on fewer series than the others, so the summary does not compare them on equal terms. This table compares all the detectors on the 5 seasonal series only.
 
 .. csv-table::
    :file: ../benchmark/univariate_seasonal.csv
@@ -62,7 +62,7 @@ NAB has 58 series, and 52 of them have anomalies. NAB marks a window of points a
 
 None of these detectors draws random numbers, so each one runs once on each series, with no seeds.
 
-The period of a seasonal series is one day, in points. A series counts as seasonal when the correlation of its values with the values one day earlier is at least 0.5. The ESD detectors score 0 until their window of 3 periods is full. For a period of 288 points, this is 864 points, so their first scores after the warm-up are 0.
+The period of a seasonal series is one day, in points. A series counts as seasonal when the correlation of its values with the values one day earlier is at least 0.5. The ESD detectors run on the 5 seasonal series with a period of 24 or 48 points. Nine more series have a daily period of 288 points. A window of 3 such periods makes the STL decomposition of each point too slow for this benchmark, so the ESD detectors do not run on them.
 
 What the results do not show
 ----------------------------

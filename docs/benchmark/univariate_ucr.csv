@@ -1,0 +1,5 @@
+Detector,Series,Solved (%),AUROC
+:class:`~pysad.models.MedianAbsoluteDeviation`,84,11.9,0.547
+:class:`~pysad.models.KNNCAD`,84,8.3,0.496
+:class:`~pysad.models.StandardAbsoluteDeviation`,84,8.3,0.540
+:class:`~pysad.models.RelativeEntropy`,84,7.1,0.504

@@ -1,0 +1,7 @@
+Detector,Series,Standard,Low false alerts,Low misses,AUROC,Time (ms),Commit
+:class:`~pysad.models.RelativeEntropy`,58,58.9,53.2,62.5,0.504,0.18,`f685992 <https://github.com/selimfirat/pysad/commit/f685992>`__
+:class:`~pysad.models.KNNCAD`,58,58.0,43.4,64.8,0.563,0.29,`f685992 <https://github.com/selimfirat/pysad/commit/f685992>`__
+:class:`~pysad.models.StandardAbsoluteDeviation`,58,42.0,31.9,48.9,0.541,0.00,`f685992 <https://github.com/selimfirat/pysad/commit/f685992>`__
+:class:`~pysad.models.MedianAbsoluteDeviation`,58,33.9,20.5,40.7,0.544,0.04,`f685992 <https://github.com/selimfirat/pysad/commit/f685992>`__
+:class:`~pysad.models.SeasonalESD`,5,30.3,17.4,35.5,0.493,2.85,`f685992 <https://github.com/selimfirat/pysad/commit/f685992>`__
+:class:`~pysad.models.SeasonalHybridESD`,5,0.0,0.0,6.9,0.497,2.35,`f685992 <https://github.com/selimfirat/pysad/commit/f685992>`__

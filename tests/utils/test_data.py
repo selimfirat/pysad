@@ -296,3 +296,43 @@ def test_readme_counts_the_datasets_of_data():
     counts |= {int(n) for n in re.findall(r"on (\d+) datasets", readme)}
 
     assert counts == {len(Data.datasets())}
+
+
+def test_nab_datasets_are_listed_by_source():
+    names = Data.datasets("nab")
+
+    assert len(names) == 58
+    assert "nab/realKnownCause/nyc_taxi.csv" in names
+    assert all(name.startswith("nab/") and name.endswith(".csv") for name in names)
+    assert len(Data.datasets()) == 17
+    with pytest.raises(ValueError, match="source"):
+        Data.datasets("yahoo")
+
+
+def test_nab_series_are_labeled_by_their_anomaly_windows(tmp_path):
+    """A point is an anomaly when its timestamp is in a window of combined_windows.json, ends included."""
+    import json
+
+    series = tmp_path / "nab" / "realKnownCause" / "nyc_taxi.csv"
+    series.parent.mkdir(parents=True)
+    series.write_text(
+        "timestamp,value\n"
+        "2014-07-01 00:00:00,1\n"
+        "2014-07-01 00:30:00,2\n"
+        "2014-07-01 01:00:00,30\n"
+        "2014-07-01 01:30:00,4\n"
+        "2014-07-01 02:00:00,5\n"
+    )
+    windows = {
+        "realKnownCause/nyc_taxi.csv": [
+            ["2014-07-01 00:30:00.000000", "2014-07-01 01:00:00.000000"]
+        ]
+    }
+    (tmp_path / "nab" / "combined_windows.json").write_text(json.dumps(windows))
+
+    X, y = Data(data_base_path=str(tmp_path)).get_data(
+        "nab/realKnownCause/nyc_taxi.csv", download=False
+    )
+
+    np.testing.assert_array_equal(X[:, 0], [1, 2, 30, 4, 5])
+    np.testing.assert_array_equal(y, [0, 1, 1, 0, 0])

@@ -91,6 +91,7 @@ class HalfSpaceTrees(BaseModel):
         self.r_mass = np.zeros_like(self.l_mass)
         # r * 2^k of a node at depth k.
         self._depth_weights = 2 ** np.arange(self.max_depth + 1, dtype=np.int64)
+        self._trees = np.arange(self.num_trees)
 
         self.is_first_window = True
         self.step = 0
@@ -147,7 +148,7 @@ class HalfSpaceTrees(BaseModel):
     def _path(self, X):
         """Returns the index into the mass arrays of the max_depth + 1 nodes that `X` visits in each tree."""
         X = np.asarray(X)
-        trees = np.arange(self.num_trees)
+        trees = self._trees
         path = np.zeros((self.num_trees, self.max_depth + 1), dtype=np.intp)
         for k in range(self.max_depth):
             node = path[:, k]
@@ -155,6 +156,28 @@ class HalfSpaceTrees(BaseModel):
             path[:, k + 1] = 2 * node + 1 + goes_right
 
         return trees[:, None], path
+
+    def _fit_path(self, path):
+        self.step += 1
+        self.l_mass[path] += 1
+
+        if self.step % self.window_size == 0:
+            # Update model: r <- l and l <- 0 on every node.
+            self.r_mass, self.l_mass = self.l_mass, self.r_mass
+            self.l_mass.fill(0)
+            self.is_first_window = False
+
+    def _score_path(self, path):
+        # During the first window there is no reference yet, so score against the mass recorded so far.
+        mass = (self.l_mass if self.is_first_window else self.r_mass)[path]
+        s = float((mass * self._depth_weights).sum())
+
+        if self.is_first_window and self.step > 0:
+            # Not in the paper: scale the partial profile of the `step` instances recorded so far
+            # up to a full window, so first-window scores match the scale of later ones.
+            s *= self.window_size / self.step
+
+        return 0.0 - s
 
     def fit_partial(self, X, y=None):
         """Updates the model with the next instance.
@@ -166,14 +189,7 @@ class HalfSpaceTrees(BaseModel):
         Returns:
             object: The model itself.
         """
-        self.step += 1
-        self.l_mass[self._path(X)] += 1
-
-        if self.step % self.window_size == 0:
-            # Update model: r <- l and l <- 0 on every node.
-            self.r_mass, self.l_mass = self.l_mass, self.r_mass
-            self.l_mass.fill(0)
-            self.is_first_window = False
+        self._fit_path(self._path(X))
 
         return self
 
@@ -186,13 +202,20 @@ class HalfSpaceTrees(BaseModel):
         Returns:
             float: The anomalousness score of the input instance. During the first window there is no previous window to score against, and Algorithm 3 does not score these instances. pysad scores them against the partial profile of the n instances recorded so far in that window, rescaled by `window_size / n` to the scale of a full window (0.0 when nothing has been recorded yet). This rescaling is pysad's own and is not part of the paper.
         """
-        # During the first window there is no reference yet, so score against the mass recorded so far.
-        mass = (self.l_mass if self.is_first_window else self.r_mass)[self._path(X)]
-        s = float((mass * self._depth_weights).sum())
+        return self._score_path(self._path(X))
 
-        if self.is_first_window and self.step > 0:
-            # Not in the paper: scale the partial profile of the `step` instances recorded so far
-            # up to a full window, so first-window scores match the scale of later ones.
-            s *= self.window_size / self.step
+    def fit_score_partial(self, X, y=None):
+        """Scores the next instance against the reference mass profile, and then updates the model with it.
 
-        return 0.0 - s
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and fit.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance.
+        """
+        path = self._path(X)
+        score = self._score_path(path)
+        self._fit_path(path)
+
+        return score

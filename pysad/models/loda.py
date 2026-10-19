@@ -67,6 +67,47 @@ class LODA(BaseModel):
             self.histograms_[i] = padded.reshape(self.n_bins, 2).sum(axis=1)
             self.bin_widths_[i] *= 2.0
 
+    def _fit_projected(self, projected, inds):
+        if self.num_seen_ == 0:
+            self.bin_lows_[:] = projected
+            self.histograms_[:, 0] = 1.0
+            self.num_seen_ = 1
+            return
+
+        in_range = (self.bin_widths_ > 0.0) & (inds >= 0) & (inds < self.n_bins)
+        self.histograms_[in_range, inds[in_range].astype(np.intp)] += 1.0
+        for i in np.flatnonzero(~in_range):
+            if self.bin_widths_[i] == 0.0:  # Only a single distinct value seen so far.
+                seen = self.bin_lows_[i]
+                if projected[i] == seen:
+                    self.histograms_[i, 0] += 1.0
+                    continue
+                # The smaller value starts the first bin and the larger one falls in the middle of the last bin.
+                self.bin_widths_[i] = abs(projected[i] - seen) / (self.n_bins - 0.5)
+                self.bin_lows_[i] = min(projected[i], seen)
+                count = self.histograms_[i, 0]
+                self.histograms_[i, 0] = 0.0
+                self.histograms_[i, self._extend(i, seen)] = count
+                self.histograms_[i, self._extend(i, projected[i])] += 1.0
+            else:
+                self.histograms_[i, self._extend(i, projected[i])] += 1.0
+
+        self.num_seen_ += 1
+
+    def _score_projected(self, inds):
+        ready = self.bin_widths_ > 0.0
+        in_range = ready & (inds >= 0) & (inds < self.n_bins)
+
+        counts = np.zeros(self.n_random_cuts)
+        counts[in_range] = self.histograms_[in_range, inds[in_range].astype(np.intp)]
+
+        neg_log_densities = np.zeros(self.n_random_cuts)
+        neg_log_densities[ready] = -np.log(
+            (counts[ready] + 1.0) / ((self.num_seen_ + self.n_bins) * self.bin_widths_[ready])
+        )
+
+        return float(neg_log_densities.mean())
+
     def fit_partial(self, X, y=None):
         """Updates the model with the next instance.
 
@@ -84,33 +125,7 @@ class LODA(BaseModel):
             return self
 
         projected = self.projections_.dot(X.reshape(-1))
-
-        if self.num_seen_ == 0:
-            self.bin_lows_[:] = projected
-            self.histograms_[:, 0] = 1.0
-            self.num_seen_ = 1
-            return self
-
-        inds = self._bin_indices(projected)
-        for i in range(self.n_random_cuts):
-            if self.bin_widths_[i] == 0.0:  # Only a single distinct value seen so far.
-                seen = self.bin_lows_[i]
-                if projected[i] == seen:
-                    self.histograms_[i, 0] += 1.0
-                    continue
-                # The smaller value starts the first bin and the larger one falls in the middle of the last bin.
-                self.bin_widths_[i] = abs(projected[i] - seen) / (self.n_bins - 0.5)
-                self.bin_lows_[i] = min(projected[i], seen)
-                count = self.histograms_[i, 0]
-                self.histograms_[i, 0] = 0.0
-                self.histograms_[i, self._extend(i, seen)] = count
-                self.histograms_[i, self._extend(i, projected[i])] += 1.0
-            elif 0 <= inds[i] < self.n_bins:
-                self.histograms_[i, int(inds[i])] += 1.0
-            else:
-                self.histograms_[i, self._extend(i, projected[i])] += 1.0
-
-        self.num_seen_ += 1
+        self._fit_projected(projected, self._bin_indices(projected))
 
         return self
 
@@ -127,17 +142,25 @@ class LODA(BaseModel):
             self._init_model(X.shape[0])
 
         projected = self.projections_.dot(X.reshape(-1))
+        return self._score_projected(self._bin_indices(projected))
+
+    def fit_score_partial(self, X, y=None):
+        """Scores the next instance, and then updates the model with it.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to fit and score.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance.
+        """
+        if self.to_init:
+            self._init_model(X.shape[0])
+
+        projected = self.projections_.dot(X.reshape(-1))
         inds = self._bin_indices(projected)
+        score = self._score_projected(inds)
+        if np.all(np.isfinite(X)):  # Non-finite values would stretch the bins without bound.
+            self._fit_projected(projected, inds)
 
-        ready = self.bin_widths_ > 0.0
-        in_range = ready & (inds >= 0) & (inds < self.n_bins)
-
-        counts = np.zeros(self.n_random_cuts)
-        counts[in_range] = self.histograms_[in_range, inds[in_range].astype(int)]
-
-        neg_log_densities = np.zeros(self.n_random_cuts)
-        neg_log_densities[ready] = -np.log(
-            (counts[ready] + 1.0) / ((self.num_seen_ + self.n_bins) * self.bin_widths_[ready])
-        )
-
-        return np.array([np.mean(neg_log_densities)])
+        return score

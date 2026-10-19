@@ -32,6 +32,7 @@ from scipy.stats import rankdata
 from sklearn.metrics import average_precision_score, roc_auc_score
 from threadpoolctl import threadpool_limits
 
+import pysad
 from pysad import models
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import (
@@ -791,7 +792,8 @@ def pysad_files(objects):
     files, todo = set(), [obj.__module__ for obj in objects]
     while todo:
         module = sys.modules[todo.pop()]
-        path = Path(module.__file__).relative_to(ROOT).as_posix()
+        # relative to the folder of the installed pysad, which can be another checkout in CI
+        path = Path(module.__file__).relative_to(Path(pysad.__file__).parents[1]).as_posix()
         if path in files:
             continue
         files.add(path)

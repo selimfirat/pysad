@@ -12,13 +12,11 @@ if __name__ == "__main__":
     spikes = [150, 260, 340]
     values[spikes] += 4.0
 
-    # window_size must be at least 2 * period, and max_anomalies at most 0.49 * window_size.
+    # window_size must be greater than 2 * period. By default, the test flags only high values.
     # SeasonalHybridESD uses the median and the MAD, so earlier anomalies in the window affect it less.
     models = {
-        "SeasonalESD": SeasonalESD(period=period, window_size=100, max_anomalies=3, alpha=0.001),
-        "SeasonalHybridESD": SeasonalHybridESD(
-            period=period, window_size=100, max_anomalies=3, alpha=0.001
-        ),
+        "SeasonalESD": SeasonalESD(period=period, window_size=100, alpha=0.001),
+        "SeasonalHybridESD": SeasonalHybridESD(period=period, window_size=100, alpha=0.001),
     }
 
     for name, model in models.items():

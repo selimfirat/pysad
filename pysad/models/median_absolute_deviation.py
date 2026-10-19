@@ -3,6 +3,7 @@ from collections import deque
 import numpy as np
 
 from pysad.core.base_model import BaseModel
+from pysad.utils.validation import check_univariate
 
 
 class MedianAbsoluteDeviation(BaseModel):
@@ -40,10 +41,8 @@ class MedianAbsoluteDeviation(BaseModel):
         Returns:
             object: The model itself.
         """
-        if len(X) != 1:
-            raise ValueError("MedianAbsoluteDeviation supports univariate inputs.")
-
-        self.window.append(float(X[0]))
+        val = check_univariate(X, "MedianAbsoluteDeviation")
+        self.window.append(val)
 
         return self
 
@@ -62,9 +61,10 @@ class MedianAbsoluteDeviation(BaseModel):
         if not self.window:  # there is no median before the first value
             return 0.0
 
+        val = check_univariate(X, "MedianAbsoluteDeviation")
         window = np.asarray(self.window)
         median = np.median(window)
         mad = self.b * np.median(np.abs(window - median))
-        score = (X - median) / (mad + 1e-10)
+        score = (val - median) / (mad + 1e-10)
 
-        return abs(score) if self.absolute else score
+        return float(abs(score) if self.absolute else score)

@@ -5,10 +5,10 @@ import numpy as np
 from pysad.core.base_transformer import BaseTransformer
 from pysad.utils import Window
 
-# The STL functions below follow statsmodels 0.15.0 (statsmodels/tsa/stl/_stl.pyx,
-# https://github.com/statsmodels/statsmodels), a port of the NETLIB Fortran STL of
-# Cleveland et al. (1990), restricted to periodic STL with jumps of 1 and vectorized over the
-# estimation points. For licensing information, see the end of this file.
+# The STL functions below follow the NETLIB Fortran STL of Cleveland et al. (1990) that R's stl()
+# calls, with the settings of stl(s.window = "periodic"). They are adapted from the port in
+# statsmodels 0.15.0 (statsmodels/tsa/stl/_stl.pyx, https://github.com/statsmodels/statsmodels),
+# vectorized over the estimation points. For licensing information, see the end of this file.
 
 
 def _tricube(J, xs, h):
@@ -23,9 +23,9 @@ def _tricube(J, xs, h):
 
 
 def _loess(Y, J, xs, h, degree, rng, rw=None, base=None):
-    # One LOESS estimate per row, as STL._est: Y and J (num_points, width) hold the values and
-    # the 1-based positions of each window, xs and h (num_points,) the estimation position and
-    # the half width. Entries outside a window have J = inf. Rows without weight give NaN.
+    # One LOESS estimate per row, as stlest: Y and J (num_points, width) hold the values and the
+    # 1-based positions of each window, xs and h (num_points,) the estimation position and the
+    # half width. Entries outside a window have J = inf. Rows without weight give NaN.
     # ``base`` holds the tricube weights of these positions, which _tricube computes.
     w = (_tricube(J, xs, h) if base is None else base).copy()
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -47,26 +47,31 @@ def _loess(Y, J, xs, h, degree, rng, rw=None, base=None):
 
 
 @lru_cache(maxsize=64)
-def _smooth_geometry(n, length):
-    # The windows, positions, half widths and tricube weights of _smooth for n points.
-    i = np.arange(n)
+def _smooth_geometry(n, length, jump):
+    # The fitted points, windows, positions, half widths and tricube weights of _smooth for n
+    # points. As stless, it fits every `jump`-th point and the last point.
     width = min(length, n)
-    nleft = np.clip(i + 1 - (length + 2) // 2, 0, n - width)
-    idx = nleft[:, None] + np.arange(width)  # (n, width)
-    xs = i + 1.0
+    fit = np.arange(0, n, min(jump, n - 1))
+    if fit[-1] != n - 1:
+        fit = np.append(fit, n - 1)
+    nleft = np.clip(fit + 1 - (length + 1) // 2, 0, n - width)
+    idx = nleft[:, None] + np.arange(width)  # (num_fits, width)
+    xs = fit + 1.0
     h = np.maximum(xs - (nleft + 1), nleft + width - xs) + max(length - n, 0) // 2
     J = idx + 1.0
-    for array in (idx, xs, h, J):
+    for array in (fit, idx, xs, h, J):
         array.flags.writeable = False
-    return idx, J, xs, h, _tricube(J, xs, h)
+    return fit, idx, J, xs, h, _tricube(J, xs, h)
 
 
-def _smooth(y, length, degree, rw=None):
-    # LOESS of the whole series over windows of `length` points, as STL._ess with a jump of 1.
+def _smooth(y, length, degree, jump, rw=None):
+    # LOESS of the whole series over windows of `length` points, as stless: it fits every
+    # `jump`-th point and the last point, and interpolates linearly between them.
     n = y.shape[0]
-    idx, J, xs, h, base = _smooth_geometry(n, length)
+    fit, idx, J, xs, h, base = _smooth_geometry(n, length, jump)
     ys = _loess(y[idx], J, xs, h, degree, n - 1.0, None if rw is None else rw[idx], base)
-    return np.where(np.isnan(ys), y, ys)
+    ys = np.where(np.isnan(ys), y[fit], ys)
+    return np.interp(np.arange(n), fit, ys)
 
 
 def _moving_average(x, length):
@@ -80,49 +85,50 @@ def _cycle_geometry(n, period):
     seasonal_length = 10 * n + 1
 
     # Row j of the cycle-subseries holds y[j::period] in its first k[j] columns. The seasonal
-    # smoother runs over the whole subseries at positions 0 to k[j] + 1, so it extends each
+    # smoother spans the whole subseries and jumps n + 1 points, so it fits only the positions
+    # 0, 1, k and k + 1, and interpolates linearly from 1 to k. Positions 0 and k + 1 extend each
     # subseries by one period on both sides.
     num_cycles = -(-n // period)
-    k = (n - 1 - np.arange(period)) // period + 1  # (period,)
+    k = (n - 1 - np.arange(period)) // period + 1  # (period,), at least 2
     valid = np.arange(num_cycles) < k[:, None]  # (period, num_cycles)
     cycle_idx = np.where(valid, np.arange(period)[:, None] + period * np.arange(num_cycles), 0)
-    xs = np.arange(num_cycles + 2.0)
-    h = np.maximum(xs - 1, k[:, None] - xs) + (seasonal_length - k[:, None]) // 2
-    shape = (period, num_cycles + 2, num_cycles)
+    xs = np.stack([np.zeros(period), np.ones(period), k, k + 1.0], axis=1)  # (period, 4)
+    h = (np.maximum(xs - 1, k[:, None] - xs) + (seasonal_length - k[:, None]) // 2).ravel()
+    shape = (period, 4, num_cycles)
     J = np.broadcast_to(np.where(valid, np.arange(1.0, num_cycles + 1), np.inf)[:, None], shape)
     J = J.reshape(-1, num_cycles)
-    xs = np.broadcast_to(xs, h.shape).ravel()
-    h = h.ravel()
+    xs = xs.ravel()
     out_valid = np.arange(num_cycles + 2) <= k[:, None] + 1  # (period, num_cycles + 2)
     out_idx = (np.arange(period)[:, None] + period * np.arange(num_cycles + 2))[out_valid]
     rows = np.arange(period)
-    arrays = (k, valid, cycle_idx, J, xs, h, out_valid, out_idx, rows)
+    steps = np.arange(num_cycles)
+    arrays = (k, valid, cycle_idx, J, xs, h, out_valid, out_idx, rows, steps)
     for array in arrays:
         array.flags.writeable = False
     return (*arrays, shape, _tricube(J, xs, h))
 
 
 def _periodic_stl_seasonal(y, period, robust):
-    # The seasonal component of STL(y, period, seasonal=10 * n + 1, seasonal_deg=0, robust).fit().
+    # The seasonal component of R's stl(ts(y, frequency = period), s.window = "periodic", robust).
     n = y.shape[0]
     seasonal_length = 10 * n + 1
     trend_length = int(np.ceil(1.5 * period / (1 - 1.5 / seasonal_length)))
     trend_length += trend_length % 2 == 0
-    low_pass_length = period + 1 + period % 2
-    num_inner, num_outer = (2, 15) if robust else (5, 0)
-    k, valid, cycle_idx, J, xs, h, out_valid, out_idx, rows, shape, base = _cycle_geometry(
+    low_pass_length = period + (period % 2 == 0)
+    num_inner, num_outer = (1, 15) if robust else (2, 0)
+    k, valid, cycle_idx, J, xs, h, out_valid, out_idx, rows, steps, shape, base = _cycle_geometry(
         n, period
     )
-    num_cycles = -(-n // period)
+    num_cycles = steps.shape[0]
 
     trend = np.zeros(n)
     rw = None
     for outer in range(num_outer + 1):
         for _ in range(num_inner):
-            Y = (y - trend)[cycle_idx]
+            Y = np.where(valid, (y - trend)[cycle_idx], 0.0)
             cycle_rw = None if rw is None else np.broadcast_to(rw[cycle_idx][:, None], shape)
-            cycle = _loess(
-                Y=np.broadcast_to(np.where(valid, Y, 0.0)[:, None], shape).reshape(-1, num_cycles),
+            fits = _loess(
+                Y=np.broadcast_to(Y[:, None], shape).reshape(-1, num_cycles),
                 J=J,
                 xs=xs,
                 h=h,
@@ -130,41 +136,48 @@ def _periodic_stl_seasonal(y, period, robust):
                 rng=None,
                 rw=None if cycle_rw is None else cycle_rw.reshape(-1, num_cycles),
                 base=base,
-            ).reshape(period, num_cycles + 2)
-            # Without weight, a subseries value keeps its own value and an end copies its neighbor.
-            inner = cycle[:, 1:-1]
-            fallback = np.isnan(inner) & valid
-            inner[fallback] = Y[fallback]
-            cycle[:, 0] = np.where(np.isnan(cycle[:, 0]), cycle[:, 1], cycle[:, 0])
-            end = cycle[rows, k + 1]
-            cycle[rows, k + 1] = np.where(np.isnan(end), cycle[rows, k], end)
+            ).reshape(period, 4)
+            # Without weight, a subseries end keeps its own value and an extension copies its
+            # neighbor.
+            first = np.where(np.isnan(fits[:, 1]), Y[:, 0], fits[:, 1])
+            last = np.where(np.isnan(fits[:, 2]), Y[rows, k - 1], fits[:, 2])
+            cycle = np.empty((period, num_cycles + 2))
+            cycle[:, 0] = np.where(np.isnan(fits[:, 0]), first, fits[:, 0])
+            delta = (last - first) / (k - 1)
+            cycle[:, 1:-1] = first[:, None] + delta[:, None] * steps
+            cycle[rows, k] = last
+            cycle[rows, k + 1] = np.where(np.isnan(fits[:, 3]), last, fits[:, 3])
             extended = np.empty(n + 2 * period)
             extended[out_idx] = cycle[out_valid]
 
             low_pass = _moving_average(extended, period)
             low_pass = _moving_average(_moving_average(low_pass, period), 3)
-            season = extended[period : period + n] - _smooth(low_pass, low_pass_length, 1)
-            trend = _smooth(y - season, trend_length, 1, rw)
+            low_pass = _smooth(low_pass, low_pass_length, 1, -(-low_pass_length // 10))
+            season = extended[period : period + n] - low_pass
+            trend = _smooth(y - season, trend_length, 1, -(-trend_length // 10), rw)
         if outer == num_outer:
             break
-        # Bisquare robustness weights with 6 times the median absolute residual, as STL._rwts.
+        # Bisquare robustness weights with 6 times the median absolute residual, as stlrwt.
         residual = np.abs(y - (trend + season))
         mid = np.partition(residual, [n // 2, n - n // 2 - 1])
         cmad = 3.0 * (mid[n // 2] + mid[n - n // 2 - 1])
-        if cmad == 0:
-            rw = np.ones(n)
-            continue
-        rw = np.where(residual <= 0.999 * cmad, (1.0 - (residual / cmad) ** 2) ** 2, 0.0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            rw = np.where(residual <= 0.999 * cmad, (1.0 - (residual / cmad) ** 2) ** 2, 0.0)
         rw[residual <= 0.001 * cmad] = 1.0
-    return season
+    # R's stl makes the seasonal component exactly periodic with the mean of each position.
+    return np.resize(np.bincount(np.arange(n) % period, weights=season) / k, n)
 
 
 class ModifiedSTLResidualTransformer(BaseTransformer):
     """Removes the seasonal component and the median from a univariate series, as S-ESD and S-H-ESD do :cite:`hochenbaum2017automatic`.
 
-    The transformer follows the residual construction of the paper. It estimates the seasonal component with periodic STL, replaces the trend component of STL with the median of the raw series, and returns ``X - seasonal - median(X)``. Periodic STL is what the reference implementation of the paper uses (``stl(s.window = "periodic")`` in R): the seasonal smoother is a constant (degree 0) LOESS with a span of ``10 * n + 1`` for ``n`` observations, so the seasonal component is almost the same in every period and a few anomalous periods cannot bend it. The other settings of STL follow statsmodels, not R's ``stl()``: two inner iterations in robust mode, a low-pass window of ``period + 1 + period % 2``, no jumps, and no final averaging of each position in the period. It does only the residual step of the paper. Use :class:`pysad.models.SeasonalESD` or :class:`pysad.models.SeasonalHybridESD` for the full detector.
+    The transformer follows the residual construction of the paper. It estimates the seasonal component with periodic STL, replaces the trend component of STL with the median of the raw series, and returns ``X - seasonal - median(X)``. The seasonal component is that of ``stl(s.window = "periodic", robust = robust)`` in R, which the reference implementation of the paper, Twitter's AnomalyDetection R package, calls with ``robust = TRUE``. Periodic STL smooths each cycle-subseries with a constant (degree 0) LOESS that spans the whole subseries, and then sets the seasonal component at each position in the period to its mean over the series. So the seasonal component repeats exactly in every period, and a few anomalous periods cannot bend it. The transformer uses the other settings of R as well: one inner iteration with robust fitting and two without, a low-pass window of ``period`` rounded up to an odd number, and LOESS fits at every ``ceiling(window / 10)``-th point with linear interpolation in between.
 
-    The partial transforms return ``[0.0]`` until the window holds at least ``2 * period`` observations, because STL needs two full periods.
+    The residuals match those of R to about 1e-9, with one deviation. The robust fit of R takes the median absolute residual with a partial sort that gets the two middle positions in descending order, and for an even number of observations it sometimes picks a wrong value. This transformer uses the exact median, as the STL paper does. As a result, about half of the robust fits of an even number of observations differ from R. Most differ by less than 0.01 times the MAD of the series, but a short window can differ by several MADs. For an odd number of observations, or with ``robust=False``, the residuals match R.
+
+    It does only the residual step of the paper. Use :class:`pysad.models.SeasonalESD` or :class:`pysad.models.SeasonalHybridESD` for the full detector.
+
+    The partial transforms return ``[0.0]`` until the window holds more than ``2 * period`` observations, because the STL of R needs more than two full periods.
 
     Args:
         period (int): Number of observations in one seasonal period.
@@ -172,7 +185,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         robust (bool): Whether to use robust STL fitting (Default=True).
 
     Raises:
-        ValueError: If ``period`` is less than 2, or if ``window_size`` is not None and less than ``2 * period``.
+        ValueError: If ``period`` is less than 2, or if ``window_size`` is not None and at most ``2 * period``.
     """
 
     def __init__(self, period, window_size=None, robust=True):
@@ -181,8 +194,8 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         if period < 2:
             raise ValueError("period must be greater than 1.")
 
-        if window_size is not None and window_size < 2 * period:
-            raise ValueError("window_size must be at least 2 * period.")
+        if window_size is not None and window_size <= 2 * period:
+            raise ValueError("window_size must be greater than 2 * period.")
 
         self.period = period
         self.window_size = window_size
@@ -209,12 +222,12 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
             np.float64 array of shape (num_instances,): Modified STL residuals.
 
         Raises:
-            ValueError: If the window has fewer than ``2 * period`` observations.
+            ValueError: If the window has at most ``2 * period`` observations.
         """
         X = self._as_univariate(X)
 
-        if X.shape[0] < 2 * self.period:
-            raise ValueError("At least 2 * period observations are required for STL.")
+        if X.shape[0] <= 2 * self.period:
+            raise ValueError("More than 2 * period observations are required for STL.")
 
         seasonal = _periodic_stl_seasonal(X, self.period, self.robust)
         return X - seasonal - np.median(X)
@@ -255,7 +268,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         return np.asarray(values, dtype=np.float64)
 
     def _latest_residual(self, values):
-        if values.shape[0] < 2 * self.period:
+        if values.shape[0] <= 2 * self.period:
             return np.zeros(1)
 
         return self.transform_window(values)[-1:]
@@ -267,7 +280,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
             X (np.float64 array of shape (1,)): The next univariate value.
 
         Returns:
-            np.float64 array of shape (1,): The modified STL residual of ``X``, or ``[0.0]`` if the window has fewer than ``2 * period`` observations.
+            np.float64 array of shape (1,): The modified STL residual of ``X``, or ``[0.0]`` if the window has at most ``2 * period`` observations.
         """
         if self.window is None:
             raise ValueError("window_size is required for partial transforms.")
@@ -281,7 +294,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
             X (np.float64 array of shape (1,)): The next univariate value.
 
         Returns:
-            np.float64 array of shape (1,): The modified STL residual of ``X``, or ``[0.0]`` if the window has fewer than ``2 * period`` observations.
+            np.float64 array of shape (1,): The modified STL residual of ``X``, or ``[0.0]`` if the window has at most ``2 * period`` observations.
         """
         self.fit_partial(X)
         return self._latest_residual(self._current_values())

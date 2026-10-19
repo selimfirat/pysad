@@ -3,7 +3,7 @@ Multivariate detectors
 
 This page compares the 10 multivariate detectors of PySAD on 17 labeled datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ repository. A multivariate detector takes a vector of features for each point. Each detector uses its default parameters and scores each point before learning from it (``fit_score_partial``).
 
-Use the results to find two or three candidates, and then compare those candidates on your own data as :doc:`guides/choose_detector` shows. For the evaluation protocol, dataset statistics and scope limitations, see :doc:`benchmarks/methodology`. To reproduce or update these tables, see :doc:`benchmarks/run`.
+Use the results to find two or three candidates, and then compare those candidates on your own data as :doc:`guides/choose_detector` shows. For the alerts of the calibrators on the same runs, see :doc:`benchmarks/calibration`. For the evaluation protocol, dataset statistics and scope limitations, see :doc:`benchmarks/methodology`. To reproduce or update these tables, see :doc:`benchmarks/run`.
 
 Metrics
 -------

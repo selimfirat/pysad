@@ -1,4 +1,4 @@
-"""Benchmark the multivariate detectors of PySAD on the datasets of ``pysad.utils.Data``.
+"""Benchmark the multivariate detectors and the calibrators of PySAD on the datasets of ``pysad.utils.Data``.
 
 Run it from the repository root:
 
@@ -24,6 +24,10 @@ from scipy.stats import rankdata
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from pysad import models
+from pysad.transform.probability_calibration import (
+    ConformalProbabilityCalibrator,
+    GaussianTailProbabilityCalibrator,
+)
 from pysad.utils import ArrayStreamer, Data, fix_seed, get_minmax_array
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +39,9 @@ WARMUP_POINTS = 256  # the scores of the first points do not count, see warmup()
 # --check accepts this difference in AUROC. Other platforms round differently, and on a small
 # dataset that can swap one anomaly with one normal point. AUPR moves too much for such a swap.
 TOLERANCE = 0.005
+# --check accepts this difference in a false alert rate, because one alert more or less on a small
+# dataset moves the rate by about 0.01.
+ALERT_TOLERANCE = 0.02
 
 
 def _ranges(X):
@@ -60,7 +67,19 @@ SHORT_NAMES = {
     "LocalOutlierProbability": "LoOP",
     "RobustRandomCutForest": "RRCF",
 }
-FIELDS = ["dataset", "detector", "seed", "auroc", "aupr", "ms_per_point", "commit"]
+# Each calibrator, with its defaults, turns the scores of every run into alerts at each threshold,
+# as the alerts guide does: an alert when the calibrated score is at least the threshold.
+CALIBRATORS = {
+    "conformal": ConformalProbabilityCalibrator,
+    "gaussian": GaussianTailProbabilityCalibrator,
+}
+CALIBRATOR_NAMES = {"conformal": "Conformal", "gaussian": "Gaussian tail"}  # short, to fit the page
+# "rate" is 1 minus the anomaly rate of the stream, so the alerts match the number of anomalies.
+# It uses the labels, which a live stream does not have, so it shows the best case of a threshold.
+THRESHOLDS = [0.95, 0.99, 0.995, "rate"]
+ALERT_METRICS = ["false_alerts", "precision", "recall"]
+ALERT_FIELDS = [f"{c}_{t}_{m}" for c in CALIBRATORS for t in THRESHOLDS for m in ALERT_METRICS]
+FIELDS = ["dataset", "detector", "seed", "auroc", "aupr", "ms_per_point", *ALERT_FIELDS, "commit"]
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
 
 
@@ -90,16 +109,35 @@ def run(job):
     with np.errstate(all="ignore"):  # a score that is not finite makes the metrics NaN
         scores = np.array([float(model.fit_score_partial(x)) for x in X])
     seconds = time.perf_counter() - start
-    scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
     valid = np.isfinite(scores).all()
+    row = {"dataset": dataset, "detector": detector, "seed": seed}
+    for name, calibrator in CALIBRATORS.items():
+        transform = calibrator().fit_transform_partial
+        with np.errstate(all="ignore"):
+            calibrated = np.array([transform(s) for s in scores])
+        row.update(alerts(name, calibrated[warmup(len(X)) :], y[warmup(len(X)) :], valid))
+    scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
     return {
-        "dataset": dataset,
-        "detector": detector,
-        "seed": seed,
+        **row,
         "auroc": round(roc_auc_score(y, scores), 4) if valid else np.nan,
         "aupr": round(average_precision_score(y, scores), 4) if valid else np.nan,
         "ms_per_point": round(1000 * seconds / len(X), 3),
     }
+
+
+def alerts(calibrator, calibrated, y, valid):
+    """The false alert rate, the precision and the recall of the alerts at each threshold."""
+    row = {}
+    for t in THRESHOLDS:
+        alert = calibrated >= (1 - y.mean() if t == "rate" else t)
+        values = [
+            alert[y == 0].mean(),
+            (alert & (y == 1)).sum() / alert.sum() if alert.any() else np.nan,
+            alert[y == 1].mean(),
+        ]
+        for metric, value in zip(ALERT_METRICS, values, strict=True):
+            row[f"{calibrator}_{t}_{metric}"] = round(value, 4) if valid else np.nan
+    return row
 
 
 def key(row):
@@ -176,6 +214,21 @@ def write_tables(results):
         header = [SHORT_NAMES.get(detectors[i], detectors[i]) for i in order]
         write_csv(f"{metric}.csv", ["Dataset", *header], rows)
 
+    write_csv(
+        "alerts.csv",
+        [
+            "Calibrator",
+            "Threshold",
+            "Expected",
+            "False alerts",
+            "Range",
+            "Precision",
+            "Recall",
+            "F1",
+        ],
+        alert_rows(results, detectors),
+    )
+
     datasets = []
     for ds in DATASETS:
         X, y = Data().get_data(f"{ds}.mat")
@@ -188,6 +241,48 @@ def write_tables(results):
         ["Dataset", "Points", "Points used", "Points evaluated", "Features", "Anomalies (%)"],
         datasets,
     )
+
+
+def number(value):
+    """A value of a results row as a float, NaN if it is missing. 0.0 stays 0.0."""
+    return np.nan if value is None or value == "" else float(value)
+
+
+def alert_rows(results, detectors):
+    """One row for each calibrator and threshold, with means over all the runs."""
+    rows = []
+    for name, calibrator in CALIBRATORS.items():
+        for t in THRESHOLDS:
+            values = {
+                m: np.array([number(r.get(f"{name}_{t}_{m}")) for r in results.values()])
+                for m in ALERT_METRICS
+            }
+            p, r = values["precision"], values["recall"]
+            with np.errstate(all="ignore"):
+                f1 = np.where(p + r > 0, 2 * p * r / (p + r), 0.0)
+            per_detector = [
+                np.nanmean(
+                    [
+                        number(row.get(f"{name}_{t}_false_alerts"))
+                        for k, row in results.items()
+                        if k[1] == d
+                    ]
+                )
+                for d in detectors
+            ]
+            rows.append(
+                [
+                    f":class:`{CALIBRATOR_NAMES[name]} <pysad.transform.probability_calibration.{calibrator.__name__}>`",
+                    "1 - anomaly rate" if t == "rate" else t,
+                    "" if t == "rate" else f"{1 - t:.3f}",
+                    f"{np.nanmean(values['false_alerts']):.3f}",
+                    f"{np.nanmin(per_detector):.3f} to {np.nanmax(per_detector):.3f}",
+                    f"{np.nanmean(p):.3f}",
+                    f"{np.nanmean(r):.3f}",
+                    f"{np.nanmean(f1):.3f}",
+                ]
+            )
+    return rows
 
 
 def git(*args):
@@ -205,7 +300,7 @@ def commit():
 def changed_detectors(base):
     """The detectors whose results a change since ``base`` can move."""
     files = git("diff", "--name-only", base).split()
-    common = pysad_files([ArrayStreamer, Data, fix_seed, get_minmax_array])
+    common = pysad_files([ArrayStreamer, Data, fix_seed, get_minmax_array, *CALIBRATORS.values()])
     if common & set(files) or "benchmarks/benchmark.py" in files or "pyproject.toml" in files:
         return list(DETECTORS)
     edited = set()  # detectors whose committed results changed, so that every row comes from a run
@@ -280,6 +375,13 @@ def main():
             if k not in results
             or not np.isclose(
                 float(results[k]["auroc"]), row["auroc"], atol=TOLERANCE, equal_nan=True
+            )
+            or any(
+                not np.isclose(
+                    number(results[k].get(f)), row[f], atol=ALERT_TOLERANCE, equal_nan=True
+                )
+                for f in ALERT_FIELDS
+                if f.endswith("false_alerts")
             )
         ]
         for k, old, row in changed:

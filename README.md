@@ -232,7 +232,7 @@ These starting points come from the design of each method. They are not benchmar
 
 ## Benchmarks
 
-PySAD benchmarks all 10 multivariate streaming detectors across 17 labeled datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository over 5 random seeds. Each detector runs with its default hyperparameters and scores each point before learning from it (`fit_score_partial`).
+PySAD benchmarks all 10 multivariate streaming detectors across 17 labeled datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository, with one run per dataset. Each detector runs with its default hyperparameters and scores each point before learning from it (`fit_score_partial`).
 
 - **Results and per-dataset tables:** The [multivariate detector benchmark](https://pysad.readthedocs.io/en/latest/benchmark.html) reports mean rank, mean AUROC, mean AUPR, median time per point (ms), and per-dataset AUROC and AUPR tables.
 - **Methodology and dataset statistics:** The [methodology page](https://pysad.readthedocs.io/en/latest/benchmarks/methodology.html) documents the prequential protocol, the 256-point warm-up rule, feature scaling, dataset dimensions and anomaly rates, and what the benchmark does not measure.

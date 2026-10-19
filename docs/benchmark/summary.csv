@@ -1,11 +1,11 @@
 Detector,Mean rank,Mean AUROC,Mean AUPR,Time per point (ms),Commit
-:class:`~pysad.models.RSHash`,3.7,0.816,0.487,0.24,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
-:class:`~pysad.models.LocalOutlierProbability`,4.0,0.825,0.494,0.34,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
-:class:`~pysad.models.IForestASD`,4.4,0.805,0.485,2.50,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
-:class:`~pysad.models.Inqmad`,5.1,0.779,0.415,13.78,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
-:class:`~pysad.models.LODA`,5.2,0.794,0.474,0.04,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
-:class:`~pysad.models.ExactStorm`,5.5,0.805,0.332,0.15,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
-:class:`~pysad.models.RobustRandomCutForest`,5.6,0.794,0.428,13.85,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
-:class:`~pysad.models.HalfSpaceTrees`,5.9,0.799,0.474,0.09,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
-:class:`~pysad.models.xStream`,6.8,0.777,0.404,0.99,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
-:class:`~pysad.models.KitNet`,8.8,0.714,0.293,0.36,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.LocalOutlierProbability`,3.4,0.842,0.505,0.34,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.RSHash`,3.7,0.817,0.512,0.24,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.IForestASD`,4.4,0.809,0.483,2.50,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.RobustRandomCutForest`,5.4,0.796,0.434,13.66,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.ExactStorm`,5.6,0.798,0.322,0.16,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.HalfSpaceTrees`,5.6,0.796,0.448,0.09,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.LODA`,5.6,0.790,0.466,0.04,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.Inqmad`,5.6,0.775,0.401,13.41,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.xStream`,7.1,0.764,0.394,0.97,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
+:class:`~pysad.models.KitNet`,8.6,0.706,0.259,0.36,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__

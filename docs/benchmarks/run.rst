@@ -12,7 +12,17 @@ Install PySAD in editable mode, as :doc:`/contributing` shows. Then run the benc
 
    $ python benchmarks/benchmark.py
 
-The first run downloads the datasets into ``~/.cache/pysad``: the |num_datasets| ODDS datasets, the NAB and UCR series, and the streams with drift. The UCR archive (184 MB) and the KDD Cup 99 file (74 MB) are the largest downloads. The script writes the CSV tables to ``docs/benchmark/``, which the benchmark pages render. A full run takes about 2 CPU-hours, which is 15 minutes on 10 cores. The ``--jobs`` option sets the number of processes. The default is the number of CPU cores.
+The first run downloads the datasets into ``~/.cache/pysad``: the |num_datasets| ODDS datasets, the NAB and UCR series, and the streams with drift. The UCR archive (184 MB) and the KDD Cup 99 file (74 MB) are the largest downloads. The script writes the CSV tables to ``docs/benchmark/``, which the benchmark pages render. A full run takes about 50 minutes on 10 cores. The multivariate detectors on the NAB series take most of this time. The ``--jobs`` option sets the number of processes. The default is the number of CPU cores.
+
+The ``--parts`` option runs only some parts of the benchmark, for example ``--parts drift``. These are the parts:
+
+- ``odds``: the multivariate detectors on the shuffled ODDS datasets.
+- ``univariate``: the univariate detectors on the NAB and UCR series.
+- ``drift``: the multivariate detectors on the streams with drift.
+- ``nab``: the multivariate detectors on the NAB series.
+- ``shingles``: the multivariate detectors on shingles of the NAB series.
+
+Each part runs once, with seed 0. The ``benchmark`` workflow runs each part in its own job.
 
 Run selected detectors
 ----------------------
@@ -40,4 +50,25 @@ To list the detectors that a branch can affect and check whether their AUROC mov
 
    $ python benchmarks/benchmark.py --check origin/master
 
-The ``benchmark`` workflow runs this check on each pull request that changes ``pysad/``. It runs again only the detectors that the change can affect, with one job per seed. If an AUROC moves by more than 0.005, the check fails and prints the command that updates ``docs/benchmark/``. The check does not compare AUPR, because other platforms round differently. On a small dataset, such a difference can swap one anomaly with one normal point, and that moves AUPR much more than AUROC.
+If an AUROC moves by more than 0.005, the check fails and prints the command that updates ``docs/benchmark/``. The check does not compare AUPR, because other platforms round differently. On a small dataset, such a difference can swap one anomaly with one normal point, and that moves AUPR much more than AUROC.
+
+The short run in CI
+-------------------
+
+The ``benchmark`` workflow runs on each pull request that changes ``pysad/`` or ``benchmarks/``. It runs only the detectors that the pull request can change, in a short form: with ``--ci``, each run keeps only the first 2,000 points of its dataset, series or stream, and the UCR series do not run. The parts ``odds``, ``univariate`` and ``drift`` each run in their own job. The parts ``nab`` and ``shingles`` do not run in CI. Each job does these steps:
+
+#. It installs the code of the base branch and runs the detectors. ``--since`` picks the detectors from the files that changed:
+
+   .. code-block:: console
+
+      $ python benchmarks/benchmark.py --ci base.csv --since origin/master --parts odds
+
+#. It installs the code of the pull request and runs the same detectors. ``--compare`` prints each run whose AUROC moved by more than 0.005:
+
+   .. code-block:: console
+
+      $ python benchmarks/benchmark.py --ci head.csv --since origin/master --parts odds --compare base.csv
+
+#. It adds the runs that moved to the summary of the job, and it keeps ``base.csv`` and ``head.csv`` as an artifact.
+
+Both runs use the same machine, so the results do not depend on the platform. The job does not fail when a result moves, because a pull request can change a detector on purpose. The full results in ``docs/benchmark/`` come from full runs that the maintainers make.

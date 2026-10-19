@@ -1,15 +1,16 @@
 name: benchmark
 
-# Reruns the detectors that a pull request can change and fails if their results differ from
-# docs/benchmark/. benchmarks/benchmark.py --check picks the detectors from the changed files.
-# Each seed runs in its own job, because all the detectors take about 2 CPU-hours. The univariate
-# detectors and the streams with drift run only in the seed 0 job.
+# Runs the detectors that a pull request can change on the first 2,000 points of each dataset
+# (--ci), once with the code of the base branch and once with the code of the pull request, on the
+# same machine. The summary of each job lists the runs whose AUROC moved, and the job keeps both
+# result files as an artifact. Each part of benchmark.py (--parts) runs in its own job, except the
+# multivariate detectors on NAB (nab and shingles), which only the full runs of the maintainers run.
+# The full results in docs/benchmark/ come from these full runs.
 on:
   pull_request:
     paths:
       - "pysad/**"
       - "benchmarks/**"
-      - "docs/benchmark/**"
       - "pyproject.toml"
       - ".github/workflows/benchmark.yml"
   workflow_dispatch:
@@ -24,13 +25,13 @@ concurrency:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 30
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        seed: [0, 1, 2, 3, 4]
+        part: [odds, univariate, drift]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,14 +49,31 @@ jobs:
         with:
           path: ~/.cache/pysad
           key: pysad-data-${{ hashFiles('pysad/utils/data.py') }}
-      - name: Compare with docs/benchmark/
+      # Both runs use the benchmark.py of the pull request, so that only the code of pysad differs.
+      - name: Run the base branch
+        if: github.base_ref != ''
         env:
           BASE_REF: ${{ github.base_ref }}
-          SEED: ${{ matrix.seed }}
+          PART: ${{ matrix.part }}
         run: |
+          git fetch --depth=1 origin "$BASE_REF"
+          git worktree add ../base "origin/$BASE_REF"
+          uv pip install --system --no-deps -e ../base
+          python benchmarks/benchmark.py --ci base.csv --since "origin/$BASE_REF" --parts "$PART"
+      - name: Run the pull request
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PART: ${{ matrix.part }}
+        run: |
+          uv pip install --system --no-deps -e .
           if [ -n "$BASE_REF" ]; then
-            git fetch --depth=1 origin "$BASE_REF"
-            python benchmarks/benchmark.py --check "origin/$BASE_REF" --seeds "$SEED"
+            python benchmarks/benchmark.py --ci head.csv --since "origin/$BASE_REF" --parts "$PART" --compare base.csv
           else
-            python benchmarks/benchmark.py --check --seeds "$SEED"
+            python benchmarks/benchmark.py --ci head.csv --parts "$PART"
           fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: benchmark-${{ matrix.part }}
+          path: "*.csv"
+          if-no-files-found: ignore

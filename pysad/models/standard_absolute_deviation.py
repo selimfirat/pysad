@@ -2,6 +2,7 @@ from pysad.core.base_model import BaseModel
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.median_meter import MedianMeter
 from pysad.statistics.variance_meter import VarianceMeter
+from pysad.utils.validation import check_univariate
 
 
 class StandardAbsoluteDeviation(BaseModel):
@@ -40,11 +41,9 @@ class StandardAbsoluteDeviation(BaseModel):
         Returns:
             object: The model itself.
         """
-        if len(X) != 1:
-            raise ValueError("StandardAbsoluteDeviation supports univariate inputs.")
-
-        self.variance_meter.update(X)
-        self.sub_meter.update(X)
+        val = check_univariate(X, "StandardAbsoluteDeviation")
+        self.variance_meter.update(val)
+        self.sub_meter.update(val)
 
         return self
 
@@ -60,9 +59,10 @@ class StandardAbsoluteDeviation(BaseModel):
         if self.sub_meter.num_items == 0:  # there is no mean before the first value
             return 0.0
 
+        val = check_univariate(X, "StandardAbsoluteDeviation")
         sub = self.sub_meter.get()
         dev = self.variance_meter.get() ** 0.5
 
-        score = (X - sub) / (dev + 1e-10)
+        score = (val - sub) / (dev + 1e-10)
 
-        return abs(score) if self.absolute else score
+        return float(abs(score) if self.absolute else score)

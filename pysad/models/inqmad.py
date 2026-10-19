@@ -4,7 +4,7 @@ from sklearn.kernel_approximation import RBFSampler
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
-from pysad.models.relative_entropy import _finite_float, _int_at_least
+from pysad.utils.validation import _finite_float, _int_at_least
 
 
 def _unit_interval(value, name):

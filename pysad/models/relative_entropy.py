@@ -1,61 +1,10 @@
-import math
-import numbers
 from collections import deque
 
 import numpy as np
 from scipy import stats
 
 from pysad.core.base_model import BaseModel
-
-
-def _int_at_least(value, name, minimum, expected="an int"):
-    """Returns `value` as a Python int, or raises if it is not an integer >= `minimum` (NumPy integers are accepted, bools are not).
-
-    Args:
-        value (object): The value to check.
-        name (str): The parameter name to put in the error message.
-        minimum (int): The smallest accepted value.
-        expected (str): What the parameter accepts, for the `TypeError` message (Default="an int").
-
-    Returns:
-        int: `value` as a Python int.
-
-    Raises:
-        TypeError: If `value` is a bool or not an integer.
-        ValueError: If `value` is below `minimum`.
-    """
-    if isinstance(value, bool) or not isinstance(value, numbers.Integral):
-        raise TypeError(f"{name} must be {expected}, got {value!r}.")
-
-    value = int(value)
-    if value < minimum:
-        raise ValueError(f"{name} must be at least {minimum}, got {value}.")
-
-    return value
-
-
-def _finite_float(value, name):
-    """Returns `value` as a Python float, or raises if it is not a finite real number (NumPy numbers are accepted, bools are not).
-
-    Args:
-        value (object): The value to check.
-        name (str): The parameter name to put in the error message.
-
-    Returns:
-        float: `value` as a Python float.
-
-    Raises:
-        TypeError: If `value` is a bool or not a real number.
-        ValueError: If `value` is NaN or infinite.
-    """
-    if isinstance(value, bool) or not isinstance(value, numbers.Real):
-        raise TypeError(f"{name} must be a real number, got {value!r}.")
-
-    value = float(value)
-    if not math.isfinite(value):
-        raise ValueError(f"{name} must be finite, got {value}.")
-
-    return value
+from pysad.utils.validation import _finite_float, _int_at_least, check_univariate
 
 
 class RelativeEntropy(BaseModel):
@@ -215,29 +164,7 @@ class RelativeEntropy(BaseModel):
 
     @staticmethod
     def _value(X):
-        """Reads the single value of a univariate instance, rejecting NaN before it can reach the window.
-
-        Args:
-            X (float or np.float64 array): The instance, holding exactly one value, e.g. a scalar or an array of shape (1,) or (1, 1).
-
-        Returns:
-            float: The value of the instance.
-
-        Raises:
-            ValueError: If the instance does not hold exactly one value, or if the value is NaN, which has no quantization level.
-        """
-        values = np.asarray(X, dtype=np.float64).ravel()
-        if values.size != 1:
-            raise ValueError(
-                "RelativeEntropy is univariate: expected an instance with one value, "
-                f"got an instance of shape {np.shape(X)}."
-            )
-
-        x = float(values[0])
-        if math.isnan(x):
-            raise ValueError("RelativeEntropy does not accept NaN values.")
-
-        return x
+        return check_univariate(X, "RelativeEntropy", reject_nan=True)
 
     def _closes_window(self, position):
         """Whether the value at `position` in the stream closes a tested window: the window must

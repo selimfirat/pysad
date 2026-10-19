@@ -1,7 +1,7 @@
 Detector,Series,Standard,Low false alerts,Low misses,AUROC,Time (ms),Commit
-:class:`~pysad.models.RelativeEntropy`,52,59.1,53.6,62.6,0.504,0.39,`8d55a4a <https://github.com/selimfirat/pysad/commit/8d55a4a>`__
-:class:`~pysad.models.KNNCAD`,52,58.4,44.3,65.1,0.563,0.63,`8d55a4a <https://github.com/selimfirat/pysad/commit/8d55a4a>`__
-:class:`~pysad.models.SeasonalESD`,5,24.9,0.0,40.8,0.494,13.07,`8d55a4a <https://github.com/selimfirat/pysad/commit/8d55a4a>`__
-:class:`~pysad.models.MedianAbsoluteDeviation`,52,0.0,0.0,21.6,0.544,0.10,`8d55a4a <https://github.com/selimfirat/pysad/commit/8d55a4a>`__
-:class:`~pysad.models.StandardAbsoluteDeviation`,52,0.0,0.0,24.5,0.541,0.01,`8d55a4a <https://github.com/selimfirat/pysad/commit/8d55a4a>`__
-:class:`~pysad.models.SeasonalHybridESD`,5,0.0,0.0,0.0,0.500,13.13,`8d55a4a <https://github.com/selimfirat/pysad/commit/8d55a4a>`__
+:class:`~pysad.models.RelativeEntropy`,52,59.1,53.6,62.6,0.504,0.20,`b6b58d3 <https://github.com/selimfirat/pysad/commit/b6b58d3>`__
+:class:`~pysad.models.KNNCAD`,52,58.4,44.3,65.1,0.563,0.33,`b6b58d3 <https://github.com/selimfirat/pysad/commit/b6b58d3>`__
+:class:`~pysad.models.SeasonalESD`,5,24.9,0.0,40.8,0.494,13.07,`708cc07 <https://github.com/selimfirat/pysad/commit/708cc07>`__
+:class:`~pysad.models.MedianAbsoluteDeviation`,52,0.0,0.0,21.6,0.544,0.05,`b6b58d3 <https://github.com/selimfirat/pysad/commit/b6b58d3>`__
+:class:`~pysad.models.StandardAbsoluteDeviation`,52,0.0,0.0,24.5,0.541,0.01,`b6b58d3 <https://github.com/selimfirat/pysad/commit/b6b58d3>`__
+:class:`~pysad.models.SeasonalHybridESD`,5,0.0,0.0,0.0,0.500,13.13,`708cc07 <https://github.com/selimfirat/pysad/commit/708cc07>`__

@@ -1,4 +1,7 @@
-"""Benchmark the multivariate detectors and the calibrators of PySAD on the datasets of ``pysad.utils.Data``.
+"""Benchmark the detectors and the calibrators of PySAD on the datasets of ``pysad.utils.Data``.
+
+The multivariate detectors and the calibrators run on the ODDS datasets, and the univariate
+detectors on the series of the Numenta Anomaly Benchmark (NAB).
 
 Run it from the repository root:
 
@@ -11,6 +14,7 @@ The results go to docs/benchmark/, which docs/benchmark.rst shows.
 
 import argparse
 import csv
+import functools
 import os
 import subprocess
 import sys
@@ -67,6 +71,63 @@ SHORT_NAMES = {
     "LocalOutlierProbability": "LoOP",
     "RobustRandomCutForest": "RRCF",
 }
+
+
+# The univariate detectors run once on each NAB series with anomalies, in the order of the file,
+# because none of them draws random numbers. Each detector gets its defaults, plus the arguments
+# that it requires. A series is scaled to [0, 1].
+UNIVARIATE = {
+    # KNNCAD learns during its probationary period, which is set to the warm-up.
+    "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=warmup(n)),
+    "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
+    "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
+    "StandardAbsoluteDeviation": lambda n, period: models.StandardAbsoluteDeviation(),
+    # A window of 3 periods, because R's stl() needs more than 2 periods, and at most 10% of the
+    # window as anomalies, the default of the R package of the paper.
+    "SeasonalESD": lambda n, period: models.SeasonalESD(period, 3 * period, int(0.3 * period)),
+    "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(
+        period, 3 * period, int(0.3 * period)
+    ),
+}
+# The ESD detectors need the period of a series, so they run only on these series. Each period is a
+# day, where the autocorrelation at a lag of one day is at least 0.5.
+PERIODS = {
+    "nab/artificialWithAnomaly/art_daily_flatmiddle.csv": 288,
+    "nab/artificialWithAnomaly/art_daily_jumpsdown.csv": 288,
+    "nab/artificialWithAnomaly/art_daily_jumpsup.csv": 288,
+    "nab/artificialWithAnomaly/art_daily_nojump.csv": 288,
+    "nab/realAWSCloudwatch/ec2_cpu_utilization_53ea38.csv": 288,
+    "nab/realAWSCloudwatch/grok_asg_anomaly.csv": 288,
+    "nab/realAWSCloudwatch/rds_cpu_utilization_cc0c53.csv": 288,
+    "nab/realAWSCloudwatch/rds_cpu_utilization_e47b3b.csv": 288,
+    "nab/realKnownCause/cpu_utilization_asg_misconfiguration.csv": 288,
+    "nab/realKnownCause/ambient_temperature_system_failure.csv": 24,
+    "nab/realKnownCause/nyc_taxi.csv": 48,
+    "nab/realAdExchange/exchange-2_cpc_results.csv": 24,
+    "nab/realAdExchange/exchange-2_cpm_results.csv": 24,
+    "nab/realAdExchange/exchange-3_cpm_results.csv": 24,
+}
+SEASONAL = ["SeasonalESD", "SeasonalHybridESD"]
+# The tables of the univariate page use these names, which are common in the papers, to fit the page.
+UNIVARIATE_SHORT_NAMES = {
+    "MedianAbsoluteDeviation": "MAD",
+    "RelativeEntropy": "RE",
+    "StandardAbsoluteDeviation": "SAD",
+    "SeasonalESD": "S-ESD",
+    "SeasonalHybridESD": "S-H-ESD",
+}
+
+
+@functools.cache
+def nab_series():
+    """The NAB series that have anomalies. AUROC and AUPR need both kinds of points."""
+    return [name for name in Data.datasets("nab") if Data().get_data(name)[1].any()]
+
+
+def series_of(detector):
+    return list(PERIODS) if detector in SEASONAL else nab_series()
+
+
 # Each calibrator, with its defaults, turns the scores of every run into alerts at each threshold,
 # as the alerts guide does: an alert when the calibrated score is at least the threshold.
 CALIBRATORS = {
@@ -96,8 +157,31 @@ def load(dataset, seed):
     return Data().get_stream(f"{dataset}.mat", random_state=seed, max_points=MAX_POINTS, scale=True)
 
 
+def run_univariate(series, detector):
+    X, y = Data().get_data(series)
+    span = X.max() - X.min()
+    X = (X - X.min()) / (span if span > 0 else 1.0)
+    model = UNIVARIATE[detector](len(X), PERIODS.get(series))
+    start = time.perf_counter()
+    with np.errstate(all="ignore"):
+        scores = np.array([float(model.fit_score_partial(x)) for x in X])
+    seconds = time.perf_counter() - start
+    valid = np.isfinite(scores).all()
+    scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
+    return {
+        "dataset": series,
+        "detector": detector,
+        "seed": 0,
+        "auroc": round(roc_auc_score(y, scores), 4) if valid else np.nan,
+        "aupr": round(average_precision_score(y, scores), 4) if valid else np.nan,
+        "ms_per_point": round(1000 * seconds / len(X), 3),
+    }
+
+
 def run(job):
     dataset, detector, seed = job
+    if detector in UNIVARIATE:
+        return run_univariate(dataset, detector)
     X, y = load(dataset, seed)
     fix_seed(seed)
     model = DETECTORS[detector](X, seed)
@@ -156,9 +240,18 @@ def write_csv(name, header, rows):
 
 
 def write_tables(results):
-    detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
-    rows = sorted(results.values(), key=lambda r: (DATASETS.index(r["dataset"]), r["detector"]))
+    rows = sorted(
+        results.values(),
+        key=lambda r: (
+            DATASETS.index(r["dataset"]) if r["dataset"] in DATASETS else len(DATASETS),
+            r["dataset"],
+            r["detector"],
+        ),
+    )
     write_csv("results.csv", FIELDS, [[r.get(f, "") for f in FIELDS] for r in rows])
+    write_univariate_tables({k: r for k, r in results.items() if k[1] in UNIVARIATE})
+    results = {k: r for k, r in results.items() if k[1] in DETECTORS}
+    detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
 
     def mean(metric, dataset, detector):
         return np.mean(
@@ -190,13 +283,7 @@ def write_tables(results):
                 f"{auroc[i]:.3f}",
                 f"{aupr[i]:.3f}",
                 f"{ms[i]:.2f}",
-                ", ".join(
-                    f"`{c} <{COMMIT_URL}{c.removesuffix('-dirty')}>`__"
-                    for c in sorted(
-                        {r.get("commit") or "" for k, r in results.items() if k[1] == detectors[i]}
-                    )
-                    if c
-                ),
+                commit_links(results, detectors[i]),
             ]
             for i in order
         ],
@@ -244,6 +331,63 @@ def write_tables(results):
         ["Dataset", "Points", "Points used", "Points evaluated", "Features", "Anomalies (%)"],
         datasets,
     )
+
+
+def commit_links(results, detector):
+    """Links to the commits that gave the results of a detector."""
+    commits = sorted({r.get("commit") or "" for k, r in results.items() if k[1] == detector} - {""})
+    return ", ".join(f"`{c} <{COMMIT_URL}{c.removesuffix('-dirty')}>`__" for c in commits)
+
+
+def write_univariate_tables(results):
+    """The tables of the univariate page: a summary, the seasonal series and each series."""
+    detectors = [d for d in UNIVARIATE if any(k[1] == d for k in results)]
+    if not detectors:
+        return
+
+    def value(series, detector, metric):
+        row = results.get((series, detector, 0))
+        return number(row[metric]) if row else np.nan
+
+    def mean(detector, metric, series):
+        return np.nanmean([value(s, detector, metric) for s in series])
+
+    order = sorted(detectors, key=lambda d: -mean(d, "auroc", series_of(d)))
+    write_csv(
+        "univariate.csv",
+        ["Detector", "Series", "Mean AUROC", "Mean AUPR", "Time per point (ms)", "Commit"],
+        [
+            [
+                f":class:`~pysad.models.{d}`",
+                len(series_of(d)),
+                f"{mean(d, 'auroc', series_of(d)):.3f}",
+                f"{mean(d, 'aupr', series_of(d)):.3f}",
+                f"{np.median([number(r['ms_per_point']) for k, r in results.items() if k[1] == d]):.2f}",
+                commit_links(results, d),
+            ]
+            for d in order
+        ],
+    )
+    write_csv(
+        "univariate_seasonal.csv",
+        ["Detector", "Mean AUROC", "Mean AUPR"],
+        [
+            [
+                f":class:`~pysad.models.{d}`",
+                f"{mean(d, 'auroc', PERIODS):.3f}",
+                f"{mean(d, 'aupr', PERIODS):.3f}",
+            ]
+            for d in sorted(detectors, key=lambda d: -mean(d, "auroc", PERIODS))
+        ],
+    )
+    rows = []
+    for series in nab_series():
+        cells = [f"{value(series, d, 'auroc'):.3f}" for d in order]
+        best = max((c for c in cells if c != "nan"), key=float)
+        cells = ["" if c == "nan" else f"**{c}**" if c == best else c for c in cells]
+        rows.append([series.removesuffix(".csv").split("/")[-1], PERIODS.get(series, ""), *cells])
+    header = [UNIVARIATE_SHORT_NAMES.get(d, d) for d in order]
+    write_csv("univariate_auroc.csv", ["Series", "Period", *header], rows)
 
 
 def number(value):
@@ -305,7 +449,7 @@ def changed_detectors(base):
     files = git("diff", "--name-only", base).split()
     common = pysad_files([Data, fix_seed, *CALIBRATORS.values()])
     if common & set(files) or "benchmarks/benchmark.py" in files or "pyproject.toml" in files:
-        return list(DETECTORS)
+        return [*DETECTORS, *UNIVARIATE]
     edited = set()  # detectors whose committed results changed, so that every row comes from a run
     if "docs/benchmark/results.csv" in files:
         before = {
@@ -315,7 +459,11 @@ def changed_detectors(base):
             )
         }
         edited = {k[1] for k, row in read_results().items() if before.get(k) != row}
-    return [d for d in DETECTORS if pysad_files([getattr(models, d)]) & set(files) or d in edited]
+    return [
+        d
+        for d in [*DETECTORS, *UNIVARIATE]
+        if pysad_files([getattr(models, d)]) & set(files) or d in edited
+    ]
 
 
 def pysad_files(objects):
@@ -354,19 +502,22 @@ def main():
     parser.add_argument("--jobs", type=int, default=os.cpu_count())
     args = parser.parse_args()
 
-    detectors = args.detectors.split(",") if args.detectors else list(DETECTORS)
+    detectors = args.detectors.split(",") if args.detectors else [*DETECTORS, *UNIVARIATE]
     if args.check:
         detectors = changed_detectors(args.check)
     if args.check is not None:
         print("Detectors to check:", ", ".join(detectors) or "none")
-    unknown = set(detectors) - set(DETECTORS)
+    unknown = set(detectors) - set(DETECTORS) - set(UNIVARIATE)
     if unknown:
         parser.error(f"unknown detectors: {', '.join(sorted(unknown))}")
 
     for dataset in DATASETS:  # download each file once, before the workers start
         Data().get_data(f"{dataset}.mat")
+    nab_series()
     seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else SEEDS
-    jobs = [(ds, d, s) for d in detectors for ds in DATASETS for s in seeds]
+    jobs = [(ds, d, s) for d in detectors if d in DETECTORS for ds in DATASETS for s in seeds]
+    if 0 in seeds:  # the univariate detectors are not random, so they run once, with seed 0
+        jobs += [(series, d, 0) for d in detectors if d in UNIVARIATE for series in series_of(d)]
     with ProcessPoolExecutor(args.jobs) as pool:
         new = {key(row): row for row in pool.map(run, jobs)}
 
@@ -381,7 +532,10 @@ def main():
             )
             or any(
                 not np.isclose(
-                    number(results[k].get(f)), row[f], atol=ALERT_TOLERANCE, equal_nan=True
+                    number(results[k].get(f)),
+                    row.get(f, np.nan),
+                    atol=ALERT_TOLERANCE,
+                    equal_nan=True,
                 )
                 for f in ALERT_FIELDS
                 if f.endswith("false_alerts")

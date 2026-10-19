@@ -11,6 +11,7 @@ Run it from the repository root:
     python benchmarks/benchmark.py --detectors LODA,RSHash
     python benchmarks/benchmark.py --check origin/master  # rerun what changed, compare with the results
     python benchmarks/benchmark.py --parts drift          # only the streams with drift
+    python benchmarks/benchmark.py --ci base.csv --since origin/master  # the short run of CI
 
 The results go to docs/benchmark/, which docs/benchmark.rst shows.
 """
@@ -43,6 +44,11 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "benchmark"
 DATASETS = [name.removesuffix(".mat") for name in Data.datasets()]
 MAX_POINTS = 5000  # the first points of each shuffled stream
+# With --ci FILE, every run keeps only its first CI_POINTS points, and the results go to FILE
+# instead of docs/benchmark/. CI runs the code of the base branch and the code of the pull request
+# in this way, on the same machine, and compares the two files with --compare.
+CI_POINTS = 2000
+CI_FIELDS = ["dataset", "detector", "seed", "auroc", "aupr", "solved"]
 WARMUP_POINTS = 256  # the scores of the first points do not count, see warmup()
 # --check accepts this difference in AUROC. Other platforms round differently, and on a small
 # dataset that can swap one anomaly with one normal point. AUPR moves too much for such a swap.
@@ -200,14 +206,16 @@ def warmup(n):
     return min(WARMUP_POINTS, n // 4)
 
 
-def load(dataset, seed):
+def load(dataset, seed, points=None):
     if dataset in DRIFT:
         X, y = Data().get_data(dataset)
         step = -(-len(X) // DRIFT_POINTS)  # the smallest step that keeps at most DRIFT_POINTS
-        X, y = X[::step], y[::step]
+        X, y = X[::step][:points], y[::step][:points]
         mins, maxes = X.min(axis=0), X.max(axis=0)
         return (X - mins) / np.where(maxes > mins, maxes - mins, 1.0), y
-    return Data().get_stream(f"{dataset}.mat", random_state=seed, max_points=MAX_POINTS, scale=True)
+    return Data().get_stream(
+        f"{dataset}.mat", random_state=seed, max_points=points or MAX_POINTS, scale=True
+    )
 
 
 def nab_probation(n):
@@ -333,8 +341,9 @@ def read_nab():
         return {row["detector"]: row for row in csv.DictReader(f)}
 
 
-def run_univariate(series, detector):
+def run_univariate(series, detector, points=None):
     X, y = Data().get_data(series)
+    X, y = X[:points], y[:points]
     span = X.max() - X.min()
     X = (X - X.min()) / (span if span > 0 else 1.0)
     if detector in UNIVARIATE:
@@ -403,12 +412,12 @@ def run(job):
         return _run(*job)
 
 
-def _run(dataset, detector, seed):
+def _run(dataset, detector, seed, points):
     if dataset.startswith("ucr/"):
         return run_ucr(dataset, detector)
     if dataset.startswith("nab/"):
-        return run_univariate(dataset, detector)
-    X, y = load(dataset, seed)
+        return run_univariate(dataset, detector, points)
+    X, y = load(dataset, seed, points)
     fix_seed(seed)
     model = DETECTORS[detector](X, seed)
     start = time.perf_counter()
@@ -450,8 +459,7 @@ def key(row):
     return row["dataset"], row["detector"], int(row["seed"])
 
 
-def read_results():
-    path = OUT / "results.csv"
+def read_results(path=OUT / "results.csv"):
     if not path.exists():
         return {}
     with open(path, newline="") as f:
@@ -719,28 +727,63 @@ def commit():
     return git("rev-parse", "--short", "HEAD").strip() + ("-dirty" if dirty else "")
 
 
-def changed_detectors(base):
-    """The detectors whose results a change since ``base`` can move."""
+def changed_detectors(base, path=None):
+    """The detectors whose results a change since ``base`` can move.
+
+    With ``path``, also the detectors whose committed results in ``path`` changed since ``base``.
+    """
     files = git("diff", "--name-only", base).split()
     common = pysad_files([Data, fix_seed, ShingleTransformer, *CALIBRATORS.values()])
     if common & set(files) or "benchmarks/benchmark.py" in files or "pyproject.toml" in files:
         return [*DETECTORS, *UNIVARIATE]
     edited = set()  # detectors whose committed results changed, so that every row comes from a run
-    if "docs/benchmark/results.csv" in files:
+    name = path and path.relative_to(ROOT).as_posix()
+    if name in files:
         before = {
-            key(row): row
-            for row in csv.DictReader(
-                git("show", f"{base}:docs/benchmark/results.csv").splitlines()
-            )
+            key(row): row for row in csv.DictReader(git("show", f"{base}:{name}").splitlines())
         }
         edited = {
-            k[1].removesuffix(SHINGLED) for k, row in read_results().items() if before.get(k) != row
+            k[1].removesuffix(SHINGLED)
+            for k, row in read_results(path).items()
+            if before.get(k) != row
         }
     return [
         d
         for d in [*DETECTORS, *UNIVARIATE]
         if pysad_files([getattr(models, d)]) & set(files) or d in edited
     ]
+
+
+def compare(before, after):
+    """Prints the runs whose AUROC or solved series differ between two --ci runs.
+
+    In GitHub Actions, it also adds them to the summary of the job as a table.
+    """
+    moved = []
+    for k, row in sorted(after.items()):
+        old = before.get(k)
+        if old is None:
+            moved.append((k, "new", row["auroc"]))
+        elif not np.isclose(
+            number(old["auroc"]), row["auroc"], atol=TOLERANCE, equal_nan=True
+        ) or not np.isclose(number(old.get("solved")), row.get("solved", np.nan), equal_nan=True):
+            moved.append((k, old["auroc"], row["auroc"]))
+    lines = [f"| {k[1]} | {k[0]} | {a} | {b} |" for k, a, b in moved]
+    report = (
+        [
+            f"{len(moved)} of {len(after)} runs moved.",
+            "",
+            "| Detector | Dataset | AUROC before | AUROC after |",
+            "| --- | --- | --- | --- |",
+            *lines,
+        ]
+        if moved
+        else [f"No run moved, out of {len(after)}."]
+    )
+    print("\n".join(report))
+    if "GITHUB_STEP_SUMMARY" in os.environ:
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write("\n".join(report) + "\n")
 
 
 def pysad_files(objects):
@@ -779,14 +822,30 @@ def main():
         "--parts",
         help=f"comma-separated parts of the benchmark (default: all): {', '.join(PARTS)}",
     )
+    parser.add_argument(
+        "--ci",
+        metavar="FILE",
+        help=f"run each dataset on its first {CI_POINTS} points, without UCR, and write the "
+        "results to FILE instead of docs/benchmark/",
+    )
+    parser.add_argument(
+        "--since", metavar="BASE", help="run only the detectors that changed since BASE"
+    )
+    parser.add_argument(
+        "--compare",
+        metavar="FILE",
+        help="with --ci, print the AUROC of each run that differs from FILE, a file of another --ci run",
+    )
     parser.add_argument("--jobs", type=int, default=os.cpu_count())
     args = parser.parse_args()
+    path = OUT / "results.csv"
+    points = CI_POINTS if args.ci else None
 
     detectors = args.detectors.split(",") if args.detectors else [*DETECTORS, *UNIVARIATE]
-    if args.check:
-        detectors = changed_detectors(args.check)
-    if args.check is not None:
-        print("Detectors to check:", ", ".join(detectors) or "none")
+    if args.check or args.since:
+        detectors = changed_detectors(args.check or args.since, None if args.ci else path)
+    if args.check is not None or args.since:
+        print("Detectors to run:", ", ".join(detectors) or "none")
     unknown = set(detectors) - set(DETECTORS) - set(UNIVARIATE)
     if unknown:
         parser.error(f"unknown detectors: {', '.join(sorted(unknown))}")
@@ -801,26 +860,38 @@ def main():
     if "odds" in parts:
         for dataset in DATASETS:
             Data().get_data(f"{dataset}.mat")
-        jobs += [(ds, d, 0) for d in multivariate for ds in DATASETS]
+        jobs += [(ds, d, 0, points) for d in multivariate for ds in DATASETS]
     if {"univariate", "nab", "shingles"} & set(parts):
         for series in nab_series():
             Data().get_data(series)
     if "univariate" in parts:
-        jobs += [(series, d, 0) for d in univariate for series in series_of(d)]
-        jobs += [(s, d, 0) for d in univariate if d not in SEASONAL for s in ucr_series()]
+        jobs += [(series, d, 0, points) for d in univariate for series in series_of(d)]
+        if not args.ci:  # the training part of most UCR series is longer than CI_POINTS
+            jobs += [(s, d, 0, None) for d in univariate if d not in SEASONAL for s in ucr_series()]
     if "drift" in parts:
         for stream in DRIFT:
             Data().get_data(stream)
-        jobs += [(stream, d, 0) for d in multivariate for stream in DRIFT]
+        jobs += [(stream, d, 0, points) for d in multivariate for stream in DRIFT]
     if "nab" in parts:
-        jobs += [(series, d, 0) for d in multivariate for series in nab_series()]
+        jobs += [(series, d, 0, points) for d in multivariate for series in nab_series()]
     if "shingles" in parts:
-        jobs += [(series, d + SHINGLED, 0) for d in multivariate for series in nab_series()]
+        jobs += [(series, d + SHINGLED, 0, points) for d in multivariate for series in nab_series()]
     with ProcessPoolExecutor(args.jobs) as pool:
         new = {key(row): row for row in pool.map(run, jobs)}
-    nab = nab_rows(new)
+    nab = {} if args.ci else nab_rows(new)  # the NAB score needs the whole series
+    for row in new.values():
+        row.pop("_nab", None)
 
-    results = read_results()
+    if args.ci:
+        with open(args.ci, "w", newline="") as f:
+            writer = csv.writer(f, lineterminator="\n")
+            writer.writerow(CI_FIELDS)
+            writer.writerows([r.get(f, "") for f in CI_FIELDS] for _, r in sorted(new.items()))
+        if args.compare:
+            compare(read_results(Path(args.compare)), new)
+        return
+
+    results = read_results(path)
     if args.check is not None:
         changed = [
             (k, results.get(k), row)
@@ -837,7 +908,7 @@ def main():
                     equal_nan=True,
                 )
                 for f in ALERT_FIELDS
-                if f.endswith("false_alerts")
+                if f.endswith("false_alerts") and f in results[k]
             )
             or not np.isclose(
                 number(results[k].get("solved")), row.get("solved", np.nan), equal_nan=True

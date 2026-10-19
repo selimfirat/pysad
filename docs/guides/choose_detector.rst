@@ -37,7 +37,7 @@ In the table, a window is the set of the most recent points that a detector keep
      - :class:`~pysad.models.integrations.ReferenceWindowModel`
      - Fits the model again on a sliding window. See :doc:`pyod`
 
-The table follows the design of each method. It is not a benchmark ranking. :doc:`/detectors` lists every detector with its input, its memory and its paper. The :doc:`benchmark </benchmark>` gives the results of each multivariate detector on 17 datasets.
+The table follows the design of each method. It is not a benchmark ranking. :doc:`/detectors` lists every detector with its input, its memory and its paper. The :doc:`benchmark </benchmark>` gives the results of each multivariate detector on |num_datasets| datasets.
 
 Compare the candidates
 ----------------------

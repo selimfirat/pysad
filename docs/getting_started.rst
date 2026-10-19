@@ -126,7 +126,7 @@ After the warm-up, the stream has 36 anomalies, so at this threshold the detecto
 Try real data
 -------------
 
-:class:`~pysad.utils.Data` gives you 17 labeled benchmark datasets (standard datasets for comparing detectors). It downloads each dataset the first time that you use it. Then it keeps a copy in ``~/.cache/pysad``.
+:class:`~pysad.utils.Data` gives you |num_datasets| labeled benchmark datasets (standard datasets for comparing detectors). It downloads each dataset the first time that you use it. Then it keeps a copy in ``~/.cache/pysad``.
 
 .. code-block:: python
 

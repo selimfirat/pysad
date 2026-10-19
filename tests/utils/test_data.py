@@ -1,3 +1,4 @@
+import hashlib
 import io
 import os
 import tempfile
@@ -6,6 +7,7 @@ import urllib.error
 import numpy as np
 import pytest
 
+import pysad.utils.data
 from pysad.utils.data import Data
 
 
@@ -57,9 +59,8 @@ def test_get_iterator(monkeypatch):
         assert y in [0, 1, 2]
 
 
-def test_get_data_files():
-    d = Data()
-    files = d._get_data_files()
+def test_datasets():
+    files = Data.datasets()
     assert isinstance(files, list)
     assert len(files) == 17
     assert "arrhythmia.mat" in files
@@ -67,25 +68,34 @@ def test_get_data_files():
     assert all(f.endswith(".mat") for f in files)
 
 
-def test_get_iterator_with_seed(monkeypatch):
-    """Test get_iterator with seed parameter to ensure np.random.seed is called."""
+def test_get_iterator_random_state_shuffles_without_the_global_state():
+    """A random_state gives the same order each time, and the global random state stays as it was."""
     d = Data()
-    d.get_data = lambda data_file, download=True: (np.ones((3, 2)), np.arange(3))
+    d.get_data = lambda data_file, download=True: (np.arange(20.0).reshape(10, 2), np.arange(10))
+    np.random.seed(0)
+    before = np.random.get_state()[1].copy()
 
-    # Mock np.random.seed to track if it's called
-    seed_called = []
-    original_seed = np.random.seed
+    first = [label for _, label in d.get_iterator("dummy.txt", random_state=42)]
+    second = [label for _, label in d.get_iterator("dummy.txt", random_state=42)]
 
-    def mock_seed(seed):
-        seed_called.append(seed)
-        original_seed(seed)
+    assert first == second
+    assert sorted(first) == list(range(10))
+    np.testing.assert_array_equal(np.random.get_state()[1], before)
 
-    monkeypatch.setattr("numpy.random.seed", mock_seed)
 
-    # Test with seed
-    it = d.get_iterator("dummy.txt", shuffle=False, seed=42)
-    list(it)  # Consume iterator
-    assert 42 in seed_called
+def test_get_stream_keeps_shuffles_and_scales():
+    """get_stream is get_iterator as arrays, cut to max_points and scaled to [0, 1]."""
+    d = Data()
+    X = np.array([[0.0, 5.0], [2.0, 5.0], [4.0, 5.0], [6.0, 5.0], [8.0, 5.0]])
+    d.get_data = lambda data_file, download=True: (X, np.arange(5))
+
+    Xs, ys = d.get_stream("dummy.txt", random_state=1, max_points=3, scale=True)
+    order = [label for _, label in d.get_iterator("dummy.txt", random_state=1)][:3]
+
+    np.testing.assert_array_equal(ys, order)
+    kept = X[order, 0]
+    np.testing.assert_array_equal(Xs[:, 0], (kept - kept.min()) / (kept.max() - kept.min()))
+    np.testing.assert_array_equal(Xs[:, 1], 0.0)  # a constant feature becomes 0
 
 
 def test_get_iterator_without_seed(monkeypatch):
@@ -131,10 +141,9 @@ def test_load_via_txt_method():
     os.remove(f.name)
 
 
-def test_get_data_files_content():
-    """Test that _get_data_files returns expected ODDS dataset names."""
-    d = Data()
-    files = d._get_data_files()
+def test_datasets_content():
+    """Test that datasets returns the expected ODDS dataset names."""
+    files = Data.datasets()
 
     expected_files = [
         "arrhythmia.mat",
@@ -182,6 +191,11 @@ def test_get_data_download_and_cache(tmp_path, monkeypatch):
         return DummyResponse(b"MATLAB dummy content")
 
     monkeypatch.setattr("urllib.request.urlopen", dummy_urlopen)
+    monkeypatch.setitem(
+        pysad.utils.data._CHECKSUMS,
+        "cardio.mat",
+        hashlib.sha256(b"MATLAB dummy content").hexdigest(),
+    )
 
     data = Data()
     target_file = tmp_path / "cardio.mat"
@@ -242,3 +256,43 @@ def test_explicit_data_base_path_wins(tmp_path):
     custom_dir.mkdir()
     d = Data(data_base_path=str(custom_dir))
     assert d.data_base_path == str(custom_dir)
+
+
+def test_download_with_a_wrong_checksum_raises_and_leaves_no_file(tmp_path, monkeypatch):
+    """A download that does not match the checksum of the dataset is not used or kept."""
+
+    class DummyResponse(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda req: DummyResponse(b"changed content"))
+    data = Data(data_base_path=str(tmp_path))
+
+    with pytest.raises(ValueError, match="SHA-256"):
+        data.get_data("cardio.mat")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_describe_gives_the_facts_of_a_dataset():
+    d = Data()
+    d.get_data = lambda data_file, download=True: (
+        np.zeros((8, 3)),
+        np.array([0, 0, 1, 0, 0, 0, 1, 0]),
+    )
+
+    assert d.describe("dummy.txt") == {"points": 8, "features": 3, "anomaly_rate": 0.25}
+
+
+def test_readme_counts_the_datasets_of_data():
+    """The docs take the number of datasets from Data.datasets(), and the README must match it."""
+    import pathlib
+    import re
+
+    readme = (pathlib.Path(__file__).parents[2] / "README.md").read_text()
+    counts = {int(n) for n in re.findall(r"(\d+) labeled", readme)}
+    counts |= {int(n) for n in re.findall(r"on (\d+) datasets", readme)}
+
+    assert counts == {len(Data.datasets())}

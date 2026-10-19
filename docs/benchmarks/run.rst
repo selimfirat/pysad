@@ -12,7 +12,7 @@ Install PySAD in editable mode, as :doc:`/contributing` shows. Then run the benc
 
    $ python benchmarks/benchmark.py
 
-The first run downloads the 17 ODDS datasets into ``~/.cache/pysad``. The script writes the CSV tables to ``docs/benchmark/``, which :doc:`/benchmark` and :doc:`methodology` render. A full run takes about 2.5 CPU-hours, which is 21 minutes on 10 cores. The ``--jobs`` option sets the number of processes. The default is the number of CPU cores.
+The first run downloads the |num_datasets| ODDS datasets into ``~/.cache/pysad``. The script writes the CSV tables to ``docs/benchmark/``, which :doc:`/benchmark` and :doc:`methodology` render. A full run takes about 2.5 CPU-hours, which is 21 minutes on 10 cores. The ``--jobs`` option sets the number of processes. The default is the number of CPU cores.
 
 Run selected detectors
 ----------------------

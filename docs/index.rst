@@ -106,7 +106,7 @@ A batch detector needs the whole dataset before it can score a point. A stream d
 
       :doc:`Benchmarks <benchmark>`
 
-      AUROC, AUPR and time per point for all 10 multivariate detectors across 17 labeled datasets.
+      AUROC, AUPR and time per point for all 10 multivariate detectors across |num_datasets| labeled datasets.
 
    .. container:: card
 
@@ -137,7 +137,7 @@ What PySAD contains
 
       .. rst-class:: number
 
-         17
+         |num_datasets|
 
       labeled :doc:`benchmark datasets <benchmark>` evaluated across 5 seeds
 
@@ -157,7 +157,7 @@ What PySAD contains
 
       `publications that cite PySAD <https://scholar.google.com/scholar?cites=3884618599898298487>`_
 
-- The detectors use robust statistics, random forests, random projections and other methods. :doc:`detectors` lists each detector with its method, input and memory, and the :doc:`benchmark <benchmark>` compares the multivariate detectors on 17 datasets.
+- The detectors use robust statistics, random forests, random projections and other methods. :doc:`detectors` lists each detector with its method, input and memory, and the :doc:`benchmark <benchmark>` compares the multivariate detectors on |num_datasets| datasets.
 - The conformal calibrator converts each raw score into the fraction of recent scores that it exceeds. As a result, one alert threshold works for every detector.
 - Streamers replay arrays and DataFrames as streams.
 - Metrics update after every point. :doc:`guides/evaluate` explains each metric.

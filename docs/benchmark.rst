@@ -1,7 +1,7 @@
 Multivariate detectors
 ======================
 
-This page compares the 10 multivariate detectors of PySAD on 17 labeled datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ repository. A multivariate detector takes a vector of features for each point. Each detector uses its default parameters and scores each point before learning from it (``fit_score_partial``).
+This page compares the 10 multivariate detectors of PySAD on |num_datasets| labeled datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ repository. A multivariate detector takes a vector of features for each point. Each detector uses its default parameters and scores each point before learning from it (``fit_score_partial``).
 
 Use the results to find two or three candidates, and then compare those candidates on your own data as :doc:`guides/choose_detector` shows. For the alerts of the calibrators on the same runs, see :doc:`benchmarks/calibration`. For the evaluation protocol, dataset statistics and scope limitations, see :doc:`benchmarks/methodology`. To reproduce or update these tables, see :doc:`benchmarks/run`.
 
@@ -24,10 +24,10 @@ Summary
 The summary has one row for each detector, from the best mean rank to the worst. Detectors with the same mean rank are in the order of their mean AUROC, then their mean AUPR, then their time per point. It has these columns:
 
 Mean rank
-   The rank of a detector on a dataset is its position by AUROC, where 1 is the highest AUROC. The mean rank is the average of these ranks over the 17 datasets.
+   The rank of a detector on a dataset is its position by AUROC, where 1 is the highest AUROC. The mean rank is the average of these ranks over the |num_datasets| datasets.
 
 Mean AUROC and Mean AUPR
-   The averages over the 17 datasets and the 5 seeds.
+   The averages over the |num_datasets| datasets and the 5 seeds.
 
 Time per point
    The median time of one ``fit_score_partial`` call, in milliseconds. The runs shared one machine, so compare these times only with each other.

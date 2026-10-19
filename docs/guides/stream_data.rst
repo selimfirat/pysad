@@ -114,7 +114,7 @@ To stream a 1-D array with :class:`~pysad.utils.ArrayStreamer`, first reshape th
 Load a benchmark dataset
 ------------------------
 
-:class:`~pysad.utils.Data` loads 17 labeled datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ benchmark. To load a dataset, give its file name with the ``.mat`` suffix. The file names are ``arrhythmia.mat``, ``cardio.mat``, ``glass.mat``, ``ionosphere.mat``, ``letter.mat``, ``lympho.mat``, ``mnist.mat``, ``musk.mat``, ``optdigits.mat``, ``pendigits.mat``, ``pima.mat``, ``satellite.mat``, ``satimage-2.mat``, ``shuttle.mat``, ``vertebral.mat``, ``vowels.mat`` and ``wbc.mat``.
+:class:`~pysad.utils.Data` loads |num_datasets| labeled datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ benchmark. To load a dataset, give its file name with the ``.mat`` suffix. The file names are ``arrhythmia.mat``, ``cardio.mat``, ``glass.mat``, ``ionosphere.mat``, ``letter.mat``, ``lympho.mat``, ``mnist.mat``, ``musk.mat``, ``optdigits.mat``, ``pendigits.mat``, ``pima.mat``, ``satellite.mat``, ``satimage-2.mat``, ``shuttle.mat``, ``vertebral.mat``, ``vowels.mat`` and ``wbc.mat``.
 
 .. code-block:: python
 
@@ -126,7 +126,7 @@ Load a benchmark dataset
    for x, label in data.get_iterator("arrhythmia.mat"):  # one point at a time
        ...
 
-``get_iterator`` gives the points in a random order. To keep the order of the file, use ``get_iterator("arrhythmia.mat", shuffle=False)``.
+``get_iterator`` gives the points in a random order. To get the same order each time, give a seed: ``get_iterator("arrhythmia.mat", random_state=0)``. To keep the order of the file, use ``get_iterator("arrhythmia.mat", shuffle=False)``. ``Data.datasets()`` lists the datasets that ``Data`` can download.
 
 ``Data`` downloads a dataset the first time you use it. It caches the file in ``~/.cache/pysad``. To use a different folder, set the ``PYSAD_DATA_DIR`` environment variable. You can also give the folder to ``Data``: ``Data("path/to/folder")``.
 

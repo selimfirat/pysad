@@ -7,14 +7,16 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class ShingleTransformer(BaseTransformer):
-    """Turns each point into a shingle: the last ``shingle_size`` points of the stream side by side, oldest first.
+    """Turns each point into a shingle, which holds the point and the points just before it.
 
-    A detector of single points sees only the values of each point. With shingles, it also sees the recent history, so it can find a change of a pattern over time, for example a value that is normal at noon but not at midnight. The paper of :class:`~pysad.models.RobustRandomCutForest` shingles its streams in this way :cite:`guha2016robust`.
+    A shingle is the last ``shingle_size`` points of the stream in one vector, oldest first. A detector that gets single points sees only the values of each point. With shingles, the detector also sees the recent history. It can then find a change of a pattern over time, for example a value that is normal at noon but not at midnight. The paper of :class:`~pysad.models.RobustRandomCutForest` uses shingles in the same way :cite:`guha2016robust`.
 
-    Until ``shingle_size - 1`` points are fitted, a shingle has too few earlier points. Then the oldest point that the transformer has, or the new point itself, fills the missing positions, so that a shingle has no artificial jump. ``fit_transform_partial`` builds the shingle of a point from the points before it, and then fits the point.
+    At the start of the stream, the transformer has fewer earlier points than a shingle needs. Copies of the oldest point fill the missing positions, so the shingle has no artificial jump. Before the first fit, copies of the new point fill them.
+
+    ``fit_transform_partial`` builds the shingle of a point from the point and the points before it. Then it adds the point to the history. Thus a shingle never holds a later point.
 
     Args:
-        shingle_size (int): The number of consecutive points in a shingle, at least 1. A shingle of a point with ``d`` features has ``shingle_size * d`` features. 1 gives each point as it is.
+        shingle_size (int): The number of points in a shingle. It must be at least 1. For points with ``d`` features, a shingle has ``shingle_size * d`` features. A size of 1 gives each point unchanged.
 
     Raises:
         TypeError: If ``shingle_size`` is not an int.
@@ -30,6 +32,11 @@ class ShingleTransformer(BaseTransformer):
         self.shingle_size = int(shingle_size)
         self.recent = deque(maxlen=self.shingle_size - 1)
 
+    @property
+    def full(self):
+        """Whether the history holds ``shingle_size - 1`` points, so that a shingle needs no copies."""
+        return len(self.recent) == self.shingle_size - 1
+
     def _point(self, X):
         x = np.ravel(np.asarray(X, dtype=np.float64))
         if self.recent and x.shape != self.recent[0].shape:
@@ -40,7 +47,7 @@ class ShingleTransformer(BaseTransformer):
         return x
 
     def fit_partial(self, X):
-        """Adds the next point to the history of the shingles.
+        """Adds the next point to the history.
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.
@@ -49,13 +56,15 @@ class ShingleTransformer(BaseTransformer):
             object: self.
 
         Raises:
-            ValueError: If the point has a different number of features than the earlier points.
+            ValueError: If the point has another number of features than the earlier points.
         """
         self.recent.append(self._point(X).copy())
         return self
 
     def transform_partial(self, X):
-        """Returns the shingle that ends with the next point: the last ``shingle_size - 1`` fitted points, then the point.
+        """Returns the shingle that ends with the next point.
+
+        The shingle holds the last ``shingle_size - 1`` fitted points, and then the point. This method does not change the history.
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.
@@ -64,7 +73,7 @@ class ShingleTransformer(BaseTransformer):
             np.float64 array of shape (shingle_size * num_features,): The shingle, oldest point first.
 
         Raises:
-            ValueError: If the point has a different number of features than the earlier points.
+            ValueError: If the point has another number of features than the earlier points.
         """
         x = self._point(X)
         earlier = list(self.recent)
@@ -72,7 +81,7 @@ class ShingleTransformer(BaseTransformer):
         return np.concatenate([*[earlier[0] if earlier else x] * missing, *earlier, x])
 
     def fit_transform_partial(self, X):
-        """Returns the shingle that ends with the next point, and then adds the point to the history.
+        """Returns the shingle that ends with the next point. Then adds the point to the history.
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.
@@ -81,7 +90,7 @@ class ShingleTransformer(BaseTransformer):
             np.float64 array of shape (shingle_size * num_features,): The shingle, oldest point first.
 
         Raises:
-            ValueError: If the point has a different number of features than the earlier points.
+            ValueError: If the point has another number of features than the earlier points.
         """
         shingle = self.transform_partial(X)
         self.fit_partial(X)

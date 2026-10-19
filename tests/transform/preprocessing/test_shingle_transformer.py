@@ -66,3 +66,14 @@ def test_a_detector_scores_the_shingles_of_a_univariate_stream():
     scores = [model.fit_score_partial(transformer.fit_transform_partial(np.array([v]))) for v in x]
 
     assert np.argmax(scores[100:]) + 100 in range(200, 208)  # a shingle that holds the spike
+
+
+def test_full_tells_when_a_shingle_needs_no_copies():
+    transformer = ShingleTransformer(3)
+
+    assert not transformer.full
+    transformer.fit_partial(np.array([1.0]))
+    assert not transformer.full
+    transformer.fit_partial(np.array([2.0]))
+    assert transformer.full
+    assert ShingleTransformer(1).full

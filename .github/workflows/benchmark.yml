@@ -2,8 +2,9 @@ name: benchmark
 
 # Reruns the detectors that a pull request can change and fails if their results differ from
 # docs/benchmark/. benchmarks/benchmark.py --check picks the detectors from the changed files.
-# Each seed runs in its own job, because all the detectors take about 2 CPU-hours. The univariate
-# detectors and the streams with drift run only in the seed 0 job.
+# Each seed runs in its own job, because all the detectors take about 4 CPU-hours. The univariate
+# detectors, the streams with drift and the multivariate detectors on NAB run only in the seed 0
+# job, which takes the longest.
 on:
   pull_request:
     paths:
@@ -24,7 +25,7 @@ concurrency:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:

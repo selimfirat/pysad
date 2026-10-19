@@ -28,8 +28,10 @@ from types import ModuleType
 import numpy as np
 from scipy.stats import rankdata
 from sklearn.metrics import average_precision_score, roc_auc_score
+from threadpoolctl import threadpool_limits
 
 from pysad import models
+from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import (
     ConformalProbabilityCalibrator,
     GaussianTailProbabilityCalibrator,
@@ -127,6 +129,21 @@ def nab_series():
 
 def series_of(detector):
     return list(PERIODS) if detector in SEASONAL else nab_series()
+
+
+# The multivariate detectors also run on the NAB series with seed 0, once on the single values and
+# once on shingles of SHINGLE_SIZE points, which give them the recent values of the series. The
+# results name a run on shingles "<detector>+shingles".
+SHINGLE_SIZE = 10
+SHINGLED = "+shingles"
+NAB_DETECTORS = [*UNIVARIATE, *DETECTORS, *(d + SHINGLED for d in DETECTORS)]
+
+
+def label(detector):
+    """The name of a detector in the tables of the univariate page."""
+    if detector.endswith(SHINGLED):
+        return f":class:`~pysad.models.{detector.removesuffix(SHINGLED)}`, shingles"
+    return f":class:`~pysad.models.{detector}`"
 
 
 # The UCR series with at most this many points, 84 of the 250, keep the run short. The ESD detectors
@@ -316,7 +333,13 @@ def run_univariate(series, detector):
     X, y = Data().get_data(series)
     span = X.max() - X.min()
     X = (X - X.min()) / (span if span > 0 else 1.0)
-    model = UNIVARIATE[detector](len(X), PERIODS.get(series))
+    if detector in UNIVARIATE:
+        model = UNIVARIATE[detector](len(X), PERIODS.get(series))
+    else:
+        if detector.endswith(SHINGLED):
+            X = ShingleTransformer(SHINGLE_SIZE).fit_transform(X)
+        fix_seed(0)
+        model = DETECTORS[detector.removesuffix(SHINGLED)](X, 0)
     start = time.perf_counter()
     with np.errstate(all="ignore"):
         scores = np.array([float(model.fit_score_partial(x)) for x in X])
@@ -370,10 +393,16 @@ def run_ucr(series, detector):
 
 
 def run(job):
-    dataset, detector, seed = job
+    # One thread for BLAS and OpenMP in each worker, so that the workers do not compete for the cores
+    # and the times per point stay comparable. The scores do not change.
+    with threadpool_limits(1):
+        return _run(*job)
+
+
+def _run(dataset, detector, seed):
     if dataset.startswith("ucr/"):
         return run_ucr(dataset, detector)
-    if detector in UNIVARIATE:
+    if dataset.startswith("nab/"):
         return run_univariate(dataset, detector)
     X, y = load(dataset, seed)
     fix_seed(seed)
@@ -443,7 +472,7 @@ def write_tables(results, nab=None):
     )
     write_csv("results.csv", FIELDS, [[r.get(f, "") for f in FIELDS] for r in rows])
     write_univariate_tables(
-        {k: r for k, r in results.items() if k[1] in UNIVARIATE}, nab or read_nab()
+        {k: r for k, r in results.items() if k[0].startswith(("nab/", "ucr/"))}, nab or read_nab()
     )
     write_ranking({k: r for k, r in results.items() if k[0] in DRIFT}, DRIFT, "drift_")
     results = {k: r for k, r in results.items() if k[0] in DATASETS}
@@ -565,7 +594,7 @@ def commit_links(results, detector):
 
 def write_univariate_tables(results, nab):
     """The tables of the univariate page: a summary, and all the detectors on the seasonal series."""
-    detectors = [d for d in UNIVARIATE if d in nab and any(k[1] == d for k in results)]
+    detectors = [d for d in NAB_DETECTORS if d in nab and any(k[1] == d for k in results)]
     if not detectors:
         return
 
@@ -590,7 +619,7 @@ def write_univariate_tables(results, nab):
         ],
         [
             [
-                f":class:`~pysad.models.{d}`",
+                label(d),
                 len(series_of(d)),
                 *(f"{score(d, p):.1f}" for p in NAB_PROFILES),
                 f"{mean_auroc(d, series_of(d)):.3f}",
@@ -600,7 +629,7 @@ def write_univariate_tables(results, nab):
             for d in sorted(detectors, key=lambda d: -score(d, "standard"))
         ],
     )
-    ucr = [d for d in detectors if d not in SEASONAL]
+    ucr = [d for d in detectors if d in UNIVARIATE and d not in SEASONAL]
     write_csv(
         "univariate_ucr.csv",
         ["Detector", "Series", "Solved (%)", "AUROC"],
@@ -623,7 +652,7 @@ def write_univariate_tables(results, nab):
         ["Detector", "Standard", "AUROC"],
         [
             [
-                f":class:`~pysad.models.{d}`",
+                label(d),
                 f"{score(d, 'seasonal_standard'):.1f}",
                 f"{mean_auroc(d, PERIODS):.3f}",
             ]
@@ -689,7 +718,7 @@ def commit():
 def changed_detectors(base):
     """The detectors whose results a change since ``base`` can move."""
     files = git("diff", "--name-only", base).split()
-    common = pysad_files([Data, fix_seed, *CALIBRATORS.values()])
+    common = pysad_files([Data, fix_seed, ShingleTransformer, *CALIBRATORS.values()])
     if common & set(files) or "benchmarks/benchmark.py" in files or "pyproject.toml" in files:
         return [*DETECTORS, *UNIVARIATE]
     edited = set()  # detectors whose committed results changed, so that every row comes from a run
@@ -700,7 +729,9 @@ def changed_detectors(base):
                 git("show", f"{base}:docs/benchmark/results.csv").splitlines()
             )
         }
-        edited = {k[1] for k, row in read_results().items() if before.get(k) != row}
+        edited = {
+            k[1].removesuffix(SHINGLED) for k, row in read_results().items() if before.get(k) != row
+        }
     return [
         d
         for d in [*DETECTORS, *UNIVARIATE]
@@ -768,6 +799,13 @@ def main():
             for s in ucr_series()
         ]
         jobs += [(stream, d, 0) for d in detectors if d in DETECTORS for stream in DRIFT]
+        jobs += [
+            (series, variant, 0)
+            for d in detectors
+            if d in DETECTORS
+            for variant in (d, d + SHINGLED)
+            for series in nab_series()
+        ]
     with ProcessPoolExecutor(args.jobs) as pool:
         new = {key(row): row for row in pool.map(run, jobs)}
     nab = nab_rows(new)
@@ -832,7 +870,7 @@ def main():
     write_csv(
         "nab.csv",
         NAB_FIELDS,
-        [[nab[d].get(f, "") for f in NAB_FIELDS] for d in UNIVARIATE if d in nab],
+        [[nab[d].get(f, "") for f in NAB_FIELDS] for d in NAB_DETECTORS if d in nab],
     )
     write_tables(results, nab)
 

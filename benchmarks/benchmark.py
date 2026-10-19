@@ -52,17 +52,18 @@ ALERT_TOLERANCE = 0.02
 
 # The multivariate detectors also run on these streams in their time order, to show how they follow
 # drift. Each stream keeps every k-th point, so that at most DRIFT_POINTS points remain and every
-# drift of the stream stays in. The streams run with seed 0 only, to keep the run short.
-DRIFT = [
-    "kddcup99/http.csv",
-    "insects/abrupt.csv",
-    "insects/incremental.csv",
-    "insects/incremental_gradual.csv",
-    "insects/incremental_reoccurring.csv",
-    "smd/machine-1-1.txt",
-    "smd/machine-2-1.txt",
-    "smd/machine-3-1.txt",
-]
+# drift of the stream stays in. The streams run with seed 0 only, to keep the run short. The short
+# names fit the tables of the page.
+DRIFT = {
+    "kddcup99/http.csv": "KDD http",
+    "insects/abrupt.csv": "INSECTS A",
+    "insects/incremental.csv": "INSECTS I",
+    "insects/incremental_gradual.csv": "INSECTS IG",
+    "insects/incremental_reoccurring.csv": "INSECTS IR",
+    "smd/machine-1-1.txt": "SMD 1-1",
+    "smd/machine-2-1.txt": "SMD 2-1",
+    "smd/machine-3-1.txt": "SMD 3-1",
+}
 DRIFT_POINTS = 10_000
 
 
@@ -447,7 +448,7 @@ def write_tables(results, nab=None):
     )
     write_ranking({k: r for k, r in results.items() if k[0] in DRIFT}, DRIFT, "drift_")
     results = {k: r for k, r in results.items() if k[0] in DATASETS}
-    detectors = write_ranking(results, DATASETS, "")
+    detectors = write_ranking(results, {ds: ds for ds in DATASETS}, "")
 
     write_csv(
         "alerts.csv",
@@ -503,7 +504,10 @@ def write_tables(results, nab=None):
 
 
 def write_ranking(results, datasets, prefix):
-    """The summary, the AUROC and the AUPR tables of the multivariate detectors on ``datasets``."""
+    """The summary, the AUROC and the AUPR tables of the multivariate detectors.
+
+    ``datasets`` maps each dataset to its name in the tables.
+    """
     detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
     if not detectors:
         return detectors
@@ -548,7 +552,7 @@ def write_ranking(results, datasets, prefix):
         for ds, row in zip(datasets, table[:, order], strict=True):
             cells = [f"{v:.3f}" for v in row]
             best = f"{np.nanmax(row):.3f}"
-            rows.append([ds, *(f"**{c}**" if c == best else c for c in cells)])
+            rows.append([datasets[ds], *(f"**{c}**" if c == best else c for c in cells)])
         header = [SHORT_NAMES.get(detectors[i], detectors[i]) for i in order]
         write_csv(f"{prefix}{metric}.csv", ["Dataset", *header], rows)
     return detectors

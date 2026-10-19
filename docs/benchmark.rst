@@ -71,7 +71,7 @@ The points of the datasets above are in a random order, so they do not change ov
 - INSECTS :cite:`souza2020challenges`: 4 streams of optical sensor values of flying insects. A change of the temperature changes the flight of the insects, which gives abrupt, incremental, gradual and reoccurring drift. The southern house mosquito is the anomaly class, as in the ARCUS paper :cite:`yoon2022arcus`.
 - SMD :cite:`su2019robust`: 3 server machines, with one point of 38 metrics each minute.
 
-Each stream keeps every k-th point, so that it has at most 10,000 points and keeps all its drifts. The detectors run once, with seed 0. The columns are the same as in the tables above. :doc:`benchmarks/methodology` describes the streams.
+Each stream keeps every k-th point, so that it has at most 10,000 points and keeps all its drifts. The detectors run once, with seed 0. The columns are the same as in the tables above. In the tables of each stream, A, I, IG and IR are the abrupt, incremental, incremental and gradual, and incremental and reoccurring INSECTS streams. :doc:`benchmarks/methodology` describes the streams.
 
 .. csv-table::
    :file: benchmark/drift_summary.csv

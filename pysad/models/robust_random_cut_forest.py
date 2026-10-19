@@ -42,23 +42,29 @@ class _RCTree:
     @staticmethod
     def _cut(x, bbox, rng):
         # The InsertPoint cut: a dimension drawn in proportion to its span and a uniform value in it.
-        bbox_hat = np.empty(bbox.shape)
-        bbox_hat[0, :] = np.minimum(bbox[0, :], x)
-        bbox_hat[-1, :] = np.maximum(bbox[-1, :], x)
-        span = bbox_hat[-1, :] - bbox_hat[0, :]
+        # The trees run this for every node on every path, so it makes as few NumPy calls as it can.
+        high = np.maximum(bbox[-1], x)
+        # A leaf has a box of one row, where rrcf 0.4.4 writes the maximum over the minimum, so the
+        # span is 0 and the cut falls on the first feature. This keeps that behavior until #331.
+        low = high if len(bbox) == 1 else np.minimum(bbox[0], x)
+        span = high - low
         r = rng.uniform(0, span.sum())
-        span_sum = np.cumsum(span)
-        dim = int(np.argmax(span_sum >= r))
-        return dim, bbox_hat[0, dim] + span_sum[dim] - r
+        span_sum = span.cumsum()
+        # The first dimension whose cumulative span reaches r. span.sum() can round above the last
+        # cumulative span, and then no dimension reaches r, so the first one is taken, as argmax does.
+        dim = int(span_sum.searchsorted(r))
+        if dim == len(span_sum):
+            dim = 0
+        return dim, low[dim] + span_sum[dim] - r
 
     @staticmethod
-    def _children_bbox(node):
-        return np.vstack(
-            [
-                np.minimum(node.left.bbox[0, :], node.right.bbox[0, :]),
-                np.maximum(node.left.bbox[-1, :], node.right.bbox[-1, :]),
-            ]
-        )
+    def _children_bbox(node, out=None):
+        # The bounding box of the two children, written into ``out`` if it is given.
+        left, right = node.left.bbox, node.right.bbox
+        out = np.empty((2, left.shape[1])) if out is None else out
+        np.minimum(left[0], right[0], out=out[0])
+        np.maximum(left[-1], right[-1], out=out[1])
+        return out
 
     @staticmethod
     def _add_count(node, inc):
@@ -105,12 +111,10 @@ class _RCTree:
         bbox = branch.bbox = self._children_bbox(branch)
         node = parent
         while node is not None:
-            lt = bbox[0, :] < node.bbox[0, :]
-            gt = bbox[-1, :] > node.bbox[-1, :]
-            if not (lt.any() or gt.any()):
+            if not ((bbox[0] < node.bbox[0]).any() or (bbox[1] > node.bbox[1]).any()):
                 break
-            node.bbox[0, :][lt] = bbox[0, :][lt]
-            node.bbox[-1, :][gt] = bbox[-1, :][gt]
+            np.minimum(node.bbox[0], bbox[0], out=node.bbox[0])
+            np.maximum(node.bbox[1], bbox[1], out=node.bbox[1])
             node = node.parent
 
         self.leaves[index] = leaf
@@ -142,11 +146,9 @@ class _RCTree:
         # Shrink the bounding boxes that the forgotten point was on.
         node = grandparent
         while node is not None:
-            bbox = self._children_bbox(node)
-            if not ((node.bbox[0, :] == leaf.x) | (node.bbox[-1, :] == leaf.x)).any():
+            if not ((node.bbox[0] == leaf.x) | (node.bbox[1] == leaf.x)).any():
                 break
-            node.bbox[0, :] = bbox[0, :]
-            node.bbox[-1, :] = bbox[-1, :]
+            self._children_bbox(node, out=node.bbox)
             node = node.parent
 
     def codisp(self, leaf):

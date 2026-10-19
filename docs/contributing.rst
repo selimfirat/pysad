@@ -108,7 +108,7 @@ Check the change
 
       $ python benchmarks/benchmark.py --check origin/master
 
-   Then run the :doc:`benchmark` for the affected detectors, and commit ``docs/benchmark/``. The results record the commit that they ran on. Replace ``LODA,RSHash`` with the class names of the detectors:
+   Then run the :doc:`benchmark <benchmarks/run>` for the affected detectors, and commit ``docs/benchmark/``. The results record the commit that they ran on. Replace ``LODA,RSHash`` with the class names of the detectors:
 
    .. code-block:: console
 

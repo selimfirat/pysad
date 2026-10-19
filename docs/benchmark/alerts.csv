@@ -1,4 +1,4 @@
-Calibrator,Threshold,Expected false alerts,False alerts,Range over detectors,Precision,Recall,F1
+Calibrator,Threshold,Expected,False alerts,Range,Precision,Recall,F1
 :class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.95,0.050,0.027,0.018 to 0.046,0.423,0.274,0.251
 :class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.99,0.010,0.004,0.002 to 0.008,0.539,0.089,0.126
 :class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.995,0.005,0.001,0.001 to 0.002,0.547,0.030,0.051

@@ -219,9 +219,9 @@ def write_tables(results):
         [
             "Calibrator",
             "Threshold",
-            "Expected false alerts",
+            "Expected",
             "False alerts",
-            "Range over detectors",
+            "Range",
             "Precision",
             "Recall",
             "F1",

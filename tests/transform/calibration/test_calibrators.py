@@ -36,7 +36,7 @@ def test_conformal_calibrator_values():
 
     # One minus the conformal p-value: the fraction of the window below the target.
     for target, expected in [(0.0, 0.0), (5.5, 0.5), (10.0, 0.9)]:
-        calibrator = ConformalProbabilityCalibrator(windowed=True, window_size=300)
+        calibrator = ConformalProbabilityCalibrator(window_size=300)
         calibrator.fit(np.arange(1, 10, dtype=np.float64))
         assert calibrator.fit_transform_partial(target) == pytest.approx(expected)
 
@@ -57,7 +57,9 @@ def test_gaussian_tail_calibrator_global_statistics():
     scores = np.random.RandomState(0).normal(0, 10, 100)
     # A window smaller than the stream makes the windowed and global variance
     # differ, so this test fails if the variance meter is windowed (#107).
-    calibrator = GaussianTailProbabilityCalibrator(running_statistics=False, window_size=10)
+    calibrator = GaussianTailProbabilityCalibrator(
+        running_statistics=False, window_size=10, short_window_size=1
+    )
 
     for score in scores:
         calibrator.fit_partial(score)
@@ -80,7 +82,9 @@ def test_gaussian_tail_calibrator_running_statistics():
 
     window_size = 10
     scores = np.random.RandomState(0).normal(0, 10, 100)
-    calibrator = GaussianTailProbabilityCalibrator(running_statistics=True, window_size=window_size)
+    calibrator = GaussianTailProbabilityCalibrator(
+        running_statistics=True, window_size=window_size, short_window_size=1
+    )
 
     for score in scores:
         calibrator.fit_partial(score)
@@ -103,10 +107,65 @@ def test_gaussian_tail_calibrator_values():
     from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
 
     # The fitted scores have mean 0 and standard deviation 1.
-    calibrator = GaussianTailProbabilityCalibrator(running_statistics=False)
+    calibrator = GaussianTailProbabilityCalibrator(running_statistics=False, short_window_size=1)
     calibrator.fit(np.array([-1.0, 1.0]))
 
     # As for model scores, higher values mean more anomalous.
     assert calibrator.transform_partial(0.0) == pytest.approx(0.5)
     assert calibrator.transform_partial(3.0) == pytest.approx(0.9986501, rel=1e-4)
     assert calibrator.transform_partial(-3.0) == pytest.approx(0.0013499, rel=1e-4)
+
+
+def test_gaussian_tail_calibrator_short_window():
+    import numpy as np
+    from scipy.stats import norm
+
+    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
+
+    scores = np.random.RandomState(0).normal(0, 10, 100)
+    calibrator = GaussianTailProbabilityCalibrator(running_statistics=False, short_window_size=10)
+
+    for score in scores:
+        calibrator.fit_partial(score)
+
+    mean = scores.mean()
+    std = scores.std(ddof=0)
+    short_mean = scores[-10:].mean()
+
+    last_score = scores[-1]
+    actual = calibrator.transform_partial(last_score)
+    expected = norm.cdf(short_mean, loc=mean, scale=std)
+
+    np.testing.assert_allclose(actual, expected)
+
+
+def test_gaussian_tail_calibrator_noise_spike_resistance():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    noise = np.random.randn(2000)
+    single_spike = np.r_[noise, 4.0, np.zeros(9)]
+    sustained = np.r_[noise, np.full(10, 2.0)]
+
+    single_pysad = GaussianTailProbabilityCalibrator().fit_transform(single_spike)[-10:]
+    sustained_pysad = GaussianTailProbabilityCalibrator().fit_transform(sustained)[-10:]
+
+    # A single spike's likelihood is smoothed down by the short-term window (W' = 10)
+    assert single_pysad.max() < 0.70
+    # A sustained series of elevated scores raises an alert
+    assert sustained_pysad.max() > 0.95
+
+
+def test_gaussian_tail_calibrator_zero_variance():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
+
+    for unit in [1e-3, 1.0, 1e3]:
+        calibrator = GaussianTailProbabilityCalibrator().fit(np.zeros(100))
+        assert calibrator.transform_partial(unit) == 1.0
+        assert calibrator.transform_partial(-unit) == 0.0
+        assert calibrator.transform_partial(0.0) == 0.5

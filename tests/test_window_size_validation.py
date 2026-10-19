@@ -9,7 +9,10 @@ from pysad.transform.postprocessing import (
     RunningMedianPostprocessor,
     RunningZScorePostprocessor,
 )
-from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+from pysad.transform.probability_calibration import (
+    ConformalProbabilityCalibrator,
+    GaussianTailProbabilityCalibrator,
+)
 from pysad.utils import Window
 
 
@@ -20,6 +23,7 @@ from pysad.utils import Window
         pytest.param(partial(RunningStatistic, AverageMeter), id="RunningStatistic"),
         Window,
         ConformalProbabilityCalibrator,
+        GaussianTailProbabilityCalibrator,
         RunningAveragePostprocessor,
         RunningMaxPostprocessor,
         RunningMedianPostprocessor,
@@ -29,6 +33,12 @@ from pysad.utils import Window
 def test_nonpositive_window_size_is_rejected(component, window_size):
     with pytest.raises(ValueError, match=r"window_size must be a positive integer\."):
         component(window_size=window_size)
+
+
+@pytest.mark.parametrize("short_window_size", [0, -1])
+def test_nonpositive_short_window_size_is_rejected(short_window_size):
+    with pytest.raises(ValueError, match=r"short_window_size must be a positive integer\."):
+        GaussianTailProbabilityCalibrator(short_window_size=short_window_size)
 
 
 def test_running_statistic_with_single_item_window():
@@ -42,11 +52,3 @@ def test_conformal_calibrator_with_single_item_window():
     for value in [1.0, 3.0, 2.0]:
         assert calibrator.fit_transform_partial(value) == 0.0
         assert calibrator.window.get() == [value]
-
-
-@pytest.mark.parametrize("window_size", [0, -1, None])
-def test_unwindowed_calibrator_ignores_window_size(window_size):
-    calibrator = ConformalProbabilityCalibrator(windowed=False, window_size=window_size)
-    assert calibrator.fit_transform_partial(1.0) == 0.0
-    assert calibrator.fit_transform_partial(3.0) == 0.5
-    assert calibrator.window.get() == [1.0, 3.0]

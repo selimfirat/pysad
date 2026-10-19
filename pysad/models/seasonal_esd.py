@@ -6,6 +6,7 @@ from scipy.stats import t
 from pysad.core.base_model import BaseModel
 from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 from pysad.utils import Window
+from pysad.utils.validation import check_univariate
 
 
 @lru_cache(maxsize=1024)
@@ -58,12 +59,7 @@ class SeasonalESD(BaseModel):
         )
 
     def _as_value(self, X):
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.shape != (1,):
-            raise ValueError("SeasonalESD supports univariate inputs.")
-
-        return X[0]
+        return check_univariate(X, "SeasonalESD")
 
     def _center_scale(self, values):
         return np.mean(values), np.std(values, ddof=1)

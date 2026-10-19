@@ -22,6 +22,8 @@ Functions
    :nosignatures:
    :toctree: ../generated
 
+   check_feature_bounds
+   check_univariate
    fix_seed
    get_minmax_array
    get_minmax_scalar

@@ -5,6 +5,7 @@ import numpy as np
 
 from pysad.core.base_model import BaseModel
 from pysad.transform.preprocessing import ShingleTransformer
+from pysad.utils.validation import check_univariate
 
 
 class KNNCAD(BaseModel):
@@ -59,25 +60,7 @@ class KNNCAD(BaseModel):
 
     @staticmethod
     def _value(X):
-        """Returns the single value of a univariate instance.
-
-        Args:
-            X (float or np.float64 array): The instance, holding exactly one value, e.g. a scalar or an array of shape (1,) or (1, 1).
-
-        Returns:
-            float: The value of the instance.
-
-        Raises:
-            ValueError: If the instance does not hold exactly one value.
-        """
-        values = np.asarray(X, dtype=np.float64).ravel()
-        if values.size != 1:
-            raise ValueError(
-                "KNNCAD is univariate: expected an instance with one value, "
-                f"got an instance of shape {np.shape(X)}."
-            )
-
-        return float(values[0])
+        return check_univariate(X, "KNNCAD")
 
     def _ncm(self, item, sigma, item_in_array=False):
         # The distances (x - item) sigma (x - item)^T of all the training windows x at once.

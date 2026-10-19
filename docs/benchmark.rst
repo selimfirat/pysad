@@ -27,7 +27,7 @@ Mean rank
    The rank of a detector on a dataset is its position by AUROC, where 1 is the highest AUROC. The mean rank is the average of these ranks over the |num_datasets| datasets.
 
 Mean AUROC and Mean AUPR
-   The averages over the |num_datasets| datasets and the 5 seeds.
+   The averages over the |num_datasets| datasets.
 
 Time per point
    The median time of one ``fit_score_partial`` call, in milliseconds. The runs shared one machine, so compare these times only with each other.
@@ -43,7 +43,7 @@ Commit
 AUROC on each dataset
 ---------------------
 
-Each value is the mean over the 5 seeds. The highest value on each dataset is in bold. The columns are in the order of the summary. The table uses three short names: HST is :class:`~pysad.models.HalfSpaceTrees`, LoOP is :class:`~pysad.models.LocalOutlierProbability`, and RRCF is :class:`~pysad.models.RobustRandomCutForest`.
+Each value comes from one run, with seed 0. The highest value on each dataset is in bold. The columns are in the order of the summary. The table uses three short names: HST is :class:`~pysad.models.HalfSpaceTrees`, LoOP is :class:`~pysad.models.LocalOutlierProbability`, and RRCF is :class:`~pysad.models.RobustRandomCutForest`.
 
 .. csv-table::
    :file: benchmark/auroc.csv

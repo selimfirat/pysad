@@ -16,13 +16,13 @@ The first run downloads the datasets into ``~/.cache/pysad``: the |num_datasets|
 
 The ``--parts`` option runs only some parts of the benchmark, for example ``--parts drift``. These are the parts:
 
-- ``odds``: the multivariate detectors on the shuffled ODDS datasets, with the seeds of ``--seeds``.
+- ``odds``: the multivariate detectors on the shuffled ODDS datasets.
 - ``univariate``: the univariate detectors on the NAB and UCR series.
 - ``drift``: the multivariate detectors on the streams with drift.
 - ``nab``: the multivariate detectors on the NAB series.
 - ``shingles``: the multivariate detectors on shingles of the NAB series.
 
-The parts other than ``odds`` run once, with seed 0. The ``benchmark`` workflow runs each part, and each seed of ``odds``, in its own job.
+Each part runs once, with seed 0. The ``benchmark`` workflow runs each part in its own job.
 
 Run selected detectors
 ----------------------
@@ -50,4 +50,4 @@ To list the detectors that a branch can affect and check whether their AUROC mov
 
    $ python benchmarks/benchmark.py --check origin/master
 
-The ``benchmark`` workflow runs this check on each pull request that changes ``pysad/``. It runs again only the detectors that the change can affect, with one job per seed. If an AUROC moves by more than 0.005, the check fails and prints the command that updates ``docs/benchmark/``. The check does not compare AUPR, because other platforms round differently. On a small dataset, such a difference can swap one anomaly with one normal point, and that moves AUPR much more than AUROC.
+The ``benchmark`` workflow runs this check on each pull request that changes ``pysad/``. It runs again only the detectors that the change can affect, with one job per part. If an AUROC moves by more than 0.005, the check fails and prints the command that updates ``docs/benchmark/``. The check does not compare AUPR, because other platforms round differently. On a small dataset, such a difference can swap one anomaly with one normal point, and that moves AUPR much more than AUROC.

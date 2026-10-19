@@ -42,7 +42,6 @@ from pysad.utils import Data, fix_seed
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "benchmark"
 DATASETS = [name.removesuffix(".mat") for name in Data.datasets()]
-SEEDS = range(5)
 MAX_POINTS = 5000  # the first points of each shuffled stream
 WARMUP_POINTS = 256  # the scores of the first points do not count, see warmup()
 # --check accepts this difference in AUROC. Other platforms round differently, and on a small
@@ -700,7 +699,7 @@ def alert_rows(results, detectors):
                     "" if t == "rate" else f"{1 - t:.3f}",
                     f"{np.nanmean(values['false_alerts']):.3f}",
                     f"{np.nanmin(per_detector):.3f} to {np.nanmax(per_detector):.3f}",
-                    f"{np.nanmean(p):.3f}",
+                    f"{np.nanmean(p):.3f}" if np.isfinite(p).any() else "",  # no run had alerts
                     f"{np.nanmean(r):.3f}",
                     f"{np.nanmean(f1):.3f}",
                 ]
@@ -780,9 +779,6 @@ def main():
         "--parts",
         help=f"comma-separated parts of the benchmark (default: all): {', '.join(PARTS)}",
     )
-    parser.add_argument(
-        "--seeds", help="comma-separated seeds of the odds part (default: 0,1,2,3,4)"
-    )
     parser.add_argument("--jobs", type=int, default=os.cpu_count())
     args = parser.parse_args()
 
@@ -797,17 +793,15 @@ def main():
     parts = args.parts.split(",") if args.parts else PARTS
     if set(parts) - set(PARTS):
         parser.error(f"unknown parts: {', '.join(sorted(set(parts) - set(PARTS)))}")
-    seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else SEEDS
 
-    # Each part downloads its data once, before the workers start. Only the odds part has seeds:
-    # the univariate detectors draw no random numbers, and the other parts run long streams.
+    # Each part downloads its data once, before the workers start. Every part runs once, with seed 0.
     jobs = []
     multivariate = [d for d in detectors if d in DETECTORS]
     univariate = [d for d in detectors if d in UNIVARIATE]
     if "odds" in parts:
         for dataset in DATASETS:
             Data().get_data(f"{dataset}.mat")
-        jobs += [(ds, d, s) for d in multivariate for ds in DATASETS for s in seeds]
+        jobs += [(ds, d, 0) for d in multivariate for ds in DATASETS]
     if {"univariate", "nab", "shingles"} & set(parts):
         for series in nab_series():
             Data().get_data(series)

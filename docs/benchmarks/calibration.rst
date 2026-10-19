@@ -19,13 +19,13 @@ Expected
    The expected false alert rate, one minus the threshold. The alerts guide gives this value as the fraction of normal points that raise an alert. The threshold "1 - anomaly rate" has no fixed value.
 
 False alerts
-   The fraction of normal points that raised an alert. It is the mean over all the detectors, datasets and seeds.
+   The fraction of normal points that raised an alert. It is the mean over all the detectors and datasets.
 
 Range
    The lowest and the highest mean false alert rate of a detector. A small range means that the threshold has the same effect for every detector.
 
 Precision
-   The fraction of the alerts that are anomalies. A run without alerts does not count.
+   The fraction of the alerts that are anomalies. A run without alerts does not count. The cell is empty when no run had alerts.
 
 Recall
    The fraction of the anomalies that raised an alert.

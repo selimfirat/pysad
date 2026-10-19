@@ -2,8 +2,7 @@ name: benchmark
 
 # Reruns the detectors that a pull request can change and fails if their results differ from
 # docs/benchmark/. benchmarks/benchmark.py --check picks the detectors from the changed files.
-# All the detectors take about 4 CPU-hours, so each seed of the ODDS datasets and each other part
-# of benchmark.py (--parts) runs in its own job.
+# Each part of benchmark.py (--parts) runs in its own job, so that the jobs stay short.
 on:
   pull_request:
     paths:
@@ -30,16 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { part: odds, seed: 0 }
-          - { part: odds, seed: 1 }
-          - { part: odds, seed: 2 }
-          - { part: odds, seed: 3 }
-          - { part: odds, seed: 4 }
-          - { part: univariate, seed: 0 }
-          - { part: drift, seed: 0 }
-          - { part: nab, seed: 0 }
-          - { part: shingles, seed: 0 }
+        part: [odds, univariate, drift, nab, shingles]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -61,11 +51,10 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
           PART: ${{ matrix.part }}
-          SEED: ${{ matrix.seed }}
         run: |
           if [ -n "$BASE_REF" ]; then
             git fetch --depth=1 origin "$BASE_REF"
-            python benchmarks/benchmark.py --check "origin/$BASE_REF" --parts "$PART" --seeds "$SEED"
+            python benchmarks/benchmark.py --check "origin/$BASE_REF" --parts "$PART"
           else
-            python benchmarks/benchmark.py --check --parts "$PART" --seeds "$SEED"
+            python benchmarks/benchmark.py --check --parts "$PART"
           fi

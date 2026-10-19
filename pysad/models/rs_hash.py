@@ -1,24 +1,10 @@
-import numbers
-import warnings
+import math
 
 import numpy as np
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
-
-_UNSET = object()
-
-
-def _positive_int(value, name):
-    """Returns `value` as a Python int, or raises if it is not an integer >= 1 (NumPy integers are accepted, bools are not)."""
-    if isinstance(value, bool) or not isinstance(value, numbers.Integral):
-        raise TypeError(f"{name} must be an int, got {value!r}.")
-
-    value = int(value)
-    if value < 1:
-        raise ValueError(f"{name} must be at least 1, got {value}.")
-
-    return value
+from pysad.models.relative_entropy import _finite_float, _int_at_least
 
 
 class RSHash(BaseModel):
@@ -29,55 +15,63 @@ class RSHash(BaseModel):
     Grid cell counts are kept in a count-min sketch (:cite:`sathe2016subspace`, §II-A): `num_hash_fns` (w) pairwise-independent hash tables of `hash_range` (p) slots each, so the sketch's memory is O(w * p) and stays constant regardless of stream length, at the cost of hash collisions that can only overestimate a cell's count. Taking the minimum decayed count over the w tables reduces that overestimate. As in the paper's streaming variant (§III), all `num_components` components share one sketch, which holds about `num_components / (1 - 2**-decay)` live insertions (about 9,700 at the defaults); increase `hash_range` along with `num_components` or the decay window (smaller `decay`), or collisions make scores less accurate than exact counting. Unlike the paper, which pairs p = 10,000 with w = 4, the default `num_hash_fns=1` takes no minimum, so it does not reduce the overestimate; pass `num_hash_fns=4` for the paper's sketch.
 
     Args:
-        feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
-        feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
-        sampling_points (int): Deprecated. Has no effect.
-        decay (float): The decay hyperparameter (Default=0.015).
-        num_components (int): The number of ensemble components (Default=100).
+        feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features. Integer arrays are converted to float.
+        feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features, at least `feature_mins`. Integer arrays are converted to float.
+        decay (float): The decay hyperparameter. Must be a positive finite real number (a NumPy number is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for non-positive, NaN or infinite values (Default=0.015).
+        num_components (int): The number of ensemble components. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1 (Default=100).
         num_hash_fns (int): The number w of pairwise-independent hash tables in the count-min sketch, whose smallest count is read (Default=1, which takes no minimum; the paper uses 4). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
         hash_range (int): The number p of slots per hash table of the count-min sketch, which all `num_components` components share (Default=10000, the paper's p). It should grow with `num_components` and the decay window, since the sketch holds about `num_components / (1 - 2**-decay)` live insertions. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
         random_state (int, np.random.RandomState or None): Seed or random number generator for the grid sizes, subspaces and shifts of the ensemble components, and for the sketch's hash parameters. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
 
-    .. deprecated:: 0.6.1
-        The ``sampling_points`` parameter is deprecated and has no effect.
-        It will be removed in a future release.
+    Raises:
+        TypeError: If `decay` is not a real number (or is a bool), or if `num_components`, `num_hash_fns` or `hash_range` is not an integer (or is a bool).
+        ValueError: If `decay` is not positive and finite, if `num_components`, `num_hash_fns` or `hash_range` is below 1, or if `feature_mins` and `feature_maxes` are not finite 1-D arrays of the same length with every minimum at most its maximum.
     """
 
     def __init__(
         self,
         feature_mins,
         feature_maxes,
-        sampling_points=_UNSET,
         decay=0.015,
         num_components=100,
         num_hash_fns=1,
         hash_range=10000,
         random_state=None,
     ):
+        decay = _finite_float(decay, "decay")
+        if decay <= 0.0 or 2.0**-decay == 1.0:
+            raise ValueError(f"decay must be positive, got {decay}.")
+        num_components = _int_at_least(num_components, "num_components", 1)
         # Stored as Python ints: a NumPy integer narrower than 64 bits would overflow in _cell_slots.
-        num_hash_fns = _positive_int(num_hash_fns, "num_hash_fns")
-        hash_range = _positive_int(hash_range, "hash_range")
+        num_hash_fns = _int_at_least(num_hash_fns, "num_hash_fns", 1)
+        hash_range = _int_at_least(hash_range, "hash_range", 1)
 
-        if sampling_points is not _UNSET:
-            warnings.warn(
-                "The 'sampling_points' parameter is deprecated and has no "
-                "effect. It will be removed in a future release.",
-                FutureWarning,
-                stacklevel=2,
+        feature_mins = np.array(feature_mins, dtype=np.float64)
+        feature_maxes = np.array(feature_maxes, dtype=np.float64)
+        if (
+            feature_mins.ndim != 1
+            or feature_mins.shape != feature_maxes.shape
+            or feature_mins.size == 0
+        ):
+            raise ValueError(
+                "feature_mins and feature_maxes must be non-empty 1-D arrays of the same length."
             )
+        if not (np.all(np.isfinite(feature_mins)) and np.all(np.isfinite(feature_maxes))):
+            raise ValueError("feature_mins and feature_maxes must be finite.")
+        if np.any(feature_mins > feature_maxes):
+            raise ValueError("feature_mins must not exceed feature_maxes.")
 
-        self.minimum = np.asarray(feature_mins, dtype=np.float64)
-        self.maximum = np.asarray(feature_maxes, dtype=np.float64)
+        self.minimum = feature_mins
+        self.maximum = feature_maxes
         self.range = self.maximum - self.minimum
         self.range[self.range == 0] = 1.0
 
         self.m = num_components
         self.dim = len(self.minimum)
         self.decay = decay
-        self.scores = []
         self.num_hash = num_hash_fns
         self.hash_range = hash_range
-        self.effS = max(1000, 1.0 / (1 - np.power(2, -self.decay)))
+        self.effS = max(1000.0, 1.0 / (1.0 - 2.0**-self.decay))
         self.random_state = random_state
         rng = check_random_state(random_state)
 
@@ -95,6 +89,11 @@ class RSHash(BaseModel):
         self._sample_dims(rng)
 
         self.alpha = self._sample_shifts(rng)
+        self._V_flat = np.concatenate(self.V)
+        self._alpha_flat = np.concatenate(self.alpha)
+        self._f_flat = np.repeat(self.f, self.r)
+        ends = np.cumsum(self.r).tolist()
+        self._component_slices = list(zip([0] + ends[:-1], ends, strict=True))
 
         # Pairwise-independent hash parameters, one (a_k, b_k) pair per table, drawn from rng
         # so that random_state makes the sketch's slot assignment reproducible.
@@ -127,7 +126,7 @@ class RSHash(BaseModel):
         Returns:
             object: The model itself.
         """
-        self._fit_keys(self._cell_keys(X))
+        self._fit_slots([self._cell_slots(key) for key in self._cell_keys(X)])
 
         return self
 
@@ -140,7 +139,7 @@ class RSHash(BaseModel):
         Returns:
             float: The anomalousness score of the input instance. Higher scores represent more anomalous instances.
         """
-        return self._score_keys(self._cell_keys(X))
+        return self._score_slots([self._cell_slots(key) for key in self._cell_keys(X)])
 
     def fit_score_partial(self, X, y=None):
         """Scores the next instance against the current state, then fits the model to it.
@@ -154,42 +153,29 @@ class RSHash(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        keys = self._cell_keys(X)
-        score = self._score_keys(keys)
-        self._fit_keys(keys)
+        slots = [self._cell_slots(key) for key in self._cell_keys(X)]
+        score = self._score_slots(slots)
+        self._fit_slots(slots)
 
         return score
 
-    def _fit_keys(self, keys):
-        """Updates the sketches with the cell keys of an instance.
-
-        Args:
-            keys (list of tuple): The cell keys of the instance, as returned by `_cell_keys`.
-        """
-        for mod_entry in keys:
-            for w, slot in enumerate(self._cell_slots(mod_entry)):
+    def _fit_slots(self, slots):
+        """Updates the sketches at the given slot indices of an instance."""
+        for row_slots in slots:
+            for w, slot in enumerate(row_slots):
                 decayed_wt = self._decayed_count(w, slot)
 
                 self.sketch_timestamps[w, slot] = self.index
-                self.sketch_counts[w, slot] = decayed_wt + 1
+                self.sketch_counts[w, slot] = decayed_wt + 1.0
 
         self.index += 1
 
-    def _score_keys(self, keys):
-        """Scores an instance from its cell keys, without writing to the sketches.
-
-        Args:
-            keys (list of tuple): The cell keys of the instance, as returned by `_cell_keys`.
-
-        Returns:
-            float: The anomalousness score of the input instance. Higher scores represent more anomalous instances.
-        """
-        score_instance = 0
-        for mod_entry in keys:
-            c = [self._decayed_count(w, slot) for w, slot in enumerate(self._cell_slots(mod_entry))]
-
-            min_c = min(c)
-            score_instance = score_instance + np.log2(1 + min_c)
+    def _score_slots(self, slots):
+        """Scores an instance from its sketch slot indices, without writing to the sketches."""
+        score_instance = 0.0
+        for row_slots in slots:
+            min_c = min(self._decayed_count(w, slot) for w, slot in enumerate(row_slots))
+            score_instance += math.log2(1.0 + min_c)
 
         # Low counts indicate outliers in the paper, so the average log-count is negated to make higher scores more anomalous.
         return -score_instance / self.m
@@ -206,17 +192,16 @@ class RSHash(BaseModel):
         # Equation 1 of the paper: normalize with the minimum and maximum of each feature.
         X = (np.asarray(X, dtype=np.float64) - self.minimum) / self.range
 
-        mod_entries = []
-        for r in range(self.m):
-            Y = np.floor((X[self.V[r]] + self.alpha[r]) / float(self.f[r])).astype(np.int32)
-
-            # Zigzag-encode the coordinates (0, -1, 1, -2, 2, ... -> 0, 1, 2, 3, 4, ...) so none is -1:
-            # CPython hashes -1 like -2, so cells differing only in a -1/-2 coordinate would
-            # otherwise hash alike and share a slot in every table. tolist() yields Python ints, so
-            # the key hashes the same in every process.
-            mod_entries.append((r,) + tuple(2 * y if y >= 0 else -2 * y - 1 for y in Y.tolist()))
-
-        return mod_entries
+        # Convert floored float64 coordinates directly to Python ints instead of casting to a
+        # fixed-width NumPy integer, which would saturate for far out-of-range instances.
+        # Zigzag-encode the coordinates (0, -1, 1, -2, 2, ... -> 0, 1, 2, 3, 4, ...) so none is -1:
+        # CPython hashes -1 like -2, so cells differing only in a -1/-2 coordinate would
+        # otherwise hash alike and share a slot in every table.
+        coords = [
+            2 * y if (y := int(v)) >= 0 else -2 * y - 1
+            for v in np.floor((X[self._V_flat] + self._alpha_flat) / self._f_flat).tolist()
+        ]
+        return [(r, *coords[start:end]) for r, (start, end) in enumerate(self._component_slices)]
 
     def _cell_slots(self, key):
         """Maps a grid cell key to one slot per hash table of the count-min sketch.
@@ -244,10 +229,10 @@ class RSHash(BaseModel):
         Returns:
             float: The count decayed to `self.index`, or 0 for a never-updated slot.
         """
-        tstamp = self.sketch_timestamps[w, slot]
-        wt = self.sketch_counts[w, slot]
+        tstamp = int(self.sketch_timestamps[w, slot])
+        wt = float(self.sketch_counts[w, slot])
 
-        return wt * np.power(2, -self.decay * (self.index - tstamp))
+        return wt * 2.0 ** (-self.decay * (self.index - tstamp))
 
     def _sample_shifts(self, rng):
         alpha = []

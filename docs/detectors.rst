@@ -37,7 +37,7 @@ These detectors take points with one or more features. A feature is one measured
    * - :class:`~pysad.models.RSHash`
      - Time-decayed counts of random subspace grids :cite:`sathe2016subspace`
      - The range of each feature
-     - Grows: one count for each grid cell that a point visits
+     - Fixed: ``num_hash_fns`` hash tables of ``hash_range`` slots
    * - :class:`~pysad.models.IForestASD`
      - Isolation Forest on a sliding window :cite:`ding2013anomaly`
      - Nothing (initial points optional)

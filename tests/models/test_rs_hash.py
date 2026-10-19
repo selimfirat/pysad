@@ -343,7 +343,7 @@ def test_rs_hash_rejects_invalid_sketch_sizes():
 
     from pysad.models import RSHash
 
-    for name in ("num_hash_fns", "hash_range"):
+    for name in ("num_components", "num_hash_fns", "hash_range"):
         for value in (0, -1, np.int32(0)):
             with pytest.raises(ValueError, match=f"{name} must be at least 1"):
                 RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), **{name: value})
@@ -353,32 +353,80 @@ def test_rs_hash_rejects_invalid_sketch_sizes():
                 RSHash(feature_mins=np.zeros(3), feature_maxes=np.ones(3), **{name: value})
 
 
-def test_rs_hash_sampling_points_warns_and_has_no_effect():
+def test_rs_hash_far_out_of_range_instances_do_not_overflow_to_same_cell():
     import warnings
 
     import numpy as np
-    import pytest
 
     from pysad.models import RSHash
     from pysad.utils import fix_seed
 
-    X = np.random.default_rng(0).random((200, 5))
-
     fix_seed(0)
-    with pytest.warns(FutureWarning, match="sampling_points") as record:
-        model_with = RSHash(feature_mins=np.zeros(5), feature_maxes=np.ones(5), sampling_points=10)
-    scores_with = model_with.fit_score(X)
+    model = RSHash(
+        feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0], num_components=20, num_hash_fns=2
+    )
 
-    # stacklevel=2 attributes the warning to the code that passed sampling_points, not to rs_hash.py.
-    assert record[0].filename == __file__
+    # Grid coordinates above 2**31 - 1 or below -2**31 used to overflow .astype(np.int32) and
+    # clamp every far outlier to 2147483647 (with a RuntimeWarning), giving distinct far outliers
+    # the exact same cell keys and scoring later far outliers as normal (#162).
+    x_pos_a = np.array([1e12, 1e12])
+    x_pos_b = np.array([3e12, 7e12])
+    x_neg_a = np.array([-1e12, -1e12])
+    x_neg_b = np.array([-5e12, -2e12])
 
-    fix_seed(0)
     with warnings.catch_warnings():
-        warnings.simplefilter("error", FutureWarning)
-        model_without = RSHash(feature_mins=np.zeros(5), feature_maxes=np.ones(5))
-    scores_without = model_without.fit_score(X)
+        warnings.simplefilter("error", RuntimeWarning)
+        keys_pos_a = model._cell_keys(x_pos_a)
+        keys_pos_b = model._cell_keys(x_pos_b)
+        keys_neg_a = model._cell_keys(x_neg_a)
+        keys_neg_b = model._cell_keys(x_neg_b)
 
-    np.testing.assert_array_equal(scores_with, scores_without)
+        assert keys_pos_a != keys_pos_b
+        assert keys_neg_a != keys_neg_b
+        assert any(coord >= 2**32 for key in keys_pos_a for coord in key[1:])
+        assert any(coord >= 2**32 for key in keys_neg_a for coord in key[1:])
+
+        for _ in range(50):
+            model.fit_partial(x_pos_a)
+            model.fit_partial(x_neg_a)
+
+        score_pos_a = model.score_partial(x_pos_a)
+        score_pos_b = model.score_partial(x_pos_b)
+        score_neg_a = model.score_partial(x_neg_a)
+        score_neg_b = model.score_partial(x_neg_b)
+
+    assert score_pos_b == 0.0
+    assert score_neg_b == 0.0
+    assert score_pos_b > score_pos_a
+    assert score_neg_b > score_neg_a
+
+
+def test_rs_hash_rejects_invalid_feature_bounds():
+    import numpy as np
+    import pytest
+
+    from pysad.models import RSHash
+
+    with pytest.raises(ValueError, match="1-D"):
+        RSHash(feature_mins=0.0, feature_maxes=1.0)
+
+    with pytest.raises(ValueError, match="1-D"):
+        RSHash(feature_mins=np.zeros((2, 2)), feature_maxes=np.ones((2, 2)))
+
+    with pytest.raises(ValueError, match="non-empty"):
+        RSHash(feature_mins=[], feature_maxes=[])
+
+    with pytest.raises(ValueError, match="same length"):
+        RSHash(feature_mins=[0.0, 0.0], feature_maxes=[1.0])
+
+    with pytest.raises(ValueError, match="finite"):
+        RSHash(feature_mins=[0.0, np.nan], feature_maxes=[1.0, 1.0])
+
+    with pytest.raises(ValueError, match="finite"):
+        RSHash(feature_mins=[0.0, 0.0], feature_maxes=[1.0, np.inf])
+
+    with pytest.raises(ValueError, match="must not exceed"):
+        RSHash(feature_mins=[0.0, 2.0], feature_maxes=[1.0, 1.0])
 
 
 def test_rs_hash_score_then_fit_matches_fit_score_partial():
@@ -402,3 +450,51 @@ def test_rs_hash_score_then_fit_matches_fit_score_partial():
     scores_b = [model_b.fit_score_partial(x) for x in X]
 
     np.testing.assert_allclose(scores_a, scores_b)
+
+
+def test_rs_hash_accepts_integer_decay():
+    import numpy as np
+
+    from pysad.models import RSHash
+
+    feature_mins = np.zeros(2)
+    feature_maxes = np.ones(2)
+    X = np.array([[0.2, 0.3], [0.2, 0.3], [0.8, 0.7]])
+
+    for decay in [1, np.int64(1)]:
+        model_int = RSHash(
+            feature_mins,
+            feature_maxes,
+            decay=decay,
+            random_state=0,
+        )
+        model_float = RSHash(
+            feature_mins,
+            feature_maxes,
+            decay=1.0,
+            random_state=0,
+        )
+
+        assert type(model_int.decay) is float
+        scores_int = model_int.fit_score(X)
+        scores_float = model_float.fit_score(X)
+
+        np.testing.assert_allclose(scores_int, scores_float)
+
+
+def test_rs_hash_rejects_non_positive_decay():
+    import numpy as np
+    import pytest
+
+    from pysad.models import RSHash
+
+    feature_mins = np.zeros(2)
+    feature_maxes = np.ones(2)
+
+    for decay in [0, 0.0, np.int64(0), -0.1, 1e-20, float("nan"), float("inf"), float("-inf")]:
+        with pytest.raises(ValueError, match="decay"):
+            RSHash(feature_mins, feature_maxes, decay=decay)
+
+    for bad_type in [True, False, np.bool_(True), "0.015", None]:
+        with pytest.raises(TypeError, match="decay must be a real number"):
+            RSHash(feature_mins, feature_maxes, decay=bad_type)

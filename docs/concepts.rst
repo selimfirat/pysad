@@ -131,7 +131,7 @@ Memory and time
 Most PySAD detectors keep a summary of the stream, not the stream itself. The summary is one of these:
 
 - A window of recent points, for example in :class:`~pysad.models.ExactStorm`, whose window slides by one point, and :class:`~pysad.models.xStream`, which replaces its window every ``window_size`` points.
-- Histograms or sketches (compact counts of where points fall), for example in :class:`~pysad.models.LODA`.
+- Histograms or sketches (compact counts of where points fall), for example in :class:`~pysad.models.LODA` and :class:`~pysad.models.RSHash`.
 - A set of trees, for example in :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`.
 - Running statistics, for example in :class:`~pysad.models.StandardAbsoluteDeviation`.
 

@@ -370,6 +370,154 @@ _UCR_SERIES = """
 """.split()
 
 
+# KDD Cup 99 from OpenML dataset 1113, the 10% file of the cup in its original order. The stream
+# "kddcup99/http.csv" holds its http connections of logged in users, as in scikit-learn's
+# fetch_kddcup99, which cannot download from figshare.
+_KDDCUP99 = "https://openml.org/data/v1/download/53996/KDDCup99.arff"
+_KDDCUP99_ARCHIVE = "kddcup99/KDDCup99.arff"
+_KDDCUP99_CHECKSUM = "29d8e2f3d818eebe2d30f931f910c54e72a92d62ae814b6d95e8d5d1441b425e"
+
+# The Server Machine Dataset (SMD) of OmniAnomaly (MIT license) at a fixed commit. Each stream is the
+# test half of a machine, which has the labels. The checksums are of the test file and the labels.
+_SMD = "https://raw.githubusercontent.com/NetManAIOps/OmniAnomaly/7fb0e0acf89ea49908896bcc9f9e80fcfff6baf4/ServerMachineDataset/"
+_SMD_CHECKSUMS = {
+    "machine-1-1.txt": (
+        "bdb801d8d52ce6b0c4a20c310edf31b5cee9bc82eb84fb38e7d4a19309b16ddb",
+        "cddf33441ae480c6074e173c897d4715eb893f24a7078d3d3e1b79b200c7cd19",
+    ),
+    "machine-1-2.txt": (
+        "f409991af7c049d3f286a8cf89dc2fa99114bea8753f6c3aea4bd24cb03eb015",
+        "c2dbb3e4f89c9eb48f30fd1ddae48b80e7ae7ad7ca9abf2ffd71b6557ef2bb20",
+    ),
+    "machine-1-3.txt": (
+        "f3c134d45ffa7aed66587dba893111396c8c7ea3b6fa7f76895955b26b1a75ef",
+        "755d57179625682172ae85f9483749cff576ff3282d0af294271a40ab6ea7b28",
+    ),
+    "machine-1-4.txt": (
+        "98ade00e57eac63e8f81a506a8e848803b58590835ab2b3cf53d1f0459900bd3",
+        "a470a3f7b66ec3d080fc5ee3d9565e0f3bfcfa16a1650259f771736327fa9a8b",
+    ),
+    "machine-1-5.txt": (
+        "98b8979f21b4b68c7308f38dd093b9bff4275814578365103c692f28f60f61c5",
+        "e7e2e611e12b5e9e2558ed955ad271f1f408fbdd7fbbfdfc72eb745ade567815",
+    ),
+    "machine-1-6.txt": (
+        "0797fe4bfd25ef13c830955cb9f2a36b4c9d5da265b8e91702408b6b048267f4",
+        "8359ffa67b5421b0b9967ccf396a58c7b3bf52fa24c3f95e6b9df6486f1d6365",
+    ),
+    "machine-1-7.txt": (
+        "785a3f542ef6ac171a3af55c534f9ca598d53fa0371010172c72e33af4588d16",
+        "24b3ce00bf2c56b571775a2b28d4e50ed27d050d77a031fa16c11ef3e51809b8",
+    ),
+    "machine-1-8.txt": (
+        "b8784c3b4169f8a0a2ed9f47b00070d72ed214dae0307553b8cfdb80c712d779",
+        "8019476032c4c5b4b80127cfb9e74ee7d57fbbd558aa15097518713e16463a47",
+    ),
+    "machine-2-1.txt": (
+        "2d103661799271be958227907950a1c76803356442d60a4070671cc0abbefb20",
+        "416dd20a447f38b8d9394382293ed44f509c1c3f99c4aa2fbff179498626dbdc",
+    ),
+    "machine-2-2.txt": (
+        "1cb0dd0a4b8738b184c62bb07700e6800e029f7a76a715fe0ee147c603b2f2c8",
+        "b09e71b3aafe71d9ee73a4058b30efcf67dc80df98d3b7b7a8ec019ea3b769c4",
+    ),
+    "machine-2-3.txt": (
+        "eaa24c78ff438eec2f847c09eb4de6ab8dbe8a0bb8d77b52ac4ecdee5bd21a7d",
+        "5768ce5280cb5ce4bee6d8bb3c7105819574d5e82f7d517d61495efa9d4f566e",
+    ),
+    "machine-2-4.txt": (
+        "85ba3101b9ab6a7684cd897b2d4c78e85caa6f5ef1c4f0e153479f4fca01cf38",
+        "c26a6dabfd2ab4aec34c40919100e13e52e17ad0e6b702dd038f582b2c633b01",
+    ),
+    "machine-2-5.txt": (
+        "842588acfb9299735a785757fcadd98cc7f69b6a511d28e54e1af05c5e95137b",
+        "9966e4092bece4e0ef60ef54d85396c49c22da64334aad82a9fc2f3842d2ef15",
+    ),
+    "machine-2-6.txt": (
+        "c895144b7c7fb1ff960f506132d5aeefebce4325efad908d071fb7df5b3b1cf1",
+        "6fe3dd209542dc6a20879618c40ef6f5d55ce60f2da2902c311d9f0fff3c1ee0",
+    ),
+    "machine-2-7.txt": (
+        "58c3dfd109437ccbedab9d36608d32874c2ae5473484c5941f85349baf32cef8",
+        "d9d7aceca750277dd28883f7b5b34da3653652ea9c96de78baa84daeebc4a9b7",
+    ),
+    "machine-2-8.txt": (
+        "846207955c546f0c3ea57aa7032b8e3c207ad67632a0605c8273f182059d1a72",
+        "22fbe94e06e56b6035fcc10383bac90d84ff4604f9063009a3940747f92d8105",
+    ),
+    "machine-2-9.txt": (
+        "8d93ccd1a6606de3f665cb2e905d206b60ad2b2a58f47e9561b9bb67a2cd4f28",
+        "eab9425847aa5c7c63485047a49b1bfc9cf44ed88a0d1be84e2fd0a16d0ba895",
+    ),
+    "machine-3-1.txt": (
+        "b110b204ba4919250351eba7aa253d73ab54af0cf18e272b9b284de5fa7df88d",
+        "549348a9c63ed922e85157885bcb21289a8c9f5af94b50147a21cb7b928220ec",
+    ),
+    "machine-3-2.txt": (
+        "5f83ded5fbfb9b682030bdd7dd82eb53a77f9caa3773ddcc7e38db73c25db46e",
+        "1bbf4223cc6083f718f1d6022e2a48d48af44b08cdfa80048aa51af34d5111c3",
+    ),
+    "machine-3-3.txt": (
+        "ecc3140ce24869a44ebac9b03ca372fb1a6eb7e5bde96946f1a350283d4b152a",
+        "4e2c657f613759f11f167c5540d047723d41d8a3c76467fa4daafcc8a7112035",
+    ),
+    "machine-3-4.txt": (
+        "07e1b43e20b7d8300fcd4b4f45ea47ea8c851f3dbd7d1fe971139c32f039357e",
+        "5c1f09b85c53d1936eff1e044c5f7413b07f10fd641934b4aba9b2669485b7be",
+    ),
+    "machine-3-5.txt": (
+        "85dbb13b3076981ad917f42081b71a1440d8b2aafd9bee626f0d1cacff43fcd6",
+        "8a17a0dff8cc0062124997d665a2055cc1c08daffffb9a63ccfd21f7d10bea8f",
+    ),
+    "machine-3-6.txt": (
+        "04f746a4dde41adbfe5727c6ff77839d1b0b21d6d65bdb0253557e0391c5d44c",
+        "2bef9db1d998172c61008f593a7537377179ef4f24963001203c1e48345e9b61",
+    ),
+    "machine-3-7.txt": (
+        "a4588c1f39905d03bd24fce65052e7b175fba336d081843325ef780c9ed8cdad",
+        "80b3a19dfd0af2d800c2388474543bdcb723ba582b0f4a986d68f920b757c73c",
+    ),
+    "machine-3-8.txt": (
+        "fa79d5dad3a703fbc13faf0eab26d9466b74789f2bb0d22776f2adaa4236f085",
+        "dc834a5b5e9a194f5367423c29410afcb622e0e47d7d3362979dd280de713220",
+    ),
+    "machine-3-9.txt": (
+        "5a8968c269a8a3562e54235aa05344b262f44829c2bae04cf9f5d364f388310d",
+        "bdaf308affb4653e3e5826177e7e27c883294d2fa8cf48364850ef5a4dac2282",
+    ),
+    "machine-3-10.txt": (
+        "febaf197d4a8864f3a70a5e5c0926d6dab8f1b515cf0d90d31ee81a22d80392f",
+        "d2b87c9c1d1950f0b29eaca0edf4706b917984799f6d9b5c1472435832fe3abd",
+    ),
+    "machine-3-11.txt": (
+        "c62f52e65d1b892ef8c556b38aa5c1d3504cf0cdd97a94e7df08985b922d7af0",
+        "ce306777bd66e9ea81de726018e440d49afcc98415cb0db7d99367dddf398f1b",
+    ),
+}
+
+# The INSECTS streams (CC BY 4.0) as the ARCUS paper published them on Google Drive, with the
+# southern house mosquito as the anomaly class. Each entry has the Drive id and the checksum.
+_INSECTS = "https://drive.usercontent.google.com/download?export=download&confirm=t&id="
+_INSECTS_FILES = {
+    "abrupt.csv": (
+        "1C9_sXLa-dpA-p5svVYvQB32VANK_0ueD",
+        "fbeea8c2456690e0a03378788c25778193df8ea4177393892667b661fb9f32a2",
+    ),
+    "incremental.csv": (
+        "1CBJnaM9jiinpDF3yz_WoIlouurnzoe5v",
+        "f4c76ac6049d0e8f780f4a4c8a1aa573fe7049c3df0c6f1874a0e55fdacb67c7",
+    ),
+    "incremental_gradual.csv": (
+        "1CKThZMJkcC7u5T3S8BZukZRu1SXZ_1qS",
+        "f9f1ae0e5c9c6c2e8da716f9a77ae17cadd3eb53d7c79ac00646bf2b0b790479",
+    ),
+    "incremental_reoccurring.csv": (
+        "1CHEhJ2-XRk9T1o53PjT49O9mBWopKcPG",
+        "fa97083433d50675835f1f78223fba2ffbf1f80729764e8017be1824f436d95e",
+    ),
+}
+_SOURCES = ("odds", "nab", "ucr", "kddcup99", "smd", "insects")
+
 # A download that fails with a server error or a network error is tried again, after 5 and then 10
 # seconds.
 _ATTEMPTS = 3
@@ -384,6 +532,17 @@ def _source(name: str) -> tuple[str, str]:
         return _NAB + "data/" + name[len("nab/") :], _NAB_CHECKSUMS[name[len("nab/") :]]
     if name == _UCR_ARCHIVE:
         return _UCR, _UCR_CHECKSUM
+    if name == _KDDCUP99_ARCHIVE:
+        return _KDDCUP99, _KDDCUP99_CHECKSUM
+    if name.startswith("smd/labels/"):
+        return _SMD + "test_label/" + name[len("smd/labels/") :], _SMD_CHECKSUMS[
+            name[len("smd/labels/") :]
+        ][1]
+    if name.startswith("smd/"):
+        return _SMD + "test/" + name[len("smd/") :], _SMD_CHECKSUMS[name[len("smd/") :]][0]
+    if name.startswith("insects/"):
+        drive_id, checksum = _INSECTS_FILES[name[len("insects/") :]]
+        return _INSECTS + drive_id, checksum
 
     return _MIRROR + name, _CHECKSUMS[name]
 
@@ -406,7 +565,8 @@ class Data:
     datasets come from the Outlier Detection DataSets (ODDS) repository mirror
     (:cite:`rayana2016odds`, hosted in the PyOD repository at a fixed commit). The univariate
     series come from the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly Archive.
-    Each download must match a SHA-256 checksum. :meth:`datasets` lists the datasets, and
+    The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD)
+    and INSECTS. Each download must match a SHA-256 checksum. :meth:`datasets` lists the datasets, and
     :meth:`get_stream` gives the stream of a run of the PySAD benchmark.
 
     Downloaded datasets are cached in a local directory. The cache directory
@@ -432,12 +592,15 @@ class Data:
                 - ``"odds"``: the 17 multivariate datasets of ODDS, for example ``"cardio.mat"``.
                 - ``"nab"``: the 58 univariate series of the Numenta Anomaly Benchmark, for example ``"nab/realKnownCause/nyc_taxi.csv"``. The points in an anomaly window of NAB have the label 1.
                 - ``"ucr"``: the 250 univariate series of the UCR Time Series Anomaly Archive, for example ``"ucr/025_UCR_Anomaly_DISTORTEDInternalBleeding14_2800_5607_5634.txt"``. The last two numbers of a name are the first and the last point of the anomaly, counted from 1. These points have the label 1. The number before them is the length of the training part, which has no anomalies. The first series download the archive of 184 MB.
+                - ``"kddcup99"``: ``"kddcup99/http.csv"``, the 58,724 http connections of logged in users of the KDD Cup 99 10% file, in their original order. The 3 features are ``log(x + 0.1)`` of the duration, the bytes from the source and the bytes to the destination. The attacks have the label 1. The first use downloads the file of 74 MB.
+                - ``"smd"``: the test halves of the 28 machines of the Server Machine Dataset, for example ``"smd/machine-1-1.txt"``, with one point of 38 features each minute.
+                - ``"insects"``: the 4 INSECTS streams of the ARCUS paper, for example ``"insects/abrupt.csv"``, with 33 features. The southern house mosquito is the anomaly class.
 
         Returns:
             list[str]: The names of the datasets, which :meth:`get_data` accepts.
 
         Raises:
-            ValueError: If ``source`` is not ``"odds"``, ``"nab"`` or ``"ucr"``.
+            ValueError: If ``source`` is not one of the collections above.
         """
         if source == "odds":
             return list(_CHECKSUMS)
@@ -445,7 +608,13 @@ class Data:
             return ["nab/" + name for name in _NAB_CHECKSUMS]
         if source == "ucr":
             return ["ucr/" + name for name in _UCR_SERIES]
-        raise ValueError(f"source must be 'odds', 'nab' or 'ucr', got {source!r}.")
+        if source == "kddcup99":
+            return ["kddcup99/http.csv"]
+        if source == "smd":
+            return ["smd/" + name for name in _SMD_CHECKSUMS]
+        if source == "insects":
+            return ["insects/" + name for name in _INSECTS_FILES]
+        raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
 
     def _download(self, file_name: str, target_path: str) -> None:
         """Downloads a dataset file from the remote mirror into target_path atomically.
@@ -520,8 +689,8 @@ class Data:
         else:
             data_path = os.path.join(self.data_base_path, data_file)
 
-        # An ODDS dataset is known by its file name, and a NAB or UCR series by its full name.
-        series = data_file.startswith(("nab/", "ucr/"))
+        # An ODDS dataset is known by its file name, and a stream of another collection by its full name.
+        series = data_file.startswith(tuple(f"{source}/" for source in _SOURCES[1:]))
         file_name = data_file if series else os.path.basename(data_file)
 
         if not os.path.exists(data_path):
@@ -540,14 +709,16 @@ class Data:
                     f"Dataset file '{data_file}' was not found at '{data_path}' and download=False."
                 )
 
-            if file_name not in self.datasets() + self.datasets("nab") + self.datasets("ucr"):
+            if not any(file_name in self.datasets(source) for source in _SOURCES):
                 raise FileNotFoundError(
                     f"Dataset file '{data_file}' was not found at '{data_path}' and is not a known remote dataset. "
-                    f"Available datasets: {self.datasets()}, and the series of datasets('nab') and datasets('ucr')."
+                    f"Available datasets: {self.datasets()}, and the streams of datasets(source) for each source in {_SOURCES[1:]}."
                 )
 
             if file_name.startswith("ucr/"):
                 self._extract_ucr(file_name, data_path)
+            elif file_name.startswith("kddcup99/"):
+                self._extract_kddcup99(data_path)
             else:
                 self._download(file_name, data_path)
 
@@ -555,6 +726,8 @@ class Data:
             return self._load_nab(file_name, data_path, download)
         if file_name.startswith("ucr/"):
             return self._load_ucr(file_name, data_path)
+        if file_name.startswith("smd/"):
+            return self._load_smd(file_name, data_path, download)
         if data_path.endswith(".mat"):
             from scipy.io import loadmat
 
@@ -613,6 +786,34 @@ class Data:
         y[first - 1 : last] = 1
 
         return X, y
+
+    def _extract_kddcup99(self, data_path: str) -> None:
+        """Writes the http stream of KDD Cup 99, and downloads the file of the cup if it is not present."""
+        archive = os.path.join(self.data_base_path, _KDDCUP99_ARCHIVE)
+        if not os.path.exists(archive):
+            self._download(_KDDCUP99_ARCHIVE, archive)
+        with open(archive) as f:
+            lines = (line for line in f if line.strip() and not line.startswith(("@", "%")))
+            # The columns 0, 2, 4, 5 and 11 are the duration, the service, the bytes from the
+            # source, the bytes to the destination and logged_in. The last one is the label.
+            rows = [r for r in csv.reader(lines) if r[2] == "http" and r[11] == "1"]
+        X = np.log(np.array([[r[0], r[4], r[5]] for r in rows], dtype=np.float64) + 0.1)
+        y = np.array([r[-1] != "normal" for r in rows], dtype=np.float64)
+        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        np.savetxt(data_path, np.column_stack([X, y]), delimiter=",", fmt="%.17g")
+
+    def _load_smd(self, name: str, data_path: str, download: bool) -> tuple[np.ndarray, np.ndarray]:
+        """Loads the test half of an SMD machine and its labels."""
+        labels_name = "smd/labels/" + name[len("smd/") :]
+        labels_path = os.path.join(self.data_base_path, labels_name)
+        if not os.path.exists(labels_path):
+            if not download:
+                raise FileNotFoundError(
+                    f"The SMD labels were not found at '{labels_path}' and download=False."
+                )
+            self._download(labels_name, labels_path)
+
+        return np.loadtxt(data_path, delimiter=","), np.loadtxt(labels_path, dtype=int)
 
     def get_iterator(
         self,

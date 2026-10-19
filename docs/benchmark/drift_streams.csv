@@ -1,0 +1,9 @@
+Stream,Points,Points used,Features,Anomalies (%)
+kddcup99/http.csv,"58,724","9,788",3,3.7
+insects/abrupt.csv,"44,569","8,914",33,1.2
+insects/incremental.csv,"48,086","9,618",33,1.3
+insects/incremental_gradual.csv,"20,367","6,789",33,1.1
+insects/incremental_reoccurring.csv,"67,455","9,637",33,1.1
+smd/machine-1-1.txt,"28,479","9,493",38,9.4
+smd/machine-2-1.txt,"23,694","7,898",38,4.9
+smd/machine-3-1.txt,"28,700","9,567",38,1.1

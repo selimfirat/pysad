@@ -1,6 +1,7 @@
 """Benchmark the detectors and the calibrators of PySAD on the datasets of ``pysad.utils.Data``.
 
-The multivariate detectors and the calibrators run on the ODDS datasets, and the univariate
+The multivariate detectors and the calibrators run on the shuffled ODDS datasets, and the
+multivariate detectors also on streams with drift in their time order. The univariate
 detectors on the series of the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly
 Archive.
 
@@ -47,6 +48,23 @@ TOLERANCE = 0.005
 # --check accepts this difference in a false alert rate, because one alert more or less on a small
 # dataset moves the rate by about 0.01.
 ALERT_TOLERANCE = 0.02
+
+
+# The multivariate detectors also run on these streams in their time order, to show how they follow
+# drift. Each stream keeps every k-th point, so that at most DRIFT_POINTS points remain and every
+# drift of the stream stays in. The streams run with seed 0 only, to keep the run short. The short
+# names fit the tables of the page.
+DRIFT = {
+    "kddcup99/http.csv": "KDD http",
+    "insects/abrupt.csv": "INSECTS A",
+    "insects/incremental.csv": "INSECTS I",
+    "insects/incremental_gradual.csv": "INSECTS IG",
+    "insects/incremental_reoccurring.csv": "INSECTS IR",
+    "smd/machine-1-1.txt": "SMD 1-1",
+    "smd/machine-2-1.txt": "SMD 2-1",
+    "smd/machine-3-1.txt": "SMD 3-1",
+}
+DRIFT_POINTS = 10_000
 
 
 def _ranges(X):
@@ -162,6 +180,12 @@ def warmup(n):
 
 
 def load(dataset, seed):
+    if dataset in DRIFT:
+        X, y = Data().get_data(dataset)
+        step = -(-len(X) // DRIFT_POINTS)  # the smallest step that keeps at most DRIFT_POINTS
+        X, y = X[::step], y[::step]
+        mins, maxes = X.min(axis=0), X.max(axis=0)
+        return (X - mins) / np.where(maxes > mins, maxes - mins, 1.0), y
     return Data().get_stream(f"{dataset}.mat", random_state=seed, max_points=MAX_POINTS, scale=True)
 
 
@@ -360,7 +384,7 @@ def run(job):
     seconds = time.perf_counter() - start
     valid = np.isfinite(scores).all()
     row = {"dataset": dataset, "detector": detector, "seed": seed}
-    for name, calibrator in CALIBRATORS.items():
+    for name, calibrator in CALIBRATORS.items() if dataset not in DRIFT else []:
         transform = calibrator().fit_transform_partial
         with np.errstate(all="ignore"):
             calibrated = np.array([transform(s) for s in scores])
@@ -421,52 +445,9 @@ def write_tables(results, nab=None):
     write_univariate_tables(
         {k: r for k, r in results.items() if k[1] in UNIVARIATE}, nab or read_nab()
     )
-    results = {k: r for k, r in results.items() if k[1] in DETECTORS}
-    detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
-
-    def mean(metric, dataset, detector):
-        return np.mean(
-            [float(r[metric]) for k, r in results.items() if k[:2] == (dataset, detector)]
-        )
-
-    tables = {
-        metric: np.array([[mean(metric, ds, d) for d in detectors] for ds in DATASETS])
-        for metric in ["auroc", "aupr"]
-    }
-    rank = np.mean([rankdata(-np.nan_to_num(row)) for row in tables["auroc"]], axis=0)
-    ms = [
-        np.median([float(r["ms_per_point"]) for k, r in results.items() if k[1] == d])
-        for d in detectors
-    ]
-    auroc, aupr = (np.nanmean(tables[metric], axis=0) for metric in ["auroc", "aupr"])
-    # Rank 1 is the highest AUROC of a dataset. Equal mean ranks, as the page rounds them, go by
-    # mean AUROC, then mean AUPR, then time per point.
-    order = sorted(
-        range(len(detectors)), key=lambda i: (round(rank[i], 1), -auroc[i], -aupr[i], ms[i])
-    )
-    write_csv(
-        "summary.csv",
-        ["Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)", "Commit"],
-        [
-            [
-                f":class:`~pysad.models.{detectors[i]}`",
-                f"{rank[i]:.1f}",
-                f"{auroc[i]:.3f}",
-                f"{aupr[i]:.3f}",
-                f"{ms[i]:.2f}",
-                commit_links(results, detectors[i]),
-            ]
-            for i in order
-        ],
-    )
-    for metric, table in tables.items():  # the columns in the order of the summary
-        rows = []
-        for ds, row in zip(DATASETS, table[:, order], strict=True):
-            cells = [f"{v:.3f}" for v in row]
-            best = f"{np.nanmax(row):.3f}"
-            rows.append([ds, *(f"**{c}**" if c == best else c for c in cells)])
-        header = [SHORT_NAMES.get(detectors[i], detectors[i]) for i in order]
-        write_csv(f"{metric}.csv", ["Dataset", *header], rows)
+    write_ranking({k: r for k, r in results.items() if k[0] in DRIFT}, DRIFT, "drift_")
+    results = {k: r for k, r in results.items() if k[0] in DATASETS}
+    detectors = write_ranking(results, {ds: ds for ds in DATASETS}, "")
 
     write_csv(
         "alerts.csv",
@@ -502,6 +483,78 @@ def write_tables(results, nab=None):
         ["Dataset", "Points", "Points used", "Points evaluated", "Features", "Anomalies (%)"],
         datasets,
     )
+    streams = []
+    for stream in DRIFT:
+        X, y = load(stream, 0)
+        streams.append(
+            [
+                stream,
+                f"{Data().describe(stream)['points']:,}",
+                f"{len(X):,}",
+                X.shape[1],
+                f"{100 * y.mean():.1f}",
+            ]
+        )
+    write_csv(
+        "drift_streams.csv",
+        ["Stream", "Points", "Points used", "Features", "Anomalies (%)"],
+        streams,
+    )
+
+
+def write_ranking(results, datasets, prefix):
+    """The summary, the AUROC and the AUPR tables of the multivariate detectors.
+
+    ``datasets`` maps each dataset to its name in the tables.
+    """
+    detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
+    if not detectors:
+        return detectors
+
+    def mean(metric, dataset, detector):
+        return np.mean(
+            [float(r[metric]) for k, r in results.items() if k[:2] == (dataset, detector)]
+        )
+
+    tables = {
+        metric: np.array([[mean(metric, ds, d) for d in detectors] for ds in datasets])
+        for metric in ["auroc", "aupr"]
+    }
+    rank = np.mean([rankdata(-np.nan_to_num(row)) for row in tables["auroc"]], axis=0)
+    ms = [
+        np.median([float(r["ms_per_point"]) for k, r in results.items() if k[1] == d])
+        for d in detectors
+    ]
+    auroc, aupr = (np.nanmean(tables[metric], axis=0) for metric in ["auroc", "aupr"])
+    # Rank 1 is the highest AUROC of a dataset. Equal mean ranks, as the page rounds them, go by
+    # mean AUROC, then mean AUPR, then time per point.
+    order = sorted(
+        range(len(detectors)), key=lambda i: (round(rank[i], 1), -auroc[i], -aupr[i], ms[i])
+    )
+    write_csv(
+        f"{prefix}summary.csv",
+        ["Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)", "Commit"],
+        [
+            [
+                f":class:`~pysad.models.{detectors[i]}`",
+                f"{rank[i]:.1f}",
+                f"{auroc[i]:.3f}",
+                f"{aupr[i]:.3f}",
+                f"{ms[i]:.2f}",
+                commit_links(results, detectors[i]),
+            ]
+            for i in order
+        ],
+    )
+    for metric, table in tables.items():  # the columns in the order of the summary
+        rows = []
+        for ds, row in zip(datasets, table[:, order], strict=True):
+            cells = [f"{v:.3f}" for v in row]
+            best = f"{np.nanmax(row):.3f}"
+            rows.append([datasets[ds], *(f"**{c}**" if c == best else c for c in cells)])
+        header = [SHORT_NAMES.get(detectors[i], detectors[i]) for i in order]
+        write_csv(f"{prefix}{metric}.csv", ["Dataset", *header], rows)
+    return detectors
 
 
 def commit_links(results, detector):
@@ -700,13 +753,13 @@ def main():
     if unknown:
         parser.error(f"unknown detectors: {', '.join(sorted(unknown))}")
 
-    for dataset in DATASETS:  # download each file once, before the workers start
-        Data().get_data(f"{dataset}.mat")
+    for dataset in [*(f"{ds}.mat" for ds in DATASETS), *DRIFT]:  # download once, before the workers
+        Data().get_data(dataset)
     nab_series()
     ucr_series()
     seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else SEEDS
     jobs = [(ds, d, s) for d in detectors if d in DETECTORS for ds in DATASETS for s in seeds]
-    if 0 in seeds:  # the univariate detectors are not random, so they run once, with seed 0
+    if 0 in seeds:  # the univariate detectors are not random, and the drift streams are long
         jobs += [(series, d, 0) for d in detectors if d in UNIVARIATE for series in series_of(d)]
         jobs += [
             (s, d, 0)
@@ -714,6 +767,7 @@ def main():
             if d in UNIVARIATE and d not in SEASONAL
             for s in ucr_series()
         ]
+        jobs += [(stream, d, 0) for d in detectors if d in DETECTORS for stream in DRIFT]
     with ProcessPoolExecutor(args.jobs) as pool:
         new = {key(row): row for row in pool.map(run, jobs)}
     nab = nab_rows(new)

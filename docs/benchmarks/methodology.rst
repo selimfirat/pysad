@@ -36,10 +36,30 @@ The datasets come from the `ODDS <http://odds.cs.stonybrook.edu/>`_ repository (
    :stub-columns: 1
    :class: benchmark-table
 
+Streams with drift
+------------------
+
+The streams with drift come from three sources, and :class:`~pysad.utils.Data` loads each one in its time order, for example with ``Data().get_data("insects/abrupt.csv")``:
+
+- ``Data.datasets("kddcup99")`` gives the http connections of logged in users from the 10% file of KDD Cup 99, as scikit-learn's ``fetch_kddcup99`` does. Its 3 features are the logarithms of the duration and of the bytes in each direction. The attacks have the label 1.
+- ``Data.datasets("insects")`` gives the 4 INSECTS streams of the ARCUS paper. ARCUS kept 1.2% of the points of the southern house mosquito as anomalies.
+- ``Data.datasets("smd")`` gives the test halves of the 28 machines of SMD. The benchmark uses the first machine of each of the 3 groups of machines. The first half of each machine has no labels, so the benchmark does not use it.
+
+For each stream and each detector, the benchmark does the steps of the protocol above with seed 0, with two changes. It keeps the time order of the points. And instead of the first 5,000 points, it keeps every k-th point, with the smallest k that leaves at most 10,000 points. Thus the stream keeps all its drifts, and the run stays short. The first 256 points are the warm-up.
+
+The column "Points used" gives the number of points after the thinning.
+
+.. csv-table::
+   :file: ../benchmark/drift_streams.csv
+   :header-rows: 1
+   :stub-columns: 1
+   :class: benchmark-table
+
 What the results do not show
 ----------------------------
 
 - The univariate detectors take one value per point, so this benchmark does not run them. :doc:`univariate` compares them on the series of the Numenta Anomaly Benchmark.
 - :class:`~pysad.models.integrations.ReferenceWindowModel` runs a PyOD model, so its results depend on that model. :class:`~pysad.models.IForestASD` is one example of it.
-- The points of these datasets are independent, and the benchmark puts them in a random order. The streams have no drift and no seasonality. Thus the results do not show how a detector follows changes over time.
+- The points of the ODDS datasets are independent, and the benchmark puts them in a random order. These streams have no drift and no seasonality. The streams with drift show how a detector follows changes over time, but they are only 8 streams with one seed.
+- The thinning of a stream with drift makes the changes faster in points. A detector with a window of a fixed number of points sees more time in its window than on the full stream.
 - Tuned parameters can give very different results. For example, :class:`~pysad.models.KitNet` trains on its first 1,100 points by default. 7 of these datasets have fewer points, so on them, KitNet never ends its training. :doc:`/guides/choose_detector` names the parameters with the largest effect.

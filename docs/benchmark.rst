@@ -61,3 +61,35 @@ This table has the same layout as the AUROC table. The AUPR of a random detector
    :header-rows: 1
    :stub-columns: 1
    :class: benchmark-table
+
+Streams with drift
+------------------
+
+The points of the datasets above are in a random order, so they do not change over time. In a real stream, the normal points drift, and an old pattern can come back. Many detectors forget old points to follow such changes, for example with a sliding window. These tables compare the detectors on 8 real streams in their time order:
+
+- KDD Cup 99 http: network connections, with attacks in 10 bursts.
+- INSECTS :cite:`souza2020challenges`: 4 streams of optical sensor values of flying insects. A change of the temperature changes the flight of the insects, which gives abrupt, incremental, gradual and reoccurring drift. The southern house mosquito is the anomaly class, as in the ARCUS paper :cite:`yoon2022arcus`.
+- SMD :cite:`su2019robust`: 3 server machines, with one point of 38 metrics each minute.
+
+Each stream keeps every k-th point, so that it has at most 10,000 points and keeps all its drifts. The detectors run once, with seed 0. The columns are the same as in the tables above. :doc:`benchmarks/methodology` describes the streams.
+
+.. csv-table::
+   :file: benchmark/drift_summary.csv
+   :header-rows: 1
+   :class: benchmark-table
+
+AUROC on each stream:
+
+.. csv-table::
+   :file: benchmark/drift_auroc.csv
+   :header-rows: 1
+   :stub-columns: 1
+   :class: benchmark-table
+
+AUPR on each stream:
+
+.. csv-table::
+   :file: benchmark/drift_aupr.csv
+   :header-rows: 1
+   :stub-columns: 1
+   :class: benchmark-table

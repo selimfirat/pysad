@@ -426,3 +426,73 @@ def test_ucr_series_come_from_the_archive_and_are_labeled_by_their_names(tmp_pat
     np.testing.assert_array_equal(X[:, 0], [1, 2, 3, 4, 5, 6])
     np.testing.assert_array_equal(y, [0, 0, 1, 1, 0, 0])
     assert downloads == [pysad.utils.data._UCR]  # the second call reads the extracted file
+
+
+def test_drift_streams_are_listed_by_source():
+    assert Data.datasets("kddcup99") == ["kddcup99/http.csv"]
+    assert len(Data.datasets("smd")) == 28
+    assert "smd/machine-1-1.txt" in Data.datasets("smd")
+    assert len(Data.datasets("insects")) == 4
+    assert "insects/abrupt.csv" in Data.datasets("insects")
+
+
+def _serve(monkeypatch, files):
+    """Makes each download of a URL in ``files`` return its content, with a matching checksum."""
+
+    class Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda req: Response(files[req.full_url]))
+    real_source = pysad.utils.data._source
+
+    def source(name):
+        url, _ = real_source(name)
+        return url, hashlib.sha256(files[url]).hexdigest()
+
+    monkeypatch.setattr(pysad.utils.data, "_source", source)
+
+
+def test_kddcup99_http_keeps_the_http_connections_of_logged_in_users(tmp_path, monkeypatch):
+    rows = [
+        "0,tcp,http,SF,181,5450," + "0," * 5 + "1," + "0," * 29 + "normal",
+        "2,tcp,http,SF,10,20," + "0," * 5 + "0," + "0," * 29 + "normal",  # not logged in
+        "0,tcp,smtp,SF,1,2," + "0," * 5 + "1," + "0," * 29 + "normal",  # not http
+        "5,tcp,http,SF,0,0," + "0," * 5 + "1," + "0," * 29 + "back",
+    ]
+    arff = ("@relation KDDCup99\n@data\n" + "\n".join(rows) + "\n").encode()
+    _serve(monkeypatch, {pysad.utils.data._KDDCUP99: arff})
+
+    X, y = Data(data_base_path=str(tmp_path)).get_data("kddcup99/http.csv")
+
+    np.testing.assert_allclose(X, np.log(np.array([[0, 181, 5450], [5, 0, 0]]) + 0.1))
+    np.testing.assert_array_equal(y, [0, 1])
+
+
+def test_smd_streams_load_the_test_half_and_its_labels(tmp_path, monkeypatch):
+    url = pysad.utils.data._SMD
+    _serve(
+        monkeypatch,
+        {
+            url + "test/machine-1-1.txt": b"0.1,0.2\n0.3,0.4\n0.5,0.6\n",
+            url + "test_label/machine-1-1.txt": b"0\n1\n0\n",
+        },
+    )
+
+    X, y = Data(data_base_path=str(tmp_path)).get_data("smd/machine-1-1.txt")
+
+    np.testing.assert_array_equal(X, [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
+    np.testing.assert_array_equal(y, [0, 1, 0])
+
+
+def test_insects_streams_have_the_label_in_the_last_column(tmp_path, monkeypatch):
+    drive_id = pysad.utils.data._INSECTS_FILES["abrupt.csv"][0]
+    _serve(monkeypatch, {pysad.utils.data._INSECTS + drive_id: b"0.5,0.25,0\n0.75,1.0,1\n"})
+
+    X, y = Data(data_base_path=str(tmp_path)).get_data("insects/abrupt.csv")
+
+    np.testing.assert_array_equal(X, [[0.5, 0.25], [0.75, 1.0]])
+    np.testing.assert_array_equal(y, [0, 1])

@@ -240,6 +240,7 @@ def test_download_atomic_cleanup_on_error(tmp_path, monkeypatch):
         raise urllib.error.URLError("Network connection failed")
 
     monkeypatch.setattr("urllib.request.urlopen", failing_urlopen)
+    monkeypatch.setattr(pysad.utils.data, "_RETRY_SECONDS", 0.0)
 
     data = Data()
     with pytest.raises(urllib.error.URLError):
@@ -248,6 +249,51 @@ def test_download_atomic_cleanup_on_error(tmp_path, monkeypatch):
     # Verify no target file or tmp files left
     files = list(tmp_path.iterdir())
     assert len(files) == 0
+
+
+def test_download_tries_again_after_a_server_error(tmp_path, monkeypatch):
+    calls = []
+
+    class Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    def urlopen(req):
+        calls.append(req.full_url)
+        if len(calls) == 1:
+            raise urllib.error.HTTPError(req.full_url, 504, "Gateway Time-out", {}, None)
+        return Response(b"content")
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(pysad.utils.data, "_RETRY_SECONDS", 0.0)
+    monkeypatch.setitem(
+        pysad.utils.data._CHECKSUMS, "cardio.mat", hashlib.sha256(b"content").hexdigest()
+    )
+
+    Data(data_base_path=str(tmp_path))._download("cardio.mat", str(tmp_path / "cardio.mat"))
+
+    assert len(calls) == 2
+    assert (tmp_path / "cardio.mat").read_bytes() == b"content"
+
+
+def test_download_does_not_try_again_after_a_client_error(tmp_path, monkeypatch):
+    calls = []
+
+    def urlopen(req):
+        calls.append(req.full_url)
+        raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(pysad.utils.data, "_RETRY_SECONDS", 0.0)
+
+    with pytest.raises(urllib.error.HTTPError):
+        Data(data_base_path=str(tmp_path))._download("cardio.mat", str(tmp_path / "cardio.mat"))
+
+    assert len(calls) == 1
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_explicit_data_base_path_wins(tmp_path):

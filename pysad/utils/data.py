@@ -4,6 +4,8 @@ import json
 import os
 import shutil
 import tempfile
+import time
+import urllib.error
 import urllib.request
 import zipfile
 from collections.abc import Iterator
@@ -368,6 +370,12 @@ _UCR_SERIES = """
 """.split()
 
 
+# A download that fails with a server error or a network error is tried again, after 5 and then 10
+# seconds.
+_ATTEMPTS = 3
+_RETRY_SECONDS = 5.0
+
+
 def _source(name: str) -> tuple[str, str]:
     """The URL and the SHA-256 checksum of a remote file of a dataset."""
     if name == "nab/combined_windows.json":
@@ -456,9 +464,18 @@ class Data:
         )
         temp_path = temp_file.name
         try:
+            temp_file.close()
             req = urllib.request.Request(url, headers={"User-Agent": "pysad"})
-            with urllib.request.urlopen(req) as response, temp_file:
-                shutil.copyfileobj(response, temp_file)
+            for attempt in range(_ATTEMPTS):
+                try:
+                    with urllib.request.urlopen(req) as response, open(temp_path, "wb") as f:
+                        shutil.copyfileobj(response, f)
+                    break
+                except urllib.error.URLError as error:
+                    client_error = isinstance(error, urllib.error.HTTPError) and error.code < 500
+                    if client_error or attempt == _ATTEMPTS - 1:
+                        raise
+                    time.sleep(_RETRY_SECONDS * 2**attempt)
             with open(temp_path, "rb") as f:
                 checksum = hashlib.sha256(f.read()).hexdigest()
             if checksum != expected:

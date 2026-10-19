@@ -3,8 +3,9 @@ name: benchmark
 # Runs the detectors that a pull request can change on the first 2,000 points of each dataset
 # (--ci), once with the code of the base branch and once with the code of the pull request, on the
 # same machine. The summary of each job lists the runs whose AUROC moved, and the job keeps both
-# result files as an artifact. Each part of benchmark.py (--parts) runs in its own job. The full
-# results in docs/benchmark/ come from full runs that the maintainers make.
+# result files as an artifact. Each part of benchmark.py (--parts) runs in its own job, except the
+# multivariate detectors on NAB (nab and shingles), which only the full runs of the maintainers run.
+# The full results in docs/benchmark/ come from these full runs.
 on:
   pull_request:
     paths:
@@ -30,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [odds, univariate, drift, nab, shingles]
+        part: [odds, univariate, drift]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

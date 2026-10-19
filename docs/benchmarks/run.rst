@@ -55,7 +55,7 @@ If an AUROC moves by more than 0.005, the check fails and prints the command tha
 The short run in CI
 -------------------
 
-The ``benchmark`` workflow runs on each pull request that changes ``pysad/`` or ``benchmarks/``. It runs only the detectors that the pull request can change, in a short form: with ``--ci``, each run keeps only the first 2,000 points of its dataset, series or stream, and the UCR series do not run. Each part runs in its own job, which does these steps:
+The ``benchmark`` workflow runs on each pull request that changes ``pysad/`` or ``benchmarks/``. It runs only the detectors that the pull request can change, in a short form: with ``--ci``, each run keeps only the first 2,000 points of its dataset, series or stream, and the UCR series do not run. The parts ``odds``, ``univariate`` and ``drift`` each run in their own job. The parts ``nab`` and ``shingles`` do not run in CI. Each job does these steps:
 
 #. It installs the code of the base branch and runs the detectors. ``--since`` picks the detectors from the files that changed:
 

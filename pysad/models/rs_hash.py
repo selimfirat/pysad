@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
+from pysad.models.relative_entropy import _finite_float
 
 _UNSET = object()
 
@@ -32,7 +33,7 @@ class RSHash(BaseModel):
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features.
         feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features.
         sampling_points (int): Deprecated. Has no effect.
-        decay (float): The decay hyperparameter (Default=0.015).
+        decay (float): The positive decay hyperparameter. Must be a positive finite real number (a NumPy number is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for non-positive, NaN or infinite values (Default=0.015).
         num_components (int): The number of ensemble components (Default=100).
         num_hash_fns (int): The number w of pairwise-independent hash tables in the count-min sketch, whose smallest count is read (Default=1, which takes no minimum; the paper uses 4). Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
         hash_range (int): The number p of slots per hash table of the count-min sketch, which all `num_components` components share (Default=10000, the paper's p). It should grow with `num_components` and the decay window, since the sketch holds about `num_components / (1 - 2**-decay)` live insertions. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1.
@@ -54,6 +55,9 @@ class RSHash(BaseModel):
         hash_range=10000,
         random_state=None,
     ):
+        decay = _finite_float(decay, "decay")
+        if decay <= 0.0 or 2.0**-decay == 1.0:
+            raise ValueError(f"decay must be positive, got {decay}.")
         # Stored as Python ints: a NumPy integer narrower than 64 bits would overflow in _cell_slots.
         num_hash_fns = _positive_int(num_hash_fns, "num_hash_fns")
         hash_range = _positive_int(hash_range, "hash_range")
@@ -77,7 +81,7 @@ class RSHash(BaseModel):
         self.scores = []
         self.num_hash = num_hash_fns
         self.hash_range = hash_range
-        self.effS = max(1000, 1.0 / (1 - np.power(2, -self.decay)))
+        self.effS = max(1000, 1.0 / (1 - np.power(2.0, -self.decay)))
         self.random_state = random_state
         rng = check_random_state(random_state)
 
@@ -247,7 +251,7 @@ class RSHash(BaseModel):
         tstamp = self.sketch_timestamps[w, slot]
         wt = self.sketch_counts[w, slot]
 
-        return wt * np.power(2, -self.decay * (self.index - tstamp))
+        return wt * np.power(2.0, -self.decay * (self.index - tstamp))
 
     def _sample_shifts(self, rng):
         alpha = []

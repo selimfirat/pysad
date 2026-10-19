@@ -402,3 +402,51 @@ def test_rs_hash_score_then_fit_matches_fit_score_partial():
     scores_b = [model_b.fit_score_partial(x) for x in X]
 
     np.testing.assert_allclose(scores_a, scores_b)
+
+
+def test_rs_hash_accepts_integer_decay():
+    import numpy as np
+
+    from pysad.models import RSHash
+
+    feature_mins = np.zeros(2)
+    feature_maxes = np.ones(2)
+    X = np.array([[0.2, 0.3], [0.2, 0.3], [0.8, 0.7]])
+
+    for decay in [1, np.int64(1)]:
+        model_int = RSHash(
+            feature_mins,
+            feature_maxes,
+            decay=decay,
+            random_state=0,
+        )
+        model_float = RSHash(
+            feature_mins,
+            feature_maxes,
+            decay=1.0,
+            random_state=0,
+        )
+
+        assert type(model_int.decay) is float
+        scores_int = model_int.fit_score(X)
+        scores_float = model_float.fit_score(X)
+
+        np.testing.assert_allclose(scores_int, scores_float)
+
+
+def test_rs_hash_rejects_non_positive_decay():
+    import numpy as np
+    import pytest
+
+    from pysad.models import RSHash
+
+    feature_mins = np.zeros(2)
+    feature_maxes = np.ones(2)
+
+    for decay in [0, 0.0, np.int64(0), -0.1, 1e-20, float("nan"), float("inf"), float("-inf")]:
+        with pytest.raises(ValueError, match="decay"):
+            RSHash(feature_mins, feature_maxes, decay=decay)
+
+    for bad_type in [True, False, np.bool_(True), "0.015", None]:
+        with pytest.raises(TypeError, match="decay must be a real number"):
+            RSHash(feature_mins, feature_maxes, decay=bad_type)

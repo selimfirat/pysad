@@ -1,16 +1,16 @@
 import math
 import numbers
-from collections import deque
 
 import numpy as np
 
 from pysad.core.base_model import BaseModel
+from pysad.transform.preprocessing import ShingleTransformer
 
 
 class KNNCAD(BaseModel):
     """Scores each value of a univariate stream with a conformalized k-nearest-neighbor distance over sliding windows :cite:`burnaev2016conformalized`.
 
-    The method combines a feature extraction method, a score that tells whether a new observation differs significantly from the previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate: each instance must hold exactly one value, and an instance with more raises `ValueError`. Where NAB and the paper disagree, this implementation follows NAB, including: the training and calibration sets and their rotation, the sum of the k smallest quadratic forms with the `inv(XᵀX)` matrix of the uncentered training windows (refreshed every half probationary period) in place of the paper's Mahalanobis distance, and the alarm suppression that returns `0.5`. The paper gives no values for `k` and the window length, so this implementation uses NAB's `k = 27` and `19`. Unlike NAB, it keeps only the last `19` values of the stream, so its memory does not grow with the stream.
+    The method combines a feature extraction method, a score that tells whether a new observation differs significantly from the previously observed data, and a probabilistic interpretation of this score based on the conformal paradigm. This method's implementation is based on `NAB-kNNCAD <https://github.com/numenta/NAB/blob/master/nab/detectors/knncad/knncad_detector.py>`_. This model is univariate: each instance must hold exactly one value, and an instance with more raises `ValueError`. Where NAB and the paper disagree, this implementation follows NAB, including: the training and calibration sets and their rotation, the sum of the k smallest quadratic forms with the `inv(XᵀX)` matrix of the uncentered training windows (refreshed every half probationary period) in place of the paper's Mahalanobis distance, and the alarm suppression that returns `0.5`. The paper gives no values for `k` and the window length, so this implementation uses NAB's `k = 27` and `19`. Unlike NAB, it keeps only the last `19` values of the stream, so its memory does not grow with the stream. Each window of `19` values is a shingle of :class:`~pysad.transform.preprocessing.ShingleTransformer`.
 
     Args:
         probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`. Must be a whole number of at least `48` (window length `19` plus `k = 27` plus `2`): the training set holds `probationary_period - 19` windows, and the calibration scores need at least `k + 2` of them. It may be an int (a NumPy integer is accepted, but not a bool) or an integral-valued float, such as the `750.0` that NAB's probation period helper returns, which is converted to an int. Raises `TypeError` for a bool or a non-real type, and `ValueError` for NaN, infinity, a value with a fractional part, or a value below the minimum.
@@ -45,7 +45,8 @@ class KNNCAD(BaseModel):
 
         probationary_period = int(probationary_period)
 
-        self.buf = deque(maxlen=dim)
+        # Each window is a shingle of the last dim values. The model uses no copies at the start.
+        self.shingler = ShingleTransformer(dim)
         self.training = []
         self.calibration = []
         self.scores = []
@@ -125,12 +126,11 @@ class KNNCAD(BaseModel):
             self.sigma = np.diag(np.ones(self.dim))
             self.to_init = False
 
-        self.buf.append(value)
+        full = self.shingler.full
+        new_item = self.shingler.fit_transform_partial(np.array([value]))
         self.record_count += 1
-        if len(self.buf) < self.dim:
+        if not full:
             return
-
-        new_item = list(self.buf)
 
         if self.record_count < self.probationaryPeriod:
             self.training.append(new_item)
@@ -155,14 +155,14 @@ class KNNCAD(BaseModel):
     def _score(self, value):
         # The score of score_partial, and the nonconformity score of the window that ends with
         # ``value`` (None while the model only learns), which _fit can reuse for the same record.
-        if self.to_init or len(self.buf) + 1 < self.dim:
+        if self.to_init or not self.shingler.full:
             return 0.0, None
 
         record_count = self.record_count + 1
         if record_count < self.probationaryPeriod:
             return 0.0, None
 
-        new_item = list(self.buf)[-(self.dim - 1) :] + [value]
+        new_item = self.shingler.transform_partial(np.array([value]))
 
         try:
             sigma = self._sigma_at(record_count)

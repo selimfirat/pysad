@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg.blas import dger
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.utils import check_random_state
 
@@ -18,7 +19,8 @@ def _unit_interval(value, name):
 def _states(X, weights, offset):
     """The unit-norm random Fourier feature states of the rows of ``X``."""
     vals = np.cos(np.atleast_2d(X) @ weights + offset)
-    return vals / np.linalg.norm(vals, axis=1, keepdims=True)
+    vals /= np.linalg.norm(vals, axis=1, keepdims=True)
+    return vals
 
 
 def _adapt_features(X, weights, offset, gamma, learning_rate, rng, num_steps=50, batch_size=1024):
@@ -32,19 +34,42 @@ def _adapt_features(X, weights, offset, gamma, learning_rate, rng, num_steps=50,
     params = [weights.copy(), offset.copy()]
     moments = [[np.zeros_like(p), np.zeros_like(p)] for p in params]
     beta1, beta2, eps = 0.9, 0.999, 1e-7
+    zx = np.empty((batch_size, weights.shape[1]))
+    zy = np.empty_like(zx)
+    px = np.empty_like(zx)
+    py = np.empty_like(zx)
+    dzx = np.empty_like(zx)
+    dzy = np.empty_like(zx)
     for step in range(1, num_steps + 1):
         x, y = X[rng.randint(len(X), size=(2, batch_size))]
-        target = np.exp(-gamma * np.sum((x - y) ** 2, axis=1, keepdims=True))
-        zx, zy = x @ params[0] + params[1], y @ params[0] + params[1]
-        ux, uy = np.cos(zx), np.cos(zy)
-        nx = np.linalg.norm(ux, axis=1, keepdims=True)
-        ny = np.linalg.norm(uy, axis=1, keepdims=True)
-        px, py = ux / nx, uy / ny
-        approx = np.sum(px * py, axis=1, keepdims=True)
+        target = np.exp(-gamma * ((x - y) ** 2).sum(axis=1, keepdims=True))
+        np.matmul(x, params[0], out=zx)
+        zx += params[1]
+        np.matmul(y, params[0], out=zy)
+        zy += params[1]
+        np.cos(zx, out=px)
+        np.cos(zy, out=py)
+        nx = np.linalg.norm(px, axis=1, keepdims=True)
+        ny = np.linalg.norm(py, axis=1, keepdims=True)
+        px /= nx
+        py /= ny
+        np.multiply(px, py, out=dzx)
+        approx = dzx.sum(axis=1, keepdims=True)
         # Gradient of the mean squared error through the normalization and the cosine.
         error = 2 * (approx - target) / batch_size
-        dzx = -error * (py - approx * px) / nx * np.sin(zx)
-        dzy = -error * (px - approx * py) / ny * np.sin(zy)
+        # -error * (py - approx * px) / nx * sin(zx) in the same order, in the buffers.
+        np.sin(zx, out=dzx)
+        np.sin(zy, out=dzy)
+        np.multiply(approx, px, out=zx)
+        np.subtract(py, zx, out=zx)
+        zx *= -error
+        zx /= nx
+        dzx *= zx
+        np.multiply(approx, py, out=zy)
+        np.subtract(px, zy, out=zy)
+        zy *= -error
+        zy /= ny
+        dzy *= zy
         grads = [x.T @ dzx + y.T @ dzy, dzx.sum(axis=0) + dzy.sum(axis=0)]
         lr = learning_rate + (1e-7 - learning_rate) * (step - 1) / num_steps
         for param, grad, (m, v) in zip(params, grads, moments, strict=True):
@@ -138,8 +163,8 @@ class Inqmad(BaseModel):
             if len(self.initial) == 0:
                 return None, 0.0
             _, feature_range = self._min_range(self.initial)
-            sq_dists = np.sum(((self.initial - X) / feature_range) ** 2, axis=1)
-            return None, np.mean(np.exp(-2 * self.gamma * sq_dists))
+            sq_dists = (((self.initial - X) / feature_range) ** 2).sum(axis=1)
+            return None, np.exp(-2 * self.gamma * sq_dists).mean()
 
         psi = _states((X - self.feature_min) / self.feature_range, self.weights, self.offset)[0]
         return psi, psi @ self.rho @ psi
@@ -162,12 +187,14 @@ class Inqmad(BaseModel):
                 )
                 states = _states(initial, self.weights, self.offset)
                 self.rho = states.T @ states / len(states)
-                densities = np.einsum("ni,ij,nj->n", states, self.rho, states)
+                densities = ((states @ self.rho) * states).sum(axis=1)
                 self.tau = np.quantile(densities, self.beta)
                 self.initial = None
         elif density >= self.tau:
             self.rho *= 1 - self.alpha
-            self.rho += self.alpha * np.outer(psi, psi)
+            # rho += alpha * psi psi^T without a temporary matrix. rho.T is Fortran-contiguous for a
+            # C-contiguous rho, so dger updates it in place; otherwise it returns an updated copy.
+            self.rho = dger(self.alpha, psi, psi, a=self.rho.T, overwrite_a=1).T
 
     def fit_partial(self, X, y=None):
         """Updates the model with the next instance: adds it to the initial sample, or, once the sample is complete, adds it to the density matrix if its density is at least the threshold.

@@ -61,10 +61,12 @@ NAB has 58 series, and 52 of them have anomalies. For each of the 52 series and 
 
 #. It loads the series with :class:`~pysad.utils.Data` in its time order, for example with ``Data().get_data("nab/realKnownCause/nyc_taxi.csv")``. Each point in a window has the label 1.
 #. It scales the values to the range from 0 to 1, with the minimum and the maximum of the series.
-#. It makes the detector with its default parameters. Some detectors also get the arguments that they require. :class:`~pysad.models.KNNCAD` learns during a probationary period of 256 points. :class:`~pysad.models.RelativeEntropy` gets the range from 0 to 1. The ESD detectors get the period of the series, a window of 3 periods and at most 10% of the window as anomalies, which is the default of the R package of their paper.
+#. It makes the detector with its default parameters. Some detectors also get the arguments that they require. :class:`~pysad.models.KNNCAD` learns during the probationary period of NAB, as in NAB. :class:`~pysad.models.RelativeEntropy` gets the range from 0 to 1. The ESD detectors get the period of the series, a window of 3 periods and at most 10% of the window as anomalies, which is the default of the R package of their paper.
 #. It gives each point to ``fit_score_partial``.
-#. It calibrates the scores with :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`. The raw scores of a detector have a different scale on each series, but NAB uses one threshold for all of them. The calibrated scores go from 0 to 1 on every series.
+#. NAB uses one threshold for all the series of a detector, so the scores must have the same scale on each series. :class:`~pysad.models.KNNCAD` and :class:`~pysad.models.RelativeEntropy` give scores from 0 to 1, as the detectors of NAB do. The benchmark calibrates the scores of the other detectors with :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`, which gives values from 0 to 1 on every series.
 #. It computes the NAB score of the detector over all its series, with the scoring code of NAB. As in NAB, the score leaves out the probationary period of each series: the first 15% of its points, at most 750.
+
+With these steps, :class:`~pysad.models.KNNCAD` gets NAB scores of 58.4, 44.3 and 65.1. The scoreboard of NAB lists 58.0, 43.4 and 64.8 for its KNN-CAD detector, so the benchmark reproduces the method of NAB.
 
 The mean AUROC leaves out the first 256 points of each series, as the :doc:`methodology` of the multivariate benchmark does. None of these detectors draws random numbers, so each one runs once on each series, with no seeds.
 
@@ -73,6 +75,6 @@ The period of a seasonal series is one day, in points. A series counts as season
 What the results do not show
 ----------------------------
 
-- The NAB scoreboard uses the raw scores of each detector. This benchmark calibrates the scores first, so its NAB scores are not the same as those of the NAB scoreboard.
+- The NAB scoreboard has no results for MAD, SAD and the ESD detectors. Their scores here depend on the conformal calibration, which NAB does not use.
 - The ESD detectors differ from the R package of their paper in some settings, for example in their STL settings and in the direction of the test.
 - The periods come from the data, not from NAB. NAB gives no periods.

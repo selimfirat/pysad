@@ -77,8 +77,8 @@ SHORT_NAMES = {
 # because none of them draws random numbers. Each detector gets its defaults, plus the arguments
 # that it requires. A series is scaled to [0, 1].
 UNIVARIATE = {
-    # KNNCAD learns during its probationary period, which is set to the warm-up.
-    "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=warmup(n)),
+    # KNNCAD learns during NAB's probationary period, as in NAB.
+    "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
     "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
     "StandardAbsoluteDeviation": lambda n, period: models.StandardAbsoluteDeviation(),
@@ -141,6 +141,15 @@ def load(dataset, seed):
     return Data().get_stream(f"{dataset}.mat", random_state=seed, max_points=MAX_POINTS, scale=True)
 
 
+def nab_probation(n):
+    """NAB's probationary period of a series of n points: 15%, at most 750. NAB does not score it."""
+    return min(n * 15 // 100, 750)
+
+
+# These detectors give scores from 0 to 1, as NAB's detectors do. The scores of the others have
+# another scale on each series, so they are calibrated before NAB uses one threshold for all.
+NAB_UNIT_SCORES = ["KNNCAD", "RelativeEntropy"]
+
 # NAB's scoring, ported from nab/sweeper.py and nab/optimizer.py of the Numenta Anomaly Benchmark
 # (MIT license) at the commit that Data downloads the series from. Each profile gives the weights of
 # a detected window, a false alert and a missed window.
@@ -197,7 +206,7 @@ def nab_score(files, profile):
         if not np.isfinite(file_scores).all():
             return np.nan
         sweep, window = nab_sweep(y, tp_weight, fp_weight)
-        keep = np.arange(len(y)) >= min(len(y) * 15 // 100, 750)
+        keep = np.arange(len(y)) >= nab_probation(len(y))
         window = window[keep]
         ids = np.unique(window[window >= 0])  # the windows after the probationary period
         window = np.where(window >= 0, np.searchsorted(ids, window) + num_windows, -1)
@@ -263,11 +272,12 @@ def run_univariate(series, detector):
         scores = np.array([float(model.fit_score_partial(x)) for x in X])
     seconds = time.perf_counter() - start
     valid = np.isfinite(scores).all()
-    # NAB uses one threshold for all the series, so the scores of each series are calibrated first.
-    transform = ConformalProbabilityCalibrator().fit_transform_partial
-    with np.errstate(all="ignore"):
-        calibrated = np.array([transform(s) for s in scores])
-    nab = (calibrated, y)
+    if detector in NAB_UNIT_SCORES:
+        nab = (scores, y)
+    else:
+        transform = ConformalProbabilityCalibrator().fit_transform_partial
+        with np.errstate(all="ignore"):
+            nab = (np.array([transform(s) for s in scores]), y)
     scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
     return {
         "_nab": nab,

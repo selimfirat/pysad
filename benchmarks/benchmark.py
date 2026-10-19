@@ -10,6 +10,7 @@ Run it from the repository root:
     python benchmarks/benchmark.py                        # every detector
     python benchmarks/benchmark.py --detectors LODA,RSHash
     python benchmarks/benchmark.py --check origin/master  # rerun what changed, compare with the results
+    python benchmarks/benchmark.py --parts drift          # only the streams with drift
 
 The results go to docs/benchmark/, which docs/benchmark.rst shows.
 """
@@ -136,6 +137,10 @@ def series_of(detector):
 # results name a run on shingles "<detector>+shingles".
 SHINGLE_SIZE = 10
 SHINGLED = "+shingles"
+# The parts of a run, which --parts selects: the shuffled ODDS datasets, the univariate detectors on
+# NAB and UCR, the streams with drift, and the multivariate detectors on NAB without and with
+# shingles. CI runs each part in its own job.
+PARTS = ["odds", "univariate", "drift", "nab", "shingles"]
 NAB_DETECTORS = [*UNIVARIATE, *DETECTORS, *(d + SHINGLED for d in DETECTORS)]
 
 
@@ -771,7 +776,13 @@ def main():
         metavar="BASE",
         help="compare with docs/benchmark/ instead of writing it; with BASE, rerun only the detectors that changed since BASE",
     )
-    parser.add_argument("--seeds", help="comma-separated seeds (default: 0,1,2,3,4)")
+    parser.add_argument(
+        "--parts",
+        help=f"comma-separated parts of the benchmark (default: all): {', '.join(PARTS)}",
+    )
+    parser.add_argument(
+        "--seeds", help="comma-separated seeds of the odds part (default: 0,1,2,3,4)"
+    )
     parser.add_argument("--jobs", type=int, default=os.cpu_count())
     args = parser.parse_args()
 
@@ -783,29 +794,34 @@ def main():
     unknown = set(detectors) - set(DETECTORS) - set(UNIVARIATE)
     if unknown:
         parser.error(f"unknown detectors: {', '.join(sorted(unknown))}")
-
-    for dataset in [*(f"{ds}.mat" for ds in DATASETS), *DRIFT]:  # download once, before the workers
-        Data().get_data(dataset)
-    nab_series()
-    ucr_series()
+    parts = args.parts.split(",") if args.parts else PARTS
+    if set(parts) - set(PARTS):
+        parser.error(f"unknown parts: {', '.join(sorted(set(parts) - set(PARTS)))}")
     seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else SEEDS
-    jobs = [(ds, d, s) for d in detectors if d in DETECTORS for ds in DATASETS for s in seeds]
-    if 0 in seeds:  # the univariate detectors are not random, and the drift streams are long
-        jobs += [(series, d, 0) for d in detectors if d in UNIVARIATE for series in series_of(d)]
-        jobs += [
-            (s, d, 0)
-            for d in detectors
-            if d in UNIVARIATE and d not in SEASONAL
-            for s in ucr_series()
-        ]
-        jobs += [(stream, d, 0) for d in detectors if d in DETECTORS for stream in DRIFT]
-        jobs += [
-            (series, variant, 0)
-            for d in detectors
-            if d in DETECTORS
-            for variant in (d, d + SHINGLED)
-            for series in nab_series()
-        ]
+
+    # Each part downloads its data once, before the workers start. Only the odds part has seeds:
+    # the univariate detectors draw no random numbers, and the other parts run long streams.
+    jobs = []
+    multivariate = [d for d in detectors if d in DETECTORS]
+    univariate = [d for d in detectors if d in UNIVARIATE]
+    if "odds" in parts:
+        for dataset in DATASETS:
+            Data().get_data(f"{dataset}.mat")
+        jobs += [(ds, d, s) for d in multivariate for ds in DATASETS for s in seeds]
+    if {"univariate", "nab", "shingles"} & set(parts):
+        for series in nab_series():
+            Data().get_data(series)
+    if "univariate" in parts:
+        jobs += [(series, d, 0) for d in univariate for series in series_of(d)]
+        jobs += [(s, d, 0) for d in univariate if d not in SEASONAL for s in ucr_series()]
+    if "drift" in parts:
+        for stream in DRIFT:
+            Data().get_data(stream)
+        jobs += [(stream, d, 0) for d in multivariate for stream in DRIFT]
+    if "nab" in parts:
+        jobs += [(series, d, 0) for d in multivariate for series in nab_series()]
+    if "shingles" in parts:
+        jobs += [(series, d + SHINGLED, 0) for d in multivariate for series in nab_series()]
     with ProcessPoolExecutor(args.jobs) as pool:
         new = {key(row): row for row in pool.map(run, jobs)}
     nab = nab_rows(new)

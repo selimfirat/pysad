@@ -14,6 +14,16 @@ Install PySAD in editable mode, as :doc:`/contributing` shows. Then run the benc
 
 The first run downloads the datasets into ``~/.cache/pysad``: the |num_datasets| ODDS datasets, the NAB and UCR series, and the streams with drift. The UCR archive (184 MB) and the KDD Cup 99 file (74 MB) are the largest downloads. The script writes the CSV tables to ``docs/benchmark/``, which the benchmark pages render. A full run takes about 50 minutes on 10 cores. The multivariate detectors on the NAB series take most of this time. The ``--jobs`` option sets the number of processes. The default is the number of CPU cores.
 
+The ``--parts`` option runs only some parts of the benchmark, for example ``--parts drift``. These are the parts:
+
+- ``odds``: the multivariate detectors on the shuffled ODDS datasets, with the seeds of ``--seeds``.
+- ``univariate``: the univariate detectors on the NAB and UCR series.
+- ``drift``: the multivariate detectors on the streams with drift.
+- ``nab``: the multivariate detectors on the NAB series.
+- ``shingles``: the multivariate detectors on shingles of the NAB series.
+
+The parts other than ``odds`` run once, with seed 0. The ``benchmark`` workflow runs each part, and each seed of ``odds``, in its own job.
+
 Run selected detectors
 ----------------------
 

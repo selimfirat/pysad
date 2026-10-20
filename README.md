@@ -20,17 +20,17 @@
   <a href="https://circleci.com/gh/selimfirat/pysad"><img src="https://img.shields.io/circleci/build/github/selimfirat/pysad/master?style=flat-square&logo=circleci&label=CircleCI" alt="CircleCI"></a>
   <a href="https://results.pre-commit.ci/latest/github/selimfirat/pysad/master"><img src="https://results.pre-commit.ci/badge/github/selimfirat/pysad/master.svg" alt="pre-commit.ci status"></a>
   <a href="https://coveralls.io/github/selimfirat/pysad?branch=master"><img src="https://img.shields.io/coverallsCoverage/github/selimfirat/pysad?branch=master&style=flat-square&logo=coveralls&label=coverage" alt="Coverage"></a>
-  <a href="https://pysad.readthedocs.io/en/latest/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs" alt="Documentation"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs" alt="Documentation"></a>
   <a href="https://github.com/selimfirat/pysad/commits/master"><img src="https://img.shields.io/github/last-commit/selimfirat/pysad?style=flat-square&label=last%20commit" alt="Last commit"></a>
 </p>
 
 <p align="center">
-  <a href="https://pysad.readthedocs.io/en/latest/"><b>Documentation</b></a> ·
-  <a href="https://pysad.readthedocs.io/en/latest/getting_started.html">Getting started</a> ·
-  <a href="https://pysad.readthedocs.io/en/latest/guides/index.html">How-to guides</a> ·
-  <a href="https://pysad.readthedocs.io/en/latest/benchmark.html">Benchmarks</a> ·
-  <a href="https://pysad.readthedocs.io/en/latest/detectors.html">Detectors</a> ·
-  <a href="https://pysad.readthedocs.io/en/latest/api.html">API</a> ·
+  <a href="https://pysad.readthedocs.io/en/stable/"><b>Documentation</b></a> ·
+  <a href="https://pysad.readthedocs.io/en/stable/getting_started.html">Getting started</a> ·
+  <a href="https://pysad.readthedocs.io/en/stable/guides/index.html">How-to guides</a> ·
+  <a href="https://pysad.readthedocs.io/en/stable/benchmark.html">Benchmarks</a> ·
+  <a href="https://pysad.readthedocs.io/en/stable/detectors.html">Detectors</a> ·
+  <a href="https://pysad.readthedocs.io/en/stable/api.html">API</a> ·
   <a href="https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb">Try it in Colab</a>
 </p>
 
@@ -57,7 +57,7 @@ Every detector learns from and scores one point at a time with `fit_partial`, `s
 
 #### 16 detectors from published papers
 
-From robust statistics (MAD, Seasonal Hybrid ESD) to forests, sketches and projections (Half-Space Trees, Robust Random Cut Forest, RS-Hash, xStream, LODA). Each detector cites its paper, and the [detector catalog](https://pysad.readthedocs.io/en/latest/detectors.html) lists its input and memory.
+From robust statistics (MAD, Seasonal Hybrid ESD) to forests, sketches and projections (Half-Space Trees, Robust Random Cut Forest, RS-Hash, xStream, LODA). Each detector cites its paper, and the [detector catalog](https://pysad.readthedocs.io/en/stable/detectors.html) lists its input and memory.
 
 </td>
 </tr>
@@ -182,7 +182,7 @@ for x in ArrayStreamer().iter(X[100:]):
     score = model.fit_score_partial(x)
 ```
 
-The [getting started tutorial](https://pysad.readthedocs.io/en/latest/getting_started.html) explains each step. The [how-to guides](https://pysad.readthedocs.io/en/latest/guides/index.html) cover alerts, evaluation, pipelines, seasonal series, production use and custom detectors.
+The [getting started tutorial](https://pysad.readthedocs.io/en/stable/getting_started.html) explains each step. The [how-to guides](https://pysad.readthedocs.io/en/stable/guides/index.html) cover alerts, evaluation, pipelines, seasonal series, production use and custom detectors.
 
 ## Detectors
 
@@ -198,7 +198,7 @@ The [getting started tutorial](https://pysad.readthedocs.io/en/latest/getting_st
 | Network traffic | `KitNet` | Built for network intrusion detection. Gives 0 for the first 100 points by default |
 | A PyOD model that you already use | `ReferenceWindowModel` | Trains it again on a sliding window |
 
-These starting points come from the design of each method. They are not benchmark rankings. The [benchmark](https://pysad.readthedocs.io/en/latest/benchmark.html) gives the results of each multivariate detector on 17 datasets. Compare two or three detectors on your own data, as the [guide to choosing a detector](https://pysad.readthedocs.io/en/latest/guides/choose_detector.html) shows.
+These starting points come from the design of each method. They are not benchmark rankings. The [benchmark](https://pysad.readthedocs.io/en/stable/benchmark.html) gives the results of each multivariate detector on 17 datasets. Compare two or three detectors on your own data, as the [guide to choosing a detector](https://pysad.readthedocs.io/en/stable/guides/choose_detector.html) shows.
 
 ### All detectors
 
@@ -228,13 +228,13 @@ These starting points come from the design of each method. They are not benchmar
 | `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 
-`ReferenceWindowModel` and `OneFitModel` run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. The [detector catalog](https://pysad.readthedocs.io/en/latest/detectors.html) lists the input, setup and memory of each detector, and the [API reference](https://pysad.readthedocs.io/en/latest/api.html) lists every parameter.
+`ReferenceWindowModel` and `OneFitModel` run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. The [detector catalog](https://pysad.readthedocs.io/en/stable/detectors.html) lists the input, setup and memory of each detector, and the [API reference](https://pysad.readthedocs.io/en/stable/api.html) lists every parameter.
 
 ## Benchmarks
 
 PySAD benchmarks its detectors on labeled data. The 10 multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
 
-The [benchmark results](https://pysad.readthedocs.io/en/latest/benchmark.html) page shows all the results. The [evaluation methodology](https://pysad.readthedocs.io/en/latest/benchmarks/methodology.html) explains the steps, the metrics and the limits of the results, and the [datasets](https://pysad.readthedocs.io/en/latest/benchmarks/datasets.html) page describes the data. To run the benchmark, use `python benchmarks/benchmark.py`, as [Run the benchmark](https://pysad.readthedocs.io/en/latest/benchmarks/run.html) shows. On each pull request that changes a detector, CI runs a short form of the benchmark and lists the results that moved.
+The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) page shows all the results. The [evaluation methodology](https://pysad.readthedocs.io/en/stable/benchmarks/methodology.html) explains the steps, the metrics and the limits of the results, and the [datasets](https://pysad.readthedocs.io/en/stable/benchmarks/datasets.html) page describes the data. To run the benchmark, use `python benchmarks/benchmark.py`, as [Run the benchmark](https://pysad.readthedocs.io/en/stable/benchmarks/run.html) shows. On each pull request that changes a detector, CI runs a short form of the benchmark and lists the results that moved.
 
 ## Beyond detectors
 
@@ -251,7 +251,7 @@ The [benchmark results](https://pysad.readthedocs.io/en/latest/benchmark.html) p
 
 ## Contributing
 
-We welcome issues and pull requests, and we aim to reply within a few days. Ask questions and share your projects in [Discussions](https://github.com/selimfirat/pysad/discussions). For a first contribution, choose a [good first issue](https://github.com/selimfirat/pysad/labels/good%20first%20issue). The [contributing guide](https://pysad.readthedocs.io/en/latest/contributing.html) lists the steps from the first clone to an open pull request.
+We welcome issues and pull requests, and we aim to reply within a few days. Ask questions and share your projects in [Discussions](https://github.com/selimfirat/pysad/discussions). For a first contribution, choose a [good first issue](https://github.com/selimfirat/pysad/labels/good%20first%20issue). The [contributing guide](https://pysad.readthedocs.io/en/stable/contributing.html) lists the steps from the first clone to an open pull request.
 
 PySAD follows [semantic versioning](https://semver.org/) and [trunk-based development](https://trunkbaseddevelopment.com/). Each change reaches `master` through a short-lived branch and a pull request that CI checks, and CI runs every example.
 <p align="center">

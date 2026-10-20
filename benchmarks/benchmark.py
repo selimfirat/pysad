@@ -13,7 +13,7 @@ Run it from the repository root:
     python benchmarks/benchmark.py --parts drift          # only the streams with drift
     python benchmarks/benchmark.py --ci base.csv --since origin/master  # the short run of CI
 
-The results go to docs/benchmark/, which docs/benchmark.rst shows.
+The results go to docs/benchmark/, which the pages in docs/benchmarks/ show.
 """
 
 import argparse

@@ -1,7 +1,7 @@
 Run the benchmark
 =================
 
-This page shows how to run the :doc:`multivariate detector benchmark </benchmark>` locally, update the tables for specific detectors and verify that a code change keeps ``docs/benchmark/`` up to date.
+This page shows how to run the :doc:`benchmark </benchmark>` on your computer, update the tables of some detectors, and compare a branch with ``master``.
 
 Run every detector
 ------------------
@@ -44,7 +44,7 @@ Commit your code changes before you run the benchmark. If you do not, the commit
 Check against ``master``
 ------------------------
 
-To list the detectors that a branch can affect and check whether their AUROC moved since ``origin/master``, run:
+This command lists the detectors that a branch can affect. Then it runs them and compares their AUROC with ``docs/benchmark/``:
 
 .. code-block:: console
 
@@ -55,7 +55,7 @@ If an AUROC moves by more than 0.005, the check fails and prints the command tha
 The short run in CI
 -------------------
 
-The ``benchmark`` workflow runs on each pull request that changes ``pysad/`` or ``benchmarks/``. It runs only the detectors that the pull request can change, in a short form: with ``--ci``, each run keeps only the first 2,000 points of its dataset, series or stream, and the UCR series do not run. The parts ``odds``, ``univariate`` and ``drift`` each run in their own job. The parts ``nab`` and ``shingles`` do not run in CI. Each job does these steps:
+The ``benchmark`` workflow runs on each pull request that changes ``pysad/`` or ``benchmarks/``. It runs only the detectors that the pull request can change, in a short form. With ``--ci``, each run keeps only the first 2,000 points of its dataset, series or stream. The UCR series do not run. The parts ``odds``, ``univariate`` and ``drift`` each run in their own job. The parts ``nab`` and ``shingles`` do not run in CI. Each job does these steps:
 
 #. It installs the code of the base branch and runs the detectors. ``--since`` picks the detectors from the files that changed:
 

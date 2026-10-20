@@ -1,7 +1,7 @@
 Calibrators
 ===========
 
-This page compares the two probability calibrators of PySAD on the same runs as the :doc:`multivariate detector benchmark </benchmark>`. A calibrator turns the scores of a detector into values from 0 to 1. An alert is a calibrated score at or above a threshold, as :doc:`/guides/alerts` shows. For each run, the benchmark gives the scores to each calibrator with its default parameters. Then it counts the alerts after the warm-up, which :doc:`methodology` explains. The calibrators also learn from the warm-up points.
+This page compares the two probability calibrators of PySAD on the runs of :doc:`multivariate`. A calibrator turns the scores of a detector into values from 0 to 1. An alert is a calibrated score at or above a threshold, as :doc:`/guides/alerts` shows. For each run, the benchmark gives the scores to each calibrator with its default parameters. Then it counts the alerts after the warm-up, which :doc:`methodology` explains. The calibrators also learn from the warm-up points.
 
 Thresholds
 ----------

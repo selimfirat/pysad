@@ -232,11 +232,9 @@ These starting points come from the design of each method. They are not benchmar
 
 ## Benchmarks
 
-PySAD benchmarks all 10 multivariate streaming detectors across 17 labeled datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository, with one run per dataset. Each detector runs with its default hyperparameters and scores each point before learning from it (`fit_score_partial`).
+PySAD benchmarks its detectors on labeled data. The 10 multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
 
-- **Results and per-dataset tables:** The [multivariate detector benchmark](https://pysad.readthedocs.io/en/latest/benchmark.html) reports mean rank, mean AUROC, mean AUPR, median time per point (ms), and per-dataset AUROC and AUPR tables.
-- **Methodology and dataset statistics:** The [methodology page](https://pysad.readthedocs.io/en/latest/benchmarks/methodology.html) documents the prequential protocol, the 256-point warm-up rule, feature scaling, dataset dimensions and anomaly rates, and what the benchmark does not measure.
-- **Reproduce or update locally:** Run `python benchmarks/benchmark.py` (or `--detectors LODA,RSHash` for specific detectors); see [running the benchmark](https://pysad.readthedocs.io/en/latest/benchmarks/run.html). Every pull request that modifies a detector is checked in CI against the committed benchmark results.
+The [benchmark overview](https://pysad.readthedocs.io/en/latest/benchmark.html) links to the results. [How the benchmark works](https://pysad.readthedocs.io/en/latest/benchmarks/methodology.html) explains the steps, the metrics, the datasets and the limits of the results. To run the benchmark, use `python benchmarks/benchmark.py`, as [Run the benchmark](https://pysad.readthedocs.io/en/latest/benchmarks/run.html) shows. On each pull request that changes a detector, CI runs a short form of the benchmark and lists the results that moved.
 
 ## Beyond detectors
 

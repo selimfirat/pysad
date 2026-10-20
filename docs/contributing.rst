@@ -102,19 +102,13 @@ Check the change
 
       $ pytest -m examples
 
-#. If your change affects a multivariate detector, commit the change. This includes a change to shared code that the detector uses, for example :class:`~pysad.core.BaseModel`. To list the affected detectors, run the check against ``master``:
+#. If your change affects a detector, explain its effect on the results. This includes a change to shared code that the detector uses, for example :class:`~pysad.core.BaseModel`. CI runs the affected detectors on the first 2,000 points of each dataset, once with the code of ``master`` and once with your change. The summary of each CI job lists the results that moved. To see the effect on the full benchmark before you push, commit your change and run:
 
    .. code-block:: console
 
       $ python benchmarks/benchmark.py --check origin/master
 
-   Then run the :doc:`benchmark <benchmarks/run>` for the affected detectors, and commit ``docs/benchmark/``. The results record the commit that they ran on. Replace ``LODA,RSHash`` with the class names of the detectors:
-
-   .. code-block:: console
-
-      $ python benchmarks/benchmark.py --detectors LODA,RSHash
-
-   CI runs the same benchmark and fails if the results in ``docs/benchmark/`` are out of date.
+   The maintainers update the results in ``docs/benchmark/``. :doc:`benchmarks/run` explains the options of the benchmark.
 
 #. If you changed a docstring or a file in ``docs/``, build the documentation. CI does not build it for each pull request:
 

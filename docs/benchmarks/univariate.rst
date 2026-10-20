@@ -22,7 +22,7 @@ Results
 Summary
 ~~~~~~~
 
-The summary has one row for each detector, from the highest standard NAB score to the lowest. It has these columns:
+The summary has one row for each detector, from the highest standard NAB score to the lowest. The best value of each score and of the time is in bold. It has these columns:
 
 Detector
    A row that ends with "shingles" gives a multivariate detector that gets a shingle of the last 10 values for each point, from :class:`~pysad.transform.preprocessing.ShingleTransformer`. A multivariate detector without shingles gets only the single value of each point.
@@ -45,17 +45,17 @@ Commit
 .. csv-table::
    :file: ../benchmark/univariate.csv
    :header-rows: 1
-   :class: benchmark-table
+   :class: benchmark-table best-columns
 
 Seasonal series
 ~~~~~~~~~~~~~~~
 
-The ESD detectors run on fewer series than the others, so the summary does not compare them on equal terms. This table compares all the detectors on the 5 seasonal series only, with the standard NAB score and the mean AUROC.
+The ESD detectors run on fewer series than the others, so the summary does not compare them on equal terms. This table compares all the detectors on the 14 seasonal series only, with the standard NAB score and the mean AUROC.
 
 .. csv-table::
    :file: ../benchmark/univariate_seasonal.csv
    :header-rows: 1
-   :class: benchmark-table
+   :class: benchmark-table best-columns
 
 UCR series
 ~~~~~~~~~~
@@ -65,7 +65,7 @@ Each UCR series has one anomaly. Its first part is a training part with no anoma
 .. csv-table::
    :file: ../benchmark/univariate_ucr.csv
    :header-rows: 1
-   :class: benchmark-table
+   :class: benchmark-table best-columns
 
 How the benchmark works
 -----------------------
@@ -87,7 +87,7 @@ The mean AUROC leaves out the 6 series without anomalies, and the first 256 poin
 
 The UCR archive has 250 series with 19.4 million points in total. The benchmark uses the 84 series with at most 20,000 points, which have 772,539 points in total, so that a run stays short. It loads each series with ``Data().get_data(name)``, for a name from ``Data.datasets("ucr")``. The archive has no license that lets PySAD copy it, so :class:`~pysad.utils.Data` downloads it from the site of its authors. Then the benchmark does the steps 2, 3 and 4 above, with the raw scores. The training part of each UCR series has at least 1,000 points, so the first 256 points never count.
 
-The period of a seasonal series is one day, in points. A series counts as seasonal when the correlation of its values with the values one day earlier is at least 0.5. The ESD detectors run on the 5 seasonal series with a period of 24 or 48 points. Nine more series have a daily period of 288 points. A window of 3 such periods makes the STL decomposition of each point too slow for this benchmark, so the ESD detectors do not run on them.
+The period of a seasonal series is one day, in points. A series counts as seasonal when the correlation of its values with the values one day earlier is at least 0.5. 14 series are seasonal. Their periods are 24, 48 or 288 points, because NAB records a point every hour, every half hour or every 5 minutes. The ESD detectors run on these 14 series.
 
 What the results do not show
 ----------------------------

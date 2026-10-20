@@ -21,7 +21,7 @@ AUPR
 Summary
 -------
 
-The summary has one row for each detector, from the best mean rank to the worst. Detectors with the same mean rank are in the order of their mean AUROC, then their mean AUPR, then their time per point. It has these columns:
+The summary has one row for each detector, from the best mean rank to the worst. The best value of each column is in bold. Detectors with the same mean rank are in the order of their mean AUROC, then their mean AUPR, then their time per point. It has these columns:
 
 Mean rank
    The rank of a detector on a dataset is its position by AUROC, where 1 is the highest AUROC. The mean rank is the average of these ranks over the |num_datasets| datasets.
@@ -38,7 +38,7 @@ Commit
 .. csv-table::
    :file: benchmark/summary.csv
    :header-rows: 1
-   :class: benchmark-table
+   :class: benchmark-table best-columns
 
 AUROC on each dataset
 ---------------------
@@ -76,7 +76,7 @@ Each stream keeps every k-th point, so that it has at most 10,000 points and kee
 .. csv-table::
    :file: benchmark/drift_summary.csv
    :header-rows: 1
-   :class: benchmark-table
+   :class: benchmark-table best-columns
 
 AUROC on each stream:
 

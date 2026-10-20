@@ -117,14 +117,22 @@ UNIVARIATE = {
     "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(period, 3 * period + 1),
 }
 # The ESD detectors need the period of a series, so they run only on these series. Each period is a
-# day, where the autocorrelation at a lag of one day is at least 0.5. Nine more NAB series have a
-# daily period of 288 points, but a window of 3 such periods makes the STL of each point too slow.
+# day, in points, where the autocorrelation at a lag of one day is at least 0.5.
 PERIODS = {
-    "nab/realKnownCause/ambient_temperature_system_failure.csv": 24,
-    "nab/realKnownCause/nyc_taxi.csv": 48,
+    "nab/artificialWithAnomaly/art_daily_flatmiddle.csv": 288,
+    "nab/artificialWithAnomaly/art_daily_jumpsdown.csv": 288,
+    "nab/artificialWithAnomaly/art_daily_jumpsup.csv": 288,
+    "nab/artificialWithAnomaly/art_daily_nojump.csv": 288,
+    "nab/realAWSCloudwatch/ec2_cpu_utilization_53ea38.csv": 288,
+    "nab/realAWSCloudwatch/grok_asg_anomaly.csv": 288,
+    "nab/realAWSCloudwatch/rds_cpu_utilization_cc0c53.csv": 288,
+    "nab/realAWSCloudwatch/rds_cpu_utilization_e47b3b.csv": 288,
     "nab/realAdExchange/exchange-2_cpc_results.csv": 24,
     "nab/realAdExchange/exchange-2_cpm_results.csv": 24,
     "nab/realAdExchange/exchange-3_cpm_results.csv": 24,
+    "nab/realKnownCause/ambient_temperature_system_failure.csv": 24,
+    "nab/realKnownCause/cpu_utilization_asg_misconfiguration.csv": 288,
+    "nab/realKnownCause/nyc_taxi.csv": 48,
 }
 SEASONAL = ["SeasonalESD", "SeasonalHybridESD"]
 

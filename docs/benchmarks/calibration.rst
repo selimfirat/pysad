@@ -13,7 +13,7 @@ The threshold "1 - anomaly rate" is different for each run, so that the number o
 Results
 -------
 
-The table has these columns:
+The highest precision, recall and F1 are in bold. The table has these columns:
 
 Expected
    The expected false alert rate, one minus the threshold. The alerts guide gives this value as the fraction of normal points that raise an alert. The threshold "1 - anomaly rate" has no fixed value.
@@ -36,6 +36,6 @@ F1
 .. csv-table::
    :file: ../benchmark/alerts.csv
    :header-rows: 1
-   :class: benchmark-table
+   :class: benchmark-table best-columns
 
 The anomalies also enter the window of a calibrator. On a dataset with many anomalies, fewer normal points pass the threshold, so the false alert rate can be lower than expected. The window of :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator` holds 300 scores by default. Its highest calibrated score is thus 299/300, about 0.997, so a threshold of 0.999 never raises an alert with the defaults.

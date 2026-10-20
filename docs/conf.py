@@ -67,6 +67,7 @@ html_css_files = [
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap",
     "custom.css",
 ]
+html_js_files = ["best.js"]  # bolds the best value of each metric column in the benchmark tables
 
 html_theme_options = {
     # Read the Docs builds "latest" from master, which can differ from the release on PyPI.

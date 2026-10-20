@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from heapq import heappush
+from bisect import bisect_left, insort
 
 from pysad.core.base_statistic import UnivariateStatistic
 
@@ -26,7 +26,7 @@ class MedianMeter(UnivariateStatistic):
         Returns:
             object: self.
         """
-        heappush(self.lst, num)
+        insort(self.lst, num)
         self.num_items += 1
 
         return self
@@ -40,8 +40,12 @@ class MedianMeter(UnivariateStatistic):
         Returns:
             object: self.
         """
-        self.lst.remove(num)
-        self.num_items -= 1
+        idx = bisect_left(self.lst, num)
+        if idx < self.num_items and self.lst[idx] == num:
+            del self.lst[idx]
+            self.num_items -= 1
+        else:
+            raise ValueError(f"{num} not in MedianMeter")
 
         return self
 
@@ -51,7 +55,6 @@ class MedianMeter(UnivariateStatistic):
         Returns:
             float: The statistic.
         """
-        self.lst = sorted(self.lst)
         if self.num_items % 2 == 0:
             return (self.lst[self.num_items // 2] + self.lst[self.num_items // 2 - 1]) / 2
         else:

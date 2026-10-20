@@ -192,3 +192,40 @@ def test_variance_meter_restarts_after_removing_every_value():
     stat.update(1.0).update(2.0)
 
     assert stat.get() == 0.25
+
+
+def test_median_meter_matches_numpy_after_random_updates_and_removals():
+    import numpy as np
+    import pytest
+
+    from pysad.statistics import MedianMeter
+    from pysad.utils import fix_seed
+
+    fix_seed(61)
+
+    meter = MedianMeter()
+    values = np.random.rand(200).tolist()
+    active: list[float] = []
+
+    for val in values[:50]:
+        meter.update(val)
+        active.append(val)
+        assert np.isclose(meter.get(), np.median(active))
+
+    for val in values[50:150]:
+        meter.update(val)
+        active.append(val)
+        if len(active) > 5 and np.random.rand() > 0.5:
+            remove_idx = int(np.random.randint(0, len(active)))
+            to_remove = active.pop(remove_idx)
+            meter.remove(to_remove)
+
+        assert np.isclose(meter.get(), np.median(active))
+
+    while len(active) > 1:
+        to_remove = active.pop(0)
+        meter.remove(to_remove)
+        assert np.isclose(meter.get(), np.median(active))
+
+    with pytest.raises(ValueError):
+        meter.remove(999999.0)

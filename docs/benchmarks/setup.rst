@@ -1,5 +1,5 @@
-How the benchmark works
-=======================
+Benchmark setup
+===============
 
 These pages explain how the benchmark runs and how you can run it:
 

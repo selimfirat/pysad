@@ -203,8 +203,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    :caption: Benchmarks
 
    benchmark
-   benchmarks/methodology
-   benchmarks/run
+   benchmarks/how_it_works
 
 .. toctree::
    :hidden:

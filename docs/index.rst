@@ -139,7 +139,7 @@ What PySAD contains
 
          |num_datasets|
 
-      labeled :doc:`benchmark datasets <benchmark>` evaluated across 5 seeds
+      labeled :doc:`benchmark datasets <benchmark>`
 
    .. container:: stat
 

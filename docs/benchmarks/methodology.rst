@@ -1,7 +1,7 @@
 How the benchmark works
 =======================
 
-This page explains the steps of a run, the metrics and the limits of the results. :doc:`/benchmark` lists the parts of the benchmark and their result pages, and :doc:`datasets` describes the data.
+This page explains the steps of a run, the metrics, the datasets and the limits of the results. :doc:`/benchmark` shows the results.
 
 Steps of a run
 --------------
@@ -54,11 +54,54 @@ NAB score
 Solved series
    A detector solves a UCR series when its highest score after the training part is at most 100 points from the anomaly. The authors of the archive use this rule.
 
+Alerts of a calibrator
+   For each run of the ``odds`` part, the benchmark gives all the scores to each calibrator. Then it counts the alerts after the warm-up.
+
 NAB has three profiles. The standard profile weights a false alert at 0.11 of a miss. The profile "low false alerts" doubles the weight of a false alert, and the profile "low misses" doubles the weight of a miss.
 
 One threshold for all the series needs scores with the same scale on each series. :class:`~pysad.models.KNNCAD` and :class:`~pysad.models.RelativeEntropy` give scores from 0 to 1, as the detectors of NAB do. The benchmark gives the scores of the other detectors to :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`, whose window holds all the earlier scores of the series. With its default window of 300 scores, many points tie at the highest value.
 
 The benchmark uses the scoring code of NAB. With it, :class:`~pysad.models.KNNCAD` gets NAB scores of 58.0, 43.4 and 64.8, the scores that the scoreboard of NAB lists for its KNN-CAD detector. :class:`~pysad.models.RelativeEntropy` gets higher scores than on the scoreboard, because its histogram follows the paper.
+
+Datasets
+--------
+
+:class:`~pysad.utils.Data` downloads all the data on first use and makes sure that each file matches its SHA-256 checksum.
+
+ODDS
+~~~~
+
+The ``odds`` part uses |num_datasets| datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ repository (Outlier Detection DataSets). The column "Points used" gives the number of points after the limit of 5,000, and "Points evaluated" the number after the warm-up. :meth:`Data.get_stream <pysad.utils.Data.get_stream>` gives a stream exactly as the benchmark uses it, for example ``Data().get_stream("cardio.mat", random_state=0, max_points=5000, scale=True)``.
+
+.. csv-table::
+   :file: ../benchmark/datasets.csv
+   :header-rows: 1
+   :stub-columns: 1
+   :class: benchmark-table
+
+Streams with drift
+~~~~~~~~~~~~~~~~~~
+
+The ``drift`` part uses 8 streams from three sources:
+
+- ``Data.datasets("kddcup99")`` gives the http connections of logged in users from the 10% file of KDD Cup 99, as scikit-learn's ``fetch_kddcup99`` does. Its 3 features are the logarithms of the duration and of the bytes in each direction. The attacks are the anomalies.
+- ``Data.datasets("insects")`` gives the 4 INSECTS streams :cite:`souza2020challenges` as the ARCUS paper :cite:`yoon2022arcus` made them. The anomalies are the points of the southern house mosquito, 1.2% of each stream.
+- ``Data.datasets("smd")`` gives the test halves of the 28 machines of SMD :cite:`su2019robust`. The benchmark uses the first machine of each of the 3 groups of machines. The first half of each machine has no labels, so the benchmark does not use it.
+
+The column "Points used" gives the number of points after the thinning.
+
+.. csv-table::
+   :file: ../benchmark/drift_streams.csv
+   :header-rows: 1
+   :stub-columns: 1
+   :class: benchmark-table
+
+NAB and UCR
+~~~~~~~~~~~
+
+NAB has 58 series, and 52 of them have anomalies. Each point in a window of NAB has the label 1. 14 series are seasonal: the correlation of their values with the values one day earlier is at least 0.5. Their period is one day, which is 24, 48 or 288 points, because these series have a point every hour, every half hour or every 5 minutes.
+
+The UCR archive has 250 series with 19.4 million points. The benchmark uses the 84 series with at most 20,000 points, so that a run stays short. The archive has no license that lets PySAD copy it, so :class:`~pysad.utils.Data` downloads it from the site of its authors.
 
 What the results do not show
 ----------------------------
@@ -70,3 +113,4 @@ What the results do not show
 - Each detector runs with one seed, and the shingles have one size. Another seed or another shingle size can give other results.
 - A run on another platform can give slightly different results for :class:`~pysad.models.Inqmad`, and for :class:`~pysad.models.LODA` on series with many equal scores.
 - :class:`~pysad.models.integrations.ReferenceWindowModel` runs a PyOD model, so its results depend on that model. :class:`~pysad.models.IForestASD` is one example of it.
+- The anomalies also enter the window of a calibrator. On a dataset with many anomalies, fewer normal points pass the threshold, so the false alert rate can be lower than expected. The window of :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator` holds 300 scores by default, so its highest value is 299/300, and a threshold of 0.999 never raises an alert.

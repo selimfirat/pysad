@@ -234,7 +234,7 @@ These starting points come from the design of each method. They are not benchmar
 
 PySAD benchmarks its detectors on labeled data. The 10 multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
 
-The [benchmark overview](https://pysad.readthedocs.io/en/latest/benchmark.html) links to the results. [How the benchmark works](https://pysad.readthedocs.io/en/latest/benchmarks/methodology.html) explains the steps, the metrics, the datasets and the limits of the results. To run the benchmark, use `python benchmarks/benchmark.py`, as [Run the benchmark](https://pysad.readthedocs.io/en/latest/benchmarks/run.html) shows. On each pull request that changes a detector, CI runs a short form of the benchmark and lists the results that moved.
+The [benchmark results](https://pysad.readthedocs.io/en/latest/benchmark.html) page shows all the results. [How the benchmark works](https://pysad.readthedocs.io/en/latest/benchmarks/methodology.html) explains the steps, the metrics, the datasets and the limits of the results. To run the benchmark, use `python benchmarks/benchmark.py`, as [Run the benchmark](https://pysad.readthedocs.io/en/latest/benchmarks/run.html) shows. On each pull request that changes a detector, CI runs a short form of the benchmark and lists the results that moved.
 
 ## Beyond detectors
 

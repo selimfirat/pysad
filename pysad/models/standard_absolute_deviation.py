@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import numpy as np
+
 from pysad.core.base_model import BaseModel
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.median_meter import MedianMeter
@@ -20,9 +24,10 @@ class StandardAbsoluteDeviation(BaseModel):
         absolute (bool): Whether to output score's absolute value. (Default=True).
     """
 
-    def __init__(self, subtracted_statistic="mean", absolute=True):
+    def __init__(self, subtracted_statistic: str = "mean", absolute: bool = True) -> None:
         self.absolute = absolute
         self.variance_meter = VarianceMeter()
+        self.sub_meter: AverageMeter | MedianMeter
 
         if subtracted_statistic == "median":
             self.sub_meter = MedianMeter()
@@ -31,7 +36,7 @@ class StandardAbsoluteDeviation(BaseModel):
         else:
             raise ValueError("Unknown subtracted_statistic value! Please choose median or mean.")
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> StandardAbsoluteDeviation:
         """Updates the model with the next instance.
 
         Args:
@@ -47,7 +52,7 @@ class StandardAbsoluteDeviation(BaseModel):
 
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

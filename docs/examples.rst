@@ -19,6 +19,20 @@ It prints:
 
    AUROC: 0.758
 
+Give a detector the recent history
+----------------------------------
+
+This script turns each point of a univariate NAB series into a window of its 24 most recent points. LODA then scores these multivariate shingles. See :doc:`guides/pipelines`.
+
+.. literalinclude:: ../examples/example_shingles.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.627
+
 Build a full pipeline
 ---------------------
 

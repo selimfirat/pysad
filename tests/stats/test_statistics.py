@@ -192,3 +192,18 @@ def test_variance_meter_restarts_after_removing_every_value():
     stat.update(1.0).update(2.0)
 
     assert stat.get() == 0.25
+
+
+def test_max_meter_without_values_keeps_only_the_maximum():
+    import pytest
+
+    from pysad.statistics import MaxMeter
+
+    meter = MaxMeter(keep_values=False)
+    for num in [3.0, -1.0, 7.5, 2.0]:
+        meter.update(num)
+
+    assert meter.get() == 7.5
+    assert meter.lst == []
+    with pytest.raises(ValueError, match="keeps no values"):
+        meter.remove(7.5)

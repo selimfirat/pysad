@@ -164,3 +164,15 @@ def test_postprocessors_partial_matches_batch():
 
         # All postprocessors should produce the same values through either API.
         np.testing.assert_allclose(partial_scores, batch_scores, err_msg=postprocessor_cls.__name__)
+
+
+def test_max_postprocessor_memory_does_not_grow_with_the_stream():
+    import numpy as np
+
+    # It used to keep every score of the stream (#388).
+    scores = np.random.default_rng(0).random(10_000)
+    postprocessor = MaxPostprocessor()
+    out = postprocessor.fit_transform(scores)
+
+    np.testing.assert_allclose(out, np.maximum.accumulate(scores))
+    assert postprocessor.meter.lst == []

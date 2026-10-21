@@ -99,7 +99,8 @@ class MaxPostprocessor(_MeterPostprocessor):
     """A postprocessor that converts a score to the maximum of all previous scores."""
 
     def __init__(self):
-        super().__init__(MaxMeter())
+        # Nothing is ever removed from the whole stream, so the maximum alone is enough (#388).
+        super().__init__(MaxMeter(keep_values=False))
 
 
 class MedianPostprocessor(_MeterPostprocessor):

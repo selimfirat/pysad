@@ -1,4 +1,3 @@
-from typing import Optional
 import numpy as np
 
 from pysad.core.base_transformer import BaseTransformer
@@ -67,8 +66,8 @@ class StreamhashProjector(BaseTransformer):
         density (float): Fraction of non-zero entries in the projection matrix (Default=1/3).
     """
 
-    _R: Optional[np.ndarray] = None
-    _R_ndim: Optional[int] = None
+    _R: np.ndarray | None = None
+    _R_ndim: int | None = None
 
     def __init__(self, num_components: int, density: float = 1 / 3.0) -> None:
         super().__init__(num_components)
@@ -76,8 +75,8 @@ class StreamhashProjector(BaseTransformer):
         self.constant: float = float(np.sqrt(1.0 / density) / np.sqrt(num_components))
         self.density: float = density
         self.n_components: int = num_components
-        self._R: Optional[np.ndarray] = None
-        self._R_ndim: Optional[int] = None
+        self._R: np.ndarray | None = None
+        self._R_ndim: int | None = None
 
     def fit_partial(self, X: np.ndarray) -> "StreamhashProjector":
         """Fits particular (next) timestep's features to train the projector.

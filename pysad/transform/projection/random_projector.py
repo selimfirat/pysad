@@ -1,5 +1,6 @@
 from abc import abstractmethod
-from typing import Any, Union
+from typing import Any
+
 import numpy as np
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
 
@@ -7,7 +8,7 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class BaseSKLearnProjector(BaseTransformer):
-    def __init__(self, num_components: Union[int, str]) -> None:
+    def __init__(self, num_components: int | str) -> None:
         """Abstract base projector class to wrap the random sklearn projectors.
 
         Args:
@@ -18,7 +19,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
     @property
     @abstractmethod
-    def _projector(self) -> Union[GaussianRandomProjection, SparseRandomProjection]:
+    def _projector(self) -> GaussianRandomProjection | SparseRandomProjection:
         """Helper property to wrap sklearn projectors."""
         pass
 
@@ -110,7 +111,7 @@ class GaussianRandomProjector(BaseSKLearnProjector):
 
     def __init__(
         self,
-        num_components: Union[int, str] = "auto",
+        num_components: int | str = "auto",
         *,
         eps: float = 0.1,
         random_state: Any = None,
@@ -131,8 +132,8 @@ class SparseRandomProjector(BaseSKLearnProjector):
 
     def __init__(
         self,
-        num_components: Union[int, str] = "auto",
-        density: Union[float, str] = "auto",
+        num_components: int | str = "auto",
+        density: float | str = "auto",
         eps: float = 0.1,
         random_state: Any = None,
     ) -> None:

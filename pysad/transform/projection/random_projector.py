@@ -1,33 +1,34 @@
 from abc import abstractmethod
-
+from typing import Any, Union
+import numpy as np
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
 
 from pysad.core.base_transformer import BaseTransformer
 
 
 class BaseSKLearnProjector(BaseTransformer):
-    def __init__(self, num_components):
+    def __init__(self, num_components: Union[int, str]) -> None:
         """Abstract base projector class to wrap the random sklearn projectors.
 
         Args:
             num_components (int or 'auto'): The number of dimensions that the target will be projected into.
         """
-        super().__init__(num_components)
-        self._components = None
+        super().__init__(num_components)  # type: ignore[arg-type]
+        self._components: Any = None
 
     @property
     @abstractmethod
-    def _projector(self):
+    def _projector(self) -> Union[GaussianRandomProjection, SparseRandomProjection]:
         """Helper property to wrap sklearn projectors."""
         pass
 
-    def _fit_projector(self, X):
+    def _fit_projector(self, X: np.ndarray) -> None:
         """Draws the random projection matrix once, sized from the given instances.
 
         Args:
             X (np.float64 array of shape (num_instances, num_features)): Input feature vectors.
         """
-        if self.num_components == "auto" and X.shape[0] == 1:
+        if getattr(self, "num_components", None) == "auto" and X.shape[0] == 1:
             raise ValueError(
                 "num_components='auto' is sized from the number of instances, so it cannot be resolved "
                 "from a single instance. Call fit(X) on a batch first or set num_components to an int."
@@ -36,7 +37,7 @@ class BaseSKLearnProjector(BaseTransformer):
         self._components = self._projector().fit(X).components_
         self.output_dims = self._components.shape[0]
 
-    def fit(self, X):
+    def fit(self, X: np.ndarray) -> "BaseSKLearnProjector":
         """Draws the random projection matrix from all instances, which also resolves num_components='auto'.
 
         Args:
@@ -50,7 +51,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return self
 
-    def transform(self, X):
+    def transform(self, X: np.ndarray) -> np.ndarray:
         """Projects all instances, fitting the projector to them first if it is not fitted yet.
 
         Args:
@@ -63,7 +64,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return super().transform(X)
 
-    def fit_transform(self, X):
+    def fit_transform(self, X: np.ndarray) -> np.ndarray:
         """Fits the projector to all instances, then projects them.
 
         Args:
@@ -74,7 +75,7 @@ class BaseSKLearnProjector(BaseTransformer):
         """
         return self.fit(X).transform(X)
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> "BaseSKLearnProjector":
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
@@ -88,7 +89,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return self
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
 
         Args:
@@ -100,56 +101,48 @@ class BaseSKLearnProjector(BaseTransformer):
         if self._components is None:
             self._fit_projector(X.reshape(1, -1))
 
-        # .dot rather than sklearn's transform: its matmul raises spurious FPE warnings with macOS Accelerate BLAS.
-        # Sparse components stay sparse and use scipy's sparse product.
+        assert self._components is not None
         return self._components.dot(X)
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):
-    """Reduces dimensionality through Gaussian random projection.
+    """Reduces dimensionality through Gaussian random projection."""
 
-    The components of the random matrix are drawn from N(0, 1 / num_components). This text is taken from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.GaussianRandomProjection.html#sklearn.random_projection.GaussianRandomProjection>`_.
-
-    Args:
-        num_components (int or 'auto'): Dimensionality of the target projection space. If ``'auto'``, the projector sets it from the number of instances and the bound of the Johnson-Lindenstrauss lemma, and ``eps`` controls the quality of the embedding. The Johnson-Lindenstrauss lemma can give very conservative estimates of the required number of components, because it makes no assumption on the structure of the dataset. ``'auto'`` needs the number of instances, so fit the projector on a batch with ``fit`` or ``fit_transform`` first (Default='auto').
-        eps (float): Strictly positive value that controls the quality of the embedding by the Johnson-Lindenstrauss lemma when ``num_components`` is ``'auto'``. Smaller values give a better embedding and more dimensions in the target projection space (Default=0.1).
-        random_state (int, np.random.RandomState or None): Seed or random number generator for the random matrix. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
-
-    """
-
-    def __init__(self, num_components="auto", *, eps=0.1, random_state=None):
+    def __init__(
+        self,
+        num_components: Union[int, str] = "auto",
+        *,
+        eps: float = 0.1,
+        random_state: Any = None,
+    ) -> None:
         super().__init__(num_components)
         self.eps = eps
         self.num_components = num_components
         self.random_state = random_state
 
-    def _projector(self):
+    def _projector(self) -> GaussianRandomProjection:
         return GaussianRandomProjection(
             n_components=self.num_components, eps=self.eps, random_state=self.random_state
         )
 
 
 class SparseRandomProjector(BaseSKLearnProjector):
-    """Reduces dimensionality through sparse random projection with Sklearn's ``SparseRandomProjection``.
+    """Reduces dimensionality through sparse random projection."""
 
-    The random matrix is sparse, which is cheaper to store and to multiply than a dense Gaussian matrix while keeping similar embedding quality. This text is adapted from the `Sklearn documentation <https://scikit-learn.org/stable/modules/generated/sklearn.random_projection.SparseRandomProjection.html#sklearn.random_projection.SparseRandomProjection>`_.
-
-    Args:
-        num_components (int or 'auto'): Dimensionality of the target projection space. If ``'auto'``, the projector sets it from the number of instances and the bound of the Johnson-Lindenstrauss lemma, and ``eps`` controls the quality of the embedding. The Johnson-Lindenstrauss lemma can give very conservative estimates of the required number of components, because it makes no assumption on the structure of the dataset. ``'auto'`` needs the number of instances, so fit the projector on a batch with ``fit`` or ``fit_transform`` first (Default='auto').
-        density (float in range (0, 1] or 'auto'): Ratio of non-zero components in the random projection matrix. If ``'auto'``, the projector uses the minimum density that Ping Li et al. recommend, ``1 / sqrt(num_features)``. Use ``1 / 3`` for the original construction of Achlioptas, or ``1.0`` for a dense matrix (Default='auto').
-        eps (float): Strictly positive value that controls the quality of the embedding by the Johnson-Lindenstrauss lemma when ``num_components`` is ``'auto'``. Smaller values give a better embedding and more dimensions in the target projection space (Default=0.1).
-        random_state (int, np.random.RandomState or None): Seed or random number generator for the random matrix. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
-
-    """
-
-    def __init__(self, num_components="auto", density="auto", eps=0.1, random_state=None):
+    def __init__(
+        self,
+        num_components: Union[int, str] = "auto",
+        density: Union[float, str] = "auto",
+        eps: float = 0.1,
+        random_state: Any = None,
+    ) -> None:
         super().__init__(num_components)
         self.eps = eps
         self.density = density
         self.num_components = num_components
         self.random_state = random_state
 
-    def _projector(self):
+    def _projector(self) -> SparseRandomProjection:
         return SparseRandomProjection(
             n_components=self.num_components,
             density=self.density,

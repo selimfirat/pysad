@@ -1,9 +1,10 @@
+from typing import Optional
 import numpy as np
 
 from pysad.core.base_transformer import BaseTransformer
 
 
-def _murmurhash3_x86_32(seeds, byte_matrix):
+def _murmurhash3_x86_32(seeds: np.ndarray, byte_matrix: np.ndarray) -> np.ndarray:
     """Vectorized 32-bit MurmurHash3 (x86_32), matching ``mmh3.hash(s, signed=False, seed=k)``.
 
     Computes the hash of every row of `byte_matrix` (all of the same byte length) against every
@@ -59,30 +60,26 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
 
 
 class StreamhashProjector(BaseTransformer):
-    """Projects each feature vector with the sparse StreamHash random projection of Manzoor et al. :cite:`xstream`.
-
-    StreamHash builds each entry of the projection matrix from a hash of the feature index, so the projector accepts any number of features. The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
+    """Projects each feature vector with the sparse StreamHash random projection.
 
     Args:
         num_components (int): The number of dimensions that the target will be projected into.
         density (float): Fraction of non-zero entries in the projection matrix (Default=1/3).
     """
 
-    # Defaults for instances unpickled from older pysad versions, whose __dict__ predates
-    # these attributes; __init__ below overrides them for freshly constructed instances.
-    _R = None
-    _R_ndim = None
+    _R: Optional[np.ndarray] = None
+    _R_ndim: Optional[int] = None
 
-    def __init__(self, num_components, density=1 / 3.0):
+    def __init__(self, num_components: int, density: float = 1 / 3.0) -> None:
         super().__init__(num_components)
-        self.keys = np.arange(0, num_components, 1)
-        self.constant = np.sqrt(1.0 / density) / np.sqrt(num_components)
-        self.density = density
-        self.n_components = num_components
-        self._R = None
-        self._R_ndim = None
+        self.keys: np.ndarray = np.arange(0, num_components, 1)
+        self.constant: float = float(np.sqrt(1.0 / density) / np.sqrt(num_components))
+        self.density: float = density
+        self.n_components: int = num_components
+        self._R: Optional[np.ndarray] = None
+        self._R_ndim: Optional[int] = None
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> "StreamhashProjector":
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
@@ -93,8 +90,8 @@ class StreamhashProjector(BaseTransformer):
         """
         return self
 
-    def transform_partial(self, X):
-        """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+        """Projects particular (next) timestep's vector to lower dimensional space.
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.
@@ -112,11 +109,8 @@ class StreamhashProjector(BaseTransformer):
 
         return Y
 
-    def _get_projection_matrix(self, ndim):
-        """Returns the projection matrix for the given number of features, building and caching it on first use.
-
-        The matrix only depends on `ndim`, `self.keys`, `self.density` and `self.constant`, so it is
-        rebuilt only when a sample with a different `ndim` than the cached one arrives.
+    def _get_projection_matrix(self, ndim: int) -> np.ndarray:
+        """Returns the projection matrix for the given number of features.
 
         Args:
             ndim (int): Number of features of the incoming sample.
@@ -130,13 +124,8 @@ class StreamhashProjector(BaseTransformer):
 
         return self._R
 
-    def _build_projection_matrix(self, ndim):
-        """Builds the projection matrix by hashing the ASCII decimal string of every feature index.
-
-        Feature indices are grouped by the byte length of their decimal representation (e.g. 0-9,
-        10-99, ...), since MurmurHash3 processes fixed-length blocks; each group is then hashed for
-        all `self.keys` seeds at once via `_murmurhash3_x86_32`, instead of hashing one entry at a
-        time with `mmh3.hash`.
+    def _build_projection_matrix(self, ndim: int) -> np.ndarray:
+        """Builds the projection matrix by hashing feature indices.
 
         Args:
             ndim (int): Number of features of the incoming sample.

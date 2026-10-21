@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import math
 from collections import deque
+
+import numpy as np
 
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.statistics.average_meter import AverageMeter
@@ -27,10 +31,10 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
     def __init__(
         self,
-        running_statistics=True,
-        window_size=8000,
-        short_window_size=10,
-    ):
+        running_statistics: bool = True,
+        window_size: int = 8000,
+        short_window_size: int = 10,
+    ) -> None:
         if window_size < 1:
             raise ValueError("window_size must be a positive integer.")
         if short_window_size < 1:
@@ -41,16 +45,20 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         self.short_window_size = short_window_size
 
         if self.running_statistics:
-            self.avg_meter = RunningStatistic(AverageMeter, self.window_size)
-            self.var_meter = RunningStatistic(VarianceMeter, self.window_size)
+            self.avg_meter: RunningStatistic | AverageMeter = RunningStatistic(
+                AverageMeter, self.window_size
+            )
+            self.var_meter: RunningStatistic | VarianceMeter = RunningStatistic(
+                VarianceMeter, self.window_size
+            )
         else:
             self.avg_meter = AverageMeter()
             self.var_meter = VarianceMeter()
 
-        self.short_window = deque(maxlen=self.short_window_size)
+        self.short_window: deque[float] = deque(maxlen=self.short_window_size)
         self._just_fitted = False
 
-    def fit_partial(self, score):
+    def fit_partial(self, score: float) -> GaussianTailProbabilityCalibrator:
         """Fits particular (next) timestep's score to train the postprocessor.
 
         Args:
@@ -66,7 +74,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
         return self
 
-    def fit(self, scores):
+    def fit(self, scores: np.ndarray) -> GaussianTailProbabilityCalibrator:
         """Shortcut method that iteratively applies fit_partial to all instances in order.
 
         Args:
@@ -80,7 +88,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
         return self
 
-    def transform_partial(self, score):
+    def transform_partial(self, score: float) -> float:
         """Transforms given score.
 
         Args:
@@ -115,7 +123,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
         return 1 - self._qfunction(short_mean, mean, std)
 
-    def _qfunction(self, x, mean, std):
+    def _qfunction(self, x: float, mean: float, std: float) -> float:
         """
         Given the normal distribution specified by the mean and standard deviation args, return the probability of getting samples > x. Implementation is adapted from the https://github.com/ish-vlad/Conformal-Anomaly-Detection/blob/22769b8d3cede7fabd978a36cdd2853255e450ac/scripts/nab_module/nab/detectors/gaussian/windowedGaussian_detector.py This is the
         Q-function: the tail probability of the normal distribution.

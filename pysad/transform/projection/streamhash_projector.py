@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import numpy as np
 
 from pysad.core.base_transformer import BaseTransformer
 
 
-def _murmurhash3_x86_32(seeds, byte_matrix):
+def _murmurhash3_x86_32(seeds: np.ndarray, byte_matrix: np.ndarray) -> np.ndarray:
     """Vectorized 32-bit MurmurHash3 (x86_32), matching ``mmh3.hash(s, signed=False, seed=k)``.
 
     Computes the hash of every row of `byte_matrix` (all of the same byte length) against every
@@ -59,6 +61,8 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
 
 
 class StreamhashProjector(BaseTransformer):
+    _R: np.ndarray | None = None
+    _R_ndim: int | None = None
     """Projects each feature vector with the sparse StreamHash random projection of Manzoor et al. :cite:`xstream`.
 
     StreamHash builds each entry of the projection matrix from a hash of the feature index, so the projector accepts any number of features. The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
@@ -73,7 +77,7 @@ class StreamhashProjector(BaseTransformer):
     _R = None
     _R_ndim = None
 
-    def __init__(self, num_components, density=1 / 3.0):
+    def __init__(self, num_components: int, density: float = 1 / 3.0) -> None:
         super().__init__(num_components)
         self.keys = np.arange(0, num_components, 1)
         self.constant = np.sqrt(1.0 / density) / np.sqrt(num_components)
@@ -82,7 +86,7 @@ class StreamhashProjector(BaseTransformer):
         self._R = None
         self._R_ndim = None
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> StreamhashProjector:
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
@@ -93,7 +97,7 @@ class StreamhashProjector(BaseTransformer):
         """
         return self
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
 
         Args:
@@ -112,7 +116,7 @@ class StreamhashProjector(BaseTransformer):
 
         return Y
 
-    def _get_projection_matrix(self, ndim):
+    def _get_projection_matrix(self, ndim: int) -> np.ndarray:
         """Returns the projection matrix for the given number of features, building and caching it on first use.
 
         The matrix only depends on `ndim`, `self.keys`, `self.density` and `self.constant`, so it is
@@ -130,7 +134,7 @@ class StreamhashProjector(BaseTransformer):
 
         return self._R
 
-    def _build_projection_matrix(self, ndim):
+    def _build_projection_matrix(self, ndim: int) -> np.ndarray:
         """Builds the projection matrix by hashing the ASCII decimal string of every feature index.
 
         Feature indices are grouped by the byte length of their decimal representation (e.g. 0-9,

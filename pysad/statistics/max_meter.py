@@ -11,14 +11,21 @@ class MaxMeter(UnivariateStatistic):
 
     Removing the oldest value, which is what :class:`~pysad.statistics.RunningStatistic` does, takes amortized constant time. Removing any other value takes time linear in the number of values.
 
+    Args:
+        keep_values (bool): Whether to keep every value, which :meth:`remove` needs (windowing).
+            With ``False`` only the maximum is kept, so memory does not grow with the stream (Default=True).
+
     Attributes:
         max (float): The maximum value.
         lst (collections.deque[float]): The values that are used to update the statistic, oldest first. It is necessary for windowing operations.
+            Stays empty when ``keep_values`` is ``False``.
         candidates (collections.deque[float]): The values that can still become the maximum when older values are removed, oldest first. They are in non-increasing order.
+            Stays empty when ``keep_values`` is ``False``.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, keep_values: bool = True) -> None:
         self.max = -math.inf
+        self.keep_values = keep_values
 
         self.lst: deque[float] = deque()
         self.candidates: deque[float] = deque()
@@ -35,8 +42,9 @@ class MaxMeter(UnivariateStatistic):
         if num > self.max:
             self.max = num
 
-        self.lst.append(num)
-        self._push(num)
+        if self.keep_values:
+            self.lst.append(num)
+            self._push(num)
 
         return self
 
@@ -49,6 +57,11 @@ class MaxMeter(UnivariateStatistic):
         Returns:
             object: self.
         """
+        if not self.keep_values:
+            raise ValueError(
+                "MaxMeter(keep_values=False) keeps no values, so it cannot remove one."
+            )
+
         if self.lst and self.lst[0] == num:
             self.lst.popleft()
             # The oldest value is the first candidate unless a larger value came after it.

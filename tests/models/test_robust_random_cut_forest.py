@@ -237,3 +237,14 @@ def test_rrcf_cut_batch_matches_single_cut():
         assert dims[i] == expected_dim
         np.testing.assert_allclose(cuts[i], expected_cut)
         assert stopped[i] == expected_stopped
+
+
+def test_rrcf_cut_batch_empty_nodes():
+    from pysad.models.robust_random_cut_forest import _RCTree
+
+    rng = np.random.RandomState(42)
+    x = np.array([1.0, 2.0, 3.0])
+    dims, cuts, stopped = _RCTree._cut_batch(x, [], rng)
+    assert len(dims) == 0
+    assert len(cuts) == 0
+    assert len(stopped) == 0

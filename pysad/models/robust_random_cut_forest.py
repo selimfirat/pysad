@@ -161,6 +161,9 @@ class _RCTree:
 
     @staticmethod
     def _cut_batch(x, nodes, rng):
+        if not nodes:
+            return np.empty(0, dtype=int), np.empty(0, dtype=float), np.empty(0, dtype=bool)
+
         d = len(x)
         lows = np.array([node.bbox[0] for node in nodes])
         highs = np.array([node.bbox[-1] for node in nodes])

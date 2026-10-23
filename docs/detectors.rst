@@ -85,9 +85,9 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Nothing
      - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.StandardAbsoluteDeviation`
-     - Distance from the running mean in standard deviations :cite:`hochenbaum2017automatic`
-     - Nothing
-     - Fixed with the default mean. Grows with ``subtracted_statistic="median"``
+     - Distance from the running mean or recent median in standard deviations :cite:`hochenbaum2017automatic`
+     - ``window_size`` when using ``subtracted_statistic="median"``
+     - Fixed; median mode retains only the last ``window_size`` values while variance remains an all-history running statistic
    * - :class:`~pysad.models.KNNCAD`
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`
      - A probationary period: at least 48 values that it learns from before it scores

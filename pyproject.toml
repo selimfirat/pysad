@@ -1,1 +1,187 @@
-# Note: full content would be here, but truncated for this example; in real use full file is used
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pysad"
+dynamic = ["version"]
+# The floors are the first releases of scipy and scikit-learn built
+# for NumPy 2, so no allowed combination pairs NumPy 2 with an older build compiled for
+# NumPy 1. The lowest-versions job in .github/workflows/coverage.yml tests them.
+dependencies = [
+  "numpy>=1.22.4",
+  "scikit-learn>=1.4.2",
+  "scipy>=1.13.0",
+]
+requires-python = ">=3.10"
+authors = [
+  {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"},
+]
+maintainers = [
+  {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"}
+]
+description = "Streaming anomaly detection in Python: 16 online detectors (xStream, LODA, RS-Hash, Half-Space Trees, RRCF...) plus calibration and prequential evaluation for real-time data."
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+keywords = [
+  "outlier detection",
+  "anomaly detection",
+  "machine learning",
+  "streaming",
+  "online learning",
+  "real-time",
+  "incremental learning",
+  "time series",
+]
+classifiers = [
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Education',
+        'Intended Audience :: Financial and Insurance Industry',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
+        'Intended Audience :: Information Technology',
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Software Development",
+        "License :: OSI Approved :: BSD License",
+        'Operating System :: Unix',
+        'Operating System :: MacOS',
+        'Operating System :: Microsoft :: Windows',
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14"
+    ]
+
+[project.urls]
+Homepage = "https://github.com/selimfirat/pysad"
+Documentation = "https://pysad.readthedocs.io/"
+Repository = "https://github.com/selimfirat/pysad.git"
+"Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
+Changelog = "https://github.com/selimfirat/pysad/blob/master/CHANGES.txt"
+
+# PEP 735 dependency groups. The runtime dependencies only have floors in [project]; these
+# groups pin what CI, Read the Docs and contributors install, and Dependabot bumps them.
+# Install with `pip install -e . --group dev` (pip 25.1+) or `uv sync --group dev`.
+[dependency-groups]
+# Pinned runtime dependencies, so tests and docs run against known versions.
+runtime = [
+  "numpy==2.2.6",
+  "scikit-learn==1.7.2",
+  "scipy==1.15.3; python_version < '3.11'",
+  "scipy>=1.15.4; python_version >= '3.11'",
+  "setuptools>=84.0.0,<85.0.0",
+]
+test = [
+  # PandasStreamer takes DataFrames.
+  "pandas==2.3.3",
+  # The reference that LocalOutlierProbability is tested against.
+  "PyNomaly==0.4.0",
+  # The batch detectors that the tests and examples run through pysad.models.integrations.
+  "pyod>=3.6.2",
+  # Security floor for pillow, a transitive dependency of pyod via matplotlib.
+  "pillow>=12.3.0",
+  "hypothesis==6.168.5",
+  # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
+  "mmh3==5.3.1",
+  "pytest==9.1.1",
+  "pytest-cov==7.1.0",
+  "pytest-xdist==3.8.0",
+]
+docs = [
+  "sphinx==8.1.3",
+  "furo==2025.12.19",
+  "sphinxcontrib-bibtex==2.7.0",
+  "sphinx-copybutton==0.5.2",
+  # Security floor for idna, a transitive dependency via requests.
+  "idna>=3.20",
+]
+lint = [
+  "pre-commit==4.6.2",
+]
+dev = [
+  {include-group = "runtime"},
+  {include-group = "test"},
+  {include-group = "docs"},
+  {include-group = "lint"},
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "pysad.version.__version__"}
+
+[tool.setuptools.package-data]
+# PEP 561 marker: type checkers use pysad's inline type hints.
+pysad = ["py.typed"]
+
+[tool.uv]
+# `uv sync` would otherwise add the dev group to whatever --group asks for; Read the Docs
+# and CI name the groups they need explicitly.
+default-groups = []
+
+[tool.pytest.ini_options]
+addopts = ["--verbose", "-m", "not examples"]
+markers = [
+  "examples: runs the scripts in examples/ end to end (slow, run with -m examples)",
+]
+
+[tool.coverage.run]
+source = ["pysad"]
+# Vendored KitNET reference implementation, kept as upstream wrote it.
+omit = ["pysad/models/kitnet_model/*"]
+
+# Ruff reads the target Python version from requires-python above.
+[tool.ruff]
+# Most of the existing code already fits in 100 columns.
+line-length = 100
+# Vendored KitNET reference implementation, kept as upstream wrote it.
+extend-exclude = ["pysad/models/kitnet_model"]
+
+[tool.ruff.lint]
+select = [
+  "E",       # pycodestyle errors
+  "W",       # pycodestyle warnings
+  "F",       # Pyflakes
+  "I",       # isort
+  "UP",      # pyupgrade
+  "B",       # flake8-bugbear
+  "NPY",     # NumPy-specific rules, including the NumPy 2.0 removals
+  "PGH",     # no blanket noqa or type: ignore comments
+  "PLE",     # Pylint errors
+  "T10",     # leftover debugger breakpoints
+  "RUF100",  # unused noqa comments
+]
+ignore = [
+  # The formatter wraps code; long docstring and comment lines are allowed.
+  "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# __version__ is defined by exec-ing pysad/version.py.
+"docs/conf.py" = ["F821"]
+# The examples unpack (X, y) pairs from the streamers to show the API, even where y is unused.
+# They also seed NumPy's global random state, as users of pysad.utils.fix_seed do.
+"examples/**" = ["B007", "NPY002"]
+# The tests seed NumPy's global random state with pysad.utils.fix_seed, which random_state=None draws from.
+"tests/**" = ["NPY002"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["pysad"]
+# Vendored KitNET reference implementation, kept as upstream wrote it.
+exclude = ["^pysad/models/kitnet_model/"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+# These packages are fully annotated; keep them that way. Add packages here as their
+# type hints are completed.
+[[tool.mypy.overrides]]
+module = ["pysad.core.*", "pysad.evaluation.*", "pysad.statistics.*", "pysad.utils.*", "pysad.transform.projection.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+
+# Dependencies without type hints or stubs.
+[[tool.mypy.overrides]]
+module = ["pandas.*", "scipy.*", "sklearn.*"]
+ignore_missing_imports = true

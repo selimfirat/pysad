@@ -176,7 +176,7 @@ warn_redundant_casts = true
 # These packages are fully annotated; keep them that way. Add packages here as their
 # type hints are completed.
 [[tool.mypy.overrides]]
-module = ["pysad.core.*", "pysad.evaluation.*", "pysad.statistics.*", "pysad.utils.*"]
+module = ["pysad.core.*", "pysad.evaluation.*", "pysad.statistics.*", "pysad.utils.*", "pysad.transform.projection.*"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true

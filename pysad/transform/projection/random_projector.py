@@ -1,27 +1,33 @@
-from abc import abstractmethod
+from __future__ import annotations
 
+from abc import abstractmethod
+from typing import Any, Literal, cast
+
+import numpy as np
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
 
 from pysad.core.base_transformer import BaseTransformer
 
 
 class BaseSKLearnProjector(BaseTransformer):
-    def __init__(self, num_components):
+    num_components: int | Literal["auto"]
+
+    def __init__(self, num_components: int | Literal["auto"]) -> None:
         """Abstract base projector class to wrap the random sklearn projectors.
 
         Args:
             num_components (int or 'auto'): The number of dimensions that the target will be projected into.
         """
-        super().__init__(num_components)
-        self._components = None
+        super().__init__(cast(int, num_components))
+        self._components: Any | None = None
 
     @property
     @abstractmethod
-    def _projector(self):
+    def _projector(self) -> GaussianRandomProjection | SparseRandomProjection:
         """Helper property to wrap sklearn projectors."""
         pass
 
-    def _fit_projector(self, X):
+    def _fit_projector(self, X: np.ndarray) -> None:
         """Draws the random projection matrix once, sized from the given instances.
 
         Args:
@@ -36,7 +42,7 @@ class BaseSKLearnProjector(BaseTransformer):
         self._components = self._projector().fit(X).components_
         self.output_dims = self._components.shape[0]
 
-    def fit(self, X):
+    def fit(self, X: np.ndarray) -> BaseSKLearnProjector:
         """Draws the random projection matrix from all instances, which also resolves num_components='auto'.
 
         Args:
@@ -50,7 +56,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return self
 
-    def transform(self, X):
+    def transform(self, X: np.ndarray) -> np.ndarray:
         """Projects all instances, fitting the projector to them first if it is not fitted yet.
 
         Args:
@@ -63,7 +69,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return super().transform(X)
 
-    def fit_transform(self, X):
+    def fit_transform(self, X: np.ndarray) -> np.ndarray:
         """Fits the projector to all instances, then projects them.
 
         Args:
@@ -74,7 +80,7 @@ class BaseSKLearnProjector(BaseTransformer):
         """
         return self.fit(X).transform(X)
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> BaseSKLearnProjector:
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
@@ -88,7 +94,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return self
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
 
         Args:
@@ -102,6 +108,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         # .dot rather than sklearn's transform: its matmul raises spurious FPE warnings with macOS Accelerate BLAS.
         # Sparse components stay sparse and use scipy's sparse product.
+        assert self._components is not None
         return self._components.dot(X)
 
 
@@ -117,13 +124,19 @@ class GaussianRandomProjector(BaseSKLearnProjector):
 
     """
 
-    def __init__(self, num_components="auto", *, eps=0.1, random_state=None):
+    def __init__(
+        self,
+        num_components: int | Literal["auto"] = "auto",
+        *,
+        eps: float = 0.1,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
         super().__init__(num_components)
         self.eps = eps
         self.num_components = num_components
         self.random_state = random_state
 
-    def _projector(self):
+    def _projector(self) -> GaussianRandomProjection:
         return GaussianRandomProjection(
             n_components=self.num_components, eps=self.eps, random_state=self.random_state
         )
@@ -142,14 +155,20 @@ class SparseRandomProjector(BaseSKLearnProjector):
 
     """
 
-    def __init__(self, num_components="auto", density="auto", eps=0.1, random_state=None):
+    def __init__(
+        self,
+        num_components: int | Literal["auto"] = "auto",
+        density: float | Literal["auto"] = "auto",
+        eps: float = 0.1,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
         super().__init__(num_components)
         self.eps = eps
         self.density = density
         self.num_components = num_components
         self.random_state = random_state
 
-    def _projector(self):
+    def _projector(self) -> SparseRandomProjection:
         return SparseRandomProjection(
             n_components=self.num_components,
             density=self.density,

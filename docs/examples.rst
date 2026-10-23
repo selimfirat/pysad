@@ -47,6 +47,20 @@ It prints:
 
    AUROC: 0.543
 
+Project high-dimensional data
+-----------------------------
+
+This script projects each point into fewer features before scoring it with an online anomaly detector.
+
+.. literalinclude:: ../examples/example_projection.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.749
+
 Raise alerts with a calibrator
 ------------------------------
 

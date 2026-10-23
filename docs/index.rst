@@ -25,7 +25,11 @@ PySAD
 
    .. container:: actions
 
-      :doc:`Get started <getting_started>` `View on GitHub <https://github.com/selimfirat/pysad>`_
+      :doc:`Get started <getting_started>` `View on GitHub <https://github.com/selimfirat/pysad>`_ |stars|
+
+.. |stars| image:: https://img.shields.io/github/stars/selimfirat/pysad?style=social
+   :alt: GitHub stars
+   :target: https://github.com/selimfirat/pysad
 
 .. container:: terminal
 

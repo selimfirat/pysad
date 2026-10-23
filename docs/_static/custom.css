@@ -36,6 +36,13 @@
   color: var(--color-background-primary);
 }
 
+/* The star-count badge after the buttons. */
+.actions a:has(> img) {
+  padding: 0;
+  border: 0;
+  vertical-align: middle;
+}
+
 .actions a:hover {
   filter: brightness(1.1);
 }

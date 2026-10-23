@@ -3,7 +3,7 @@ Examples
 
 These scripts come from the `examples folder <https://github.com/selimfirat/pysad/tree/master/examples>`_ on GitHub. The automatic tests run each script end to end on the ``master`` branch. To run a script, download it. Then run ``python <script>.py``. The scripts download the benchmark datasets that they need.
 
-To try PySAD in the browser without an installation, open the `NYC taxi demo in JupyterLite <https://pyodide.github.io/jupyterlite/lab/index.html?fromURL=https%3A//raw.githubusercontent.com/selimfirat/pysad/master/examples/nyc_taxi_alerts.ipynb>`_ or the `quick start notebook in Colab <https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb>`_.
+To try PySAD in the browser without an installation, open the `NYC taxi demo in JupyterLite <https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb>`_ or the `quick start notebook in Colab <https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb>`_.
 
 Score a benchmark dataset
 -------------------------

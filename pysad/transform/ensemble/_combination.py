@@ -8,11 +8,12 @@ logic is unchanged. For licensing information, see the end of this file.
 
 import numpy as np
 from numpy.random import RandomState
+from numpy.typing import NDArray
 from sklearn.utils import check_array, shuffle
 from sklearn.utils.random import sample_without_replacement
 
 
-def average(scores, estimator_weights=None):
+def average(scores: np.ndarray, estimator_weights: np.ndarray | None = None) -> NDArray[np.float64]:
     """Combines the scores of multiple estimators by their (weighted) average.
 
     Args:
@@ -39,7 +40,7 @@ def average(scores, estimator_weights=None):
         return np.mean(scores, axis=1).ravel()
 
 
-def maximization(scores):
+def maximization(scores: np.ndarray) -> NDArray[np.float64]:
     """Combines the scores of multiple estimators by their maximum.
 
     Args:
@@ -52,7 +53,7 @@ def maximization(scores):
     return np.max(scores, axis=1).ravel()
 
 
-def median(scores):
+def median(scores: np.ndarray) -> NDArray[np.float64]:
     """Combines the scores of multiple estimators by their median.
 
     Args:
@@ -65,7 +66,13 @@ def median(scores):
     return np.median(scores, axis=1).ravel()
 
 
-def aom(scores, n_buckets=5, method="static", bootstrap_estimators=False, random_state=None):
+def aom(
+    scores: np.ndarray,
+    n_buckets: int = 5,
+    method: str = "static",
+    bootstrap_estimators: bool = False,
+    random_state: int | None = None,
+) -> NDArray[np.float64]:
     """Average of maximum :cite:`aggarwal2015theoretical`: splits the estimators into buckets, takes the maximum score in each bucket and averages these maxima.
 
     Args:
@@ -81,7 +88,13 @@ def aom(scores, n_buckets=5, method="static", bootstrap_estimators=False, random
     return _aom_moa_helper("AOM", scores, n_buckets, method, bootstrap_estimators, random_state)
 
 
-def moa(scores, n_buckets=5, method="static", bootstrap_estimators=False, random_state=None):
+def moa(
+    scores: np.ndarray,
+    n_buckets: int = 5,
+    method: str = "static",
+    bootstrap_estimators: bool = False,
+    random_state: int | None = None,
+) -> NDArray[np.float64]:
     """Maximum of average :cite:`aggarwal2015theoretical`: splits the estimators into buckets, averages the scores in each bucket and takes the maximum of these averages.
 
     Args:
@@ -97,7 +110,14 @@ def moa(scores, n_buckets=5, method="static", bootstrap_estimators=False, random
     return _aom_moa_helper("MOA", scores, n_buckets, method, bootstrap_estimators, random_state)
 
 
-def _aom_moa_helper(mode, scores, n_buckets, method, bootstrap_estimators, random_state):
+def _aom_moa_helper(
+    mode: str,
+    scores: np.ndarray,
+    n_buckets: int,
+    method: str,
+    bootstrap_estimators: bool,
+    random_state: int | None,
+) -> NDArray[np.float64]:
     if mode != "AOM" and mode != "MOA":
         raise NotImplementedError(f"{mode} is not implemented")
 

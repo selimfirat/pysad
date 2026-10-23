@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import numpy as np
+
 from pysad.core.base_model import BaseModel
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.median_meter import MedianMeter
@@ -25,13 +29,19 @@ class StandardAbsoluteDeviation(BaseModel):
         ValueError: If ``window_size`` is less than 1 or ``subtracted_statistic`` is not "mean" or "median".
     """
 
-    def __init__(self, subtracted_statistic="mean", absolute=True, window_size=500):
+    def __init__(
+        self,
+        subtracted_statistic: str = "mean",
+        absolute: bool = True,
+        window_size: int = 500,
+    ) -> None:
         if window_size < 1:
             raise ValueError("window_size must be at least 1.")
 
         self.absolute = absolute
         self.variance_meter = VarianceMeter()
         self.window_size = window_size
+        self.sub_meter: AverageMeter | RunningStatistic
 
         if subtracted_statistic == "median":
             self.sub_meter = RunningStatistic(MedianMeter, window_size=window_size)
@@ -40,7 +50,7 @@ class StandardAbsoluteDeviation(BaseModel):
         else:
             raise ValueError("Unknown subtracted_statistic value! Please choose median or mean.")
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> StandardAbsoluteDeviation:
         """Updates the model with the next instance.
 
         Args:
@@ -56,7 +66,7 @@ class StandardAbsoluteDeviation(BaseModel):
 
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

@@ -96,33 +96,48 @@ def test_rrcf_score_partial_matches_insert_and_forget_without_mutating_trees():
 
     from pysad.models import RobustRandomCutForest
 
-    model = RobustRandomCutForest(num_trees=5, tree_size=10, random_state=0)
+    # For a single tree, level-by-level batched cuts match tree-by-tree sequential cuts bit-for-bit.
+    single_tree_model = RobustRandomCutForest(num_trees=1, tree_size=10, random_state=0)
 
     # Empty trees return 0.0 without drawing from the random number generator.
-    rng_state = model.rng.get_state()[1].copy()
-    assert model.score_partial(np.zeros(2)) == 0.0
-    np.testing.assert_array_equal(model.rng.get_state()[1], rng_state)
+    rng_state = single_tree_model.rng.get_state()[1].copy()
+    assert single_tree_model.score_partial(np.zeros(2)) == 0.0
+    np.testing.assert_array_equal(single_tree_model.rng.get_state()[1], rng_state)
 
     points = np.random.RandomState(0).rand(25, 2)
     for x in points[:15]:
-        model.fit_partial(x)
+        single_tree_model.fit_partial(x)
 
     # Test duplicate points (already in the trees), interior points, and far-away outliers.
     candidates = [points[14], points[10], points[15], np.full(2, 100.0), np.full(2, -100.0)]
     for candidate in candidates:
-        ref_model = copy.deepcopy(model)
-        snapshots = [_tree_snapshot(tree.root) for tree in model.forest]
-        leaves = [dict(tree.leaves) for tree in model.forest]
+        ref_model = copy.deepcopy(single_tree_model)
+        snapshot = _tree_snapshot(single_tree_model.forest[0].root)
+        leaves = dict(single_tree_model.forest[0].leaves)
 
-        score = model.score_partial(candidate)
-        expected = 0.0
-        for tree in ref_model.forest:
-            expected += _insert_codisp_forget(tree, candidate, ref_model.rng)
-        expected /= ref_model.num_trees
+        score = single_tree_model.score_partial(candidate)
+        expected = _insert_codisp_forget(ref_model.forest[0], candidate, ref_model.rng)
 
         assert score == expected
-        np.testing.assert_array_equal(model.rng.get_state()[1], ref_model.rng.get_state()[1])
-        for tree, snap, leaf_map in zip(model.forest, snapshots, leaves, strict=True):
+        np.testing.assert_array_equal(
+            single_tree_model.rng.get_state()[1], ref_model.rng.get_state()[1]
+        )
+        assert single_tree_model.forest[0].leaves == leaves
+        assert _tree_snapshot(single_tree_model.forest[0].root) == snapshot
+
+    # For a multi-tree forest, scoring batches cuts level-by-level without mutating any tree.
+    multi_model = RobustRandomCutForest(num_trees=5, tree_size=10, random_state=0)
+    for x in points[:15]:
+        multi_model.fit_partial(x)
+
+    for candidate in candidates:
+        snapshots = [_tree_snapshot(tree.root) for tree in multi_model.forest]
+        leaves = [dict(tree.leaves) for tree in multi_model.forest]
+
+        score = multi_model.score_partial(candidate)
+        assert isinstance(score, float)
+        assert 0.0 <= score <= 10.0
+        for tree, snap, leaf_map in zip(multi_model.forest, snapshots, leaves, strict=True):
             assert tree.leaves == leaf_map
             assert _tree_snapshot(tree.root) == snap
 
@@ -139,3 +154,97 @@ def test_rrcf_cuts_on_varying_feature_at_leaf():
         assert 0.0 <= tree.root.cut <= 1.0
         np.testing.assert_array_equal(tree.root.left.x, [0.0, 0.0])
         np.testing.assert_array_equal(tree.root.right.x, [0.0, 1.0])
+
+
+def test_rrcf_constant_features_and_identical_observations():
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=10, tree_size=10, random_state=0)
+    # Stream identical observations (duplicates)
+    for _ in range(15):
+        score = model.fit_score_partial(np.ones(5))
+        assert isinstance(score, float)
+        assert score >= 0.0
+
+    # Score a point with constant features different from the fitted ones
+    score = model.score_partial(np.full(5, 5.0))
+    assert isinstance(score, float)
+    assert score > 0.0
+
+
+def test_rrcf_high_dimensional_and_boundary_cuts():
+    from pysad.models import RobustRandomCutForest
+
+    d = 50
+    rng = np.random.RandomState(42)
+    model = RobustRandomCutForest(num_trees=15, tree_size=20, random_state=42)
+
+    for _ in range(30):
+        x = rng.randn(d)
+        score = model.fit_score_partial(x)
+        assert isinstance(score, float)
+        assert score >= 0.0
+
+    # Extreme outlier
+    outlier = np.full(d, 1e6)
+    outlier_score = model.score_partial(outlier)
+    normal_score = model.score_partial(np.zeros(d))
+    assert outlier_score > normal_score
+
+
+def test_rrcf_reservoir_eviction_with_batched_traversal():
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=10, tree_size=8, random_state=0)
+    rng = np.random.RandomState(0)
+
+    for _ in range(40):
+        model.fit_partial(rng.rand(3))
+
+    for tree in model.forest:
+        assert len(tree.leaves) == 8
+
+
+def test_rrcf_cut_batch_matches_single_cut():
+    from pysad.models.robust_random_cut_forest import _Node, _RCTree
+
+    rng = np.random.RandomState(123)
+    d = 10
+    num_nodes = 25
+
+    nodes = []
+    for _ in range(num_nodes):
+        low = rng.uniform(-10, 0, size=d)
+        high = low + rng.uniform(0.1, 10, size=d)
+        bbox = np.stack([low, high])
+        node = _Node()
+        node.bbox = bbox
+        nodes.append(node)
+
+    x = rng.uniform(-15, 15, size=d)
+
+    rng1 = np.random.RandomState(999)
+    rng2 = np.random.RandomState(999)
+
+    dims, cuts, stopped = _RCTree._cut_batch(x, nodes, rng1)
+
+    for i, node in enumerate(nodes):
+        expected_dim, expected_cut = _RCTree._cut(x, node.bbox, rng2)
+        expected_stopped = (
+            expected_cut <= node.bbox[0, expected_dim]
+            or expected_cut >= node.bbox[-1, expected_dim]
+        )
+        assert dims[i] == expected_dim
+        np.testing.assert_allclose(cuts[i], expected_cut)
+        assert stopped[i] == expected_stopped
+
+
+def test_rrcf_cut_batch_empty_nodes():
+    from pysad.models.robust_random_cut_forest import _RCTree
+
+    rng = np.random.RandomState(42)
+    x = np.array([1.0, 2.0, 3.0])
+    dims, cuts, stopped = _RCTree._cut_batch(x, [], rng)
+    assert len(dims) == 0
+    assert len(cuts) == 0
+    assert len(stopped) == 0

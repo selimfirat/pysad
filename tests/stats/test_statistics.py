@@ -238,6 +238,22 @@ def test_median_meter_matches_numpy_after_random_updates_and_removals():
         meter.remove(999999.0)
 
 
+def test_max_meter_without_values_keeps_only_the_maximum():
+    import pytest
+
+    from pysad.statistics import MaxMeter
+
+    meter = MaxMeter(keep_values=False)
+    for num in [3.0, -1.0, 7.5, 2.0]:
+        meter.update(num)
+
+    assert meter.get() == 7.5
+    assert len(meter.lst) == 0
+    assert len(meter.candidates) == 0
+    with pytest.raises(ValueError, match="keeps no values"):
+        meter.remove(7.5)
+
+
 class _PreviousMaxMeter:
     """MaxMeter before #385, the reference for the equivalence tests."""
 

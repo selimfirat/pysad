@@ -61,6 +61,21 @@ It prints:
 
    AUROC: 0.749
 
+Evaluate in windows
+-------------------
+
+A single score over the whole stream hides how a detector's separation changes over time. This script scores each point once, then reports the AUROC of consecutive windows of 100 points next to the AUROC over the whole stream. The windowed score averages the windows, so a stretch where the scores collapse does not dominate it.
+
+.. literalinclude:: ../examples/example_windowed_metric.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.638
+   Windowed AUROC: 0.755
+
 Raise alerts with a calibrator
 ------------------------------
 

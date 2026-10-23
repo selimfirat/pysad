@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from abc import abstractmethod
 
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 from pysad.core.base_postprocessor import BasePostprocessor
 
@@ -11,7 +14,7 @@ class PYODScoreEnsembler(BasePostprocessor):
     """Abstract base class for the scoring ensembling methods for the scoring based ensemblers of the combo library :cite:`zhao2020combo`, which PyOD also uses."""
 
     @abstractmethod
-    def _combine(self, scores):
+    def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:
         """Combines the scores of multiple anomaly detectors.
 
         Args:
@@ -22,7 +25,7 @@ class PYODScoreEnsembler(BasePostprocessor):
         """
         pass
 
-    def fit_partial(self, scores):
+    def fit_partial(self, scores: ArrayLike) -> PYODScoreEnsembler:
         """Fits particular (next) timestep's score to train the ensembler. For PYOD based ensemblers, this method does not affect anything and returns self directly.
 
         Args:
@@ -33,7 +36,7 @@ class PYODScoreEnsembler(BasePostprocessor):
         """
         return self
 
-    def transform_partial(self, scores):
+    def transform_partial(self, scores: ArrayLike) -> float:
         """Combines anomaly scores from multiple anomaly detectors for a particular timestep.
 
         Args:
@@ -42,9 +45,9 @@ class PYODScoreEnsembler(BasePostprocessor):
         Returns:
             float: Resulting anomaly score.
         """
-        scores = np.asarray(scores, dtype=np.float64).reshape(1, -1)
+        score_array = np.asarray(scores, dtype=np.float64).reshape(1, -1)
 
-        return float(self._combine(scores)[0])
+        return float(self._combine(score_array)[0])
 
 
 class AverageScoreEnsembler(PYODScoreEnsembler):
@@ -54,11 +57,11 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
         estimator_weights (np.float64 array of shape (1, num_anomaly_detectors) or None): The weights for detectors. If None, the detectors get uniform weights (Default=None).
     """
 
-    def __init__(self, estimator_weights=None):
+    def __init__(self, estimator_weights: np.ndarray | None = None) -> None:
 
         self.estimator_weights = estimator_weights
 
-    def _combine(self, scores):
+    def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:
         """Wrapping for PyOD the ensembler.
 
         Args:
@@ -73,7 +76,7 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
 class MaximumScoreEnsembler(PYODScoreEnsembler):
     """Combines the scores of multiple anomaly detectors for the current instance by taking their maximum :cite:`zhao2020combo`."""
 
-    def _combine(self, scores):
+    def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:
         """Wrapping for PyOD the ensembler.
 
         Args:
@@ -88,7 +91,7 @@ class MaximumScoreEnsembler(PYODScoreEnsembler):
 class MedianScoreEnsembler(PYODScoreEnsembler):
     """Combines the scores of multiple anomaly detectors for the current instance by taking their median :cite:`zhao2020combo`."""
 
-    def _combine(self, scores):
+    def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:
         """Helper method to wrap the PyOD ensembler.
 
         Args:
@@ -109,12 +112,25 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
     """
 
-    def __init__(self, n_buckets=5, method="static", bootstrap_estimators=False):
+    @staticmethod
+    @abstractmethod
+    def _combine_buckets(
+        scores: np.ndarray,
+        n_buckets: int = 5,
+        method: str = "static",
+        bootstrap_estimators: bool = False,
+        random_state: int | None = None,
+    ) -> NDArray[np.float64]:
+        pass
+
+    def __init__(
+        self, n_buckets: int = 5, method: str = "static", bootstrap_estimators: bool = False
+    ) -> None:
         self.method = method
         self.n_buckets = n_buckets
         self.bootstrap_estimators = bootstrap_estimators
 
-    def _combine(self, scores):
+    def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:
         """Wrapping for PyOD the ensembler.
 
         Args:

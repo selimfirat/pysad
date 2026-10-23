@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import numpy as np
+
 from pysad.core.base_transformer import BaseTransformer
 
 
-def _murmurhash3_x86_32(seeds, byte_matrix):
+def _murmurhash3_x86_32(seeds: np.ndarray, byte_matrix: np.ndarray) -> np.ndarray:
     """Vectorized 32-bit MurmurHash3 (x86_32), matching ``mmh3.hash(s, signed=False, seed=k)``.
 
     Computes the hash of every row of `byte_matrix` (all of the same byte length) against every
@@ -15,8 +18,8 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
     Returns:
         np.uint32 array of shape (n_seeds, n_keys): Unsigned hash of each (seed, key) pair.
     """
-    c1 = np.uint32(0xcc9e2d51)
-    c2 = np.uint32(0x1b873593)
+    c1 = np.uint32(0xCC9E2D51)
+    c2 = np.uint32(0x1B873593)
     n_keys, length = byte_matrix.shape
     nblocks = length // 4
 
@@ -24,18 +27,18 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
     h1 = np.tile(seeds.astype(np.uint32)[:, np.newaxis], (1, n_keys))
 
     for block in range(nblocks):
-        b = byte_matrix[:, 4 * block:4 * block + 4].astype(np.uint32)
+        b = byte_matrix[:, 4 * block : 4 * block + 4].astype(np.uint32)
         k1 = (b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16) | (b[:, 3] << 24)).astype(np.uint32)
         k1 = (k1 * c1).astype(np.uint32)
         k1 = ((k1 << 15) | (k1 >> 17)).astype(np.uint32)
         k1 = (k1 * c2).astype(np.uint32)
         h1 = h1 ^ k1[np.newaxis, :]
         h1 = ((h1 << 13) | (h1 >> 19)).astype(np.uint32)
-        h1 = (h1 * np.uint32(5) + np.uint32(0xe6546b64)).astype(np.uint32)
+        h1 = (h1 * np.uint32(5) + np.uint32(0xE6546B64)).astype(np.uint32)
 
     tail_size = length & 3
     if tail_size:
-        tail = byte_matrix[:, nblocks * 4:length].astype(np.uint32)
+        tail = byte_matrix[:, nblocks * 4 : length].astype(np.uint32)
         k1 = np.zeros(n_keys, dtype=np.uint32)
         if tail_size >= 3:
             k1 = k1 ^ (tail[:, 2] << 16).astype(np.uint32)
@@ -49,55 +52,57 @@ def _murmurhash3_x86_32(seeds, byte_matrix):
 
     h1 = h1 ^ np.uint32(length)
     h1 = h1 ^ (h1 >> 16)
-    h1 = (h1 * np.uint32(0x85ebca6b)).astype(np.uint32)
+    h1 = (h1 * np.uint32(0x85EBCA6B)).astype(np.uint32)
     h1 = h1 ^ (h1 >> 13)
-    h1 = (h1 * np.uint32(0xc2b2ae35)).astype(np.uint32)
+    h1 = (h1 * np.uint32(0xC2B2AE35)).astype(np.uint32)
     h1 = h1 ^ (h1 >> 16)
 
     return h1
 
 
 class StreamhashProjector(BaseTransformer):
-    """Streamhash projection method  from Manzoor et. al.that is similar (or equivalent) to SparseRandomProjection. :cite:`xstream` The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
+    """Projects each feature vector with the sparse StreamHash random projection of Manzoor et al. :cite:`xstream`.
 
-        Args:
-            num_components (int): The number of dimensions that the target will be projected into.
-            density (float): Density parameter of the streamhash projection.
+    StreamHash builds each entry of the projection matrix from a hash of the feature index, so the projector accepts any number of features. The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
+
+    Args:
+        num_components (int): The number of dimensions that the target will be projected into.
+        density (float): Fraction of non-zero entries in the projection matrix (Default=1/3).
     """
 
     # Defaults for instances unpickled from older pysad versions, whose __dict__ predates
     # these attributes; __init__ below overrides them for freshly constructed instances.
-    _R = None
-    _R_ndim = None
+    _R: np.ndarray | None = None
+    _R_ndim: int | None = None
 
-    def __init__(self, num_components, density=1 / 3.0):
+    def __init__(self, num_components: int, density: float = 1 / 3.0) -> None:
         super().__init__(num_components)
         self.keys = np.arange(0, num_components, 1)
-        self.constant = np.sqrt(1. / density) / np.sqrt(num_components)
+        self.constant = np.sqrt(1.0 / density) / np.sqrt(num_components)
         self.density = density
         self.n_components = num_components
         self._R = None
         self._R_ndim = None
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> StreamhashProjector:
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
-            X (np.float64 array of shape (n_components,)): Input feature vector.
+            X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
             object: self.
         """
         return self
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            projected_X (np.float64 array of shape (num_components,)): Projected feature vector.
+            np.float64 array of shape (num_components,): Projected feature vector.
         """
         X = X.reshape(1, -1)
 
@@ -109,7 +114,7 @@ class StreamhashProjector(BaseTransformer):
 
         return Y
 
-    def _get_projection_matrix(self, ndim):
+    def _get_projection_matrix(self, ndim: int) -> np.ndarray:
         """Returns the projection matrix for the given number of features, building and caching it on first use.
 
         The matrix only depends on `ndim`, `self.keys`, `self.density` and `self.constant`, so it is
@@ -127,7 +132,7 @@ class StreamhashProjector(BaseTransformer):
 
         return self._R
 
-    def _build_projection_matrix(self, ndim):
+    def _build_projection_matrix(self, ndim: int) -> np.ndarray:
         """Builds the projection matrix by hashing the ASCII decimal string of every feature index.
 
         Feature indices are grouped by the byte length of their decimal representation (e.g. 0-9,
@@ -153,15 +158,15 @@ class StreamhashProjector(BaseTransformer):
         for length in np.unique(lengths):
             group = np.flatnonzero(lengths == length)
             byte_matrix = np.array(
-                [[ord(c) for c in feature_strings[i]] for i in group],
-                dtype=np.uint8,
+                [[ord(c) for c in feature_strings[i]] for i in group], dtype=np.uint8
             )
 
             hashes = _murmurhash3_x86_32(seeds, byte_matrix)
-            hash_values = hashes.astype(np.float64) / (2.0 ** 32 - 1)
+            hash_values = hashes.astype(np.float64) / (2.0**32 - 1)
 
             R[:, group] = np.where(
-                hash_values <= density / 2.0, -1 * self.constant,
+                hash_values <= density / 2.0,
+                -1 * self.constant,
                 np.where(hash_values <= density, self.constant, 0.0),
             )
 

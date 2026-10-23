@@ -29,6 +29,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinxcontrib.bibtex",
     "sphinx_copybutton",
+    "sphinx_llms_txt",
 ]
 
 templates_path = ["_templates"]
@@ -53,6 +54,14 @@ bibtex_bibfiles = ["refs.bib"]
 # The ODDS site blocks automated clients by IP address through Cloudflare.
 linkcheck_ignore = [r"https?://odds\.cs\.stonybrook\.edu/?"]
 
+# llms.txt lists the rendered pages, because the API pages get their text from docstrings.
+llms_txt_summary = (
+    "PySAD is a Python library that finds anomalies (unusual data points) in data streams. "
+    "It scores each point when the point arrives. "
+    "It has 16 streaming detectors, calibrated alerts and streaming evaluation."
+)
+llms_txt_uri_template = "{base_url}{docname}.html"
+
 # Copy only the code from prompts such as ">>> " and "$ ".
 copybutton_prompt_text = r">>> |\.\.\. |\$ "
 copybutton_prompt_is_regexp = True
@@ -61,6 +70,8 @@ copybutton_prompt_is_regexp = True
 
 html_theme = "furo"
 html_title = f"PySAD {release}"
+# Read the Docs gives the URL of the version that it builds. The links in llms.txt start with it.
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
 html_favicon = "favicon.svg"
 html_static_path = ["_static"]
 html_css_files = [

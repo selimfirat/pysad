@@ -1,13 +1,17 @@
+from __future__ import annotations
+
+from typing import Any
+
 from pysad.core.base_model import BaseModel
 
 
 class NullModel(BaseModel):
     """Returns 0.5 for every instance. Use it to test a pipeline."""
 
-    def __init__(self):
-        self.labels = []
+    def __init__(self) -> None:
+        self.labels: list[Any] = []
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: Any, y: Any = None) -> NullModel:
         """This method is ignored. Added for convenience.
 
         Args:
@@ -19,7 +23,7 @@ class NullModel(BaseModel):
         """
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: Any) -> float:
         """Directly returns 0.5.
 
         Args:

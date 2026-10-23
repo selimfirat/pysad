@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import deque
 from typing import Any
 
 from pysad.core.base_statistic import BaseStatistic, UnivariateStatistic
@@ -27,7 +28,7 @@ class RunningStatistic(BaseStatistic):
         self.statistic = self.statistic_cls(**kwargs)
 
         self.window_size = window_size
-        self.window: list[float] = []
+        self.window: deque[float] = deque()
 
     def update(self, num: float) -> RunningStatistic:
         """Updates the statistic with the value for a timestep.
@@ -43,8 +44,7 @@ class RunningStatistic(BaseStatistic):
         self.statistic.update(num)
 
         if len(self.window) > self.window_size:
-            self.statistic.remove(self.window[0])
-            self.window = self.window[1:]
+            self.statistic.remove(self.window.popleft())
 
         return self
 

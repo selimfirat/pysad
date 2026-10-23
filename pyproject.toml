@@ -183,6 +183,11 @@ module = [
     "pysad.transform.postprocessing.*",
     "pysad.transform.probability_calibration.*",
     "pysad.utils.*",
+    "pysad.models.median_absolute_deviation",
+    "pysad.models.null_model",
+    "pysad.models.perfect_model",
+    "pysad.models.random_model",
+    "pysad.models.standard_absolute_deviation",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true

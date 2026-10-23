@@ -55,3 +55,12 @@ def test_quickstart_notebook_runs():
     result = run_python("-c", code)
 
     assert result.returncode == 0, f"quickstart.ipynb failed:\n{result.stderr[-3000:]}"
+
+
+@pytest.mark.examples
+def test_nyc_taxi_alerts_notebook_runs():
+    code = notebook_code(os.path.join(EXAMPLES_DIR, "nyc_taxi_alerts.ipynb"))
+
+    result = run_python("-c", code)
+
+    assert result.returncode == 0, f"nyc_taxi_alerts.ipynb failed:\n{result.stderr[-3000:]}"

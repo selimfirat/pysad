@@ -1,3 +1,5 @@
+<p align="center"><b>English</b> · <a href="https://github.com/selimfirat/pysad/blob/master/README_zh.md">简体中文</a></p>
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/images/logo.svg" alt="PySAD" width="360">
 </p>

@@ -94,6 +94,7 @@ docs = [
   "furo==2025.12.19",
   "sphinxcontrib-bibtex==2.7.0",
   "sphinx-copybutton==0.5.2",
+  "sphinx-llms-txt==0.7.1",
   # Security floor for idna, a transitive dependency via requests.
   "idna>=3.20",
 ]

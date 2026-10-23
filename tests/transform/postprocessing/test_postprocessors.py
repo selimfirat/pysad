@@ -175,4 +175,4 @@ def test_max_postprocessor_memory_does_not_grow_with_the_stream():
     out = postprocessor.fit_transform(scores)
 
     np.testing.assert_allclose(out, np.maximum.accumulate(scores))
-    assert postprocessor.meter.lst == []
+    assert len(postprocessor.meter.lst) == 0

@@ -149,6 +149,41 @@ class _RCTree:
             self._children_bbox(node, out=node.bbox)
             node = node.parent
 
+    @staticmethod
+    def _codisp_from(node, initial_count):
+        result = float(initial_count)
+        while node.parent is not None:
+            parent = node.parent
+            sibling = parent.right if node is parent.left else parent.left
+            result = max(result, sibling.count / (node.count + 1))
+            node = parent
+        return result
+
+    @staticmethod
+    def _cut_batch(x, nodes, rng):
+        d = len(x)
+        lows = np.array([node.bbox[0] for node in nodes])
+        highs = np.array([node.bbox[-1] for node in nodes])
+
+        H = np.maximum(highs, x)
+        L = np.minimum(lows, x)
+        spans = H - L
+        span_sums = spans.sum(axis=1)
+        r = rng.uniform(0, span_sums)
+        span_cumsum = spans.cumsum(axis=1)
+
+        dims = (span_cumsum < r[:, None]).sum(axis=1)
+        dims = np.where(dims == d, 0, dims)
+
+        row_idx = np.arange(len(nodes))
+        cuts = L[row_idx, dims] + span_cumsum[row_idx, dims] - r
+
+        low_dims = lows[row_idx, dims]
+        high_dims = highs[row_idx, dims]
+        stopped = (cuts <= low_dims) | (cuts >= high_dims)
+
+        return dims, cuts, stopped
+
     def score(self, x, rng):
         # The collusive displacement of x if it were inserted: the largest ratio of sibling size
         # to subtree size on the path from the leaf of x to the root, without modifying the tree.
@@ -157,22 +192,16 @@ class _RCTree:
 
         node = self.find_duplicate(x)
         if node is not None:
-            result = 0.0
-        else:
-            node = self.root
-            while True:
-                dim, cut = self._cut(x, node.bbox, rng)
-                if cut <= node.bbox[0, dim] or cut >= node.bbox[-1, dim]:
-                    break
-                node = node.left if x[node.dim] <= node.cut else node.right
-            result = float(node.count)
+            return self._codisp_from(node, 0)
 
-        while node.parent is not None:
-            parent = node.parent
-            sibling = parent.right if node is parent.left else parent.left
-            result = max(result, sibling.count / (node.count + 1))
-            node = parent
-        return result
+        node = self.root
+        while True:
+            dim, cut = self._cut(x, node.bbox, rng)
+            if cut <= node.bbox[0, dim] or cut >= node.bbox[-1, dim]:
+                break
+            node = node.left if x[node.dim] <= node.cut else node.right
+
+        return self._codisp_from(node, node.count)
 
 
 class RobustRandomCutForest(BaseModel):
@@ -242,6 +271,7 @@ class RobustRandomCutForest(BaseModel):
         if point is None:
             return self
 
+        insert_trees = []
         for tree, sample in zip(self.forest, self.samples, strict=True):
             key = (self.time_decay * self.index + self.rng.gumbel(), self.index)
             if len(sample) < self.tree_size:
@@ -251,7 +281,69 @@ class RobustRandomCutForest(BaseModel):
             else:
                 continue
 
-            tree.insert(point, self.index, self.rng)
+            insert_trees.append(tree)
+
+        if not insert_trees:
+            self.index += 1
+            return self
+
+        active_items = []
+        for tree in insert_trees:
+            if tree.root is None:
+                tree.root = tree.leaves[self.index] = _Node(x=point)
+                continue
+            duplicate = tree.find_duplicate(point)
+            if duplicate is not None:
+                tree._add_count(duplicate, 1)
+                tree.leaves[self.index] = duplicate
+                continue
+            active_items.append((tree, tree.root, None, _Node(x=point)))
+
+        while active_items:
+            active_nodes = [item[1] for item in active_items]
+            dims, cuts, stopped = _RCTree._cut_batch(point, active_nodes, self.rng)
+
+            next_active = []
+            for i in range(len(active_items)):
+                tree, node, parent, leaf = active_items[i]
+                dim = int(dims[i])
+                cut = float(cuts[i])
+
+                if stopped[i]:
+                    if cut <= node.bbox[0, dim]:
+                        branch = _Node(
+                            dim=dim, cut=cut, left=leaf, right=node, count=1 + node.count
+                        )
+                    else:
+                        branch = _Node(
+                            dim=dim, cut=cut, left=node, right=leaf, count=1 + node.count
+                        )
+
+                    node.parent = leaf.parent = branch
+                    branch.parent = parent
+                    if parent is None:
+                        tree.root = branch
+                    elif parent.left is node:
+                        parent.left = branch
+                    else:
+                        parent.right = branch
+                    tree._add_count(parent, 1)
+
+                    bbox = branch.bbox = tree._children_bbox(branch)
+                    curr = parent
+                    while curr is not None:
+                        if not ((bbox[0] < curr.bbox[0]).any() or (bbox[1] > curr.bbox[1]).any()):
+                            break
+                        np.minimum(curr.bbox[0], bbox[0], out=curr.bbox[0])
+                        np.maximum(curr.bbox[1], bbox[1], out=curr.bbox[1])
+                        curr = curr.parent
+
+                    tree.leaves[self.index] = leaf
+                else:
+                    next_node = node.left if point[node.dim] <= node.cut else node.right
+                    next_active.append((tree, next_node, node, leaf))
+
+            active_items = next_active
 
         self.index += 1
 
@@ -270,11 +362,31 @@ class RobustRandomCutForest(BaseModel):
         if point is None:
             return 0.0
 
-        score = 0.0
-        for tree in self.forest:
-            score += tree.score(point, self.rng)
+        total_score = 0.0
+        active_nodes = []
 
-        return score / self.num_trees
+        for tree in self.forest:
+            if tree.root is None:
+                continue
+            duplicate = tree.find_duplicate(point)
+            if duplicate is not None:
+                total_score += _RCTree._codisp_from(duplicate, 0)
+            else:
+                active_nodes.append(tree.root)
+
+        while active_nodes:
+            dims, cuts, stopped = _RCTree._cut_batch(point, active_nodes, self.rng)
+            next_active = []
+            for i in range(len(active_nodes)):
+                node = active_nodes[i]
+                if stopped[i]:
+                    total_score += _RCTree._codisp_from(node, node.count)
+                else:
+                    next_node = node.left if point[node.dim] <= node.cut else node.right
+                    next_active.append(next_node)
+            active_nodes = next_active
+
+        return total_score / self.num_trees
 
 
 # _RCTree is adapted from rrcf 0.4.4, which is distributed under the following license:

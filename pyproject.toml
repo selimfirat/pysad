@@ -180,6 +180,7 @@ module = [
     "pysad.core.*",
     "pysad.evaluation.*",
     "pysad.statistics.*",
+    "pysad.transform.probability_calibration.*",
     "pysad.utils.*",
     "pysad.models.median_absolute_deviation",
     "pysad.models.null_model",

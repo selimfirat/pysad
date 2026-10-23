@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.utils.window import Window
 
@@ -18,11 +20,11 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         ValueError: If window_size is less than 1.
     """
 
-    def __init__(self, window_size=300):
+    def __init__(self, window_size: int = 300) -> None:
         self.window_size = window_size
         self.window = Window(window_size=self.window_size)
 
-    def fit_partial(self, score):
+    def fit_partial(self, score: float) -> ConformalProbabilityCalibrator:
         """Fits particular (next) timestep's score to train the postprocessor.
 
         Args:
@@ -35,7 +37,7 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
 
         return self
 
-    def transform_partial(self, score):
+    def transform_partial(self, score: float) -> float:
         """Transforms given score.
 
         Args:

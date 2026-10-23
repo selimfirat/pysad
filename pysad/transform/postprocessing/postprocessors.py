@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import numpy as np
 
 from pysad.core.base_postprocessor import BasePostprocessor
+from pysad.core.base_statistic import UnivariateStatistic
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.max_meter import MaxMeter
 from pysad.statistics.median_meter import MedianMeter
+from pysad.statistics.running_statistic import RunningStatistic
 from pysad.statistics.variance_meter import VarianceMeter
 
 
@@ -14,10 +18,10 @@ class _MeterPostprocessor(BasePostprocessor):
         meter: The statistic to update with each score.
     """
 
-    def __init__(self, meter):
+    def __init__(self, meter: UnivariateStatistic | RunningStatistic) -> None:
         self.meter = meter
 
-    def fit_partial(self, score):
+    def fit_partial(self, score: float) -> _MeterPostprocessor:
         """Fits the postprocessor to the (next) timestep's score. Running postprocessors only keep the scores in their window.
 
         Args:
@@ -30,7 +34,7 @@ class _MeterPostprocessor(BasePostprocessor):
 
         return self
 
-    def transform_partial(self, score=None):
+    def transform_partial(self, score: float | None = None) -> float:
         """Applies postprocessing to the score, using only the scores in the window for running postprocessors. This method should be used immediately after the fit_partial method with same score.
 
         Args:
@@ -50,11 +54,15 @@ class _ZScorePostprocessor(BasePostprocessor):
         average_meter: The average statistic of the previous scores.
     """
 
-    def __init__(self, variance_meter, average_meter):
+    def __init__(
+        self,
+        variance_meter: UnivariateStatistic | RunningStatistic,
+        average_meter: UnivariateStatistic | RunningStatistic,
+    ) -> None:
         self.variance_meter = variance_meter
         self.average_meter = average_meter
 
-    def fit_partial(self, score):
+    def fit_partial(self, score: float) -> _ZScorePostprocessor:
         """Fits the postprocessor to the (next) timestep's score. Running postprocessors only keep the scores in their window.
 
         Args:
@@ -68,7 +76,7 @@ class _ZScorePostprocessor(BasePostprocessor):
 
         return self
 
-    def transform_partial(self, score):
+    def transform_partial(self, score: float) -> float:
         """Applies postprocessing to the score, using the statistics of the window for running postprocessors.
 
         Args:
@@ -91,14 +99,14 @@ class _ZScorePostprocessor(BasePostprocessor):
 class AveragePostprocessor(_MeterPostprocessor):
     """A postprocessor that converts a score to the average of all previous scores."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(AverageMeter())
 
 
 class MaxPostprocessor(_MeterPostprocessor):
     """A postprocessor that converts a score to the maximum of all previous scores."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Nothing is ever removed from the whole stream, so the maximum alone is enough (#388).
         super().__init__(MaxMeter(keep_values=False))
 
@@ -106,12 +114,12 @@ class MaxPostprocessor(_MeterPostprocessor):
 class MedianPostprocessor(_MeterPostprocessor):
     """A postprocessor that converts a score to the median of all previous scores."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(MedianMeter())
 
 
 class ZScorePostprocessor(_ZScorePostprocessor):
     """A postprocessor that normalizes the score via Z-score normalization."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(VarianceMeter(), AverageMeter())

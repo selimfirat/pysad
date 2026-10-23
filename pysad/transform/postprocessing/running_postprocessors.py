@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.max_meter import MaxMeter
 from pysad.statistics.median_meter import MedianMeter
@@ -13,7 +15,7 @@ class RunningAveragePostprocessor(_MeterPostprocessor):
         window_size (int): Length of the window
     """
 
-    def __init__(self, window_size):
+    def __init__(self, window_size: int) -> None:
         super().__init__(RunningStatistic(statistic_cls=AverageMeter, window_size=window_size))
 
 
@@ -24,7 +26,7 @@ class RunningMaxPostprocessor(_MeterPostprocessor):
         window_size (int): Length of the window
     """
 
-    def __init__(self, window_size):
+    def __init__(self, window_size: int) -> None:
         super().__init__(RunningStatistic(statistic_cls=MaxMeter, window_size=window_size))
 
 
@@ -35,7 +37,7 @@ class RunningMedianPostprocessor(_MeterPostprocessor):
         window_size (int): Length of the window
     """
 
-    def __init__(self, window_size):
+    def __init__(self, window_size: int) -> None:
         super().__init__(RunningStatistic(statistic_cls=MedianMeter, window_size=window_size))
 
 
@@ -46,7 +48,7 @@ class RunningZScorePostprocessor(_ZScorePostprocessor):
         window_size (int): Length of the window
     """
 
-    def __init__(self, window_size):
+    def __init__(self, window_size: int) -> None:
         super().__init__(
             RunningStatistic(statistic_cls=VarianceMeter, window_size=window_size),
             RunningStatistic(statistic_cls=AverageMeter, window_size=window_size),

@@ -94,7 +94,7 @@ Univariate detectors take points with exactly one feature. A point with several 
 How do I handle missing values (NaN)?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Replace each missing value before the detector gets the point. PySAD has no step that fills missing values, and the detectors handle ``NaN`` (not a number) in different ways. Some raise an error, and some give a ``NaN`` score. :class:`~pysad.models.StandardAbsoluteDeviation` gives ``NaN`` for every point after the first ``NaN``.
+Replace each missing value before the detector gets the point. PySAD has no step that fills missing values, and every detector raises a ``ValueError`` that names it when a point holds ``NaN`` (not a number), so one missing value cannot poison the scores of the points that follow. The model is left unchanged by a rejected point, and the stream continues.
 
 A common fix is to repeat the last known value of each feature:
 

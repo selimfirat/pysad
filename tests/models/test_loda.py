@@ -128,6 +128,7 @@ def test_loda_auroc_arrhythmia(test_path):
 
 def test_loda_score_before_fit_and_non_finite_values():
     import numpy as np
+    import pytest
 
     from pysad.models import LODA
     from pysad.utils import fix_seed
@@ -136,8 +137,10 @@ def test_loda_score_before_fit_and_non_finite_values():
     model = LODA(num_bins=5, num_random_cuts=10)
     assert isinstance(model.score_partial(np.zeros(4)), float)
 
-    # Instances with non-finite values are skipped instead of stretching the bins without bound.
-    model.fit_partial(np.array([np.nan, 0.0, 0.0, 0.0]))
+    # Instances with infinite values are skipped instead of stretching the bins without bound. NaN is
+    # rejected by BaseModel before LODA sees the instance (#402), and the model is left unchanged.
+    with pytest.raises(ValueError, match="LODA does not accept NaN values"):
+        model.fit_partial(np.array([np.nan, 0.0, 0.0, 0.0]))
     assert model.num_seen_ == 0
     for x in np.random.randn(50, 4):
         model.fit_partial(x)
@@ -155,7 +158,6 @@ def test_loda_fit_score_partial_scores_before_fitting():
 
     X = np.random.default_rng(0).normal(size=(300, 4))
     X[1] = X[0]  # repeated initial value before bin widths are set
-    X[10] = np.nan  # non-finite instance, scored without fitting
     X[-1] = 6.0  # an outlier, which must not lower its own score
     model, reference = LODA(random_state=0), LODA(random_state=0)
 

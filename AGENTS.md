@@ -8,7 +8,7 @@ Keep these components generic, modular, and lightweight. Do not add platform or 
 
 1. Adoption: users can run a PySAD model on a stream through the public API without knowing the internals.
 2. Research extensibility: researchers can inspect, change, and add streaming detectors through the base classes in `pysad.core`.
-3. Trust: each model does what its cited paper describes, and every deviation is documented in its docstring. Results are reproducible with a fixed seed.
+3. Trust: each model does what its cited paper describes, and every deviation is documented in its docstring. Results are reproducible with a fixed seed. No method is made up; every streaming detector is grounded in a cited, peer-reviewed paper rather than an ad-hoc adaptation of a batch method.
 4. Performance: the cost of one `fit_partial` or `score_partial` call stays bounded as the stream grows.
 
 # AI Policy
@@ -22,6 +22,7 @@ In particular, you the agent MUST obey these rules while interacting on GitHub:
 - Mark all AI-generated content. Wrap any text you produce for an issue, pull request, or comment in a code block or quote block. Never present your output as human-written.
 - Never post only raw AI text as a reply. Any AI content must come with human commentary that explains its relevance.
 - Do not submit code that the user did not read. Keep changes minimal, and remove AI artifacts and needless complexity. If a pull request is not ready, or the user did not review it, open it as a draft.
+- Do not make up new methods or adapt batch anomaly detection algorithms to the streaming case yourself. Every algorithm, detector, or streaming technique must be based on an existing, cited, peer-reviewed paper that explicitly describes the streaming algorithm.
 
 # Commands
 
@@ -82,6 +83,7 @@ In particular, you the agent MUST obey these rules while interacting on GitHub:
 - Higher output means more anomalous, for every model, postprocessor, ensembler, and calibrator. Calibrators return `1 - p`.
 - `score_partial` does not change the model state. Only `fit_partial` learns.
 - Keep model memory bounded. Keep a window or summary statistics instead of the whole stream.
+- Do not make up new methods or invent custom streaming adaptations (for example, adapting an offline or batch anomaly detection algorithm to the streaming setting yourself). Every detector or algorithm in PySAD must be based on a cited, peer-reviewed publication that already defines the streaming method. Batch algorithms should be wrapped via `ReferenceWindowModel` or `OneFitModel` rather than converted into ad-hoc streaming algorithms.
 - Implement each model as its paper describes. Cite the paper in the class docstring with `:cite:` and add the entry to `docs/refs.bib`. Document every deviation from the paper in the docstring.
 - Add only well-established models, with 50 or more citations (see `docs/inclusion_criteria.rst`).
 - A new public class goes in its subpackage's `__init__.py` and `__all__`, and in `docs/api.rst`.

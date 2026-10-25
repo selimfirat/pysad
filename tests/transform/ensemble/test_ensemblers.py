@@ -182,3 +182,40 @@ def test_ensemblers_accept_list_scores(ensembler_cls, params_dict):
     from_array = cls(**params_dict).fit_transform_partial(np.array(row))
 
     np.testing.assert_allclose(from_list, from_array)
+
+
+@pytest.mark.parametrize(
+    "ensembler_cls",
+    ["AverageOfMaximumScoreEnsembler", "MaximumOfAverageScoreEnsembler"],
+)
+def test_bucket_ensemblers_random_state_reproducibility(ensembler_cls):
+    """Fixed random_state must give identical scores and leave global state untouched (#415)."""
+    import numpy as np
+
+    from pysad.transform import ensemble as ensemble_module
+    from pysad.utils import fix_seed
+
+    cls = getattr(ensemble_module, ensembler_cls)
+    scores = np.array(BUCKET_SCORES)
+
+    # Identical integer random_state produces identical outputs.
+    scores_seed_42_a = cls(n_buckets=3, random_state=42).fit_transform(scores)
+    scores_seed_42_b = cls(n_buckets=3, random_state=42).fit_transform(scores)
+    np.testing.assert_array_equal(scores_seed_42_a, scores_seed_42_b)
+
+    # RandomState instance produces identical outputs across fresh instances.
+    scores_rng_a = cls(n_buckets=3, random_state=np.random.RandomState(42)).fit_transform(scores)
+    scores_rng_b = cls(n_buckets=3, random_state=np.random.RandomState(42)).fit_transform(scores)
+    np.testing.assert_array_equal(scores_rng_a, scores_rng_b)
+
+    # Different seeds produce different outputs.
+    scores_seed_99 = cls(n_buckets=3, random_state=99).fit_transform(scores)
+    assert not np.array_equal(scores_seed_42_a, scores_seed_99)
+
+    # Fixed seed leaves NumPy global random state untouched.
+    fix_seed(11)
+    expected_draw = np.random.rand(3)
+
+    fix_seed(11)
+    cls(n_buckets=3, random_state=42).fit_transform(scores)
+    np.testing.assert_array_equal(np.random.rand(3), expected_draw)

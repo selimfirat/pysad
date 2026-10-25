@@ -238,6 +238,57 @@ def test_median_meter_matches_numpy_after_random_updates_and_removals():
         meter.remove(999999.0)
 
 
+def test_median_meter_transitions_to_two_heaps_over_1000():
+    import numpy as np
+    import pytest
+
+    from pysad.statistics import MedianMeter
+    from pysad.utils import fix_seed
+
+    fix_seed(61)
+
+    meter = MedianMeter()
+    values = np.random.rand(1200).tolist()
+    active: list[float] = []
+
+    for val in values:
+        meter.update(val)
+        active.append(val)
+
+    assert hasattr(meter, "is_heap") and meter.is_heap
+    assert np.isclose(meter.get(), np.median(active))
+
+    with pytest.raises(ValueError):
+        meter.remove(999999.0)
+
+    # Remove down below low threshold (800) to verify transition back to list
+    for _ in range(500):
+        to_remove = active.pop()
+        meter.remove(to_remove)
+
+    assert not meter.is_heap
+    assert np.isclose(meter.get(), np.median(active))
+
+
+@pytest.mark.parametrize("window_size", [100, 1000, 1500])
+def test_running_median_matches_numpy_on_streams(window_size):
+    import numpy as np
+
+    from pysad.statistics import MedianMeter
+    from pysad.statistics.running_statistic import RunningStatistic
+
+    rng = np.random.default_rng(385)
+    for name, stream in _streams(rng).items():
+        running_stat = RunningStatistic(MedianMeter, window_size=window_size)
+        window = []
+        for i, num in enumerate(stream):
+            running_stat.update(num)
+            window.append(num)
+            if len(window) > window_size:
+                window.pop(0)
+            assert np.isclose(running_stat.get(), np.median(window)), (name, i)
+
+
 def test_max_meter_without_values_keeps_only_the_maximum():
     import pytest
 

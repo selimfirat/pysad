@@ -6,7 +6,6 @@ from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.core.base_statistic import UnivariateStatistic
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.max_meter import MaxMeter
-from pysad.statistics.median_meter import MedianMeter
 from pysad.statistics.running_statistic import RunningStatistic
 from pysad.statistics.variance_meter import VarianceMeter
 
@@ -109,13 +108,6 @@ class MaxPostprocessor(_MeterPostprocessor):
     def __init__(self) -> None:
         # Nothing is ever removed from the whole stream, so the maximum alone is enough (#388).
         super().__init__(MaxMeter(keep_values=False))
-
-
-class MedianPostprocessor(_MeterPostprocessor):
-    """A postprocessor that converts a score to the median of all previous scores."""
-
-    def __init__(self) -> None:
-        super().__init__(MedianMeter())
 
 
 class ZScorePostprocessor(_ZScorePostprocessor):

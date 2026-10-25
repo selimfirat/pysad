@@ -1,13 +1,17 @@
+from __future__ import annotations
+
+import numpy as np
+
 from pysad.core.base_transformer import BaseTransformer
 
 
 class IdentityScaler(BaseTransformer):
     """Returns each feature vector unchanged, for pipelines that need a scaler slot."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(-1)
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> IdentityScaler:
         """Convenience method that does not modify the input or the scaler.
 
         Args:
@@ -18,7 +22,7 @@ class IdentityScaler(BaseTransformer):
         """
         return self
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Convenience method that does not modify the input.
 
         Args:

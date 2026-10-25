@@ -183,6 +183,7 @@ module = [
     "pysad.statistics.*",
     "pysad.transform.ensemble.*",
     "pysad.transform.postprocessing.*",
+    "pysad.transform.preprocessing.*",
     "pysad.transform.probability_calibration.*",
     "pysad.transform.projection.*",
     "pysad.utils.*",

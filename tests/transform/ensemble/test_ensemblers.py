@@ -122,6 +122,69 @@ def test_bucket_ensemblers_output_values():
         np.testing.assert_allclose(ensembled_scores, expected)
 
 
+def test_bucket_ensemblers_random_state():
+    import numpy as np
+
+    from pysad.transform.ensemble import (
+        AverageOfMaximumScoreEnsembler,
+        MaximumOfAverageScoreEnsembler,
+    )
+
+    scores = np.array(BUCKET_SCORES)
+    ensemblers = [AverageOfMaximumScoreEnsembler, MaximumOfAverageScoreEnsembler]
+    configs = [
+        {"method": "static"},
+        {"method": "static", "bootstrap_estimators": True},
+        {"method": "dynamic"},
+        {"method": "dynamic", "bootstrap_estimators": True},
+    ]
+
+    for ensembler_cls in ensemblers:
+        for config in configs:
+            global_state = np.random.get_state()
+            first_scores = ensembler_cls(n_buckets=3, random_state=7, **config).fit_transform(
+                scores
+            )
+            second_scores = ensembler_cls(n_buckets=3, random_state=7, **config).fit_transform(
+                scores
+            )
+
+            np.testing.assert_equal(np.random.get_state(), global_state)
+            np.testing.assert_allclose(first_scores, second_scores)
+
+            global_state = np.random.get_state()
+            first_scores = ensembler_cls(
+                n_buckets=3, random_state=np.random.RandomState(7), **config
+            ).fit_transform(scores)
+            second_scores = ensembler_cls(
+                n_buckets=3, random_state=np.random.RandomState(7), **config
+            ).fit_transform(scores)
+
+            np.testing.assert_equal(np.random.get_state(), global_state)
+            np.testing.assert_allclose(first_scores, second_scores)
+
+
+def test_bucket_ensemblers_global_random_state():
+    import numpy as np
+
+    from pysad.transform.ensemble import (
+        AverageOfMaximumScoreEnsembler,
+        MaximumOfAverageScoreEnsembler,
+    )
+
+    scores = np.array(BUCKET_SCORES)
+    global_state = np.random.get_state()
+    try:
+        for ensembler_cls in [AverageOfMaximumScoreEnsembler, MaximumOfAverageScoreEnsembler]:
+            np.random.seed(7)
+            first = ensembler_cls(n_buckets=3, method="dynamic").fit_transform(scores)
+            np.random.seed(7)
+            second = ensembler_cls(n_buckets=3, method="dynamic").fit_transform(scores)
+            np.testing.assert_allclose(first, second)
+    finally:
+        np.random.set_state(global_state)
+
+
 def test_ensemblers_partial_matches_batch():
     import numpy as np
 

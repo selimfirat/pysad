@@ -2,14 +2,15 @@
 
 Copied from combo 0.1.3 :cite:`zhao2020combo` (``combo/models/score_comb.py``,
 https://github.com/yzhao062/combo), the functions PyOD's ``pyod.models.combination`` wraps,
-so that pysad does not need combo, which is only published as a source distribution. The
-logic is unchanged. For licensing information, see the end of this file.
+so that pysad does not need combo, which is only published as a source distribution.
+Dynamic bucket sizes use scikit-learn's random-state convention to support RNG instances
+and the global NumPy random state. For licensing information, see the end of this file.
 """
 
 import numpy as np
 from numpy.random import RandomState
 from numpy.typing import NDArray
-from sklearn.utils import check_array, shuffle
+from sklearn.utils import check_array, check_random_state, shuffle
 from sklearn.utils.random import sample_without_replacement
 
 
@@ -71,7 +72,7 @@ def aom(
     n_buckets: int = 5,
     method: str = "static",
     bootstrap_estimators: bool = False,
-    random_state: int | None = None,
+    random_state: int | RandomState | None = None,
 ) -> NDArray[np.float64]:
     """Average of maximum :cite:`aggarwal2015theoretical`: splits the estimators into buckets, takes the maximum score in each bucket and averages these maxima.
 
@@ -93,7 +94,7 @@ def moa(
     n_buckets: int = 5,
     method: str = "static",
     bootstrap_estimators: bool = False,
-    random_state: int | None = None,
+    random_state: int | RandomState | None = None,
 ) -> NDArray[np.float64]:
     """Maximum of average :cite:`aggarwal2015theoretical`: splits the estimators into buckets, averages the scores in each bucket and takes the maximum of these averages.
 
@@ -116,7 +117,7 @@ def _aom_moa_helper(
     n_buckets: int,
     method: str,
     bootstrap_estimators: bool,
-    random_state: int | None,
+    random_state: int | RandomState | None,
 ) -> NDArray[np.float64]:
     if mode != "AOM" and mode != "MOA":
         raise NotImplementedError(f"{mode} is not implemented")
@@ -167,7 +168,7 @@ def _aom_moa_helper(
     elif method == "dynamic":  # random bucket size
         for i in range(n_buckets):
             # the number of estimators in a bucket should be 2 - n/2
-            max_estimator_per_bucket = RandomState(seed=random_state).randint(
+            max_estimator_per_bucket = check_random_state(random_state).randint(
                 2, int(n_estimators / 2)
             )
             ind = sample_without_replacement(

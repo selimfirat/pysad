@@ -20,13 +20,59 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: actions/first-interaction@1c4688942c71f71d4f5502a26ea67c331730fa4d # v3.1.0
+      - name: Greet first-time contributor
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
-          issue_message: >-
-            Thanks for opening your first issue in PySAD! A maintainer will take a look soon.
-            In the meantime, please make sure the issue includes the PySAD version, a short
-            code snippet that reproduces the problem, and the full traceback if there is one.
-          pr_message: >-
-            Thanks for your first pull request to PySAD! CI will run the tests shortly.
-            Please make sure the change comes with a test and, for new features or models,
-            a note in `CHANGES.txt`. See `.github/CONTRIBUTING.md` for the full checklist.
+          script: |
+            const isPr = context.eventName === 'pull_request_target' || context.eventName === 'pull_request';
+            const payload = isPr ? context.payload.pull_request : context.payload.issue;
+            if (!payload || !payload.user) {
+              return;
+            }
+
+            const author = payload.user.login;
+            const currentNumber = payload.number;
+
+            let hasPrior = false;
+            await github.paginate(
+              github.rest.issues.listForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                creator: author,
+                state: 'all',
+                per_page: 100,
+              },
+              (response, done) => {
+                for (const item of response.data) {
+                  const itemIsPr = Boolean(item.pull_request);
+                  if (itemIsPr === isPr && item.number < currentNumber) {
+                    hasPrior = true;
+                    done();
+                    return [];
+                  }
+                }
+                return [];
+              }
+            );
+
+            if (hasPrior) {
+              core.info(`Author @${author} has prior ${isPr ? 'pull requests' : 'issues'}; skipping greeting.`);
+              return;
+            }
+
+            const message = isPr
+              ? 'Thanks for your first pull request to PySAD! CI will run the tests shortly.\n' +
+                'Please make sure the change comes with a test and, for new features or models,\n' +
+                'a note in `CHANGES.txt`. See `.github/CONTRIBUTING.md` for the full checklist.'
+              : 'Thanks for opening your first issue in PySAD! A maintainer will take a look soon.\n' +
+                'In the meantime, please make sure the issue includes the PySAD version, a short\n' +
+                'code snippet that reproduces the problem, and the full traceback if there is one.';
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: currentNumber,
+              body: message,
+            });
+            core.info(`Welcomed @${author} on their first ${isPr ? 'pull request' : 'issue'} (#${currentNumber}).`);

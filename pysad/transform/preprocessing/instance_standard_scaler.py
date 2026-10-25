@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import numpy as np
+
 from pysad.core.base_transformer import BaseTransformer
 
 
@@ -7,10 +11,10 @@ class InstanceStandardScaler(BaseTransformer):
     The scaler computes the mean and the standard deviation per instance, over the features of that instance. It subtracts the mean from each feature and divides the result by the standard deviation. It learns nothing from previous instances.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(-1)
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> InstanceStandardScaler:
         """Fits particular (next) timestep's features to train the scaler.
 
         Args:
@@ -21,7 +25,7 @@ class InstanceStandardScaler(BaseTransformer):
         """
         return self
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Scales particular (next) timestep's vector.
 
         Args:

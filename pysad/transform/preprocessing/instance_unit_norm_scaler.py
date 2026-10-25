@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 
 from pysad.core.base_transformer import BaseTransformer
@@ -10,11 +12,11 @@ class InstanceUnitNormScaler(BaseTransformer):
         pow (float): The order of the norm. ``pow=2`` gives the Euclidean norm (Default=2).
     """
 
-    def __init__(self, pow=2):
+    def __init__(self, pow: float = 2) -> None:
         super().__init__(-1)
         self.pow = pow
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> InstanceUnitNormScaler:
         """Fits particular (next) timestep's features to train the scaler.
 
         Args:
@@ -25,7 +27,7 @@ class InstanceUnitNormScaler(BaseTransformer):
         """
         return self
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Scales particular (next) timestep's vector.
 
         Args:

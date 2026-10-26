@@ -45,7 +45,7 @@ class HalfSpaceTrees(BaseModel):
             if isinstance(value, bool) or not isinstance(value, numbers.Integral) or value < 1:
                 raise ValueError(f"{name} must be a positive integer, got {value!r}.")
 
-        if not isinstance(random_work_space, (bool, np.bool_)):
+        if not isinstance(random_work_space, bool | np.bool_):
             raise ValueError(f"random_work_space must be a bool, got {random_work_space!r}.")
 
         self.feature_mins, self.feature_maxes = check_feature_bounds(feature_mins, feature_maxes)
@@ -146,9 +146,9 @@ class HalfSpaceTrees(BaseModel):
     def _path(self, X):
         """Returns the flat index into the mass arrays of the max_depth + 1 nodes that `X` visits in each tree."""
         X = np.asarray(X)
-        # A floating X can be gathered through a reusable buffer; other dtypes (an int point, for
-        # example) would not cast into it, so they take the allocating path.
-        x_buf = self._x_buf if X.dtype.kind == "f" else None
+        # A float64 X can be gathered through a reusable buffer; other dtypes (a float32 or an int
+        # point, for example) would not cast into it, so they take the allocating path.
+        x_buf = self._x_buf if X.dtype == np.float64 else None
         path = self._flat_path
         path[0] = 1  # every tree starts at its root, whose heap index is u = node + 1 = 1
         att_buf, val_buf, goes_right, idx = (

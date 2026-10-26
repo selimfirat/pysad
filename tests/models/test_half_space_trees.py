@@ -502,3 +502,13 @@ def test_half_space_trees_default_trees_take_about_11_mb():
     # one-byte masses for each of the 65,535 nodes per tree, since a node holds at most 250 instances.
     assert model.split_atts.dtype == model.l_mass.dtype == model.r_mass.dtype == np.uint8
     assert len(pickle.dumps(model)) < 11_000_000
+
+
+@pytest.mark.parametrize("dtype", ["float32", "float16", int, "int32", "int64"])
+def test_half_space_trees_scores_non_float64_dtypes(dtype):
+    import numpy as np
+
+    model = _new_hst(num_trees=4, max_depth=5)
+    x = np.array([0.5, 0.5], dtype=dtype)
+    score = model.fit_score_partial(x)
+    assert isinstance(score, float)

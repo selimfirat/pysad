@@ -8,11 +8,17 @@ You need Python 3.10 or newer. You do not need to know about anomaly detection.
 Install PySAD
 -------------
 
-Install PySAD from PyPI:
+Install PySAD with pip:
 
 .. code-block:: console
 
    $ pip install pysad
+
+Or with conda:
+
+.. code-block:: console
+
+   $ conda install -c conda-forge pysad
 
 Make a stream
 -------------

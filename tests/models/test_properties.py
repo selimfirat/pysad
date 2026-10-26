@@ -87,6 +87,7 @@ def _model_params(model_name, num_features, data):
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
         "LODA": {"num_bins": 5, "num_random_cuts": 10},
+        "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
         "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 5},
         "RobustRandomCutForest": {"num_trees": 3, "shingle_size": 2, "tree_size": 16},
         "RSHash": {

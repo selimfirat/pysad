@@ -13,6 +13,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/v/pysad?style=flat-square&logo=pypi&logoColor=white&label=PyPI" alt="PyPI version"></a>
+  <a href="https://anaconda.org/conda-forge/pysad"><img src="https://img.shields.io/conda/vn/conda-forge/pysad?style=flat-square&logo=condaforge&logoColor=white&label=conda-forge" alt="conda-forge version"></a>
   <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/pyversions/pysad?style=flat-square&logo=python&logoColor=white&label=Python" alt="Python versions"></a>
   <a href="https://github.com/selimfirat/pysad/blob/master/LICENSE"><img src="https://img.shields.io/github/license/selimfirat/pysad?style=flat-square&label=license" alt="License"></a>
   <a href="https://doi.org/10.5281/zenodo.22983312"><img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22983312-0741AD?style=flat-square" alt="DOI"></a>
@@ -106,7 +107,13 @@ Batch outlier detectors such as [PyOD](https://github.com/yzhao062/pyod) train o
 pip install pysad
 ```
 
-PySAD supports Python 3.10 to 3.14 on Linux, macOS and Windows. Every detector works after this command, with no optional extras.
+Or with Conda / Mamba / Pixi:
+
+```bash
+conda install -c conda-forge pysad
+```
+
+PySAD supports Python 3.10 to 3.14 on Linux, macOS and Windows. Every detector works after installation, with no optional extras.
 
 ## Quick start
 

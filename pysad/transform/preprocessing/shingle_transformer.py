@@ -44,7 +44,14 @@ class ShingleTransformer(BaseTransformer):
         return len(self.recent) == self.shingle_size - 1
 
     def _point(self, X: ArrayLike) -> np.ndarray:
-        x = np.ravel(np.asarray(X, dtype=np.float64))
+        x = np.asarray(X, dtype=np.float64)
+        if x.ndim > 1 or x.size == 0:
+            raise ValueError(
+                f"ShingleTransformer expected a 1-D point, got an input of shape {np.shape(X)}."
+            )
+        x = x.ravel()
+        if not np.all(np.isfinite(x)):
+            raise ValueError("ShingleTransformer got a point with non-finite values.")
         if self.recent and x.shape != self.recent[0].shape:
             raise ValueError(
                 f"ShingleTransformer got a point with {x.shape[0]} features after points with "
@@ -62,7 +69,8 @@ class ShingleTransformer(BaseTransformer):
             object: self.
 
         Raises:
-            ValueError: If the point has another number of features than the earlier points.
+            ValueError: If the point is not a 1-D point, is empty, or holds non-finite
+                values; or if it has another number of features than the earlier points.
         """
         self.recent.append(self._point(X).copy())
         return self
@@ -79,7 +87,8 @@ class ShingleTransformer(BaseTransformer):
             np.float64 array of shape (shingle_size * num_features,): The shingle, oldest point first.
 
         Raises:
-            ValueError: If the point has another number of features than the earlier points.
+            ValueError: If the point is not a 1-D point, is empty, or holds non-finite
+                values; or if it has another number of features than the earlier points.
         """
         x = self._point(X)
         earlier = list(self.recent)
@@ -96,7 +105,8 @@ class ShingleTransformer(BaseTransformer):
             np.float64 array of shape (shingle_size * num_features,): The shingle, oldest point first.
 
         Raises:
-            ValueError: If the point has another number of features than the earlier points.
+            ValueError: If the point is not a 1-D point, is empty, or holds non-finite
+                values; or if it has another number of features than the earlier points.
         """
         shingle = self.transform_partial(X)
         self.fit_partial(X)

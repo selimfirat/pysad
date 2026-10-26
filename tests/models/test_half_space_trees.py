@@ -161,6 +161,52 @@ def test_half_space_trees_scores_a_batch_fitted_on_less_than_a_window():
     assert np.all(np.delete(scores, 7) < scores[7])
 
 
+def test_half_space_trees_large_ensemble_scores_match_the_per_tree_reference():
+    import numpy as np
+
+    from pysad.utils import fix_seed
+
+    window_size = 20
+    fix_seed(3)
+    X = np.random.uniform(size=(2 * window_size, 3))
+    model = _new_hst(
+        window_size=window_size,
+        num_trees=40,
+        max_depth=6,
+        feature_mins=[0.0, 0.0, 0.0],
+        feature_maxes=[1.0, 1.0, 1.0],
+    )
+    scores = model.fit_score(X)
+
+    # A depth step crosses every tree of the ensemble at once, so these scores pin the traversal
+    # at a scale the smaller tests do not reach, including the trees that no point has entered deeply.
+    for x, score in zip(X[window_size:], scores[window_size:], strict=True):
+        assert score == _score_against(model, X[:window_size], x)
+
+
+def test_half_space_trees_univariate_stream_scores_match_the_per_tree_reference():
+    import numpy as np
+
+    from pysad.utils import fix_seed
+
+    window_size = 12
+    fix_seed(11)
+    X = np.random.uniform(size=(2 * window_size, 1))
+    model = _new_hst(
+        window_size=window_size,
+        num_trees=30,
+        max_depth=5,
+        feature_mins=[0.0],
+        feature_maxes=[1.0],
+    )
+    scores = model.fit_score(X)
+
+    # Every split falls on the only feature, so each depth step gathers the same instance value
+    # for all trees and only the split values separate them.
+    for x, score in zip(X[window_size:], scores[window_size:], strict=True):
+        assert score == _score_against(model, X[:window_size], x)
+
+
 def test_half_space_trees_scores_against_the_first_window_right_after_it_closes():
     import numpy as np
 

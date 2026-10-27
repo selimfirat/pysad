@@ -5,6 +5,7 @@ The :mod:`pysad.statistics` module contains methods to keep track of statistics 
 from .abs_statistic import AbsStatistic
 from .average_meter import AverageMeter
 from .count_meter import CountMeter
+from .exponential_moving_average_meter import ExponentialMovingAverageMeter
 from .max_meter import MaxMeter
 from .median_meter import MedianMeter
 from .min_meter import MinMeter
@@ -18,6 +19,7 @@ __all__ = [
     "AbsStatistic",
     "AverageMeter",
     "CountMeter",
+    "ExponentialMovingAverageMeter",
     "MaxMeter",
     "MedianMeter",
     "MinMeter",

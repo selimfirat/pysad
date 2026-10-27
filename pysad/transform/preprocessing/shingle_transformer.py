@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import numbers
 from collections import deque
+from collections.abc import Callable
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from pysad.core.base_transformer import BaseTransformer
 
@@ -23,22 +27,31 @@ class ShingleTransformer(BaseTransformer):
         ValueError: If ``shingle_size`` is less than 1.
     """
 
-    def __init__(self, shingle_size):
+    shingle_size: int
+
+    def __init__(self, shingle_size: int) -> None:
         if isinstance(shingle_size, bool) or not isinstance(shingle_size, numbers.Integral):
             raise TypeError(f"shingle_size must be an int, got {shingle_size!r}.")
         if shingle_size < 1:
             raise ValueError(f"shingle_size must be at least 1, got {shingle_size}.")
         super().__init__(0)
         self.shingle_size = int(shingle_size)
-        self.recent = deque(maxlen=self.shingle_size - 1)
+        self.recent: deque[np.ndarray] = deque(maxlen=self.shingle_size - 1)
 
     @property
-    def full(self):
+    def full(self) -> bool:
         """Whether the history holds ``shingle_size - 1`` points, so that a shingle needs no copies."""
         return len(self.recent) == self.shingle_size - 1
 
-    def _point(self, X):
-        x = np.ravel(np.asarray(X, dtype=np.float64))
+    def _point(self, X: ArrayLike) -> np.ndarray:
+        x = np.asarray(X, dtype=np.float64)
+        if x.ndim > 1 or x.size == 0:
+            raise ValueError(
+                f"ShingleTransformer expected a 1-D point, got an input of shape {np.shape(X)}."
+            )
+        x = x.ravel()
+        if not np.all(np.isfinite(x)):
+            raise ValueError("ShingleTransformer got a point with non-finite values.")
         if self.recent and x.shape != self.recent[0].shape:
             raise ValueError(
                 f"ShingleTransformer got a point with {x.shape[0]} features after points with "
@@ -46,7 +59,7 @@ class ShingleTransformer(BaseTransformer):
             )
         return x
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> ShingleTransformer:
         """Adds the next point to the history.
 
         Args:
@@ -56,12 +69,13 @@ class ShingleTransformer(BaseTransformer):
             object: self.
 
         Raises:
-            ValueError: If the point has another number of features than the earlier points.
+            ValueError: If the point is not a 1-D point, is empty, or holds non-finite
+                values; or if it has another number of features than the earlier points.
         """
         self.recent.append(self._point(X).copy())
         return self
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Returns the shingle that ends with the next point.
 
         The shingle holds the last ``shingle_size - 1`` fitted points, and then the point. This method does not change the history.
@@ -73,14 +87,15 @@ class ShingleTransformer(BaseTransformer):
             np.float64 array of shape (shingle_size * num_features,): The shingle, oldest point first.
 
         Raises:
-            ValueError: If the point has another number of features than the earlier points.
+            ValueError: If the point is not a 1-D point, is empty, or holds non-finite
+                values; or if it has another number of features than the earlier points.
         """
         x = self._point(X)
         earlier = list(self.recent)
         missing = self.shingle_size - 1 - len(earlier)
         return np.concatenate([*[earlier[0] if earlier else x] * missing, *earlier, x])
 
-    def fit_transform_partial(self, X):
+    def fit_transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Returns the shingle that ends with the next point. Then adds the point to the history.
 
         Args:
@@ -90,13 +105,16 @@ class ShingleTransformer(BaseTransformer):
             np.float64 array of shape (shingle_size * num_features,): The shingle, oldest point first.
 
         Raises:
-            ValueError: If the point has another number of features than the earlier points.
+            ValueError: If the point is not a 1-D point, is empty, or holds non-finite
+                values; or if it has another number of features than the earlier points.
         """
         shingle = self.transform_partial(X)
         self.fit_partial(X)
         return shingle
 
-    def _transform_all(self, X, transform_partial):
+    def _transform_all(
+        self, X: np.ndarray, transform_partial: Callable[[np.ndarray], np.ndarray]
+    ) -> np.ndarray:
         # The width of a shingle depends on the number of features of the input.
         X = np.asarray(X)
         self.output_dims = self.shingle_size * (1 if X.ndim == 1 else X.shape[1])

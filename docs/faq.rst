@@ -42,7 +42,7 @@ For data with several features, start with :class:`~pysad.models.LODA`. For a si
 Do I need a GPU?
 ~~~~~~~~~~~~~~~~
 
-No. PySAD runs on the CPU. Its detectors use NumPy, SciPy and scikit-learn, and no detector uses a GPU. ``pip install pysad`` installs every dependency, and PySAD has no optional extras. See :doc:`installation`.
+No. PySAD runs on the CPU. Its detectors use NumPy, SciPy and scikit-learn, and no detector uses a GPU. ``pip install pysad`` or ``conda install -c conda-forge pysad`` installs every dependency, and PySAD has no optional extras. See :doc:`installation`.
 
 Can I use streaming detectors on a batch dataset?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

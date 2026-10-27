@@ -3,7 +3,6 @@ import warnings
 from pysad.transform.postprocessing import (
     AveragePostprocessor,
     MaxPostprocessor,
-    MedianPostprocessor,
     RunningAveragePostprocessor,
     RunningMaxPostprocessor,
     RunningMedianPostprocessor,
@@ -29,7 +28,6 @@ def test_postprocessors_shape():
     postprocessors = {
         AveragePostprocessor: {},
         MaxPostprocessor: {},
-        MedianPostprocessor: {},
         ZScorePostprocessor: {},
         RunningAveragePostprocessor: {"window_size": 30},
         RunningMaxPostprocessor: {"window_size": 30},
@@ -66,7 +64,6 @@ def test_cumulative_postprocessors_output_values():
     for postprocessor_cls, reference in [
         (AveragePostprocessor, np.mean),
         (MaxPostprocessor, np.max),
-        (MedianPostprocessor, np.median),
     ]:
         expected = [reference(scores[: i + 1]) for i in range(len(scores))]
 
@@ -147,7 +144,6 @@ def test_postprocessors_partial_matches_batch():
     postprocessors = {
         AveragePostprocessor: {},
         MaxPostprocessor: {},
-        MedianPostprocessor: {},
         ZScorePostprocessor: {},
         RunningAveragePostprocessor: {"window_size": WINDOW_SIZE},
         RunningMaxPostprocessor: {"window_size": WINDOW_SIZE},

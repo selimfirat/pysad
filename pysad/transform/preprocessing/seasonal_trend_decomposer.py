@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from collections import deque
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from pysad.core.base_transformer import BaseTransformer
 
@@ -20,7 +23,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
         trend_window (int or None): Number of recent observations used to estimate the trend. If None, the decomposer uses ``season_length`` (Default=None).
     """
 
-    def __init__(self, season_length, trend_window=None):
+    def __init__(self, season_length: int, trend_window: int | None = None) -> None:
         super().__init__(-1)
 
         if season_length < 1:
@@ -33,32 +36,36 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
         self.season_length = season_length
         self.trend_window = trend_window
-        self.window = deque(maxlen=trend_window)
-        self.seasonal_sums = None
-        self.seasonal_counts = None
+        self.window: deque[np.ndarray] = deque(maxlen=trend_window)
+        self.seasonal_sums: np.ndarray | None = None
+        self.seasonal_counts: np.ndarray | None = None
         self.num_seen = 0
 
-    def _as_array(self, X):
+    def _as_array(self, X: ArrayLike) -> np.ndarray:
 
         return np.asarray(X)
 
-    def _init_seasonal_state(self, X):
+    def _init_seasonal_state(self, X: np.ndarray) -> None:
         self.seasonal_sums = np.zeros((self.season_length, X.shape[0]))
         self.seasonal_counts = np.zeros(self.season_length)
 
-    def _trend(self):
+    def _trend(self) -> float | np.ndarray:
         if len(self.window) == 0:
             return 0.0
 
         return np.mean(np.asarray(self.window), axis=0)
 
-    def _seasonal(self, phase):
-        if self.seasonal_counts[phase] == 0:
+    def _seasonal(self, phase: int) -> float | np.ndarray:
+        if (
+            self.seasonal_counts is None
+            or self.seasonal_sums is None
+            or self.seasonal_counts[phase] == 0
+        ):
             return 0.0
 
         return self.seasonal_sums[phase] / self.seasonal_counts[phase]
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> SeasonalTrendDecomposer:
         """Fits the next timestep's values to train the decomposer.
 
         Args:
@@ -71,6 +78,8 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
         if self.seasonal_sums is None:
             self._init_seasonal_state(X)
+        assert self.seasonal_sums is not None
+        assert self.seasonal_counts is not None
 
         phase = self.num_seen % self.season_length
         self.window.append(X)
@@ -84,7 +93,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
         return self
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Transforms the next timestep by removing trend and seasonality.
 
         Args:
@@ -101,7 +110,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
         phase = self.num_seen % self.season_length
         return X - self._trend() - self._seasonal(phase)
 
-    def fit_transform_partial(self, X):
+    def fit_transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Fits and transforms the next timestep.
 
         Args:
@@ -114,6 +123,8 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
         if self.seasonal_sums is None:
             self._init_seasonal_state(X)
+        assert self.seasonal_sums is not None
+        assert self.seasonal_counts is not None
 
         phase = self.num_seen % self.season_length
         self.window.append(X)

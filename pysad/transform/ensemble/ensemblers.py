@@ -110,6 +110,7 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
         n_buckets (int): The number of buckets (Default=5).
         method (str): Either ``'static'`` or ``'dynamic'``. If ``'dynamic'``, the ensembler builds buckets randomly with a dynamic bucket size (Default='static').
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the bucket assignment. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
     @staticmethod
@@ -119,16 +120,21 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
         n_buckets: int = 5,
         method: str = "static",
         bootstrap_estimators: bool = False,
-        random_state: int | None = None,
+        random_state: int | np.random.RandomState | None = None,
     ) -> NDArray[np.float64]:
         pass
 
     def __init__(
-        self, n_buckets: int = 5, method: str = "static", bootstrap_estimators: bool = False
+        self,
+        n_buckets: int = 5,
+        method: str = "static",
+        bootstrap_estimators: bool = False,
+        random_state: int | np.random.RandomState | None = None,
     ) -> None:
         self.method = method
         self.n_buckets = n_buckets
         self.bootstrap_estimators = bootstrap_estimators
+        self.random_state = random_state
 
     def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:
         """Wrapping for PyOD the ensembler.
@@ -144,6 +150,7 @@ class _BucketScoreEnsembler(PYODScoreEnsembler):
             n_buckets=self.n_buckets,
             method=self.method,
             bootstrap_estimators=self.bootstrap_estimators,
+            random_state=self.random_state,
         )
 
 
@@ -156,9 +163,24 @@ class AverageOfMaximumScoreEnsembler(_BucketScoreEnsembler):
         n_buckets (int): The number of buckets (Default=5).
         method (str): Either ``'static'`` or ``'dynamic'``. If ``'dynamic'``, the ensembler builds buckets randomly with a dynamic bucket size (Default='static').
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the bucket assignment. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
     _combine_buckets = staticmethod(aom)
+
+    def __init__(
+        self,
+        n_buckets: int = 5,
+        method: str = "static",
+        bootstrap_estimators: bool = False,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
+        super().__init__(
+            n_buckets=n_buckets,
+            method=method,
+            bootstrap_estimators=bootstrap_estimators,
+            random_state=random_state,
+        )
 
 
 class MaximumOfAverageScoreEnsembler(_BucketScoreEnsembler):
@@ -170,6 +192,21 @@ class MaximumOfAverageScoreEnsembler(_BucketScoreEnsembler):
         n_buckets (int): The number of buckets (Default=5).
         method (str): Either ``'static'`` or ``'dynamic'``. If ``'dynamic'``, the ensembler builds buckets randomly with a dynamic bucket size (Default='static').
         bootstrap_estimators (bool): Whether estimators are drawn with replacement (Default=False).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the bucket assignment. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
     _combine_buckets = staticmethod(moa)
+
+    def __init__(
+        self,
+        n_buckets: int = 5,
+        method: str = "static",
+        bootstrap_estimators: bool = False,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
+        super().__init__(
+            n_buckets=n_buckets,
+            method=method,
+            bootstrap_estimators=bootstrap_estimators,
+            random_state=random_state,
+        )

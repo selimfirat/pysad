@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 from functools import lru_cache
+from typing import Any
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from pysad.core.base_transformer import BaseTransformer
 from pysad.utils import Window
@@ -11,7 +15,7 @@ from pysad.utils import Window
 # vectorized over the estimation points. For licensing information, see the end of this file.
 
 
-def _tricube(J, xs, h):
+def _tricube(J: np.ndarray, xs: np.ndarray, h: np.ndarray) -> np.ndarray:
     # The tricube weights of the LOESS windows, before the robustness weights. They depend only on
     # the positions, so the callers compute them once for each window shape.
     r = np.abs(J - xs[:, None])
@@ -22,7 +26,16 @@ def _tricube(J, xs, h):
     return w
 
 
-def _loess(Y, J, xs, h, degree, rng, rw=None, base=None):
+def _loess(
+    Y: np.ndarray,
+    J: np.ndarray,
+    xs: np.ndarray,
+    h: np.ndarray,
+    degree: int,
+    rng: float | None,
+    rw: np.ndarray | None = None,
+    base: np.ndarray | None = None,
+) -> np.ndarray:
     # One LOESS estimate per row, as stlest: Y and J (num_points, width) hold the values and the
     # 1-based positions of each window, xs and h (num_points,) the estimation position and the
     # half width. Entries outside a window have J = inf. Rows without weight give NaN.
@@ -34,6 +47,7 @@ def _loess(Y, J, xs, h, degree, rng, rw=None, base=None):
         total = w.sum(axis=1)
         w /= total[:, None]
         if degree > 0:
+            assert rng is not None
             J = np.where(np.isfinite(J), J, 0.0)
             center = (w * J).sum(axis=1)
             d = J - center[:, None]
@@ -47,7 +61,9 @@ def _loess(Y, J, xs, h, degree, rng, rw=None, base=None):
 
 
 @lru_cache(maxsize=64)
-def _smooth_geometry(n, length, jump):
+def _smooth_geometry(
+    n: int, length: int, jump: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # The fitted points, windows, positions, half widths and tricube weights of _smooth for n
     # points. As stless, it fits every `jump`-th point and the last point.
     width = min(length, n)
@@ -64,7 +80,13 @@ def _smooth_geometry(n, length, jump):
     return fit, idx, J, xs, h, _tricube(J, xs, h)
 
 
-def _smooth(y, length, degree, jump, rw=None):
+def _smooth(
+    y: np.ndarray,
+    length: int,
+    degree: int,
+    jump: int,
+    rw: np.ndarray | None = None,
+) -> np.ndarray:
     # LOESS of the whole series over windows of `length` points, as stless: it fits every
     # `jump`-th point and the last point, and interpolates linearly between them.
     n = y.shape[0]
@@ -74,12 +96,12 @@ def _smooth(y, length, degree, jump, rw=None):
     return np.interp(np.arange(n), fit, ys)
 
 
-def _moving_average(x, length):
+def _moving_average(x: np.ndarray, length: int) -> np.ndarray:
     return np.convolve(x, np.full(length, 1.0 / length), mode="valid")
 
 
 @lru_cache(maxsize=64)
-def _cycle_geometry(n, period):
+def _cycle_geometry(n: int, period: int) -> tuple[Any, ...]:
     # The cycle-subseries layout and the seasonal LOESS weights of _periodic_stl_seasonal for n
     # points. They depend only on n and the period, so they are computed once for each window.
     seasonal_length = 10 * n + 1
@@ -108,7 +130,7 @@ def _cycle_geometry(n, period):
     return (*arrays, shape, _tricube(J, xs, h))
 
 
-def _periodic_stl_seasonal(y, period, robust):
+def _periodic_stl_seasonal(y: np.ndarray, period: int, robust: bool) -> np.ndarray:
     # The seasonal component of R's stl(ts(y, frequency = period), s.window = "periodic", robust).
     n = y.shape[0]
     seasonal_length = 10 * n + 1
@@ -188,7 +210,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         ValueError: If ``period`` is less than 2, or if ``window_size`` is not None and at most ``2 * period``.
     """
 
-    def __init__(self, period, window_size=None, robust=True):
+    def __init__(self, period: int, window_size: int | None = None, robust: bool = True) -> None:
         super().__init__(-1)
 
         if period < 2:
@@ -202,17 +224,17 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         self.robust = robust
         self.window = Window(window_size) if window_size is not None else None
 
-    def _as_univariate(self, X):
-        X = np.asarray(X, dtype=np.float64)
+    def _as_univariate(self, X: ArrayLike) -> np.ndarray:
+        arr = np.asarray(X, dtype=np.float64)
 
-        if X.ndim == 2 and X.shape[1] == 1:
-            X = X.ravel()
-        elif X.ndim != 1:
+        if arr.ndim == 2 and arr.shape[1] == 1:
+            arr = arr.ravel()
+        elif arr.ndim != 1:
             raise ValueError("ModifiedSTLResidualTransformer supports univariate inputs.")
 
-        return X
+        return arr
 
-    def transform_window(self, X):
+    def transform_window(self, X: ArrayLike) -> np.ndarray:
         """Transforms a full window into modified STL residuals.
 
         Args:
@@ -224,15 +246,15 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         Raises:
             ValueError: If the window has at most ``2 * period`` observations.
         """
-        X = self._as_univariate(X)
+        arr = self._as_univariate(X)
 
-        if X.shape[0] <= 2 * self.period:
+        if arr.shape[0] <= 2 * self.period:
             raise ValueError("More than 2 * period observations are required for STL.")
 
-        seasonal = _periodic_stl_seasonal(X, self.period, self.robust)
-        return X - seasonal - np.median(X)
+        seasonal = _periodic_stl_seasonal(arr, self.period, self.robust)
+        return arr - seasonal - np.median(arr)
 
-    def fit_partial(self, X):
+    def fit_partial(self, X: np.ndarray) -> ModifiedSTLResidualTransformer:
         """Fits the next timestep by adding it to the residual window.
 
         Args:
@@ -244,36 +266,39 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         if self.window is None:
             raise ValueError("window_size is required for partial fitting.")
 
-        X = self._as_univariate(X)
-        if X.shape[0] != 1:
+        arr = self._as_univariate(X)
+        if arr.shape[0] != 1:
             raise ValueError("Partial fitting requires a single univariate value.")
 
-        self.window.update(X[0])
+        self.window.update(arr[0])
         return self
 
-    def _as_partial_value(self, X):
-        X = self._as_univariate(X)
-        if X.shape[0] != 1:
+    def _as_partial_value(self, X: ArrayLike) -> float:
+        arr = self._as_univariate(X)
+        if arr.shape[0] != 1:
             raise ValueError("Partial operations require a single univariate value.")
 
-        return X[0]
+        return float(arr[0])
 
-    def _current_values(self):
+    def _current_values(self) -> np.ndarray:
+        assert self.window is not None
         return np.asarray(self.window.get(), dtype=np.float64)
 
-    def _candidate_values(self, X):
+    def _candidate_values(self, X: ArrayLike) -> np.ndarray:
+        assert self.window is not None
+        assert self.window_size is not None
         value = self._as_partial_value(X)
         values = self.window.get() + [value]
         values = values[-self.window_size :]
         return np.asarray(values, dtype=np.float64)
 
-    def _latest_residual(self, values):
+    def _latest_residual(self, values: np.ndarray) -> np.ndarray:
         if values.shape[0] <= 2 * self.period:
             return np.zeros(1)
 
         return self.transform_window(values)[-1:]
 
-    def transform_partial(self, X):
+    def transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Returns the residual of the next value in the window that ends with it, without adding it to the window.
 
         Args:
@@ -287,7 +312,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
 
         return self._latest_residual(self._candidate_values(X))
 
-    def fit_transform_partial(self, X):
+    def fit_transform_partial(self, X: np.ndarray) -> np.ndarray:
         """Adds the next value to the window and returns its residual.
 
         Args:

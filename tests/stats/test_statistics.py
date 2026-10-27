@@ -305,6 +305,22 @@ def test_max_meter_without_values_keeps_only_the_maximum():
         meter.remove(7.5)
 
 
+def test_min_meter_without_values_keeps_only_the_minimum():
+    import pytest
+
+    from pysad.statistics import MinMeter
+
+    meter = MinMeter(keep_values=False)
+    for num in [3.0, -1.0, 7.5, 2.0]:
+        meter.update(num)
+
+    assert meter.get() == -1.0
+    assert len(meter.lst) == 0
+    assert len(meter.candidates) == 0
+    with pytest.raises(ValueError, match="keeps no values"):
+        meter.remove(-1.0)
+
+
 class _PreviousMaxMeter:
     """MaxMeter before #385, the reference for the equivalence tests."""
 

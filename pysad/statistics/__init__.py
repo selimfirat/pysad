@@ -8,6 +8,7 @@ from .count_meter import CountMeter
 from .max_meter import MaxMeter
 from .median_meter import MedianMeter
 from .min_meter import MinMeter
+from .quantile_meter import QuantileMeter
 from .running_statistic import RunningStatistic
 from .sum_meter import SumMeter
 from .sum_squares_meter import SumSquaresMeter
@@ -20,6 +21,7 @@ __all__ = [
     "MaxMeter",
     "MedianMeter",
     "MinMeter",
+    "QuantileMeter",
     "RunningStatistic",
     "SumMeter",
     "SumSquaresMeter",

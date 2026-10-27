@@ -16,6 +16,27 @@ To upgrade an existing installation, add ``-U``:
 
    $ pip install -U pysad
 
+Install from conda-forge
+------------------------
+
+To install with conda:
+
+.. code-block:: console
+
+   $ conda install -c conda-forge pysad
+
+Or with mamba:
+
+.. code-block:: console
+
+   $ mamba install -c conda-forge pysad
+
+Or with pixi:
+
+.. code-block:: console
+
+   $ pixi add pysad
+
 Install from source
 -------------------
 
@@ -30,7 +51,7 @@ To change the code, see :doc:`contributing`.
 Dependencies
 ------------
 
-pip installs these packages with PySAD. PySAD has no optional extras, so you do not install other packages. Every detector works after ``pip install pysad``. To run a PyOD detector through :mod:`pysad.models.integrations`, install PyOD with ``pip install pyod``.
+pip and conda install these packages with PySAD. PySAD has no optional extras, so you do not install other packages. Every detector works after installation. To run a PyOD detector through :mod:`pysad.models.integrations`, install PyOD with ``pip install pyod`` or ``conda install -c conda-forge pyod``.
 
 .. list-table::
    :header-rows: 1

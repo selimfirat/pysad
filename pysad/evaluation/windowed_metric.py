@@ -25,6 +25,9 @@ class WindowedMetric(BaseMetric):
         ignore_nonempty_last: bool = True,
         **kwargs: Any,
     ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
+
         super().__init__()
         self.ignore_nonempty_last = ignore_nonempty_last
         self.window_size = window_size

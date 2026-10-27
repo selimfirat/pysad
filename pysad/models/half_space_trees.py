@@ -10,7 +10,7 @@ from pysad.utils.validation import check_feature_bounds
 class HalfSpaceTrees(BaseModel):
     """Scores each instance by how few instances of the previous window fall into the same nodes of random half-space trees :cite:`tan2011fast`.
 
-    Instances are scored against the reference mass profile built from the previous window before being recorded into the next one (Algorithm 3). Algorithm 3 does not score the first window: its first `window_size` instances only build the initial reference profile. pysad does score them, which departs from the paper (and from river and scikit-multiflow, which return a constant during the first window): each first-window instance that `initial_window_X` does not cover is scored against the partial profile of the n instances recorded before it in that window (without its own mass), and that score is rescaled by `window_size / n`, which estimates the mass a full window would hold, so that first-window scores are on the same scale as later ones. The very first instance of a stream without `initial_window_X` has n = 0 and scores 0.0. From the instance after the first window on, scoring follows Algorithm 3. As in the paper, each tree splits its own random work space by default: for every feature, a point s is drawn uniformly from [min, max] and the tree covers s ± 2 * max(s - min, max - s), so trees differ even on 1-D streams. The paper scores `r * 2^k` at the terminal node only (the node at maximum depth or the first one on the path holding at most sizeLimit instances), whereas pysad sums `r * 2^k` over every node on the path, with no sizeLimit early stop. The sum uses the mass of every level, and on 17 ODDS datasets it gave a higher AUROC than the terminal-node score on 16 of them. Each tree is a full binary tree of depth `max_depth`, kept in NumPy arrays: a split feature and a float64 split value for each of its 2^max_depth - 1 internal nodes, and two masses for each of its 2^(max_depth + 1) - 1 nodes, in the smallest unsigned integer type that holds `window_size`. With the defaults, the 25 trees take about 11 MB.
+    Instances are scored against the reference mass profile built from the previous window before being recorded into the next one (Algorithm 3). Algorithm 3 does not score the first window: its first `window_size` instances only build the initial reference profile. pysad does score them, which departs from the paper (and from river and scikit-multiflow, which return a constant during the first window): each first-window instance that `initial_window_X` does not cover is scored against the partial profile of the n instances recorded before it in that window (without its own mass), and that score is rescaled by `window_size / n`, which estimates the mass a full window would hold, so that first-window scores are on the same scale as later ones. The very first instance of a stream without `initial_window_X` has n = 0 and scores 0.0. From the instance after the first window on, scoring follows Algorithm 3. As in the paper, each tree splits its own random work space by default: for every feature, a point s is drawn uniformly from [min, max] and the tree covers s ± 2 * max(s - min, max - s), so trees differ even on 1-D streams. The paper scores `r * 2^k` at the terminal node only (the node at maximum depth or the first one on the path holding at most sizeLimit instances), whereas pysad sums `r * 2^k` over every node on the path, with no sizeLimit early stop. The sum uses the mass of every level, and on 17 ODDS datasets it gave a higher AUROC than the terminal-node score on 16 of them. Each tree is a full binary tree of depth `max_depth`, kept in NumPy arrays: a split feature and a float64 split value for each of its 2^max_depth - 1 internal nodes, and two masses for each of its 2^(max_depth + 1) - 1 nodes, in the smallest unsigned integer type that holds `window_size`. With the defaults, the 25 trees take about 11 MB. A point is routed down every tree in one vectorized pass: each tree's current node is kept as one heap index, and each depth step reads the splits and advances that index for all trees at once, so no Python loop iterates over trees.
 
     Args:
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features. Integer arrays are converted to float.
@@ -45,7 +45,7 @@ class HalfSpaceTrees(BaseModel):
             if isinstance(value, bool) or not isinstance(value, numbers.Integral) or value < 1:
                 raise ValueError(f"{name} must be a positive integer, got {value!r}.")
 
-        if not isinstance(random_work_space, (bool, np.bool_)):
+        if not isinstance(random_work_space, bool | np.bool_):
             raise ValueError(f"random_work_space must be a bool, got {random_work_space!r}.")
 
         self.feature_mins, self.feature_maxes = check_feature_bounds(feature_mins, feature_maxes)
@@ -76,7 +76,20 @@ class HalfSpaceTrees(BaseModel):
         self.r_mass = np.zeros_like(self.l_mass)
         # r * 2^k of a node at depth k.
         self._depth_weights = 2 ** np.arange(self.max_depth + 1, dtype=np.int64)
-        self._trees = np.arange(self.num_trees)
+        # Traversal state shared by every point. Each tree's current node is kept as the
+        # tree-independent heap index u = node + 1, one per row of `self._flat_path`, so a depth
+        # step is u <- 2u + goes_right for every tree at once and no Python loop touches a single
+        # tree. The split and the mass arrays are read as one flat array in which node n of tree t
+        # sits at t * num_splits + n and t * num_nodes + n: gathering a split needs the index
+        # u + t * num_splits - 1, a mass cell u + t * num_nodes - 1.
+        self._split_shift = np.arange(self.num_trees, dtype=np.intp) * num_splits - 1
+        self._mass_shift = np.arange(self.num_trees, dtype=np.intp) * (2 * num_splits + 1) - 1
+        self._flat_path = np.empty((self.max_depth + 1, self.num_trees), dtype=np.intp)
+        self._idx_buf = np.empty(self.num_trees, dtype=np.intp)
+        self._att_buf = np.empty(self.num_trees, dtype=self.split_atts.dtype)
+        self._val_buf = np.empty(self.num_trees)
+        self._x_buf = np.empty(self.num_trees)
+        self._goes_right_buf = np.empty(self.num_trees, dtype=np.bool_)
 
         self.is_first_window = True
         self.step = 0
@@ -131,20 +144,36 @@ class HalfSpaceTrees(BaseModel):
         return atts, values
 
     def _path(self, X):
-        """Returns the index into the mass arrays of the max_depth + 1 nodes that `X` visits in each tree."""
+        """Returns the flat index into the mass arrays of the max_depth + 1 nodes that `X` visits in each tree."""
         X = np.asarray(X)
-        trees = self._trees
-        path = np.zeros((self.num_trees, self.max_depth + 1), dtype=np.intp)
+        # A float64 X can be gathered through a reusable buffer; other dtypes (a float32 or an int
+        # point, for example) would not cast into it, so they take the allocating path.
+        x_buf = self._x_buf if X.dtype == np.float64 else None
+        path = self._flat_path
+        path[0] = 1  # every tree starts at its root, whose heap index is u = node + 1 = 1
+        att_buf, val_buf, goes_right, idx = (
+            self._att_buf,
+            self._val_buf,
+            self._goes_right_buf,
+            self._idx_buf,
+        )
+        split_atts, split_values = self.split_atts.reshape(-1), self.split_values.reshape(-1)
         for k in range(self.max_depth):
-            node = path[:, k]
-            goes_right = X[self.split_atts[trees, node]] > self.split_values[trees, node]
-            path[:, k + 1] = 2 * node + 1 + goes_right
+            u, next_u = path[k], path[k + 1]
+            np.add(u, self._split_shift, out=idx)
+            x_vals = X.take(split_atts.take(idx, out=att_buf), out=x_buf)
+            np.greater(x_vals, split_values.take(idx, out=val_buf), out=goes_right)
+            np.add(u, u, out=next_u)
+            np.add(next_u, goes_right, out=next_u)
 
-        return trees[:, None], path
+        # The path holds heap indices; add the per-tree base to turn them into mass cell indices.
+        np.add(path, self._mass_shift, out=path)
+
+        return path
 
     def _fit_path(self, path):
         self.step += 1
-        self.l_mass[path] += 1
+        self.l_mass.reshape(-1)[path] += 1
 
         if self.step % self.window_size == 0:
             # Update model: r <- l and l <- 0 on every node.
@@ -154,8 +183,8 @@ class HalfSpaceTrees(BaseModel):
 
     def _score_path(self, path):
         # During the first window there is no reference yet, so score against the mass recorded so far.
-        mass = (self.l_mass if self.is_first_window else self.r_mass)[path]
-        s = float((mass * self._depth_weights).sum())
+        mass = (self.l_mass if self.is_first_window else self.r_mass).reshape(-1)[path]
+        s = float((mass * self._depth_weights[:, None]).sum())
 
         if self.is_first_window and self.step > 0:
             # Not in the paper: scale the partial profile of the `step` instances recorded so far

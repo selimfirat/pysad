@@ -114,8 +114,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.points < 2 * args.checkpoint:
-        parser.error("--points must be at least twice --checkpoint.")
+    if args.points < 3 * args.checkpoint:
+        parser.error("--points must be at least three times --checkpoint.")
 
     names = [name.strip() for name in args.detectors.split(",") if name.strip()]
     detectors = _detectors(names)

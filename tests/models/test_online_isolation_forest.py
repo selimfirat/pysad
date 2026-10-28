@@ -195,12 +195,16 @@ def test_reusing_an_input_buffer_keeps_the_same_scores():
     np.testing.assert_array_equal(actual, expected)
 
 
-def test_unfitted_model_scores_one():
+def test_unfitted_model_scores_zero_then_learns():
     import numpy as np
 
     from pysad.models import OnlineIsolationForest
 
-    assert OnlineIsolationForest().score_partial(np.array([1.0, 2.0])) == 1.0
+    model = OnlineIsolationForest()
+    x = np.array([1.0, 2.0])
+    assert model.score_partial(x) == 0.0
+    assert model.fit_score_partial(x) == 0.0
+    assert model.score_partial(x) == 1.0
 
 
 def test_initial_score_avoids_zero_normalization():

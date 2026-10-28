@@ -188,9 +188,10 @@ class OnlineIsolationForest(BaseModel):
 
     PySAD adaptations: ``fit_score_partial`` scores before learning. To follow
     Algorithm 1's order, call ``fit_partial`` then ``score_partial``. An unfitted
-    model scores 1.0, following the
-    `CapyMOA port <https://github.com/adaptive-machine-learning/CapyMOA/blob/3e255b1/src/capymoa/anomaly/_online_isolation_forest.py>`_;
-    the original reference cannot score an unfitted forest.
+    model scores 0.0, following the cold-start convention of most PySAD detectors;
+    the original reference cannot score an unfitted forest. CapyMOA's port
+    returns 1.0 in that case. This convention only affects scoring before the
+    first fit; trained scores follow the original reference.
     ``random_state`` controls one shared NumPy ``RandomState``,
     preserving the original reference's random draw order for single-point
     updates. Unlike CapyMOA, it does not create separate generators for each tree.
@@ -274,9 +275,9 @@ class OnlineIsolationForest(BaseModel):
             X (np.float64 array of shape (num_features,)): Instance to score.
 
         Returns:
-            float: Anomaly score in [0, 1], or 1.0 before learning.
+            float: Anomaly score in [0, 1], or 0.0 before learning.
         """
         if not self.window_:
-            return 1.0
+            return 0.0
         depth = sum(tree.predict_one(X) for tree in self.trees_) / self.num_trees
         return float(2.0 ** (-depth / (self.normalization_ + np.finfo(float).eps)))

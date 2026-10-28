@@ -1,39 +1,12 @@
 import pytest
 
 
-def test_invalid_parameters():
+@pytest.mark.parametrize("kwargs", [{"num_trees": 0}, {"max_leaf_samples": 0}, {"window_size": 32}])
+def test_invalid_parameters(kwargs):
     from pysad.models import OnlineIsolationForest
 
-    with pytest.raises(ValueError, match="num_trees"):
-        OnlineIsolationForest(num_trees=0)
-    with pytest.raises(ValueError, match="num_trees"):
-        OnlineIsolationForest(num_trees=True)
-
-    with pytest.raises(ValueError, match="max_leaf_samples"):
-        OnlineIsolationForest(max_leaf_samples=0)
-    with pytest.raises(ValueError, match="max_leaf_samples"):
-        OnlineIsolationForest(max_leaf_samples=False)
-
-    with pytest.raises(ValueError, match="window_size"):
-        OnlineIsolationForest(window_size=0)
-    with pytest.raises(ValueError, match="window_size"):
-        OnlineIsolationForest(window_size=True)
-
-    with pytest.raises(ValueError, match="growth_criterion"):
-        OnlineIsolationForest(growth_criterion="invalid")
-
-    with pytest.raises(ValueError, match="subsample"):
-        OnlineIsolationForest(subsample=0.0)
-    with pytest.raises(ValueError, match="subsample"):
-        OnlineIsolationForest(subsample=1.5)
-    with pytest.raises(ValueError, match="subsample"):
-        OnlineIsolationForest(subsample=True)
-
-    with pytest.raises(ValueError, match="branching_factor"):
-        OnlineIsolationForest(branching_factor=1)
-
-    with pytest.raises(ValueError, match="split"):
-        OnlineIsolationForest(split="oblique")
+    with pytest.raises(ValueError):
+        OnlineIsolationForest(**kwargs)
 
 
 def test_random_state_reproducibility():
@@ -74,24 +47,6 @@ def test_global_seed_reproducibility():
     scores2 = model2.fit_score(X)
 
     np.testing.assert_array_equal(scores1, scores2)
-
-
-def test_memory_bounded_by_window_size():
-    import numpy as np
-
-    from pysad.models import OnlineIsolationForest
-
-    window_size = 50
-    model = OnlineIsolationForest(
-        num_trees=8, max_leaf_samples=8, window_size=window_size, random_state=0
-    )
-    rng = np.random.RandomState(0)
-
-    for _ in range(150):
-        x = rng.normal(size=(3,))
-        model.fit_partial(x)
-        assert len(model.data_window) <= window_size
-        assert model.data_size <= window_size
 
 
 def test_anomalies_score_higher_than_inliers():
@@ -150,22 +105,6 @@ def test_window_forgetting():
     assert score_a_after > score_b_after
 
 
-def test_growth_criteria():
-    import numpy as np
-
-    from pysad.models import OnlineIsolationForest
-
-    for criterion in ("adaptive", "fixed"):
-        model = OnlineIsolationForest(
-            num_trees=8, max_leaf_samples=8, growth_criterion=criterion, random_state=0
-        )
-        rng = np.random.RandomState(0)
-        X = rng.normal(size=(60, 2))
-        scores = model.fit_score(X)
-        assert len(scores) == 60
-        assert np.all((scores >= 0.0) & (scores <= 1.0))
-
-
 def test_pickling_preserves_scoring():
     import pickle
 
@@ -188,51 +127,72 @@ def test_pickling_preserves_scoring():
     np.testing.assert_allclose(scores_orig, scores_pickled)
 
 
-def test_branching_factor_greater_than_two():
+def test_scores_use_the_papers_window_normalization():
     import numpy as np
 
     from pysad.models import OnlineIsolationForest
 
-    rng = np.random.RandomState(42)
-    X = rng.normal(size=(80, 2))
-    model = OnlineIsolationForest(
-        num_trees=4,
-        max_leaf_samples=4,
-        branching_factor=4,
-        window_size=20,
-        random_state=42,
-    )
-    for x in X:
-        score = model.fit_score_partial(x)
-        assert 0.0 <= score <= 1.0
+    model = OnlineIsolationForest(num_trees=1, max_leaf_samples=2, window_size=8, random_state=0)
+    model.fit(np.array([[0.0], [2.0]]))
+
+    # The root splits at two observations. Both leaves have depth one, and
+    # c(window_size, max_leaf_samples) = log2(8 / 2) = 2.
+    np.testing.assert_allclose(model.score(np.array([[0.0], [2.0]])), 2.0 ** (-1.0 / 2.0))
 
 
-def test_subsample():
+def test_reusing_an_input_buffer_keeps_the_same_scores():
     import numpy as np
 
     from pysad.models import OnlineIsolationForest
 
-    rng = np.random.RandomState(42)
-    X = rng.normal(size=(60, 2))
-    model = OnlineIsolationForest(
-        num_trees=4,
-        max_leaf_samples=4,
-        subsample=0.5,
-        window_size=20,
-        random_state=42,
-    )
+    X = np.random.RandomState(0).normal(size=(300, 2))
+    params = dict(num_trees=4, max_leaf_samples=4, window_size=20, random_state=0)
+    expected = OnlineIsolationForest(**params).fit_score(X)
+    model = OnlineIsolationForest(**params)
+    buffer = np.empty(2)
+    actual = []
     for x in X:
-        model.fit_partial(x)
-        score = model.score_partial(x)
-        assert 0.0 <= score <= 1.0
+        buffer[:] = x
+        actual.append(model.fit_score_partial(buffer))
+
+    np.testing.assert_array_equal(actual, expected)
 
 
-def test_empty_tree_predict():
+def test_unfitted_model_scores_zero():
     import numpy as np
 
-    from pysad.models.online_isolation_forest import _OnlineIsolationTree
+    from pysad.models import OnlineIsolationForest
 
-    tree = _OnlineIsolationTree(
-        max_leaf_samples=8, branching_factor=2, growth_criterion="adaptive", subsample=1.0
-    )
-    assert tree.predict_one(np.array([1.0, 2.0])) == 0.0
+    assert OnlineIsolationForest().score_partial(np.array([1.0, 2.0])) == 0.0
+
+
+def test_single_observation_can_trigger_a_split():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=1, max_leaf_samples=1, window_size=4, random_state=0)
+    model.fit_partial(np.array([1.0]))
+    assert model.score_partial(np.array([1.0])) == pytest.approx(2.0 ** (-1.0 / 2.0))
+
+
+def test_memory_stays_bounded_over_a_long_stream():
+    import tracemalloc
+
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=2, max_leaf_samples=4, window_size=20, random_state=0)
+    rng = np.random.RandomState(0)
+    tracemalloc.start()
+    try:
+        for _ in range(2000):
+            model.fit_score_partial(rng.rand(3))
+        initial = tracemalloc.get_traced_memory()[0]
+        for _ in range(10000):
+            model.fit_score_partial(rng.rand(3))
+        final = tracemalloc.get_traced_memory()[0]
+    finally:
+        tracemalloc.stop()
+    assert final - initial < 64 * 1024

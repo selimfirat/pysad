@@ -3,7 +3,7 @@
 Run it from the repository root:
 
     python benchmarks/memory_stability.py
-    python benchmarks/memory_stability.py --detectors LODA,RSHash --points 100000
+    python benchmarks/memory_stability.py --detectors LODA,RSHash --points 100000 --checkpoint 10000
 
 Each detector runs on a synthetic stream that is generated one point at a time, so
 the script itself never stores the stream. The multivariate detectors see five
@@ -13,9 +13,9 @@ the run fails when the traced memory grows by more than ``--max-growth-kb`` betw
 the second checkpoint and the last one. Growth is measured between late checkpoints,
 not from the start, so one-time setup allocations do not count as a leak. Scores are
 discarded as they are produced, so a growing score list cannot mask a leak or fake
-one. ``tracemalloc`` traces Python allocations; the fixed-size NumPy buffers of these
-detectors are not traced, so a flat result means no Python-side state grows with the
-stream, which is where an unbounded list or dict leak would show.
+one. ``tracemalloc`` records Python allocations and allocations reported by extension
+modules. It excludes allocations made before tracing starts and native allocations
+that extensions do not report, so a flat result does not prove a bound on total RSS.
 
 This script is not part of the pytest suite: a million point run would slow every
 test run, and the benchmark workflow does not run it either. Run it by hand when a
@@ -70,27 +70,31 @@ def run_detector(name: str, detector: object, points: int, checkpoint: int) -> d
 
     tracemalloc.start()
     try:
-        traced: list[float] = []
+        first_kb = second_kb = last_kb = 0.0
         start = time.perf_counter()
         for i in range(1, points + 1):
             detector.fit_score_partial(_points(rng, univariate))
 
             if i % checkpoint == 0:
-                traced.append(tracemalloc.get_traced_memory()[0] / 1024.0)
+                last_kb = tracemalloc.get_traced_memory()[0] / 1024.0
+                if i == checkpoint:
+                    first_kb = last_kb
+                if i == 2 * checkpoint:
+                    second_kb = last_kb
 
         elapsed = time.perf_counter() - start
         _, peak = tracemalloc.get_traced_memory()
     finally:
         tracemalloc.stop()
 
-    growth = traced[-1] - traced[1] if len(traced) > 1 else 0.0
+    growth = last_kb - second_kb
 
     return {
         "points": float(points),
         "seconds": elapsed,
         "peak_kb": peak / 1024.0,
-        "first_kb": traced[0],
-        "last_kb": traced[-1],
+        "first_kb": first_kb,
+        "last_kb": last_kb,
         "growth_kb": growth,
     }
 
@@ -114,10 +118,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    if args.checkpoint <= 0:
+        parser.error("--checkpoint must be positive.")
+
     if args.points < 3 * args.checkpoint:
         parser.error("--points must be at least three times --checkpoint.")
 
     names = [name.strip() for name in args.detectors.split(",") if name.strip()]
+    if not names:
+        parser.error("--detectors must name at least one detector.")
     detectors = _detectors(names)
     failed = False
 

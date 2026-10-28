@@ -59,9 +59,7 @@ def test_dimension_outputs(tmp_path, monkeypatch):
 def test_dimensions_command_writes_both_outputs(tmp_path, monkeypatch):
     benchmark = load_benchmark()
     monkeypatch.setattr(benchmark, "OUT", tmp_path)
-    monkeypatch.setattr(
-        sys, "argv", ["benchmark.py", "--dimensions", "--dimension-points", "20"]
-    )
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--dimensions", "--dimension-points", "20"])
     benchmark.main()
     csv_lines = (tmp_path / "dimensions.csv").read_text().splitlines()
     assert len(csv_lines) == 1 + len(benchmark.DIMENSION_DETECTORS) * len(benchmark.DIMENSIONS)

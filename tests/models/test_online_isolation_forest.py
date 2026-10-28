@@ -1,7 +1,7 @@
 import pytest
 
 
-@pytest.mark.parametrize("case_index", range(3))
+@pytest.mark.parametrize("case_index", range(8))
 def test_matches_authors_reference_scores(case_index):
     import json
     from pathlib import Path
@@ -30,12 +30,27 @@ def test_matches_authors_reference_scores(case_index):
         model.fit_partial(x)
         after.append(model.score_partial(x))
 
-    np.testing.assert_allclose(before[1:], case["before"][1:], rtol=1e-12, atol=1e-14)
-    np.testing.assert_allclose(after, case["after"], rtol=1e-12, atol=1e-14)
+    for actual, expected in [(before, case["before"]), (after, case["after"])]:
+        valid = np.array([value is not None for value in expected])
+        np.testing.assert_allclose(
+            np.array(actual)[valid], np.array(expected, dtype=float)[valid], rtol=1e-12, atol=1e-14
+        )
     np.testing.assert_allclose(model.score(X), case["final"], rtol=1e-12, atol=1e-14)
 
 
-@pytest.mark.parametrize("kwargs", [{"num_trees": 0}, {"max_leaf_samples": 0}, {"window_size": 0}])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"num_trees": 0},
+        {"max_leaf_samples": 0},
+        {"window_size": 0},
+        {"growth_criterion": "invalid"},
+        {"subsample": 0.0},
+        {"subsample": 1.5},
+        {"branching_factor": 1},
+        {"split": "oblique"},
+    ],
+)
 def test_invalid_parameters(kwargs):
     from pysad.models import OnlineIsolationForest
 
@@ -139,7 +154,10 @@ def test_window_forgetting():
     assert score_a_after > score_b_after
 
 
-def test_pickling_preserves_scoring():
+@pytest.mark.parametrize(
+    "options", [{}, {"growth_criterion": "fixed", "branching_factor": 4, "subsample": 0.5}]
+)
+def test_pickling_preserves_scoring(options):
     import pickle
 
     import numpy as np
@@ -149,7 +167,13 @@ def test_pickling_preserves_scoring():
     rng = np.random.RandomState(0)
     X = rng.normal(size=(80, 3))
 
-    model = OnlineIsolationForest(num_trees=16, max_leaf_samples=8, window_size=50, random_state=42)
+    model = OnlineIsolationForest(
+        num_trees=16,
+        max_leaf_samples=8,
+        window_size=50,
+        random_state=42,
+        **options,
+    )
     for x in X[:40]:
         model.fit_partial(x)
 
@@ -177,13 +201,16 @@ def test_scores_use_the_reference_active_count_normalization():
     np.testing.assert_allclose(model.score(np.array([[0.0], [2.0]])), expected)
 
 
-def test_reusing_an_input_buffer_keeps_the_same_scores():
+@pytest.mark.parametrize("subsample", [1.0, 0.5])
+def test_reusing_an_input_buffer_keeps_the_same_scores(subsample):
     import numpy as np
 
     from pysad.models import OnlineIsolationForest
 
     X = np.random.RandomState(0).normal(size=(300, 2))
-    params = dict(num_trees=4, max_leaf_samples=4, window_size=20, random_state=0)
+    params = dict(
+        num_trees=4, max_leaf_samples=4, window_size=20, subsample=subsample, random_state=0
+    )
     expected = OnlineIsolationForest(**params).fit_score(X)
     model = OnlineIsolationForest(**params)
     buffer = np.empty(2)
@@ -217,14 +244,17 @@ def test_initial_score_avoids_zero_normalization():
     assert model.score_partial(np.array([1.0])) == 1.0
 
 
-def test_memory_stays_bounded_over_a_long_stream():
+@pytest.mark.parametrize("subsample", [1.0, 0.5])
+def test_memory_stays_bounded_over_a_long_stream(subsample):
     import tracemalloc
 
     import numpy as np
 
     from pysad.models import OnlineIsolationForest
 
-    model = OnlineIsolationForest(num_trees=2, max_leaf_samples=4, window_size=20, random_state=0)
+    model = OnlineIsolationForest(
+        num_trees=2, max_leaf_samples=4, window_size=20, subsample=subsample, random_state=0
+    )
     rng = np.random.RandomState(0)
     tracemalloc.start()
     try:
@@ -237,3 +267,34 @@ def test_memory_stays_bounded_over_a_long_stream():
     finally:
         tracemalloc.stop()
     assert final - initial < 64 * 1024
+
+
+def test_subsampling_expires_the_originally_selected_points():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    class SamplingRandomState(np.random.RandomState):
+        def __init__(self):
+            super().__init__(0)
+            self.draws = 0
+
+        def random_sample(self, size=None):
+            # Select the first two learning updates, then reject every draw,
+            # including the reference's independent forgetting draws.
+            self.draws += 1
+            return 0.0 if self.draws <= 2 else 1.0
+
+    model = OnlineIsolationForest(
+        num_trees=1,
+        max_leaf_samples=1,
+        window_size=4,
+        subsample=0.5,
+        random_state=SamplingRandomState(),
+    )
+    model.fit(np.array([[0.0], [1.0], [0.0], [0.0]]))
+    assert model.score_partial(np.array([0.0])) < 1.0
+    model.fit(np.array([[0.0], [0.0]]))
+    # Both selected points expired. Rejecting the forgetting draws must not
+    # leave those old points in the tree.
+    assert model.score_partial(np.array([0.0])) == 1.0

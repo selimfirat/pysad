@@ -25,6 +25,7 @@ def _model_specs():
         LocalOutlierProbability,
         MedianAbsoluteDeviation,
         NullModel,
+        OnlineIsolationForest,
         PerfectModel,
         RandomModel,
         RelativeEntropy,
@@ -65,6 +66,7 @@ def _model_specs():
         ("MedianAbsoluteDeviation", lambda: MedianAbsoluteDeviation(), 1),
         ("MedianAbsoluteDeviation-signed", lambda: MedianAbsoluteDeviation(absolute=False), 1),
         ("NullModel", lambda: NullModel(), NUM_FEATURES),
+        ("OnlineIsolationForest", lambda: OnlineIsolationForest(), NUM_FEATURES),
         ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),
         ("RandomModel", lambda: RandomModel(), NUM_FEATURES),
         # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses

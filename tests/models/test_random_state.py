@@ -8,6 +8,7 @@ from pysad.models import (
     HalfSpaceTrees,
     Inqmad,
     KitNet,
+    OnlineIsolationForest,
     RandomModel,
     RobustRandomCutForest,
     RSHash,
@@ -30,6 +31,9 @@ MODELS = {
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": lambda **kw: KitNet(grace_feature_mapping=20, grace_anomaly_detector=30, **kw),
     "LODA": lambda **kw: LODA(num_random_cuts=20, **kw),
+    "OnlineIsolationForest": lambda **kw: OnlineIsolationForest(
+        num_trees=10, max_leaf_samples=8, window_size=32, **kw
+    ),
     "RandomModel": lambda **kw: RandomModel(**kw),
     "RobustRandomCutForest": lambda **kw: RobustRandomCutForest(tree_size=32, **kw),
     "RSHash": lambda **kw: RSHash([0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES, **kw),

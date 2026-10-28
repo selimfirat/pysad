@@ -90,10 +90,14 @@ DETECTORS = {
     "KitNet": lambda X, seed: models.KitNet(random_state=seed),
     "LODA": lambda X, seed: models.LODA(random_state=seed),
     "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[: warmup(len(X))]),
+    "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
     "xStream": lambda X, seed: models.xStream(random_state=seed),
 }
+# CI runs this script against the base checkout too, where a newly added model
+# is not exported yet. Only benchmark the models present in that checkout.
+DETECTORS = {name: factory for name, factory in DETECTORS.items() if name in models.__all__}
 # The per-dataset tables use these names, which are common in the papers, to fit the page.
 SHORT_NAMES = {
     "HalfSpaceTrees": "HST",

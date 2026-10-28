@@ -9,11 +9,15 @@ Run it from the repository root:
 
     python benchmarks/benchmark.py                        # every detector
     python benchmarks/benchmark.py --detectors LODA,RSHash
+    python benchmarks/benchmark.py --dimensions           # latency per point against dimension
     python benchmarks/benchmark.py --check origin/master  # rerun what changed, compare with the results
     python benchmarks/benchmark.py --parts drift          # only the streams with drift
     python benchmarks/benchmark.py --ci base.csv --since origin/master  # the short run of CI
 
 The results go to docs/benchmark/, which the pages in docs/benchmarks/ show.
+The dimensionality sweep writes docs/benchmark/dimensions.csv and
+docs/benchmark/dimensions.svg instead, and needs no downloads: it runs on
+synthetic uniform streams.
 """
 
 import argparse
@@ -828,6 +832,109 @@ def pysad_files(objects):
     return files
 
 
+# The dimensionality sweep (--dimensions) runs these detectors on synthetic
+# uniform streams of increasing feature dimension, to show how latency per point
+# scales with d. Every detector sees the same stream at a given dimension, so the
+# comparison does not depend on the order of the runs.
+DIMENSION_DETECTORS = ["LODA", "xStream", "RSHash", "HalfSpaceTrees", "Inqmad", "ExactStorm"]
+DIMENSIONS = [2, 10, 50, 100, 500, 1000]
+DIMENSION_POINTS = 2000
+DIMENSION_FIELDS = ["detector", "dimension", "points", "ms_per_point"]
+DIMENSION_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]
+
+
+def dimension_model(detector, d, seed):
+    """A detector for a synthetic stream of d features in [0, 1].
+
+    The array carries only the shape and the [0, 1] ranges that
+    HalfSpaceTrees, RSHash, and Inqmad need; the stream itself is
+    generated one point at a time by run_dimension.
+    """
+    return DETECTORS[detector](np.zeros((1, d)), seed)
+
+
+def run_dimension(detector, d, points, seed):
+    """Latency per point of a detector on a synthetic stream of d features.
+
+    A warmup run first, so the timed points do not carry setup costs,
+    then the timed points, each scored before the model fits it, as in
+    the rest of the benchmark.
+    """
+    model = dimension_model(detector, d, seed)
+    rng = np.random.RandomState(seed)
+    for _ in range(min(WARMUP_POINTS, points // 4)):
+        model.fit_score_partial(rng.rand(d))
+    start = time.perf_counter()
+    with np.errstate(all="ignore"):
+        for _ in range(points):
+            model.fit_score_partial(rng.rand(d))
+    seconds = time.perf_counter() - start
+    return {
+        "detector": detector,
+        "dimension": d,
+        "points": points,
+        "ms_per_point": round(1000 * seconds / points, 3),
+    }
+
+
+def dimension_rows(detectors, dimensions, points, seed):
+    """One latency row per detector and dimension, in detector order."""
+    return [run_dimension(detector, d, points, seed) for detector in detectors for d in dimensions]
+
+
+def write_dimensions_svg(rows, detectors):
+    """Scalability curves: ms per point against dimension, log scale on d.
+
+    Written with the standard library only, so the sweep adds no
+    dependency: one line per detector, with a tick at each dimension.
+    """
+    width, height = 640, 400
+    left, right, top, bottom = 70, 150, 30, 50
+    plot_w, plot_h = width - left - right, height - top - bottom
+    dims = sorted({row["dimension"] for row in rows})
+    max_ms = max(row["ms_per_point"] for row in rows)
+
+    def x(d):
+        span = np.log10(max(dims)) - np.log10(min(dims))
+        return left + plot_w * (np.log10(d) - np.log10(min(dims))) / span
+
+    def y(ms):
+        return top + plot_h - plot_h * ms / (max_ms * 1.1)
+
+    lines = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
+        f'<text x="{width // 2}" y="20" text-anchor="middle">Latency per point by dimension</text>',
+    ]
+    for d in dims:
+        lines.append(
+            f'<line x1="{x(d):.1f}" y1="{top}" x2="{x(d):.1f}" y2="{top + plot_h}" stroke="#ddd"/>'
+        )
+        lines.append(
+            f'<text x="{x(d):.1f}" y="{top + plot_h + 20}" text-anchor="middle">{d}</text>'
+        )
+    lines.append(
+        f'<text x="{left + plot_w // 2}" y="{height - 10}" text-anchor="middle">dimension d (log scale)</text>'
+    )
+    lines.append(
+        f'<text x="20" y="{top + plot_h // 2}" text-anchor="middle" transform="rotate(-90 20 {top + plot_h // 2})">ms per point</text>'
+    )
+    for i, detector in enumerate(detectors):
+        color = DIMENSION_COLORS[i % len(DIMENSION_COLORS)]
+        cells = [row for row in rows if row["detector"] == detector]
+        points_attr = " ".join(f"{x(r['dimension']):.1f},{y(r['ms_per_point']):.1f}" for r in cells)
+        lines.append(
+            f'<polyline fill="none" stroke="{color}" stroke-width="2" points="{points_attr}"/>'
+        )
+        legend_y = top + 15 * i
+        lines.append(
+            f'<line x1="{left + plot_w + 10}" y1="{legend_y}" x2="{left + plot_w + 30}" y2="{legend_y}" stroke="{color}" stroke-width="2"/>'
+        )
+        lines.append(f'<text x="{left + plot_w + 35}" y="{legend_y + 4}">{detector}</text>')
+    lines.append("</svg>")
+    with open(OUT / "dimensions.svg", "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -859,7 +966,34 @@ def main():
         help="with --ci, print the AUROC of each run that differs from FILE, a file of another --ci run",
     )
     parser.add_argument("--jobs", type=int, default=os.cpu_count())
+    parser.add_argument(
+        "--dimensions",
+        action="store_true",
+        help="run the dimensionality sweep and write docs/benchmark/dimensions.csv and dimensions.svg",
+    )
+    parser.add_argument(
+        "--dimension-points",
+        type=int,
+        default=DIMENSION_POINTS,
+        help="points per detector and dimension in the dimensionality sweep",
+    )
     args = parser.parse_args()
+    if args.dimensions:
+        if args.dimension_points <= 0:
+            parser.error("--dimension-points must be positive.")
+        rows = dimension_rows(DIMENSION_DETECTORS, DIMENSIONS, args.dimension_points, 0)
+        OUT.mkdir(parents=True, exist_ok=True)
+        write_csv(
+            "dimensions.csv",
+            DIMENSION_FIELDS,
+            [[row[field] for field in DIMENSION_FIELDS] for row in rows],
+        )
+        write_dimensions_svg(rows, DIMENSION_DETECTORS)
+        for row in rows:
+            print(
+                f"{row['detector']:<16} d={row['dimension']:>4} {row['ms_per_point']:>8.3f} ms/point"
+            )
+        return
     path = OUT / "results.csv"
     points = CI_POINTS if args.ci else None
 

@@ -4,6 +4,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def load_benchmark():
     """The benchmark script as a module, loaded by file path."""
@@ -34,6 +36,34 @@ def test_every_sweep_detector_runs_at_one_dimension():
     assert all(row["dimension"] == 2 for row in rows)
 
 
+@pytest.mark.parametrize("points", [1, 300, 2000])
+def test_dimension_latency_excludes_startup_for_short_runs(monkeypatch, points):
+    benchmark = load_benchmark()
+
+    class StartupDetector:
+        def __init__(self):
+            self.points = 0
+            self.seconds = 0.0
+
+        def fit_score_partial(self, X):
+            self.points += 1
+            # Provisional scoring, then expensive initialization, then normal operation.
+            if self.points < 256:
+                self.seconds += 0.0001
+            elif self.points == 256:
+                self.seconds += 10.0
+            else:
+                self.seconds += 0.001
+            return 0.0
+
+    model = StartupDetector()
+    monkeypatch.setattr(benchmark, "dimension_model", lambda *args: model)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: model.seconds)
+    row = benchmark.run_dimension("Inqmad", 2, points, 0)
+    assert row["points"] == points
+    assert row["ms_per_point"] == 1.0
+
+
 def test_dimension_outputs(tmp_path, monkeypatch):
     benchmark = load_benchmark()
     monkeypatch.setattr(benchmark, "OUT", tmp_path)
@@ -54,6 +84,7 @@ def test_dimension_outputs(tmp_path, monkeypatch):
     svg = (tmp_path / "dimensions.svg").read_text()
     assert svg.startswith("<svg") and svg.strip().endswith("</svg>")
     assert "LODA" in svg and "xStream" in svg
+    assert ">0</text>" in svg and ">0.03</text>" in svg
 
 
 def test_dimensions_command_writes_both_outputs(tmp_path, monkeypatch):

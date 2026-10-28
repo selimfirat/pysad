@@ -1,5 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">
 <text x="320" y="20" text-anchor="middle">Latency per point by dimension</text>
+<line x1="70" y1="350.0" x2="490" y2="350.0" stroke="#ddd"/>
+<text x="60" y="354.0" text-anchor="end">0</text>
+<line x1="70" y1="291.8" x2="490" y2="291.8" stroke="#ddd"/>
+<text x="60" y="295.8" text-anchor="end">1.81</text>
+<line x1="70" y1="233.6" x2="490" y2="233.6" stroke="#ddd"/>
+<text x="60" y="237.6" text-anchor="end">3.62</text>
+<line x1="70" y1="175.5" x2="490" y2="175.5" stroke="#ddd"/>
+<text x="60" y="179.5" text-anchor="end">5.43</text>
+<line x1="70" y1="117.3" x2="490" y2="117.3" stroke="#ddd"/>
+<text x="60" y="121.3" text-anchor="end">7.24</text>
+<line x1="70" y1="59.1" x2="490" y2="59.1" stroke="#ddd"/>
+<text x="60" y="63.1" text-anchor="end">9.04</text>
 <line x1="70.0" y1="30" x2="70.0" y2="350" stroke="#ddd"/>
 <text x="70.0" y="370" text-anchor="middle">2</text>
 <line x1="178.8" y1="30" x2="178.8" y2="350" stroke="#ddd"/>

@@ -50,7 +50,7 @@ To measure how latency per point scales with the number of features, run the dim
 
    $ python benchmarks/benchmark.py --dimensions
 
-The sweep needs no downloads. It writes ``docs/benchmark/dimensions.csv``, with one row per detector and dimension, and ``docs/benchmark/dimensions.svg``, with one scalability curve per detector. The ``--dimension-points`` option sets the points per detector and dimension. The default is 2000.
+The sweep needs no downloads. It writes ``docs/benchmark/dimensions.csv``, with one row per detector and dimension, and ``docs/benchmark/dimensions.svg``, with one scalability curve per detector. Each run warms up on 256 instances before timing. The ``--dimension-points`` option sets the measured points per detector and dimension, excluding warmup. The default is 2000.
 
 Check against ``master``
 ------------------------

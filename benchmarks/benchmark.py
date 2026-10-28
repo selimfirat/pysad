@@ -856,13 +856,13 @@ def dimension_model(detector, d, seed):
 def run_dimension(detector, d, points, seed):
     """Latency per point of a detector on a synthetic stream of d features.
 
-    A warmup run first, so the timed points do not carry setup costs,
+    A fixed warmup run first, so even short timed runs exclude setup costs,
     then the timed points, each scored before the model fits it, as in
     the rest of the benchmark.
     """
     model = dimension_model(detector, d, seed)
     rng = np.random.RandomState(seed)
-    for _ in range(min(WARMUP_POINTS, points // 4)):
+    for _ in range(WARMUP_POINTS):
         model.fit_score_partial(rng.rand(d))
     start = time.perf_counter()
     with np.errstate(all="ignore"):
@@ -905,6 +905,11 @@ def write_dimensions_svg(rows, detectors):
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
         f'<text x="{width // 2}" y="20" text-anchor="middle">Latency per point by dimension</text>',
     ]
+    for ms in np.linspace(0, max_ms, 6):
+        lines.append(
+            f'<line x1="{left}" y1="{y(ms):.1f}" x2="{left + plot_w}" y2="{y(ms):.1f}" stroke="#ddd"/>'
+        )
+        lines.append(f'<text x="{left - 10}" y="{y(ms) + 4:.1f}" text-anchor="end">{ms:.3g}</text>')
     for d in dims:
         lines.append(
             f'<line x1="{x(d):.1f}" y1="{top}" x2="{x(d):.1f}" y2="{top + plot_h}" stroke="#ddd"/>'

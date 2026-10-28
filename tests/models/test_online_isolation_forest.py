@@ -1,7 +1,41 @@
 import pytest
 
 
-@pytest.mark.parametrize("kwargs", [{"num_trees": 0}, {"max_leaf_samples": 0}, {"window_size": 32}])
+@pytest.mark.parametrize("case_index", range(3))
+def test_matches_authors_reference_scores(case_index):
+    import json
+    from pathlib import Path
+
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    # Golden scores from the unmodified authors' implementation. The fixture
+    # records its source revision. Single-point batches use n_jobs=1 and
+    # np.random.seed(seed); only its undefined first prequential score is omitted.
+    fixture = Path(__file__).parent / "data" / "online_isolation_forest_reference.json"
+    case = json.loads(fixture.read_text())["cases"][case_index]
+    n, d = case["shape"]
+    if case["name"] == "drift":
+        X = np.random.RandomState(61).normal(size=(n, d))
+        X[n // 2 :] += 4.0
+    elif case["name"] == "constant":
+        X = np.ones((n, d))
+    else:
+        X = np.tile([0.0, 1.0, 1.0, 0.0], n // 4).reshape(-1, 1)
+    model = OnlineIsolationForest(**case["params"], random_state=case["seed"])
+    before, after = [], []
+    for x in X:
+        before.append(model.score_partial(x))
+        model.fit_partial(x)
+        after.append(model.score_partial(x))
+
+    np.testing.assert_allclose(before[1:], case["before"][1:], rtol=1e-12, atol=1e-14)
+    np.testing.assert_allclose(after, case["after"], rtol=1e-12, atol=1e-14)
+    np.testing.assert_allclose(model.score(X), case["final"], rtol=1e-12, atol=1e-14)
+
+
+@pytest.mark.parametrize("kwargs", [{"num_trees": 0}, {"max_leaf_samples": 0}, {"window_size": 0}])
 def test_invalid_parameters(kwargs):
     from pysad.models import OnlineIsolationForest
 
@@ -127,7 +161,7 @@ def test_pickling_preserves_scoring():
     np.testing.assert_allclose(scores_orig, scores_pickled)
 
 
-def test_scores_use_the_papers_window_normalization():
+def test_scores_use_the_reference_active_count_normalization():
     import numpy as np
 
     from pysad.models import OnlineIsolationForest
@@ -135,9 +169,12 @@ def test_scores_use_the_papers_window_normalization():
     model = OnlineIsolationForest(num_trees=1, max_leaf_samples=2, window_size=8, random_state=0)
     model.fit(np.array([[0.0], [2.0]]))
 
-    # The root splits at two observations. Both leaves have depth one, and
-    # c(window_size, max_leaf_samples) = log2(8 / 2) = 2.
-    np.testing.assert_allclose(model.score(np.array([[0.0], [2.0]])), 2.0 ** (-1.0 / 2.0))
+    np.testing.assert_array_equal(model.score(np.array([[0.0], [2.0]])), [1.0, 1.0])
+    model.fit_partial(np.array([1.0]))
+    # The third point permits a split at depth zero. Both leaves have depth
+    # one, normalized by log(3 / 2) / log(4), rather than by the full window.
+    expected = 2.0 ** (-1.0 / (np.log(1.5) / np.log(4.0) + np.finfo(float).eps))
+    np.testing.assert_allclose(model.score(np.array([[0.0], [2.0]])), expected)
 
 
 def test_reusing_an_input_buffer_keeps_the_same_scores():
@@ -158,22 +195,22 @@ def test_reusing_an_input_buffer_keeps_the_same_scores():
     np.testing.assert_array_equal(actual, expected)
 
 
-def test_unfitted_model_scores_zero():
+def test_unfitted_model_scores_one():
     import numpy as np
 
     from pysad.models import OnlineIsolationForest
 
-    assert OnlineIsolationForest().score_partial(np.array([1.0, 2.0])) == 0.0
+    assert OnlineIsolationForest().score_partial(np.array([1.0, 2.0])) == 1.0
 
 
-def test_single_observation_can_trigger_a_split():
+def test_initial_score_avoids_zero_normalization():
     import numpy as np
 
     from pysad.models import OnlineIsolationForest
 
     model = OnlineIsolationForest(num_trees=1, max_leaf_samples=1, window_size=4, random_state=0)
     model.fit_partial(np.array([1.0]))
-    assert model.score_partial(np.array([1.0])) == pytest.approx(2.0 ** (-1.0 / 2.0))
+    assert model.score_partial(np.array([1.0])) == 1.0
 
 
 def test_memory_stays_bounded_over_a_long_stream():

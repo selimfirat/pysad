@@ -41,6 +41,17 @@ For a change that targets speed, pass ``--jobs 1`` before and after the change s
 
 Commit your code changes before you run the benchmark. If you do not, the commit in the results ends with ``-dirty``.
 
+Dimensionality sweep
+--------------------
+
+To measure how latency per point scales with the number of features, run the dimensionality sweep. It runs LODA, xStream, RSHash, HalfSpaceTrees, Inqmad, and ExactStorm on synthetic uniform streams at 2, 10, 50, 100, 500, and 1000 features, with every detector seeing the same stream at each dimension:
+
+.. code-block:: console
+
+   $ python benchmarks/benchmark.py --dimensions
+
+The sweep needs no downloads. It writes ``docs/benchmark/dimensions.csv``, with one row per detector and dimension, and ``docs/benchmark/dimensions.svg``, with one scalability curve per detector. Each run warms up on 256 instances before timing. The ``--dimension-points`` option sets the measured points per detector and dimension, excluding warmup. The default is 2000.
+
 Check against ``master``
 ------------------------
 

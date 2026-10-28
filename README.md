@@ -115,6 +115,14 @@ conda install -c conda-forge pysad
 
 PySAD supports Python 3.10 to 3.14 on Linux, macOS and Windows. Every detector works after installation, with no optional extras.
 
+To install the latest development version from `master`:
+
+```bash
+pip install git+https://github.com/selimfirat/pysad.git
+```
+
+For an editable installation with development dependencies, follow the [contributing guide](https://pysad.readthedocs.io/en/latest/contributing.html).
+
 ## Quick start
 
 [![Open in JupyterLite](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb)

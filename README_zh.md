@@ -115,6 +115,14 @@ conda install -c conda-forge pysad
 
 PySAD 支持 Linux、macOS 和 Windows 上的 Python 3.10 至 3.14。执行安装后，所有检测器即可使用，无需安装任何可选依赖。
 
+从 `master` 分支安装最新开发版本：
+
+```bash
+pip install git+https://github.com/selimfirat/pysad.git
+```
+
+如需以可编辑模式安装并包含开发依赖，请参阅[贡献指南](https://pysad.readthedocs.io/en/latest/contributing.html)。
+
 ## 快速开始
 
 [![Open in JupyterLite](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://pyodide.github.io/jupyterlite/lab/index.html?fromURL=https%3A//raw.githubusercontent.com/selimfirat/pysad/master/examples/nyc_taxi_alerts.ipynb)

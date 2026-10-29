@@ -79,7 +79,9 @@ class RSHash(BaseModel):
         self._alpha_flat = np.concatenate(self.alpha)
         self._f_flat = np.repeat(self.f, self.r)
         ends = np.cumsum(self.r).tolist()
-        self._component_slices: list[tuple[int, int]] = list(zip([0] + ends[:-1], ends, strict=True))
+        self._component_slices: list[tuple[int, int]] = list(
+            zip([0] + ends[:-1], ends, strict=True)
+        )
 
         # Pairwise-independent hash parameters, one (a_k, b_k) pair per table, drawn from rng
         # so that random_state makes the sketch's slot assignment reproducible.

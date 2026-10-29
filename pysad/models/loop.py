@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.special import erf
@@ -16,7 +18,7 @@ class LocalOutlierProbability(BaseModel):
         extent (int): The statistical extent lambda, the number of standard deviations from the mean that the probabilistic distance covers, usually 1, 2 or 3 (Default=3).
     """
 
-    def __init__(self, initial_X, num_neighbors=10, extent=3):
+    def __init__(self, initial_X: np.ndarray, num_neighbors: int = 10, extent: int = 3) -> None:
         # Adapted from LocalOutlierProbability.fit of PyNomaly 0.4.0 (PyNomaly/loop.py,
         # https://github.com/vc1492a/PyNomaly) for a single cluster. For licensing information,
         # see the end of this file.
@@ -30,18 +32,20 @@ class LocalOutlierProbability(BaseModel):
         neighbor_distances = np.take_along_axis(distances, neighbors, axis=1)
         prob_distances = extent * np.sqrt((neighbor_distances**2).sum(axis=1) / num_neighbors)
         prob_distances_ev = prob_distances[neighbors].mean(axis=1)
-        plofs = self._prob_outlier_factor(prob_distances, prob_distances_ev)
+        plofs = np.asarray(self._prob_outlier_factor(prob_distances, prob_distances_ev))
         self.prob_distance_ev_ = prob_distances_ev.mean()
         self.norm_prob_outlier_factor_ = extent * np.sqrt((plofs**2).sum() / plofs.size)
 
     @staticmethod
-    def _prob_outlier_factor(prob_distance, prob_distance_ev):
+    def _prob_outlier_factor(
+        prob_distance: np.ndarray | float, prob_distance_ev: np.ndarray | float
+    ) -> np.ndarray | float:
         if np.all(prob_distance == prob_distance_ev):
             return np.zeros(np.shape(prob_distance))
         prob_distance_ev = np.where(prob_distance_ev == 0.0, 1.0e-8, prob_distance_ev)
         return prob_distance / prob_distance_ev - 1.0
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> LocalOutlierProbability:
         """Updates the model with the next instance.
 
         Args:
@@ -53,7 +57,7 @@ class LocalOutlierProbability(BaseModel):
         """
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -81,7 +85,9 @@ class LocalOutlierProbability(BaseModel):
         # When the reference PLOFs have no spread (e.g. identical initial instances), the
         # normalization is zero and the score is its limit, 1 for any positive PLOF.
         with np.errstate(divide="ignore", invalid="ignore"):
-            return np.maximum(0.0, erf(plof / (self.norm_prob_outlier_factor_ * np.sqrt(2.0))))
+            return float(
+                np.maximum(0.0, erf(plof / (self.norm_prob_outlier_factor_ * np.sqrt(2.0))))
+            )
 
 
 # The fit and score code above is adapted from PyNomaly 0.4.0 and rewritten in vectorized

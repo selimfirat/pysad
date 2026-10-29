@@ -187,6 +187,7 @@ module = [
     "pysad.transform.probability_calibration.*",
     "pysad.transform.projection.*",
     "pysad.utils.*",
+    "pysad.models.half_space_trees",
     "pysad.models.loda",
     "pysad.models.median_absolute_deviation",
     "pysad.models.null_model",
@@ -194,6 +195,7 @@ module = [
     "pysad.models.random_model",
     "pysad.models.rs_hash",
     "pysad.models.standard_absolute_deviation",
+    "pysad.models.xstream",
 ]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true

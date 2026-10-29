@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import numbers
+from typing import Any
 
 import numpy as np
 from sklearn.utils import check_random_state
@@ -28,15 +31,15 @@ class HalfSpaceTrees(BaseModel):
 
     def __init__(
         self,
-        feature_mins,
-        feature_maxes,
-        window_size=250,
-        num_trees=25,
-        max_depth=15,
-        initial_window_X=None,
-        random_work_space=True,
-        random_state=None,
-    ):
+        feature_mins: np.ndarray | list[float] | tuple[float, ...],
+        feature_maxes: np.ndarray | list[float] | tuple[float, ...],
+        window_size: int = 250,
+        num_trees: int = 25,
+        max_depth: int = 15,
+        initial_window_X: np.ndarray | None = None,
+        random_work_space: bool = True,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
         for name, value in [
             ("window_size", window_size),
             ("num_trees", num_trees),
@@ -63,7 +66,7 @@ class HalfSpaceTrees(BaseModel):
         # the masses take the smallest unsigned integers that hold them: a node records at most
         # `window_size` instances per window.
         num_splits = 2**self.max_depth - 1
-        self.split_atts = np.empty(
+        self.split_atts: np.ndarray = np.empty(
             (self.num_trees, num_splits), dtype=np.min_scalar_type(self.num_dimensions - 1)
         )
         self.split_values = np.empty((self.num_trees, num_splits))
@@ -96,7 +99,7 @@ class HalfSpaceTrees(BaseModel):
         if initial_window_X is not None:
             self.fit(initial_window_X)
 
-    def _work_space(self, rng):
+    def _work_space(self, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
         if not self.random_work_space:
             return self.feature_mins.copy(), self.feature_maxes.copy()
 
@@ -106,7 +109,7 @@ class HalfSpaceTrees(BaseModel):
 
         return s - half_width, s + half_width
 
-    def _build_tree(self, rng):
+    def _build_tree(self, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
         """Draws the split features and computes the split values of one tree, in heap order.
 
         The tree halves its work space at every internal node: the node splits the feature drawn for it at the
@@ -143,12 +146,12 @@ class HalfSpaceTrees(BaseModel):
 
         return atts, values
 
-    def _path(self, X):
+    def _path(self, X: np.ndarray) -> np.ndarray:
         """Returns the flat index into the mass arrays of the max_depth + 1 nodes that `X` visits in each tree."""
         X = np.asarray(X)
         # A float64 X can be gathered through a reusable buffer; other dtypes (a float32 or an int
         # point, for example) would not cast into it, so they take the allocating path.
-        x_buf = self._x_buf if X.dtype == np.float64 else None
+        x_buf: Any = self._x_buf if X.dtype == np.float64 else None
         path = self._flat_path
         path[0] = 1  # every tree starts at its root, whose heap index is u = node + 1 = 1
         att_buf, val_buf, goes_right, idx = (
@@ -171,7 +174,7 @@ class HalfSpaceTrees(BaseModel):
 
         return path
 
-    def _fit_path(self, path):
+    def _fit_path(self, path: np.ndarray) -> None:
         self.step += 1
         self.l_mass.reshape(-1)[path] += 1
 
@@ -181,7 +184,7 @@ class HalfSpaceTrees(BaseModel):
             self.l_mass.fill(0)
             self.is_first_window = False
 
-    def _score_path(self, path):
+    def _score_path(self, path: np.ndarray) -> float:
         # During the first window there is no reference yet, so score against the mass recorded so far.
         mass = (self.l_mass if self.is_first_window else self.r_mass).reshape(-1)[path]
         s = float((mass * self._depth_weights[:, None]).sum())
@@ -193,7 +196,7 @@ class HalfSpaceTrees(BaseModel):
 
         return 0.0 - s
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> HalfSpaceTrees:
         """Updates the model with the next instance.
 
         Args:
@@ -207,7 +210,7 @@ class HalfSpaceTrees(BaseModel):
 
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance against the reference mass profile built from the previous window, without recording it.
 
         Args:
@@ -218,7 +221,7 @@ class HalfSpaceTrees(BaseModel):
         """
         return self._score_path(self._path(X))
 
-    def fit_score_partial(self, X, y=None):
+    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Scores the next instance against the reference mass profile, and then updates the model with it.
 
         Args:

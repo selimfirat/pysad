@@ -16,6 +16,7 @@ This module holds running statistics. A running statistic changes as you add val
    MaxMeter
    MedianMeter
    MinMeter
+   PageHinkleyMeter
    QuantileMeter
    SumMeter
    SumSquaresMeter

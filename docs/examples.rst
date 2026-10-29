@@ -90,6 +90,20 @@ It prints:
 
    27 alerts, 17 of them true anomalies
 
+Postprocess scores
+------------------
+
+This script standardizes the streaming anomaly scores of a detector using a running z-score window.
+
+.. literalinclude:: ../examples/example_postprocessing.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.778
+
 Combine detectors
 -----------------
 

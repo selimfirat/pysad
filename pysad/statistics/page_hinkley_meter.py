@@ -14,7 +14,10 @@ class PageHinkleyMeter(UnivariateStatistic):
         g-_t = min(0, g-_{t-1} + x_t - mean_t + delta)
 
     where ``mean_t`` is the running mean including the new observation and
-    ``delta`` is the smallest shift magnitude worth accumulating. ``get`` returns
+    ``delta`` is the smallest shift magnitude worth accumulating. By Lindley's
+    identity, clamping at zero is algebraically equivalent to Page's formulation
+    of subtracting the running minimum (or maximum) of the unreflected cumulative
+    sum, without storing the running extrema separately. ``get`` returns
     ``max(g+, -g-)``, the two-sided statistic: a caller raises a change-point
     alarm when it exceeds a chosen threshold. Small fluctuations below ``delta``
     decay back toward zero instead of accumulating.

@@ -68,3 +68,47 @@ The tables have the same columns as the tables of the ODDS datasets. :doc:`datas
    :header-rows: 1
    :stub-columns: 1
    :class: benchmark-table
+
+Dimensionality scaling
+----------------------
+
+This sweep measures how the time per point scales with the number of features :math:`d \in \{2, 10, 50, 100, 500, 1000\}` on synthetic uniform streams of 2,000 points after a 256-point warm-up. Every detector sees the same stream at each dimension.
+
+.. image:: ../benchmark/dimensions.svg
+   :alt: Latency per point across feature dimensions d in 2 to 1000
+   :align: center
+
+.. csv-table::
+   :file: ../benchmark/dimensions.csv
+   :header-rows: 1
+   :class: benchmark-table
+
+Memory stability
+----------------
+
+Each detector in PySAD keeps a bounded window or fixed-size summary statistics so that memory does not grow with the stream length. ``benchmarks/memory_stability.py`` verifies this over 1,000,000 continuous points after a 1,000-point warm-up by recording ``tracemalloc`` allocations every 100,000 points and checking that traced memory grows by at most 512 KiB between the second and final checkpoints (:doc:`run` shows the command and options).
+
+.. list-table::
+   :header-rows: 1
+   :class: benchmark-table
+
+   * - Detector
+     - Points
+     - Time (s)
+     - Peak traced (KiB)
+     - Growth (KiB)
+   * - :class:`~pysad.models.LODA`
+     - 1,000,000
+     - 223.7
+     - 9.3
+     - 0.3
+   * - :class:`~pysad.models.MedianAbsoluteDeviation`
+     - 1,000,000
+     - 488.2
+     - 15.7
+     - 0.3
+   * - :class:`~pysad.models.StandardAbsoluteDeviation`
+     - 1,000,000
+     - 33.6
+     - 1.3
+     - 0.2

@@ -1,8 +1,13 @@
 from typing import Any
 
+import numpy as np
+
 
 class Window:
     """Window to limit the instances in list and keep the size fixed when full.
+
+    The window owns its items: NumPy array items are copied on update, so a caller
+    may overwrite or reuse an array after updating without changing the retained items.
 
     Args:
         window_size (int): The size of the window. Must be at least 1.
@@ -25,6 +30,8 @@ class Window:
         Args:
             num (float): item to be added to the window.
         """
+        if isinstance(num, np.ndarray):
+            num = num.copy()
         self.window.append(num)
         if self.window_size is not None and len(self.window) > self.window_size:
             self.window = self.window[1:]
@@ -50,4 +57,6 @@ class UnlimitedWindow(Window):
         Args:
             num (float): item to be added to the window.
         """
+        if isinstance(num, np.ndarray):
+            num = num.copy()
         self.window.append(num)

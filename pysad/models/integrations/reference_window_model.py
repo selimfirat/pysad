@@ -12,6 +12,8 @@ class ReferenceWindowModel(PYODModel):
 
     Without ``initial_window_X``, there is no reference window at the start. Until the first window is full, the model trains on all the instances so far when their number is a power of two (1, 2, 4, 8 and so on).
 
+    The model owns the instances it retains: the initial window is copied, and each fitted instance is copied on arrival, so a caller may overwrite or reuse an input array after `fit_partial` returns without changing the reference window, and scoring retains no caller array.
+
     Args:
         model_cls (class): The model class to be instantiated.
         window_size (int): The size of each window.
@@ -38,8 +40,12 @@ class ReferenceWindowModel(PYODModel):
         self.cur_window_X = []
         self.cur_window_y = []
 
-        self.reference_window_X = initial_window_X
-        self.reference_window_y = initial_window_y
+        self.reference_window_X = (
+            None if initial_window_X is None else np.array(initial_window_X, copy=True)
+        )
+        self.reference_window_y = (
+            None if initial_window_y is None else np.array(initial_window_y, copy=True)
+        )
 
         if self.reference_window_X is not None:
             self._fit_model()
@@ -57,7 +63,7 @@ class ReferenceWindowModel(PYODModel):
         Returns:
             object: self.
         """
-        self.cur_window_X.append(X)
+        self.cur_window_X.append(np.array(X, copy=True))
 
         if y is not None:
             self.cur_window_y.append(y)

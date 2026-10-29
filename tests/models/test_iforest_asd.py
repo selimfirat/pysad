@@ -140,3 +140,49 @@ def test_drift_threshold_outside_unit_interval_raises(threshold):
 def test_drift_threshold_bounds_are_accepted(threshold):
     model = IForestASD(window_size=8, drift_threshold=threshold, n_estimators=2, random_state=0)
     assert model.drift_threshold == threshold
+
+
+@pytest.mark.parametrize("drift_threshold", [None, 0.05])
+def test_reused_input_buffer_gives_same_scores(drift_threshold):
+    rng = np.random.RandomState(4)
+    X = np.concatenate(
+        [rng.normal(size=(WINDOW_SIZE * 2, 2)), rng.normal(5.0, size=(WINDOW_SIZE, 2))]
+    )
+    expected = _scores(
+        IForestASD(window_size=WINDOW_SIZE, drift_threshold=drift_threshold, **IFOREST_KWARGS),
+        X.copy(),
+    )
+
+    model = IForestASD(window_size=WINDOW_SIZE, drift_threshold=drift_threshold, **IFOREST_KWARGS)
+    buffer = np.empty(2)
+    scores = []
+    for x in X:
+        buffer[:] = x
+        scores.append(model.fit_score_partial(buffer))
+
+    np.testing.assert_array_equal(scores, expected)
+
+
+def test_changing_initial_window_after_construction_keeps_scores():
+    from pysad.models.iforest_asd import _IsolationForest
+
+    rng = np.random.RandomState(5)
+    initial = rng.normal(size=(WINDOW_SIZE, 2))
+    X = rng.normal(size=(WINDOW_SIZE, 2))
+
+    def make(initial_window_X):
+        # A slide shorter than the window keeps part of the initial window in the next fit.
+        return ReferenceWindowModel(
+            _IsolationForest,
+            window_size=WINDOW_SIZE,
+            sliding_size=WINDOW_SIZE // 4,
+            initial_window_X=initial_window_X,
+            **IFOREST_KWARGS,
+        )
+
+    expected = _scores(make(initial.copy()), X)
+    caller_initial = initial.copy()
+    model = make(caller_initial)
+    caller_initial[:] = 0.0
+
+    np.testing.assert_array_equal(_scores(model, X), expected)

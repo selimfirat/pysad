@@ -40,9 +40,10 @@ class ExactStorm(BaseModel):
         Returns:
             object: self.
         """
+        X = np.array(X, dtype=np.float64)
         self.window.update(X)
         if self.max_radius is None and len(self._calibration) < self.calibration_size:
-            self._calibrate(np.asarray(X, dtype=np.float64))
+            self._calibrate(X)
 
         return self
 

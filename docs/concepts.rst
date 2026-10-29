@@ -76,10 +76,10 @@ The model interface
 Every detector extends :class:`~pysad.core.BaseModel` and has two single-point methods. The API reference calls a point an instance:
 
 ``fit_partial(x)``
-   Updates the model with the point ``x``, a NumPy array of shape ``(num_features,)``.
+   Updates the model with the point ``x``, a NumPy array of shape ``(num_features,)``. A detector that keeps points keeps its own copies, so you can reuse one array for every point.
 
 ``score_partial(x)``
-   Gives ``x`` an anomaly score, a Python ``float``. This method does not change the model.
+   Gives ``x`` an anomaly score, a Python ``float``. This method does not change the model, and it neither changes nor keeps ``x``.
 
 ``fit_score_partial(x)`` scores ``x`` with the model from the earlier points, and then learns from ``x``. This order is called prequential evaluation, or test-then-train. Stream libraries and most detector papers use it, and a detector never scores a point that it learned from. Before a detector learns from any point, it gives a fixed score, usually 0. :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` are the exceptions: as in the paper, they test the window that holds the newest value. Most loops use ``fit_score_partial``.
 

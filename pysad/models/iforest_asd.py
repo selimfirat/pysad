@@ -72,7 +72,7 @@ class IForestASD(ReferenceWindowModel):
         if self.drift_threshold is None:
             return super().fit_partial(X, None)
 
-        self.cur_window_X.append(X)
+        self.cur_window_X.append(np.array(X))
 
         if (
             not self.initial_ref_window

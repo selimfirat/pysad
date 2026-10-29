@@ -98,6 +98,8 @@ class BaseModel(ABC):
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> BaseModel:
         """Updates the model with the next instance.
 
+        The model keeps no reference to ``X``, so the caller can change ``X`` after the call returns.
+
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int or None): The label of the instance. Models that do not use labels ignore it (Default=None).
@@ -112,7 +114,7 @@ class BaseModel(ABC):
 
     @abstractmethod
     def score_partial(self, X: np.ndarray) -> float:
-        """Scores the anomalousness of the next instance.
+        """Scores the anomalousness of the next instance. This method neither changes nor keeps ``X``.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.

@@ -9,6 +9,7 @@ from .exponential_moving_average_meter import ExponentialMovingAverageMeter
 from .max_meter import MaxMeter
 from .median_meter import MedianMeter
 from .min_meter import MinMeter
+from .page_hinkley_meter import PageHinkleyMeter
 from .quantile_meter import QuantileMeter
 from .running_statistic import RunningStatistic
 from .sum_meter import SumMeter
@@ -23,6 +24,7 @@ __all__ = [
     "MaxMeter",
     "MedianMeter",
     "MinMeter",
+    "PageHinkleyMeter",
     "QuantileMeter",
     "RunningStatistic",
     "SumMeter",

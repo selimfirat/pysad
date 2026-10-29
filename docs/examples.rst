@@ -19,6 +19,20 @@ It prints:
 
    AUROC: 0.758
 
+Scale features online
+---------------------
+
+This script scales each incoming feature vector with an instance standard scaler (zero mean, unit variance per instance) before feeding it to a detector.
+
+.. literalinclude:: ../examples/example_preprocessing.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.789
+
 Give a detector the recent history
 ----------------------------------
 

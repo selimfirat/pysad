@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 
 import numpy as np
@@ -30,14 +32,14 @@ class RSHash(BaseModel):
 
     def __init__(
         self,
-        feature_mins,
-        feature_maxes,
-        decay=0.015,
-        num_components=100,
-        num_hash_fns=1,
-        hash_range=10000,
-        random_state=None,
-    ):
+        feature_mins: np.ndarray | list[float] | tuple[float, ...],
+        feature_maxes: np.ndarray | list[float] | tuple[float, ...],
+        decay: float = 0.015,
+        num_components: int = 100,
+        num_hash_fns: int = 1,
+        hash_range: int = 10000,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
         decay = _finite_float(decay, "decay")
         if decay <= 0.0 or 2.0**-decay == 1.0:
             raise ValueError(f"decay must be positive, got {decay}.")
@@ -77,7 +79,9 @@ class RSHash(BaseModel):
         self._alpha_flat = np.concatenate(self.alpha)
         self._f_flat = np.repeat(self.f, self.r)
         ends = np.cumsum(self.r).tolist()
-        self._component_slices = list(zip([0] + ends[:-1], ends, strict=True))
+        self._component_slices: list[tuple[int, int]] = list(
+            zip([0] + ends[:-1], ends, strict=True)
+        )
 
         # Pairwise-independent hash parameters, one (a_k, b_k) pair per table, drawn from rng
         # so that random_state makes the sketch's slot assignment reproducible.
@@ -92,7 +96,7 @@ class RSHash(BaseModel):
         # the draws made for tables 0..k-1, not on num_hash_fns itself. dtype=np.int64 is required
         # because randint defaults to the C long, which is 32 bits on Windows and cannot hold P.
         self._prime = (1 << 61) - 1
-        self._hash_params = []
+        self._hash_params: list[tuple[int, int]] = []
         for _ in range(self.num_hash):
             a = int(rng.randint(1, self._prime, dtype=np.int64))
             b = int(rng.randint(0, self._prime, dtype=np.int64))
@@ -100,7 +104,7 @@ class RSHash(BaseModel):
 
         self.index = 1
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> RSHash:
         """Updates the model with the next instance.
 
         Args:
@@ -114,7 +118,7 @@ class RSHash(BaseModel):
 
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance. This method does not change the model.
 
         Args:
@@ -125,7 +129,7 @@ class RSHash(BaseModel):
         """
         return self._score_slots([self._cell_slots(key) for key in self._cell_keys(X)])
 
-    def fit_score_partial(self, X, y=None):
+    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Scores the next instance against the current state, then fits the model to it.
 
         The paper's streaming variant scores an instance before learning it (Sathe & Aggarwal 2016, §III): the "testing step" reads the current hash table, and the "training update" then updates the counts.
@@ -143,7 +147,7 @@ class RSHash(BaseModel):
 
         return score
 
-    def _fit_slots(self, slots):
+    def _fit_slots(self, slots: list[list[int]]) -> None:
         """Updates the sketches at the given slot indices of an instance."""
         for row_slots in slots:
             for w, slot in enumerate(row_slots):
@@ -154,7 +158,7 @@ class RSHash(BaseModel):
 
         self.index += 1
 
-    def _score_slots(self, slots):
+    def _score_slots(self, slots: list[list[int]]) -> float:
         """Scores an instance from its sketch slot indices, without writing to the sketches."""
         score_instance = 0.0
         for row_slots in slots:
@@ -164,7 +168,7 @@ class RSHash(BaseModel):
         # Low counts indicate outliers in the paper, so the average log-count is negated to make higher scores more anomalous.
         return -score_instance / self.m
 
-    def _cell_keys(self, X):
+    def _cell_keys(self, X: np.ndarray) -> list[tuple[int, ...]]:
         """Computes each ensemble component's grid cell key for a normalized instance.
 
         Args:
@@ -187,7 +191,7 @@ class RSHash(BaseModel):
         ]
         return [(r, *coords[start:end]) for r, (start, end) in enumerate(self._component_slices)]
 
-    def _cell_slots(self, key):
+    def _cell_slots(self, key: tuple[int, ...]) -> list[int]:
         """Maps a grid cell key to one slot per hash table of the count-min sketch.
 
         Uses w pairwise-independent hash functions of the form ``((a_k * h + b_k) mod P) mod p``,
@@ -203,7 +207,7 @@ class RSHash(BaseModel):
         h = hash(key) % self._prime
         return [((a * h + b) % self._prime) % self.hash_range for a, b in self._hash_params]
 
-    def _decayed_count(self, w, slot):
+    def _decayed_count(self, w: int, slot: int) -> float:
         """Reads a hash table's time-decayed count for a sketch slot, without writing it back.
 
         Args:
@@ -218,14 +222,14 @@ class RSHash(BaseModel):
 
         return wt * 2.0 ** (-self.decay * (self.index - tstamp))
 
-    def _sample_shifts(self, rng):
-        alpha = []
+    def _sample_shifts(self, rng: np.random.RandomState) -> list[np.ndarray]:
+        alpha: list[np.ndarray] = []
         for r in range(self.m):
             alpha.append(rng.uniform(low=0, high=self.f[r], size=len(self.V[r])))
 
         return alpha
 
-    def _sample_dims(self, rng):
+    def _sample_dims(self, rng: np.random.RandomState) -> None:
         # Dimensions with max == min are dropped from the candidate subspaces.
         all_feats = np.arange(self.dim)
         choice_feats = all_feats[self.minimum != self.maximum]
@@ -238,8 +242,8 @@ class RSHash(BaseModel):
         high_value = np.floor(common_term).astype(int)
         low_value = np.minimum(np.ceil(1 + 0.5 * common_term).astype(int), high_value)
 
-        self.r = np.empty([self.m], dtype=int)
-        self.V = []
+        self.r: np.ndarray = np.empty([self.m], dtype=int)
+        self.V: list[np.ndarray] = []
         for i in range(self.m):
             self.r[i] = min(
                 rng.randint(low=low_value[i], high=high_value[i] + 1), len(choice_feats)

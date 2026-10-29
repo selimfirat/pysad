@@ -187,10 +187,12 @@ module = [
     "pysad.transform.probability_calibration.*",
     "pysad.transform.projection.*",
     "pysad.utils.*",
+    "pysad.models.loda",
     "pysad.models.median_absolute_deviation",
     "pysad.models.null_model",
     "pysad.models.perfect_model",
     "pysad.models.random_model",
+    "pysad.models.rs_hash",
     "pysad.models.standard_absolute_deviation",
 ]
 disallow_untyped_defs = true

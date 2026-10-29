@@ -52,6 +52,18 @@ To measure how latency per point scales with the number of features, run the dim
 
 The sweep needs no downloads. It writes ``docs/benchmark/dimensions.csv``, with one row per detector and dimension, and ``docs/benchmark/dimensions.svg``, with one scalability curve per detector. Each run warms up on 256 instances before timing. The ``--dimension-points`` option sets the measured points per detector and dimension, excluding warmup. The default is 2000.
 
+Memory stability
+----------------
+
+To check that detector memory stays bounded over a long stream, run ``benchmarks/memory_stability.py``:
+
+.. code-block:: console
+
+   $ python benchmarks/memory_stability.py
+   $ python benchmarks/memory_stability.py --detectors LODA,RSHash --points 100000 --checkpoint 10000
+
+The script generates one point at a time, warms up on 1,000 points, and records ``tracemalloc`` memory every ``--checkpoint`` points (default 100,000) over ``--points`` points (default 1,000,000). It exits with a non-zero status if traced memory grows by more than ``--max-growth-kb`` KiB (default 512.0) between the second and last checkpoints.
+
 Check against ``master``
 ------------------------
 

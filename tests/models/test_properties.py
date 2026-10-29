@@ -7,7 +7,8 @@ one guarantee for every model in ``pysad.models.__all__``:
 - every instance gets a finite ``float`` score;
 - the batch methods (``fit``, ``score``, ``fit_score``) agree with the per-instance methods;
 - pickling a model mid-stream does not change the scores that follow;
-- no method modifies its input.
+- no method modifies its input;
+- reusing one input array for every instance gives the same scores as passing separate arrays.
 
 A model that raises on any of the drawn streams fails the test as well.
 """
@@ -240,3 +241,23 @@ def test_inputs_are_not_modified(model_name, data):
     np.testing.assert_array_equal(y, y_before)
     for name, value in params_before.items():
         np.testing.assert_array_equal(params[name], value, err_msg=name)
+
+
+@pytest.mark.parametrize("model_name", _models("test_reused_input_buffer_gives_same_scores"))
+@PROPERTIES
+@given(data=st.data())
+def test_reused_input_buffer_gives_same_scores(model_name, data):
+    X, y, params = _draw_case(model_name, data)
+
+    expected = _fit_score_partial(_make_model(model_name, params), X, y)
+
+    # One array that holds each instance in turn, as a caller that reuses a buffer passes them.
+    model = _make_model(model_name, params)
+    buffer = np.empty_like(X[0])
+    fix_seed(SEED + 1)
+    actual = []
+    for xi, yi in zip(X, y, strict=True):
+        buffer[:] = xi
+        actual.append(model.fit_score_partial(buffer, yi))
+
+    np.testing.assert_array_equal(actual, expected)

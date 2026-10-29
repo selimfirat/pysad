@@ -133,3 +133,23 @@ def test_exact_storm_sets_the_radius_from_the_first_instances():
         dists = np.linalg.norm(first[:, None] - first[None], axis=2)
         np.fill_diagonal(dists, np.inf)
         assert np.isclose(model.radius_, np.quantile(dists.min(axis=1), 0.95))
+
+
+def test_exact_storm_calibration_keeps_copies_of_reused_inputs():
+    import numpy as np
+
+    from pysad.models import ExactStorm
+
+    X = np.random.RandomState(0).normal(size=(60, 3))
+    expected = ExactStorm(window_size=20, calibration_size=40)
+    expected_scores = [expected.fit_score_partial(x.copy()) for x in X]
+
+    model = ExactStorm(window_size=20, calibration_size=40)
+    buffer = np.empty(3)
+    scores = []
+    for x in X:
+        buffer[:] = x
+        scores.append(model.fit_score_partial(buffer))
+
+    assert scores == expected_scores
+    assert model.radius_ == expected.radius_

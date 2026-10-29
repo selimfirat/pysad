@@ -38,8 +38,8 @@ class ReferenceWindowModel(PYODModel):
         self.cur_window_X = []
         self.cur_window_y = []
 
-        self.reference_window_X = initial_window_X
-        self.reference_window_y = initial_window_y
+        self.reference_window_X = None if initial_window_X is None else np.array(initial_window_X)
+        self.reference_window_y = None if initial_window_y is None else np.array(initial_window_y)
 
         if self.reference_window_X is not None:
             self._fit_model()
@@ -57,7 +57,7 @@ class ReferenceWindowModel(PYODModel):
         Returns:
             object: self.
         """
-        self.cur_window_X.append(X)
+        self.cur_window_X.append(np.array(X))
 
         if y is not None:
             self.cur_window_y.append(y)

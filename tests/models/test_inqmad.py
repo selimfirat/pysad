@@ -386,3 +386,31 @@ def test_adaptive_features_lower_the_kernel_error_on_the_initial_sample():
     before = _kernel_mse(scaled[i], scaled[j], weights, offset, model.gamma)
     after = _kernel_mse(scaled[i], scaled[j], model.weights, model.offset, model.gamma)
     assert after < 0.9 * before
+
+
+def test_long_normal_stream_matches_step_by_step_rho_recurrence():
+    """Fitting more normal instances than dim_x keeps every prequential
+    score and the final density matrix equal to the exact Eq. 4 recurrence.
+    """
+    rng = np.random.default_rng(0)
+    X_init = rng.random((4, 3))
+    X_stream = X_init[rng.integers(4, size=20)] + rng.normal(0.0, 0.01, size=(20, 3))
+    model = _model(dim_x=8, initial_size=4, alpha=0.2, beta=0.0).fit(X_init)
+
+    psi_init = _states(model, X_init)
+    rho = psi_init.T @ psi_init / len(psi_init)
+    expected_scores = []
+    num_updates = 0
+    for x in X_stream:
+        psi = _states(model, x)[0]
+        density = float(psi @ rho @ psi)
+        expected_scores.append(-density)
+        if density >= model.tau:
+            rho = 0.8 * rho + 0.2 * np.outer(psi, psi)
+            num_updates += 1
+
+    assert num_updates > 8
+    scores = model.fit_score(X_stream)
+
+    np.testing.assert_allclose(scores, expected_scores, rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(model.rho, rho, rtol=1e-12, atol=1e-12)

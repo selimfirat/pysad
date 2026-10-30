@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.linalg.blas import dger
+from scipy.linalg.blas import ddot, dsymv, dsyr, dsyrk
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.utils import check_random_state
 
@@ -31,22 +31,28 @@ def _adapt_features(X, weights, offset, gamma, learning_rate, rng, num_steps=50,
     Returns:
         tuple: The fitted weights and offset.
     """
+    X32 = np.asarray(X, dtype=np.float32)
+    gamma32 = np.float32(gamma)
     params = [weights.copy(), offset.copy()]
+    w32 = np.empty_like(weights, dtype=np.float32)
+    b32 = np.empty_like(offset, dtype=np.float32)
     moments = [[np.zeros_like(p), np.zeros_like(p)] for p in params]
     beta1, beta2, eps = 0.9, 0.999, 1e-7
-    zx = np.empty((batch_size, weights.shape[1]))
+    zx = np.empty((batch_size, weights.shape[1]), dtype=np.float32)
     zy = np.empty_like(zx)
     px = np.empty_like(zx)
     py = np.empty_like(zx)
     dzx = np.empty_like(zx)
     dzy = np.empty_like(zx)
     for step in range(1, num_steps + 1):
-        x, y = X[rng.randint(len(X), size=(2, batch_size))]
-        target = np.exp(-gamma * ((x - y) ** 2).sum(axis=1, keepdims=True))
-        np.matmul(x, params[0], out=zx)
-        zx += params[1]
-        np.matmul(y, params[0], out=zy)
-        zy += params[1]
+        x, y = X32[rng.randint(len(X32), size=(2, batch_size))]
+        target = np.exp(-gamma32 * ((x - y) ** 2).sum(axis=1, keepdims=True))
+        np.copyto(w32, params[0])
+        np.copyto(b32, params[1])
+        np.matmul(x, w32, out=zx)
+        zx += b32
+        np.matmul(y, w32, out=zy)
+        zy += b32
         np.cos(zx, out=px)
         np.cos(zy, out=py)
         nx = np.linalg.norm(px, axis=1, keepdims=True)
@@ -56,7 +62,7 @@ def _adapt_features(X, weights, offset, gamma, learning_rate, rng, num_steps=50,
         np.multiply(px, py, out=dzx)
         approx = dzx.sum(axis=1, keepdims=True)
         # Gradient of the mean squared error through the normalization and the cosine.
-        error = 2 * (approx - target) / batch_size
+        error = np.float32(2.0 / batch_size) * (approx - target)
         # -error * (py - approx * px) / nx * sin(zx) in the same order, in the buffers.
         np.sin(zx, out=dzx)
         np.sin(zy, out=dzy)
@@ -137,8 +143,46 @@ class Inqmad(BaseModel):
         self.initial = np.empty((0, input_shape))
         self.feature_min = None
         self.feature_range = None
-        self.rho = None
+        self._states_buf = None
+        self._weights_buf = None
+        self._num_states = 0
+        self._rho = None
+        self._rho_scale = 1.0
+        self._rho_dirty = False
         self.tau = None
+
+    def _materialize_rho(self):
+        """Materializes the symmetric ``(dim_x, dim_x)`` density matrix ``_rho`` from any buffered states or pending triangular updates."""
+        if self._states_buf is not None:
+            states = self._states_buf[: self._num_states]
+            weights = self._weights_buf[: self._num_states] * self._rho_scale
+            self._rho = (states.T * weights) @ states
+            self._states_buf = None
+            self._weights_buf = None
+            self._num_states = 0
+            self._rho_scale = 1.0
+            self._rho_dirty = False
+        elif self._rho is not None and self._rho_dirty:
+            if self._rho_scale != 1.0:
+                self._rho *= self._rho_scale
+                self._rho_scale = 1.0
+            i, j = np.triu_indices_from(self._rho, k=1)
+            self._rho[i, j] = self._rho[j, i]
+            self._rho_dirty = False
+
+    @property
+    def rho(self):
+        self._materialize_rho()
+        return self._rho
+
+    @rho.setter
+    def rho(self, value):
+        self._states_buf = None
+        self._weights_buf = None
+        self._num_states = 0
+        self._rho = None if value is None else np.ascontiguousarray(value, dtype=np.float64)
+        self._rho_scale = 1.0
+        self._rho_dirty = False
 
     def _instance(self, X):
         """``X`` as a (1, num_features) row, or raises if it is not one instance of the fitted feature count."""
@@ -159,7 +203,7 @@ class Inqmad(BaseModel):
 
     def _measure(self, X):
         """The state of the row ``X`` (None before rho exists) and its density."""
-        if self.rho is None:
+        if self._rho is None and self._states_buf is None:
             if len(self.initial) == 0:
                 return None, 0.0
             _, feature_range = self._min_range(self.initial)
@@ -167,10 +211,16 @@ class Inqmad(BaseModel):
             return None, np.exp(-2 * self.gamma * sq_dists).mean()
 
         psi = _states((X - self.feature_min) / self.feature_range, self.weights, self.offset)[0]
-        return psi, psi @ self.rho @ psi
+        if self._states_buf is not None:
+            proj = self._states_buf[: self._num_states] @ psi
+            return psi, self._rho_scale * float(
+                ddot(self._weights_buf[: self._num_states], proj * proj)
+            )
+
+        return psi, float(ddot(psi, dsymv(self._rho_scale, self._rho.T, psi)))
 
     def _fit(self, X, psi, density):
-        if self.rho is None:
+        if self._rho is None and self._states_buf is None:
             self.initial = np.vstack([self.initial, X])
             if len(self.initial) == self.initial_size:
                 self.feature_min, self.feature_range = self._min_range(self.initial)
@@ -186,15 +236,43 @@ class Inqmad(BaseModel):
                     self.rng,
                 )
                 states = _states(initial, self.weights, self.offset)
-                self.rho = states.T @ states / len(states)
-                densities = ((states @ self.rho) * states).sum(axis=1)
+                densities = ((states @ states.T) ** 2).mean(axis=1)
                 self.tau = np.quantile(densities, self.beta)
+                dim_x = self.weights.shape[1]
+                if n <= dim_x:
+                    self._states_buf = np.empty((dim_x, dim_x))
+                    self._weights_buf = np.empty(dim_x)
+                    self._states_buf[:n] = states
+                    self._weights_buf[:n] = 1.0 / n
+                    self._num_states = n
+                    self._rho_scale = 1.0
+                else:
+                    self._rho = dsyrk(1.0 / n, states, trans=1).T
+                    self._rho_scale = 1.0
+                    self._rho_dirty = True
                 self.initial = None
-        elif density >= self.tau:
-            self.rho *= 1 - self.alpha
-            # rho += alpha * psi psi^T without a temporary matrix. rho.T is Fortran-contiguous for a
-            # C-contiguous rho, so dger updates it in place; otherwise it returns an updated copy.
-            self.rho = dger(self.alpha, psi, psi, a=self.rho.T, overwrite_a=1).T
+        elif density >= self.tau and self.alpha > 0.0:
+            if self.alpha == 1.0:
+                self.rho = np.outer(psi, psi)
+            elif self._states_buf is not None and self._num_states < len(self._states_buf):
+                self._rho_scale *= 1.0 - self.alpha
+                if self._rho_scale < 1e-100:
+                    self._weights_buf[: self._num_states] *= self._rho_scale
+                    self._rho_scale = 1.0
+                self._states_buf[self._num_states] = psi
+                self._weights_buf[self._num_states] = self.alpha / self._rho_scale
+                self._num_states += 1
+            else:
+                if self._states_buf is not None:
+                    self._materialize_rho()
+                self._rho_scale *= 1.0 - self.alpha
+                if self._rho_scale < 1e-100:
+                    self._rho *= self._rho_scale
+                    self._rho_scale = 1.0
+                # self._rho.T is Fortran-contiguous, so dsyr updates its upper triangle (the lower
+                # triangle of self._rho) in place, which dsymv(self._rho_scale, self._rho.T, psi) reads.
+                dsyr(self.alpha / self._rho_scale, psi, a=self._rho.T, overwrite_a=1)
+                self._rho_dirty = True
 
     def fit_partial(self, X, y=None):
         """Updates the model with the next instance: adds it to the initial sample, or, once the sample is complete, adds it to the density matrix if its density is at least the threshold.
@@ -210,7 +288,10 @@ class Inqmad(BaseModel):
             ValueError: If `X` is not of shape (input_shape,) or (1, input_shape). The model is left unchanged.
         """
         X = self._instance(X)
-        self._fit(X, *self._measure(X))
+        if self._rho is None and self._states_buf is None:
+            self._fit(X, None, 0.0)
+        else:
+            self._fit(X, *self._measure(X))
 
         return self
 

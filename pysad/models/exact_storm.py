@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import scipy
 
@@ -20,17 +22,21 @@ class ExactStorm(BaseModel):
     """
 
     def __init__(
-        self, window_size=10000, max_radius=None, calibration_size=256, outlier_fraction=0.05
-    ):
+        self,
+        window_size: int = 10000,
+        max_radius: float | None = None,
+        calibration_size: int = 256,
+        outlier_fraction: float = 0.05,
+    ) -> None:
         self.max_radius = max_radius
         self.calibration_size = calibration_size
         self.outlier_fraction = outlier_fraction
         self.window = Window(window_size=window_size)
-        self.radius_ = max_radius
-        self._calibration = []  # the first instances, while they set the radius
+        self.radius_: float | None = max_radius
+        self._calibration: list[np.ndarray] = []  # the first instances, while they set the radius
         self._nearest = np.empty(0)  # the distance from each of them to its nearest other one
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> ExactStorm:
         """Updates the model with the next instance by adding it to the window.
 
         Args:
@@ -47,14 +53,14 @@ class ExactStorm(BaseModel):
 
         return self
 
-    def _calibrate(self, X):
+    def _calibrate(self, X: np.ndarray) -> None:
         dists = np.linalg.norm(np.array(self._calibration) - X, axis=1) if self._calibration else []
         self._nearest = np.append(np.minimum(self._nearest, dists), np.min(dists, initial=np.inf))
         self._calibration.append(X)
         if len(self._calibration) >= 2:
-            self.radius_ = np.quantile(self._nearest, 1 - self.outlier_fraction)
+            self.radius_ = float(np.quantile(self._nearest, 1 - self.outlier_fraction))
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance as if it arrived, without adding it to the window.
 
         When the instance arrives, the oldest instance of a full window expires, so the instance is scored against the `window_size - 1` most recent instances. This gives the same score as `fit_score_partial`.
@@ -66,13 +72,15 @@ class ExactStorm(BaseModel):
             float: The anomalousness score of the input instance.
         """
         window = self.window.get()
+        window_size = self.window.window_size
+        start = 0 if window_size is None else max(len(window) - window_size + 1, 0)
 
-        return self._score(window[max(len(window) - self.window.window_size + 1, 0) :], X)
+        return self._score(window[start:], X)
 
-    def _score(self, window, X):
+    def _score(self, window: list[np.ndarray], X: np.ndarray) -> float:
         if len(window) == 0 or self.radius_ is None:
             return 1.0
 
         dists = scipy.spatial.distance.cdist(window, [X])
 
-        return 1.0 - np.mean(dists <= self.radius_)
+        return float(1.0 - np.mean(dists <= self.radius_))

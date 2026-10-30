@@ -248,3 +248,32 @@ def test_rrcf_cut_batch_empty_nodes():
     assert len(dims) == 0
     assert len(cuts) == 0
     assert len(stopped) == 0
+
+
+def test_rrcf_methods_are_fully_annotated():
+    import inspect
+    from typing import get_type_hints
+
+    from pysad.models.robust_random_cut_forest import RobustRandomCutForest, _Node, _RCTree
+
+    # Regression guard for the type-annotation work: every method of the tree, node and model
+    # must annotate all of its parameters and its return type, so that the mypy overrides in
+    # pyproject.toml (disallow_untyped_defs = true) keep passing for this module.
+    for cls in (RobustRandomCutForest, _RCTree, _Node):
+        for name, raw in cls.__dict__.items():
+            method = raw if isinstance(raw, staticmethod) else raw
+            if not inspect.isfunction(method):
+                continue
+
+            hints = get_type_hints(method)
+            parameters = inspect.signature(method).parameters
+            for param_name, parameter in parameters.items():
+                if param_name == "self":
+                    continue
+                assert parameter.annotation is not inspect.Parameter.empty, (
+                    cls.__name__,
+                    name,
+                    param_name,
+                )
+                assert param_name in hints, (cls.__name__, name, param_name)
+            assert "return" in hints, (cls.__name__, name)

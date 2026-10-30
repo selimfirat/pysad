@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import Counter
 from itertools import repeat
 
@@ -23,8 +25,13 @@ class xStream(BaseModel):
     """
 
     def __init__(
-        self, num_components=100, n_chains=100, depth=15, window_size=256, random_state=None
-    ):
+        self,
+        num_components: int = 100,
+        n_chains: int = 100,
+        depth: int = 15,
+        window_size: int = 256,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
         self.streamhash = StreamhashProjector(num_components=num_components)
         self.window_size = window_size
         self.random_state = random_state
@@ -37,9 +44,9 @@ class xStream(BaseModel):
         )
 
         self.step = 0
-        self.first_window = []
+        self.first_window: list[np.ndarray] | None = []
 
-    def _fit_projected(self, X, keys):
+    def _fit_projected(self, X: np.ndarray, keys: list[bytes]) -> None:
         self.step += 1
 
         if self.first_window is not None:
@@ -55,7 +62,7 @@ class xStream(BaseModel):
                 self.first_window = None
             self.hs_chains.next_window()
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> xStream:
         """Updates the model with the next instance.
 
         Args:
@@ -70,7 +77,7 @@ class xStream(BaseModel):
 
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -82,9 +89,9 @@ class xStream(BaseModel):
         X = self.streamhash.fit_transform_partial(X).reshape(1, -1)
         score = self.hs_chains.score(X).flatten()
 
-        return score
+        return float(score[0])
 
-    def fit_score_partial(self, X, y=None):
+    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Scores the next instance, and then updates the model with it.
 
         Args:
@@ -99,9 +106,9 @@ class xStream(BaseModel):
         score = self.hs_chains._score_keys(keys).flatten()
         self._fit_projected(X, keys)
 
-        return score
+        return float(score[0])
 
-    def _set_bin_widths(self, window):
+    def _set_bin_widths(self, window: np.ndarray) -> None:
         # Sets the bin widths to half the range of the first window and counts the first window again with them.
         mn, mx = get_minmax_array(window)
         deltamax = (mx - mn) / 2.0
@@ -117,7 +124,13 @@ class _HSChains:
     At depth `d`, a chain assigns an instance to the bin given by the floored values of the (shifted and repeatedly halved) features it split on up to `d`. The bin counts of all chains and depths are kept in a single `Counter` keyed by the bytes of `(chain * depth + d, bin)`.
     """
 
-    def __init__(self, deltamax, n_chains=100, depth=15, random_state=None):
+    def __init__(
+        self,
+        deltamax: np.ndarray,
+        n_chains: int = 100,
+        depth: int = 15,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
         k = len(deltamax)
         rng = check_random_state(random_state)
 
@@ -141,10 +154,10 @@ class _HSChains:
         self._depths = np.arange(1, depth + 1)
 
         # In the first window, the reference and current counts are the same.
-        self.counts = Counter()
+        self.counts: Counter[bytes] = Counter()
         self.counts_cur = self.counts
 
-    def _bin_keys(self, X):
+    def _bin_keys(self, X: np.ndarray) -> list[bytes]:
         # Returns the bytes key of the bin of every instance, chain and depth (flattened in that order).
         n = X.shape[0]
         first = (X[:, self.fs] + self._shift_by_depth) / self._deltamax_by_depth
@@ -166,7 +179,7 @@ class _HSChains:
 
         return bins.view(np.dtype((np.void, bins.shape[-1] * bins.itemsize))).reshape(-1).tolist()
 
-    def _score_keys(self, keys, n=1):
+    def _score_keys(self, keys: list[bytes], n: int = 1) -> np.ndarray:
         counts = np.fromiter(
             map(self.counts.get, keys, repeat(0)), dtype=np.float64, count=len(keys)
         ).reshape(n, self.nchains, self.depth)
@@ -180,14 +193,14 @@ class _HSChains:
         scores /= float(self.nchains)
         return scores
 
-    def score(self, X):
+    def score(self, X: np.ndarray) -> np.ndarray:
         return self._score_keys(self._bin_keys(X), len(X))
 
-    def next_window(self):
+    def next_window(self) -> None:
         self.counts = self.counts_cur
         self.counts_cur = Counter()
 
-    def set_deltamax(self, deltamax):
+    def set_deltamax(self, deltamax: np.ndarray) -> None:
         self.deltamax = deltamax
         self.shift = self.rand_arr * deltamax
         self._shift_by_depth = self.shift[np.arange(self.nchains)[:, None], self.fs]

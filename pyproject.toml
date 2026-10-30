@@ -189,6 +189,8 @@ module = [
     "pysad.utils.*",
     "pysad.models.half_space_trees",
     "pysad.models.exact_storm",
+    "pysad.models.iforest_asd",
+    "pysad.models.knn_cad",
     "pysad.models.loda",
     "pysad.models.loop",
     "pysad.models.median_absolute_deviation",

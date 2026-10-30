@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import numbers
+from typing import Any
 
 import numpy as np
+from numpy.typing import ArrayLike
 from sklearn.ensemble import IsolationForest
 
 from pysad.models.integrations.reference_window_model import ReferenceWindowModel
@@ -22,11 +26,11 @@ def _check_drift_threshold(drift_threshold: float | None) -> None:
 
 
 class _IsolationForest(IsolationForest):
-    def decision_function(self, X):
+    def decision_function(self, X: ArrayLike) -> np.ndarray:
         # scikit-learn gives lower scores to anomalies.
         return -super().decision_function(X)
 
-    def predict(self, X):
+    def predict(self, X: ArrayLike) -> np.ndarray:
         # 1 for anomalies, 0 for inliers.
         return (self.decision_function(X) > 0).astype(int)
 
@@ -47,18 +51,18 @@ class IForestASD(ReferenceWindowModel):
 
     def __init__(
         self,
-        initial_window_X=None,
-        window_size=2048,
+        initial_window_X: np.ndarray | None = None,
+        window_size: int = 2048,
         drift_threshold: float | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         _check_drift_threshold(drift_threshold)
         kwargs = {"contamination": 0.1, **kwargs}
         super().__init__(_IsolationForest, window_size, window_size, initial_window_X, **kwargs)
         self.drift_threshold = drift_threshold
         self._drift_check_active = self.initial_ref_window
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> IForestASD:
         """Updates the model with the next instance. ``y`` is accepted for API consistency but always
         ignored, since the model is unsupervised.
 
@@ -87,10 +91,10 @@ class IForestASD(ReferenceWindowModel):
 
         return self
 
-    def _complete_window(self):
+    def _complete_window(self) -> None:
         """Applies Algorithm 2 to a completed window."""
         window = self.cur_window_X
-        if self._drift_check_active:
+        if self.drift_threshold is not None and self._drift_check_active:
             labels = np.ravel(self.model.predict(np.asarray(window)))
             anomaly_rate = float(np.mean(labels == 1))
             if anomaly_rate < self.drift_threshold:

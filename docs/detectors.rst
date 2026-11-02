@@ -1,7 +1,7 @@
 Detectors
 =========
 
-PySAD has 17 streaming detectors. This page lists the input that each detector takes, what it needs before the stream starts and the memory that it keeps. For the parameters, follow the link to the API reference. To choose a detector, see :doc:`guides/choose_detector`. To compare the results of the multivariate detectors, see the :doc:`benchmark <benchmark>`.
+PySAD has 18 streaming detectors. This page lists the input that each detector takes, what it needs before the stream starts and the memory that it keeps. For the parameters, follow the link to the API reference. To choose a detector, see :doc:`guides/choose_detector`. To compare the results of the multivariate detectors, see the :doc:`benchmark <benchmark>`.
 
 In the memory column, "fixed" means that the memory has an upper limit that does not depend on the length of the stream. A window is the most recent points, up to a fixed number.
 
@@ -46,6 +46,10 @@ These detectors take points with one or more features. A feature is one measured
      - Online Isolation Forest :cite:`leveni2024online`
      - Nothing
      - Fixed: ``num_trees`` trees and a sliding window of ``window_size`` points
+   * - :class:`~pysad.models.SmartSifter`
+     - Gaussian mixture learned by sequentially discounting EM :cite:`yamanishi2000smartsifter`
+     - Nothing
+     - Fixed: ``num_components`` Gaussians, quadratic in the number of features
    * - :class:`~pysad.models.KitNet`
      - Ensemble of autoencoders :cite:`mirsky2018kitsune`
      - Nothing

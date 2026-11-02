@@ -21,7 +21,7 @@ PySAD
 
    .. rst-class:: lead
 
-      PySAD is a Python library that finds anomalies (unusual data points) in data streams. It scores each point when the point arrives. It has 16 streaming detectors, calibrated alerts and streaming evaluation.
+      PySAD is a Python library that finds anomalies (unusual data points) in data streams. It scores each point when the point arrives. It has 18 streaming detectors, calibrated alerts and streaming evaluation.
 
    .. container:: actions
 
@@ -104,7 +104,7 @@ A batch detector needs the whole dataset before it can score a point. A stream d
 
       :doc:`detectors`
 
-      All 16 detectors, with the input they take, the memory they keep and the paper they implement.
+      All 18 detectors, with the input they take, the memory they keep and the paper they implement.
 
    .. container:: card
 
@@ -133,7 +133,7 @@ What PySAD contains
 
       .. rst-class:: number
 
-         16
+         18
 
       streaming detectors from published papers
 

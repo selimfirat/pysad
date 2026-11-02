@@ -17,6 +17,7 @@ def test_unsupervised_models():
         RelativeEntropy,
         RobustRandomCutForest,
         RSHash,
+        SmartSifter,
         StandardAbsoluteDeviation,
         xStream,
     )
@@ -40,6 +41,7 @@ def test_unsupervised_models():
         OnlineIsolationForest: {},
         RandomModel: {},
         RSHash: {"feature_mins": [0.0], "feature_maxes": [1.0]},
+        SmartSifter: {},
         StandardAbsoluteDeviation: [{}, {"absolute": False}],
         xStream: {},
         RobustRandomCutForest: {},

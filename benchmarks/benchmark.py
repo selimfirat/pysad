@@ -97,6 +97,7 @@ DETECTORS = {
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
+    "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
     "xStream": lambda X, seed: models.xStream(random_state=seed),
 }
 # CI runs this script against the base checkout too, where a newly added model

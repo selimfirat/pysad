@@ -163,6 +163,20 @@ It prints:
 
 Both variants find the three spikes and flag no normal values. :doc:`guides/seasonal` explains when to use each variant.
 
+Remove a trend and a cycle with OneShotSTL
+------------------------------------------
+
+This script removes the trend and the daily cycle of a series with :class:`~pysad.transform.preprocessing.OneShotSTL`. Then :class:`~pysad.models.StandardAbsoluteDeviation` scores the residuals. The level of the series jumps halfway through. See :doc:`guides/seasonal`.
+
+.. literalinclude:: ../examples/example_one_shot_stl.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.990
+
 Stream a pandas DataFrame
 -------------------------
 

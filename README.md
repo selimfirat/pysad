@@ -260,7 +260,7 @@ The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) p
 
 | Stage | What PySAD provides |
 |---|---|
-| Preprocessing | `InstanceStandardScaler`, `InstanceUnitNormScaler`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer` |
+| Preprocessing | `InstanceStandardScaler`, `InstanceUnitNormScaler`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
 | Projection | `StreamhashProjector`, `GaussianRandomProjector`, `SparseRandomProjector` |
 | Postprocessing | Running and windowed average, max, median and z-score of scores |
 | Calibration | `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator` |

@@ -196,6 +196,20 @@ It prints:
 
    AUROC: 0.739
 
+Use a Gaussian mixture detector
+-------------------------------
+
+This script scores each point with SmartSifter. SmartSifter learns a mixture of Gaussians online and gives each point its negative log-likelihood under the mixture. The ``discount`` parameter sets how fast the mixture forgets old points.
+
+.. literalinclude:: ../examples/example_usage_smart_sifter.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.672
+
 Track running statistics
 ------------------------
 

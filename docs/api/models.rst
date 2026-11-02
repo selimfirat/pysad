@@ -18,6 +18,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    KNNCAD
    LODA
    LocalOutlierProbability
+   MCOD
    MedianAbsoluteDeviation
    OnlineIsolationForest
    RelativeEntropy

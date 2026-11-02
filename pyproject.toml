@@ -193,6 +193,7 @@ module = [
     "pysad.models.knn_cad",
     "pysad.models.loda",
     "pysad.models.loop",
+    "pysad.models.mcod",
     "pysad.models.median_absolute_deviation",
     "pysad.models.null_model",
     "pysad.models.perfect_model",

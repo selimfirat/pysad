@@ -18,6 +18,7 @@ def _model_specs():
     from pysad.models import (
         KNNCAD,
         LODA,
+        MCOD,
         ExactStorm,
         HalfSpaceTrees,
         IForestASD,
@@ -63,6 +64,7 @@ def _model_specs():
             lambda: LocalOutlierProbability(_initial_X(NUM_FEATURES)),
             NUM_FEATURES,
         ),
+        ("MCOD", lambda: MCOD(window_size=20, max_radius=0.3, num_neighbors=2), NUM_FEATURES),
         ("MedianAbsoluteDeviation", lambda: MedianAbsoluteDeviation(), 1),
         ("MedianAbsoluteDeviation-signed", lambda: MedianAbsoluteDeviation(absolute=False), 1),
         ("NullModel", lambda: NullModel(), NUM_FEATURES),

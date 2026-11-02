@@ -29,6 +29,8 @@ MODEL_PARAMS = {
         "max_depth": 8,
     },
     "IForestASD": {"window_size": 32},
+    # A window that slides before and after the round trip.
+    "IncrementalLOF": {"num_neighbors": 5, "window_size": 20},
     # The initial sample completes before the round trip, so the restored model has rho and tau.
     "Inqmad": {"input_shape": 3, "dim_x": 32, "initial_size": 30},
     # Its autoencoders still train on the instances scored after the round trip.

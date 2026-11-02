@@ -12,12 +12,12 @@ from pysad.core.base_postprocessor import BasePostprocessor
 class SPOTProbabilityCalibrator(BasePostprocessor):
     r"""Converts each score into a probability with a Generalized Pareto tail that SPOT or DSPOT fits to the highest scores :cite:`siffer2017anomaly`.
 
-    SPOT (Streaming Peaks-Over-Threshold) uses extreme value theory, so it makes no assumption about the distribution of the scores. It sets an initial threshold :math:`t` at the ``level`` quantile of the first ``num_init`` scores. The peaks are the scores above :math:`t`, minus :math:`t`. SPOT fits a Generalized Pareto distribution (GPD) with shape :math:`\gamma` and scale :math:`\sigma` to the peaks by maximum likelihood with Grimshaw's procedure (Section 3.3). The alarm threshold for the risk ``q`` is (Eq. 3)
+    SPOT (Streaming Peaks-Over-Threshold) uses extreme value theory, so it makes no assumption about the distribution of the scores. It sets an initial threshold :math:`t` at the ``level`` quantile of the first ``num_init`` scores. The peaks are the scores above :math:`t`, minus :math:`t`. SPOT fits a Generalized Pareto distribution (GPD) with shape :math:`\gamma` and scale :math:`\sigma` to the peaks by maximum likelihood with Grimshaw's procedure (Section 3.4.2). The alarm threshold for the risk ``q`` is (Eq. 1)
 
     .. math::
         z_q = t + \frac{\sigma}{\gamma} \left( \left( \frac{q n}{N_t} \right)^{-\gamma} - 1 \right),
 
-    where :math:`n` is the number of scores seen and :math:`N_t` is the number of peaks. A score above :math:`z_q` is an anomaly, and the calibrator does not learn from it (Algorithm 1). A score between :math:`t` and :math:`z_q` is a new peak, and the calibrator fits the GPD again.
+    where :math:`n` is the number of scores seen and :math:`N_t` is the number of peaks. A score above :math:`z_q` is an anomaly, and the calibrator does not learn from it (Algorithm 2). A score between :math:`t` and :math:`z_q` is a new peak, and the calibrator fits the GPD again.
 
     If ``depth`` is positive, the calibrator runs DSPOT (Algorithm 3) for streams with drift. DSPOT applies SPOT to the difference between each score and the mean of the last ``depth`` scores that are not anomalies. The first ``depth`` scores only fill this window.
 

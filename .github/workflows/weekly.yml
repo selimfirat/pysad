@@ -1,0 +1,50 @@
+name: weekly
+
+# Catches breakage that no pull request causes: new pre-releases of Python and of the
+# runtime dependencies, and dead links in the documentation.
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          # The next Python version. setup-python installs its newest alpha, beta, or release candidate.
+          python-version: "3.15"
+          allow-prereleases: true
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Install pre-release dependencies
+        run: uv pip install --system --prerelease allow -e . --group test
+      - name: Test
+        run: pytest -n auto
+
+  linkcheck:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.10"
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: Install dependencies
+        run: uv pip install --system --group runtime --group docs
+      - name: Build documentation
+        run: python -m sphinx -W --keep-going -b html docs docs/_build/html
+      - name: Check links
+        run: python -m sphinx --keep-going -b linkcheck docs docs/_build/linkcheck

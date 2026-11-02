@@ -195,4 +195,6 @@ def _grimshaw(peaks: np.ndarray) -> tuple[float, float]:
 def _log_likelihood(peaks: np.ndarray, gamma: float, sigma: float) -> float:
     if gamma == 0:
         return float(-len(peaks) * math.log(sigma) - peaks.sum() / sigma)
-    return float(-len(peaks) * math.log(sigma) - (1 + 1 / gamma) * np.log1p(gamma / sigma * peaks).sum())
+    return float(
+        -len(peaks) * math.log(sigma) - (1 + 1 / gamma) * np.log1p(gamma / sigma * peaks).sum()
+    )

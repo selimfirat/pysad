@@ -12,10 +12,15 @@ NUM_NEXT = 20
 
 # These decompose a single scalar series, unlike the other transformers, which take a feature
 # vector per instance.
-UNIVARIATE_TRANSFORMERS = {"ModifiedSTLResidualTransformer", "SeasonalTrendDecomposer"}
+UNIVARIATE_TRANSFORMERS = {
+    "ModifiedSTLResidualTransformer",
+    "OneShotSTL",
+    "SeasonalTrendDecomposer",
+}
 
 TRANSFORMER_PARAMS = {
     "ModifiedSTLResidualTransformer": {"period": 4, "window_size": 16},
+    "OneShotSTL": {"period": 4, "shift_window": 1},
     "SeasonalTrendDecomposer": {"season_length": 4},
     "ShingleTransformer": {"shingle_size": 3},
 }

@@ -30,7 +30,7 @@ class OneShotSTL(BaseTransformer):
 
     The first ``num_init_periods * period`` points initialize :math:`v` with the seasonal component of robust periodic STL, as the reference implementation of the paper does. The partial transforms return ``[0.0]`` for these points.
 
-    If ``shift_window`` is above 0, the transformer handles seasonality shifts as in Section 3.4. It keeps the running mean and standard deviation of the residuals (Algorithm 6). If the residual of a point lies more than ``shift_threshold`` standard deviations from the mean, it also decomposes the point against :math:`v` shifted by each :math:`\\Delta \\in [-H, H]`, and keeps the shift with the smallest absolute residual.
+    If ``shift_window`` is above 0, the transformer handles seasonality shifts as in Section 3.4. It keeps the running mean and standard deviation of the residuals against the unshifted :math:`v` (Algorithm 6). If the residual of a point lies more than ``shift_threshold`` standard deviations from the mean, it also decomposes the point against :math:`v` shifted by each :math:`\\Delta \\in [-H, H]`, and keeps the shift with the smallest absolute residual.
 
     Deviations from the paper:
 
@@ -131,12 +131,12 @@ class OneShotSTL(BaseTransformer):
 
         phase = self.num_online_ % self.period
         trend, seasonal, state = self._decompose(y, self.seasonal_[phase])
-        residual = y - trend - seasonal
+        residual = unshifted = y - trend - seasonal
         meter = self.residual_meter_
         if (
             self.shift_window > 0
             and meter.count > 0
-            and abs(residual - meter.mean) > self.shift_threshold * np.sqrt(meter.get())
+            and abs(unshifted - meter.mean) > self.shift_threshold * np.sqrt(meter.get())
         ):
             for shift in range(-self.shift_window, self.shift_window + 1):
                 if shift == 0:
@@ -150,7 +150,7 @@ class OneShotSTL(BaseTransformer):
         if update:
             self.L_, self.D_, self.z_, self.p_, self.q_, self.rhs_ = state
             self.seasonal_[phase] = seasonal
-            self.residual_meter_.update(residual)
+            meter.update(unshifted)
             self.num_online_ += 1
         return np.array([residual])
 

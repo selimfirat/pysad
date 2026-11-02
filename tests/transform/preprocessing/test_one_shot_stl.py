@@ -100,6 +100,29 @@ def test_one_shot_stl_shift_window_follows_a_shifted_cycle():
     assert errors[10].mean() < 0.7 * errors[0].mean()
 
 
+def test_one_shot_stl_residual_statistics_use_the_unshifted_residual():
+    import copy
+
+    from pysad.transform.preprocessing import OneShotSTL
+
+    period = 20
+    y, _ = _series(200, period)
+    transformer = OneShotSTL(period=period, shift_window=5)
+    transformer.fit(y[:199, None])
+    spike = y[199:] + 5.0
+
+    unshifted_transformer = copy.deepcopy(transformer)
+    unshifted_transformer.shift_window = 0
+    unshifted = unshifted_transformer.transform_partial(spike)[0]
+    assert abs(transformer.transform_partial(spike)[0]) < abs(unshifted)
+
+    expected = copy.deepcopy(transformer.residual_meter_).update(unshifted)
+    transformer.fit_partial(spike)
+
+    assert transformer.residual_meter_.mean == pytest.approx(expected.mean)
+    assert transformer.residual_meter_.get() == pytest.approx(expected.get())
+
+
 def test_one_shot_stl_transform_partial_does_not_update():
     from pysad.transform.preprocessing import OneShotSTL
 

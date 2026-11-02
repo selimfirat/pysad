@@ -4,5 +4,10 @@ The :mod:`pysad.transform.probability_calibration` module includes probability c
 
 from .conformal_prediction import ConformalProbabilityCalibrator
 from .gaussian_tail import GaussianTailProbabilityCalibrator
+from .spot import SPOTProbabilityCalibrator
 
-__all__ = ["ConformalProbabilityCalibrator", "GaussianTailProbabilityCalibrator"]
+__all__ = [
+    "ConformalProbabilityCalibrator",
+    "GaussianTailProbabilityCalibrator",
+    "SPOTProbabilityCalibrator",
+]

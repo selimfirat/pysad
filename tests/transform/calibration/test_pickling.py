@@ -13,6 +13,7 @@ NUM_NEXT = 20
 CALIBRATOR_PARAMS = {
     "ConformalProbabilityCalibrator": {"window_size": 20},
     "GaussianTailProbabilityCalibrator": {"window_size": 20, "short_window_size": 5},
+    "SPOTProbabilityCalibrator": {"num_init": 30, "level": 0.8, "q": 1e-3, "depth": 5},
 }
 
 

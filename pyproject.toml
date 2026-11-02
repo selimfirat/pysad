@@ -197,7 +197,9 @@ module = [
     "pysad.models.null_model",
     "pysad.models.perfect_model",
     "pysad.models.random_model",
+    "pysad.models.relative_entropy",
     "pysad.models.rs_hash",
+    "pysad.models.seasonal_esd",
     "pysad.models.standard_absolute_deviation",
     "pysad.models.xstream",
 ]

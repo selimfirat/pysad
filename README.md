@@ -19,8 +19,6 @@
   <a href="https://doi.org/10.5281/zenodo.22983312"><img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22983312-0741AD?style=flat-square" alt="DOI"></a>
   <br>
   <a href="https://github.com/selimfirat/pysad/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/selimfirat/pysad/coverage.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=tests" alt="Tests"></a>
-  <a href="https://dev.azure.com/selimfirat/pysad/_build/latest?definitionId=2&branchName=master"><img src="https://img.shields.io/azure-devops/build/selimfirat/pysad/2/master?style=flat-square&logo=azurepipelines&label=Azure%20Pipelines" alt="Azure Pipelines"></a>
-  <a href="https://circleci.com/gh/selimfirat/pysad"><img src="https://img.shields.io/circleci/build/github/selimfirat/pysad/master?style=flat-square&logo=circleci&label=CircleCI" alt="CircleCI"></a>
   <a href="https://results.pre-commit.ci/latest/github/selimfirat/pysad/master"><img src="https://results.pre-commit.ci/badge/github/selimfirat/pysad/master.svg" alt="pre-commit.ci status"></a>
   <a href="https://coveralls.io/github/selimfirat/pysad?branch=master"><img src="https://img.shields.io/coverallsCoverage/github/selimfirat/pysad?branch=master&style=flat-square&logo=coveralls&label=coverage" alt="Coverage"></a>
   <a href="https://pysad.readthedocs.io/en/stable/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs" alt="Documentation"></a>
@@ -59,7 +57,7 @@ Every detector learns from and scores one point at a time with `fit_partial`, `s
 </td>
 <td width="50%" valign="top">
 
-#### 17 detectors from published papers
+#### 18 detectors from published papers
 
 From robust statistics (MAD, Seasonal Hybrid ESD) to forests, sketches and projections (Half-Space Trees, Robust Random Cut Forest, RS-Hash, xStream, LODA). Each detector cites its paper, and the [detector catalog](https://pysad.readthedocs.io/en/stable/detectors.html) lists its input and memory.
 
@@ -99,7 +97,7 @@ Preprocessors, random projections, score postprocessors, ensemblers and running 
 </tr>
 </table>
 
-Batch outlier detectors such as [PyOD](https://github.com/yzhao062/pyod) train on a fixed dataset and must train again to use new data. PySAD detectors learn from every point, and PySAD can still run PyOD models on a stream with `ReferenceWindowModel`. General online learning frameworks such as [River](https://github.com/online-ml/river) treat anomaly detection as one module among many. PySAD is only about streaming anomaly detection: 17 detectors, with calibration, postprocessing, ensembling and evaluation around them.
+Batch outlier detectors such as [PyOD](https://github.com/yzhao062/pyod) train on a fixed dataset and must train again to use new data. PySAD detectors learn from every point, and PySAD can still run PyOD models on a stream with `ReferenceWindowModel`. General online learning frameworks such as [River](https://github.com/online-ml/river) treat anomaly detection as one module among many. PySAD is only about streaming anomaly detection: 18 detectors, with calibration, postprocessing, ensembling and evaluation around them.
 
 ## Installation
 
@@ -234,6 +232,7 @@ These starting points come from the design of each method. They are not benchmar
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM distance-based outliers (Angiulli & Fassetti, CIKM 2007) |
+| `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
 
@@ -260,7 +259,7 @@ The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) p
 
 | Stage | What PySAD provides |
 |---|---|
-| Preprocessing | `InstanceStandardScaler`, `InstanceUnitNormScaler`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer` |
+| Preprocessing | `InstanceStandardScaler`, `InstanceUnitNormScaler`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
 | Projection | `StreamhashProjector`, `GaussianRandomProjector`, `SparseRandomProjector` |
 | Postprocessing | Running and windowed average, max, median and z-score of scores |
 | Calibration | `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |

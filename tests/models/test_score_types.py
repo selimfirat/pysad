@@ -21,6 +21,7 @@ def _model_specs():
         ExactStorm,
         HalfSpaceTrees,
         IForestASD,
+        IncrementalLOF,
         KitNet,
         LocalOutlierProbability,
         MedianAbsoluteDeviation,
@@ -51,6 +52,7 @@ def _model_specs():
             NUM_FEATURES,
         ),
         ("IForestASD", lambda: IForestASD(window_size=32), NUM_FEATURES),
+        ("IncrementalLOF", lambda: IncrementalLOF(window_size=20), NUM_FEATURES),
         (
             "KitNet",
             lambda: KitNet(grace_feature_mapping=10, grace_anomaly_detector=10),

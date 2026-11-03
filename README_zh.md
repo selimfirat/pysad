@@ -8,7 +8,7 @@
 
 <p align="center">
   Python 流式异常检测库。PySAD 在每个数据点到达时立即为其打分，<br>
-  提供 16 个流式检测器、经过校准的告警和流式评估。
+  提供流式检测器、经过校准的告警和流式评估。
 </p>
 
 <p align="center">
@@ -57,7 +57,7 @@
 </td>
 <td width="50%" valign="top">
 
-#### 16 个来自已发表论文的检测器
+#### 来自已发表论文的检测器
 
 从稳健统计方法（MAD、Seasonal Hybrid ESD）到基于森林、概要结构和投影的方法（Half-Space Trees、Robust Random Cut Forest、RS-Hash、xStream、LODA）。每个检测器都注明了出处论文，[检测器目录](https://pysad.readthedocs.io/en/stable/detectors.html) 列出了每个检测器的输入和内存占用。
 
@@ -97,7 +97,7 @@
 </tr>
 </table>
 
-[PyOD](https://github.com/yzhao062/pyod) 等批处理离群点检测器在固定数据集上训练，要利用新数据就必须重新训练。PySAD 的检测器从每个点中学习，同时 PySAD 仍可以通过 `ReferenceWindowModel` 在数据流上运行 PyOD 模型。[River](https://github.com/online-ml/river) 等通用在线学习框架把异常检测当作众多模块之一。PySAD 只专注于流式异常检测：16 个检测器，以及围绕它们的校准、后处理、集成和评估。
+[PyOD](https://github.com/yzhao062/pyod) 等批处理离群点检测器在固定数据集上训练，要利用新数据就必须重新训练。PySAD 的检测器从每个点中学习，同时 PySAD 仍可以通过 `ReferenceWindowModel` 在数据流上运行 PyOD 模型。[River](https://github.com/online-ml/river) 等通用在线学习框架把异常检测当作众多模块之一。PySAD 只专注于流式异常检测：检测器以及围绕它们的校准、后处理、集成和评估。
 
 ## 安装
 

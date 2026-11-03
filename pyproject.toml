@@ -59,7 +59,7 @@ Homepage = "https://github.com/selimfirat/pysad"
 Documentation = "https://pysad.readthedocs.io/"
 Repository = "https://github.com/selimfirat/pysad.git"
 "Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
-Changelog = "https://github.com/selimfirat/pysad/blob/master/CHANGES.txt"
+Changelog = "https://github.com/selimfirat/pysad/releases"
 
 # PEP 735 dependency groups. The runtime dependencies only have floors in [project]; these
 # groups pin what CI, Read the Docs and contributors install, and Dependabot bumps them.

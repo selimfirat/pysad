@@ -101,6 +101,13 @@ docs = [
 lint = [
   "pre-commit==4.6.2",
 ]
+# The libraries that benchmarks/compare.py compares PySAD with. River needs Python 3.11 or newer.
+compare = [
+  {include-group = "runtime"},
+  "pyod>=3.6.2",
+  "pillow>=12.3.0",
+  "river==0.26.1; python_version >= '3.11'",
+]
 dev = [
   {include-group = "runtime"},
   {include-group = "test"},

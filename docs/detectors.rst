@@ -46,6 +46,10 @@ These detectors take points with one or more features. A feature is one measured
      - Online Isolation Forest :cite:`leveni2024online`
      - Nothing
      - Fixed: ``num_trees`` trees and a sliding window of ``window_size`` points
+   * - :class:`~pysad.models.SmartSifter`
+     - Gaussian mixture learned by sequentially discounting EM :cite:`yamanishi2000smartsifter`
+     - Nothing
+     - Fixed: ``num_components`` Gaussians, quadratic in the number of features
    * - :class:`~pysad.models.KitNet`
      - Ensemble of autoencoders :cite:`mirsky2018kitsune`
      - Nothing

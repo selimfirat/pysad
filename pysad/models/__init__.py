@@ -21,6 +21,7 @@ from .relative_entropy import RelativeEntropy
 from .robust_random_cut_forest import RobustRandomCutForest
 from .rs_hash import RSHash
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
+from .smart_sifter import SmartSifter
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .xstream import xStream
 
@@ -45,6 +46,7 @@ __all__ = [
     "RSHash",
     "SeasonalESD",
     "SeasonalHybridESD",
+    "SmartSifter",
     "StandardAbsoluteDeviation",
     "xStream",
 ]

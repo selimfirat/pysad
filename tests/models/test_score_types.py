@@ -35,6 +35,7 @@ def _model_specs():
         RSHash,
         SeasonalESD,
         SeasonalHybridESD,
+        SmartSifter,
         StandardAbsoluteDeviation,
         xStream,
     )
@@ -96,6 +97,7 @@ def _model_specs():
             lambda: SeasonalHybridESD(period=4, window_size=12, max_anomalies=0.17),
             1,
         ),
+        ("SmartSifter", lambda: SmartSifter(), NUM_FEATURES),
         ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),
         ("StandardAbsoluteDeviation-signed", lambda: StandardAbsoluteDeviation(absolute=False), 1),
         ("xStream", lambda: xStream(), NUM_FEATURES),

@@ -12,6 +12,7 @@ from pysad.models import (
     RandomModel,
     RobustRandomCutForest,
     RSHash,
+    SmartSifter,
     xStream,
 )
 from pysad.utils import fix_seed
@@ -37,6 +38,7 @@ MODELS = {
     "RandomModel": lambda **kw: RandomModel(**kw),
     "RobustRandomCutForest": lambda **kw: RobustRandomCutForest(tree_size=32, **kw),
     "RSHash": lambda **kw: RSHash([0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES, **kw),
+    "SmartSifter": lambda **kw: SmartSifter(**kw),
     "xStream": lambda **kw: xStream(n_chains=10, depth=10, window_size=20, **kw),
 }
 

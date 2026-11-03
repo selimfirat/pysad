@@ -99,13 +99,16 @@ The scale of the raw scores is different for each detector. Some detectors give 
 Calibration
 -----------
 
-A calibrator converts a raw score into a value between 0 and 1. PySAD has two calibrators:
+A calibrator converts a raw score into a value between 0 and 1. PySAD has three calibrators:
 
 :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`
    Gives the fraction of recent scores that are lower than the new score. A value of 0.99 means that the new score is higher than 99% of the scores in the window. In statistics, this value is one minus the conformal p-value. It makes no assumption about the distribution of the scores.
 
 :class:`~pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator`
    Fits a Gaussian (bell-shaped) distribution to the mean and variance of recent scores. It gives the probability that a value from this distribution is lower than the new score. It assumes that the scores are approximately Gaussian.
+
+:class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator`
+   Fits a Generalized Pareto distribution to the highest scores with extreme value theory. It gives one minus the probability that a score is higher than the new score. It makes no assumption about the distribution of the scores, and it estimates the probability of scores that are higher than all scores seen so far.
 
 With the conformal calibrator, a threshold such as 0.99 has the same meaning for every detector. If most recent scores come from normal points, about 1% of normal points raise an alert. A false alert is an alert for a normal point. To get fewer false alerts, increase the threshold.
 

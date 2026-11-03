@@ -69,6 +69,26 @@ Calibrate with a Gaussian fit
 
 This calibrator assumes that the scores are approximately Gaussian (bell-shaped). Many detectors give skewed scores, with a long tail of high values. For skewed scores, this calibrator raises more alerts than the threshold suggests. If you are not sure that your scores are Gaussian, use the conformal calibrator.
 
+Calibrate with extreme value theory
+-----------------------------------
+
+:class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator` fits a Generalized Pareto distribution to the scores above a high quantile of the first ``num_init`` scores. You set the risk ``q``, which is the probability that a normal score raises an alert:
+
+.. code-block:: python
+
+   from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+   calibrator = SPOTProbabilityCalibrator(q=1e-3, num_init=500)
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if calibrator.fit_transform_partial(model.fit_score_partial(x)) > 1 - 1e-3:
+           alerts.append(t)
+
+A score gets a calibrated value above ``1 - q`` when the score is above ``calibrator.threshold_``. The calibrator does not learn from these scores. Unlike the conformal calibrator, this calibrator does not need a large window for a small ``q``, because the fitted distribution extends beyond the highest score seen so far. It returns 0 for the first ``num_init`` scores.
+
+If the scores drift, set ``depth``, for example ``depth=10``. The calibrator then fits the distribution to the difference between each score and the mean of the last ``depth`` scores.
+
 Smooth noisy scores
 -------------------
 

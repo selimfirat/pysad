@@ -106,7 +106,7 @@ The other component types follow the same pattern. Subclass the base class from 
 Add your detector to PySAD
 --------------------------
 
-PySAD accepts published detectors with 50 or more citations. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, do these steps:
+PySAD accepts published detectors whose paper has 20 or more citations, appeared at an A* venue, or has an official GitHub repository with 50 or more stars. It also accepts a detector with a top-three score on a public benchmark such as NAB. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, do these steps:
 
 #. Implement the detector as its paper describes, in a new module in ``pysad/models``.
 #. Cite the paper in the class docstring with ``:cite:`` and add the BibTeX entry to ``docs/refs.bib``.

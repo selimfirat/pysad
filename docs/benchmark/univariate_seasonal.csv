@@ -1,12 +1,12 @@
 Detector,Standard,AUROC
 :class:`~pysad.models.RelativeEntropy`,55.7,0.505
-:class:`~pysad.models.RobustRandomCutForest`,54.8,0.611
 :class:`~pysad.models.LODA`,54.7,0.591
 :class:`~pysad.models.StandardAbsoluteDeviation`,50.0,0.520
+:class:`~pysad.models.RobustRandomCutForest`,49.5,0.614
 :class:`~pysad.models.KNNCAD`,48.9,0.527
 ":class:`~pysad.models.LODA`, shingles",42.3,0.612
-":class:`~pysad.models.RobustRandomCutForest`, shingles",36.7,0.623
 :class:`~pysad.models.xStream`,34.1,0.564
+":class:`~pysad.models.RobustRandomCutForest`, shingles",33.2,0.616
 :class:`~pysad.models.RSHash`,32.8,0.556
 :class:`~pysad.models.HalfSpaceTrees`,32.0,0.544
 ":class:`~pysad.models.RSHash`, shingles",30.3,0.550

@@ -236,8 +236,6 @@ class Inqmad(BaseModel):
                     self.rng,
                 )
                 states = _states(initial, self.weights, self.offset)
-                densities = ((states @ states.T) ** 2).mean(axis=1)
-                self.tau = np.quantile(densities, self.beta)
                 dim_x = self.weights.shape[1]
                 if n <= dim_x:
                     self._states_buf = np.empty((dim_x, dim_x))
@@ -250,6 +248,9 @@ class Inqmad(BaseModel):
                     self._rho = dsyrk(1.0 / n, states, trans=1).T
                     self._rho_scale = 1.0
                     self._rho_dirty = True
+                # The densities come from _measure, so that a later repeat of an initial instance gets
+                # its initial density bit for bit and is not put below tau by rounding.
+                self.tau = np.quantile([self._measure(x)[1] for x in self.initial], self.beta)
                 self.initial = None
         elif density >= self.tau and self.alpha > 0.0:
             if self.alpha == 1.0:

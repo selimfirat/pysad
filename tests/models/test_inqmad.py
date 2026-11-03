@@ -59,6 +59,21 @@ def test_normal_instance_updates_rho_with_forgetting():
     np.testing.assert_allclose(model.rho, 0.7 * rho + 0.3 * np.outer(psi, psi), atol=1e-12)
 
 
+@pytest.mark.parametrize("seed", range(30))
+def test_repeat_of_the_initial_instance_at_tau_updates_rho(seed):
+    """Algorithm 2: an instance whose density is tau is normal. With beta=0,
+    tau is the lowest density of the initial sample, so a repeat of that
+    instance must update rho, whatever the rounding of its density.
+    """
+    X = np.random.default_rng(seed).random((20, 3))
+    model = _model(beta=0.0, random_state=seed).fit(X)
+    rho = model.rho.copy()
+
+    model.fit_partial(X[np.argmax(model.score(X))])
+
+    assert not np.array_equal(model.rho, rho)
+
+
 def test_anomalous_instance_leaves_rho_unchanged():
     """Paper Algorithm 2, step 6: an instance whose density is below tau
     is classified as an anomaly and does not change rho.

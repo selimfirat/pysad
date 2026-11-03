@@ -8,8 +8,7 @@ name: all checks
 # separately.
 on:
   pull_request:
-    # ready_for_review starts the gate again when a draft becomes ready. Azure Pipelines then
-    # cancels its run on the draft, and the old gate run would fail on that cancelled run.
+    # ready_for_review starts the gate again when a draft becomes ready.
     types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
@@ -30,7 +29,7 @@ jobs:
       - uses: poseidon/wait-for-status-checks@e7e24423722c5b8e97a6dd5848827d2a412f812d # v0.7.0
         with:
           token: ${{ github.token }}
-          # Gives the other workflows and Azure Pipelines time to register their check runs.
+          # Gives the other workflows time to register their check runs.
           delay: 30s
           interval: 20s
           # Code scanning's summary check run can report "neutral" before the analyses have

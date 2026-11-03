@@ -106,11 +106,13 @@ The other component types follow the same pattern. Subclass the base class from 
 Add your detector to PySAD
 --------------------------
 
-PySAD accepts published detectors whose paper has 20 or more citations, appeared at an A* venue, or has an official GitHub repository with 50 or more stars. It also accepts a detector with a top-three score on a public benchmark such as NAB. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, do these steps:
+PySAD accepts published detectors whose paper has 20 or more citations, appeared at an A* venue, or has an official GitHub repository with 50 or more stars. It also accepts a streaming detector with a top-three score on a public streaming benchmark such as NAB. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, do these steps:
 
 #. Implement the detector as its paper describes, in a new module in ``pysad/models``.
 #. Cite the paper in the class docstring with ``:cite:`` and add the BibTeX entry to ``docs/refs.bib``.
 #. Document each difference from the paper in the docstring.
+
+   A detector from the benchmark route cites the benchmark and its reference implementation instead of a paper, and documents each difference from that implementation.
 #. Add the class to ``pysad/models/__init__.py``, to ``__all__`` and to ``docs/api/models.rst``.
 #. Add the class to the shared tests in ``tests/models``: ``test_models.py``, ``test_score_types.py``, ``test_random_state.py`` and ``test_properties.py``. To find the correct place, search these files for an existing detector, such as ``LODA``.
 #. If your detector has required arguments, add them to ``MODEL_PARAMS`` in ``test_pickling.py``. This file tests every class in ``pysad.models.__all__``. Together, the shared tests cover the score type, pickling, ``random_state`` and general properties of every detector.

@@ -54,6 +54,10 @@ These detectors take points with one or more features. A feature is one measured
      - Neighbor counts in a sliding window :cite:`angiulli2007detecting`
      - Nothing
      - Fixed: a window of ``window_size`` points
+   * - :class:`~pysad.models.IncrementalLOF`
+     - Local outlier factor in a sliding window :cite:`pokrajac2007incremental`
+     - Nothing
+     - Fixed: a window of ``window_size`` points and their ``num_neighbors`` nearest neighbors
    * - :class:`~pysad.models.LocalOutlierProbability`
      - Local outlier probability :cite:`kriegel2009loop`, as in PyNomaly :cite:`constantinou2018pynomaly`
      - Initial points (``initial_X``)

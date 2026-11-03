@@ -11,6 +11,7 @@ from .kitnet import KitNet
 from .knn_cad import KNNCAD
 from .loda import LODA
 from .loop import LocalOutlierProbability
+from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
 from .null_model import NullModel
 from .online_isolation_forest import OnlineIsolationForest
@@ -33,6 +34,7 @@ __all__ = [
     "KNNCAD",
     "LODA",
     "LocalOutlierProbability",
+    "MCOD",
     "MedianAbsoluteDeviation",
     "NullModel",
     "OnlineIsolationForest",

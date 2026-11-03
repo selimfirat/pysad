@@ -4,6 +4,7 @@ def test_unsupervised_models():
     from pysad.models import (
         KNNCAD,
         LODA,
+        MCOD,
         ExactStorm,
         HalfSpaceTrees,
         IForestASD,
@@ -37,6 +38,7 @@ def test_unsupervised_models():
         KNNCAD: {"probationary_period": 50},
         LODA: {},
         LocalOutlierProbability: {"initial_X": True},
+        MCOD: {},
         MedianAbsoluteDeviation: [{}, {"absolute": False}],
         NullModel: {},
         OnlineIsolationForest: {},

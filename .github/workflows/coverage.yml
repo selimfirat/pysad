@@ -69,12 +69,13 @@ jobs:
           files: coverage.lcov
 
   tests:
-    # The coverage job runs Python 3.12 on Linux. This job runs the other supported Python
-    # versions and the other operating systems, with the pinned runtime dependencies.
+    # The coverage job runs Python 3.12 on Linux. This job runs Python 3.10, 3.11 and 3.13 on
+    # Linux and Python 3.12 on macOS and Windows, with the pinned runtime dependencies.
     strategy:
       fail-fast: false
       matrix:
         include:
+          - {os: ubuntu-latest, python: "3.10"}
           - {os: ubuntu-latest, python: "3.11"}
           - {os: ubuntu-latest, python: "3.13"}
           - {os: macos-latest, python: "3.12"}

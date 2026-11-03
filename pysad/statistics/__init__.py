@@ -3,6 +3,7 @@ The :mod:`pysad.statistics` module contains methods to keep track of statistics 
 """
 
 from .abs_statistic import AbsStatistic
+from .adwin_meter import ADWINMeter
 from .average_meter import AverageMeter
 from .count_meter import CountMeter
 from .exponential_moving_average_meter import ExponentialMovingAverageMeter
@@ -17,6 +18,7 @@ from .sum_squares_meter import SumSquaresMeter
 from .variance_meter import VarianceMeter
 
 __all__ = [
+    "ADWINMeter",
     "AbsStatistic",
     "AverageMeter",
     "CountMeter",

@@ -13,7 +13,7 @@ _PD = -1
 class MCOD(BaseModel):
     """Micro-cluster-based Continuous Outlier Detection (MCOD) :cite:`kontaki2011continuous`, with the score of :class:`~pysad.models.ExactStorm`.
 
-    An instance in the window of length `window_size` is a neighbor of the scored instance if their distance is not greater than `max_radius` (R). MCOD groups the window into micro-clusters. A micro-cluster has a fixed center and at least k + 1 instances within R/2 of the center, where k is ``num_neighbors``. All other instances form the set PD of the paper. As in the paper, a new instance joins the micro-cluster with the closest center within R/2. Otherwise, it forms a new micro-cluster with itself as the center if more than k instances of PD are within R/2 of it (theta = 1, as in the experiments of the paper). If an expired instance leaves a micro-cluster with fewer than k + 1 instances, the micro-cluster is dissolved, and each of its instances can form a new micro-cluster in the same way.
+    An instance in the window of length `window_size` is a neighbor of the scored instance if their distance is not greater than `max_radius` (R). MCOD groups the window into micro-clusters. A micro-cluster has a fixed center and at least k + 1 instances within R/2 of the center, where k is ``num_neighbors``. All other instances form the set PD of the paper. As in the paper, a new instance joins the micro-cluster with the closest center within R/2. Otherwise, it forms a new micro-cluster with itself as the center if more than k instances of PD are within R/2 of it (theta = 1, as in the experiments of the paper). If an expired instance leaves a micro-cluster with fewer than k + 1 instances, the micro-cluster is dissolved, and each of its instances is processed again as a new instance.
 
     The paper reports an instance as an outlier if it has fewer than k neighbors. This method gives the score of :class:`~pysad.models.ExactStorm` instead: the fraction of window instances that are not neighbors of the scored instance. Thus the two models give the same scores, and k changes only the speed. The score counts every instance of a micro-cluster whose center is within R/2 of the scored instance, because each of them is within R by the triangle inequality. It computes the distances only to PD and to the instances of micro-clusters whose centers are within 3R/2, as the range queries of the paper do (Lemma 4). This method does not keep the neighbor lists and the event queue of the paper, because they only report the outliers for a fixed k.
 
@@ -105,7 +105,7 @@ class MCOD(BaseModel):
         self.cluster_[members] = _PD
         for j in members.tolist():
             if self.cluster_[j] == _PD:
-                self._form(j)
+                self._insert(j)
 
     def _insert(self, i: int) -> None:
         """Steps 2 and 3 of the paper for the instance in slot i, which is in PD."""

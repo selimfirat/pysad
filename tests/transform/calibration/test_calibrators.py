@@ -4,6 +4,7 @@ def test_calibrators():
     from pysad.transform.probability_calibration import (
         ConformalProbabilityCalibrator,
         GaussianTailProbabilityCalibrator,
+        SPOTProbabilityCalibrator,
     )
     from pysad.utils import fix_seed
 
@@ -11,7 +12,11 @@ def test_calibrators():
 
     scores = np.random.rand(100)
 
-    calibrators = {GaussianTailProbabilityCalibrator: {}, ConformalProbabilityCalibrator: {}}
+    calibrators = {
+        GaussianTailProbabilityCalibrator: {},
+        ConformalProbabilityCalibrator: {},
+        SPOTProbabilityCalibrator: {"num_init": 40, "level": 0.9, "depth": 5},
+    }
 
     for calibrator_cls, args in calibrators.items():
         calibrator = calibrator_cls(**args)
@@ -169,3 +174,88 @@ def test_gaussian_tail_calibrator_zero_variance():
         assert calibrator.transform_partial(unit) == 1.0
         assert calibrator.transform_partial(-unit) == 0.0
         assert calibrator.transform_partial(0.0) == 0.5
+
+
+def test_spot_grimshaw_matches_scipy_fit():
+    import numpy as np
+    from scipy.stats import genpareto
+
+    from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+    rng = np.random.RandomState(0)
+    for shape in [-0.3, 0.0, 0.3]:
+        peaks = genpareto.rvs(shape, scale=2.0, size=300, random_state=rng)
+        # The 0.7 quantile of the scores is 0, so the peaks are the GPD sample.
+        scores = np.r_[np.zeros(701), peaks]
+        calibrator = SPOTProbabilityCalibrator(num_init=len(scores), level=0.7).fit(scores)
+
+        expected_shape, _, expected_scale = genpareto.fit(peaks, floc=0)
+        assert calibrator.t_ == 0.0
+        np.testing.assert_allclose(calibrator.gamma_, expected_shape, atol=1e-3)
+        np.testing.assert_allclose(calibrator.sigma_, expected_scale, rtol=1e-3)
+
+
+def test_spot_threshold_matches_exponential_quantile():
+    import numpy as np
+    import pytest
+
+    from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+    q = 1e-4
+    scores = np.random.RandomState(0).exponential(size=20000)
+    calibrator = SPOTProbabilityCalibrator(q=q, num_init=20000).fit(scores)
+
+    # The 1 - q quantile of the standard exponential distribution is -log(q).
+    assert calibrator.threshold_ == pytest.approx(-np.log(q), rel=0.1)
+    # A score at the threshold has the calibrated value 1 - q.
+    assert calibrator.transform_partial(calibrator.threshold_) == pytest.approx(1 - q)
+    assert calibrator.transform_partial(calibrator.t_) == 0.0
+    assert calibrator.transform_partial(calibrator.threshold_ + 1) > 1 - q
+
+
+def test_dspot_keeps_false_alarm_rate_under_drift():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+    q = 1e-3
+    rng = np.random.RandomState(0)
+    scores = rng.normal(size=20000) + np.arange(20000) * 1e-3
+
+    spot = SPOTProbabilityCalibrator(q=q).fit_transform(scores)[2000:]
+    dspot = SPOTProbabilityCalibrator(q=q, depth=10).fit_transform(scores)[2000:]
+
+    assert (spot > 1 - q).mean() > 0.1
+    assert (dspot > 1 - q).mean() < 0.01
+
+
+def test_spot_does_not_learn_anomalies():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+    calibrator = SPOTProbabilityCalibrator(num_init=1000)
+    calibrator.fit(np.random.RandomState(0).exponential(size=1000))
+    threshold = calibrator.threshold_
+
+    assert calibrator.fit_transform_partial(threshold + 100) > 1 - 1e-6
+    assert calibrator.threshold_ == threshold
+
+
+def test_spot_constant_scores():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+    calibrated = SPOTProbabilityCalibrator(num_init=50).fit_transform(np.full(200, 0.3))
+    assert np.all(calibrated == 0.0)
+
+
+def test_spot_rejects_risk_above_initial_level():
+    import pytest
+
+    from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+    for q in [0.0, 0.03, 0.5]:
+        with pytest.raises(ValueError, match="q must be between 0 and 1 - level"):
+            SPOTProbabilityCalibrator(q=q, level=0.98)

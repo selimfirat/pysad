@@ -8,7 +8,7 @@
 
 <p align="center">
   Python 流式异常检测库。PySAD 在每个数据点到达时立即为其打分，<br>
-  提供 16 个流式检测器、经过校准的告警和流式评估。
+  提供流式检测器、经过校准的告警和流式评估。
 </p>
 
 <p align="center">
@@ -19,8 +19,6 @@
   <a href="https://doi.org/10.5281/zenodo.22983312"><img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22983312-0741AD?style=flat-square" alt="DOI"></a>
   <br>
   <a href="https://github.com/selimfirat/pysad/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/selimfirat/pysad/coverage.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=tests" alt="Tests"></a>
-  <a href="https://dev.azure.com/selimfirat/pysad/_build/latest?definitionId=2&branchName=master"><img src="https://img.shields.io/azure-devops/build/selimfirat/pysad/2/master?style=flat-square&logo=azurepipelines&label=Azure%20Pipelines" alt="Azure Pipelines"></a>
-  <a href="https://circleci.com/gh/selimfirat/pysad"><img src="https://img.shields.io/circleci/build/github/selimfirat/pysad/master?style=flat-square&logo=circleci&label=CircleCI" alt="CircleCI"></a>
   <a href="https://results.pre-commit.ci/latest/github/selimfirat/pysad/master"><img src="https://results.pre-commit.ci/badge/github/selimfirat/pysad/master.svg" alt="pre-commit.ci status"></a>
   <a href="https://coveralls.io/github/selimfirat/pysad?branch=master"><img src="https://img.shields.io/coverallsCoverage/github/selimfirat/pysad?branch=master&style=flat-square&logo=coveralls&label=coverage" alt="Coverage"></a>
   <a href="https://pysad.readthedocs.io/en/stable/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs" alt="Documentation"></a>
@@ -59,7 +57,7 @@
 </td>
 <td width="50%" valign="top">
 
-#### 16 个来自已发表论文的检测器
+#### 来自已发表论文的检测器
 
 从稳健统计方法（MAD、Seasonal Hybrid ESD）到基于森林、概要结构和投影的方法（Half-Space Trees、Robust Random Cut Forest、RS-Hash、xStream、LODA）。每个检测器都注明了出处论文，[检测器目录](https://pysad.readthedocs.io/en/stable/detectors.html) 列出了每个检测器的输入和内存占用。
 
@@ -99,7 +97,7 @@
 </tr>
 </table>
 
-[PyOD](https://github.com/yzhao062/pyod) 等批处理离群点检测器在固定数据集上训练，要利用新数据就必须重新训练。PySAD 的检测器从每个点中学习，同时 PySAD 仍可以通过 `ReferenceWindowModel` 在数据流上运行 PyOD 模型。[River](https://github.com/online-ml/river) 等通用在线学习框架把异常检测当作众多模块之一。PySAD 只专注于流式异常检测：16 个检测器，以及围绕它们的校准、后处理、集成和评估。
+[PyOD](https://github.com/yzhao062/pyod) 等批处理离群点检测器在固定数据集上训练，要利用新数据就必须重新训练。PySAD 的检测器从每个点中学习，同时 PySAD 仍可以通过 `ReferenceWindowModel` 在数据流上运行 PyOD 模型。[River](https://github.com/online-ml/river) 等通用在线学习框架把异常检测当作众多模块之一。PySAD 只专注于流式异常检测：检测器以及围绕它们的校准、后处理、集成和评估。
 
 ## 安装
 
@@ -263,7 +261,7 @@ PySAD 在带标签的数据上对其检测器进行基准测试。10 个多变�
 | 预处理 | `InstanceStandardScaler`、`InstanceUnitNormScaler`、`SeasonalTrendDecomposer`、`ModifiedSTLResidualTransformer`、`OneShotSTL` |
 | 投影 | `StreamhashProjector`、`GaussianRandomProjector`、`SparseRandomProjector` |
 | 后处理 | 对分数计算累计和窗口化的平均值、最大值、中位数和 z 分数 |
-| 校准 | `ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator` |
+| 校准 | `ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |
 | 集成 | 平均、最大、中位数、最大值的平均（average-of-maximum）和平均值的最大（maximum-of-average）分数集成器 |
 | 评估 | `AUROCMetric`、`AUPRMetric`、`PrecisionMetric`、`RecallMetric`、`WindowedMetric` |
 | 流式数据 | `ArrayStreamer`、`PandasStreamer`，以及提供 17 个带标签 ODDS 基准数据集（首次使用时下载）的 `Data` |

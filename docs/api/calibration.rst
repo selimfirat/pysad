@@ -12,3 +12,4 @@ This module holds calibrators that convert scores into values between 0 and 1. A
 
    ConformalProbabilityCalibrator
    GaussianTailProbabilityCalibrator
+   SPOTProbabilityCalibrator

@@ -5,6 +5,7 @@ The :mod:`pysad.models` module includes anomaly detection models to score the an
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
+from .incremental_lof import IncrementalLOF
 from .inqmad import Inqmad
 from .kitnet import KitNet
 from .knn_cad import KNNCAD
@@ -27,6 +28,7 @@ __all__ = [
     "ExactStorm",
     "HalfSpaceTrees",
     "IForestASD",
+    "IncrementalLOF",
     "Inqmad",
     "KitNet",
     "KNNCAD",

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import heapq
 
 import numpy as np
@@ -12,15 +14,23 @@ class _Node:
     # cut dimension and value and the bounding box (2, num_features) of the points below it.
     __slots__ = ("x", "dim", "cut", "left", "right", "parent", "count", "bbox")
 
-    def __init__(self, x=None, dim=None, cut=None, left=None, right=None, count=1):
+    def __init__(
+        self,
+        x: np.ndarray | None = None,
+        dim: int | None = None,
+        cut: float | None = None,
+        left: _Node | None = None,
+        right: _Node | None = None,
+        count: int = 1,
+    ) -> None:
         self.x = x
         self.dim = dim
         self.cut = cut
         self.left = left
         self.right = right
-        self.parent = None
+        self.parent: _Node | None = None
         self.count = count
-        self.bbox = None if x is None else x.reshape(1, -1)
+        self.bbox: np.ndarray | None = None if x is None else x.reshape(1, -1)
 
 
 class _RCTree:
@@ -29,18 +39,22 @@ class _RCTree:
     # and the order of the random draws, without the leaf depths, which codisp does not need
     # when it walks up to the root. For licensing information, see the end of this file.
 
-    def __init__(self):
-        self.root = None
-        self.leaves = {}
+    def __init__(self) -> None:
+        self.root: _Node | None = None
+        self.leaves: dict[int, _Node] = {}
 
-    def find_duplicate(self, x):
+    def find_duplicate(self, x: np.ndarray) -> _Node | None:
         node = self.root
+        if node is None:
+            return None
         while node.x is None:
+            assert node.dim is not None and node.cut is not None
+            assert node.left is not None and node.right is not None
             node = node.left if x[node.dim] <= node.cut else node.right
         return node if (node.x == x).all() else None
 
     @staticmethod
-    def _cut(x, bbox, rng):
+    def _cut(x: np.ndarray, bbox: np.ndarray, rng: np.random.RandomState) -> tuple[int, float]:
         # The InsertPoint cut: a dimension drawn in proportion to its span and a uniform value in it.
         # The trees run this for every node on every path, so it makes as few NumPy calls as it can.
         high = np.maximum(bbox[-1], x)
@@ -53,24 +67,26 @@ class _RCTree:
         dim = int(span_sum.searchsorted(r))
         if dim == len(span_sum):
             dim = 0
-        return dim, low[dim] + span_sum[dim] - r
+        return dim, float(low[dim] + span_sum[dim] - r)
 
     @staticmethod
-    def _children_bbox(node, out=None):
+    def _children_bbox(node: _Node, out: np.ndarray | None = None) -> np.ndarray:
         # The bounding box of the two children, written into ``out`` if it is given.
+        assert node.left is not None and node.right is not None
         left, right = node.left.bbox, node.right.bbox
+        assert left is not None and right is not None
         out = np.empty((2, left.shape[1])) if out is None else out
         np.minimum(left[0], right[0], out=out[0])
         np.maximum(left[-1], right[-1], out=out[1])
         return out
 
     @staticmethod
-    def _add_count(node, inc):
+    def _add_count(node: _Node | None, inc: int) -> None:
         while node is not None:
             node.count += inc
             node = node.parent
 
-    def insert(self, x, index, rng):
+    def insert(self, x: np.ndarray, index: int, rng: np.random.RandomState) -> None:
         if self.root is None:
             self.root = self.leaves[index] = _Node(x=x)
             return
@@ -83,8 +99,10 @@ class _RCTree:
 
         # Walk down until a cut separates x from the points below the node.
         leaf = _Node(x=x)
-        node, parent = self.root, None
-        while True:
+        node: _Node | None = self.root
+        parent: _Node | None = None
+        while node is not None:
+            assert node.bbox is not None
             dim, cut = self._cut(x, node.bbox, rng)
             if cut <= node.bbox[0, dim]:
                 branch = _Node(dim=dim, cut=cut, left=leaf, right=node, count=1 + node.count)
@@ -93,8 +111,10 @@ class _RCTree:
                 branch = _Node(dim=dim, cut=cut, left=node, right=leaf, count=1 + node.count)
                 break
             parent = node
+            assert node.dim is not None and node.cut is not None
             node = node.left if x[node.dim] <= node.cut else node.right
 
+        assert node is not None
         node.parent = leaf.parent = branch
         branch.parent = parent
         if parent is None:
@@ -109,6 +129,7 @@ class _RCTree:
         bbox = branch.bbox = self._children_bbox(branch)
         node = parent
         while node is not None:
+            assert node.bbox is not None
             if not ((bbox[0] < node.bbox[0]).any() or (bbox[1] > node.bbox[1]).any()):
                 break
             np.minimum(node.bbox[0], bbox[0], out=node.bbox[0])
@@ -117,7 +138,7 @@ class _RCTree:
 
         self.leaves[index] = leaf
 
-    def forget(self, index):
+    def forget(self, index: int) -> None:
         leaf = self.leaves.pop(index)
         if leaf.count > 1:
             self._add_count(leaf, -1)
@@ -127,13 +148,16 @@ class _RCTree:
             return
 
         parent = leaf.parent
+        assert parent is not None
         sibling = parent.right if leaf is parent.left else parent.left
+        assert sibling is not None
         if parent is self.root:
             sibling.parent = None
             self.root = sibling
             return
 
         grandparent = parent.parent
+        assert grandparent is not None
         sibling.parent = grandparent
         if parent is grandparent.left:
             grandparent.left = sibling
@@ -142,31 +166,42 @@ class _RCTree:
         self._add_count(grandparent, -1)
 
         # Shrink the bounding boxes that the forgotten point was on.
-        node = grandparent
+        node: _Node | None = grandparent
         while node is not None:
+            assert leaf.x is not None
+            assert node.bbox is not None
             if not ((node.bbox[0] == leaf.x) | (node.bbox[1] == leaf.x)).any():
                 break
             self._children_bbox(node, out=node.bbox)
             node = node.parent
 
     @staticmethod
-    def _codisp_from(node, initial_count):
+    def _codisp_from(node: _Node, initial_count: int) -> float:
         result = float(initial_count)
         while node.parent is not None:
             parent = node.parent
             sibling = parent.right if node is parent.left else parent.left
+            assert sibling is not None
             result = max(result, sibling.count / (node.count + 1))
             node = parent
         return result
 
     @staticmethod
-    def _cut_batch(x, nodes, rng):
+    def _cut_batch(
+        x: np.ndarray, nodes: list[_Node], rng: np.random.RandomState
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         if not nodes:
             return np.empty(0, dtype=int), np.empty(0, dtype=float), np.empty(0, dtype=bool)
 
         d = len(x)
-        lows = np.array([node.bbox[0] for node in nodes])
-        highs = np.array([node.bbox[-1] for node in nodes])
+        lows_list: list[np.ndarray] = []
+        highs_list: list[np.ndarray] = []
+        for node in nodes:
+            assert node.bbox is not None
+            lows_list.append(node.bbox[0])
+            highs_list.append(node.bbox[-1])
+        lows = np.array(lows_list)
+        highs = np.array(highs_list)
 
         H = np.maximum(highs, x)
         L = np.minimum(lows, x)
@@ -187,7 +222,7 @@ class _RCTree:
 
         return dims, cuts, stopped
 
-    def score(self, x, rng):
+    def score(self, x: np.ndarray, rng: np.random.RandomState) -> float:
         # The collusive displacement of x if it were inserted: the largest ratio of sibling size
         # to subtree size on the path from the leaf of x to the root, without modifying the tree.
         if self.root is None:
@@ -197,14 +232,17 @@ class _RCTree:
         if node is not None:
             return self._codisp_from(node, 0)
 
-        node = self.root
-        while True:
-            dim, cut = self._cut(x, node.bbox, rng)
-            if cut <= node.bbox[0, dim] or cut >= node.bbox[-1, dim]:
+        curr: _Node | None = self.root
+        while curr is not None:
+            assert curr.bbox is not None
+            dim, cut = self._cut(x, curr.bbox, rng)
+            if cut <= curr.bbox[0, dim] or cut >= curr.bbox[-1, dim]:
                 break
-            node = node.left if x[node.dim] <= node.cut else node.right
+            assert curr.dim is not None and curr.cut is not None
+            curr = curr.left if x[curr.dim] <= curr.cut else curr.right
 
-        return self._codisp_from(node, node.count)
+        assert curr is not None
+        return self._codisp_from(curr, curr.count)
 
 
 class RobustRandomCutForest(BaseModel):
@@ -223,8 +261,13 @@ class RobustRandomCutForest(BaseModel):
     """
 
     def __init__(
-        self, num_trees=100, shingle_size=1, tree_size=256, time_decay=0.0, random_state=None
-    ):
+        self,
+        num_trees: int = 100,
+        shingle_size: int = 1,
+        tree_size: int = 256,
+        time_decay: float = 0.0,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
         self.tree_size = tree_size
         self.shingle_size = shingle_size
         self.num_trees = num_trees
@@ -232,34 +275,34 @@ class RobustRandomCutForest(BaseModel):
         self.random_state = random_state
 
         # One generator shared by all trees, since trees seeded alike would cut alike.
-        self.rng = check_random_state(random_state)
-        self.forest = [_RCTree() for _ in range(self.num_trees)]
+        self.rng: np.random.RandomState = check_random_state(random_state)
+        self.forest: list[_RCTree] = [_RCTree() for _ in range(self.num_trees)]
 
         # The (key, index) pairs of the instances in each tree, as a min-heap on the key.
-        self.samples = [[] for _ in range(self.num_trees)]
+        self.samples: list[list[tuple[float, int]]] = [[] for _ in range(self.num_trees)]
         # The last shingle_size - 1 fitted instances, which start the shingle of the next instance.
-        self.shingler = ShingleTransformer(shingle_size)
-        self.index = 0
+        self.shingler: ShingleTransformer = ShingleTransformer(shingle_size)
+        self.index: int = 0
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict:
         # NumPy's global random state is not pickled, so that the restored model keeps drawing from it.
         state = self.__dict__.copy()
         if self.rng is np.random.mtrand._rand:
             state["rng"] = None
         return state
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict) -> None:
         self.__dict__.update(state)
         self.rng = check_random_state(self.rng)
 
-    def _shingle(self, X):
+    def _shingle(self, X: np.ndarray) -> np.ndarray | None:
         # The shingle that ends with X, or None while fewer than shingle_size - 1 instances are fitted.
         if not self.shingler.full:
             return None
 
         return self.shingler.transform_partial(X)
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> RobustRandomCutForest:
         """Updates the model with the next instance.
 
         Args:
@@ -274,7 +317,7 @@ class RobustRandomCutForest(BaseModel):
         if point is None:
             return self
 
-        insert_trees = []
+        insert_trees: list[_RCTree] = []
         for tree, sample in zip(self.forest, self.samples, strict=True):
             key = (self.time_decay * self.index + self.rng.gumbel(), self.index)
             if len(sample) < self.tree_size:
@@ -290,7 +333,7 @@ class RobustRandomCutForest(BaseModel):
             self.index += 1
             return self
 
-        active_items = []
+        active_items: list[tuple[_RCTree, _Node, _Node | None, _Node]] = []
         for tree in insert_trees:
             if tree.root is None:
                 tree.root = tree.leaves[self.index] = _Node(x=point)
@@ -306,13 +349,14 @@ class RobustRandomCutForest(BaseModel):
             active_nodes = [item[1] for item in active_items]
             dims, cuts, stopped = _RCTree._cut_batch(point, active_nodes, self.rng)
 
-            next_active = []
+            next_active: list[tuple[_RCTree, _Node, _Node | None, _Node]] = []
             for i in range(len(active_items)):
                 tree, node, parent, leaf = active_items[i]
                 dim = int(dims[i])
                 cut = float(cuts[i])
 
                 if stopped[i]:
+                    assert node.bbox is not None
                     if cut <= node.bbox[0, dim]:
                         branch = _Node(
                             dim=dim, cut=cut, left=leaf, right=node, count=1 + node.count
@@ -335,6 +379,7 @@ class RobustRandomCutForest(BaseModel):
                     bbox = branch.bbox = tree._children_bbox(branch)
                     curr = parent
                     while curr is not None:
+                        assert curr.bbox is not None
                         if not ((bbox[0] < curr.bbox[0]).any() or (bbox[1] > curr.bbox[1]).any()):
                             break
                         np.minimum(curr.bbox[0], bbox[0], out=curr.bbox[0])
@@ -343,7 +388,9 @@ class RobustRandomCutForest(BaseModel):
 
                     tree.leaves[self.index] = leaf
                 else:
+                    assert node.dim is not None and node.cut is not None
                     next_node = node.left if point[node.dim] <= node.cut else node.right
+                    assert next_node is not None
                     next_active.append((tree, next_node, node, leaf))
 
             active_items = next_active
@@ -352,7 +399,7 @@ class RobustRandomCutForest(BaseModel):
 
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the shingle that ends with the next instance by the collusive displacement it would have in each tree if it were inserted there, averaged over the trees. The trees are not modified, so only the random cuts draw from the random number generator.
 
         Args:
@@ -366,7 +413,7 @@ class RobustRandomCutForest(BaseModel):
             return 0.0
 
         total_score = 0.0
-        active_nodes = []
+        active_nodes: list[_Node] = []
 
         for tree in self.forest:
             if tree.root is None:
@@ -379,13 +426,15 @@ class RobustRandomCutForest(BaseModel):
 
         while active_nodes:
             dims, cuts, stopped = _RCTree._cut_batch(point, active_nodes, self.rng)
-            next_active = []
+            next_active: list[_Node] = []
             for i in range(len(active_nodes)):
                 node = active_nodes[i]
                 if stopped[i]:
                     total_score += _RCTree._codisp_from(node, node.count)
                 else:
+                    assert node.dim is not None and node.cut is not None
                     next_node = node.left if point[node.dim] <= node.cut else node.right
+                    assert next_node is not None
                     next_active.append(next_node)
             active_nodes = next_active
 

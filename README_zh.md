@@ -260,7 +260,7 @@ PySAD 在带标签的数据上对其检测器进行基准测试。10 个多变�
 
 | 阶段 | PySAD 提供的内容 |
 |---|---|
-| 预处理 | `InstanceStandardScaler`、`InstanceUnitNormScaler`、`SeasonalTrendDecomposer`、`ModifiedSTLResidualTransformer` |
+| 预处理 | `InstanceStandardScaler`、`InstanceUnitNormScaler`、`SeasonalTrendDecomposer`、`ModifiedSTLResidualTransformer`、`OneShotSTL` |
 | 投影 | `StreamhashProjector`、`GaussianRandomProjector`、`SparseRandomProjector` |
 | 后处理 | 对分数计算累计和窗口化的平均值、最大值、中位数和 z 分数 |
 | 校准 | `ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator` |

@@ -9,7 +9,7 @@ Each detector scores each point before it learns from the point, as :doc:`benchm
 - The River detectors use their default parameters. Their points are dictionaries of the features, and the times do not include the conversion of the points to dictionaries.
 - The PyOD detectors run in :class:`~pysad.models.integrations.ReferenceWindowModel` with their default parameters. Each detector first trains on the warm-up points. Then, after each 100 points, it trains a new detector on the last 1,000 points.
 
-The table has one row for each detector, from the best mean rank to the worst. The columns are the same as in the summary of :doc:`benchmarks/multivariate`, and the best value of each column is in bold. The first column gives the version of each library that gave the results.
+The table has one row for each detector, from the best mean rank to the worst. The columns are the same as in the summary of :doc:`benchmarks/multivariate`, and the best value of each column is in bold. The first column gives the version of each library that gave the results. For PySAD, the version also gives the commit of the run, because the run uses the code of the repository.
 
 .. csv-table::
    :file: benchmark/comparison.csv

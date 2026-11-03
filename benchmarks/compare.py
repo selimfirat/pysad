@@ -136,6 +136,7 @@ def main():
         key=lambda i: (round(rank[i], 1), -mean_auroc[i], -mean_aupr[i], ms[i]),
     )
     versions = {lib: version(lib.lower()) for lib in DETECTORS}
+    versions["PySAD"] += f"+{benchmark.commit()}"  # the run uses the code of the checkout
     rows = [
         [
             f"{detectors[i][0]} {versions[detectors[i][0]]}",

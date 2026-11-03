@@ -236,6 +236,7 @@ These starting points come from the design of each method. They are not benchmar
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
+| `SmartSifter` | Finite mixtures with discounting learning (Yamanishi et al., KDD 2000) |
 
 **Univariate**
 

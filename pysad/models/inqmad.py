@@ -92,7 +92,7 @@ class Inqmad(BaseModel):
     Inqmad stands for incremental quantum measurement anomaly detection. Each instance is mapped to a state :math:`\psi` with adaptive Fourier features, and its density is the quantum measurement :math:`\hat{f}(x) = \psi^\top \rho \psi` of the paper's Eq. 3 (without its normalization constant). The anomaly score is the negated density, so higher scores mean more anomalous instances. The model follows the paper's Algorithms 1 and 2:
 
     1. The first ``initial_size`` instances form the initial sample. Once it is complete, the model min-max scales every instance with the sample's per-feature minimum and range, since the paper assumes inputs in :math:`[0, 1]^d` and the authors' code scales them this way. Then it fits the adaptive Fourier features to the Gaussian kernel (Section 3.1), :math:`\rho` becomes the mean of their :math:`\psi \psi^\top` (Eq. 2) and the threshold :math:`\tau` is the ``beta`` quantile of their densities under it.
-    2. Each later instance is scored against :math:`\rho_t` before it is fitted. When it is fitted and its density is at least :math:`\tau`, so that it is classified as normal, the update is :math:`\rho_{t+1} = (1 - \alpha) \rho_t + \alpha \psi \psi^\top` (Eq. 4). Instances below :math:`\tau` leave :math:`\rho` unchanged. Unlike the paper, a density counts as at least :math:`\tau` up to a relative tolerance of 1e-9, so that floating-point rounding does not make a repeat of an initial instance at the threshold an anomaly.
+    2. Each later instance is scored against :math:`\rho_t` before it is fitted. When it is fitted and its density is at least :math:`\tau`, so that it is classified as normal, the update is :math:`\rho_{t+1} = (1 - \alpha) \rho_t + \alpha \psi \psi^\top` (Eq. 4). Instances below :math:`\tau` leave :math:`\rho` unchanged. Unlike the paper, a density counts as at least :math:`\tau` up to a relative tolerance of 1e-12, so that floating-point rounding does not make a repeat of an initial instance at the threshold an anomaly.
 
     While the initial sample fills up, an instance is scored by the density that the paper's estimate approximates, the mean of :math:`k(x, x_i)^2` over the instances :math:`x_i` of the sample so far, where :math:`k` is the Gaussian kernel and the instances are scaled with the minimum and range of the sample so far. Before anything has been fitted, the density is 0 and the score is 0.0, the most anomalous possible score. The paper's Algorithm 1 applies the :math:`\alpha` update to the initial sample as well, but its Eq. 2 and the authors' code average it uniformly, which this implementation follows. The authors' code also scores :math:`\|\rho \psi\|^2 = \psi^\top \rho^2 \psi` instead of Eq. 3.
 
@@ -251,7 +251,7 @@ class Inqmad(BaseModel):
                     self._rho_scale = 1.0
                     self._rho_dirty = True
                 self.initial = None
-        elif density >= self.tau * (1.0 - 1e-9) and self.alpha > 0.0:
+        elif density >= self.tau * (1.0 - 1e-12) and self.alpha > 0.0:
             if self.alpha == 1.0:
                 self.rho = np.outer(psi, psi)
             elif self._states_buf is not None and self._num_states < len(self._states_buf):

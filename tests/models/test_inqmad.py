@@ -94,6 +94,20 @@ def test_anomalous_instance_leaves_rho_unchanged():
     np.testing.assert_array_equal(model.rho, rho)
 
 
+def test_instance_just_below_tau_leaves_rho_unchanged():
+    """Algorithm 2: the tolerance on tau only absorbs rounding. On a stream
+    that starts flat, tau is the density of the flat value, and a value next
+    to it has a lower density, so it is an anomaly and does not change rho.
+    """
+    model = _model().fit(np.zeros((20, 3)))
+    near_point = np.full(3, 1e-5)
+    rho = model.rho.copy()
+
+    model.fit_partial(near_point)
+
+    np.testing.assert_array_equal(model.rho, rho)
+
+
 def test_score_partial_is_negated_paper_density():
     """Paper Eq. 3: after the initial sample, the score is the negated
     density psi^T rho psi.

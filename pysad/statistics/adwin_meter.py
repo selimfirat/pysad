@@ -21,6 +21,11 @@ class ADWINMeter(UnivariateStatistic):
     ``var(W)`` is the variance of the window, and ``delta' = delta / ln(n)`` for
     the window length ``n``. ``get`` returns the mean of the window.
 
+    As in the paper, the bound assumes every value is in [0, 1]: its second term
+    does not scale with the data. Rescale values from a known range ``[a, b]`` to
+    ``(x - a) / (b - a)`` before passing them to ``update``. The meter does not
+    check the range.
+
     The window is kept as an exponential histogram: buckets whose sizes are powers
     of two, with at most ``max_buckets`` buckets of each size. When a size has
     ``max_buckets + 1`` buckets, its two oldest are merged into one bucket of the
@@ -35,7 +40,8 @@ class ADWINMeter(UnivariateStatistic):
 
     Args:
         delta (float): The confidence of the change test, in (0, 1). Smaller values
-            give fewer false alarms and slower detection (Default=0.002).
+            give fewer false alarms and slower detection (Default=0.002, the default
+            of MOA and river; the paper's experiments use 0.05, 0.1 and 0.3).
         max_buckets (int): The largest number of buckets of each size, ``M`` in the
             paper (Default=5).
 

@@ -30,9 +30,10 @@ def _reference_widths(values, delta):
 
 
 def _shifting_stream():
+    # Values in [0, 1], as the bound assumes, with means 0.15, 0.85 and 0.5.
     rng = np.random.RandomState(1)
     return np.concatenate(
-        [rng.normal(0.0, 1.0, 300), rng.normal(1.5, 1.0, 300), rng.normal(-1.0, 1.0, 300)]
+        [rng.rand(300) * 0.3, rng.rand(300) * 0.3 + 0.7, rng.rand(300) * 0.3 + 0.35]
     )
 
 
@@ -57,7 +58,7 @@ def test_stationary_stream_keeps_the_whole_window():
 
 def test_mean_shift_shrinks_the_window_to_the_new_mean():
     rng = np.random.RandomState(0)
-    values = np.concatenate([rng.rand(1000), rng.rand(1000) + 1.0])
+    values = np.concatenate([rng.rand(1000) * 0.5, rng.rand(1000) * 0.5 + 0.5])
     meter = ADWINMeter()
 
     drifts = _run_meter(meter, values)
@@ -66,7 +67,7 @@ def test_mean_shift_shrinks_the_window_to_the_new_mean():
     assert 1000 <= drifts[0] < 1050
     # Every pre-change item has been dropped.
     assert meter.width <= 1000
-    assert meter.get() == pytest.approx(1.5, abs=0.05)
+    assert meter.get() == pytest.approx(0.75, abs=0.05)
 
 
 def test_window_is_always_the_most_recent_items():

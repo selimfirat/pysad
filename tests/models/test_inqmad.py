@@ -94,6 +94,23 @@ def test_anomalous_instance_leaves_rho_unchanged():
     np.testing.assert_array_equal(model.rho, rho)
 
 
+@pytest.mark.parametrize("seed", range(10))
+def test_instance_just_below_tau_leaves_rho_unchanged(seed):
+    """On a stream that starts flat, every initial density is tau. A point
+    1e-5 away has a density about 1e-10 below tau, far above rounding, so
+    it is an anomaly and does not change rho.
+    """
+    X = np.full((20, 3), 0.5)
+    model = _model(random_state=seed).fit(X)
+    near_point = X[0] + 1e-5
+    rho = model.rho.copy()
+    assert -model.score_partial(near_point) < model.tau * (1 - 1e-11)
+
+    model.fit_partial(near_point)
+
+    np.testing.assert_array_equal(model.rho, rho)
+
+
 def test_score_partial_is_negated_paper_density():
     """Paper Eq. 3: after the initial sample, the score is the negated
     density psi^T rho psi.

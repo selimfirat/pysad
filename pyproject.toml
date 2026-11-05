@@ -198,6 +198,8 @@ module = [
     "pysad.models.exact_storm",
     "pysad.models.iforest_asd",
     "pysad.models.incremental_lof",
+    "pysad.models.inqmad",
+    "pysad.models.kitnet",
     "pysad.models.knn_cad",
     "pysad.models.loda",
     "pysad.models.loop",

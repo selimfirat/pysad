@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 from scipy.linalg.blas import ddot, dsymv, dsyr, dsyrk
 from sklearn.kernel_approximation import RBFSampler
@@ -7,7 +9,7 @@ from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _finite_float, _int_at_least
 
 
-def _unit_interval(value, name):
+def _unit_interval(value: float, name: str) -> float:
     """Returns `value` as a Python float, or raises if it is not a real number in [0, 1]."""
     value = _finite_float(value, name)
     if not 0.0 <= value <= 1.0:
@@ -16,14 +18,23 @@ def _unit_interval(value, name):
     return value
 
 
-def _states(X, weights, offset):
+def _states(X: np.ndarray, weights: np.ndarray, offset: np.ndarray) -> np.ndarray:
     """The unit-norm random Fourier feature states of the rows of ``X``."""
     vals = np.cos(np.atleast_2d(X) @ weights + offset)
     vals /= np.linalg.norm(vals, axis=1, keepdims=True)
     return vals
 
 
-def _adapt_features(X, weights, offset, gamma, learning_rate, rng, num_steps=50, batch_size=1024):
+def _adapt_features(
+    X: np.ndarray,
+    weights: np.ndarray,
+    offset: np.ndarray,
+    gamma: float,
+    learning_rate: float,
+    rng: np.random.RandomState,
+    num_steps: int = 50,
+    batch_size: int = 1024,
+) -> tuple[np.ndarray, np.ndarray]:
     r"""Fits the random Fourier features to the Gaussian kernel on random pairs of rows of ``X``.
 
     Minimizes the mean squared error between :math:`\exp(-\gamma \|x - y\|^2)` and the inner product of the states of :math:`x` and :math:`y` with Adam, from ``learning_rate`` decaying linearly to 1e-7 over ``num_steps`` steps of ``batch_size`` pairs, as the authors' code does.
@@ -113,15 +124,15 @@ class Inqmad(BaseModel):
 
     def __init__(
         self,
-        input_shape,
-        dim_x=2000,
-        sigma=1.0,
-        initial_size=256,
-        alpha=0.01,
-        beta=0.1,
-        learning_rate=1e-3,
-        random_state=None,
-    ):
+        input_shape: int,
+        dim_x: int = 2000,
+        sigma: float = 1.0,
+        initial_size: int = 256,
+        alpha: float = 0.01,
+        beta: float = 0.1,
+        learning_rate: float = 1e-3,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
         input_shape = _int_at_least(input_shape, "input_shape", 1)
         dim_x = _int_at_least(dim_x, "dim_x", 1)
         self.initial_size = _int_at_least(initial_size, "initial_size", 1)
@@ -140,20 +151,21 @@ class Inqmad(BaseModel):
         self.weights = sampler.random_weights_
         self.offset = sampler.random_offset_
         # The initial sample, until it is complete; then the scaling, rho and tau replace it.
-        self.initial = np.empty((0, input_shape))
-        self.feature_min = None
-        self.feature_range = None
-        self._states_buf = None
-        self._weights_buf = None
+        self.initial: np.ndarray | None = np.empty((0, input_shape))
+        self.feature_min: np.ndarray | None = None
+        self.feature_range: np.ndarray | None = None
+        self._states_buf: np.ndarray | None = None
+        self._weights_buf: np.ndarray | None = None
         self._num_states = 0
-        self._rho = None
+        self._rho: np.ndarray | None = None
         self._rho_scale = 1.0
         self._rho_dirty = False
-        self.tau = None
+        self.tau: float | None = None
 
-    def _materialize_rho(self):
+    def _materialize_rho(self) -> None:
         """Materializes the symmetric ``(dim_x, dim_x)`` density matrix ``_rho`` from any buffered states or pending triangular updates."""
         if self._states_buf is not None:
+            assert self._weights_buf is not None
             states = self._states_buf[: self._num_states]
             weights = self._weights_buf[: self._num_states] * self._rho_scale
             self._rho = (states.T * weights) @ states
@@ -171,12 +183,12 @@ class Inqmad(BaseModel):
             self._rho_dirty = False
 
     @property
-    def rho(self):
+    def rho(self) -> np.ndarray | None:
         self._materialize_rho()
         return self._rho
 
     @rho.setter
-    def rho(self, value):
+    def rho(self, value: np.ndarray | None) -> None:
         self._states_buf = None
         self._weights_buf = None
         self._num_states = 0
@@ -184,7 +196,7 @@ class Inqmad(BaseModel):
         self._rho_scale = 1.0
         self._rho_dirty = False
 
-    def _instance(self, X):
+    def _instance(self, X: np.ndarray) -> np.ndarray:
         """``X`` as a (1, num_features) row, or raises if it is not one instance of the fitted feature count."""
         num_features = self.weights.shape[0]
         X = np.asarray(X)
@@ -196,31 +208,37 @@ class Inqmad(BaseModel):
         return X.reshape(1, num_features)
 
     @staticmethod
-    def _min_range(X):
+    def _min_range(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """The per-feature minimum and range of the rows of ``X``, with a zero range replaced by 1 as in scikit-learn's MinMaxScaler."""
         feature_range = np.ptp(X, axis=0)
         return X.min(axis=0), np.where(feature_range == 0, 1.0, feature_range)
 
-    def _measure(self, X):
+    def _measure(self, X: np.ndarray) -> tuple[np.ndarray | None, float]:
         """The state of the row ``X`` (None before rho exists) and its density."""
         if self._rho is None and self._states_buf is None:
+            assert self.initial is not None
             if len(self.initial) == 0:
                 return None, 0.0
             _, feature_range = self._min_range(self.initial)
             sq_dists = (((self.initial - X) / feature_range) ** 2).sum(axis=1)
             return None, np.exp(-2 * self.gamma * sq_dists).mean()
 
+        assert self.feature_min is not None
+        assert self.feature_range is not None
         psi = _states((X - self.feature_min) / self.feature_range, self.weights, self.offset)[0]
         if self._states_buf is not None:
+            assert self._weights_buf is not None
             proj = self._states_buf[: self._num_states] @ psi
             return psi, self._rho_scale * float(
                 ddot(self._weights_buf[: self._num_states], proj * proj)
             )
 
+        assert self._rho is not None
         return psi, float(ddot(psi, dsymv(self._rho_scale, self._rho.T, psi)))
 
-    def _fit(self, X, psi, density):
+    def _fit(self, X: np.ndarray, psi: np.ndarray | None, density: float) -> None:
         if self._rho is None and self._states_buf is None:
+            assert self.initial is not None
             self.initial = np.vstack([self.initial, X])
             if len(self.initial) == self.initial_size:
                 self.feature_min, self.feature_range = self._min_range(self.initial)
@@ -251,10 +269,12 @@ class Inqmad(BaseModel):
                     self._rho_scale = 1.0
                     self._rho_dirty = True
                 self.initial = None
-        elif density >= self.tau * (1.0 - 1e-12) and self.alpha > 0.0:
+        elif self.tau is not None and density >= self.tau * (1.0 - 1e-12) and self.alpha > 0.0:
+            assert psi is not None
             if self.alpha == 1.0:
                 self.rho = np.outer(psi, psi)
             elif self._states_buf is not None and self._num_states < len(self._states_buf):
+                assert self._weights_buf is not None
                 self._rho_scale *= 1.0 - self.alpha
                 if self._rho_scale < 1e-100:
                     self._weights_buf[: self._num_states] *= self._rho_scale
@@ -265,6 +285,7 @@ class Inqmad(BaseModel):
             else:
                 if self._states_buf is not None:
                     self._materialize_rho()
+                assert self._rho is not None
                 self._rho_scale *= 1.0 - self.alpha
                 if self._rho_scale < 1e-100:
                     self._rho *= self._rho_scale
@@ -274,7 +295,7 @@ class Inqmad(BaseModel):
                 dsyr(self.alpha / self._rho_scale, psi, a=self._rho.T, overwrite_a=1)
                 self._rho_dirty = True
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> Inqmad:
         """Updates the model with the next instance: adds it to the initial sample, or, once the sample is complete, adds it to the density matrix if its density is at least the threshold.
 
         Args:
@@ -295,7 +316,7 @@ class Inqmad(BaseModel):
 
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -309,7 +330,7 @@ class Inqmad(BaseModel):
         """
         return -self._measure(self._instance(X))[1]
 
-    def fit_score_partial(self, X, y=None):
+    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         r"""Scores the next instance against the density matrix :math:`\rho_t` (or the initial sample) before it, and then fits it, as in the paper's Algorithm 2. The instance's own state therefore does not add to its density.
 
         Args:

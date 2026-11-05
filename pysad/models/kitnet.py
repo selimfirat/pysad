@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import numpy as np
+
 from pysad.core.base_model import BaseModel
 from pysad.models.kitnet_model import KitNET as kit
 
@@ -20,13 +24,13 @@ class KitNet(BaseModel):
 
     def __init__(
         self,
-        max_size_ae=10,
-        grace_feature_mapping=100,
-        grace_anomaly_detector=1000,
-        learning_rate=0.1,
-        hidden_ratio=0.75,
-        random_state=None,
-    ):
+        max_size_ae: int = 10,
+        grace_feature_mapping: int | None = 100,
+        grace_anomaly_detector: int = 1000,
+        learning_rate: float = 0.1,
+        hidden_ratio: float = 0.75,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
 
         self.grace_feature_mapping = grace_feature_mapping
         self.hidden_ratio = hidden_ratio
@@ -36,7 +40,7 @@ class KitNet(BaseModel):
         self.random_state = random_state
         self.to_init = True
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> KitNet:
         """Fits the model to the next instance.
 
         The first ``grace_feature_mapping`` instances learn the feature mapping;
@@ -71,7 +75,7 @@ class KitNet(BaseModel):
 
         return self
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

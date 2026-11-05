@@ -1,19 +1,19 @@
-Library,Detector,Mean rank,Mean AUROC,Mean AUPR,Time per point (ms)
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.LocalOutlierProbability`,5.0,0.842,0.505,0.38
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.RSHash`,5.2,0.817,0.512,0.25
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.IForestASD`,6.1,0.809,0.483,2.87
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.LODA`,7.6,0.790,0.466,0.07
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.HalfSpaceTrees`,7.7,0.796,0.448,0.08
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.MCOD`,7.8,0.798,0.322,0.25
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.ExactStorm`,7.8,0.798,0.322,0.30
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.Inqmad`,7.9,0.775,0.401,2.65
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.RobustRandomCutForest`,8.5,0.787,0.425,6.92
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.xStream`,10.4,0.764,0.394,1.20
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.SmartSifter`,10.5,0.764,0.339,0.22
-River 0.26.1,``river.anomaly.HalfSpaceTrees``,10.6,0.702,0.331,0.04
-River 0.26.1,``river.anomaly.LODA``,10.7,0.754,0.347,0.23
-River 0.26.1,``river.anomaly.LocalOutlierFactor``,11.6,0.675,0.300,10.07
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.IncrementalLOF`,11.6,0.675,0.299,0.24
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.OnlineIsolationForest`,13.0,0.704,0.338,1.20
-PySAD 0.7.0+c23fccd,:class:`~pysad.models.KitNet`,13.1,0.706,0.259,0.50
-River 0.26.1,``river.anomaly.OneClassSVM``,15.8,0.469,0.136,0.00
+Detector,Mean rank,Mean AUROC,Mean AUPR,Time per point (ms),Version
+:class:`~pysad.models.LocalOutlierProbability`,5.0,0.842,0.505,0.38,0.7.0+c23fccd
+:class:`~pysad.models.RSHash`,5.2,0.817,0.512,0.25,0.7.0+c23fccd
+:class:`~pysad.models.IForestASD`,6.1,0.809,0.483,2.87,0.7.0+c23fccd
+:class:`~pysad.models.LODA`,7.6,0.790,0.466,0.07,0.7.0+c23fccd
+:class:`~pysad.models.HalfSpaceTrees`,7.7,0.796,0.448,0.08,0.7.0+c23fccd
+:class:`~pysad.models.MCOD`,7.8,0.798,0.322,0.25,0.7.0+c23fccd
+:class:`~pysad.models.ExactStorm`,7.8,0.798,0.322,0.30,0.7.0+c23fccd
+:class:`~pysad.models.Inqmad`,7.9,0.775,0.401,2.65,0.7.0+c23fccd
+:class:`~pysad.models.RobustRandomCutForest`,8.5,0.787,0.425,6.92,0.7.0+c23fccd
+:class:`~pysad.models.xStream`,10.4,0.764,0.394,1.20,0.7.0+c23fccd
+:class:`~pysad.models.SmartSifter`,10.5,0.764,0.339,0.22,0.7.0+c23fccd
+``river.anomaly.HalfSpaceTrees``,10.6,0.702,0.331,0.04,0.26.1
+``river.anomaly.LODA``,10.7,0.754,0.347,0.23,0.26.1
+``river.anomaly.LocalOutlierFactor``,11.6,0.675,0.300,10.07,0.26.1
+:class:`~pysad.models.IncrementalLOF`,11.6,0.675,0.299,0.24,0.7.0+c23fccd
+:class:`~pysad.models.OnlineIsolationForest`,13.0,0.704,0.338,1.20,0.7.0+c23fccd
+:class:`~pysad.models.KitNet`,13.1,0.706,0.259,0.50,0.7.0+c23fccd
+``river.anomaly.OneClassSVM``,15.8,0.469,0.136,0.00,0.26.1

@@ -1,5 +1,5 @@
-PySAD and River
-===============
+PySAD vs River
+==============
 
 `River <https://riverml.xyz/>`_ does machine learning on streams: classification, regression, clustering, forecasting, drift detection and anomaly detection. Like PySAD, it learns from one point at a time. This page compares PySAD with River 0.26.1.
 
@@ -56,7 +56,7 @@ The table compares the multivariate detectors of PySAD with the streaming detect
 
 Each detector scores each point before it learns from the point, as :doc:`../benchmarks/methodology` describes. The metrics leave out the scores of the warm-up points, the first 256 points of a stream. The PySAD detectors use the settings of the benchmark. The River detectors use their default parameters. Their points are dictionaries of the features, and the times do not include the conversion of the points to dictionaries.
 
-The table has one row for each detector, from the best mean rank to the worst. The ranks compare only the detectors in this table. The columns are the same as in the summary of :doc:`../benchmarks/multivariate`, and the best value of each column is in bold. The first column gives the version of each library that gave the results. For PySAD, the version also gives the commit of the run, because the run uses the code of the repository.
+The table has one row for each detector, from the best mean rank to the worst. The ranks compare only the detectors in this table. The columns are the same as in the summary of :doc:`../benchmarks/multivariate`, and the best value of each column is in bold. The names of the PySAD detectors link to their documentation, and the names of the other detectors start with their module. The last column gives the version of the library that gave the results. For PySAD, the version also gives the commit of the run, because the run uses the code of the repository.
 
 .. csv-table::
    :file: ../benchmark/comparison_river.csv

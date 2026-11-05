@@ -153,16 +153,16 @@ def write_table(results, versions, library):
     )
     rows = [
         [
-            f"{detectors[i][0]} {versions[detectors[i][0]]}",
             NAMES[detectors[i][0]].format(detectors[i][1]),
             f"{rank[i]:.1f}",
             f"{mean_auroc[i]:.3f}",
             f"{mean_aupr[i]:.3f}",
             f"{ms[i]:.2f}",
+            versions[detectors[i][0]],
         ]
         for i in order
     ]
-    header = ["Library", "Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)"]
+    header = ["Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)", "Version"]
     benchmark.write_csv(f"comparison_{library.lower()}.csv", header, rows)
     for row in rows:
         print(*row, sep="  ")

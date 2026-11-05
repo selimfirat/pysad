@@ -1,5 +1,5 @@
-PySAD and PyOD
-==============
+PySAD vs PyOD
+=============
 
 `PyOD <https://github.com/yzhao062/pyod>`_ does anomaly detection on batch data. A PyOD detector trains on a whole dataset, then scores new points with what it learned. It does not learn from one point at a time. This page compares PySAD with PyOD 3.6.7.
 
@@ -55,7 +55,7 @@ The table compares the multivariate detectors of PySAD with batch detectors of P
 
 Each detector scores each point before it learns from the point, as :doc:`../benchmarks/methodology` describes. The metrics leave out the scores of the warm-up points, the first 256 points of a stream. The PySAD detectors use the settings of the benchmark. The PyOD detectors run in :class:`~pysad.models.integrations.ReferenceWindowModel` with their default parameters. Each detector first trains on the warm-up points. Then, after each 100 points, it trains a new detector on the last 1,000 points.
 
-The table has one row for each detector, from the best mean rank to the worst. The ranks compare only the detectors in this table. The columns are the same as in the summary of :doc:`../benchmarks/multivariate`, and the best value of each column is in bold. The first column gives the version of each library that gave the results. For PySAD, the version also gives the commit of the run, because the run uses the code of the repository.
+The table has one row for each detector, from the best mean rank to the worst. The ranks compare only the detectors in this table. The columns are the same as in the summary of :doc:`../benchmarks/multivariate`, and the best value of each column is in bold. The names of the PySAD detectors link to their documentation, and the names of the other detectors start with their module. The last column gives the version of the library that gave the results. For PySAD, the version also gives the commit of the run, because the run uses the code of the repository.
 
 .. csv-table::
    :file: ../benchmark/comparison_pyod.csv

@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+from typing import Any, TypeVar
+
 import numpy as np
 
 from pysad.utils import _iterate
 
 from .pyod_model import PYODModel
+
+# typing.Self needs Python 3.11; this TypeVar lets fit_partial return the subclass type.
+_ReferenceWindowModelT = TypeVar("_ReferenceWindowModelT", bound="ReferenceWindowModel")
 
 
 class ReferenceWindowModel(PYODModel):
@@ -23,23 +30,28 @@ class ReferenceWindowModel(PYODModel):
 
     def __init__(
         self,
-        model_cls,
-        window_size,
-        sliding_size,
-        initial_window_X=None,
-        initial_window_y=None,
-        **kwargs,
-    ):
+        model_cls: type[Any],
+        window_size: int,
+        sliding_size: int,
+        initial_window_X: np.ndarray | None = None,
+        initial_window_y: np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(model_cls, **kwargs)
 
         self.window_size = window_size
         self.sliding_size = sliding_size
 
-        self.cur_window_X = []
-        self.cur_window_y = []
+        self.cur_window_X: list[np.ndarray] = []
+        self.cur_window_y: list[int] = []
 
-        self.reference_window_X = None if initial_window_X is None else np.array(initial_window_X)
-        self.reference_window_y = None if initial_window_y is None else np.array(initial_window_y)
+        # A list of instances until the first window is full, an array after that.
+        self.reference_window_X: np.ndarray | list[np.ndarray] | None = (
+            None if initial_window_X is None else np.array(initial_window_X)
+        )
+        self.reference_window_y: np.ndarray | list[int] | None = (
+            None if initial_window_y is None else np.array(initial_window_y)
+        )
 
         if self.reference_window_X is not None:
             self._fit_model()
@@ -47,7 +59,9 @@ class ReferenceWindowModel(PYODModel):
         else:
             self.initial_ref_window = False
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(
+        self: _ReferenceWindowModelT, X: np.ndarray, y: int | None = None
+    ) -> _ReferenceWindowModelT:
         """Updates the model with the next instance.
 
         Args:
@@ -95,7 +109,7 @@ class ReferenceWindowModel(PYODModel):
 
         return self
 
-    def _fit_model(self):
+    def _fit_model(self) -> None:
         self.reset_model()
 
         if self.reference_window_y is None:
@@ -103,7 +117,7 @@ class ReferenceWindowModel(PYODModel):
         else:
             self.model.fit(self.reference_window_X, self.reference_window_y)
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -119,7 +133,7 @@ class ReferenceWindowModel(PYODModel):
 
         return score
 
-    def score(self, X):
+    def score(self, X: np.ndarray) -> np.ndarray:
         """Scores all instances in order.
 
         Args:
@@ -136,7 +150,7 @@ class ReferenceWindowModel(PYODModel):
 
         return np.asarray(self.model.decision_function(X), dtype=np.float64).reshape(-1)
 
-    def fit_score(self, X, y=None):
+    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
         """Applies ``fit_score_partial`` to each instance in order and returns the scores.
 
         Args:

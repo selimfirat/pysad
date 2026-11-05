@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 
 from .pyod_model import PYODModel
@@ -15,14 +19,20 @@ class OneFitModel(PYODModel):
         **kwargs (Keyword arguments): Keyword arguments that are passed to the ``model_cls``.
     """
 
-    def __init__(self, model_cls, initial_X, initial_y=None, **kwargs):
+    def __init__(
+        self,
+        model_cls: type[Any],
+        initial_X: np.ndarray,
+        initial_y: np.ndarray | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(model_cls, **kwargs)
 
         self.initial_y = initial_y
         self.initial_X = initial_X
         self._fit_model()
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> OneFitModel:
         """Does nothing, because the model is fitted only once on the initial instances.
 
         Args:
@@ -34,7 +44,7 @@ class OneFitModel(PYODModel):
         """
         return self
 
-    def _fit_model(self):
+    def _fit_model(self) -> None:
 
         self.reset_model()
 
@@ -43,7 +53,7 @@ class OneFitModel(PYODModel):
         else:
             self.model.fit(self.initial_X, self.initial_y)
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -56,7 +66,7 @@ class OneFitModel(PYODModel):
 
         return score
 
-    def score(self, X):
+    def score(self, X: np.ndarray) -> np.ndarray:
         """Scores all instances in order.
 
         Args:
@@ -70,7 +80,7 @@ class OneFitModel(PYODModel):
 
         return np.asarray(self.model.decision_function(X), dtype=np.float64).reshape(-1)
 
-    def fit_score(self, X, y=None):
+    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
         """Scores all instances in order without updating the model.
 
         Args:

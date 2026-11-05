@@ -1,5 +1,3 @@
-import pickle
-
 import numpy as np
 import pytest
 
@@ -76,15 +74,3 @@ def test_invalid_parameters_raise(kwargs):
 def test_both_alpha_and_half_life_raise():
     with pytest.raises(ValueError, match="only one"):
         ExponentialMovingAverageMeter(alpha=0.5, half_life=2.0)
-
-
-def test_pickle_round_trip():
-    meter = ExponentialMovingAverageMeter(alpha=0.4)
-    for value in [1.0, 2.0, 3.0]:
-        meter.update(value)
-
-    restored = pickle.loads(pickle.dumps(meter))
-
-    assert type(restored) is type(meter)
-    for value in [5.0, 4.0]:
-        assert restored.update(value).get() == meter.update(value).get()

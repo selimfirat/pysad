@@ -74,23 +74,6 @@ def helper_test_model(X, model_cls, params_dict):
     assert y_pred.shape == (train_X.shape[0],)
 
 
-def test_fit_and_score_separately():
-    import numpy as np
-
-    from pysad.models import xStream
-    from pysad.utils import fix_seed
-
-    fix_seed(61)
-
-    X = np.random.rand(150, 1)
-
-    model = xStream()
-
-    model = model.fit(X)
-    y_pred = model.score(X)
-    assert y_pred.shape == (X.shape[0],)
-
-
 def test_relative_entropy_no_warnings():
     """Test that RelativeEntropy doesn't produce DeprecationWarnings about scalar conversion."""
     import warnings

@@ -497,3 +497,9 @@ table.benchmark-table th:not(:first-child) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* Feature tables: one mark or short text for each library, centered. */
+table.feature-table td:not(:first-child),
+table.feature-table th:not(:first-child) {
+  text-align: center;
+}

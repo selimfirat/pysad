@@ -10,8 +10,10 @@ Install the libraries and run it from the repository root:
     pip install -e . --group compare
     python benchmarks/compare.py
 
-The results go to docs/benchmark/comparison.csv, which docs/comparison.rst shows. With the same
-library versions, a rerun gives the same AUROC and AUPR. Only the times per point change.
+The results go to docs/benchmark/comparison_river.csv and docs/benchmark/comparison_pyod.csv, which
+docs/comparisons/river.rst and docs/comparisons/pyod.rst show. Each table ranks the PySAD detectors
+with the detectors of one library. With the same library versions, a rerun gives the same AUROC
+and AUPR. Only the times per point change.
 """
 
 import argparse
@@ -57,6 +59,7 @@ DETECTORS = {
     "PySAD": benchmark.DETECTORS,
     "River": {
         "HalfSpaceTrees": lambda X, seed: anomaly.HalfSpaceTrees(seed=seed),
+        "LODA": lambda X, seed: anomaly.LODA(seed=seed),
         "LocalOutlierFactor": lambda X, seed: anomaly.LocalOutlierFactor(),
         "OneClassSVM": lambda X, seed: anomaly.OneClassSVM(),
     },
@@ -117,10 +120,23 @@ def main():
 
     for dataset in benchmark.DATASETS:  # download once, before the workers start
         benchmark.Data().get_data(f"{dataset}.mat")
-    detectors = [(lib, d) for lib, models in DETECTORS.items() for d in models]
-    jobs = [(lib, d, ds) for lib, d in detectors for ds in benchmark.DATASETS]
+    jobs = [
+        (lib, d, ds)
+        for lib, models in DETECTORS.items()
+        for d in models
+        for ds in benchmark.DATASETS
+    ]
     with ProcessPoolExecutor(args.jobs) as pool:
         results = {row["key"]: row for row in pool.map(run, jobs)}
+    versions = {lib: version(lib.lower()) for lib in DETECTORS}
+    versions["PySAD"] += f"+{benchmark.commit()}"  # the run uses the code of the checkout
+    for library in ("River", "PyOD"):
+        write_table(results, versions, library)
+
+
+def write_table(results, versions, library):
+    """Rank the PySAD detectors with the detectors of one other library."""
+    detectors = [(lib, d) for lib in ("PySAD", library) for d in DETECTORS[lib]]
 
     def table(metric):  # shape (num_datasets, num_detectors)
         return np.array(
@@ -135,21 +151,19 @@ def main():
         range(len(detectors)),
         key=lambda i: (round(rank[i], 1), -mean_auroc[i], -mean_aupr[i], ms[i]),
     )
-    versions = {lib: version(lib.lower()) for lib in DETECTORS}
-    versions["PySAD"] += f"+{benchmark.commit()}"  # the run uses the code of the checkout
     rows = [
         [
-            f"{detectors[i][0]} {versions[detectors[i][0]]}",
             NAMES[detectors[i][0]].format(detectors[i][1]),
             f"{rank[i]:.1f}",
             f"{mean_auroc[i]:.3f}",
             f"{mean_aupr[i]:.3f}",
             f"{ms[i]:.2f}",
+            versions[detectors[i][0]],
         ]
         for i in order
     ]
-    header = ["Library", "Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)"]
-    benchmark.write_csv("comparison.csv", header, rows)
+    header = ["Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)", "Version"]
+    benchmark.write_csv(f"comparison_{library.lower()}.csv", header, rows)
     for row in rows:
         print(*row, sep="  ")
 

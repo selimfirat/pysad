@@ -176,6 +176,40 @@ def test_gaussian_tail_calibrator_zero_variance():
         assert calibrator.transform_partial(0.0) == 0.5
 
 
+def test_gaussian_tail_calibrator_transform_partial_is_pure_and_monotonic():
+    import copy
+
+    import numpy as np
+    import pytest
+
+    from pysad.transform.probability_calibration import GaussianTailProbabilityCalibrator
+
+    def fitted(scores):
+        calibrator = GaussianTailProbabilityCalibrator(window_size=10, short_window_size=3)
+        for score in scores:
+            calibrator.fit_partial(score)
+        return calibrator
+
+    # 1. Two calls with the same score give the same output, and do not change the outputs that
+    # follow (#483).
+    calibrator = fitted([0.0, 1.0])
+    assert calibrator.transform_partial(1.0) == pytest.approx(0.5)
+    assert calibrator.transform_partial(1.0) == pytest.approx(0.5)
+    assert calibrator.transform_partial(0.0) == fitted([0.0, 1.0]).transform_partial(0.0)
+
+    # 2. fit then transform agrees with fit_partial then transform_partial (#483).
+    batch = GaussianTailProbabilityCalibrator(window_size=10, short_window_size=3).fit(
+        np.array([0.0, 1.0])
+    )
+    assert batch.transform(np.array([1.0]))[0] == fitted([0.0, 1.0]).transform_partial(1.0)
+
+    # 3. In the same state, a higher score never gets a lower output (#483).
+    calibrator = fitted([1.0, -1.0, -1.0])
+    outputs = [copy.deepcopy(calibrator).transform_partial(score) for score in [-1.0, 0.0, 1.0]]
+    assert outputs == pytest.approx([0.5, 0.6381631950841185, 0.7602499389065233])
+    assert outputs == sorted(outputs)
+
+
 def test_spot_grimshaw_matches_scipy_fit():
     import numpy as np
     from scipy.stats import genpareto

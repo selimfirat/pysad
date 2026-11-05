@@ -292,7 +292,6 @@ class Inqmad(BaseModel):
                     self._rho_scale = 1.0
                 # self._rho.T is Fortran-contiguous, so dsyr updates its upper triangle (the lower
                 # triangle of self._rho) in place, which dsymv(self._rho_scale, self._rho.T, psi) reads.
-                assert self._rho is not None
                 dsyr(self.alpha / self._rho_scale, psi, a=self._rho.T, overwrite_a=1)
                 self._rho_dirty = True
 

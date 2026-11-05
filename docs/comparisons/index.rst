@@ -1,5 +1,5 @@
-Comparisons
-===========
+Overview
+========
 
 PySAD does anomaly detection on streams. Two other Python libraries cover part of this task. `River <https://riverml.xyz/>`_ does machine learning on streams, and anomaly detection is one of its tasks. `PyOD <https://github.com/yzhao062/pyod>`_ does anomaly detection on batch data.
 
@@ -80,10 +80,4 @@ The rows mean:
 
 "Batch only" means that the library has the function, but it works on a whole dataset and not one point at a time.
 
-Each library page compares the functions in more detail, and gives the results of the detectors on the benchmark datasets:
-
-.. toctree::
-   :maxdepth: 1
-
-   river
-   pyod
+The pages :doc:`river` and :doc:`pyod` compare the functions in more detail, and give the results of the detectors on the benchmark datasets.

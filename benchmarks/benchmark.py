@@ -1112,7 +1112,7 @@ def main():
             print(f"{d}: NAB scores {before} -> {[nab[d][f] for f in NAB_FIELDS[2:]]}")
         if changed or changed_nab:
             detectors = sorted(
-                {k[1].removesuffix(SHINGLED) for k, _, _ in changed} | set(changed_nab)
+                {d.removesuffix(SHINGLED) for d in [*(k[1] for k, _, _ in changed), *changed_nab]}
             )
             print(
                 f"{len(changed) + len(changed_nab)} results changed. Run: python benchmarks/benchmark.py "

@@ -70,6 +70,27 @@ def test_sand_learns_a_new_normal_behavior():
     assert np.median(scores[7000:]) < 0.1 * np.median(scores[3000:4000])
 
 
+def test_sand_merges_the_clusters_of_a_batch_independently_of_their_order(monkeypatch):
+    import pysad.models.sand as sand
+    from pysad.models import SAND
+
+    x = np.sin(2 * np.pi * np.arange(1200) / 25) + np.random.default_rng(0).normal(0.0, 0.3, 1200)
+    params = {"subsequence_length": LENGTH, "num_clusters": 4, "batch_size": 400, "random_state": 0}
+    kshape = sand._kshape
+
+    def reversed_kshape(X, k, rng):
+        labels, centroids = kshape(X, k, rng)
+        return k - 1 - labels, centroids[::-1]
+
+    # In this stream, several clusters of the second batch merge into the same cluster. Algorithm 2
+    # tests each of them against the clusters from before the batch, so their order does not matter.
+    scores = SAND(**params).fit_score(x[:, None])
+    monkeypatch.setattr(sand, "_kshape", reversed_kshape)
+    reversed_scores = SAND(**params).fit_score(x[:, None])
+
+    np.testing.assert_allclose(reversed_scores, scores, atol=1e-10)
+
+
 @pytest.mark.parametrize(
     ("params", "message"),
     [

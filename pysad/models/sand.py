@@ -253,6 +253,8 @@ class SAND(BaseModel):
         matrices = list(self.matrices_)
         distances, sizes, last = self.distances_.tolist(), self.sizes_.tolist(), self.last_.tolist()
 
+        # Algorithm 2 tests every new cluster against Θ and τ from before the batch.
+        merges: dict[int, list[tuple[np.ndarray, float, int]]] = {}
         for j in range(self.num_clusters):
             indices = np.flatnonzero(labels == j)
             if not len(indices):
@@ -261,30 +263,33 @@ class SAND(BaseModel):
             distance = _sbd(members, centroid)[0].mean()
             latest = start + indices[-1]
 
-            match = -1
             if num_old:
-                to_old = _sbd(np.array(centroids[:num_old]), centroid)[0]
-                close = to_old < np.array(distances[:num_old])
+                to_old = _sbd(self.centroids_, centroid)[0]
+                close = to_old < self.distances_
                 if close.any():
                     match = int(np.flatnonzero(close)[to_old[close].argmin(axis=0)])
+                    merges.setdefault(match, []).append((members, distance, latest))
+                    continue
 
-            if match >= 0:
-                aligned = _align(members, _sbd(members, centroids[match])[1])
-                matrices[match] = matrices[match] + aligned.T @ aligned
-                centroids[match] = _shape(matrices[match], aligned)
-                total = sizes[match] + len(indices)
-                distances[match] = (
-                    sizes[match] * distances[match] + len(indices) * distance
-                ) / total
-                sizes[match] = total
-                last[match] = max(last[match], latest)
-            else:
-                aligned = _align(members, _sbd(members, centroid)[1])
-                centroids.append(centroid)
-                matrices.append(aligned.T @ aligned)
-                distances.append(distance)
-                sizes.append(float(len(indices)))
-                last.append(float(latest))
+            aligned = _align(members, _sbd(members, centroid)[1])
+            centroids.append(centroid)
+            matrices.append(aligned.T @ aligned)
+            distances.append(distance)
+            sizes.append(float(len(indices)))
+            last.append(float(latest))
+
+        # Algorithm 3 updates each matched cluster once, with all the new clusters merged into it.
+        for match, merged in merges.items():
+            members = np.concatenate([m for m, _, _ in merged])
+            aligned = _align(members, _sbd(members, centroids[match])[1])
+            matrices[match] = matrices[match] + aligned.T @ aligned
+            centroids[match] = _shape(matrices[match], aligned)
+            total = sizes[match] + len(members)
+            distances[match] = (
+                sizes[match] * distances[match] + sum(len(m) * d for m, d, _ in merged)
+            ) / total
+            sizes[match] = total
+            last[match] = max(last[match], *(t for _, _, t in merged))
 
         self.centroids_ = np.array(centroids)
         self.matrices_ = np.array(matrices)

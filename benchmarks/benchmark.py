@@ -88,6 +88,7 @@ def _ranges(X):
 
 # Each detector gets its defaults, plus the arguments that it requires. X is scaled to [0, 1].
 DETECTORS = {
+    "ADeMS": lambda X, seed: models.ADeMS(),
     "ExactStorm": lambda X, seed: models.ExactStorm(),
     "HalfSpaceTrees": lambda X, seed: models.HalfSpaceTrees(**_ranges(X), random_state=seed),
     "IForestASD": lambda X, seed: models.IForestASD(random_state=seed),
@@ -100,6 +101,7 @@ DETECTORS = {
     "NETS": lambda X, seed: models.NETS(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
+    "RSForest": lambda X, seed: models.RSForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
     "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
     "TEDA": lambda X, seed: models.TEDA(),

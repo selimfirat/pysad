@@ -21,6 +21,7 @@ def _model_specs():
         MCOD,
         NETS,
         TEDA,
+        ADeMS,
         ExactStorm,
         HalfSpaceTrees,
         IForestASD,
@@ -34,6 +35,7 @@ def _model_specs():
         RandomModel,
         RelativeEntropy,
         RobustRandomCutForest,
+        RSForest,
         RSHash,
         SeasonalESD,
         SeasonalHybridESD,
@@ -50,6 +52,7 @@ def _model_specs():
 
     # (name, factory, number of features)
     specs = [
+        ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
             "HalfSpaceTrees",
@@ -96,6 +99,7 @@ def _model_specs():
             lambda: models.Inqmad(input_shape=NUM_FEATURES, dim_x=32),
             NUM_FEATURES,
         ),
+        ("RSForest", lambda: RSForest(window_size=20, num_trees=5, max_depth=8), NUM_FEATURES),
         ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
         ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=0.17), 1),
         (

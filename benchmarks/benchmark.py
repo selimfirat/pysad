@@ -62,6 +62,7 @@ TOLERANCE = 0.005
 # --check accepts this difference in a false alert rate, because one alert more or less on a small
 # dataset moves the rate by about 0.01.
 ALERT_TOLERANCE = 0.02
+SIGNIFICANT_DIGITS = 9  # the scores keep this many significant digits, see significant()
 
 
 # The multivariate detectors also run on these streams in their time order, to show how they follow
@@ -216,6 +217,16 @@ FIELDS = [
     "commit",
 ]
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
+
+
+def significant(scores):
+    """The scores rounded to SIGNIFICANT_DIGITS significant digits.
+
+    Platforms round matrix products and functions such as ``log`` differently in the last bits. Many
+    series repeat a few values, so a detector gives many equal scores, and such a difference changes
+    the order of these ties and so the metrics. The rounding keeps the ties equal.
+    """
+    return np.array([float(f"{s:.{SIGNIFICANT_DIGITS}g}") for s in scores])
 
 
 def warmup(n):
@@ -378,6 +389,7 @@ def run_univariate(series, detector, points=None):
     with np.errstate(all="ignore"):
         scores = np.array([float(model.fit_score_partial(x)) for x in X])
     seconds = time.perf_counter() - start
+    scores = significant(scores)
     valid = np.isfinite(scores).all()
     if detector in NAB_UNIT_SCORES:
         nab = (scores, y)
@@ -408,6 +420,7 @@ def run_ucr(series, detector):
     with np.errstate(all="ignore"):
         scores = np.array([float(model.fit_score_partial(x)) for x in X])
     seconds = time.perf_counter() - start
+    scores = significant(scores)
     valid = np.isfinite(scores).all()
     train = int(series.split("_")[-3])  # the training part has no anomalies, so it does not count
     anomaly = np.flatnonzero(y)
@@ -445,6 +458,7 @@ def _run(dataset, detector, seed, points):
     with np.errstate(all="ignore"):  # a score that is not finite makes the metrics NaN
         scores = np.array([float(model.fit_score_partial(x)) for x in X])
     seconds = time.perf_counter() - start
+    scores = significant(scores)
     valid = np.isfinite(scores).all()
     row = {"dataset": dataset, "detector": detector, "seed": seed}
     for name, calibrator in CALIBRATORS.items() if dataset not in DRIFT else []:

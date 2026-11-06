@@ -251,3 +251,17 @@ It prints:
 .. code-block:: text
 
    mean: -0.048, standard deviation: 0.977
+
+Detect a change in the mean
+---------------------------
+
+This script detects a change in the mean of a stream with :class:`~pysad.statistics.PageHinkleyMeter`. The mean moves from 0 to 1 at index 500. The meter keeps a two-sided cumulative sum of the deviations from the running mean, and the script raises an alarm when the sum is above a threshold.
+
+.. literalinclude:: ../examples/example_page_hinkley.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   change detected at index 516

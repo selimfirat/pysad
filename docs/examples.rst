@@ -149,6 +149,21 @@ It prints:
    32 alerts, 27 of them true anomalies
    alarm threshold on the raw scores: 3.013
 
+Raise alerts with the anomaly likelihood
+----------------------------------------
+
+This script converts raw scores between 0 and 1 into the anomaly likelihood of HTM. The likelihood compares the average of the recent scores with the distribution of these averages over a longer window. So a sustained increase of the scores raises an alert, and most single noisy scores do not. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_anomaly_likelihood.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   22 raw scores are at least 0.99
+   likelihood alerts at [549, 2620, 4001], the anomaly starts at 4000
+
 Postprocess scores
 ------------------
 

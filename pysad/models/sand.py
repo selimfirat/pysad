@@ -117,7 +117,7 @@ class SAND(BaseModel):
 
     SAND (Streaming Subsequence Anomaly Detection) splits the stream into batches of ``batch_size`` values. It clusters the overlapping subsequences of ``centroid_length`` values in each batch with k-Shape :cite:`paparrizos2015kshape`. The centroids of the clusters form the set Θ. A new cluster merges into a cluster of Θ if their shape-based distance (SBD) is below the mean SBD of that cluster to its centroid. Otherwise it joins Θ. A merge adds the sequences of the new cluster to the matrix ``S`` of k-Shape and takes the centroid from ``S`` (Eq. 3 of the paper), so the model keeps no raw subsequences. Each cluster has a weight ``|C|^2 / sum_j SBD(C, C_j)``, which favors large clusters far from the others. The weight decays while the cluster gets no new subsequences and follows the rate ``alpha`` (Eq. 4).
 
-    The distance ``d`` of a subsequence of ``subsequence_length`` values is the weighted sum, over the clusters, of its smallest z-normalized Euclidean distance to a subsequence of the centroid (Eq. 5). The score of a value is ``(d - mu) / sigma`` for the subsequence that ends with the value, where ``mu`` and ``sigma`` follow the mean and the standard deviation of ``d`` over the batches at the rate ``alpha`` (Eq. 6). Higher scores are more anomalous. Until the first batch completes, the score is ``0.0``. The model keeps the last ``batch_size + subsequence_length - 1`` values, and one ``centroid_length`` by ``centroid_length`` matrix per cluster. As in the paper, no cluster leaves Θ, so Θ grows by at most ``num_clusters`` clusters per batch.
+    The distance ``d`` of a subsequence of ``subsequence_length`` values is the weighted sum, over the clusters, of its smallest z-normalized Euclidean distance to a subsequence of the centroid (Eq. 5). The score of a value is ``(d - mu) / sigma`` for the subsequence that ends with the value, where ``mu`` and ``sigma`` follow the mean and the standard deviation of ``d`` over the batches at the rate ``alpha`` (Eq. 6). Higher scores are more anomalous. Until the first batch completes, the score is ``0.0``. The model keeps the last ``batch_size + subsequence_length - 1`` values, and one ``centroid_length`` by ``centroid_length`` matrix per cluster. By default, as in the paper, no cluster leaves Θ, so Θ grows by up to ``num_clusters`` clusters per batch, and the memory and the cost of a score grow with it. Section 3.3.3 of the paper suggests that one can remove the clusters whose weight is about zero. If ``min_weight`` is set, the model removes the clusters whose weight falls below it after each batch, but always keeps the heaviest cluster, and normalizes the remaining weights to sum to 1. Then Θ holds at most ``1 / min_weight`` clusters between batches, so the memory and the cost of a score stay bounded, but a removed behavior scores as anomalous if it returns.
 
     The implementation differs from the paper as follows:
 
@@ -137,6 +137,7 @@ class SAND(BaseModel):
         num_clusters (int): The number of clusters ``k`` of k-Shape on each batch (Default=6).
         batch_size (int): The number of values in a batch. A batch must hold at least ``num_clusters`` subsequences of ``centroid_length`` values (Default=5000).
         alpha (float): The rate in ``[0, 1]`` at which the weights, ``mu`` and ``sigma`` follow each new batch (Default=0.5).
+        min_weight (float or None): The weight in ``[0, 1)`` below which a cluster leaves Θ after a batch. None keeps every cluster, as in the paper (Default=None).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the initial labels of k-Shape. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
@@ -147,6 +148,7 @@ class SAND(BaseModel):
         num_clusters: int = 6,
         batch_size: int = 5000,
         alpha: float = 0.5,
+        min_weight: float | None = None,
         random_state: int | np.random.RandomState | None = None,
     ) -> None:
         self.subsequence_length = _int_at_least(subsequence_length, "subsequence_length", 2)
@@ -162,6 +164,9 @@ class SAND(BaseModel):
         self.alpha = _finite_float(alpha, "alpha")
         if not 0.0 <= self.alpha <= 1.0:
             raise ValueError(f"alpha must be in [0, 1], got {self.alpha}.")
+        self.min_weight = None if min_weight is None else _finite_float(min_weight, "min_weight")
+        if self.min_weight is not None and not 0.0 <= self.min_weight < 1.0:
+            raise ValueError(f"min_weight must be in [0, 1), got {self.min_weight}.")
         self.random_state = random_state
         self._rng: np.random.RandomState | None = (
             None if random_state is None else check_random_state(random_state)
@@ -307,6 +312,14 @@ class SAND(BaseModel):
             :num_old
         ] / decay[:num_old]
         self.weights_ = weights / weights.sum()
+        if self.min_weight is not None:
+            # Section 3.3.3: remove the clusters whose weight is about zero, but keep the heaviest.
+            keep = self.weights_ >= self.min_weight
+            keep[self.weights_.argmax()] = True
+            self.centroids_, self.matrices_ = self.centroids_[keep], self.matrices_[keep]
+            self.distances_, self.sizes_ = self.distances_[keep], self.sizes_[keep]
+            self.last_ = self.last_[keep]
+            self.weights_ = self.weights_[keep] / self.weights_[keep].sum()
 
         windows = _znorm(sliding_window_view(self.centroids_, self.subsequence_length, axis=1))
         self.windows_ = windows

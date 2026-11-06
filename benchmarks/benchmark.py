@@ -90,6 +90,7 @@ def _ranges(X):
 DETECTORS = {
     "ADeMS": lambda X, seed: models.ADeMS(),
     "CPOD": lambda X, seed: models.CPOD(),
+    "DILOF": lambda X, seed: models.DILOF(),
     "ExactStorm": lambda X, seed: models.ExactStorm(),
     "HalfSpaceTrees": lambda X, seed: models.HalfSpaceTrees(**_ranges(X), random_state=seed),
     "IForestASD": lambda X, seed: models.IForestASD(random_state=seed),
@@ -99,12 +100,15 @@ DETECTORS = {
     "LODA": lambda X, seed: models.LODA(random_state=seed),
     "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[: warmup(len(X))]),
     "MCOD": lambda X, seed: models.MCOD(),
+    "MStream": lambda X, seed: models.MStream(random_state=seed),
     "NETS": lambda X, seed: models.NETS(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
+    "OnlineOneClassSVM": lambda X, seed: models.OnlineOneClassSVM(),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
     "RSForest": lambda X, seed: models.RSForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
     "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
+    "TEDA": lambda X, seed: models.TEDA(),
     "xStream": lambda X, seed: models.xStream(random_state=seed),
 }
 # CI runs this script against the base checkout too, where a newly added model

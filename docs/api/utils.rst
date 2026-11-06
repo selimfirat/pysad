@@ -25,5 +25,6 @@ Functions
    check_feature_bounds
    check_univariate
    fix_seed
+   generate_stream
    get_minmax_array
    get_minmax_scalar

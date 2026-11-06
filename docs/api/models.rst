@@ -12,6 +12,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
 
    ADeMS
    CPOD
+   DILOF
    ExactStorm
    HalfSpaceTrees
    IForestASD
@@ -23,16 +24,20 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    LocalOutlierProbability
    MCOD
    MedianAbsoluteDeviation
+   MStream
    NETS
    OnlineIsolationForest
+   OnlineOneClassSVM
    RelativeEntropy
    RobustRandomCutForest
    RSForest
    RSHash
+   SAND
    SeasonalESD
    SeasonalHybridESD
    SmartSifter
    StandardAbsoluteDeviation
+   TEDA
    xStream
    NullModel
    PerfectModel

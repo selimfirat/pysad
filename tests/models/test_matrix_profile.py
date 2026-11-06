@@ -16,30 +16,49 @@ def _series():
     return values
 
 
-# STUMPY warns that m is long for the first 30 values, which this test needs.
-@pytest.mark.filterwarnings("ignore:The window size")
-def test_scores_match_stumpy_stumpi(monkeypatch):
-    stumpy = pytest.importorskip("stumpy")
+# Scores of stumpy.stumpi 1.14.1 (STUMPY, BSD-3-Clause) for _short_series() with m = 4, made with
+# stumpy.config.STUMPY_EXCL_ZONE_DENOM = 2 for the paper's exclusion zone of m / 2. One
+# stumpi(values[:6], 4, egress=False) object is updated with values 6 to 12, and then one
+# stumpi(values[:13], 4, egress=True) object is updated with values 13 to 29, so the history grows
+# to 12 values and then slides. Each expected score is left_P_[-1] after the update.
+STUMPI_SCORES = [
+    3.862628621434302,
+    2.5065301044117017,
+    2.555994107889105,
+    1.9880978905269473,
+    1.2656422887911747,
+    0.7956759366036217,
+    0.034598868240575766,
+    0.07872514234477174,
+    0.01743094828767016,
+    0.01126649178603427,
+    0.018262351910034537,
+    0.08463730036566065,
+    0.032038476370741024,
+    0.012383181599794268,
+    0.6608079415719937,
+    0.7615097814158512,
+    1.8210664940128762,
+    0.4263528320631701,
+    0.3516080126001669,
+    0.4370153376169141,
+    0.08745135522233119,
+    0.030865308300811023,
+    0.012264151234654592,
+    0.534941348201845,
+]
 
+
+def test_scores_match_stumpy_stumpi():
     from pysad.models import MatrixProfile
 
-    values = _series()
-    scores = MatrixProfile(window_length=M, history_size=HISTORY).fit_score(values.reshape(-1, 1))
+    values = np.sin(0.7 * np.arange(30))
+    values[20:23] += 1.0
+    scores = MatrixProfile(window_length=4, history_size=12).fit_score(values.reshape(-1, 1))
 
-    # The paper's exclusion zone of m / 2. STUMPY uses m / 4 by default.
-    monkeypatch.setattr(stumpy.config, "STUMPY_EXCL_ZONE_DENOM", 2)
-    first = M + math.ceil(M / 2)
-    # The history grows to HISTORY values, and then it slides, as with egress.
-    growing = stumpy.stumpi(values[:first], M, egress=False)
-    sliding = stumpy.stumpi(values[: HISTORY + 1], M, egress=True)
-    expected = []
-    for i in range(first, len(values)):
-        stream = growing if i <= HISTORY else sliding
-        stream.update(values[i])
-        expected.append(stream.left_P_[-1])
-
+    first = 4 + math.ceil(4 / 2)
     np.testing.assert_array_equal(scores[:first], 0.0)
-    np.testing.assert_allclose(scores[first:], expected, rtol=1e-9, atol=1e-9)
+    np.testing.assert_allclose(scores[first:], STUMPI_SCORES, rtol=1e-9, atol=1e-9)
 
 
 def test_inserted_discords_get_the_highest_scores():

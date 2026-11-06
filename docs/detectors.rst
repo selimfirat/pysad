@@ -34,6 +34,10 @@ These detectors take points with one or more features. A feature is one measured
      - Collusive displacement in random cut trees :cite:`guha2016robust`
      - Nothing
      - Fixed: ``num_trees`` trees of ``tree_size`` points
+   * - :class:`~pysad.models.RSForest`
+     - Density of random space trees, scored against the previous window :cite:`wu2014rsforest`
+     - Nothing
+     - Fixed: ``num_trees`` full trees of depth ``max_depth``, about 32 MB with the defaults
    * - :class:`~pysad.models.RSHash`
      - Time-decayed counts of random subspace grids :cite:`sathe2016subspace`
      - The range of each feature
@@ -70,6 +74,10 @@ These detectors take points with one or more features. A feature is one measured
      - Local outlier factor in a sliding window :cite:`pokrajac2007incremental`
      - Nothing
      - Fixed: a window of ``window_size`` points and their ``num_neighbors`` nearest neighbors
+   * - :class:`~pysad.models.ADeMS`
+     - Residual of each point after its projection on a Frequent Directions sketch of the normal points :cite:`huang2015streaming`
+     - Nothing (initial points to use a threshold)
+     - Fixed: a sketch of ``sketch_size`` columns, linear in the number of features
    * - :class:`~pysad.models.LocalOutlierProbability`
      - Local outlier probability :cite:`kriegel2009loop`, as in PyNomaly :cite:`constantinou2018pynomaly`
      - Initial points (``initial_X``)

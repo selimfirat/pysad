@@ -134,6 +134,21 @@ It prints:
 
    27 alerts, 17 of them true anomalies
 
+Raise alerts at a chosen risk
+-----------------------------
+
+This script fits a Generalized Pareto distribution to the highest scores with SPOT (streaming peaks-over-threshold). You choose the risk ``q``, and the script raises an alert when the calibrated score is above ``1 - q``, so a normal point raises an alert with probability ``q``. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_spot_calibration.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   32 alerts, 27 of them true anomalies
+   alarm threshold on the raw scores: 3.013
+
 Postprocess scores
 ------------------
 
@@ -268,6 +283,20 @@ It prints:
 
    AUROC: 0.672
 
+Use a random space tree detector
+--------------------------------
+
+This script scores each point with RS-Forest. RS-Forest splits the feature space with random trees and gives each point the negative density of the previous window in the nodes that hold it. Its first window sets the feature ranges of the trees.
+
+.. literalinclude:: ../examples/example_rs_forest.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.651
+
 Use a local density detector
 ----------------------------
 
@@ -281,6 +310,20 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.731
+
+Use a matrix sketch detector
+----------------------------
+
+This script scores each point with ADeMS. ADeMS keeps a Frequent Directions sketch, a small matrix that approximates the earlier points. The score of a point is the part of its direction that the top singular vectors of the sketch do not reconstruct.
+
+.. literalinclude:: ../examples/example_adems.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.770
 
 Track running statistics
 ------------------------

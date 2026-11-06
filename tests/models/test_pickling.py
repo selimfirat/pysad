@@ -55,6 +55,7 @@ MODEL_PARAMS = {
         "step": 5,
     },
     "RobustRandomCutForest": {"tree_size": 32},
+    "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
     "RSHash": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0]},
     # Batches complete before and after the round trip.
     "SAND": {"subsequence_length": 4, "batch_size": 25},

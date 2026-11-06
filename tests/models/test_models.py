@@ -2,10 +2,13 @@ def test_unsupervised_models():
     import numpy as np
 
     from pysad.models import (
+        DILOF,
         KNNCAD,
         LODA,
         MCOD,
         NETS,
+        SAND,
+        TEDA,
         ADeMS,
         ExactStorm,
         HalfSpaceTrees,
@@ -36,6 +39,7 @@ def test_unsupervised_models():
     model_classes = {
         RelativeEntropy: {"min_val": 0.0, "max_val": 1.0},
         ADeMS: {},
+        DILOF: {"num_neighbors": 5, "window_size": 40},
         ExactStorm: {},
         HalfSpaceTrees: {"feature_mins": [0.0], "feature_maxes": [1.0]},
         IForestASD: {},
@@ -53,8 +57,10 @@ def test_unsupervised_models():
         RandomModel: {},
         RSForest: {"window_size": 50},
         RSHash: {"feature_mins": [0.0], "feature_maxes": [1.0]},
+        SAND: {"subsequence_length": 4, "batch_size": 40},
         SmartSifter: {},
         StandardAbsoluteDeviation: [{}, {"absolute": False}],
+        TEDA: {},
         xStream: {},
         RobustRandomCutForest: {},
         Inqmad: {"input_shape": X.shape[1], "dim_x": 128},

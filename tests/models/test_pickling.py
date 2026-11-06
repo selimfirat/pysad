@@ -18,6 +18,7 @@ UNIVARIATE_MODELS = {
     "KNNCAD",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
+    "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
     "StandardAbsoluteDeviation",
@@ -32,6 +33,8 @@ MODEL_PARAMS = {
         "max_depth": 8,
     },
     "IForestASD": {"window_size": 32},
+    # The window is summarized before and after the round trip.
+    "DILOF": {"num_neighbors": 5, "window_size": 24},
     # A window that slides before and after the round trip.
     "IncrementalLOF": {"num_neighbors": 5, "window_size": 20},
     # The initial sample completes before the round trip, so the restored model has rho and tau.
@@ -58,6 +61,8 @@ MODEL_PARAMS = {
     "RobustRandomCutForest": {"tree_size": 32},
     "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
     "RSHash": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0]},
+    # Batches complete before and after the round trip.
+    "SAND": {"subsequence_length": 4, "batch_size": 25},
     "SeasonalESD": {"period": 4, "window_size": 16, "max_anomalies": 0.19},
     "SeasonalHybridESD": {"period": 4, "window_size": 16, "max_anomalies": 0.19},
     "xStream": {"n_chains": 10, "depth": 10, "window_size": 20},

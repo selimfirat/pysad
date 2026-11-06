@@ -39,6 +39,7 @@ UNIVARIATE_MODELS = {
     "KNNCAD",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
+    "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
     "StandardAbsoluteDeviation",
@@ -77,6 +78,7 @@ def _model_params(model_name, num_features, data):
 
     ones, zeros = [1.0] * num_features, [0.0] * num_features
     params = {
+        "DILOF": {"num_neighbors": 3, "window_size": 12},
         "ExactStorm": {"window_size": 20, "max_radius": 0.1},
         "HalfSpaceTrees": {
             "feature_mins": np.array(zeros),
@@ -102,6 +104,12 @@ def _model_params(model_name, num_features, data):
             "feature_mins": np.array(zeros),
             "feature_maxes": np.array(ones),
             "num_components": 10,
+        },
+        "SAND": {
+            "subsequence_length": 2,
+            "centroid_length": 4,
+            "num_clusters": 2,
+            "batch_size": 10,
         },
         "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},

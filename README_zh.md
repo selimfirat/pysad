@@ -237,10 +237,12 @@ for x in ArrayStreamer().iter(X[100:]):
 | `NETS` | 基于网格集合处理的距离离群点检测 (Yoon et al., PVLDB 2019) |
 | `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
+| `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |
 | `ADeMS` | Frequent Directions 矩阵概要 (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | 局部离群概率 (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD 量子测量密度估计 (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | 基于带折扣学习的有限混合模型 (Yamanishi et al., KDD 2000) |
+| `TEDA` | 典型性与离心率数据分析 (Angelov, EALS 2014) |
 
 **单变量**
 
@@ -250,6 +252,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `KNNCAD` | 共形 k 近邻异常检测 (Burnaev & Ishimtsev, 2016) |
 | `RelativeEntropy` | 基于窗口的相对熵 (Wang et al., IM 2011) |
+| `SAND` | 基于 k-Shape 聚类的流式子序列异常检测 (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | 滑动窗口上的中位数绝对偏差 (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | 在线 3-sigma 规则 (Hochenbaum et al., 2017) |
 
@@ -268,7 +271,7 @@ PySAD 在带标签的数据上对其检测器进行基准测试。10 个多变�
 | 预处理 | `InstanceStandardScaler`、`InstanceUnitNormScaler`、`SeasonalTrendDecomposer`、`ModifiedSTLResidualTransformer`、`OneShotSTL` |
 | 投影 | `StreamhashProjector`、`GaussianRandomProjector`、`SparseRandomProjector` |
 | 后处理 | 对分数计算累计和窗口化的平均值、最大值、中位数和 z 分数 |
-| 校准 | `ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |
+| 校准 | `AnomalyLikelihoodProbabilityCalibrator`、`ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |
 | 集成 | 平均、最大、中位数、最大值的平均（average-of-maximum）和平均值的最大（maximum-of-average）分数集成器 |
 | 评估 | `AUROCMetric`、`AUPRMetric`、`PrecisionMetric`、`RecallMetric`、`WindowedMetric` |
 | 流式数据 | `ArrayStreamer`、`PandasStreamer`，以及提供 17 个带标签 ODDS 基准数据集（首次使用时下载）的 `Data` |

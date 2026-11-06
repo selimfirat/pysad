@@ -78,6 +78,10 @@ These detectors take points with one or more features. A feature is one measured
      - Online one-class support vector machine (NORMA) with a Gaussian kernel :cite:`kivinen2004online`
      - Nothing
      - Fixed: the support vectors among the last ``window_size`` points
+   * - :class:`~pysad.models.DILOF`
+     - The local outlier factor of :class:`~pysad.models.IncrementalLOF` in a window that keeps a density-preserving summary of old points :cite:`na2018dilof`
+     - Nothing
+     - Fixed: a window of at most ``window_size`` points and their ``num_neighbors`` nearest neighbors
    * - :class:`~pysad.models.ADeMS`
      - Residual of each point after its projection on a Frequent Directions sketch of the normal points :cite:`huang2015streaming`
      - Nothing (initial points to use a threshold)
@@ -90,6 +94,10 @@ These detectors take points with one or more features. A feature is one measured
      - Quantum measurement density estimation :cite:`gallego2022inqmad`
      - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``)
      - Fixed: a ``dim_x`` by ``dim_x`` matrix
+   * - :class:`~pysad.models.TEDA`
+     - Eccentricity from the recursive mean and variance :cite:`angelov2014anomaly`
+     - Nothing
+     - Fixed: the count, the mean and the variance
 
 Univariate detectors
 --------------------
@@ -128,6 +136,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values
      - Grows slowly: a window and one histogram for each distinct state of the stream
+   * - :class:`~pysad.models.SAND`
+     - Distance of the latest subsequence to weighted k-Shape clusters of past subsequences :cite:`boniol2021sand`
+     - The subsequence length
+     - Grows slowly: a batch of ``batch_size`` values and one ``centroid_length`` by ``centroid_length`` matrix per cluster, with at most ``num_clusters`` new clusters per batch
 
 PyOD integrations
 -----------------

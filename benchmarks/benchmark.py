@@ -98,6 +98,7 @@ DETECTORS = {
     "MCOD": lambda X, seed: models.MCOD(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
+    "RSForest": lambda X, seed: models.RSForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
     "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
     "xStream": lambda X, seed: models.xStream(random_state=seed),

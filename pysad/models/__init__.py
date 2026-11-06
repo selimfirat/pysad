@@ -19,6 +19,7 @@ from .perfect_model import PerfectModel
 from .random_model import RandomModel
 from .relative_entropy import RelativeEntropy
 from .robust_random_cut_forest import RobustRandomCutForest
+from .rs_forest import RSForest
 from .rs_hash import RSHash
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
@@ -43,6 +44,7 @@ __all__ = [
     "RandomModel",
     "RelativeEntropy",
     "RobustRandomCutForest",
+    "RSForest",
     "RSHash",
     "SeasonalESD",
     "SeasonalHybridESD",

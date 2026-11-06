@@ -13,6 +13,7 @@ This module holds running statistics. A running statistic changes as you add val
    ADWINMeter
    AverageMeter
    CountMeter
+   DDSketchMeter
    ExponentialMovingAverageMeter
    MaxMeter
    MedianMeter

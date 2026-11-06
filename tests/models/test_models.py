@@ -2,6 +2,7 @@ def test_unsupervised_models():
     import numpy as np
 
     from pysad.models import (
+        CPOD,
         KNNCAD,
         LODA,
         MCOD,
@@ -35,6 +36,7 @@ def test_unsupervised_models():
     model_classes = {
         RelativeEntropy: {"min_val": 0.0, "max_val": 1.0},
         ADeMS: {},
+        CPOD: {},
         ExactStorm: {},
         HalfSpaceTrees: {"feature_mins": [0.0], "feature_maxes": [1.0]},
         IForestASD: {},
@@ -67,7 +69,6 @@ def test_unsupervised_models():
 
 
 def helper_test_model(X, model_cls, params_dict):
-
     if "initial_X" in params_dict and params_dict["initial_X"]:
         params_dict["initial_X"] = X[:25, :]
         model = model_cls(params_dict["initial_X"])

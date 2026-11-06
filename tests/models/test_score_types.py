@@ -16,6 +16,7 @@ def _model_specs():
 
     from pysad import models
     from pysad.models import (
+        CPOD,
         KNNCAD,
         LODA,
         MCOD,
@@ -52,6 +53,7 @@ def _model_specs():
     # (name, factory, number of features)
     specs = [
         ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
+        ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
             "HalfSpaceTrees",

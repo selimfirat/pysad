@@ -3,6 +3,7 @@ The :mod:`pysad.models` module includes anomaly detection models to score the an
 """
 
 from .adems import ADeMS
+from .cpod import CPOD
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
@@ -31,6 +32,7 @@ from .xstream import xStream
 
 __all__ = [
     "ADeMS",
+    "CPOD",
     "ExactStorm",
     "HalfSpaceTrees",
     "IForestASD",

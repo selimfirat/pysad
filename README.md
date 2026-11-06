@@ -235,6 +235,7 @@ These starting points come from the design of each method. They are not benchmar
 | `ExactStorm` | Exact-STORM distance-based outliers (Angiulli & Fassetti, CIKM 2007) |
 | `MCOD` | Micro-cluster-based distance-based outliers (Kontaki et al., ICDE 2011) |
 | `NETS` | Set-based distance-based outliers on a cell grid (Yoon et al., PVLDB 2019) |
+| `CPOD` | Core point-based distance-based outliers (Tran et al., PVLDB 2020) |
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
 | `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |

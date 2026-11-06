@@ -104,6 +104,22 @@ It prints:
    AUROC: 0.638
    Windowed AUROC: 0.755
 
+Evaluate with several metrics
+-----------------------------
+
+This script runs :func:`~pysad.evaluation.evaluate_stream` once and gets three metrics. The function scores each point before the detector learns from it.
+
+.. literalinclude:: ../examples/example_evaluate_stream.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.768
+   AUPR: 0.489
+   Windowed AUROC: 0.756
+
 Raise alerts with a calibrator
 ------------------------------
 

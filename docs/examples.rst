@@ -104,6 +104,21 @@ It prints:
 
    27 alerts, 17 of them true anomalies
 
+Raise alerts at a chosen risk with SPOT
+---------------------------------------
+
+This script raises alerts at a chosen risk with extreme value theory. :class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator` fits the tail of the scores and sets the alarm threshold so that a normal score raises an alert with probability ``q``. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_spot_calibration.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   32 alerts, 27 of them true anomalies
+   alarm threshold on the raw scores: 3.013
+
 Postprocess scores
 ------------------
 

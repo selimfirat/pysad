@@ -54,3 +54,17 @@ def test_cpod_neighbor_counting():
     assert model.score_partial(np.array([0.0])) == pytest.approx(1 / 6)
     assert model.score_partial(np.array([5.5])) == pytest.approx(5 / 6)
     assert model.score_partial(np.array([20.0])) == 1.0
+
+
+def test_cpod_more_core_points_than_window_size():
+    """One instance can keep several core points alive, so a window can need more core points than instances."""
+    import numpy as np
+
+    from pysad.models import CPOD, ExactStorm
+
+    X = np.array([[0.0], [1.5], [0.75], [5.0], [6.5]])
+
+    np.testing.assert_array_equal(
+        CPOD(window_size=3, max_radius=1.0).fit_score(X),
+        ExactStorm(window_size=3, max_radius=1.0).fit_score(X),
+    )

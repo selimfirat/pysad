@@ -65,3 +65,17 @@ def test_rejects_a_window_too_small_for_the_summary():
 
     with pytest.raises(ValueError, match="window_size"):
         DILOF(num_neighbors=10, window_size=21)
+
+
+def test_an_instance_that_skipping_skips_scores_at_least_the_last_outlier():
+    from pysad.models import DILOF, IncrementalLOF
+
+    rng = np.random.RandomState(0)
+    X = np.vstack([rng.normal(size=(100, 2)), [[6.0, 6.0]]])
+    model = DILOF(num_neighbors=5, window_size=200).fit(X)
+    reference = IncrementalLOF(num_neighbors=5, window_size=200).fit(X)
+    duplicate = np.array([6.0, 6.0])
+
+    # Against the window, which holds the outlier, the LOF of its duplicate is lower than its own.
+    assert model.score_partial(duplicate) > reference.score_partial(duplicate)
+    assert model.score_partial(np.zeros(2)) == reference.score_partial(np.zeros(2))

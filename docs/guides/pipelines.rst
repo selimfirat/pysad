@@ -61,6 +61,26 @@ A detector of single points sees only the values of each point. But many anomali
 
 Choose ``shingle_size`` so that a shingle holds a typical pattern, for example one period of a seasonal series. ``fit_transform_partial`` of this stage builds the shingle first and then adds the point to its history, so a shingle holds only the point and the points before it.
 
+Chain the stages into one model
+-------------------------------
+
+:class:`~pysad.models.StreamPipeline` runs the same loop in one model. It has the methods of a detector, so it goes where a detector goes, for example into an evaluation loop or an ensemble:
+
+.. code-block:: python
+
+   from pysad.models import LODA, StreamPipeline
+
+   pipeline = StreamPipeline(
+       model=LODA(random_state=0),
+       preprocessors=[InstanceUnitNormScaler(), GaussianRandomProjector(num_components=20, random_state=0)],
+       postprocessors=[RunningAveragePostprocessor(window_size=5)],
+   )
+
+   for x in streamer.iter(X):
+       score = pipeline.fit_score_partial(x)
+
+``fit_score_partial`` gives the same scores as the loop in the first section. ``score_partial`` scores a point with the current state of each stage and does not fit any stage. A calibrator is a postprocessor, so put it last in ``postprocessors``.
+
 Combine several detectors
 -------------------------
 

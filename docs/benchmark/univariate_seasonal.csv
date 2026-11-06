@@ -4,7 +4,9 @@ Detector,Standard,AUROC
 :class:`~pysad.models.StandardAbsoluteDeviation`,50.0,0.520
 :class:`~pysad.models.RobustRandomCutForest`,49.5,0.614
 :class:`~pysad.models.KNNCAD`,48.9,0.527
+:class:`~pysad.models.SmartSifter`,45.1,0.535
 ":class:`~pysad.models.LODA`, shingles",42.3,0.612
+:class:`~pysad.models.IncrementalLOF`,35.4,0.502
 :class:`~pysad.models.xStream`,34.1,0.564
 ":class:`~pysad.models.RobustRandomCutForest`, shingles",33.2,0.616
 :class:`~pysad.models.RSHash`,32.8,0.556
@@ -18,10 +20,16 @@ Detector,Standard,AUROC
 :class:`~pysad.models.Inqmad`,21.4,0.529
 ":class:`~pysad.models.xStream`, shingles",21.3,0.572
 ":class:`~pysad.models.LocalOutlierProbability`, shingles",18.9,0.565
+":class:`~pysad.models.SmartSifter`, shingles",18.4,0.520
+":class:`~pysad.models.IncrementalLOF`, shingles",17.8,0.510
 :class:`~pysad.models.ExactStorm`,17.7,0.583
+:class:`~pysad.models.MCOD`,17.7,0.583
 ":class:`~pysad.models.KitNet`, shingles",15.5,0.616
 ":class:`~pysad.models.IForestASD`, shingles",13.7,0.595
 :class:`~pysad.models.IForestASD`,12.8,0.604
 :class:`~pysad.models.MedianAbsoluteDeviation`,8.2,0.521
 :class:`~pysad.models.SeasonalHybridESD`,7.2,0.547
+":class:`~pysad.models.OnlineIsolationForest`, shingles",5.4,0.499
 ":class:`~pysad.models.ExactStorm`, shingles",4.6,0.591
+":class:`~pysad.models.MCOD`, shingles",4.6,0.591
+:class:`~pysad.models.OnlineIsolationForest`,2.4,0.509

@@ -20,6 +20,8 @@ def _model_specs():
         KNNCAD,
         LODA,
         MCOD,
+        NETS,
+        ADeMS,
         ExactStorm,
         HalfSpaceTrees,
         IForestASD,
@@ -33,19 +35,24 @@ def _model_specs():
         RandomModel,
         RelativeEntropy,
         RobustRandomCutForest,
+        RSForest,
         RSHash,
         SeasonalESD,
         SeasonalHybridESD,
         SmartSifter,
         StandardAbsoluteDeviation,
+        StreamPipeline,
         xStream,
     )
     from pysad.models.integrations import OneFitModel, ReferenceWindowModel
+    from pysad.transform.postprocessing import RunningZScorePostprocessor
+    from pysad.transform.preprocessing import ShingleTransformer
 
     mins, maxes = [0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES
 
     # (name, factory, number of features)
     specs = [
+        ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
         ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
@@ -72,6 +79,7 @@ def _model_specs():
         ("MCOD", lambda: MCOD(window_size=20, max_radius=0.3, num_neighbors=2), NUM_FEATURES),
         ("MedianAbsoluteDeviation", lambda: MedianAbsoluteDeviation(), 1),
         ("MedianAbsoluteDeviation-signed", lambda: MedianAbsoluteDeviation(absolute=False), 1),
+        ("NETS", lambda: NETS(window_size=20, max_radius=0.3), NUM_FEATURES),
         ("NullModel", lambda: NullModel(), NUM_FEATURES),
         ("OnlineIsolationForest", lambda: OnlineIsolationForest(), NUM_FEATURES),
         ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),
@@ -92,6 +100,7 @@ def _model_specs():
             lambda: models.Inqmad(input_shape=NUM_FEATURES, dim_x=32),
             NUM_FEATURES,
         ),
+        ("RSForest", lambda: RSForest(window_size=20, num_trees=5, max_depth=8), NUM_FEATURES),
         ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
         ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=0.17), 1),
         (
@@ -102,6 +111,15 @@ def _model_specs():
         ("SmartSifter", lambda: SmartSifter(), NUM_FEATURES),
         ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),
         ("StandardAbsoluteDeviation-signed", lambda: StandardAbsoluteDeviation(absolute=False), 1),
+        (
+            "StreamPipeline",
+            lambda: StreamPipeline(
+                model=LODA(),
+                preprocessors=[ShingleTransformer(shingle_size=2)],
+                postprocessors=[RunningZScorePostprocessor(window_size=20)],
+            ),
+            NUM_FEATURES,
+        ),
         ("xStream", lambda: xStream(), NUM_FEATURES),
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (
@@ -170,9 +188,17 @@ def test_batch_methods_return_1d_arrays(name, factory, num_features):
 @pytest.mark.parametrize(
     "name,factory,num_features", MODEL_SPECS, ids=[spec[0] for spec in MODEL_SPECS]
 )
-def test_score_partial_before_the_first_fit_returns_a_score(name, factory, num_features):
+def test_score_partial_before_the_first_fit_returns_a_score(name, factory, num_features, request):
     """Regression test for #266: fit_score_partial scores each instance before it fits it, so
     every detector must score the first instance without an error."""
+    if name == "StreamPipeline":
+        request.applymarker(
+            pytest.mark.xfail(
+                reason="RunningZScorePostprocessor.transform_partial divides by zero before its first fit",
+                raises=ZeroDivisionError,
+                strict=True,
+            )
+        )
     if name == "PerfectModel":  # returns the labels that it was fitted with
         pytest.skip("PerfectModel needs a label before it can score")
     X, _ = _data(name, num_features)

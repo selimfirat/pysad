@@ -11,8 +11,9 @@ NUM_NEXT = 20
 WINDOW_SIZE = 16
 
 # BaseSKLearnMetric is abstract. WindowedMetric takes a metric class as a constructor argument,
-# rather than being default-constructible itself; it is covered separately below.
-PICKLE_SKIP_METRICS = {"BaseSKLearnMetric", "WindowedMetric"}
+# rather than being default-constructible itself; it is covered separately below. evaluate_stream is
+# a function, not a metric.
+PICKLE_SKIP_METRICS = {"BaseSKLearnMetric", "WindowedMetric", "evaluate_stream"}
 WINDOWED_METRICS = ["AUROCMetric", "AUPRMetric", "PrecisionMetric", "RecallMetric"]
 
 # Precision and recall are defined on predicted classes, so they get a threshold to turn the

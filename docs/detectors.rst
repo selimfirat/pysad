@@ -62,6 +62,10 @@ These detectors take points with one or more features. A feature is one measured
      - The neighbor counts of :class:`~pysad.models.ExactStorm`, faster with micro-clusters :cite:`kontaki2011continuous`
      - Nothing
      - Fixed: a window of ``window_size`` points and the centers of its micro-clusters
+   * - :class:`~pysad.models.NETS`
+     - The neighbor counts of :class:`~pysad.models.ExactStorm`, faster with a grid of cell counts :cite:`yoon2019nets`
+     - Nothing
+     - Fixed: a window of ``window_size`` points and the counts of its non-empty cells
    * - :class:`~pysad.models.IncrementalLOF`
      - Local outlier factor in a sliding window :cite:`pokrajac2007incremental`
      - Nothing

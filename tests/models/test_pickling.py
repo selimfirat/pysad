@@ -5,6 +5,9 @@ import numpy as np
 import pytest
 
 import pysad.models
+from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.preprocessing import ShingleTransformer
+from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
 
 SEED = 61
@@ -39,6 +42,8 @@ MODEL_PARAMS = {
     "KNNCAD": {"probationary_period": 50},
     # Micro-clusters form, expire and dissolve within the first instances.
     "MCOD": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 2},
+    # Cells empty out and fill again within the first instances.
+    "NETS": {"window_size": 30, "max_radius": 0.6},
     "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
     # Non-overlapping windows of 5 close 4 times among the NUM_NEXT compared values, and 80 buckets
     # split the noise so that some of them score 1.0 (see test_relative_entropy_compared_scores_use_learned_state).
@@ -76,6 +81,15 @@ def _make_model(model_name, X):
     model_cls = getattr(pysad.models, model_name)
     if model_name == "LocalOutlierProbability":
         return model_cls(X[:20])
+    if model_name == "StreamPipeline":
+        return model_cls(
+            model=pysad.models.LODA(),
+            preprocessors=[ShingleTransformer(shingle_size=2)],
+            postprocessors=[
+                RunningZScorePostprocessor(window_size=20),
+                ConformalProbabilityCalibrator(window_size=20),
+            ],
+        )
 
     return model_cls(**MODEL_PARAMS.get(model_name, {}))
 

@@ -23,6 +23,8 @@ from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
 import pysad.models
+from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
 
 SEED = 61
@@ -91,6 +93,7 @@ def _model_params(model_name, num_features, data):
         "KNNCAD": {"probationary_period": 48},
         "LODA": {"num_bins": 5, "num_random_cuts": 10},
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
+        "NETS": {"window_size": 20, "max_radius": 0.1},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
         "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 5},
         "RobustRandomCutForest": {"num_trees": 3, "shingle_size": 2, "tree_size": 16},
@@ -101,6 +104,11 @@ def _model_params(model_name, num_features, data):
         },
         "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
+        "StreamPipeline": {
+            "model": pysad.models.LODA(num_bins=5, num_random_cuts=10),
+            "preprocessors": [ShingleTransformer(shingle_size=2)],
+            "postprocessors": [RunningZScorePostprocessor(window_size=10)],
+        },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
     }
 
@@ -242,8 +250,10 @@ def test_inputs_are_not_modified(model_name, data):
 
     np.testing.assert_array_equal(X, X_before)
     np.testing.assert_array_equal(y, y_before)
+    # StreamPipeline fits the stages that it holds, so only the array parameters must not change.
     for name, value in params_before.items():
-        np.testing.assert_array_equal(params[name], value, err_msg=name)
+        if isinstance(value, np.ndarray):
+            np.testing.assert_array_equal(params[name], value, err_msg=name)
 
 
 @pytest.mark.parametrize("model_name", _models("test_reused_input_buffer_gives_same_scores"))

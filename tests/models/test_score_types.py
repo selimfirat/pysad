@@ -16,6 +16,7 @@ def _model_specs():
 
     from pysad import models
     from pysad.models import (
+        DILOF,
         KNNCAD,
         LODA,
         MCOD,
@@ -45,6 +46,7 @@ def _model_specs():
 
     # (name, factory, number of features)
     specs = [
+        ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
             "HalfSpaceTrees",

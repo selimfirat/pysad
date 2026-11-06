@@ -162,6 +162,8 @@ Normal behavior changes over time. This change is drift. A detector follows drif
      - :class:`~pysad.models.LODA`, :class:`~pysad.models.StandardAbsoluteDeviation`, :class:`~pysad.models.RelativeEntropy`
      - Every point since the start counts equally, so the detector reacts more slowly to drift as the stream grows.
 
+:class:`~pysad.models.DILOF` keeps the newest half of its window. Each time the window is full, it replaces the oldest half with a summary half its size, so old points count less and less.
+
 :class:`~pysad.models.KitNet` learns only during its grace periods, the first points of the stream. :class:`~pysad.models.LocalOutlierProbability` learns only from its initial points. After that, these two detectors do not follow drift.
 
 A detector that does not forget can still follow a large, permanent change if you start a new detector after the change. :doc:`guides/production` shows how.

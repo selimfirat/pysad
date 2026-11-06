@@ -2,6 +2,7 @@
 The :mod:`pysad.models` module includes anomaly detection models to score the anomalousness of instances.
 """
 
+from .dilof import DILOF
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
@@ -26,6 +27,7 @@ from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .xstream import xStream
 
 __all__ = [
+    "DILOF",
     "ExactStorm",
     "HalfSpaceTrees",
     "IForestASD",

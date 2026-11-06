@@ -2,6 +2,7 @@ def test_unsupervised_models():
     import numpy as np
 
     from pysad.models import (
+        DILOF,
         KNNCAD,
         LODA,
         MCOD,
@@ -31,6 +32,7 @@ def test_unsupervised_models():
 
     model_classes = {
         RelativeEntropy: {"min_val": 0.0, "max_val": 1.0},
+        DILOF: {"num_neighbors": 5, "window_size": 40},
         ExactStorm: {},
         HalfSpaceTrees: {"feature_mins": [0.0], "feature_maxes": [1.0]},
         IForestASD: {},

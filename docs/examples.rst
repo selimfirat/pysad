@@ -238,6 +238,20 @@ It prints:
 
    AUROC: 0.731
 
+Summarize old points with DILOF
+-------------------------------
+
+This script scores each point with DILOF. DILOF computes the same local outlier factor as IncrementalLOF. When its window is full, it replaces the oldest half of the window with a smaller summary that keeps the density of these points, so it uses less memory than a window of the same history.
+
+.. literalinclude:: ../examples/example_dilof.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.726
+
 Track running statistics
 ------------------------
 

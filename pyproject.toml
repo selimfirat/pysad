@@ -194,6 +194,7 @@ module = [
     "pysad.transform.probability_calibration.*",
     "pysad.transform.projection.*",
     "pysad.utils.*",
+    "pysad.models.dilof",
     "pysad.models.half_space_trees",
     "pysad.models.exact_storm",
     "pysad.models.iforest_asd",

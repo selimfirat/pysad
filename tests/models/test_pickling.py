@@ -15,6 +15,7 @@ UNIVARIATE_MODELS = {
     "KNNCAD",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
+    "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
     "StandardAbsoluteDeviation",
@@ -50,6 +51,8 @@ MODEL_PARAMS = {
     },
     "RobustRandomCutForest": {"tree_size": 32},
     "RSHash": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0]},
+    # Batches complete before and after the round trip.
+    "SAND": {"subsequence_length": 4, "batch_size": 25},
     "SeasonalESD": {"period": 4, "window_size": 16, "max_anomalies": 0.19},
     "SeasonalHybridESD": {"period": 4, "window_size": 16, "max_anomalies": 0.19},
     "xStream": {"n_chains": 10, "depth": 10, "window_size": 20},

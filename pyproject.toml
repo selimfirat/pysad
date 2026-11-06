@@ -212,6 +212,7 @@ module = [
     "pysad.models.relative_entropy",
     "pysad.models.robust_random_cut_forest",
     "pysad.models.rs_hash",
+    "pysad.models.sand",
     "pysad.models.seasonal_esd",
     "pysad.models.smart_sifter",
     "pysad.models.standard_absolute_deviation",

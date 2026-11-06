@@ -246,6 +246,7 @@ These starting points come from the design of each method. They are not benchmar
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
 | `RelativeEntropy` | Relative entropy over windows (Wang et al., IM 2011) |
+| `SAND` | Streaming subsequence anomaly detection with k-Shape clusters (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 

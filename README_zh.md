@@ -246,6 +246,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `KNNCAD` | 共形 k 近邻异常检测 (Burnaev & Ishimtsev, 2016) |
 | `RelativeEntropy` | 基于窗口的相对熵 (Wang et al., IM 2011) |
+| `SAND` | 基于 k-Shape 聚类的流式子序列异常检测 (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | 滑动窗口上的中位数绝对偏差 (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | 在线 3-sigma 规则 (Hochenbaum et al., 2017) |
 

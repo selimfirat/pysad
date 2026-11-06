@@ -236,6 +236,7 @@ These starting points come from the design of each method. They are not benchmar
 | `MCOD` | Micro-cluster-based distance-based outliers (Kontaki et al., ICDE 2011) |
 | `NETS` | Set-based distance-based outliers on a cell grid (Yoon et al., PVLDB 2019) |
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
+| `DILOF` | Density summarizing incremental LOF (Na et al., KDD 2018) |
 | `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
@@ -250,6 +251,7 @@ These starting points come from the design of each method. They are not benchmar
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
 | `RelativeEntropy` | Relative entropy over windows (Wang et al., IM 2011) |
+| `SAND` | Streaming subsequence anomaly detection with k-Shape clusters (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 
@@ -268,7 +270,7 @@ The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) p
 | Preprocessing | `InstanceStandardScaler`, `InstanceUnitNormScaler`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
 | Projection | `StreamhashProjector`, `GaussianRandomProjector`, `SparseRandomProjector` |
 | Postprocessing | Running and windowed average, max, median and z-score of scores |
-| Calibration | `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
+| Calibration | `AnomalyLikelihoodProbabilityCalibrator`, `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
 | Ensembling | Average, maximum, median, average-of-maximum and maximum-of-average score ensemblers |
 | Evaluation | `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric` |
 | Streaming data | `ArrayStreamer`, `PandasStreamer`, and `Data` for 17 labeled ODDS benchmark datasets, downloaded on first use |

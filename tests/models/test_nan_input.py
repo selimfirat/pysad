@@ -23,6 +23,7 @@ UNIVARIATE_MODELS = {
     "KNNCAD",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
+    "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
     "StandardAbsoluteDeviation",
@@ -61,6 +62,7 @@ def _params(name, num_features):
             "feature_maxes": np.array(ones),
             "num_components": 10,
         },
+        "SAND": {"subsequence_length": 2, "centroid_length": 4, "num_clusters": 2, "batch_size": 6},
         "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "StreamPipeline": {

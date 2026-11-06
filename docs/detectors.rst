@@ -74,6 +74,10 @@ These detectors take points with one or more features. A feature is one measured
      - Local outlier factor in a sliding window :cite:`pokrajac2007incremental`
      - Nothing
      - Fixed: a window of ``window_size`` points and their ``num_neighbors`` nearest neighbors
+   * - :class:`~pysad.models.DILOF`
+     - The local outlier factor of :class:`~pysad.models.IncrementalLOF` in a window that keeps a density-preserving summary of old points :cite:`na2018dilof`
+     - Nothing
+     - Fixed: a window of at most ``window_size`` points and their ``num_neighbors`` nearest neighbors
    * - :class:`~pysad.models.ADeMS`
      - Residual of each point after its projection on a Frequent Directions sketch of the normal points :cite:`huang2015streaming`
      - Nothing (initial points to use a threshold)
@@ -128,6 +132,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values
      - Grows slowly: a window and one histogram for each distinct state of the stream
+   * - :class:`~pysad.models.SAND`
+     - Distance of the latest subsequence to weighted k-Shape clusters of past subsequences :cite:`boniol2021sand`
+     - The subsequence length
+     - Grows slowly: a batch of ``batch_size`` values and one ``centroid_length`` by ``centroid_length`` matrix per cluster, with at most ``num_clusters`` new clusters per batch
 
 PyOD integrations
 -----------------

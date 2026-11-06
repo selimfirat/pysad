@@ -13,6 +13,7 @@ from .loda import LODA
 from .loop import LocalOutlierProbability
 from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
+from .nets import NETS
 from .null_model import NullModel
 from .online_isolation_forest import OnlineIsolationForest
 from .perfect_model import PerfectModel
@@ -37,6 +38,7 @@ __all__ = [
     "LocalOutlierProbability",
     "MCOD",
     "MedianAbsoluteDeviation",
+    "NETS",
     "NullModel",
     "OnlineIsolationForest",
     "PerfectModel",

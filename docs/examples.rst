@@ -341,6 +341,20 @@ It prints:
 
    AUROC: 0.651
 
+Use a multi-aspect stream detector
+----------------------------------
+
+This script scores the http connections of KDD Cup 1999 in time order with MStream. MStream counts the records in buckets of each feature and of the whole record. A record scores high when its buckets hold many more records in the current time tick than in an average earlier tick, as in a burst of similar connections.
+
+.. literalinclude:: ../examples/example_mstream.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.992
+
 Use a local density detector
 ----------------------------
 

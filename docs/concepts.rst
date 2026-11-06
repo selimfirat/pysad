@@ -124,7 +124,7 @@ Prequential evaluation (predict, then train) is the standard way to measure a de
        model.fit_partial(x)
        metric.update(label, score)
 
-Most examples in this documentation call ``fit_score_partial`` instead. It scores each point before the detector learns from it, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores.
+Most examples in this documentation call ``fit_score_partial`` instead. It scores each point before the detector learns from it, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores. :func:`~pysad.evaluation.evaluate_stream` runs this loop for a labeled stream and returns the value of each metric.
 
 Detectors need some data before their scores are stable. This first part of the stream is the warm-up period. A metric over the full stream includes the warm-up period. To see how the results change over time, compute the metric separately on consecutive parts of the stream, as :doc:`guides/evaluate` shows.
 
@@ -153,7 +153,7 @@ Normal behavior changes over time. This change is drift. A detector follows drif
      - Detectors
      - Effect
    * - A window of recent data
-     - :class:`~pysad.models.xStream`, :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.ExactStorm`, :class:`~pysad.models.MCOD`, :class:`~pysad.models.IncrementalLOF`, :class:`~pysad.models.IForestASD`, :class:`~pysad.models.SeasonalESD`, :class:`~pysad.models.SeasonalHybridESD`, :class:`~pysad.models.KNNCAD`, :class:`~pysad.models.MedianAbsoluteDeviation`
+     - :class:`~pysad.models.xStream`, :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.ExactStorm`, :class:`~pysad.models.MCOD`, :class:`~pysad.models.NETS`, :class:`~pysad.models.IncrementalLOF`, :class:`~pysad.models.IForestASD`, :class:`~pysad.models.SeasonalESD`, :class:`~pysad.models.SeasonalHybridESD`, :class:`~pysad.models.KNNCAD`, :class:`~pysad.models.MedianAbsoluteDeviation`
      - Data older than the window has no effect. A smaller window follows drift faster.
    * - Time decay
      - :class:`~pysad.models.RSHash`, :class:`~pysad.models.RobustRandomCutForest`, :class:`~pysad.models.Inqmad`

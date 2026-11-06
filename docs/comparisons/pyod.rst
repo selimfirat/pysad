@@ -22,7 +22,7 @@ Functions
      - ``fit_partial``, ``score_partial`` and ``fit_score_partial``
      - ``fit``, ``decision_function`` and ``predict``
    * - Detectors
-     - 20 streaming detectors, see :doc:`../detectors`, and every PyOD detector through a sliding window
+     - Streaming detectors, see :doc:`../detectors`, and every PyOD detector through a sliding window
      - About 60 batch detectors, also deep learning, graph and time series detectors
    * - Memory
      - Bounded: a window or summary statistics

@@ -61,6 +61,20 @@ It prints:
 
    AUROC: 0.543
 
+Chain the stages into one model
+-------------------------------
+
+This script puts a scaler, xStream, a running z-score and a calibrator into one :class:`~pysad.models.StreamPipeline`. Then it scores the stream with the pipeline as with a single detector. See :doc:`guides/pipelines`.
+
+.. literalinclude:: ../examples/example_stream_pipeline.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.742
+
 Project high-dimensional data
 -----------------------------
 
@@ -89,6 +103,22 @@ It prints:
 
    AUROC: 0.638
    Windowed AUROC: 0.755
+
+Evaluate with several metrics
+-----------------------------
+
+This script runs :func:`~pysad.evaluation.evaluate_stream` once and gets three metrics. The function scores each point before the detector learns from it.
+
+.. literalinclude:: ../examples/example_evaluate_stream.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.768
+   AUPR: 0.489
+   Windowed AUROC: 0.756
 
 Raise alerts with a calibrator
 ------------------------------

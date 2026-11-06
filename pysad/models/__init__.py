@@ -14,6 +14,7 @@ from .loda import LODA
 from .loop import LocalOutlierProbability
 from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
+from .nets import NETS
 from .null_model import NullModel
 from .online_isolation_forest import OnlineIsolationForest
 from .perfect_model import PerfectModel
@@ -24,6 +25,7 @@ from .rs_hash import RSHash
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .standard_absolute_deviation import StandardAbsoluteDeviation
+from .stream_pipeline import StreamPipeline
 from .xstream import xStream
 
 __all__ = [
@@ -39,6 +41,7 @@ __all__ = [
     "LocalOutlierProbability",
     "MCOD",
     "MedianAbsoluteDeviation",
+    "NETS",
     "NullModel",
     "OnlineIsolationForest",
     "PerfectModel",
@@ -50,5 +53,6 @@ __all__ = [
     "SeasonalHybridESD",
     "SmartSifter",
     "StandardAbsoluteDeviation",
+    "StreamPipeline",
     "xStream",
 ]

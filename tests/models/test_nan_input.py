@@ -13,6 +13,8 @@ import numpy as np
 import pytest
 
 import pysad.models
+from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
 
 NUM_INSTANCES = 12
@@ -61,6 +63,11 @@ def _params(name, num_features):
         },
         "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
+        "StreamPipeline": {
+            "model": pysad.models.LODA(),
+            "preprocessors": [ShingleTransformer(shingle_size=2)],
+            "postprocessors": [RunningZScorePostprocessor(window_size=10)],
+        },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
     }
 

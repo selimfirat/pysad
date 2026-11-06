@@ -238,6 +238,20 @@ It prints:
 
    AUROC: 0.731
 
+Use a kernel detector
+---------------------
+
+This script scores each point with OnlineOneClassSVM. OnlineOneClassSVM keeps a weighted sum of Gaussian kernels on recent points that fell outside its boundary, and scores a point by how far it falls below the boundary. The weights of old points decay with each new point.
+
+.. literalinclude:: ../examples/example_online_one_class_svm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.727
+
 Track running statistics
 ------------------------
 

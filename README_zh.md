@@ -234,6 +234,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `ExactStorm` | Exact-STORM 基于距离的离群点检测 (Angiulli & Fassetti, CIKM 2007) |
 | `MCOD` | 基于微簇的距离离群点检测 (Kontaki et al., ICDE 2011) |
 | `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
+| `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
 | `LocalOutlierProbability` | 局部离群概率 (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD 量子测量密度估计 (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | 基于带折扣学习的有限混合模型 (Yamanishi et al., KDD 2000) |

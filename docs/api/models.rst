@@ -22,6 +22,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    MCOD
    MedianAbsoluteDeviation
    OnlineIsolationForest
+   OnlineOneClassSVM
    RelativeEntropy
    RobustRandomCutForest
    RSHash

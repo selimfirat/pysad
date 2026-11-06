@@ -107,7 +107,7 @@ It prints:
 Raise alerts at a chosen risk
 -----------------------------
 
-This script fits a Generalized Pareto distribution to the highest scores with SPOT (streaming peaks-over-threshold). It raises an alert when the calibrated score is above the risk you choose, so a normal point raises an alert with at most that probability. See :doc:`guides/alerts`.
+This script fits a Generalized Pareto distribution to the highest scores with SPOT (streaming peaks-over-threshold). You choose the risk ``q``, and the script raises an alert when the calibrated score is above ``1 - q``, so a normal point raises an alert with probability ``q``. See :doc:`guides/alerts`.
 
 .. literalinclude:: ../examples/example_spot_calibration.py
    :language: python

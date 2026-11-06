@@ -19,6 +19,7 @@ def _model_specs():
         KNNCAD,
         LODA,
         MCOD,
+        ChangeFinder,
         ExactStorm,
         HalfSpaceTrees,
         IForestASD,
@@ -45,6 +46,8 @@ def _model_specs():
 
     # (name, factory, number of features)
     specs = [
+        ("ChangeFinder", lambda: ChangeFinder(), 1),
+        ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
             "HalfSpaceTrees",

@@ -12,6 +12,7 @@ NUM_FIT = 60
 NUM_NEXT = 20
 
 UNIVARIATE_MODELS = {
+    "ChangeFinder",
     "KNNCAD",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",

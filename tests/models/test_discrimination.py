@@ -21,6 +21,7 @@ WARMUP = 200
 ANOMALY_RATE = 0.05
 
 UNIVARIATE_MODELS = {
+    "ChangeFinder",
     "KNNCAD",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",

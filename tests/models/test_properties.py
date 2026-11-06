@@ -34,6 +34,7 @@ MAX_STREAM_LENGTH = 70
 MAX_EXAMPLES = 10
 
 UNIVARIATE_MODELS = {
+    "ChangeFinder",
     "KNNCAD",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",

@@ -117,6 +117,7 @@ SHORT_NAMES = {
 # because none of them draws random numbers. Each detector gets its defaults, plus the arguments
 # that it requires. A series is scaled to [0, 1].
 UNIVARIATE = {
+    "ChangeFinder": lambda n, period: models.ChangeFinder(),
     # KNNCAD learns during NAB's probationary period, as in NAB.
     "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),

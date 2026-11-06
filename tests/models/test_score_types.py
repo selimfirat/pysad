@@ -33,6 +33,7 @@ def _model_specs():
         MedianAbsoluteDeviation,
         NullModel,
         OnlineIsolationForest,
+        OnlineOneClassSVM,
         PerfectModel,
         RandomModel,
         RelativeEntropy,
@@ -84,6 +85,7 @@ def _model_specs():
         ("NETS", lambda: NETS(window_size=20, max_radius=0.3), NUM_FEATURES),
         ("NullModel", lambda: NullModel(), NUM_FEATURES),
         ("OnlineIsolationForest", lambda: OnlineIsolationForest(), NUM_FEATURES),
+        ("OnlineOneClassSVM", lambda: OnlineOneClassSVM(), NUM_FEATURES),
         ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),
         ("RandomModel", lambda: RandomModel(), NUM_FEATURES),
         # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses

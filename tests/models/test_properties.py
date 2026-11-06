@@ -96,6 +96,7 @@ def _model_params(model_name, num_features, data):
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         "NETS": {"window_size": 20, "max_radius": 0.1},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
+        "OnlineOneClassSVM": {"window_size": 10},
         "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 5},
         "RobustRandomCutForest": {"num_trees": 3, "shingle_size": 2, "tree_size": 16},
         "RSForest": {"window_size": 10, "num_trees": 5, "max_depth": 5},

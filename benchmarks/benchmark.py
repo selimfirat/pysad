@@ -101,6 +101,7 @@ DETECTORS = {
     "MCOD": lambda X, seed: models.MCOD(),
     "NETS": lambda X, seed: models.NETS(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
+    "OnlineOneClassSVM": lambda X, seed: models.OnlineOneClassSVM(),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
     "RSForest": lambda X, seed: models.RSForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),

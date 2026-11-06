@@ -10,6 +10,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    :template: class.rst
    :toctree: ../generated
 
+   ChangeFinder
    ExactStorm
    HalfSpaceTrees
    IForestASD

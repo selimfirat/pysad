@@ -224,6 +224,20 @@ It prints:
 
    AUROC: 0.672
 
+Find a change point
+-------------------
+
+This script finds a level shift in a noisy series with ChangeFinder. ChangeFinder learns an autoregressive model of the series online and scores each value by its negative log-likelihood under the model. A second model learns the moving average of these scores, and its smoothed scores are the change point scores.
+
+.. literalinclude:: ../examples/example_change_finder.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Highest change point score at 604, level shift at 600
+
 Use a local density detector
 ----------------------------
 

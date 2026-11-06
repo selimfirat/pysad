@@ -227,6 +227,7 @@ These starting points come from the design of each method. They are not benchmar
 | `LODA` | Lightweight on-line detector of anomalies (Pevný, *Machine Learning* 2016) |
 | `HalfSpaceTrees` | Half-Space Trees (Tan et al., IJCAI 2011) |
 | `RobustRandomCutForest` | Robust Random Cut Forest (Guha et al., ICML 2016) |
+| `RSForest` | RS-Forest random space tree density (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) |
 | `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |

@@ -224,6 +224,20 @@ It prints:
 
    AUROC: 0.672
 
+Use a random space tree detector
+--------------------------------
+
+This script scores each point with RS-Forest. RS-Forest splits the feature space with random trees and gives each point the negative density of the previous window in the nodes that hold it. Its first window sets the feature ranges of the trees.
+
+.. literalinclude:: ../examples/example_rs_forest.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.651
+
 Use a local density detector
 ----------------------------
 

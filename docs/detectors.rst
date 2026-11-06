@@ -34,6 +34,10 @@ These detectors take points with one or more features. A feature is one measured
      - Collusive displacement in random cut trees :cite:`guha2016robust`
      - Nothing
      - Fixed: ``num_trees`` trees of ``tree_size`` points
+   * - :class:`~pysad.models.RSForest`
+     - Density of random space trees, scored against the previous window :cite:`wu2014rsforest`
+     - Nothing
+     - Fixed: ``num_trees`` full trees of depth ``max_depth``, about 32 MB with the defaults
    * - :class:`~pysad.models.RSHash`
      - Time-decayed counts of random subspace grids :cite:`sathe2016subspace`
      - The range of each feature

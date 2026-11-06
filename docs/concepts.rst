@@ -102,7 +102,7 @@ Calibration
 A calibrator converts a raw score into a value between 0 and 1. PySAD has four calibrators:
 
 :class:`~pysad.transform.probability_calibration.AnomalyLikelihoodProbabilityCalibrator`
-   Gives the anomaly likelihood of HTM (Hierarchical Temporal Memory), the detector of Numenta. It fits a Gaussian to the averages of each 10 consecutive recent scores. It gives the probability that such an average is closer to the mean than the average of the last 10 scores. It expects scores between 0 and 1.
+   Gives the anomaly likelihood of HTM (Hierarchical Temporal Memory), the detector of Numenta. It fits a Gaussian to the averages of each 10 consecutive recent scores. It returns one minus the probability that such an average is further from the mean than the average of the last 10 scores, on the same side of the mean. The value is 0.5 at the mean and close to 1 far from it. It expects scores between 0 and 1.
 
 :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`
    Gives the fraction of recent scores that are lower than the new score. A value of 0.99 means that the new score is higher than 99% of the scores in the window. In statistics, this value is one minus the conformal p-value. It makes no assumption about the distribution of the scores.

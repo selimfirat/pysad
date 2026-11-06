@@ -48,8 +48,14 @@ def test_rejects_a_threshold_without_initial_X():
         ADeMS(threshold=0.5)
 
 
-def test_rejects_more_components_than_sketch_columns():
+@pytest.mark.parametrize(
+    ("num_components", "sketch_size", "num_features"),
+    [(5, 4, 100), (40, None, 100), (11, 50, 10)],
+)
+def test_rejects_more_components_than_sketch_columns(num_components, sketch_size, num_features):
     from pysad.models import ADeMS
 
-    with pytest.raises(ValueError, match="sketch_size"):
-        ADeMS(num_components=5, sketch_size=4)
+    # The sketch size is the given sketch_size, ceil(sqrt(num_features)) by default, and at most num_features.
+    model = ADeMS(num_components=num_components, sketch_size=sketch_size)
+    with pytest.raises(ValueError, match="sketch size"):
+        model.fit_partial(np.ones(num_features))

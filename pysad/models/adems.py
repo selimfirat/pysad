@@ -28,10 +28,6 @@ class ADeMS(BaseModel):
         threshold: float | None = None,
         initial_X: np.ndarray | None = None,
     ) -> None:
-        if num_components is not None and sketch_size is not None and num_components > sketch_size:
-            raise ValueError(
-                f"num_components must be at most sketch_size = {sketch_size}, got {num_components}."
-            )
         if threshold is not None and initial_X is None:
             raise ValueError(
                 "threshold needs initial_X, because the model scores every instance 1 before it fits one."
@@ -49,6 +45,10 @@ class ADeMS(BaseModel):
     def _init_model(self, num_features: int) -> None:
         sketch_size = self.sketch_size or int(np.ceil(np.sqrt(num_features)))
         self.sketch_size_ = min(sketch_size, num_features)
+        if self.num_components is not None and self.num_components > self.sketch_size_:
+            raise ValueError(
+                f"num_components must be at most the sketch size {self.sketch_size_}, got {self.num_components}."
+            )
         default_components = min(max(1, num_features // 5), self.sketch_size_)
         self.num_components_ = self.num_components or default_components
         self.sketch_ = np.zeros((num_features, 0))

@@ -92,6 +92,8 @@ def _model_params(model_name, num_features, data):
         "KNNCAD": {"probationary_period": 48},
         "LODA": {"num_bins": 5, "num_random_cuts": 10},
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
+        # The drawn values reach -1e6, below the domain of log(1 + x).
+        "MStream": {"log_transform": False},
         "NETS": {"window_size": 20, "max_radius": 0.1},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
         "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 5},

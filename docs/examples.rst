@@ -19,6 +19,20 @@ It prints:
 
    AUROC: 0.758
 
+Score a synthetic stream
+------------------------
+
+This script makes a labeled stream with :func:`~pysad.utils.generate_stream` and scores it. The stream has point anomalies, bursts of anomalies and a slow drift. It needs no download, so it suits quick tests.
+
+.. literalinclude:: ../examples/example_generate_stream.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.867
+
 Scale features online
 ---------------------
 

@@ -6,6 +6,7 @@ def test_unsupervised_models():
         LODA,
         MCOD,
         NETS,
+        ADeMS,
         ExactStorm,
         HalfSpaceTrees,
         IForestASD,
@@ -32,6 +33,7 @@ def test_unsupervised_models():
 
     model_classes = {
         RelativeEntropy: {"min_val": 0.0, "max_val": 1.0},
+        ADeMS: {},
         ExactStorm: {},
         HalfSpaceTrees: {"feature_mins": [0.0], "feature_maxes": [1.0]},
         IForestASD: {},

@@ -20,6 +20,7 @@ def _model_specs():
         LODA,
         MCOD,
         NETS,
+        ADeMS,
         ExactStorm,
         HalfSpaceTrees,
         IForestASD,
@@ -49,6 +50,7 @@ def _model_specs():
 
     # (name, factory, number of features)
     specs = [
+        ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
             "HalfSpaceTrees",

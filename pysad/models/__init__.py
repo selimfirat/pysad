@@ -2,6 +2,7 @@
 The :mod:`pysad.models` module includes anomaly detection models to score the anomalousness of instances.
 """
 
+from .adems import ADeMS
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
@@ -28,6 +29,7 @@ from .stream_pipeline import StreamPipeline
 from .xstream import xStream
 
 __all__ = [
+    "ADeMS",
     "ExactStorm",
     "HalfSpaceTrees",
     "IForestASD",

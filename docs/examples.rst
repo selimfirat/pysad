@@ -283,6 +283,20 @@ It prints:
 
    AUROC: 0.731
 
+Use a matrix sketch detector
+----------------------------
+
+This script scores each point with ADeMS. ADeMS keeps a Frequent Directions sketch, a small matrix that approximates the earlier points. The score of a point is the part of its direction that the top singular vectors of the sketch do not reconstruct.
+
+.. literalinclude:: ../examples/example_adems.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.770
+
 Track running statistics
 ------------------------
 

@@ -70,6 +70,10 @@ These detectors take points with one or more features. A feature is one measured
      - Local outlier factor in a sliding window :cite:`pokrajac2007incremental`
      - Nothing
      - Fixed: a window of ``window_size`` points and their ``num_neighbors`` nearest neighbors
+   * - :class:`~pysad.models.ADeMS`
+     - Residual of each point after its projection on a Frequent Directions sketch of the normal points :cite:`huang2015streaming`
+     - Nothing (initial points to use a threshold)
+     - Fixed: a sketch of ``sketch_size`` columns, linear in the number of features
    * - :class:`~pysad.models.LocalOutlierProbability`
      - Local outlier probability :cite:`kriegel2009loop`, as in PyNomaly :cite:`constantinou2018pynomaly`
      - Initial points (``initial_X``)

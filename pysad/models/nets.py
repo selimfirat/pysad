@@ -35,10 +35,11 @@ class NETS(BaseModel):
         self.outlier_fraction = outlier_fraction
         self.radius_: float | None = max_radius
         self._calibration: list[np.ndarray] = []  # the first instances, while they set the radius
-        self._nearest = np.empty(0)  # the distance from each of them to its nearest other one
+        self._nearest: np.ndarray = np.empty(0)  # the distance from each to its nearest other one
         self.points_ = np.empty((0, 0))  # the window as a ring buffer, (window_size, num_features)
         self.cell_ = np.full(window_size, -1)  # the cell of each slot, or -1 for none
-        self.cells_ = np.empty((0, 0), dtype=np.int64)  # the grid index of each cell, (window_size, num_features)
+        # The grid index of each cell, (window_size, num_features).
+        self.cells_ = np.empty((0, 0), dtype=np.int64)
         self.card_ = np.zeros(window_size, dtype=np.int64)  # the cardinality grid, 0 is a free cell
         self._cells: dict[tuple[int, ...], int] = {}  # the cell of each non-empty grid index
         self._num = 0  # the number of instances in the window
@@ -158,6 +159,8 @@ class NETS(BaseModel):
         candidates = near[self.cell_]
         if expiring:
             candidates[self._next] = False
-        num_neighbors += (scipy.spatial.distance.cdist(self.points_[candidates], [X]) <= self.radius_).sum()
+        num_neighbors += (
+            scipy.spatial.distance.cdist(self.points_[candidates], [X]) <= self.radius_
+        ).sum()
 
         return float(1.0 - num_neighbors / num_window)

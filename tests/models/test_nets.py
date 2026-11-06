@@ -28,7 +28,9 @@ def test_nets_scores_equal_exact_storm(params, num_features):
     expected = ExactStorm(**params).fit_score(X)
 
     np.testing.assert_array_equal(NETS(**params).fit_score(X), expected)
-    np.testing.assert_array_equal(NETS(**params).fit(X).score(X[:50]), ExactStorm(**params).fit(X).score(X[:50]))
+    np.testing.assert_array_equal(
+        NETS(**params).fit(X).score(X[:50]), ExactStorm(**params).fit(X).score(X[:50])
+    )
 
 
 def test_nets_empty_window():

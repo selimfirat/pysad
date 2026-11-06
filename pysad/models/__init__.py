@@ -15,6 +15,7 @@ from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
 from .null_model import NullModel
 from .online_isolation_forest import OnlineIsolationForest
+from .online_one_class_svm import OnlineOneClassSVM
 from .perfect_model import PerfectModel
 from .random_model import RandomModel
 from .relative_entropy import RelativeEntropy
@@ -39,6 +40,7 @@ __all__ = [
     "MedianAbsoluteDeviation",
     "NullModel",
     "OnlineIsolationForest",
+    "OnlineOneClassSVM",
     "PerfectModel",
     "RandomModel",
     "RelativeEntropy",

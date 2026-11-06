@@ -129,6 +129,8 @@ class SAND(BaseModel):
     - A new cluster that is close enough to several clusters of Θ merges into the closest one.
     - k-Shape starts from random labels and stops after 100 iterations, as in its paper. It drops the clusters that end empty, as the reference implementation does.
 
+    The reference implementation in TSB-UAD differs from the paper in ways that the model does not copy. By default, it clusters every 10th subsequence of a batch instead of all of them. It scales ``|C|`` and the sum of distances to ``[1, 2]`` before it computes the weight ``|C|^2 / sum_j SBD(C, C_j)``. It divides by ``1 + max(0, A - batch_size)`` instead of ``max(1, A - batch_size)`` in Eq. 4. It compares a new cluster only with the closest cluster of Θ. With these differences, the scores of the model and of the reference implementation are not equal on the same stream, but their AUROC is similar.
+
     Args:
         subsequence_length (int): The length ``ℓ`` of the subsequences to score, at least 2. The paper sets it to the length of the anomalies.
         centroid_length (int or None): The length ``ℓΘ`` of the centroids, greater than ``subsequence_length``. None uses ``4 * subsequence_length``, as in the experiments of the paper (Default=None).

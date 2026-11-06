@@ -44,7 +44,7 @@ Functions
      - Gaussian tail, conformal and SPOT
      - None
    * - Prequential evaluation
-     - AUROC, AUPR, precision and recall, also on a sliding window
+     - ``evaluate_stream``, with AUROC, AUPR, precision and recall, also on a sliding window
      - ``progressive_val_score``, with an approximate ROC AUC
 
 Both libraries have Half-Space Trees, LODA, an incremental local outlier factor and the standard absolute deviation. PySAD has more detectors for anomaly detection, and also the tools around a detector: ensemblers, postprocessors and calibrators. River has the other tasks of machine learning on streams. Use River if anomaly detection is one step of a larger River pipeline.

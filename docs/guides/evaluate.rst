@@ -131,7 +131,7 @@ Randomized detectors give a different result for each seed (value of ``random_st
 
    AUROC: 0.956 ± 0.008
 
-To compare detectors, give every detector the same points in the same stream order. ``fit_score_partial`` scores each point before the detector learns from it, as :doc:`/concepts` explains.
+To compare detectors, give every detector the same points in the same stream order. ``evaluate_stream`` scores each point before the detector learns from it, as :doc:`/concepts` explains.
 
 Next steps
 ----------

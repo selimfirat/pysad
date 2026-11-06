@@ -124,7 +124,7 @@ Prequential evaluation (predict, then train) is the standard way to measure a de
        model.fit_partial(x)
        metric.update(label, score)
 
-Most examples in this documentation call ``fit_score_partial`` instead. It scores each point before the detector learns from it, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores.
+Most examples in this documentation call ``fit_score_partial`` instead. It scores each point before the detector learns from it, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores. :func:`~pysad.evaluation.evaluate_stream` runs this loop for a labeled stream and returns the value of each metric.
 
 Detectors need some data before their scores are stable. This first part of the stream is the warm-up period. A metric over the full stream includes the warm-up period. To see how the results change over time, compute the metric separately on consecutive parts of the stream, as :doc:`guides/evaluate` shows.
 

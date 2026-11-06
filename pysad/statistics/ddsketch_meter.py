@@ -27,7 +27,13 @@ class DDSketchMeter(UnivariateStatistic):
     If the negative sketch has more, its highest two are merged, so the values
     closest to minus infinity are merged first, as in Section 2.2. The guarantee
     then holds if the largest value is at most ``x_q * gamma ** (max_buckets - 1)``
-    (Proposition 2.6). Memory is O(max_buckets).
+    (Proposition 4). Memory is O(max_buckets).
+
+    Without merges, the estimates equal those of the authors' Python implementation
+    ``ddsketch`` (sketches-py) with the logarithmic mapping. With merges they can
+    differ: sketches-py bounds the range of bucket indices, and its negative store
+    merges the values closest to zero, but the paper bounds the number of non-empty
+    buckets, and this class follows the paper.
 
     The paper says only that deletion "works similarly" to insertion: ``remove``
     decrements the bucket of the value. Deviation: the paper does not say how to

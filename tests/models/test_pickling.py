@@ -33,6 +33,8 @@ MODEL_PARAMS = {
         "max_depth": 8,
     },
     "IForestASD": {"window_size": 32},
+    # The window is summarized before and after the round trip.
+    "DILOF": {"num_neighbors": 5, "window_size": 24},
     # A window that slides before and after the round trip.
     "IncrementalLOF": {"num_neighbors": 5, "window_size": 20},
     # The initial sample completes before the round trip, so the restored model has rho and tau.

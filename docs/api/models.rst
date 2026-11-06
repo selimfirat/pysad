@@ -11,6 +11,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    :toctree: ../generated
 
    ADeMS
+   DILOF
    ExactStorm
    HalfSpaceTrees
    IForestASD

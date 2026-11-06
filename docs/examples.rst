@@ -208,6 +208,20 @@ It prints:
 
 Both variants find the three spikes and flag no normal values. :doc:`guides/seasonal` explains when to use each variant.
 
+Find unusual subsequences with SAND
+-----------------------------------
+
+This script scores a periodic series with SAND. SAND clusters the subsequences of each batch of values and scores the latest subsequence by its distance to the clusters. Four subsequences of the series have a different shape. ``subsequence_length`` is the length of these anomalies.
+
+.. literalinclude:: ../examples/example_sand.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC after the first batch: 0.939
+
 Remove a trend and a cycle with OneShotSTL
 ------------------------------------------
 

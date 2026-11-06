@@ -124,6 +124,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values
      - Grows slowly: a window and one histogram for each distinct state of the stream
+   * - :class:`~pysad.models.SAND`
+     - Distance of the latest subsequence to weighted k-Shape clusters of past subsequences :cite:`boniol2021sand`
+     - The subsequence length
+     - Grows slowly: a batch of ``batch_size`` values and one ``centroid_length`` by ``centroid_length`` matrix per cluster, with at most ``num_clusters`` new clusters per batch
 
 PyOD integrations
 -----------------

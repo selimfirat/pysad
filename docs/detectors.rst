@@ -108,6 +108,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`
      - A probationary period: at least 48 values that it learns from before it scores
      - Fixed: the last 19 values and about 2 × ``probationary_period`` training and calibration windows of 19 values
+   * - :class:`~pysad.models.MatrixProfile`
+     - Distance from the newest subsequence to its nearest earlier subsequence, the matrix profile of STAMPI :cite:`yeh2016matrix`
+     - The subsequence length (``window_length``)
+     - Fixed: the last ``history_size`` values
    * - :class:`~pysad.models.RelativeEntropy`
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values

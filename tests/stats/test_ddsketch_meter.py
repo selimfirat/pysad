@@ -77,6 +77,30 @@ def test_remove_after_merged_buckets_empties_the_meter():
     assert meter.get() == 0.0
 
 
+def test_remove_finds_merged_counts_below_a_later_bucket():
+    meter = DDSketchMeter(max_buckets=5)
+    for exponent in range(1, 12):
+        meter.update(10.0**exponent)
+    for exponent in range(6, 12):
+        meter.remove(10.0**exponent)
+    meter.update(1e-3)
+
+    meter.remove(10.0)
+
+    assert meter.num_items == 5
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_windowed_quantile_with_merged_buckets_on_heavy_tailed_stream(seed):
+    values = np.random.RandomState(seed).lognormal(sigma=4.0, size=2000)
+    meter = RunningStatistic(DDSketchMeter, window_size=200, max_buckets=50)
+
+    for value in values:
+        meter.update(float(value))
+
+    assert meter.get() > 0.0
+
+
 def test_windowed_quantile_follows_the_window():
     values = np.concatenate([np.full(500, 1.0), np.full(500, 100.0)])
     meter = RunningStatistic(DDSketchMeter, window_size=100, q=0.5)

@@ -37,11 +37,12 @@ class DDSketchMeter(UnivariateStatistic):
 
     The paper says only that deletion "works similarly" to insertion: ``remove``
     decrements the bucket of the value. Deviation: the paper does not say how to
-    delete a value whose bucket was merged. ``remove`` then decrements the bucket
-    farthest toward minus infinity, which holds the merged counts, and does not check
-    that the value was added before. A bucket that a later value created below the
-    merged counts can absorb such a removal, so after merges the bucket counts of
-    removed values are approximate. The total count stays exact.
+    delete a value whose bucket was merged. A merge moves counts toward plus
+    infinity, so ``remove`` then decrements the nearest existing bucket toward plus
+    infinity. This bucket can be one that a later value created between the merged
+    bucket and the bucket that holds the merged counts, so after merges the bucket
+    counts of removed values are approximate. The total count stays exact, and the
+    removal of a value that was added and not yet removed never raises an error.
 
     Args:
         q (float): The quantile to track, in [0, 1] (Default=0.5, the median).
@@ -128,9 +129,13 @@ class DDSketchMeter(UnivariateStatistic):
 
         store = self._positive if num > 0 else self._negative
         key = self._key(num)
-        if key not in store and store:
-            # Merged values are held by the bucket farthest toward minus infinity.
-            key = max(key, min(store)) if num > 0 else min(key, max(store))
+        if key not in store:
+            # A merge moved the counts of this bucket to the next bucket toward plus infinity.
+            # Negative values are stored by absolute value, so that is a lower key.
+            if num > 0:
+                key = min((k for k in store if k > key), default=key)
+            else:
+                key = max((k for k in store if k < key), default=key)
 
         count = store.get(key, 0)
         if count == 0:

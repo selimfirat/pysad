@@ -19,6 +19,7 @@ NUM_INSTANCES = 12
 
 UNIVARIATE_MODELS = {
     "KNNCAD",
+    "MatrixProfile",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
     "SeasonalESD",
@@ -46,6 +47,7 @@ def _params(name, num_features):
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
+        "MatrixProfile": {"window_length": 3},
         "LocalOutlierProbability": {
             "initial_X": np.random.RandomState(0).rand(12, num_features),
             "num_neighbors": 10,

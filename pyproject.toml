@@ -85,6 +85,8 @@ test = [
   "hypothesis==6.168.5",
   # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
   "mmh3==5.3.1",
+  # The reference that MatrixProfile is tested against. Its numba dependency lags new Python releases.
+  "stumpy==1.14.1; python_version < '3.15'",
   "pytest==9.1.1",
   "pytest-cov==7.1.0",
   "pytest-xdist==3.8.0",

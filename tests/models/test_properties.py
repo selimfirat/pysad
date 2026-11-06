@@ -35,6 +35,7 @@ MAX_EXAMPLES = 10
 
 UNIVARIATE_MODELS = {
     "KNNCAD",
+    "MatrixProfile",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
     "SeasonalESD",
@@ -88,6 +89,7 @@ def _model_params(model_name, num_features, data):
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
+        "MatrixProfile": {"window_length": 4, "history_size": 20},
         "LODA": {"num_bins": 5, "num_random_cuts": 10},
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},

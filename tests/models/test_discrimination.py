@@ -22,6 +22,7 @@ ANOMALY_RATE = 0.05
 
 UNIVARIATE_MODELS = {
     "KNNCAD",
+    "MatrixProfile",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
     "SeasonalESD",
@@ -75,6 +76,7 @@ def _model_params(model_name, X):
         # Grace periods that end with the warmup.
         "KitNet": {"grace_feature_mapping": 50, "grace_anomaly_detector": 150},
         "KNNCAD": {"probationary_period": 100},
+        "MatrixProfile": {"window_length": 24},
         "LocalOutlierProbability": {"initial_X": X[:100]},
         "RelativeEntropy": {"min_val": feature_mins[0], "max_val": feature_maxes[0]},
         "RobustRandomCutForest": {"num_trees": 10, "tree_size": 64},

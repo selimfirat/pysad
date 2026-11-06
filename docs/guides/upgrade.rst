@@ -6,7 +6,7 @@ This guide lists the changes that you make to move a pipeline from PySAD 0.1.x t
 Why upgrade
 -----------
 
-PySAD 0.1.1 calls ``np.float`` in the batch methods (``fit``, ``score``, ``fit_score``, ``transform`` and ``fit_transform``) and in some detectors. NumPy 1.24 removed ``np.float``, so these calls fail with an ``AttributeError`` on a current NumPy. A pipeline that pins 0.1.1 must also pin ``numpy<1.24``. Its ensemblers also import PyOD.
+PySAD 0.1.1 calls ``np.float`` in the batch methods ``score``, ``fit_score``, ``transform`` and ``fit_transform``, and in :class:`~pysad.models.LODA` and :class:`~pysad.models.xStream`. NumPy 1.24 removed ``np.float``, so these calls fail with an ``AttributeError`` on a current NumPy. A pipeline that pins 0.1.1 must also pin ``numpy<1.24``. Its ensemblers also import PyOD.
 
 The current version supports Python 3.10 to 3.14. It needs only NumPy, scikit-learn and SciPy. It does not install PyOD. If you use :mod:`pysad.models.integrations` with a PyOD detector, install PyOD yourself. :class:`~pysad.models.IForestASD` now uses the Isolation Forest of scikit-learn, so it does not need PyOD.
 
@@ -69,6 +69,8 @@ To get the 0.1.x output, set ``short_window_size=1`` and ``window_size=6400``:
 .. code-block:: python
 
    calibrator = GaussianTailProbabilityCalibrator(window_size=6400, short_window_size=1)
+
+The output is then the same as in 0.1.x, except when all scores in the window are equal. In that case, 0.1.x used a standard deviation of 1. The current version returns 1 for a higher score, 0 for a lower score and 0.5 for an equal score.
 
 With ``running_statistics=False``, the current version computes the variance over all scores. Version 0.1.x computed it over the last ``window_size`` scores. The outputs are the same until the stream is longer than ``window_size``.
 

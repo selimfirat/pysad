@@ -14,7 +14,7 @@ from pysad.statistics.variance_meter import VarianceMeter
 class GaussianTailProbabilityCalibrator(BasePostprocessor):
     r"""Converts each score into a probability with the Gaussian tail function (Q-function) of the fitted scores :cite:`ahmad2017unsupervised`.
 
-    The calibrator assumes that the scores follow a normal distribution. It implements the anomaly likelihood of Ahmad et al. (2017) (Eq. 5 & 6) as :math:`L_t = 1 - Q((\tilde{\mu}_t - \mu_t) / \sigma_t)`. Here :math:`\mu_t` and :math:`\sigma_t` are the mean and standard deviation of the last ``window_size`` scores, and :math:`\tilde{\mu}_t` is the short-term average of the last ``short_window_size`` scores. The short-term average resists single-point noise spikes while responding to sustained score increases.
+    The calibrator assumes that the scores follow a normal distribution. It implements the anomaly likelihood of Ahmad et al. (2017) (Eq. 4 & 5) as :math:`L_t = 1 - Q((\tilde{\mu}_t - \mu_t) / \sigma_t)`. Here :math:`\mu_t` and :math:`\sigma_t` are the mean and standard deviation of the last ``window_size`` scores, and :math:`\tilde{\mu}_t` is the short-term average of the last ``short_window_size`` scores. The short-term average resists single-point noise spikes while responding to sustained score increases.
 
     When the fitted scores have zero variance, the calibrator returns the exact limit of the Gaussian tail as the standard deviation approaches zero: 1.0 if the short-term average is above the mean, 0.5 if it equals the mean, and 0.0 if it is below the mean.
 

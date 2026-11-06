@@ -104,6 +104,21 @@ It prints:
 
    27 alerts, 17 of them true anomalies
 
+Raise alerts at a chosen risk
+-----------------------------
+
+This script fits a Generalized Pareto distribution to the highest scores with SPOT (streaming peaks-over-threshold). It raises an alert when the calibrated score is above the risk you choose, so a normal point raises an alert with at most that probability. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_spot_calibration.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   32 alerts, 27 of them true anomalies
+   alarm threshold on the raw scores: 3.013
+
 Postprocess scores
 ------------------
 

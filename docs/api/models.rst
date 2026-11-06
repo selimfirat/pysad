@@ -26,6 +26,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    OnlineIsolationForest
    RelativeEntropy
    RobustRandomCutForest
+   RSForest
    RSHash
    SeasonalESD
    SeasonalHybridESD

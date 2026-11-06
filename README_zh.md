@@ -227,6 +227,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `LODA` | LODA 轻量级在线异常检测器 (Pevný, *Machine Learning* 2016) |
 | `HalfSpaceTrees` | Half-Space Trees (Tan et al., IJCAI 2011) |
 | `RobustRandomCutForest` | Robust Random Cut Forest (Guha et al., ICML 2016) |
+| `RSForest` | RS-Forest 随机空间树密度估计 (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash 子空间离群点检测 (Sathe & Aggarwal, ICDM 2016) |
 | `IForestASD` | 滑动窗口上的孤立森林 (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | 在线孤立森林 (Leveni et al., ICML 2024) |

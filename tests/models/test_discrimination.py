@@ -97,6 +97,7 @@ def _model_params(model_name, X):
         "LocalOutlierProbability": {"initial_X": X[:100]},
         "RelativeEntropy": {"min_val": feature_mins[0], "max_val": feature_maxes[0]},
         "RobustRandomCutForest": {"num_trees": 10, "tree_size": 64},
+        "RSForest": {"window_size": WARMUP},
         "RSHash": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
         # The spikes go in both directions.
         "SeasonalESD": {"period": 24, "window_size": 96, "direction": "both"},

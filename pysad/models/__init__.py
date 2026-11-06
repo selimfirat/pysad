@@ -29,6 +29,7 @@ from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .stream_pipeline import StreamPipeline
+from .teda import TEDA
 from .xstream import xStream
 
 __all__ = [
@@ -60,5 +61,6 @@ __all__ = [
     "SmartSifter",
     "StandardAbsoluteDeviation",
     "StreamPipeline",
+    "TEDA",
     "xStream",
 ]

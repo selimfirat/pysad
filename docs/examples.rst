@@ -298,6 +298,21 @@ It prints:
 
    AUROC: 0.672
 
+Use an eccentricity detector
+----------------------------
+
+This script scores each point with TEDA. TEDA keeps only the running mean and variance of the stream. It scores each point by its squared distance to the mean, divided by the variance. A score above :math:`m^2` is the paper's alert rule for :math:`m` standard deviations.
+
+.. literalinclude:: ../examples/example_usage_teda.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.791
+   Alerts: 2
+
 Use a random space tree detector
 --------------------------------
 

@@ -22,6 +22,7 @@ def _model_specs():
         MCOD,
         NETS,
         SAND,
+        TEDA,
         ADeMS,
         ExactStorm,
         HalfSpaceTrees,
@@ -122,6 +123,7 @@ def _model_specs():
             ),
             NUM_FEATURES,
         ),
+        ("TEDA", lambda: TEDA(), NUM_FEATURES),
         ("xStream", lambda: xStream(), NUM_FEATURES),
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (

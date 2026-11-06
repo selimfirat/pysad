@@ -205,6 +205,7 @@ module = [
     "pysad.models.loop",
     "pysad.models.mcod",
     "pysad.models.median_absolute_deviation",
+    "pysad.models.nets",
     "pysad.models.null_model",
     "pysad.models.online_isolation_forest",
     "pysad.models.perfect_model",

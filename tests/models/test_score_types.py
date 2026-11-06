@@ -229,6 +229,7 @@ def test_float_scores_work_downstream():
         ZScorePostprocessor,
     )
     from pysad.transform.probability_calibration import (
+        AnomalyLikelihoodProbabilityCalibrator,
         ConformalProbabilityCalibrator,
         GaussianTailProbabilityCalibrator,
         SPOTProbabilityCalibrator,
@@ -241,6 +242,7 @@ def test_float_scores_work_downstream():
 
     models = [xStream(), xStream()]
     postprocessors = [
+        AnomalyLikelihoodProbabilityCalibrator(learning_period=20, num_estimation_samples=20),
         ConformalProbabilityCalibrator(window_size=50),
         GaussianTailProbabilityCalibrator(window_size=50),
         SPOTProbabilityCalibrator(num_init=50, level=0.9),

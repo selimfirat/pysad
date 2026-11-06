@@ -2,6 +2,7 @@ def test_calibrators():
     import numpy as np
 
     from pysad.transform.probability_calibration import (
+        AnomalyLikelihoodProbabilityCalibrator,
         ConformalProbabilityCalibrator,
         GaussianTailProbabilityCalibrator,
         SPOTProbabilityCalibrator,
@@ -13,6 +14,11 @@ def test_calibrators():
     scores = np.random.rand(100)
 
     calibrators = {
+        AnomalyLikelihoodProbabilityCalibrator: {
+            "learning_period": 20,
+            "num_estimation_samples": 20,
+            "reestimation_period": 10,
+        },
         GaussianTailProbabilityCalibrator: {},
         ConformalProbabilityCalibrator: {},
         SPOTProbabilityCalibrator: {"num_init": 40, "level": 0.9, "depth": 5},
@@ -259,3 +265,79 @@ def test_spot_rejects_risk_above_initial_level():
     for q in [0.0, 0.03, 0.5]:
         with pytest.raises(ValueError, match="q must be between 0 and 1 - level"):
             SPOTProbabilityCalibrator(q=q, level=0.98)
+
+
+def test_anomaly_likelihood_matches_nupic():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import AnomalyLikelihoodProbabilityCalibrator
+
+    rng = np.random.RandomState(0)
+    scores = rng.beta(0.5, 5, 300)
+    scores[150:160] = 1.0
+    scores[250] = 0.0
+    calibrator = AnomalyLikelihoodProbabilityCalibrator(
+        learning_period=40, num_estimation_samples=30, window_size=100, reestimation_period=20
+    )
+    likelihoods = calibrator.fit_transform(scores)
+
+    # The values of AnomalyLikelihood.anomalyProbability in NuPIC 1.0.5 on the same scores.
+    expected = {
+        69: 0.5,
+        70: 0.5988556426282219,
+        71: 0.6945526496941197,
+        150: 0.9997448042202933,
+        151: 0.9999999996520234,
+        152: 0.999,
+        200: 0.5238192980493048,
+        250: 0.7297238102116057,
+        299: 0.6638713747866467,
+    }
+    # NuPIC approximates the square root of 2 with 1.4142.
+    np.testing.assert_allclose(likelihoods[list(expected)], list(expected.values()), atol=1e-5)
+    assert np.all(likelihoods[:70] == 0.5)
+
+
+def test_anomaly_likelihood_values():
+    import numpy as np
+    import pytest
+
+    from pysad.transform.probability_calibration import AnomalyLikelihoodProbabilityCalibrator
+
+    # The fitted averages have mean 0.3 and standard deviation 0.1.
+    calibrator = AnomalyLikelihoodProbabilityCalibrator(
+        learning_period=0, num_estimation_samples=4, short_window_size=1
+    )
+    calibrator.fit(np.array([0.2, 0.4, 0.2, 0.4]))
+
+    assert calibrator.transform_partial(0.3) == pytest.approx(0.5)
+    # The tail is two-sided, so scores 2 standard deviations above and below the mean match.
+    assert calibrator.transform_partial(0.5) == pytest.approx(0.9772499, rel=1e-6)
+    assert calibrator.transform_partial(0.1) == pytest.approx(0.9772499, rel=1e-6)
+
+
+def test_anomaly_likelihood_constant_scores():
+    import numpy as np
+    import pytest
+
+    from pysad.transform.probability_calibration import AnomalyLikelihoodProbabilityCalibrator
+
+    calibrator = AnomalyLikelihoodProbabilityCalibrator(short_window_size=1).fit(np.zeros(500))
+
+    # The mean is at least 0.03 and the variance at least 0.0003.
+    assert calibrator.transform_partial(0.0) == pytest.approx(0.9583677, rel=1e-6)
+    assert calibrator.transform_partial(0.03) == pytest.approx(0.5)
+
+
+def test_anomaly_likelihood_alerts_at_the_start_of_a_run():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import AnomalyLikelihoodProbabilityCalibrator
+
+    scores = np.r_[np.random.RandomState(0).beta(0.5, 5, 2000), np.ones(20)]
+    likelihoods = AnomalyLikelihoodProbabilityCalibrator().fit_transform(scores)[-20:]
+
+    # After the first alert, the likelihood stays at 0.999 while the run lasts.
+    first = np.flatnonzero(likelihoods >= 1 - 1e-5)
+    assert len(first) == 1
+    np.testing.assert_allclose(likelihoods[first[0] + 1 :], 0.999)

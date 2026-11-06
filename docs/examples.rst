@@ -251,3 +251,19 @@ It prints:
 .. code-block:: text
 
    mean: -0.048, standard deviation: 0.977
+
+Detect a change in the mean
+---------------------------
+
+This script streams 500 values with mean 0 followed by 500 values with mean 1. It updates :class:`~pysad.statistics.PageHinkleyMeter` directly and raises an alarm when its two-sided cumulative statistic exceeds a fixed threshold. The ``delta`` parameter discounts small deviations; the threshold controls when the accumulated evidence triggers an alarm.
+
+.. literalinclude:: ../examples/example_page_hinkley.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   First change detected at index 549 (zero-based)
+
+The mean changes at index 500; the alarm follows once enough evidence accumulates. This meter uses the full stream history and cannot remove observations, so it cannot be wrapped in :class:`~pysad.statistics.RunningStatistic`.

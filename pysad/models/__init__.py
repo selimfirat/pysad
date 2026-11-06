@@ -24,6 +24,7 @@ from .rs_hash import RSHash
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .standard_absolute_deviation import StandardAbsoluteDeviation
+from .stream_pipeline import StreamPipeline
 from .xstream import xStream
 
 __all__ = [
@@ -50,5 +51,6 @@ __all__ = [
     "SeasonalHybridESD",
     "SmartSifter",
     "StandardAbsoluteDeviation",
+    "StreamPipeline",
     "xStream",
 ]

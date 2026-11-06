@@ -5,6 +5,9 @@ import numpy as np
 import pytest
 
 import pysad.models
+from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.preprocessing import ShingleTransformer
+from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
 
 SEED = 61
@@ -77,6 +80,15 @@ def _make_model(model_name, X):
     model_cls = getattr(pysad.models, model_name)
     if model_name == "LocalOutlierProbability":
         return model_cls(X[:20])
+    if model_name == "StreamPipeline":
+        return model_cls(
+            model=pysad.models.LODA(),
+            preprocessors=[ShingleTransformer(shingle_size=2)],
+            postprocessors=[
+                RunningZScorePostprocessor(window_size=20),
+                ConformalProbabilityCalibrator(window_size=20),
+            ],
+        )
 
     return model_cls(**MODEL_PARAMS.get(model_name, {}))
 

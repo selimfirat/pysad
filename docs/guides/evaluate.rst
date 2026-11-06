@@ -26,7 +26,24 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
 Measure several metrics at once
 -------------------------------
 
-Update every metric with the same score. Precision and recall need a threshold. In this example, the metrics get the calibrated score, a value between 0 and 1 (see :doc:`alerts`). As a result, the threshold 0.95 has the same meaning for every detector:
+If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.evaluate_stream`. It scores each point, updates every metric with the score, and then lets the detector learn from the point. It returns the value of each metric at the end of the stream:
+
+.. code-block:: python
+
+   from pysad.evaluation import AUPRMetric, AUROCMetric, evaluate_stream
+   from pysad.models import LODA
+   from pysad.utils import Data
+
+   X, y = Data().get_data("cardio.mat")
+
+   results = evaluate_stream(
+       model=LODA(random_state=0),
+       X=X,
+       y=y,
+       metrics={"AUROC": AUROCMetric(), "AUPR": AUPRMetric()},
+   )
+
+If the metrics get transformed scores, write the loop yourself and update every metric with the same score. Precision and recall need a threshold. In this example, the metrics get the calibrated score, a value between 0 and 1 (see :doc:`alerts`). As a result, the threshold 0.95 has the same meaning for every detector:
 
 .. code-block:: python
 
@@ -105,10 +122,8 @@ Randomized detectors give a different result for each seed (value of ``random_st
    results = []
    for seed in range(5):
        model = LODA(random_state=seed)
-       metric = AUROCMetric()
-       for x, label in ArrayStreamer().iter(X, y):
-           metric.update(label, model.fit_score_partial(x))
-       results.append(metric.get())
+       auroc = evaluate_stream(model=model, X=X, y=y, metrics={"AUROC": AUROCMetric()})["AUROC"]
+       results.append(auroc)
 
    print(f"AUROC: {np.mean(results):.3f} ± {np.std(results):.3f}")
 

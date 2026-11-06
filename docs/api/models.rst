@@ -33,3 +33,4 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    NullModel
    PerfectModel
    RandomModel
+   StreamPipeline

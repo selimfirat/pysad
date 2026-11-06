@@ -2,6 +2,7 @@
 The :mod:`pysad.models` module includes anomaly detection models to score the anomalousness of instances.
 """
 
+from .adems import ADeMS
 from .change_finder import ChangeFinder
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
@@ -21,6 +22,7 @@ from .perfect_model import PerfectModel
 from .random_model import RandomModel
 from .relative_entropy import RelativeEntropy
 from .robust_random_cut_forest import RobustRandomCutForest
+from .rs_forest import RSForest
 from .rs_hash import RSHash
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
@@ -29,6 +31,7 @@ from .stream_pipeline import StreamPipeline
 from .xstream import xStream
 
 __all__ = [
+    "ADeMS",
     "ChangeFinder",
     "ExactStorm",
     "HalfSpaceTrees",
@@ -48,6 +51,7 @@ __all__ = [
     "RandomModel",
     "RelativeEntropy",
     "RobustRandomCutForest",
+    "RSForest",
     "RSHash",
     "SeasonalESD",
     "SeasonalHybridESD",

@@ -12,7 +12,7 @@ from pysad.statistics.variance_meter import VarianceMeter
 class GaussianTailProbabilityCalibrator(BasePostprocessor):
     r"""Converts each score into a probability with the Gaussian tail function (Q-function) of the fitted scores :cite:`ahmad2017unsupervised`.
 
-    The calibrator assumes that the scores follow a normal distribution. It implements the anomaly likelihood of Ahmad et al. (2017) (Eq. 5 & 6) as :math:`L_t = 1 - Q((\tilde{\mu}_t - \mu_t) / \sigma_t)`. Here :math:`\mu_t` and :math:`\sigma_t` are the mean and standard deviation of the last ``window_size`` scores, and :math:`\tilde{\mu}_t` is the short-term average of the last ``short_window_size`` scores, where the score being transformed is the most recent one: it takes the place of the last fitted score in the short window, so a score that was just fitted is counted once. Transforming a score never changes the state. The short-term average resists single-point noise spikes while responding to sustained score increases.
+    The calibrator assumes that the scores follow a normal distribution. It implements the anomaly likelihood of Ahmad et al. (2017) (Eq. 5 & 6) as :math:`L_t = 1 - Q((\tilde{\mu}_t - \mu_t) / \sigma_t)`. Here :math:`\mu_t` and :math:`\sigma_t` are the mean and standard deviation of the last ``window_size`` scores, and :math:`\tilde{\mu}_t` is the short-term average of the last ``short_window_size`` scores, where the score being transformed is the most recent one: it is averaged with the last ``short_window_size - 1`` fitted scores, so a score that was just fitted is counted once. Transforming a score never changes the state. ``fit_transform_partial`` fits the score first and then averages the short window as it is, so the streaming path also counts it once. The short-term average resists single-point noise spikes while responding to sustained score increases.
 
     When the fitted scores have zero variance, the calibrator returns the exact limit of the Gaussian tail as the standard deviation approaches zero: 1.0 if the short-term average is above the mean, 0.5 if it equals the mean, and 0.0 if it is below the mean.
 
@@ -73,9 +73,9 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
     def transform_partial(self, score: float) -> float:
         """Transforms given score.
 
-        The score is the most recent score in the short-term average: it takes the place of the
-        last fitted score in the short window, so a score that was just fitted is counted once,
-        and transforming a score does not change the state.
+        The score is the most recent score in the short-term average: it is averaged with the
+        last ``short_window_size - 1`` fitted scores (or used on its own when
+        ``short_window_size`` is 1), so transforming a score does not change the state.
 
         Args:
             score (float): Input score.
@@ -83,13 +83,32 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         Returns:
             float: One minus the Gaussian tail p-value of the score.
         """
-        if self.short_window:
-            short_window = list(self.short_window)
-            short_window[-1] = score
-            short_mean = sum(short_window) / len(short_window)
-        else:
+        if self.short_window_size == 1:
             short_mean = score
+        else:
+            prev = list(self.short_window)[-(self.short_window_size - 1) :]
+            short_mean = (sum(prev) + score) / (len(prev) + 1)
 
+        return self._calibrate(short_mean)
+
+    def fit_transform_partial(self, score: float) -> float:
+        """Updates the postprocessor with the next score and transforms it.
+
+        The score is counted once in the short-term average: it is fitted first, and the
+        short-term average is then taken from the short window as it is.
+
+        Args:
+            score (float): Input score.
+
+        Returns:
+            float: One minus the Gaussian tail p-value of the score.
+        """
+        self.fit_partial(score)
+        window = list(self.short_window)[-self.short_window_size :]
+
+        return self._calibrate(sum(window) / len(window))
+
+    def _calibrate(self, short_mean: float) -> float:
         mean = self.avg_meter.get()
         var = self.var_meter.get()
         if var <= 0:

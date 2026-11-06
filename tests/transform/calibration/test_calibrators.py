@@ -135,7 +135,9 @@ def test_gaussian_tail_calibrator_short_window():
 
     mean = scores.mean()
     std = scores.std(ddof=0)
-    short_mean = scores[-10:].mean()
+    # The score is the newest point in the short-term average: it is averaged with the
+    # last ``short_window_size - 1`` fitted scores, even when it equals the last one.
+    short_mean = (scores[-9:].sum() + scores[-1]) / 10
 
     last_score = scores[-1]
     actual = calibrator.transform_partial(last_score)
@@ -193,8 +195,8 @@ def test_gaussian_tail_calibrator_transform_partial_is_pure_and_monotonic():
     # 1. Two calls with the same score give the same output, and do not change the outputs that
     # follow (#483).
     calibrator = fitted([0.0, 1.0])
-    assert calibrator.transform_partial(1.0) == pytest.approx(0.5)
-    assert calibrator.transform_partial(1.0) == pytest.approx(0.5)
+    assert calibrator.transform_partial(1.0) == pytest.approx(0.6305586598182363)
+    assert calibrator.transform_partial(1.0) == pytest.approx(0.6305586598182363)
     assert calibrator.transform_partial(0.0) == fitted([0.0, 1.0]).transform_partial(0.0)
 
     # 2. fit then transform agrees with fit_partial then transform_partial (#483).
@@ -206,8 +208,22 @@ def test_gaussian_tail_calibrator_transform_partial_is_pure_and_monotonic():
     # 3. In the same state, a higher score never gets a lower output (#483).
     calibrator = fitted([1.0, -1.0, -1.0])
     outputs = [copy.deepcopy(calibrator).transform_partial(score) for score in [-1.0, 0.0, 1.0]]
-    assert outputs == pytest.approx([0.5, 0.6381631950841185, 0.7602499389065233])
+    assert outputs == pytest.approx([0.23975006109347674, 0.36183680491588155, 0.5])
     assert outputs == sorted(outputs)
+
+    # 4. Transforming a score that was not just fitted averages it with the last
+    # ``short_window_size - 1`` fitted scores (#514 review): with fitted scores
+    # [0, 0, 10], the short-term average of 10 is (0 + 10 + 10) / 3, as in Ahmad et al.
+    calibrator = GaussianTailProbabilityCalibrator(window_size=10, short_window_size=3).fit(
+        np.array([0.0, 0.0, 10.0])
+    )
+    assert calibrator.transform_partial(10.0) == pytest.approx(0.7602499389065234)
+
+    # 5. The streaming path counts a just-fitted score once, matching master.
+    stream = np.array([0.0, 1.0, -1.0, 2.0, 0.5])
+    assert list(
+        GaussianTailProbabilityCalibrator(window_size=10, short_window_size=3).fit_transform(stream)
+    ) == pytest.approx([0.5, 0.5, 0.5, 0.5592512739044933, 0.5])
 
 
 def test_spot_grimshaw_matches_scipy_fit():

@@ -10,6 +10,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    :template: class.rst
    :toctree: ../generated
 
+   ADeMS
    ExactStorm
    HalfSpaceTrees
    IForestASD
@@ -21,10 +22,12 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    LocalOutlierProbability
    MCOD
    MedianAbsoluteDeviation
+   NETS
    OnlineIsolationForest
    OnlineOneClassSVM
    RelativeEntropy
    RobustRandomCutForest
+   RSForest
    RSHash
    SeasonalESD
    SeasonalHybridESD
@@ -34,3 +37,4 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    NullModel
    PerfectModel
    RandomModel
+   StreamPipeline

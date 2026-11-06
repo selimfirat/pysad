@@ -227,14 +227,17 @@ These starting points come from the design of each method. They are not benchmar
 | `LODA` | Lightweight on-line detector of anomalies (Pevný, *Machine Learning* 2016) |
 | `HalfSpaceTrees` | Half-Space Trees (Tan et al., IJCAI 2011) |
 | `RobustRandomCutForest` | Robust Random Cut Forest (Guha et al., ICML 2016) |
+| `RSForest` | RS-Forest random space tree density (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) |
 | `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM distance-based outliers (Angiulli & Fassetti, CIKM 2007) |
 | `MCOD` | Micro-cluster-based distance-based outliers (Kontaki et al., ICDE 2011) |
+| `NETS` | Set-based distance-based outliers on a cell grid (Yoon et al., PVLDB 2019) |
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | Online one-class SVM, NORMA (Kivinen et al., IEEE TSP 2004) |
+| `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | Finite mixtures with discounting learning (Yamanishi et al., KDD 2000) |

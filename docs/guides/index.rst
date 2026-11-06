@@ -61,6 +61,12 @@ Each guide shows how to do one task. Before you use a guide, learn the basic loo
 
    .. container:: card
 
+      :doc:`upgrade`
+
+      Move a pipeline from PySAD 0.1.x to the current version, with the new calibrator parameters.
+
+   .. container:: card
+
       :doc:`/examples`
 
       Complete scripts that run end to end.

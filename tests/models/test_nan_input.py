@@ -13,6 +13,8 @@ import numpy as np
 import pytest
 
 import pysad.models
+from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
 
 NUM_INSTANCES = 12
@@ -53,6 +55,7 @@ def _params(name, num_features):
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
         "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 5},
         "RobustRandomCutForest": {"num_trees": 3, "shingle_size": 2, "tree_size": 16},
+        "RSForest": {"window_size": 5, "num_trees": 5, "max_depth": 5},
         "RSHash": {
             "feature_mins": np.array(zeros),
             "feature_maxes": np.array(ones),
@@ -60,6 +63,11 @@ def _params(name, num_features):
         },
         "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
+        "StreamPipeline": {
+            "model": pysad.models.LODA(),
+            "preprocessors": [ShingleTransformer(shingle_size=2)],
+            "postprocessors": [RunningZScorePostprocessor(window_size=10)],
+        },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
     }
 

@@ -11,6 +11,9 @@ import pytest
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 import pysad.models
+from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.preprocessing import ShingleTransformer
+from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
 
 SEED = 0
@@ -28,6 +31,10 @@ UNIVARIATE_MODELS = {
     "SeasonalHybridESD",
     "StandardAbsoluteDeviation",
 }
+
+# Subspace detectors score the distance of the direction of an instance from a low-rank subspace,
+# so they need normal instances near such a subspace.
+SUBSPACE_MODELS = {"ADeMS"}
 
 # NullModel and PerfectModel do not score the data, and RandomModel is the chance reference.
 REFERENCE_MODELS = {"NullModel", "PerfectModel", "RandomModel"}
@@ -56,6 +63,18 @@ def _multivariate_stream():
     return X, y
 
 
+def _subspace_stream():
+    """Instances near a line through the origin, with the anomalies moved 6 units in a random direction."""
+    rng = np.random.default_rng(SEED)
+    line = rng.normal(size=NUM_FEATURES)
+    noise = rng.normal(0.0, 0.1, size=(NUM_INSTANCES, NUM_FEATURES))
+    X = rng.normal(size=(NUM_INSTANCES, 1)) * line + noise
+    anomalies, y = _anomalies(rng)
+    directions = rng.normal(size=(len(anomalies), NUM_FEATURES))
+    X[anomalies] += 6.0 * directions / np.linalg.norm(directions, axis=1, keepdims=True)
+    return X, y
+
+
 def _univariate_stream():
     """A seasonal series of period 24, with the anomalies as spikes of 3 in either direction."""
     rng = np.random.default_rng(SEED)
@@ -78,10 +97,19 @@ def _model_params(model_name, X):
         "LocalOutlierProbability": {"initial_X": X[:100]},
         "RelativeEntropy": {"min_val": feature_mins[0], "max_val": feature_maxes[0]},
         "RobustRandomCutForest": {"num_trees": 10, "tree_size": 64},
+        "RSForest": {"window_size": WARMUP},
         "RSHash": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
         # The spikes go in both directions.
         "SeasonalESD": {"period": 24, "window_size": 96, "direction": "both"},
         "SeasonalHybridESD": {"period": 24, "window_size": 96, "direction": "both"},
+        "StreamPipeline": {
+            "model": pysad.models.LODA(),
+            "preprocessors": [ShingleTransformer(shingle_size=2)],
+            "postprocessors": [
+                RunningZScorePostprocessor(window_size=WARMUP),
+                ConformalProbabilityCalibrator(window_size=WARMUP),
+            ],
+        },
     }
 
     return params.get(model_name, {})
@@ -110,7 +138,12 @@ def _models():
 
 @pytest.mark.parametrize("model_name", _models())
 def test_scores_rank_anomalies_above_chance(model_name):
-    X, y = _univariate_stream() if model_name in UNIVARIATE_MODELS else _multivariate_stream()
+    if model_name in UNIVARIATE_MODELS:
+        X, y = _univariate_stream()
+    elif model_name in SUBSPACE_MODELS:
+        X, y = _subspace_stream()
+    else:
+        X, y = _multivariate_stream()
     scores = _scores(model_name, X)
     random_scores = _scores("RandomModel", X)
     y = y[WARMUP:]

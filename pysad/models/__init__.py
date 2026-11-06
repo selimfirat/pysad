@@ -23,6 +23,7 @@ from .rs_hash import RSHash
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .standard_absolute_deviation import StandardAbsoluteDeviation
+from .teda import TEDA
 from .xstream import xStream
 
 __all__ = [
@@ -48,5 +49,6 @@ __all__ = [
     "SeasonalHybridESD",
     "SmartSifter",
     "StandardAbsoluteDeviation",
+    "TEDA",
     "xStream",
 ]

@@ -29,6 +29,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    SeasonalHybridESD
    SmartSifter
    StandardAbsoluteDeviation
+   TEDA
    xStream
    NullModel
    PerfectModel

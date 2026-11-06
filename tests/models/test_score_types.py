@@ -19,6 +19,7 @@ def _model_specs():
         KNNCAD,
         LODA,
         MCOD,
+        TEDA,
         ExactStorm,
         HalfSpaceTrees,
         IForestASD,
@@ -100,6 +101,7 @@ def _model_specs():
         ("SmartSifter", lambda: SmartSifter(), NUM_FEATURES),
         ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),
         ("StandardAbsoluteDeviation-signed", lambda: StandardAbsoluteDeviation(absolute=False), 1),
+        ("TEDA", lambda: TEDA(), NUM_FEATURES),
         ("xStream", lambda: xStream(), NUM_FEATURES),
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (

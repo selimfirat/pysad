@@ -229,6 +229,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `RobustRandomCutForest` | Robust Random Cut Forest (Guha et al., ICML 2016) |
 | `RSForest` | RS-Forest 随机空间树密度估计 (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash 子空间离群点检测 (Sathe & Aggarwal, ICDM 2016) |
+| `MStream` | MStream 多方面数据流计数 (Bhatia et al., WWW 2021) |
 | `IForestASD` | 滑动窗口上的孤立森林 (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | 在线孤立森林 (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET 自编码器集成 (Mirsky et al., NDSS 2018) |

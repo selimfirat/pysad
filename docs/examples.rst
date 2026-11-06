@@ -237,6 +237,20 @@ It prints:
 
 Both variants find the three spikes and flag no normal values. :doc:`guides/seasonal` explains when to use each variant.
 
+Find an unusual shape with the matrix profile
+---------------------------------------------
+
+This script scores a sine series with :class:`~pysad.models.MatrixProfile`. One cycle has twice the frequency, but each of its values is in the normal range. The subsequence that ends at a value gets a high score if no earlier subsequence has a similar shape.
+
+.. literalinclude:: ../examples/example_matrix_profile.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Highest score at 1237, anomalous cycle at [1200, 1250)
+
 Find unusual subsequences with SAND
 -----------------------------------
 

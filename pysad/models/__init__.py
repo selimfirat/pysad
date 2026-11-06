@@ -13,6 +13,7 @@ from .kitnet import KitNet
 from .knn_cad import KNNCAD
 from .loda import LODA
 from .loop import LocalOutlierProbability
+from .matrix_profile import MatrixProfile
 from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
 from .mstream import MStream
@@ -46,6 +47,7 @@ __all__ = [
     "KNNCAD",
     "LODA",
     "LocalOutlierProbability",
+    "MatrixProfile",
     "MCOD",
     "MedianAbsoluteDeviation",
     "MStream",

@@ -23,9 +23,9 @@ Table 1 of the :doc:`PySAD paper <../citing>` compares PySAD with other librarie
      - Machine learning on streams
      - Anomaly detection on batch data
    * - Streaming detectors [#count]_
-     - 20
-     - 7
-     - 0
+     - ✓
+     - ✓
+     - ✗
    * - Batch detectors
      - Every PyOD detector, through a sliding window
      - None
@@ -67,7 +67,7 @@ Table 1 of the :doc:`PySAD paper <../citing>` compares PySAD with other librarie
      - ✓
      - ✗
 
-.. [#count] PySAD has 23 models. The count leaves out the 3 baselines ``NullModel``, ``PerfectModel`` and ``RandomModel``. River has 7 detectors in ``river.anomaly``. Its ``ThresholdFilter`` and ``QuantileFilter`` turn scores into labels, and the count leaves them out. PyOD has ``SAND``, which its paper defines for streams, but PyOD fits it on a whole series in one call.
+.. [#count] The PySAD detectors are on the page :doc:`../detectors`, without the baselines ``NullModel``, ``PerfectModel`` and ``RandomModel``. The River detectors are in ``river.anomaly``, without ``ThresholdFilter`` and ``QuantileFilter``, which turn scores into labels. PyOD has ``SAND``, which its paper defines for streams, but PyOD fits it on a whole series in one call.
 
 The rows mean:
 

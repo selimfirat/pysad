@@ -12,7 +12,7 @@ from pysad.utils.validation import _int_at_least, check_univariate
 class MatrixProfile(BaseModel):
     """Scores each value of a univariate stream with the matrix profile value of the subsequence that ends at it, as STAMPI computes it :cite:`yeh2016matrix`.
 
-    The subsequence of the last ``window_length`` values, which ends with the scored value, gets the z-normalized Euclidean distance to its nearest neighbor among the earlier subsequences. This is the new matrix profile entry that STAMPI appends for each arriving value. A high distance means that the shape is unlike any earlier shape, a time series discord, even if each value is normal. As in the paper, the distance ignores the trivial matches, the subsequences that start less than ``ceil(window_length / 2)`` values before it. This model is univariate: each instance must hold exactly one value, and an instance with more raises `ValueError`.
+    The subsequence of the last ``window_length`` values, which ends with the scored value, gets the z-normalized Euclidean distance to its nearest neighbor among the earlier subsequences. This is the new matrix profile entry that STAMPI appends for each arriving value. A high distance means that the shape is unlike any earlier shape, a time series discord, even if each value is normal. As in the paper, the distance ignores the trivial matches, the subsequences that start at most ``ceil(window_length / 2)`` values before it. This model is univariate: each instance must hold exactly one value, and an instance with more raises `ValueError`.
 
     Deviations from the paper:
 
@@ -32,7 +32,9 @@ class MatrixProfile(BaseModel):
         self.window_length = _int_at_least(window_length, "window_length", 2)
         self.exclusion_zone = math.ceil(self.window_length / 2)
         self.history_size = _int_at_least(
-            history_size, "history_size", self.window_length + self.exclusion_zone
+            value=history_size,
+            name="history_size",
+            minimum=self.window_length + self.exclusion_zone,
         )
 
         self.values_ = np.zeros(self.history_size)

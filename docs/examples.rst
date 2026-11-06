@@ -19,6 +19,20 @@ It prints:
 
    AUROC: 0.758
 
+Score a synthetic stream
+------------------------
+
+This script makes a labeled stream with :func:`~pysad.utils.generate_stream` and scores it. The stream has point anomalies, bursts of anomalies and a slow drift. It needs no download, so it suits quick tests.
+
+.. literalinclude:: ../examples/example_generate_stream.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.867
+
 Scale features online
 ---------------------
 
@@ -149,6 +163,21 @@ It prints:
    32 alerts, 27 of them true anomalies
    alarm threshold on the raw scores: 3.013
 
+Raise alerts with the anomaly likelihood
+----------------------------------------
+
+This script converts raw scores between 0 and 1 into the anomaly likelihood of HTM. The likelihood compares the average of the recent scores with the distribution of these averages over a longer window. So a sustained increase of the scores raises an alert, and most single noisy scores do not. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_anomaly_likelihood.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   22 raw scores are at least 0.99
+   likelihood alerts at [549, 2620, 4001], the anomaly starts at 4000
+
 Postprocess scores
 ------------------
 
@@ -222,6 +251,20 @@ It prints:
 
    Highest score at 1237, anomalous cycle at [1200, 1250)
 
+Find unusual subsequences with SAND
+-----------------------------------
+
+This script scores a periodic series with SAND. SAND clusters the subsequences of each batch of values and scores the latest subsequence by its distance to the clusters. Four subsequences of the series have a different shape. ``subsequence_length`` is the length of these anomalies.
+
+.. literalinclude:: ../examples/example_sand.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC after the first batch: 0.939
+
 Remove a trend and a cycle with OneShotSTL
 ------------------------------------------
 
@@ -283,6 +326,21 @@ It prints:
 
    AUROC: 0.672
 
+Use an eccentricity detector
+----------------------------
+
+This script scores each point with TEDA. TEDA keeps only the running mean and variance of the stream. It scores each point by its squared distance to the mean, divided by the variance. A score above :math:`m^2` is the paper's alert rule for :math:`m` standard deviations.
+
+.. literalinclude:: ../examples/example_usage_teda.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.791
+   Alerts: 2
+
 Use a random space tree detector
 --------------------------------
 
@@ -310,6 +368,34 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.731
+
+Use a kernel detector
+---------------------
+
+This script scores each point with OnlineOneClassSVM. OnlineOneClassSVM keeps a weighted sum of Gaussian kernels on recent points that fell outside its boundary, and scores a point by how far it falls below the boundary. The weights of old points decay with each new point.
+
+.. literalinclude:: ../examples/example_online_one_class_svm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.727
+
+Summarize old points with DILOF
+-------------------------------
+
+This script scores each point with DILOF. DILOF computes the same local outlier factor as IncrementalLOF. When its window is full, it replaces the oldest half of the window with a smaller summary that keeps the density of these points, so it uses less memory than a window of the same history.
+
+.. literalinclude:: ../examples/example_dilof.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.726
 
 Use a matrix sketch detector
 ----------------------------

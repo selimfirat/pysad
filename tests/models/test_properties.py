@@ -40,6 +40,7 @@ UNIVARIATE_MODELS = {
     "MatrixProfile",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
+    "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
     "StandardAbsoluteDeviation",
@@ -78,6 +79,7 @@ def _model_params(model_name, num_features, data):
 
     ones, zeros = [1.0] * num_features, [0.0] * num_features
     params = {
+        "DILOF": {"num_neighbors": 3, "window_size": 12},
         "ExactStorm": {"window_size": 20, "max_radius": 0.1},
         "HalfSpaceTrees": {
             "feature_mins": np.array(zeros),
@@ -96,6 +98,7 @@ def _model_params(model_name, num_features, data):
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         "NETS": {"window_size": 20, "max_radius": 0.1},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
+        "OnlineOneClassSVM": {"window_size": 10},
         "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 5},
         "RobustRandomCutForest": {"num_trees": 3, "shingle_size": 2, "tree_size": 16},
         "RSForest": {"window_size": 10, "num_trees": 5, "max_depth": 5},
@@ -103,6 +106,12 @@ def _model_params(model_name, num_features, data):
             "feature_mins": np.array(zeros),
             "feature_maxes": np.array(ones),
             "num_components": 10,
+        },
+        "SAND": {
+            "subsequence_length": 2,
+            "centroid_length": 4,
+            "num_clusters": 2,
+            "batch_size": 10,
         },
         "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},

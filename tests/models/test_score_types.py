@@ -16,10 +16,13 @@ def _model_specs():
 
     from pysad import models
     from pysad.models import (
+        DILOF,
         KNNCAD,
         LODA,
         MCOD,
         NETS,
+        SAND,
+        TEDA,
         ADeMS,
         ExactStorm,
         HalfSpaceTrees,
@@ -31,6 +34,7 @@ def _model_specs():
         MedianAbsoluteDeviation,
         NullModel,
         OnlineIsolationForest,
+        OnlineOneClassSVM,
         PerfectModel,
         RandomModel,
         RelativeEntropy,
@@ -53,6 +57,7 @@ def _model_specs():
     # (name, factory, number of features)
     specs = [
         ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
+        ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
             "HalfSpaceTrees",
@@ -82,6 +87,7 @@ def _model_specs():
         ("NETS", lambda: NETS(window_size=20, max_radius=0.3), NUM_FEATURES),
         ("NullModel", lambda: NullModel(), NUM_FEATURES),
         ("OnlineIsolationForest", lambda: OnlineIsolationForest(), NUM_FEATURES),
+        ("OnlineOneClassSVM", lambda: OnlineOneClassSVM(), NUM_FEATURES),
         ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),
         ("RandomModel", lambda: RandomModel(), NUM_FEATURES),
         # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses
@@ -102,6 +108,7 @@ def _model_specs():
         ),
         ("RSForest", lambda: RSForest(window_size=20, num_trees=5, max_depth=8), NUM_FEATURES),
         ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
+        ("SAND", lambda: SAND(subsequence_length=4, batch_size=40), 1),
         ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=0.17), 1),
         (
             "SeasonalHybridESD",
@@ -120,6 +127,7 @@ def _model_specs():
             ),
             NUM_FEATURES,
         ),
+        ("TEDA", lambda: TEDA(), NUM_FEATURES),
         ("xStream", lambda: xStream(), NUM_FEATURES),
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (
@@ -257,6 +265,7 @@ def test_float_scores_work_downstream():
         ZScorePostprocessor,
     )
     from pysad.transform.probability_calibration import (
+        AnomalyLikelihoodProbabilityCalibrator,
         ConformalProbabilityCalibrator,
         GaussianTailProbabilityCalibrator,
         SPOTProbabilityCalibrator,
@@ -269,6 +278,7 @@ def test_float_scores_work_downstream():
 
     models = [xStream(), xStream()]
     postprocessors = [
+        AnomalyLikelihoodProbabilityCalibrator(learning_period=20, num_estimation_samples=20),
         ConformalProbabilityCalibrator(window_size=50),
         GaussianTailProbabilityCalibrator(window_size=50),
         SPOTProbabilityCalibrator(num_init=50, level=0.9),

@@ -3,6 +3,7 @@ The :mod:`pysad.models` module includes anomaly detection models to score the an
 """
 
 from .adems import ADeMS
+from .dilof import DILOF
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
@@ -18,20 +19,24 @@ from .median_absolute_deviation import MedianAbsoluteDeviation
 from .nets import NETS
 from .null_model import NullModel
 from .online_isolation_forest import OnlineIsolationForest
+from .online_one_class_svm import OnlineOneClassSVM
 from .perfect_model import PerfectModel
 from .random_model import RandomModel
 from .relative_entropy import RelativeEntropy
 from .robust_random_cut_forest import RobustRandomCutForest
 from .rs_forest import RSForest
 from .rs_hash import RSHash
+from .sand import SAND
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .stream_pipeline import StreamPipeline
+from .teda import TEDA
 from .xstream import xStream
 
 __all__ = [
     "ADeMS",
+    "DILOF",
     "ExactStorm",
     "HalfSpaceTrees",
     "IForestASD",
@@ -47,16 +52,19 @@ __all__ = [
     "NETS",
     "NullModel",
     "OnlineIsolationForest",
+    "OnlineOneClassSVM",
     "PerfectModel",
     "RandomModel",
     "RelativeEntropy",
     "RobustRandomCutForest",
     "RSForest",
     "RSHash",
+    "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
     "SmartSifter",
     "StandardAbsoluteDeviation",
     "StreamPipeline",
+    "TEDA",
     "xStream",
 ]

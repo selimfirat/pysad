@@ -28,6 +28,7 @@ UNIVARIATE_MODELS = {
     "MatrixProfile",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
+    "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
     "StandardAbsoluteDeviation",
@@ -101,6 +102,8 @@ def _model_params(model_name, X):
         "RobustRandomCutForest": {"num_trees": 10, "tree_size": 64},
         "RSForest": {"window_size": WARMUP},
         "RSHash": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
+        # Half a period, and batches that end with the warmup.
+        "SAND": {"subsequence_length": 12, "batch_size": 100},
         # The spikes go in both directions.
         "SeasonalESD": {"period": 24, "window_size": 96, "direction": "both"},
         "SeasonalHybridESD": {"period": 24, "window_size": 96, "direction": "both"},

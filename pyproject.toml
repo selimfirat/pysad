@@ -227,6 +227,7 @@ module = [
     "pysad.models.smart_sifter",
     "pysad.models.spectral_residual",
     "pysad.models.standard_absolute_deviation",
+    "pysad.models.thresh_leap",
     "pysad.models.xstream",
     "pysad.models.integrations.*",
 ]

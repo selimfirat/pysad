@@ -110,6 +110,7 @@ DETECTORS = {
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
     "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
     "TEDA": lambda X, seed: models.TEDA(),
+    "ThreshLEAP": lambda X, seed: models.ThreshLEAP(),
     "xStream": lambda X, seed: models.xStream(random_state=seed),
 }
 # CI runs this script against the base checkout too, where a newly added model

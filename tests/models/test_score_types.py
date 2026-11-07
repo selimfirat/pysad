@@ -17,6 +17,7 @@ def _model_specs():
     from pysad import models
     from pysad.models import (
         CPOD,
+        DAMP,
         DILOF,
         KNNCAD,
         LODA,
@@ -88,6 +89,7 @@ def _model_specs():
             NUM_FEATURES,
         ),
         ("MatrixProfile", lambda: MatrixProfile(window_length=8, history_size=40), 1),
+        ("DAMP", lambda: DAMP(window_length=8, history_size=40), 1),
         ("MCOD", lambda: MCOD(window_size=20, max_radius=0.3, num_neighbors=2), NUM_FEATURES),
         ("MedianAbsoluteDeviation", lambda: MedianAbsoluteDeviation(), 1),
         ("MedianAbsoluteDeviation-signed", lambda: MedianAbsoluteDeviation(absolute=False), 1),

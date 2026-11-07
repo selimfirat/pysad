@@ -251,6 +251,20 @@ It prints:
 
    Highest score at 1237, anomalous cycle at [1200, 1250)
 
+Find an unusual shape in a long series with DAMP
+------------------------------------------------
+
+This script scores a sine series of 20,000 values with :class:`~pysad.models.DAMP`. As in the previous example, one cycle has twice the frequency. The backward search of DAMP can reach every earlier value, but it stops as soon as it finds a neighbor closer than the best discord score so far. So most values cost only a search over the last cycles, and the anomalous cycle still gets its exact score.
+
+.. literalinclude:: ../examples/example_damp.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Most unusual subsequence at [15001, 15051), anomalous cycle at [15000, 15050)
+
 Score spikes with the spectral residual
 ---------------------------------------
 

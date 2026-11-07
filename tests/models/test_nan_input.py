@@ -21,6 +21,7 @@ NUM_INSTANCES = 12
 
 UNIVARIATE_MODELS = {
     "ChangeFinder",
+    "DAMP",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -53,6 +54,7 @@ def _params(name, num_features):
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
         "MatrixProfile": {"window_length": 3},
+        "DAMP": {"window_length": 3, "probationary_period": 4},
         "SpectralResidual": {"window_size": 8, "num_average_points": 3},
         "LocalOutlierProbability": {
             "initial_X": np.random.RandomState(0).rand(12, num_features),

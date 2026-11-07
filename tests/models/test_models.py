@@ -3,6 +3,7 @@ def test_unsupervised_models():
 
     from pysad.models import (
         CPOD,
+        DAMP,
         DILOF,
         KNNCAD,
         LODA,
@@ -56,6 +57,7 @@ def test_unsupervised_models():
         LODA: {},
         LocalOutlierProbability: {"initial_X": True},
         MatrixProfile: {"window_length": 10},
+        DAMP: {"window_length": 10},
         MCOD: {},
         MedianAbsoluteDeviation: [{}, {"absolute": False}],
         MStream: {},

@@ -3,6 +3,7 @@ The :mod:`pysad.models` module includes anomaly detection models to score the an
 """
 
 from .adems import ADeMS
+from .approx_storm import ApproxStorm
 from .change_finder import ChangeFinder
 from .cpod import CPOD
 from .damp import DAMP
@@ -41,6 +42,7 @@ from .xstream import xStream
 
 __all__ = [
     "ADeMS",
+    "ApproxStorm",
     "ChangeFinder",
     "CPOD",
     "DAMP",

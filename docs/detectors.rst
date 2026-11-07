@@ -69,7 +69,8 @@ These detectors take points with one or more features. A feature is one measured
    * - :class:`~pysad.models.ApproxStorm`
      - The neighbor counts of :class:`~pysad.models.ExactStorm`, estimated from a sample of safe inliers :cite:`angiulli2007detecting`
      - Nothing
-     - Fixed: the window points that are not safe inliers and at most ``sample_fraction`` times ``window_size`` safe inliers
+     - Fixed: a window of ``window_size`` points
+   * - :class:`~pysad.models.MCOD`
      - The neighbor counts of :class:`~pysad.models.ExactStorm`, faster with micro-clusters :cite:`kontaki2011continuous`
      - Nothing
      - Fixed: a window of ``window_size`` points and the centers of its micro-clusters

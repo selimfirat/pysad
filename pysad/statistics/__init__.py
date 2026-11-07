@@ -6,6 +6,7 @@ from .abs_statistic import AbsStatistic
 from .adwin_meter import ADWINMeter
 from .average_meter import AverageMeter
 from .count_meter import CountMeter
+from .ddm_meter import DDMMeter
 from .ddsketch_meter import DDSketchMeter
 from .exponential_moving_average_meter import ExponentialMovingAverageMeter
 from .hddm_a_meter import HDDMAMeter
@@ -26,6 +27,7 @@ __all__ = [
     "AbsStatistic",
     "AverageMeter",
     "CountMeter",
+    "DDMMeter",
     "DDSketchMeter",
     "ExponentialMovingAverageMeter",
     "HDDMAMeter",

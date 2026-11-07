@@ -326,6 +326,20 @@ It prints:
 
    AUROC: 0.672
 
+Detect anomalies with HTM
+-------------------------
+
+This script runs HTM, the detector of Numenta in NAB, on the New York City taxi series of NAB. HTM takes each point with its timestamp and learns the sequence of the values and of the times of day. It scores each point by the anomaly likelihood of the fraction of its active columns that it did not predict.
+
+.. literalinclude:: ../examples/example_htm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   15 alerts, 3 of them in the 5 anomaly windows
+
 Find a change point
 -------------------
 

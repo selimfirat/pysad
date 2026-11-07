@@ -110,7 +110,7 @@ These detectors take points with one or more features. A feature is one measured
 Univariate detectors
 --------------------
 
-These detectors take points with exactly one feature. Give each value as an array of shape ``(1,)``.
+These detectors take points with exactly one feature. Give each value as an array of shape ``(1,)``. :class:`~pysad.models.HTM` also takes the time of each value: give each point as the array ``[timestamp, value]``.
 
 .. list-table::
    :header-rows: 1
@@ -140,6 +140,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Logarithmic loss under an autoregressive model that sequentially discounting learning fits, and a second such model on the smoothed losses for change points :cite:`takeuchi2006unifying`
      - Nothing
      - Fixed: ``order`` values and ``window_size`` scores
+   * - :class:`~pysad.models.HTM`
+     - The fraction of active columns that the temporal memory of Hierarchical Temporal Memory did not predict, turned into an anomaly likelihood :cite:`ahmad2017unsupervised`
+     - The range of the values (``min_val`` and ``max_val``), and a timestamp in seconds since the Unix epoch with each value
+     - Grows slowly: at most 128 segments of 32 synapses for each of the 65,536 cells, and a window of 8,640 scores
    * - :class:`~pysad.models.KNNCAD`
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`
      - A probationary period: at least 48 values that it learns from before it scores

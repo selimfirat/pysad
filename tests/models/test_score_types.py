@@ -18,6 +18,7 @@ def _model_specs():
     from pysad.models import (
         CPOD,
         DILOF,
+        HTM,
         KNNCAD,
         LODA,
         MCOD,
@@ -71,6 +72,13 @@ def _model_specs():
                 feature_mins=mins, feature_maxes=maxes, window_size=20, num_trees=5, max_depth=5
             ),
             NUM_FEATURES,
+        ),
+        # HTM takes each instance as [timestamp, value].
+        ("HTM", lambda: HTM(min_val=0.0, max_val=1.0, probationary_period=20, num_columns=256), 2),
+        (
+            "HTM-raw",
+            lambda: HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=256),
+            2,
         ),
         ("IForestASD", lambda: IForestASD(window_size=32), NUM_FEATURES),
         ("IncrementalLOF", lambda: IncrementalLOF(window_size=20), NUM_FEATURES),

@@ -52,6 +52,8 @@ MODEL_PARAMS = {
     "IncrementalLOF": {"num_neighbors": 5, "window_size": 20},
     # The initial sample completes before the round trip, so the restored model has rho and tau.
     "Inqmad": {"input_shape": 3, "dim_x": 32, "initial_size": 30},
+    # Clusters form and dissolve as the window slides before and after the round trip.
+    "KELOS": {"window_size": 30, "radius": 0.6, "num_neighbors": 3},
     # Its autoencoders still train on the instances scored after the round trip.
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 50},
     "KNNCAD": {"probationary_period": 50},

@@ -13,6 +13,7 @@ from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
 from .incremental_lof import IncrementalLOF
 from .inqmad import Inqmad
+from .kelos import KELOS
 from .kitnet import KitNet
 from .knn_cad import KNNCAD
 from .loda import LODA
@@ -53,6 +54,7 @@ __all__ = [
     "IForestASD",
     "IncrementalLOF",
     "Inqmad",
+    "KELOS",
     "KitNet",
     "KNNCAD",
     "LODA",

@@ -229,6 +229,7 @@ These starting points come from the design of each method. They are not benchmar
 | `RobustRandomCutForest` | Robust Random Cut Forest (Guha et al., ICML 2016) |
 | `RSForest` | RS-Forest random space tree density (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) |
+| `MStream` | MStream multi-aspect stream counts (Bhatia et al., WWW 2021) |
 | `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) |
@@ -236,10 +237,13 @@ These starting points come from the design of each method. They are not benchmar
 | `MCOD` | Micro-cluster-based distance-based outliers (Kontaki et al., ICDE 2011) |
 | `NETS` | Set-based distance-based outliers on a cell grid (Yoon et al., PVLDB 2019) |
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
+| `OnlineOneClassSVM` | Online one-class SVM, NORMA (Kivinen et al., IEEE TSP 2004) |
+| `DILOF` | Density summarizing incremental LOF (Na et al., KDD 2018) |
 | `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | Finite mixtures with discounting learning (Yamanishi et al., KDD 2000) |
+| `TEDA` | Typicality and eccentricity data analytics (Angelov, EALS 2014) |
 
 **Univariate**
 
@@ -248,7 +252,9 @@ These starting points come from the design of each method. They are not benchmar
 | `SeasonalHybridESD` | Seasonal Hybrid ESD (Hochenbaum et al., 2017) |
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
+| `MatrixProfile` | Matrix profile discords with STAMPI (Yeh et al., ICDM 2016) |
 | `RelativeEntropy` | Relative entropy over windows (Wang et al., IM 2011) |
+| `SAND` | Streaming subsequence anomaly detection with k-Shape clusters (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 
@@ -267,7 +273,7 @@ The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) p
 | Preprocessing | `InstanceStandardScaler`, `InstanceUnitNormScaler`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
 | Projection | `StreamhashProjector`, `GaussianRandomProjector`, `SparseRandomProjector` |
 | Postprocessing | Running and windowed average, max, median and z-score of scores |
-| Calibration | `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
+| Calibration | `AnomalyLikelihoodProbabilityCalibrator`, `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
 | Ensembling | Average, maximum, median, average-of-maximum and maximum-of-average score ensemblers |
 | Evaluation | `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric` |
 | Streaming data | `ArrayStreamer`, `PandasStreamer`, and `Data` for 17 labeled ODDS benchmark datasets, downloaded on first use |

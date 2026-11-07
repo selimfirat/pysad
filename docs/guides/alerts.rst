@@ -89,6 +89,24 @@ A score gets a calibrated value above ``1 - q`` when the score is above ``calibr
 
 If the scores drift, set ``depth``, for example ``depth=10``. The calibrator then fits the distribution to the difference between each score and the mean of the last ``depth`` scores.
 
+Calibrate with the anomaly likelihood of HTM
+--------------------------------------------
+
+:class:`~pysad.transform.probability_calibration.AnomalyLikelihoodProbabilityCalibrator` gives the anomaly likelihood that the HTM detector of Numenta uses in NAB. It averages the last 10 scores, fits a Gaussian to these averages, and gives a value near 1 when the newest average is far from their mean. A single high score changes the average only a little, so the calibrator reacts to a sustained increase of the scores more than to one noisy point. Its bounds on the fitted Gaussian expect scores between 0 and 1. The paper alerts at a likelihood of at least ``1 - 1e-5``:
+
+.. code-block:: python
+
+   from pysad.transform.probability_calibration import AnomalyLikelihoodProbabilityCalibrator
+
+   calibrator = AnomalyLikelihoodProbabilityCalibrator()
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if calibrator.fit_transform_partial(model.fit_score_partial(x)) >= 1 - 1e-5:
+           alerts.append(t)
+
+The calibrator returns 0.5 for the first ``learning_period + num_estimation_samples`` scores, 388 by default. During a run of anomalous scores, only the first score reaches ``1 - 1e-5``. The next scores of the run get ``0.999``.
+
 Smooth noisy scores
 -------------------
 

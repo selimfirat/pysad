@@ -5,9 +5,11 @@ import pytest
 
 from pysad.models import (
     LODA,
+    SAND,
     HalfSpaceTrees,
     Inqmad,
     KitNet,
+    MStream,
     OnlineIsolationForest,
     RandomModel,
     RobustRandomCutForest,
@@ -33,6 +35,7 @@ MODELS = {
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": lambda **kw: KitNet(grace_feature_mapping=20, grace_anomaly_detector=30, **kw),
     "LODA": lambda **kw: LODA(num_random_cuts=20, **kw),
+    "MStream": lambda **kw: MStream(**kw),
     "OnlineIsolationForest": lambda **kw: OnlineIsolationForest(
         num_trees=10, max_leaf_samples=8, window_size=32, **kw
     ),
@@ -40,19 +43,22 @@ MODELS = {
     "RobustRandomCutForest": lambda **kw: RobustRandomCutForest(tree_size=32, **kw),
     "RSForest": lambda **kw: RSForest(window_size=20, num_trees=5, max_depth=8, **kw),
     "RSHash": lambda **kw: RSHash([0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES, **kw),
+    "SAND": lambda **kw: SAND(subsequence_length=4, batch_size=24, **kw),
     "SmartSifter": lambda **kw: SmartSifter(**kw),
     "xStream": lambda **kw: xStream(n_chains=10, depth=10, window_size=20, **kw),
 }
 
 NAMES = list(MODELS)
+UNIVARIATE_MODELS = (SAND,)
 
 
-def _data():
-    return np.random.RandomState(0).rand(80, NUM_FEATURES)
+def _data(model):
+    X = np.random.RandomState(0).rand(80, NUM_FEATURES)
+    return X[:, :1] if isinstance(model, UNIVARIATE_MODELS) else X
 
 
 def _scores(model):
-    return np.array([np.ravel(model.fit_score_partial(x))[0] for x in _data()])
+    return np.array([np.ravel(model.fit_score_partial(x))[0] for x in _data(model)])
 
 
 @pytest.mark.parametrize("name", NAMES)
@@ -87,7 +93,7 @@ def test_models_seeded_side_by_side_do_not_interfere(name):
     model = MODELS[name](random_state=5)
     other = MODELS[name](random_state=6)
     side_by_side = []
-    for x in _data():
+    for x in _data(model):
         side_by_side.append(np.ravel(model.fit_score_partial(x))[0])
         other.fit_score_partial(x)
 
@@ -108,8 +114,8 @@ def test_default_draws_from_global_state(name):
 
 @pytest.mark.parametrize("name", NAMES)
 def test_seeded_model_pickles_with_its_generator(name):
-    data = _data()
     model = MODELS[name](random_state=5)
+    data = _data(model)
     for x in data[:40]:
         model.fit_score_partial(x)
 

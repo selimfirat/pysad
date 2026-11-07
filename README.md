@@ -255,6 +255,7 @@ These starting points come from the design of each method. They are not benchmar
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
 | `ChangeFinder` | Outlier and change point detection with discounting AR models (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | Matrix profile discords with STAMPI (Yeh et al., ICDM 2016) |
+| `DAMP` | Left matrix profile discords with a backward search that stops early (Lu et al., KDD 2022) |
 | `RelativeEntropy` | Relative entropy over windows (Wang et al., IM 2011) |
 | `SAND` | Streaming subsequence anomaly detection with k-Shape clusters (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |

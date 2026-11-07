@@ -77,6 +77,8 @@ def test_sand_learns_a_new_normal_behavior():
         ({"subsequence_length": 10, "centroid_length": 10}, "centroid_length must be at least 11"),
         ({"subsequence_length": 10, "batch_size": 44}, "batch_size must be at least 45"),
         ({"subsequence_length": 10, "alpha": 1.5}, r"alpha must be in \[0, 1\]"),
+        ({"subsequence_length": 10, "min_weight": -0.1}, r"min_weight must be in \[0, 1\)"),
+        ({"subsequence_length": 10, "min_weight": 1.0}, r"min_weight must be in \[0, 1\)"),
     ],
 )
 def test_sand_rejects_invalid_parameters(params, message):
@@ -91,3 +93,30 @@ def test_sand_is_univariate():
 
     with pytest.raises(ValueError, match="SAND is univariate"):
         SAND(subsequence_length=4).fit_partial(np.zeros(2))
+
+
+def test_sand_min_weight_bounds_the_clusters_on_a_drifting_stream():
+    from pysad.models import SAND
+
+    batches = np.random.default_rng(0).normal(size=8000).cumsum().reshape(20, 400, 1)
+    default = SAND(subsequence_length=LENGTH, batch_size=400, random_state=0)
+    bounded = SAND(subsequence_length=LENGTH, batch_size=400, min_weight=0.01, random_state=0)
+    default_sizes = [len(default.fit(batch).weights_) for batch in batches]
+    bounded_sizes = [len(bounded.fit(batch).weights_) for batch in batches]
+
+    # Without min_weight, the walk keeps adding clusters. With it, old clusters leave.
+    assert default_sizes[-1] > default_sizes[9]
+    assert max(bounded_sizes[10:]) <= max(bounded_sizes[:10])
+    assert bounded_sizes[-1] < default_sizes[-1] / 4
+    np.testing.assert_allclose(bounded.weights_.sum(), 1.0)
+    assert np.isfinite(bounded.score(batches[-1])).all()
+
+
+def test_sand_min_weight_none_keeps_every_cluster():
+    from pysad.models import SAND
+
+    x = np.random.default_rng(0).normal(size=3000).cumsum()[:, None]
+    scores = SAND(subsequence_length=LENGTH, batch_size=400, random_state=0).fit_score(x)
+    explicit = SAND(subsequence_length=LENGTH, batch_size=400, min_weight=None, random_state=0)
+
+    np.testing.assert_array_equal(explicit.fit_score(x), scores)

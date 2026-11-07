@@ -89,6 +89,7 @@ def _ranges(X):
 # Each detector gets its defaults, plus the arguments that it requires. X is scaled to [0, 1].
 DETECTORS = {
     "ADeMS": lambda X, seed: models.ADeMS(),
+    "CPOD": lambda X, seed: models.CPOD(),
     "DILOF": lambda X, seed: models.DILOF(),
     "ExactStorm": lambda X, seed: models.ExactStorm(),
     "HalfSpaceTrees": lambda X, seed: models.HalfSpaceTrees(**_ranges(X), random_state=seed),
@@ -135,6 +136,8 @@ UNIVARIATE = {
     "SeasonalESD": lambda n, period: models.SeasonalESD(period, 3 * period + 1),
     "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(period, 3 * period + 1),
 }
+# As for DETECTORS, only benchmark the models present in the checkout.
+UNIVARIATE = {name: factory for name, factory in UNIVARIATE.items() if name in models.__all__}
 # The ESD detectors need the period of a series, so they run only on these series. Each period is a
 # day, in points, where the autocorrelation at a lag of one day is at least 0.5.
 PERIODS = {

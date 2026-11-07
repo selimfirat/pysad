@@ -1,4 +1,5 @@
 import csv
+import gzip
 import hashlib
 import json
 import os
@@ -613,7 +614,9 @@ _INSECTS_FILES = {
 _SOURCES = ("odds", "nab", "ucr", "kddcup99", "smd", "smap", "msl", "insects")
 
 # A download that fails with a server error or a network error is tried again, after 5 and then 10
-# seconds. A connection that sends no data for 60 seconds counts as a network error.
+# seconds. A connection that sends no data for 60 seconds counts as a network error. The download asks
+# for gzip, because some servers send their files slowly, for example OpenML sends the 74 MB of KDD Cup
+# 99 at about 100 KB/s, and as 2 MB with gzip.
 _ATTEMPTS = 3
 _RETRY_SECONDS = 5.0
 _TIMEOUT_SECONDS = 60.0
@@ -694,7 +697,7 @@ class Data:
                 - ``"odds"``: the 17 multivariate datasets of ODDS, for example ``"cardio.mat"``.
                 - ``"nab"``: the 58 univariate series of the Numenta Anomaly Benchmark, for example ``"nab/realKnownCause/nyc_taxi.csv"``. The points in an anomaly window of NAB have the label 1.
                 - ``"ucr"``: the 250 univariate series of the UCR Time Series Anomaly Archive, for example ``"ucr/025_UCR_Anomaly_DISTORTEDInternalBleeding14_2800_5607_5634.txt"``. The last two numbers of a name are the first and the last point of the anomaly, counted from 1. These points have the label 1. The number before them is the length of the training part, which has no anomalies. The first series download the archive of 184 MB.
-                - ``"kddcup99"``: ``"kddcup99/http.csv"``, the 58,724 http connections of logged in users of the KDD Cup 99 10% file, in their original order. The 3 features are ``log(x + 0.1)`` of the duration, the bytes from the source and the bytes to the destination. The attacks have the label 1. The first use downloads the file of 74 MB.
+                - ``"kddcup99"``: ``"kddcup99/http.csv"``, the 58,724 http connections of logged in users of the KDD Cup 99 10% file, in their original order. The 3 features are ``log(x + 0.1)`` of the duration, the bytes from the source and the bytes to the destination. The attacks have the label 1. The first use downloads the file of 74 MB, which the server compresses to 2 MB.
                 - ``"smd"``: the test halves of the 28 machines of the Server Machine Dataset, for example ``"smd/machine-1-1.txt"``, with one point of 38 features each minute.
                 - ``"smap"``: the test halves of the 54 telemetry channels of the SMAP satellite, for example ``"smap/P-1.npy"``, with 25 features. The first feature is the telemetry value, and the others are the one-hot encoded commands that the spacecraft received. The points in an anomaly range of Telemanom have the label 1. Channel P-2 has two rows of ranges, and both rows label it.
                 - ``"msl"``: the test halves of the 27 telemetry channels of the MSL rover Curiosity, for example ``"msl/M-1.npy"``, with 55 features in the same layout as ``"smap"``.
@@ -742,14 +745,19 @@ class Data:
         temp_path = temp_file.name
         try:
             temp_file.close()
-            req = urllib.request.Request(url, headers={"User-Agent": "pysad"})
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "pysad", "Accept-Encoding": "gzip"}
+            )
             for attempt in range(_ATTEMPTS):
                 try:
                     with (
                         urllib.request.urlopen(req, timeout=_TIMEOUT_SECONDS) as response,
                         open(temp_path, "wb") as f,
                     ):
-                        shutil.copyfileobj(response, f)
+                        gzipped = response.headers.get("Content-Encoding") == "gzip"
+                        shutil.copyfileobj(
+                            gzip.GzipFile(fileobj=response) if gzipped else response, f
+                        )
                     break
                 except OSError as error:  # URLError, or TimeoutError while reading the response
                     client_error = isinstance(error, urllib.error.HTTPError) and error.code < 500

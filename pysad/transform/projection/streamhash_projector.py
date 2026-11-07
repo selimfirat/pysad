@@ -61,8 +61,6 @@ def _murmurhash3_x86_32(seeds: np.ndarray, byte_matrix: np.ndarray) -> np.ndarra
 
 
 class StreamhashProjector(BaseTransformer):
-    _R: np.ndarray | None = None
-    _R_ndim: int | None = None
     """Projects each feature vector with the sparse StreamHash random projection of Manzoor et al. :cite:`xstream`.
 
     StreamHash builds each entry of the projection matrix from a hash of the feature index, so the projector accepts any number of features. The implementation is taken from the `cmuxstream-core repository <https://github.com/cmuxstream/cmuxstream-core>`_.
@@ -72,10 +70,8 @@ class StreamhashProjector(BaseTransformer):
         density (float): Fraction of non-zero entries in the projection matrix (Default=1/3).
     """
 
-    # Defaults for instances unpickled from older pysad versions, whose __dict__ predates
-    # these attributes; __init__ below overrides them for freshly constructed instances.
-    _R = None
-    _R_ndim = None
+    _R: np.ndarray | None
+    _R_ndim: int | None
 
     def __init__(self, num_components: int, density: float = 1 / 3.0) -> None:
         super().__init__(num_components)

@@ -110,6 +110,10 @@ These detectors take points with one or more features. A feature is one measured
      - Eccentricity from the recursive mean and variance :cite:`angelov2014anomaly`
      - Nothing
      - Fixed: the count, the mean and the variance
+   * - :class:`~pysad.models.EXPoSE`
+     - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
+     - Nothing
+     - Fixed: ``num_random_features`` frequencies per feature and the mean of the features
 
 Univariate detectors
 --------------------

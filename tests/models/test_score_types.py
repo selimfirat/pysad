@@ -29,6 +29,7 @@ def _model_specs():
         ApproxStorm,
         ChangeFinder,
         ExactStorm,
+        EXPoSE,
         HalfSpaceTrees,
         IForestASD,
         IncrementalLOF,
@@ -75,6 +76,7 @@ def _model_specs():
         ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),
         ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
+        ("EXPoSE", lambda: EXPoSE(num_random_features=50), NUM_FEATURES),
         (
             "HalfSpaceTrees",
             lambda: HalfSpaceTrees(

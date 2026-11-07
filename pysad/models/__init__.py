@@ -9,6 +9,7 @@ from .cpod import CPOD
 from .damp import DAMP
 from .dilof import DILOF
 from .exact_storm import ExactStorm
+from .expose import EXPoSE
 from .half_space_trees import HalfSpaceTrees
 from .iforest_asd import IForestASD
 from .incremental_lof import IncrementalLOF
@@ -48,6 +49,7 @@ __all__ = [
     "DAMP",
     "DILOF",
     "ExactStorm",
+    "EXPoSE",
     "HalfSpaceTrees",
     "IForestASD",
     "IncrementalLOF",

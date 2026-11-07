@@ -28,3 +28,4 @@ Functions
    generate_stream
    get_minmax_array
    get_minmax_scalar
+   plot_stream

@@ -33,6 +33,7 @@ UNIVARIATE_MODELS = {
     "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
+    "SpectralResidual",
     "StandardAbsoluteDeviation",
 }
 

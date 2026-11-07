@@ -48,6 +48,7 @@ def _model_specs():
         SeasonalESD,
         SeasonalHybridESD,
         SmartSifter,
+        SpectralResidual,
         StandardAbsoluteDeviation,
         StreamPipeline,
         xStream,
@@ -125,6 +126,7 @@ def _model_specs():
             1,
         ),
         ("SmartSifter", lambda: SmartSifter(), NUM_FEATURES),
+        ("SpectralResidual", lambda: SpectralResidual(window_size=30), 1),
         ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),
         ("StandardAbsoluteDeviation-signed", lambda: StandardAbsoluteDeviation(absolute=False), 1),
         (

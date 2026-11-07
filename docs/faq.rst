@@ -186,6 +186,7 @@ Some detectors give 0 by design, during a warm-up or for every point that is not
 - :class:`~pysad.models.KNNCAD` gives 0 until it gets ``probationary_period`` points.
 - :class:`~pysad.models.MatrixProfile` gives 0 for the first ``window_length + ceil(window_length / 2)`` points, because no earlier subsequence lies outside the trivial-match zone of the newest one.
 - :class:`~pysad.models.DAMP` gives 0 for the first ``probationary_period`` points, ``4 * window_length`` with the defaults. These points only serve as neighbors of the later subsequences.
+- :class:`~pysad.models.SpectralResidual` gives 0 for the first ``window_size - 1`` points, until its window is full.
 - :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` give 0 until the window is full. After that, they give 0 for every point that their test does not flag.
 - :class:`~pysad.models.RelativeEntropy` gives only 0 or 1. It gives 1 only when the values of the window have a new distribution.
 - :class:`~pysad.models.LocalOutlierProbability` gives a probability, which is often exactly 0 for normal points.

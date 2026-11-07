@@ -24,6 +24,7 @@ UNIVARIATE_MODELS = {
     "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
+    "SpectralResidual",
     "StandardAbsoluteDeviation",
 }
 
@@ -49,6 +50,7 @@ MODEL_PARAMS = {
     "KNNCAD": {"probationary_period": 50},
     "MatrixProfile": {"window_length": 4, "history_size": 30},
     "DAMP": {"window_length": 4, "history_size": 20},
+    "SpectralResidual": {"window_size": 8, "num_average_points": 3},
     # Micro-clusters form, expire and dissolve within the first instances.
     "MCOD": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 2},
     # Cells empty out and fill again within the first instances.

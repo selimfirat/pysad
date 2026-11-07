@@ -256,6 +256,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `ChangeFinder` | 基于折扣学习自回归模型的离群点与变化点检测 (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | 基于 STAMPI 的矩阵轮廓异常子序列 (Yeh et al., ICDM 2016) |
 | `DAMP` | 提前停止向后搜索的左矩阵轮廓异常子序列 (Lu et al., KDD 2022) |
+| `SpectralResidual` | 滑动窗口上的谱残差显著性 (Ren et al., KDD 2019) |
 | `RelativeEntropy` | 基于窗口的相对熵 (Wang et al., IM 2011) |
 | `SAND` | 基于 k-Shape 聚类的流式子序列异常检测 (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | 滑动窗口上的中位数绝对偏差 (Hochenbaum et al., 2017) |

@@ -33,6 +33,7 @@ from .rs_hash import RSHash
 from .sand import SAND
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
+from .spectral_residual import SpectralResidual
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .stream_pipeline import StreamPipeline
 from .teda import TEDA
@@ -71,6 +72,7 @@ __all__ = [
     "SeasonalESD",
     "SeasonalHybridESD",
     "SmartSifter",
+    "SpectralResidual",
     "StandardAbsoluteDeviation",
     "StreamPipeline",
     "TEDA",

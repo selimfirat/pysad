@@ -201,6 +201,7 @@ module = [
     "pysad.models.dilof",
     "pysad.models.half_space_trees",
     "pysad.models.exact_storm",
+    "pysad.models.expose",
     "pysad.models.htm.spatial_pooler",
     "pysad.models.iforest_asd",
     "pysad.models.incremental_lof",

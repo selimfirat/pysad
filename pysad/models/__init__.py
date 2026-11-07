@@ -8,6 +8,7 @@ from .cpod import CPOD
 from .dilof import DILOF
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
+from .htm.htm import HTM
 from .iforest_asd import IForestASD
 from .incremental_lof import IncrementalLOF
 from .inqmad import Inqmad
@@ -44,6 +45,7 @@ __all__ = [
     "DILOF",
     "ExactStorm",
     "HalfSpaceTrees",
+    "HTM",
     "IForestASD",
     "IncrementalLOF",
     "Inqmad",

@@ -32,7 +32,13 @@ UNIVARIATE_MODELS = {
 }
 
 
+# These models take each instance as [timestamp, value].
+TIMESTAMPED_MODELS = {"HTM"}
+
+
 def _num_features(name):
+    if name in TIMESTAMPED_MODELS:
+        return 2
     return 1 if name in UNIVARIATE_MODELS else 3
 
 
@@ -47,6 +53,7 @@ def _params(name, num_features):
             "num_trees": 5,
             "max_depth": 5,
         },
+        "HTM": {"min_val": 0.0, "max_val": 1.0, "num_columns": 256},
         "IForestASD": {"window_size": 20, "n_estimators": 10},
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},

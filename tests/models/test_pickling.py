@@ -26,6 +26,9 @@ UNIVARIATE_MODELS = {
     "StandardAbsoluteDeviation",
 }
 
+# These models take each instance as [timestamp, value].
+TIMESTAMPED_MODELS = {"HTM"}
+
 MODEL_PARAMS = {
     # Core points form and expire within the first instances.
     "CPOD": {"window_size": 30, "max_radius": 0.6},
@@ -36,6 +39,8 @@ MODEL_PARAMS = {
         "num_trees": 5,
         "max_depth": 8,
     },
+    # The anomaly likelihood leaves its probationary period before the round trip.
+    "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 40, "num_columns": 256},
     "IForestASD": {"window_size": 32},
     # The window is summarized before and after the round trip.
     "DILOF": {"num_neighbors": 5, "window_size": 24},
@@ -82,6 +87,10 @@ def _data(model_name):
     if model_name in UNIVARIATE_MODELS:
         t = np.arange(num_instances)
         X = (0.5 + 0.4 * np.sin(2 * np.pi * t / 4) + 0.05 * rng.rand(num_instances)).reshape(-1, 1)
+    elif model_name in TIMESTAMPED_MODELS:
+        t = np.arange(num_instances)
+        values = 0.5 + 0.4 * np.sin(2 * np.pi * t / 4) + 0.05 * rng.rand(num_instances)
+        X = np.column_stack([3600.0 * t, values])
     else:
         X = rng.rand(num_instances, 3)
     y = (rng.rand(num_instances) > 0.9).astype(int)

@@ -4,6 +4,7 @@ def test_unsupervised_models():
     from pysad.models import (
         CPOD,
         DILOF,
+        HTM,
         KNNCAD,
         LODA,
         MCOD,
@@ -80,6 +81,17 @@ def test_unsupervised_models():
         elif type(params_dict) is list:
             for params in params_dict:
                 helper_test_model(X, model_cls, params)
+
+    # HTM takes each instance as [timestamp, value].
+    X_timestamped = np.column_stack([3600.0 * np.arange(len(X)), X])
+    for likelihood in (True, False):
+        params = {
+            "min_val": 0.0,
+            "max_val": 1.0,
+            "probationary_period": 50,
+            "likelihood": likelihood,
+        }
+        helper_test_model(X_timestamped, HTM, params)
 
 
 def helper_test_model(X, model_cls, params_dict):

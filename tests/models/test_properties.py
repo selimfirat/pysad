@@ -47,6 +47,9 @@ UNIVARIATE_MODELS = {
     "StandardAbsoluteDeviation",
 }
 
+# These models take each instance as [timestamp, value].
+TIMESTAMPED_MODELS = {"HTM"}
+
 # Values the streams are drawn from. Small pools make constant features and duplicate instances
 # likely; the float range covers values far from 0 and from each other.
 FINITE_VALUES = st.one_of(
@@ -89,6 +92,14 @@ def _model_params(model_name, num_features, data):
             "window_size": 10,
             "num_trees": 5,
             "max_depth": 5,
+        },
+        # A short probationary period, so that the streams reach the anomaly likelihood.
+        "HTM": {
+            "min_val": 0.0,
+            "max_val": 1.0,
+            "probationary_period": 20,
+            "num_columns": 64,
+            "num_cells_per_column": 4,
         },
         "IForestASD": {"window_size": 20, "n_estimators": 10},
         "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
@@ -151,6 +162,8 @@ def _draw_case(model_name, data, min_length=1):
     """Draws a stream and labels for `model_name`, and returns them with its constructor args."""
     if model_name in UNIVARIATE_MODELS:
         num_features = 1
+    elif model_name in TIMESTAMPED_MODELS:
+        num_features = 2
     else:
         num_features = data.draw(st.integers(1, MAX_FEATURES), label="num_features")
 

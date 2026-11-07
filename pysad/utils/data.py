@@ -613,9 +613,10 @@ _INSECTS_FILES = {
 _SOURCES = ("odds", "nab", "ucr", "kddcup99", "smd", "smap", "msl", "insects")
 
 # A download that fails with a server error or a network error is tried again, after 5 and then 10
-# seconds.
+# seconds. A connection that sends no data for 60 seconds counts as a network error.
 _ATTEMPTS = 3
 _RETRY_SECONDS = 5.0
+_TIMEOUT_SECONDS = 60.0
 
 
 def _source(name: str) -> tuple[str, str]:
@@ -744,10 +745,13 @@ class Data:
             req = urllib.request.Request(url, headers={"User-Agent": "pysad"})
             for attempt in range(_ATTEMPTS):
                 try:
-                    with urllib.request.urlopen(req) as response, open(temp_path, "wb") as f:
+                    with (
+                        urllib.request.urlopen(req, timeout=_TIMEOUT_SECONDS) as response,
+                        open(temp_path, "wb") as f,
+                    ):
                         shutil.copyfileobj(response, f)
                     break
-                except urllib.error.URLError as error:
+                except OSError as error:  # URLError, or TimeoutError while reading the response
                     client_error = isinstance(error, urllib.error.HTTPError) and error.code < 500
                     if client_error or attempt == _ATTEMPTS - 1:
                         raise

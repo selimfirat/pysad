@@ -11,7 +11,7 @@ def _patterns(num_patterns, num_inputs, num_on, seed):
 
 
 def test_spatial_pooler_activates_num_active_columns_or_nothing_below_the_stimulus_threshold():
-    from pysad.models._htm_spatial_pooler import SpatialPooler
+    from pysad.models.htm.spatial_pooler import SpatialPooler
 
     pooler = SpatialPooler(
         num_inputs=200, num_columns=500, num_active=20, stimulus_threshold=1.0, random_state=0
@@ -24,14 +24,14 @@ def test_spatial_pooler_activates_num_active_columns_or_nothing_below_the_stimul
 
 @pytest.mark.parametrize(("num_active", "expected"), [(15, 15), (30, 22)])
 def test_spatial_pooler_activates_num_active_columns_up_to_half_of_them(num_active, expected):
-    from pysad.models._htm_spatial_pooler import SpatialPooler
+    from pysad.models.htm.spatial_pooler import SpatialPooler
 
     pooler = SpatialPooler(num_inputs=50, num_columns=44, num_active=num_active, random_state=0)
     assert len(pooler.compute(np.ones(50, dtype=bool))) == expected
 
 
 def test_spatial_pooler_learning_makes_codes_noise_robust():
-    from pysad.models._htm_spatial_pooler import SpatialPooler
+    from pysad.models.htm.spatial_pooler import SpatialPooler
 
     X = _patterns(20, 400, 40, seed=0)
     rng = np.random.default_rng(1)
@@ -76,7 +76,7 @@ def test_spatial_pooler_learning_makes_codes_noise_robust():
 
 
 def test_spatial_pooler_does_not_learn_without_learn():
-    from pysad.models._htm_spatial_pooler import SpatialPooler
+    from pysad.models.htm.spatial_pooler import SpatialPooler
 
     X = _patterns(30, 100, 10, seed=0)
     pooler = SpatialPooler(num_inputs=100, num_columns=200, num_active=10, random_state=0)
@@ -90,7 +90,7 @@ def test_spatial_pooler_does_not_learn_without_learn():
 
 @pytest.mark.parametrize("seed", [0, 1, 2])
 def test_spatial_pooler_boosting_uses_more_columns(seed):
-    from pysad.models._htm_spatial_pooler import SpatialPooler
+    from pysad.models.htm.spatial_pooler import SpatialPooler
 
     # Boosting spreads the codes of many inputs over more of the columns (Section 3.1).
     X = _patterns(100, 200, 20, seed=seed)
@@ -112,7 +112,7 @@ def test_spatial_pooler_boosting_uses_more_columns(seed):
 
 
 def test_spatial_pooler_connects_each_column_to_the_stimulus_threshold():
-    from pysad.models._htm_spatial_pooler import SpatialPooler
+    from pysad.models.htm.spatial_pooler import SpatialPooler
 
     pooler = SpatialPooler(
         num_inputs=100,
@@ -130,7 +130,7 @@ def test_spatial_pooler_connects_each_column_to_the_stimulus_threshold():
 
 
 def test_spatial_pooler_rejects_a_potential_pool_below_the_stimulus_threshold():
-    from pysad.models._htm_spatial_pooler import SpatialPooler
+    from pysad.models.htm.spatial_pooler import SpatialPooler
 
     with pytest.raises(ValueError, match="potential_fraction"):
         SpatialPooler(num_inputs=10, num_columns=10, potential_fraction=0.2, stimulus_threshold=3.0)

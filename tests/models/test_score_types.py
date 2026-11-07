@@ -16,6 +16,7 @@ def _model_specs():
 
     from pysad import models
     from pysad.models import (
+        CPOD,
         DILOF,
         KNNCAD,
         LODA,
@@ -61,6 +62,7 @@ def _model_specs():
         ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
         ("ChangeFinder", lambda: ChangeFinder(), 1),
         ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
+        ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),
         ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (

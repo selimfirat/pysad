@@ -236,6 +236,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `ExactStorm` | Exact-STORM 基于距离的离群点检测 (Angiulli & Fassetti, CIKM 2007) |
 | `MCOD` | 基于微簇的距离离群点检测 (Kontaki et al., ICDE 2011) |
 | `NETS` | 基于网格集合处理的距离离群点检测 (Yoon et al., PVLDB 2019) |
+| `CPOD` | 基于核心点的距离离群点检测 (Tran et al., PVLDB 2020) |
 | `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
 | `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |

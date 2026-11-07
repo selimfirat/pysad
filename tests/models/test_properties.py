@@ -80,6 +80,7 @@ def _model_params(model_name, num_features, data):
 
     ones, zeros = [1.0] * num_features, [0.0] * num_features
     params = {
+        "CPOD": {"window_size": 20, "max_radius": 0.1},
         "DILOF": {"num_neighbors": 3, "window_size": 12},
         "ExactStorm": {"window_size": 20, "max_radius": 0.1},
         "HalfSpaceTrees": {

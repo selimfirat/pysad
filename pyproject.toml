@@ -196,6 +196,7 @@ module = [
     "pysad.utils.*",
     "pysad.models.adems",
     "pysad.models.change_finder",
+    "pysad.models.cpod",
     "pysad.models.dilof",
     "pysad.models.half_space_trees",
     "pysad.models.exact_storm",

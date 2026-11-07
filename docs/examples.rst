@@ -514,6 +514,22 @@ It prints:
 
 The rate changes at index 1000. :class:`~pysad.statistics.HDDMAMeter` compares plain averages, and :class:`~pysad.statistics.HDDMWMeter` compares exponentially weighted averages. After a drift, the next update forgets the earlier values.
 
+Detect a rise in the error rate
+-------------------------------
+
+This script streams 1,000 bits with an error rate of 0.2 followed by 1,000 bits with an error rate of 0.5. A bit is 1 for an error and 0 for a correct prediction. It updates :class:`~pysad.statistics.DDMMeter` directly and stops at the first drift. A warning reports a possible drift with a weaker test. If the error rate falls again, the warning ends without a drift, so the script prints the start of the last warning zone.
+
+.. literalinclude:: ../examples/example_ddm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Warning from index 1026, drift at index 1067 (zero-based)
+
+The rate changes at index 1000. On this stream, the meter detects the drift later than the HDDM meters, because it compares the error rate since the last drift with its lowest value. After a drift, the next update forgets the earlier values.
+
 Detect a rise in the error rate from the distance between errors
 -----------------------------------------------------------------
 

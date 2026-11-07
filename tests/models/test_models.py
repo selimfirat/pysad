@@ -31,6 +31,7 @@ def test_unsupervised_models():
         RSForest,
         RSHash,
         SmartSifter,
+        SpectralResidual,
         StandardAbsoluteDeviation,
         xStream,
     )
@@ -67,6 +68,7 @@ def test_unsupervised_models():
         RSHash: {"feature_mins": [0.0], "feature_maxes": [1.0]},
         SAND: {"subsequence_length": 4, "batch_size": 40},
         SmartSifter: {},
+        SpectralResidual: {},
         StandardAbsoluteDeviation: [{}, {"absolute": False}],
         TEDA: {},
         xStream: {},

@@ -23,6 +23,7 @@ UNIVARIATE_MODELS = {
     "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
+    "SpectralResidual",
     "StandardAbsoluteDeviation",
 }
 
@@ -47,6 +48,7 @@ MODEL_PARAMS = {
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 50},
     "KNNCAD": {"probationary_period": 50},
     "MatrixProfile": {"window_length": 4, "history_size": 30},
+    "SpectralResidual": {"window_size": 8, "num_average_points": 3},
     # Micro-clusters form, expire and dissolve within the first instances.
     "MCOD": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 2},
     # Cells empty out and fill again within the first instances.

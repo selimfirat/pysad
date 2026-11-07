@@ -224,6 +224,7 @@ module = [
     "pysad.models.sand",
     "pysad.models.seasonal_esd",
     "pysad.models.smart_sifter",
+    "pysad.models.spectral_residual",
     "pysad.models.standard_absolute_deviation",
     "pysad.models.xstream",
     "pysad.models.integrations.*",

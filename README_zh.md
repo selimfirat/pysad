@@ -234,6 +234,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `OnlineIsolationForest` | 在线孤立森林 (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET 自编码器集成 (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM 基于距离的离群点检测 (Angiulli & Fassetti, CIKM 2007) |
+| `ApproxStorm` | 基于窗口采样的 Approx-STORM 距离离群点检测 (Angiulli & Fassetti, CIKM 2007) |
 | `MCOD` | 基于微簇的距离离群点检测 (Kontaki et al., ICDE 2011) |
 | `NETS` | 基于网格集合处理的距离离群点检测 (Yoon et al., PVLDB 2019) |
 | `CPOD` | 基于核心点的距离离群点检测 (Tran et al., PVLDB 2020) |

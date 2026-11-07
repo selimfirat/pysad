@@ -195,6 +195,7 @@ module = [
     "pysad.transform.projection.*",
     "pysad.utils.*",
     "pysad.models.adems",
+    "pysad.models.approx_storm",
     "pysad.models.change_finder",
     "pysad.models.cpod",
     "pysad.models.dilof",

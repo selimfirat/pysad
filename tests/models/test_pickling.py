@@ -27,6 +27,13 @@ UNIVARIATE_MODELS = {
 }
 
 MODEL_PARAMS = {
+    # Safe inliers form, are removed from the sample and expire within the first instances.
+    "ApproxStorm": {
+        "window_size": 30,
+        "max_radius": 0.6,
+        "num_neighbors": 3,
+        "sample_fraction": 0.2,
+    },
     # Core points form and expire within the first instances.
     "CPOD": {"window_size": 30, "max_radius": 0.6},
     "HalfSpaceTrees": {

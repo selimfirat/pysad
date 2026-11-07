@@ -25,6 +25,7 @@ def _model_specs():
         SAND,
         TEDA,
         ADeMS,
+        ApproxStorm,
         ChangeFinder,
         ExactStorm,
         HalfSpaceTrees,
@@ -60,6 +61,13 @@ def _model_specs():
     # (name, factory, number of features)
     specs = [
         ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
+        (
+            "ApproxStorm",
+            lambda: ApproxStorm(
+                window_size=20, max_radius=0.3, num_neighbors=3, sample_fraction=0.25
+            ),
+            NUM_FEATURES,
+        ),
         ("ChangeFinder", lambda: ChangeFinder(), 1),
         ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
         ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),

@@ -10,10 +10,12 @@ def _patterns(num_patterns, num_inputs, num_on, seed):
     return X
 
 
-def test_spatial_pooler_activates_the_target_density_or_nothing_without_input():
+def test_spatial_pooler_activates_num_active_columns_or_nothing_below_the_stimulus_threshold():
     from pysad.models._htm_spatial_pooler import SpatialPooler
 
-    pooler = SpatialPooler(num_inputs=200, num_columns=500, density=0.04, random_state=0)
+    pooler = SpatialPooler(
+        num_inputs=200, num_columns=500, num_active=20, stimulus_threshold=1.0, random_state=0
+    )
     for x in _patterns(20, 200, 20, seed=0):
         assert len(pooler.compute(x)) == 20
 
@@ -46,7 +48,15 @@ def test_spatial_pooler_learning_makes_codes_noise_robust():
             / pooler.num_active
         )
 
-    pooler = SpatialPooler(num_inputs=400, num_columns=1000, boost_strength=0.0, random_state=0)
+    pooler = SpatialPooler(
+        num_inputs=400,
+        num_columns=1000,
+        num_active=20,
+        connected_threshold=0.5,
+        permanence_increment=0.1,
+        permanence_decrement=0.02,
+        random_state=0,
+    )
     untrained = mean_shared(pooler, noisy)
     for _ in range(5):
         for x in X:
@@ -61,8 +71,8 @@ def test_spatial_pooler_does_not_learn_without_learn():
     from pysad.models._htm_spatial_pooler import SpatialPooler
 
     X = _patterns(30, 100, 10, seed=0)
-    pooler = SpatialPooler(num_inputs=100, num_columns=200, density=0.05, random_state=0)
-    twin = SpatialPooler(num_inputs=100, num_columns=200, density=0.05, random_state=0)
+    pooler = SpatialPooler(num_inputs=100, num_columns=200, num_active=10, random_state=0)
+    twin = SpatialPooler(num_inputs=100, num_columns=200, num_active=10, random_state=0)
     for x in X:
         pooler.compute(x, learn=False)
 
@@ -79,7 +89,11 @@ def test_spatial_pooler_boosting_uses_more_columns(seed):
 
     def num_used(boost_strength):
         pooler = SpatialPooler(
-            num_inputs=200, num_columns=300, boost_strength=boost_strength, random_state=seed
+            num_inputs=200,
+            num_columns=300,
+            num_active=6,
+            boost_strength=boost_strength,
+            random_state=seed,
         )
         for _ in range(10):
             for x in X:
@@ -89,8 +103,26 @@ def test_spatial_pooler_boosting_uses_more_columns(seed):
     assert num_used(100.0) > num_used(0.0)
 
 
-def test_spatial_pooler_rejects_a_density_without_active_columns():
+def test_spatial_pooler_connects_each_column_to_the_stimulus_threshold():
     from pysad.models._htm_spatial_pooler import SpatialPooler
 
-    with pytest.raises(ValueError, match="density"):
-        SpatialPooler(num_inputs=10, num_columns=10, density=0.01)
+    pooler = SpatialPooler(
+        num_inputs=100,
+        num_columns=200,
+        num_active=10,
+        potential_fraction=0.1,
+        connected_threshold=0.9,
+        stimulus_threshold=8.0,
+        random_state=0,
+    )
+    assert pooler.connected_.sum(axis=1).min() >= 8
+    for x in _patterns(30, 100, 50, seed=0):
+        pooler.compute(x)
+    assert pooler.connected_.sum(axis=1).min() >= 8
+
+
+def test_spatial_pooler_rejects_a_potential_pool_below_the_stimulus_threshold():
+    from pysad.models._htm_spatial_pooler import SpatialPooler
+
+    with pytest.raises(ValueError, match="potential_fraction"):
+        SpatialPooler(num_inputs=10, num_columns=10, potential_fraction=0.2, stimulus_threshold=3.0)

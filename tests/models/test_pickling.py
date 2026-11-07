@@ -26,6 +26,8 @@ UNIVARIATE_MODELS = {
 }
 
 MODEL_PARAMS = {
+    # Core points form and expire within the first instances.
+    "CPOD": {"window_size": 30, "max_radius": 0.6},
     "HalfSpaceTrees": {
         "feature_mins": [0.0, 0.0, 0.0],
         "feature_maxes": [1.0, 1.0, 1.0],

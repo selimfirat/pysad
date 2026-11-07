@@ -251,6 +251,20 @@ It prints:
 
    Highest score at 1237, anomalous cycle at [1200, 1250)
 
+Score spikes with the spectral residual
+---------------------------------------
+
+This script scores a seasonal series with spikes with :class:`~pysad.models.SpectralResidual`. For each value, the model appends estimated values after the window that ends with it. It then scores the value by its saliency in the spectral residual of the window, relative to the saliency of the values before it.
+
+.. literalinclude:: ../examples/example_spectral_residual.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.856
+
 Find unusual subsequences with SAND
 -----------------------------------
 

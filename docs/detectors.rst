@@ -148,6 +148,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from the newest subsequence to its nearest earlier subsequence, the matrix profile of STAMPI :cite:`yeh2016matrix`
      - The subsequence length (``window_length``)
      - Fixed: the last ``history_size`` values
+   * - :class:`~pysad.models.SpectralResidual`
+     - Saliency of the newest value in the spectral residual of a sliding window, with estimated values after it :cite:`ren2019time`
+     - The window size
+     - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.RelativeEntropy`
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values

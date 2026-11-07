@@ -83,16 +83,26 @@ class MatrixProfile(BaseModel):
             return 0.0
 
         values = np.append(self.values_[: self.num_values_], value)
-        query = values[-m:]
-        neighbors = sliding_window_view(values[: num_neighbors + m - 1], m)  # (num_neighbors, m)
+        return _nearest_distance(series=values[: num_neighbors + m - 1], query=values[-m:])
 
-        means, stds = neighbors.mean(axis=1), neighbors.std(axis=1)
-        constant = neighbors.max(axis=1) == neighbors.min(axis=1)
-        query_constant = query.max() == query.min()
-        with np.errstate(divide="ignore", invalid="ignore"):
-            correlations = (neighbors @ query - m * means * query.mean()) / (m * stds * query.std())
-        squared = 2 * m * (1 - np.minimum(correlations, 1.0))
-        squared = np.where(constant | query_constant, m, squared)
-        squared[constant & query_constant] = 0.0
 
-        return math.sqrt(squared.min())
+def _nearest_distance(series: np.ndarray, query: np.ndarray) -> float:
+    """Returns the smallest z-normalized Euclidean distance from `query` to a subsequence of `series` of the same length.
+
+    As in STUMPY, the distance between two constant subsequences is 0, and the distance between a constant subsequence and another subsequence is ``sqrt(len(query))``.
+    """
+    m = query.size
+    neighbors = sliding_window_view(series, m)  # (num_neighbors, m)
+
+    means, stds = neighbors.mean(axis=1), neighbors.std(axis=1)
+    constant = neighbors.max(axis=1) == neighbors.min(axis=1)
+    query_constant = query.max() == query.min()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        correlations = (np.correlate(series, query) - m * means * query.mean()) / (
+            m * stds * query.std()
+        )
+    squared = 2 * m * (1 - np.minimum(correlations, 1.0))
+    squared = np.where(constant | query_constant, m, squared)
+    squared[constant & query_constant] = 0.0
+
+    return math.sqrt(squared.min())

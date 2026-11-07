@@ -16,6 +16,7 @@ NUM_NEXT = 20
 
 UNIVARIATE_MODELS = {
     "ChangeFinder",
+    "DAMP",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -54,6 +55,7 @@ MODEL_PARAMS = {
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 50},
     "KNNCAD": {"probationary_period": 50},
     "MatrixProfile": {"window_length": 4, "history_size": 30},
+    "DAMP": {"window_length": 4, "history_size": 20},
     # Micro-clusters form, expire and dissolve within the first instances.
     "MCOD": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 2},
     # Cells empty out and fill again within the first instances.

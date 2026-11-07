@@ -6,6 +6,7 @@ from .adems import ADeMS
 from .approx_storm import ApproxStorm
 from .change_finder import ChangeFinder
 from .cpod import CPOD
+from .damp import DAMP
 from .dilof import DILOF
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
@@ -43,6 +44,7 @@ __all__ = [
     "ApproxStorm",
     "ChangeFinder",
     "CPOD",
+    "DAMP",
     "DILOF",
     "ExactStorm",
     "HalfSpaceTrees",

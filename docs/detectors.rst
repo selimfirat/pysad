@@ -151,6 +151,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from the newest subsequence to its nearest earlier subsequence, the matrix profile of STAMPI :cite:`yeh2016matrix`
      - The subsequence length (``window_length``)
      - Fixed: the last ``history_size`` values
+   * - :class:`~pysad.models.DAMP`
+     - Approximate distance from the newest subsequence to its nearest earlier subsequence, exact for each new left-discord, with a backward search that stops early :cite:`lu2022matrix`
+     - The subsequence length (``window_length``)
+     - Fixed: the last ``history_size + window_length - 1`` values
    * - :class:`~pysad.models.RelativeEntropy`
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values

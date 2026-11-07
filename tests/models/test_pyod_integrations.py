@@ -474,3 +474,56 @@ def test_iforest_asd_batch_fit_score():
     np.testing.assert_array_equal(batch_model.reference_window_X, partial_model.reference_window_X)
     assert batch_model.cur_window_y == []
     assert batch_model.reference_window_y is None
+
+
+def test_reference_window_model_pickle_round_trip():
+    """A pickled ReferenceWindowModel that already retrained scores the next instances
+    as the original model does."""
+    import pickle
+
+    import numpy as np
+    from pyod.models.iforest import IForest
+
+    from pysad.models.integrations import ReferenceWindowModel
+
+    rng = np.random.default_rng(0)
+    initial_X = rng.random((16, 3))
+    X = rng.random((60, 3))
+
+    model = ReferenceWindowModel(
+        model_cls=IForest,
+        window_size=16,
+        sliding_size=8,
+        initial_window_X=initial_X,
+        random_state=0,
+    )
+    for x in X[:40]:
+        model.fit_partial(x)
+
+    restored = pickle.loads(pickle.dumps(model))
+
+    original_scores = [model.fit_score_partial(x) for x in X[40:]]
+    restored_scores = [restored.fit_score_partial(x) for x in X[40:]]
+    np.testing.assert_allclose(restored_scores, original_scores)
+
+
+def test_one_fit_model_pickle_round_trip():
+    """A pickled OneFitModel scores the next instances as the original model does."""
+    import pickle
+
+    import numpy as np
+    from pyod.models.knn import KNN
+
+    from pysad.models.integrations import OneFitModel
+
+    rng = np.random.default_rng(0)
+    initial_X = rng.random((30, 3))
+    X = rng.random((20, 3))
+
+    model = OneFitModel(model_cls=KNN, initial_X=initial_X)
+
+    restored = pickle.loads(pickle.dumps(model))
+
+    original_scores = [model.fit_score_partial(x) for x in X]
+    restored_scores = [restored.fit_score_partial(x) for x in X]
+    np.testing.assert_allclose(restored_scores, original_scores)

@@ -10,6 +10,7 @@ from .ddsketch_meter import DDSketchMeter
 from .exponential_moving_average_meter import ExponentialMovingAverageMeter
 from .hddm_a_meter import HDDMAMeter
 from .hddm_w_meter import HDDMWMeter
+from .kswin_meter import KSWINMeter
 from .max_meter import MaxMeter
 from .median_meter import MedianMeter
 from .min_meter import MinMeter
@@ -29,6 +30,7 @@ __all__ = [
     "ExponentialMovingAverageMeter",
     "HDDMAMeter",
     "HDDMWMeter",
+    "KSWINMeter",
     "MaxMeter",
     "MedianMeter",
     "MinMeter",

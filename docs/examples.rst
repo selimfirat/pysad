@@ -513,3 +513,19 @@ It prints:
    HDDMWMeter: warning at index 1010, drift at index 1014 (zero-based)
 
 The rate changes at index 1000. :class:`~pysad.statistics.HDDMAMeter` compares plain averages, and :class:`~pysad.statistics.HDDMWMeter` compares exponentially weighted averages. After a drift, the next update forgets the earlier values.
+
+Detect a change in the distribution
+-----------------------------------
+
+This script streams 1000 values with standard deviation 1 followed by 1000 values with standard deviation 10. Both parts have mean 0, so a meter that tracks the mean does not see the change. :class:`~pysad.statistics.KSWINMeter` compares the newest values of its sliding window with a random sample of the older values by the Kolmogorov-Smirnov test, and sets ``drift_detected`` when the two distributions differ.
+
+.. literalinclude:: ../examples/example_kswin.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Drift detected at index 1102 (zero-based), distance 0.60
+
+The spread changes at index 1000. After a drift, the window keeps only its newest values, so the next test compares values of the new distribution only.

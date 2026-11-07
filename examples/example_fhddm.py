@@ -13,5 +13,7 @@ if __name__ == "__main__":
     for index, error in enumerate(errors):
         meter.update(error)
         if meter.drift_detected:
-            print(f"Drift at index {index} (zero-based), error rate in the window {meter.get():.2f}")
+            print(
+                f"Drift at index {index} (zero-based), error rate in the window {meter.get():.2f}"
+            )
             break

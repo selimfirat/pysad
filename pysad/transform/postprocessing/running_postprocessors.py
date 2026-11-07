@@ -73,6 +73,7 @@ class NonparametricDynamicThresholdPostprocessor(BasePostprocessor):
     - The paper and the reference evaluate a batch of 70 values at a time. This class evaluates each score once, when it arrives, so that it gives one output per score.
     - The window is shorter than ``window_size`` at the start of the stream. A window of fewer than 9 scores cannot exceed ``mean + 2.5 * std`` and gives 0.
     - The EWMA is the bias-corrected form of ``pandas.DataFrame.ewm(span=span)`` that the reference uses. The paper does not give the span, and the default 105 is the value of the reference configuration (5% of 30 batches of 70 values).
+    - The default ``z_values`` start at 2.5 and step by 0.5, as in the reference. The upper bound 10 comes from the paper, which reports that values between two and ten work well. The reference goes up to 11.5 (``np.arange(2.5, 12.0, 0.5)``).
     - The reference also thresholds the errors flipped around their mean, extends each anomaly by 100 values, skips errors that are small compared with the range of the raw telemetry, limits each window to 5 sequences and to less than half of the window, and skips the first values of the stream. The paper describes none of these steps, and this class does not do them.
     - The reference drops one-point sequences when it selects the threshold. This class counts them, as the paper does. If two candidates give the same objective, the larger ``z`` wins, as in the reference.
     - The "learning from history" step of the paper needs labeled anomalies, and this class does not do it.

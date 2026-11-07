@@ -26,7 +26,10 @@ def test_kelos_auroc():
 
 
 def _klome(window, x, k):
-    """KLOME of Definition 3.1 with every window instance as a kernel center of weight 1."""
+    """KLOME of Definition 3.1 with every window instance as a kernel center of weight 1.
+
+    The kernel is the Gaussian of the Euclidean distance with one bandwidth from sigma = sqrt(sum_l sigma_l^2), as the class docstring describes.
+    """
     import numpy as np
 
     def density(p):

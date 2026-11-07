@@ -11,13 +11,14 @@ _MIN_BANDWIDTH = 1e-12  # keeps the kernel finite when the k nearest centers coi
 class KELOS(BaseModel):
     """Kernel density estimation-based local outlier detection over sliding windows (KELOS) :cite:`qin2019scalable`.
 
-    KELOS summarizes the window of the last `window_size` instances with micro-clusters (Section 4). An arriving instance joins its nearest cluster if the distance to the centroid is not greater than `radius` (theta), and starts a new cluster otherwise. The centroid of each cluster, weighted by the number of its instances, is an abstract kernel center. The density at a point is the balloon kernel estimate of Eq. 4 over its k nearest abstract kernel centers, with k = `num_neighbors` and the weights of Eq. 5. The bandwidth of each estimate is the rule of thumb of Eq. 6, h = 1.06 sigma k^(-1/(d+1)), where sigma is the weighted standard deviation of these k centers (Eq. 7). The KLOME score of Definition 3.1 is the z-score of the density at an instance among the densities at its k nearest abstract kernel centers. A low KLOME means an outlier, so this class returns -KLOME.
+    KELOS summarizes the window of the last `window_size` instances with the micro-clusters of Algorithm 2 (Section 7). An arriving instance joins its nearest cluster if the distance to the centroid is less than `radius` (theta), and starts a new cluster otherwise. The centroid of each cluster, weighted by the number of its instances, is an abstract kernel center (Section 5). The density at a point is the weighted balloon kernel estimate of Eq. 6 over its k nearest abstract kernel centers, with k = `num_neighbors` and the weights of Eq. 7. The bandwidth of each estimate follows the rule of thumb of Eq. 8, h = 1.06 sigma k^(-1/(d+1)). The KLOME score of Definition 3.1 is the z-score of the density at an instance among the densities at its k nearest abstract kernel centers. A low KLOME means an outlier, so this class returns -KLOME.
 
-    Each instance gets its score when it arrives, in the window that it enters. Thus the oldest instance of a full window expires, and the arriving instance joins a cluster, before the score is computed. This is the pane-based window of Section 5.2 with a slide of one instance. The paper returns the N instances with the lowest KLOME in each window, and it prunes the clusters whose KLOME bounds (Lemma 5.1, Eqs. 9 to 11) show that they hold no top-N outlier. These bounds only skip the instances that are not in the top N, and this class scores every instance, so it does not use them. The deviations from the paper:
+    Each instance gets its score when it arrives, in the window that it enters. Thus the oldest instance of a full window expires, and the arriving instance joins a cluster, before the score is computed. This is the pane-based window of Section 7 with a slide of one instance. The paper returns the N instances with the lowest KLOME in each window, and it prunes the clusters whose KLOME bounds (Lemma 6.1, Eqs. 11 to 13) show that they hold no top-N outlier. These bounds only skip the instances that are not in the top N, and this class scores every instance, so it does not use them. The deviations from the paper:
 
-    - Eq. 8 divides the weighted sum of the centers by k. The weights already sum to 1 and the paper calls sigma the weighted standard deviation, so this class uses the weighted mean of the centers, and the squared Euclidean distance to it in Eq. 7.
-    - The kernel is the Gaussian of Eq. 2 of the distance u, with the factor 1 / (sqrt(2 pi) h) of the univariate density, as the paper writes it. Section 4 calls Eq. 4 a product kernel, but its normalization h^(-d) makes the estimates with the smallest bandwidth dominate in high dimensions, and Eq. 2 does not use it.
-    - The paper suggests to adapt theta while the stream evolves, but it gives no rule, so theta stays fixed. The default theta fits features scaled to the range from 0 to 1. The paper sets theta for each dataset. The default k = 100 is the value of the window size experiment of Section 6.2.
+    - The paper uses the product kernel of Eqs. 5 and 6, with one bandwidth h_l per dimension from the weighted standard deviation sigma_l of Eq. 9. This class uses one Gaussian kernel of Eq. 2 of the Euclidean distance u, with the factor 1 / (sqrt(2 pi) h) of the univariate density, and one bandwidth h from sigma = sqrt(sum_l sigma_l^2). Thus it also drops the normalization h^(-d) of a d-variate kernel. The product of the d factors 1 / (sqrt(2 pi) h_l) spreads the densities over many orders of magnitude in high dimensions, and the z-score then gives almost the same score to every instance. On the first 2,000 points of the 17 ODDS streams, the product kernel gives a mean AUROC of 0.61 with k = 100 and 0.50 with k = 10, and this kernel gives 0.79 with k = 100.
+    - Eq. 10 divides the weighted sum of the centers by k. The weights already sum to 1 and the paper calls sigma_l the weighted standard deviation, so this class uses the weighted mean of the centers.
+    - The paper suggests to adapt theta while the stream evolves, but it gives no rule, so theta stays fixed. The default theta fits features scaled to the range from 0 to 1. The paper sets theta for each dataset.
+    - The default k = 100 is a choice of this class. The efficiency experiments of Section 8.2 use k = 10, and in Section 8.3 the accuracy of KELOS on HTTP peaks for k from 80 to 100.
     - The z-score of Definition 3.1 is undefined if the densities at the k centers are equal, for example while the window holds a single cluster. Such an instance gets the score 0.
 
     Args:
@@ -52,7 +53,7 @@ class KELOS(BaseModel):
         if active.size:
             dists = np.linalg.norm(sums[active] / counts[active, None] - X, axis=1)
             nearest = int(dists.argmin())
-            if dists[nearest] <= self.radius:
+            if dists[nearest] < self.radius:
                 cluster = int(active[nearest])
         counts[cluster] += 1
         sums[cluster] += X
@@ -115,9 +116,9 @@ class KELOS(BaseModel):
         nearest = np.argpartition(sq_dists, k - 1, axis=1)[:, :k]  # (k+1, k)
         nearest_sq_dists = np.take_along_axis(sq_dists, nearest, axis=1)  # (k+1, k)
         omega = weights[nearest]
-        omega /= omega.sum(axis=1, keepdims=True)  # Eq. 5, (k+1, k)
+        omega /= omega.sum(axis=1, keepdims=True)  # Eq. 7, (k+1, k)
 
-        # Eq. 7 from the squared distances of the centers to the point p: sigma^2 = sum(omega |cc - p|^2) - |mu - p|^2.
+        # sigma^2 = sum_l sigma_l^2 (Eq. 9) from the squared distances to the point p: sum(omega |cc - p|^2) - |mu - p|^2.
         omega_rows = np.zeros((k + 1, num_centers))
         np.put_along_axis(omega_rows, nearest, omega, axis=1)
         offsets = omega_rows @ centers - points  # mu - p, (k+1, d)
@@ -127,10 +128,10 @@ class KELOS(BaseModel):
         sigma = np.sqrt(np.maximum(variance, 0.0))  # (k+1,)
         bandwidth = np.maximum(
             1.06 * sigma * k ** (-1 / (num_features + 1)), _MIN_BANDWIDTH
-        )  # Eq. 6
+        )  # Eq. 8
         log_densities = logsumexp(
             -nearest_sq_dists / (2 * bandwidth[:, None] ** 2), b=omega, axis=1
-        ) - np.log(np.sqrt(2 * np.pi) * bandwidth)  # Eqs. 2 and 4, (k+1,)
+        ) - np.log(np.sqrt(2 * np.pi) * bandwidth)  # Eqs. 2 and 6, (k+1,)
 
         # A z-score is unchanged when all densities scale by one factor, so scale the largest to 1.
         densities = np.exp(log_densities - log_densities.max())

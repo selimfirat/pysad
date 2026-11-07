@@ -496,3 +496,20 @@ It prints:
    First change detected at index 549 (zero-based)
 
 The mean changes at index 500; the alarm follows once enough evidence accumulates. This meter uses the full stream history and cannot remove observations, so it cannot be wrapped in :class:`~pysad.statistics.RunningStatistic`.
+
+Detect a drift with Hoeffding's bounds
+--------------------------------------
+
+This script streams 1,000 bits with an error rate of 0.2 followed by 1,000 bits with an error rate of 0.5. It updates :class:`~pysad.statistics.HDDMAMeter` and :class:`~pysad.statistics.HDDMWMeter` directly and stops at the first drift. A warning reports a possible drift with a weaker test. Both meters assume that each value is in [0, 1], so they need no threshold.
+
+.. literalinclude:: ../examples/example_hddm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   HDDMAMeter: warning at index 1010, drift at index 1011 (zero-based)
+   HDDMWMeter: warning at index 1010, drift at index 1014 (zero-based)
+
+The rate changes at index 1000. :class:`~pysad.statistics.HDDMAMeter` compares plain averages, and :class:`~pysad.statistics.HDDMWMeter` compares exponentially weighted averages. After a drift, the next update forgets the earlier values.

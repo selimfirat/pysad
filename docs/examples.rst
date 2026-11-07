@@ -178,6 +178,21 @@ It prints:
    22 raw scores are at least 0.99
    likelihood alerts at [549, 2620, 4001], the anomaly starts at 4000
 
+Flag anomalies with a dynamic threshold
+---------------------------------------
+
+This script scores the telemetry value of a SMAP channel with the median absolute deviation. Then it applies the nonparametric dynamic threshold of Telemanom, which outputs 0 for a nominal point and the score of the anomalous sequence for a flagged point. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_dynamic_threshold.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Flagged points: 37, of which in an anomaly range: 25
+   AUROC: 0.646
+
 Postprocess scores
 ------------------
 

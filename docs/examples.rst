@@ -559,6 +559,22 @@ It prints:
 
 The rate changes at index 1000. On this stream, the meter detects the drift later than the HDDM meters, because it compares the error rate since the last drift with its lowest value. After a drift, the next update forgets the earlier values.
 
+Detect a fall in the accuracy of a sliding window
+-------------------------------------------------
+
+This script streams the same bits as the DDM example: 1,000 bits with an error rate of 0.2 followed by 1,000 bits with an error rate of 0.5. It updates :class:`~pysad.statistics.FHDDMMeter` directly and stops at the first drift. The meter keeps the accuracy of the last 100 values and compares it with the largest accuracy of a full window since the last drift. A drift is a difference of at least the Hoeffding bound.
+
+.. literalinclude:: ../examples/example_fhddm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Drift at index 1054 (zero-based), error rate in the window 0.40
+
+The rate changes at index 1000. The meter has no warning level. On this stream, it detects the drift earlier than :class:`~pysad.statistics.DDMMeter`, because the window forgets the values before the change. After a drift, the next update empties the window.
+
 Detect a rise in the error rate from the distance between errors
 -----------------------------------------------------------------
 

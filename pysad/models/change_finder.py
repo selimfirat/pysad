@@ -71,6 +71,9 @@ class ChangeFinder(BaseModel):
     - An AR model only stores the first ``order`` values that it gets, because SDAR needs ``order`` past values to learn and to score a value.
     - The model solves the Yule-Walker equations with least squares, so that it gets coefficients when the autocovariance matrix is singular, for example on a constant series.
     - The model adds ``1e-6`` to the variance when it computes a density, so that the logarithmic loss stays finite on a constant series.
+    - Both AR models share one ``order`` and one ``discount``. The paper lets the two models use different orders, and its experiments use 2 and 3.
+    - The default ``discount=0.01`` differs from the ``r = 0.02`` of the paper's experiments.
+    - The scores are 0.0 during the warm-up. Eq. (3) of the paper fills the warm-up with dummy values instead.
 
     Args:
         order (int): The order ``k`` of both AR models (Default=1).

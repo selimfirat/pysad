@@ -482,6 +482,20 @@ It prints:
 
    AUROC: 0.750
 
+Use anytime outliers with AnyOut
+--------------------------------
+
+This script scores each point with AnyOut. AnyOut keeps the stream in a tree of clusters, where each level describes the data in more detail than the level above it. A point descends the tree until its time budget ends, and its score is the distance to the mean of the closest cluster at that level. Here the budget is 4 levels.
+
+.. literalinclude:: ../examples/example_anyout.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.763
+
 Use a matrix sketch detector
 ----------------------------
 

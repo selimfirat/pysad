@@ -27,6 +27,7 @@ def _model_specs():
         SAND,
         TEDA,
         ADeMS,
+        AnyOut,
         ApproxStorm,
         ChangeFinder,
         ExactStorm,
@@ -65,6 +66,7 @@ def _model_specs():
     # (name, factory, number of features)
     specs = [
         ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
+        ("AnyOut", lambda: AnyOut(max_height=2, outlier_score="density"), NUM_FEATURES),
         (
             "ApproxStorm",
             lambda: ApproxStorm(

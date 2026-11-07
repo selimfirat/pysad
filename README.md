@@ -243,6 +243,7 @@ These starting points come from the design of each method. They are not benchmar
 | `OnlineOneClassSVM` | Online one-class SVM, NORMA (Kivinen et al., IEEE TSP 2004) |
 | `DILOF` | Density summarizing incremental LOF (Na et al., KDD 2018) |
 | `KELOS` | Kernel density local outliers over micro-clusters of a window (Qin et al., EDBT 2019) |
+| `AnyOut` | Anytime outliers by distance to the closest cluster of a ClusTree (Assent et al., DASFAA 2012) |
 | `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |

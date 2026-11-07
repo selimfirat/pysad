@@ -89,6 +89,7 @@ def _ranges(X):
 # Each detector gets its defaults, plus the arguments that it requires. X is scaled to [0, 1].
 DETECTORS = {
     "ADeMS": lambda X, seed: models.ADeMS(),
+    "AnyOut": lambda X, seed: models.AnyOut(),
     "ApproxStorm": lambda X, seed: models.ApproxStorm(random_state=seed),
     "CPOD": lambda X, seed: models.CPOD(),
     "DILOF": lambda X, seed: models.DILOF(),

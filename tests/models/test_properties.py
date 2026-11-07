@@ -88,6 +88,12 @@ def _model_params(model_name, num_features, data):
             "num_neighbors": 2,
             "sample_fraction": 0.25,
         },
+        "AnyOut": {
+            "outlier_score": "density",
+            "max_height": 2,
+            "decay": 0.1,
+            "snapshot_interval": 5,
+        },
         "CPOD": {"window_size": 20, "max_radius": 0.1},
         "DILOF": {"num_neighbors": 3, "window_size": 12},
         "ExactStorm": {"window_size": 20, "max_radius": 0.1},

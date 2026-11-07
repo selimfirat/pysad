@@ -22,6 +22,14 @@ def test_spatial_pooler_activates_num_active_columns_or_nothing_below_the_stimul
     assert len(pooler.compute(np.zeros(200, dtype=bool))) == 0
 
 
+@pytest.mark.parametrize(("num_active", "expected"), [(15, 15), (30, 22)])
+def test_spatial_pooler_activates_num_active_columns_up_to_half_of_them(num_active, expected):
+    from pysad.models._htm_spatial_pooler import SpatialPooler
+
+    pooler = SpatialPooler(num_inputs=50, num_columns=44, num_active=num_active, random_state=0)
+    assert len(pooler.compute(np.ones(50, dtype=bool))) == expected
+
+
 def test_spatial_pooler_learning_makes_codes_noise_robust():
     from pysad.models._htm_spatial_pooler import SpatialPooler
 

@@ -32,6 +32,7 @@ class SpatialPooler:
     The implementation differs from NuPIC as follows:
 
     - Only the steps that learn advance the step count of the time averages and of the 50-step updates, so a step without learning does not change the state. NuPIC also counts the steps without learning.
+    - The pooler activates ``min(num_active, num_columns // 2)`` columns. NuPIC truncates the product of the target fraction and the number of columns, which drops one column for some values due to float rounding, for example 14 instead of 15 of 44 columns.
     - The random draws come from NumPy, so the potential pools and the initial permanences differ from those of NuPIC with the same seed.
 
     Args:
@@ -66,10 +67,9 @@ class SpatialPooler:
     ) -> None:
         self.num_inputs = _int_at_least(num_inputs, "num_inputs", 1)
         self.num_columns = _int_at_least(num_columns, "num_columns", 2)
-        self.target_density = min(
-            _int_at_least(num_active, "num_active", 1) / self.num_columns, 0.5
-        )
-        self.num_active = int(self.target_density * self.num_columns)
+        num_active = _int_at_least(num_active, "num_active", 1)
+        self.num_active = min(num_active, self.num_columns // 2)
+        self.target_density = min(num_active / self.num_columns, 0.5)
         num_potential = int(self.num_inputs * potential_fraction + 0.5)
         if num_potential < stimulus_threshold:
             # No column could ever reach the stimulus threshold.
@@ -174,3 +174,29 @@ class SpatialPooler:
         np.clip(permanences, 0.0, 1.0, out=permanences)
         self.permanences_[columns] = permanences
         self.connected_[columns] = permanences >= self.connected_threshold - _PERMANENCE_EPSILON
+
+
+# SpatialPooler is adapted from the spatial pooler of NuPIC 1.0.5, which is distributed under
+# the following license:
+#
+# MIT License
+#
+# Copyright 2013-2024 Numenta Inc.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.

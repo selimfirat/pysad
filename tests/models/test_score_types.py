@@ -16,10 +16,13 @@ def _model_specs():
 
     from pysad import models
     from pysad.models import (
+        DILOF,
         KNNCAD,
         LODA,
         MCOD,
         NETS,
+        SAND,
+        TEDA,
         ADeMS,
         ChangeFinder,
         ExactStorm,
@@ -28,9 +31,12 @@ def _model_specs():
         IncrementalLOF,
         KitNet,
         LocalOutlierProbability,
+        MatrixProfile,
         MedianAbsoluteDeviation,
+        MStream,
         NullModel,
         OnlineIsolationForest,
+        OnlineOneClassSVM,
         PerfectModel,
         RandomModel,
         RelativeEntropy,
@@ -55,6 +61,7 @@ def _model_specs():
         ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
         ("ChangeFinder", lambda: ChangeFinder(), 1),
         ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
+        ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
             "HalfSpaceTrees",
@@ -77,12 +84,15 @@ def _model_specs():
             lambda: LocalOutlierProbability(_initial_X(NUM_FEATURES)),
             NUM_FEATURES,
         ),
+        ("MatrixProfile", lambda: MatrixProfile(window_length=8, history_size=40), 1),
         ("MCOD", lambda: MCOD(window_size=20, max_radius=0.3, num_neighbors=2), NUM_FEATURES),
         ("MedianAbsoluteDeviation", lambda: MedianAbsoluteDeviation(), 1),
         ("MedianAbsoluteDeviation-signed", lambda: MedianAbsoluteDeviation(absolute=False), 1),
+        ("MStream", lambda: MStream(), NUM_FEATURES),
         ("NETS", lambda: NETS(window_size=20, max_radius=0.3), NUM_FEATURES),
         ("NullModel", lambda: NullModel(), NUM_FEATURES),
         ("OnlineIsolationForest", lambda: OnlineIsolationForest(), NUM_FEATURES),
+        ("OnlineOneClassSVM", lambda: OnlineOneClassSVM(), NUM_FEATURES),
         ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),
         ("RandomModel", lambda: RandomModel(), NUM_FEATURES),
         # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses
@@ -103,6 +113,7 @@ def _model_specs():
         ),
         ("RSForest", lambda: RSForest(window_size=20, num_trees=5, max_depth=8), NUM_FEATURES),
         ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
+        ("SAND", lambda: SAND(subsequence_length=4, batch_size=40), 1),
         ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=0.17), 1),
         (
             "SeasonalHybridESD",
@@ -121,6 +132,7 @@ def _model_specs():
             ),
             NUM_FEATURES,
         ),
+        ("TEDA", lambda: TEDA(), NUM_FEATURES),
         ("xStream", lambda: xStream(), NUM_FEATURES),
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (
@@ -258,6 +270,7 @@ def test_float_scores_work_downstream():
         ZScorePostprocessor,
     )
     from pysad.transform.probability_calibration import (
+        AnomalyLikelihoodProbabilityCalibrator,
         ConformalProbabilityCalibrator,
         GaussianTailProbabilityCalibrator,
         SPOTProbabilityCalibrator,
@@ -270,6 +283,7 @@ def test_float_scores_work_downstream():
 
     models = [xStream(), xStream()]
     postprocessors = [
+        AnomalyLikelihoodProbabilityCalibrator(learning_period=20, num_estimation_samples=20),
         ConformalProbabilityCalibrator(window_size=50),
         GaussianTailProbabilityCalibrator(window_size=50),
         SPOTProbabilityCalibrator(num_init=50, level=0.9),

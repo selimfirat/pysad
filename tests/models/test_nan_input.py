@@ -22,8 +22,10 @@ NUM_INSTANCES = 12
 UNIVARIATE_MODELS = {
     "ChangeFinder",
     "KNNCAD",
+    "MatrixProfile",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
+    "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
     "StandardAbsoluteDeviation",
@@ -49,6 +51,7 @@ def _params(name, num_features):
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
+        "MatrixProfile": {"window_length": 3},
         "LocalOutlierProbability": {
             "initial_X": np.random.RandomState(0).rand(12, num_features),
             "num_neighbors": 10,
@@ -62,6 +65,7 @@ def _params(name, num_features):
             "feature_maxes": np.array(ones),
             "num_components": 10,
         },
+        "SAND": {"subsequence_length": 2, "centroid_length": 4, "num_clusters": 2, "batch_size": 6},
         "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "StreamPipeline": {

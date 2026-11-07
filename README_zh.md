@@ -234,12 +234,15 @@ for x in ArrayStreamer().iter(X[100:]):
 | `OnlineIsolationForest` | 在线孤立森林 (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET 自编码器集成 (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM 基于距离的离群点检测 (Angiulli & Fassetti, CIKM 2007) |
+| `ApproxStorm` | 基于窗口采样的 Approx-STORM 距离离群点检测 (Angiulli & Fassetti, CIKM 2007) |
 | `MCOD` | 基于微簇的距离离群点检测 (Kontaki et al., ICDE 2011) |
 | `NETS` | 基于网格集合处理的距离离群点检测 (Yoon et al., PVLDB 2019) |
 | `CPOD` | 基于核心点的距离离群点检测 (Tran et al., PVLDB 2020) |
+| `ThreshLEAP` | 基于最小探测与最新优先探测的距离离群点检测 (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
 | `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |
+| `KELOS` | 基于窗口微簇的核密度局部离群点检测 (Qin et al., EDBT 2019) |
 | `ADeMS` | Frequent Directions 矩阵概要 (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | 局部离群概率 (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD 量子测量密度估计 (Gallego-Mejia et al., ICDMW 2022) |
@@ -256,6 +259,8 @@ for x in ArrayStreamer().iter(X[100:]):
 | `KNNCAD` | 共形 k 近邻异常检测 (Burnaev & Ishimtsev, 2016) |
 | `ChangeFinder` | 基于折扣学习自回归模型的离群点与变化点检测 (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | 基于 STAMPI 的矩阵轮廓异常子序列 (Yeh et al., ICDM 2016) |
+| `DAMP` | 提前停止向后搜索的左矩阵轮廓异常子序列 (Lu et al., KDD 2022) |
+| `SpectralResidual` | 滑动窗口上的谱残差显著性 (Ren et al., KDD 2019) |
 | `RelativeEntropy` | 基于窗口的相对熵 (Wang et al., IM 2011) |
 | `SAND` | 基于 k-Shape 聚类的流式子序列异常检测 (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | 滑动窗口上的中位数绝对偏差 (Hochenbaum et al., 2017) |

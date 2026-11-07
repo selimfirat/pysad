@@ -251,6 +251,34 @@ It prints:
 
    Highest score at 1237, anomalous cycle at [1200, 1250)
 
+Find an unusual shape in a long series with DAMP
+------------------------------------------------
+
+This script scores a sine series of 20,000 values with :class:`~pysad.models.DAMP`. As in the previous example, one cycle has twice the frequency. The backward search of DAMP can reach every earlier value, but it stops as soon as it finds a neighbor closer than the best discord score so far. So most values cost only a search over the last cycles, and the anomalous cycle still gets its exact score.
+
+.. literalinclude:: ../examples/example_damp.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Most unusual subsequence at [15001, 15051), anomalous cycle at [15000, 15050)
+
+Score spikes with the spectral residual
+---------------------------------------
+
+This script scores a seasonal series with spikes with :class:`~pysad.models.SpectralResidual`. For each value, the model appends estimated values after the window that ends with it. It then scores the value by its saliency in the spectral residual of the window, relative to the saliency of the values before it.
+
+.. literalinclude:: ../examples/example_spectral_residual.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.856
+
 Find unusual subsequences with SAND
 -----------------------------------
 
@@ -439,6 +467,20 @@ It prints:
 
    AUROC: 0.726
 
+Use kernel density local outliers with KELOS
+--------------------------------------------
+
+This script scores each point with KELOS. KELOS groups the points of its window into small clusters and uses the cluster centers as the centers of a kernel density estimate. The score of a point is how much lower the density at the point is than the densities at its nearest cluster centers.
+
+.. literalinclude:: ../examples/example_kelos.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.750
+
 Use a matrix sketch detector
 ----------------------------
 
@@ -482,3 +524,69 @@ It prints:
    First change detected at index 549 (zero-based)
 
 The mean changes at index 500; the alarm follows once enough evidence accumulates. This meter uses the full stream history and cannot remove observations, so it cannot be wrapped in :class:`~pysad.statistics.RunningStatistic`.
+
+Detect a drift with Hoeffding's bounds
+--------------------------------------
+
+This script streams 1,000 bits with an error rate of 0.2 followed by 1,000 bits with an error rate of 0.5. It updates :class:`~pysad.statistics.HDDMAMeter` and :class:`~pysad.statistics.HDDMWMeter` directly and stops at the first drift. A warning reports a possible drift with a weaker test. Both meters assume that each value is in [0, 1], so they need no threshold.
+
+.. literalinclude:: ../examples/example_hddm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   HDDMAMeter: warning at index 1010, drift at index 1011 (zero-based)
+   HDDMWMeter: warning at index 1010, drift at index 1014 (zero-based)
+
+The rate changes at index 1000. :class:`~pysad.statistics.HDDMAMeter` compares plain averages, and :class:`~pysad.statistics.HDDMWMeter` compares exponentially weighted averages. After a drift, the next update forgets the earlier values.
+
+Detect a rise in the error rate
+-------------------------------
+
+This script streams 1,000 bits with an error rate of 0.2 followed by 1,000 bits with an error rate of 0.5. A bit is 1 for an error and 0 for a correct prediction. It updates :class:`~pysad.statistics.DDMMeter` directly and stops at the first drift. A warning reports a possible drift with a weaker test. If the error rate falls again, the warning ends without a drift, so the script prints the start of the last warning zone.
+
+.. literalinclude:: ../examples/example_ddm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Warning from index 1026, drift at index 1067 (zero-based)
+
+The rate changes at index 1000. On this stream, the meter detects the drift later than the HDDM meters, because it compares the error rate since the last drift with its lowest value. After a drift, the next update forgets the earlier values.
+
+Detect a rise in the error rate from the distance between errors
+-----------------------------------------------------------------
+
+This script streams 2,000 bits with an error rate of 0.05 followed by 1,000 bits with an error rate of 0.3. It updates :class:`~pysad.statistics.EDDMMeter` directly and prints each drift with the first warning before it. The meter tracks the mean and the standard deviation of the distances between consecutive errors, and compares them with their largest value since the last drift.
+
+.. literalinclude:: ../examples/example_eddm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Warning at index 850, drift at index 1060 (zero-based), mean distance between errors 21.2
+   Warning at index 1839, drift at index 2014 (zero-based), mean distance between errors 14.5
+
+The rate changes at index 2000. The first drift is a false alarm: the rate does not change there, but by chance the distances got shorter than at their largest. After a drift, the next update forgets the earlier values.
+
+Detect a change in the distribution
+-----------------------------------
+
+This script streams 1000 values with standard deviation 1 followed by 1000 values with standard deviation 10. Both parts have mean 0, so a meter that tracks the mean does not see the change. :class:`~pysad.statistics.KSWINMeter` compares the newest values of its sliding window with a random sample of the older values by the Kolmogorov-Smirnov test, and sets ``drift_detected`` when the two distributions differ.
+
+.. literalinclude:: ../examples/example_kswin.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Drift detected at index 1102 (zero-based), distance 0.60
+
+The spread changes at index 1000. After a drift, the window keeps only its newest values, so the next test compares values of the new distribution only.

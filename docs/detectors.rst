@@ -66,6 +66,10 @@ These detectors take points with one or more features. A feature is one measured
      - Neighbor counts in a sliding window :cite:`angiulli2007detecting`
      - Nothing
      - Fixed: a window of ``window_size`` points
+   * - :class:`~pysad.models.ApproxStorm`
+     - The neighbor counts of :class:`~pysad.models.ExactStorm`, estimated from a sample of safe inliers :cite:`angiulli2007detecting`
+     - Nothing
+     - Fixed: a window of ``window_size`` points
    * - :class:`~pysad.models.MCOD`
      - The neighbor counts of :class:`~pysad.models.ExactStorm`, faster with micro-clusters :cite:`kontaki2011continuous`
      - Nothing
@@ -78,6 +82,10 @@ These detectors take points with one or more features. A feature is one measured
      - The neighbor counts of :class:`~pysad.models.ExactStorm`, faster with core points that index the window by distance rings :cite:`tran2020cpod`
      - Nothing
      - Fixed: a window of ``window_size`` points, its core points and the window points within 2R of each core point
+   * - :class:`~pysad.models.ThreshLEAP`
+     - The number of neighbors below k that a probe finds when it tests the window newest first and stops at k neighbors :cite:`cao2014scalable`
+     - Nothing
+     - Fixed: a window of ``window_size`` points
    * - :class:`~pysad.models.IncrementalLOF`
      - Local outlier factor in a sliding window :cite:`pokrajac2007incremental`
      - Nothing
@@ -90,6 +98,10 @@ These detectors take points with one or more features. A feature is one measured
      - The local outlier factor of :class:`~pysad.models.IncrementalLOF` in a window that keeps a density-preserving summary of old points :cite:`na2018dilof`
      - Nothing
      - Fixed: a window of at most ``window_size`` points and their ``num_neighbors`` nearest neighbors
+   * - :class:`~pysad.models.KELOS`
+     - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
+     - Nothing
+     - Fixed: a window of ``window_size`` points and the sums of its micro-clusters
    * - :class:`~pysad.models.ADeMS`
      - Residual of each point after its projection on a Frequent Directions sketch of the normal points :cite:`huang2015streaming`
      - Nothing (initial points to use a threshold)
@@ -152,6 +164,14 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from the newest subsequence to its nearest earlier subsequence, the matrix profile of STAMPI :cite:`yeh2016matrix`
      - The subsequence length (``window_length``)
      - Fixed: the last ``history_size`` values
+   * - :class:`~pysad.models.DAMP`
+     - Approximate distance from the newest subsequence to its nearest earlier subsequence, exact for each new left-discord, with a backward search that stops early :cite:`lu2022matrix`
+     - The subsequence length (``window_length``)
+     - Fixed: the last ``history_size + window_length - 1`` values
+   * - :class:`~pysad.models.SpectralResidual`
+     - Saliency of the newest value in the spectral residual of a sliding window, with estimated values after it :cite:`ren2019time`
+     - The window size
+     - Fixed: a window of ``window_size`` values
    * - :class:`~pysad.models.RelativeEntropy`
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values

@@ -234,12 +234,15 @@ These starting points come from the design of each method. They are not benchmar
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM distance-based outliers (Angiulli & Fassetti, CIKM 2007) |
+| `ApproxStorm` | Approx-STORM distance-based outliers from a sample of the window (Angiulli & Fassetti, CIKM 2007) |
 | `MCOD` | Micro-cluster-based distance-based outliers (Kontaki et al., ICDE 2011) |
 | `NETS` | Set-based distance-based outliers on a cell grid (Yoon et al., PVLDB 2019) |
 | `CPOD` | Core point-based distance-based outliers (Tran et al., PVLDB 2020) |
+| `ThreshLEAP` | Distance-based outliers with minimal, newest-first probing (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | Online one-class SVM, NORMA (Kivinen et al., IEEE TSP 2004) |
 | `DILOF` | Density summarizing incremental LOF (Na et al., KDD 2018) |
+| `KELOS` | Kernel density local outliers over micro-clusters of a window (Qin et al., EDBT 2019) |
 | `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
@@ -256,6 +259,8 @@ These starting points come from the design of each method. They are not benchmar
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
 | `ChangeFinder` | Outlier and change point detection with discounting AR models (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | Matrix profile discords with STAMPI (Yeh et al., ICDM 2016) |
+| `DAMP` | Left matrix profile discords with a backward search that stops early (Lu et al., KDD 2022) |
+| `SpectralResidual` | Spectral residual saliency over a sliding window (Ren et al., KDD 2019) |
 | `RelativeEntropy` | Relative entropy over windows (Wang et al., IM 2011) |
 | `SAND` | Streaming subsequence anomaly detection with k-Shape clusters (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |

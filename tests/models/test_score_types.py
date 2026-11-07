@@ -17,8 +17,10 @@ def _model_specs():
     from pysad import models
     from pysad.models import (
         CPOD,
+        DAMP,
         DILOF,
         HTM,
+        KELOS,
         KNNCAD,
         LODA,
         MCOD,
@@ -26,6 +28,7 @@ def _model_specs():
         SAND,
         TEDA,
         ADeMS,
+        ApproxStorm,
         ChangeFinder,
         ExactStorm,
         HalfSpaceTrees,
@@ -48,8 +51,10 @@ def _model_specs():
         SeasonalESD,
         SeasonalHybridESD,
         SmartSifter,
+        SpectralResidual,
         StandardAbsoluteDeviation,
         StreamPipeline,
+        ThreshLEAP,
         xStream,
     )
     from pysad.models.integrations import OneFitModel, ReferenceWindowModel
@@ -61,6 +66,13 @@ def _model_specs():
     # (name, factory, number of features)
     specs = [
         ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
+        (
+            "ApproxStorm",
+            lambda: ApproxStorm(
+                window_size=20, max_radius=0.3, num_neighbors=3, sample_fraction=0.25
+            ),
+            NUM_FEATURES,
+        ),
         ("ChangeFinder", lambda: ChangeFinder(), 1),
         ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
         ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),
@@ -82,6 +94,7 @@ def _model_specs():
         ),
         ("IForestASD", lambda: IForestASD(window_size=32), NUM_FEATURES),
         ("IncrementalLOF", lambda: IncrementalLOF(window_size=20), NUM_FEATURES),
+        ("KELOS", lambda: KELOS(window_size=20, radius=0.3, num_neighbors=3), NUM_FEATURES),
         (
             "KitNet",
             lambda: KitNet(grace_feature_mapping=10, grace_anomaly_detector=10),
@@ -95,6 +108,7 @@ def _model_specs():
             NUM_FEATURES,
         ),
         ("MatrixProfile", lambda: MatrixProfile(window_length=8, history_size=40), 1),
+        ("DAMP", lambda: DAMP(window_length=8, history_size=40), 1),
         ("MCOD", lambda: MCOD(window_size=20, max_radius=0.3, num_neighbors=2), NUM_FEATURES),
         ("MedianAbsoluteDeviation", lambda: MedianAbsoluteDeviation(), 1),
         ("MedianAbsoluteDeviation-signed", lambda: MedianAbsoluteDeviation(absolute=False), 1),
@@ -131,6 +145,7 @@ def _model_specs():
             1,
         ),
         ("SmartSifter", lambda: SmartSifter(), NUM_FEATURES),
+        ("SpectralResidual", lambda: SpectralResidual(window_size=30), 1),
         ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),
         ("StandardAbsoluteDeviation-signed", lambda: StandardAbsoluteDeviation(absolute=False), 1),
         (
@@ -143,6 +158,11 @@ def _model_specs():
             NUM_FEATURES,
         ),
         ("TEDA", lambda: TEDA(), NUM_FEATURES),
+        (
+            "ThreshLEAP",
+            lambda: ThreshLEAP(window_size=20, max_radius=0.3, num_neighbors=3),
+            NUM_FEATURES,
+        ),
         ("xStream", lambda: xStream(), NUM_FEATURES),
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (

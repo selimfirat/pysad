@@ -16,6 +16,7 @@ NUM_NEXT = 20
 
 UNIVARIATE_MODELS = {
     "ChangeFinder",
+    "DAMP",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -23,6 +24,7 @@ UNIVARIATE_MODELS = {
     "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
+    "SpectralResidual",
     "StandardAbsoluteDeviation",
 }
 
@@ -30,6 +32,13 @@ UNIVARIATE_MODELS = {
 TIMESTAMPED_MODELS = {"HTM"}
 
 MODEL_PARAMS = {
+    # Safe inliers form, are removed from the sample and expire within the first instances.
+    "ApproxStorm": {
+        "window_size": 30,
+        "max_radius": 0.6,
+        "num_neighbors": 3,
+        "sample_fraction": 0.2,
+    },
     # Core points form and expire within the first instances.
     "CPOD": {"window_size": 30, "max_radius": 0.6},
     "HalfSpaceTrees": {
@@ -48,10 +57,16 @@ MODEL_PARAMS = {
     "IncrementalLOF": {"num_neighbors": 5, "window_size": 20},
     # The initial sample completes before the round trip, so the restored model has rho and tau.
     "Inqmad": {"input_shape": 3, "dim_x": 32, "initial_size": 30},
+    # Clusters form and dissolve as the window slides before and after the round trip.
+    "KELOS": {"window_size": 30, "radius": 0.6, "num_neighbors": 3},
     # Its autoencoders still train on the instances scored after the round trip.
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 50},
     "KNNCAD": {"probationary_period": 50},
     "MatrixProfile": {"window_length": 4, "history_size": 30},
+    "DAMP": {"window_length": 4, "history_size": 20},
+    "SpectralResidual": {"window_size": 8, "num_average_points": 3},
+    # The window slides before and after the round trip.
+    "ThreshLEAP": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 3},
     # Micro-clusters form, expire and dissolve within the first instances.
     "MCOD": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 2},
     # Cells empty out and fill again within the first instances.

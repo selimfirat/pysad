@@ -89,6 +89,7 @@ def _ranges(X):
 # Each detector gets its defaults, plus the arguments that it requires. X is scaled to [0, 1].
 DETECTORS = {
     "ADeMS": lambda X, seed: models.ADeMS(),
+    "ApproxStorm": lambda X, seed: models.ApproxStorm(random_state=seed),
     "CPOD": lambda X, seed: models.CPOD(),
     "DILOF": lambda X, seed: models.DILOF(),
     "ExactStorm": lambda X, seed: models.ExactStorm(),
@@ -96,6 +97,7 @@ DETECTORS = {
     "IForestASD": lambda X, seed: models.IForestASD(random_state=seed),
     "IncrementalLOF": lambda X, seed: models.IncrementalLOF(),
     "Inqmad": lambda X, seed: models.Inqmad(X.shape[1], random_state=seed),
+    "KELOS": lambda X, seed: models.KELOS(),
     "KitNet": lambda X, seed: models.KitNet(random_state=seed),
     "LODA": lambda X, seed: models.LODA(random_state=seed),
     "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[: warmup(len(X))]),
@@ -109,6 +111,7 @@ DETECTORS = {
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
     "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
     "TEDA": lambda X, seed: models.TEDA(),
+    "ThreshLEAP": lambda X, seed: models.ThreshLEAP(),
     "xStream": lambda X, seed: models.xStream(random_state=seed),
 }
 # CI runs this script against the base checkout too, where a newly added model
@@ -140,6 +143,7 @@ UNIVARIATE = {
     # window makes the robust STL match R.
     "SeasonalESD": lambda n, period: models.SeasonalESD(period, 3 * period + 1),
     "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(period, 3 * period + 1),
+    "SpectralResidual": lambda n, period: models.SpectralResidual(),
 }
 # As for DETECTORS, only benchmark the models present in the checkout.
 UNIVARIATE = {name: factory for name, factory in UNIVARIATE.items() if name in models.__all__}

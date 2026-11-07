@@ -37,6 +37,7 @@ MAX_EXAMPLES = 10
 
 UNIVARIATE_MODELS = {
     "ChangeFinder",
+    "DAMP",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -44,6 +45,7 @@ UNIVARIATE_MODELS = {
     "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
+    "SpectralResidual",
     "StandardAbsoluteDeviation",
 }
 
@@ -83,6 +85,12 @@ def _model_params(model_name, num_features, data):
 
     ones, zeros = [1.0] * num_features, [0.0] * num_features
     params = {
+        "ApproxStorm": {
+            "window_size": 20,
+            "max_radius": 0.1,
+            "num_neighbors": 2,
+            "sample_fraction": 0.25,
+        },
         "CPOD": {"window_size": 20, "max_radius": 0.1},
         "DILOF": {"num_neighbors": 3, "window_size": 12},
         "ExactStorm": {"window_size": 20, "max_radius": 0.1},
@@ -104,9 +112,13 @@ def _model_params(model_name, num_features, data):
         "IForestASD": {"window_size": 20, "n_estimators": 10},
         "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
+        "KELOS": {"window_size": 20, "radius": 0.1, "num_neighbors": 3},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
         "MatrixProfile": {"window_length": 4, "history_size": 20},
+        "DAMP": {"window_length": 4, "history_size": 20},
+        "SpectralResidual": {"window_size": 8, "num_average_points": 3},
+        "ThreshLEAP": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         "LODA": {"num_bins": 5, "num_random_cuts": 10},
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         # The drawn values reach -1e6, below the domain of log(1 + x).

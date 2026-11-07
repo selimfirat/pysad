@@ -445,6 +445,10 @@ def test_drift_streams_are_listed_by_source():
     assert Data.datasets("kddcup99") == ["kddcup99/http.csv"]
     assert len(Data.datasets("smd")) == 28
     assert "smd/machine-1-1.txt" in Data.datasets("smd")
+    assert len(Data.datasets("smap")) == 54
+    assert "smap/P-1.npy" in Data.datasets("smap")
+    assert len(Data.datasets("msl")) == 27
+    assert "msl/M-1.npy" in Data.datasets("msl")
     assert len(Data.datasets("insects")) == 4
     assert "insects/abrupt.csv" in Data.datasets("insects")
 
@@ -499,6 +503,38 @@ def test_smd_streams_load_the_test_half_and_its_labels(tmp_path, monkeypatch):
 
     np.testing.assert_array_equal(X, [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
     np.testing.assert_array_equal(y, [0, 1, 0])
+
+
+def test_smap_and_msl_channels_label_every_point_of_their_anomaly_ranges(tmp_path, monkeypatch):
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    smap, msl = np.arange(16.0).reshape(8, 2), np.arange(12.0).reshape(4, 3)
+    labels = (
+        "chan_id,spacecraft,anomaly_sequences,class,num_values\n"
+        'P-2,SMAP,"[[1, 2]]",[point],8\n'
+        'P-2,SMAP,"[[5, 5], [7, 7]]","[point, point]",8\n'
+        'M-1,MSL,"[[0, 1]]",[point],4\n'
+    )
+    _serve(
+        monkeypatch,
+        {
+            pysad.utils.data._NASA + "P-2.npy": npy(smap),
+            pysad.utils.data._NASA + "M-1.npy": npy(msl),
+            pysad.utils.data._NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    X, y = data.get_data("smap/P-2.npy")
+    np.testing.assert_array_equal(X, smap)
+    np.testing.assert_array_equal(y, [0, 1, 1, 0, 0, 1, 0, 1])
+
+    X, y = data.get_data("msl/M-1.npy")
+    np.testing.assert_array_equal(X, msl)
+    np.testing.assert_array_equal(y, [1, 1, 0, 0])
 
 
 def test_insects_streams_have_the_label_in_the_last_column(tmp_path, monkeypatch):

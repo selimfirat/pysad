@@ -11,8 +11,10 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    :toctree: ../generated
 
    ADeMS
+   ApproxStorm
    ChangeFinder
    CPOD
+   DAMP
    DILOF
    ExactStorm
    HalfSpaceTrees
@@ -20,6 +22,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    IForestASD
    IncrementalLOF
    Inqmad
+   KELOS
    KitNet
    KNNCAD
    LODA
@@ -39,8 +42,10 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    SeasonalESD
    SeasonalHybridESD
    SmartSifter
+   SpectralResidual
    StandardAbsoluteDeviation
    TEDA
+   ThreshLEAP
    xStream
    NullModel
    PerfectModel

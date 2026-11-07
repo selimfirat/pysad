@@ -7,6 +7,7 @@ from pysad.models import (
     HTM,
     LODA,
     SAND,
+    ApproxStorm,
     HalfSpaceTrees,
     Inqmad,
     KitNet,
@@ -24,6 +25,9 @@ from pysad.utils import fix_seed
 NUM_FEATURES = 3
 
 MODELS = {
+    "ApproxStorm": lambda **kw: ApproxStorm(
+        window_size=20, max_radius=0.5, num_neighbors=3, sample_fraction=0.25, **kw
+    ),
     "HalfSpaceTrees": lambda **kw: HalfSpaceTrees(
         [0.0] * NUM_FEATURES,
         [1.0] * NUM_FEATURES,

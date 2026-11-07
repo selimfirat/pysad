@@ -674,16 +674,24 @@ class Data:
 
         return X
 
-    def get_data(self, data_file: str, download: bool = True) -> tuple[np.ndarray, np.ndarray]:
+    def get_data(
+        self, data_file: str, download: bool = True, timestamps: bool = False
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Loads the data given the filename or path, downloading it if not present.
 
         Args:
             data_file (str): Path or filename of the data.
             download (bool): Whether to download the dataset if not present locally (Default=True).
+            timestamps (bool): Whether to give each point of a NAB series as ``[timestamp, value]``, with the timestamp in seconds since the Unix epoch, as :class:`~pysad.models.HTM` takes it. NAB gives local times without a time zone, and the timestamps read them as UTC (Default=False).
 
         Returns:
             tuple[np.ndarray, np.ndarray]: The feature vectors of shape (num_instances, num_features) and the labels of shape (num_instances,).
+
+        Raises:
+            ValueError: If ``timestamps`` is True and ``data_file`` is not a NAB series.
         """
+        if timestamps and not data_file.startswith("nab/"):
+            raise ValueError(f"Only the NAB series have timestamps, got {data_file!r}.")
         if os.path.exists(data_file):
             data_path = data_file
         else:
@@ -723,7 +731,7 @@ class Data:
                 self._download(file_name, data_path)
 
         if file_name.startswith("nab/"):
-            return self._load_nab(file_name, data_path, download)
+            return self._load_nab(file_name, data_path, download, timestamps)
         if file_name.startswith("ucr/"):
             return self._load_ucr(file_name, data_path)
         if file_name.startswith("smd/"):
@@ -743,8 +751,10 @@ class Data:
 
         return X, y
 
-    def _load_nab(self, name: str, data_path: str, download: bool) -> tuple[np.ndarray, np.ndarray]:
-        """Loads a NAB series and labels the points in its anomaly windows with 1."""
+    def _load_nab(
+        self, name: str, data_path: str, download: bool, timestamps: bool
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Loads a NAB series, with the timestamps if `timestamps` is True, and labels the points in its anomaly windows with 1."""
         windows_path = os.path.join(self.data_base_path, "nab", "combined_windows.json")
         if not os.path.exists(windows_path):
             if not download:
@@ -762,7 +772,10 @@ class Data:
         for start, end in windows:
             y[(times >= np.datetime64(start)) & (times <= np.datetime64(end))] = 1
 
-        return np.array([[float(row[1])] for row in rows]), y
+        values = np.array([[float(row[1])] for row in rows])
+        if timestamps:
+            return np.column_stack([times.astype(np.float64), values]), y
+        return values, y
 
     def _extract_ucr(self, name: str, data_path: str) -> None:
         """Copies a UCR series out of the archive, and downloads the archive if it is not present."""

@@ -383,6 +383,19 @@ def test_nab_series_are_labeled_by_their_anomaly_windows(tmp_path):
     np.testing.assert_array_equal(X[:, 0], [1, 2, 30, 4, 5])
     np.testing.assert_array_equal(y, [0, 1, 1, 0, 0])
 
+    X, _ = Data(data_base_path=str(tmp_path)).get_data(
+        "nab/realKnownCause/nyc_taxi.csv", download=False, timestamps=True
+    )
+
+    # 2014-07-01 00:00:00 UTC is 1404172800 seconds after the Unix epoch.
+    np.testing.assert_array_equal(X[:, 0], 1404172800 + 1800 * np.arange(5))
+    np.testing.assert_array_equal(X[:, 1], [1, 2, 30, 4, 5])
+
+
+def test_only_nab_series_have_timestamps():
+    with pytest.raises(ValueError, match="NAB"):
+        Data().get_data("cardio.mat", timestamps=True)
+
 
 def test_ucr_datasets_are_listed_by_source():
     names = Data.datasets("ucr")

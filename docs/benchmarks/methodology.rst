@@ -35,6 +35,7 @@ These detectors get more arguments in step 3:
 - :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` get the range from 0 to 1 for each feature.
 - :class:`~pysad.models.Inqmad` gets the number of features.
 - :class:`~pysad.models.LocalOutlierProbability` fits on the warm-up points.
+- :class:`~pysad.models.HTM` gets each point with its timestamp, the range from 0 to 1, the probationary period of NAB, and the seed 0. It does not run on the UCR series, which have no timestamps.
 - :class:`~pysad.models.KNNCAD` learns during the probationary period of NAB, as in NAB.
 - :class:`~pysad.models.RelativeEntropy` gets the range from 0 to 1.
 - :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` get the period of the series and a window of 3 periods and one point. The R package of their paper needs more than 2 periods. With an odd window, the detectors give the same anomalies as the R package.
@@ -59,9 +60,9 @@ Alerts of a calibrator
 
 NAB has three profiles. The standard profile weights a false alert at 0.11 of a miss. The profile "low false alerts" doubles the weight of a false alert, and the profile "low misses" doubles the weight of a miss.
 
-One threshold for all the series needs scores with the same scale on each series. :class:`~pysad.models.KNNCAD` and :class:`~pysad.models.RelativeEntropy` give scores from 0 to 1, as the detectors of NAB do. The benchmark gives the scores of the other detectors to :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`, whose window holds all the earlier scores of the series. With its default window of 300 scores, many points tie at the highest value.
+One threshold for all the series needs scores with the same scale on each series. :class:`~pysad.models.HTM`, :class:`~pysad.models.KNNCAD` and :class:`~pysad.models.RelativeEntropy` give scores from 0 to 1, as the detectors of NAB do. The benchmark gives the scores of the other detectors to :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`, whose window holds all the earlier scores of the series. With its default window of 300 scores, many points tie at the highest value.
 
-The benchmark uses the scoring code of NAB. With it, :class:`~pysad.models.KNNCAD` gets NAB scores of 58.0, 43.4 and 64.8, the scores that the scoreboard of NAB lists for its KNN-CAD detector. :class:`~pysad.models.RelativeEntropy` gets higher scores than on the scoreboard, because its histogram follows the paper.
+The benchmark uses the scoring code of NAB. With it, :class:`~pysad.models.KNNCAD` gets NAB scores of 58.0, 43.4 and 64.8, the scores that the scoreboard of NAB lists for its KNN-CAD detector. :class:`~pysad.models.RelativeEntropy` gets higher scores than on the scoreboard, because its histogram follows the paper. :class:`~pysad.models.HTM` gets 64.2, 56.8 and 68.3. The scoreboard lists 64.6, 56.7 and 69.2 for the numentaTM detector of NAB, which uses the same kind of temporal memory, and 70.1, 63.1 and 74.3 for the numenta detector, which uses the backtracking temporal memory of NuPIC.
 
 What the results do not show
 ----------------------------

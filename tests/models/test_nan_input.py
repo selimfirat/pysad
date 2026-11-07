@@ -29,6 +29,7 @@ UNIVARIATE_MODELS = {
     "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
+    "SpectralResidual",
     "StandardAbsoluteDeviation",
 }
 
@@ -54,6 +55,7 @@ def _params(name, num_features):
         "KNNCAD": {"probationary_period": 48},
         "MatrixProfile": {"window_length": 3},
         "DAMP": {"window_length": 3, "probationary_period": 4},
+        "SpectralResidual": {"window_size": 8, "num_average_points": 3},
         "LocalOutlierProbability": {
             "initial_X": np.random.RandomState(0).rand(12, num_features),
             "num_neighbors": 10,

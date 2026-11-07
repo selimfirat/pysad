@@ -137,6 +137,7 @@ UNIVARIATE = {
     # window makes the robust STL match R.
     "SeasonalESD": lambda n, period: models.SeasonalESD(period, 3 * period + 1),
     "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(period, 3 * period + 1),
+    "SpectralResidual": lambda n, period: models.SpectralResidual(),
 }
 # As for DETECTORS, only benchmark the models present in the checkout.
 UNIVARIATE = {name: factory for name, factory in UNIVARIATE.items() if name in models.__all__}

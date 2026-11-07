@@ -20,6 +20,7 @@ from pysad.utils import fix_seed
 NUM_INSTANCES = 12
 
 UNIVARIATE_MODELS = {
+    "ChangeFinder",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",

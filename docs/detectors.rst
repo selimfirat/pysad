@@ -136,6 +136,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from the running mean or recent median in standard deviations :cite:`hochenbaum2017automatic`
      - ``window_size`` when using ``subtracted_statistic="median"``
      - Fixed; median mode retains only the last ``window_size`` values while variance remains an all-history running statistic
+   * - :class:`~pysad.models.ChangeFinder`
+     - Logarithmic loss under an autoregressive model that sequentially discounting learning fits, and a second such model on the smoothed losses for change points :cite:`takeuchi2006unifying`
+     - Nothing
+     - Fixed: ``order`` values and ``window_size`` scores
    * - :class:`~pysad.models.KNNCAD`
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`
      - A probationary period: at least 48 values that it learns from before it scores

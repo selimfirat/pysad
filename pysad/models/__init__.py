@@ -3,6 +3,7 @@ The :mod:`pysad.models` module includes anomaly detection models to score the an
 """
 
 from .adems import ADeMS
+from .change_finder import ChangeFinder
 from .cpod import CPOD
 from .dilof import DILOF
 from .exact_storm import ExactStorm
@@ -38,6 +39,7 @@ from .xstream import xStream
 
 __all__ = [
     "ADeMS",
+    "ChangeFinder",
     "CPOD",
     "DILOF",
     "ExactStorm",

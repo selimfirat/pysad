@@ -8,6 +8,7 @@ from .average_meter import AverageMeter
 from .count_meter import CountMeter
 from .ddm_meter import DDMMeter
 from .ddsketch_meter import DDSketchMeter
+from .eddm_meter import EDDMMeter
 from .exponential_moving_average_meter import ExponentialMovingAverageMeter
 from .hddm_a_meter import HDDMAMeter
 from .hddm_w_meter import HDDMWMeter
@@ -29,6 +30,7 @@ __all__ = [
     "CountMeter",
     "DDMMeter",
     "DDSketchMeter",
+    "EDDMMeter",
     "ExponentialMovingAverageMeter",
     "HDDMAMeter",
     "HDDMWMeter",

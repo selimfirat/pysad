@@ -530,6 +530,23 @@ It prints:
 
 The rate changes at index 1000. On this stream, the meter detects the drift later than the HDDM meters, because it compares the error rate since the last drift with its lowest value. After a drift, the next update forgets the earlier values.
 
+Detect a rise in the error rate from the distance between errors
+-----------------------------------------------------------------
+
+This script streams 2,000 bits with an error rate of 0.05 followed by 1,000 bits with an error rate of 0.3. It updates :class:`~pysad.statistics.EDDMMeter` directly and prints each drift with the first warning before it. The meter tracks the mean and the standard deviation of the distances between consecutive errors, and compares them with their largest value since the last drift.
+
+.. literalinclude:: ../examples/example_eddm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Warning at index 850, drift at index 1060 (zero-based), mean distance between errors 21.2
+   Warning at index 1839, drift at index 2014 (zero-based), mean distance between errors 14.5
+
+The rate changes at index 2000. The first drift is a false alarm: the rate does not change there, but by chance the distances got shorter than at their largest. After a drift, the next update forgets the earlier values.
+
 Detect a change in the distribution
 -----------------------------------
 

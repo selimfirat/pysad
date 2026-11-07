@@ -19,6 +19,7 @@ def _model_specs():
         CPOD,
         DAMP,
         DILOF,
+        KELOS,
         KNNCAD,
         LODA,
         MCOD,
@@ -85,6 +86,7 @@ def _model_specs():
         ),
         ("IForestASD", lambda: IForestASD(window_size=32), NUM_FEATURES),
         ("IncrementalLOF", lambda: IncrementalLOF(window_size=20), NUM_FEATURES),
+        ("KELOS", lambda: KELOS(window_size=20, radius=0.3, num_neighbors=3), NUM_FEATURES),
         (
             "KitNet",
             lambda: KitNet(grace_feature_mapping=10, grace_anomaly_detector=10),

@@ -98,6 +98,10 @@ These detectors take points with one or more features. A feature is one measured
      - The local outlier factor of :class:`~pysad.models.IncrementalLOF` in a window that keeps a density-preserving summary of old points :cite:`na2018dilof`
      - Nothing
      - Fixed: a window of at most ``window_size`` points and their ``num_neighbors`` nearest neighbors
+   * - :class:`~pysad.models.KELOS`
+     - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
+     - Nothing
+     - Fixed: a window of ``window_size`` points and the sums of its micro-clusters
    * - :class:`~pysad.models.ADeMS`
      - Residual of each point after its projection on a Frequent Directions sketch of the normal points :cite:`huang2015streaming`
      - Nothing (initial points to use a threshold)

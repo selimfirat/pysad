@@ -205,6 +205,7 @@ module = [
     "pysad.models.iforest_asd",
     "pysad.models.incremental_lof",
     "pysad.models.inqmad",
+    "pysad.models.kelos",
     "pysad.models.kitnet",
     "pysad.models.knn_cad",
     "pysad.models.loda",

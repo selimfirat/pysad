@@ -101,6 +101,7 @@ def _model_params(model_name, num_features, data):
         "IForestASD": {"window_size": 20, "n_estimators": 10},
         "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
+        "KELOS": {"window_size": 20, "radius": 0.1, "num_neighbors": 3},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
         "MatrixProfile": {"window_length": 4, "history_size": 20},

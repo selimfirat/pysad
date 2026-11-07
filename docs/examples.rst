@@ -453,6 +453,20 @@ It prints:
 
    AUROC: 0.726
 
+Use kernel density local outliers with KELOS
+--------------------------------------------
+
+This script scores each point with KELOS. KELOS groups the points of its window into small clusters and uses the cluster centers as the centers of a kernel density estimate. The score of a point is how much lower the density at the point is than the densities at its nearest cluster centers.
+
+.. literalinclude:: ../examples/example_kelos.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.750
+
 Use a matrix sketch detector
 ----------------------------
 

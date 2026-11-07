@@ -52,6 +52,7 @@ def _model_specs():
         SpectralResidual,
         StandardAbsoluteDeviation,
         StreamPipeline,
+        ThreshLEAP,
         xStream,
     )
     from pysad.models.integrations import OneFitModel, ReferenceWindowModel
@@ -147,6 +148,11 @@ def _model_specs():
             NUM_FEATURES,
         ),
         ("TEDA", lambda: TEDA(), NUM_FEATURES),
+        (
+            "ThreshLEAP",
+            lambda: ThreshLEAP(window_size=20, max_radius=0.3, num_neighbors=3),
+            NUM_FEATURES,
+        ),
         ("xStream", lambda: xStream(), NUM_FEATURES),
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (

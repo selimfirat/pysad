@@ -238,6 +238,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `MCOD` | 基于微簇的距离离群点检测 (Kontaki et al., ICDE 2011) |
 | `NETS` | 基于网格集合处理的距离离群点检测 (Yoon et al., PVLDB 2019) |
 | `CPOD` | 基于核心点的距离离群点检测 (Tran et al., PVLDB 2020) |
+| `ThreshLEAP` | 基于最小探测与最新优先探测的距离离群点检测 (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
 | `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |

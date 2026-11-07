@@ -35,6 +35,7 @@ def test_unsupervised_models():
         SmartSifter,
         SpectralResidual,
         StandardAbsoluteDeviation,
+        ThreshLEAP,
         xStream,
     )
     from pysad.utils import fix_seed
@@ -75,6 +76,7 @@ def test_unsupervised_models():
         SpectralResidual: {},
         StandardAbsoluteDeviation: [{}, {"absolute": False}],
         TEDA: {},
+        ThreshLEAP: {},
         xStream: {},
         RobustRandomCutForest: {},
         Inqmad: {"input_shape": X.shape[1], "dim_x": 128},

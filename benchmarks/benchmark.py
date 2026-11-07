@@ -392,7 +392,12 @@ def read_nab():
 
 
 def run_univariate(series, detector, points=None):
-    X, y = Data().get_data(series, timestamps=detector in TIMESTAMPED)
+    # The base branch's Data.get_data has no timestamps argument, so pass it only when needed.
+    X, y = (
+        Data().get_data(series, timestamps=True)
+        if detector in TIMESTAMPED
+        else Data().get_data(series)
+    )
     X, y = X[:points], y[:points]
     values = X[:, -1]  # the timestamps, if any, come first
     span = values.max() - values.min()

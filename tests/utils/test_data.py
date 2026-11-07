@@ -1,3 +1,4 @@
+import gzip
 import hashlib
 import io
 import os
@@ -9,6 +10,20 @@ import pytest
 
 import pysad.utils.data
 from pysad.utils.data import Data
+
+
+class Response(io.BytesIO):
+    """A response of urlopen with the given body and headers."""
+
+    def __init__(self, body=b"", headers=None):
+        super().__init__(body)
+        self.headers = headers or {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
 
 
 def test_get_data_mat(monkeypatch, tmp_path):
@@ -177,18 +192,11 @@ def test_get_data_download_and_cache(tmp_path, monkeypatch):
 
     download_count = 0
 
-    class DummyResponse(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
     def dummy_urlopen(req, timeout):
         nonlocal download_count
         download_count += 1
         assert "cardio.mat" in req.full_url
-        return DummyResponse(b"MATLAB dummy content")
+        return Response(b"MATLAB dummy content")
 
     monkeypatch.setattr("urllib.request.urlopen", dummy_urlopen)
     monkeypatch.setitem(
@@ -254,13 +262,6 @@ def test_download_atomic_cleanup_on_error(tmp_path, monkeypatch):
 def test_download_tries_again_after_a_server_error(tmp_path, monkeypatch):
     calls = []
 
-    class Response(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
     def urlopen(req, timeout):
         calls.append(req.full_url)
         if len(calls) == 1:
@@ -282,13 +283,6 @@ def test_download_tries_again_after_a_server_error(tmp_path, monkeypatch):
 def test_download_tries_again_after_a_read_timeout(tmp_path, monkeypatch):
     calls = []
 
-    class Response(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
     class StalledResponse(Response):
         def read(self, *args):
             raise TimeoutError("The read operation timed out")
@@ -307,6 +301,24 @@ def test_download_tries_again_after_a_read_timeout(tmp_path, monkeypatch):
 
     assert len(calls) == 2
     assert all(timeout is not None for timeout in calls)
+    assert (tmp_path / "cardio.mat").read_bytes() == b"content"
+
+
+def test_download_decompresses_a_gzip_response(tmp_path, monkeypatch):
+    headers = []
+
+    def urlopen(req, timeout):
+        headers.append(req.get_header("Accept-encoding"))
+        return Response(gzip.compress(b"content"), headers={"Content-Encoding": "gzip"})
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setitem(
+        pysad.utils.data._CHECKSUMS, "cardio.mat", hashlib.sha256(b"content").hexdigest()
+    )
+
+    Data(data_base_path=str(tmp_path))._download("cardio.mat", str(tmp_path / "cardio.mat"))
+
+    assert headers == ["gzip"]
     assert (tmp_path / "cardio.mat").read_bytes() == b"content"
 
 
@@ -338,16 +350,7 @@ def test_explicit_data_base_path_wins(tmp_path):
 def test_download_with_a_wrong_checksum_raises_and_leaves_no_file(tmp_path, monkeypatch):
     """A download that does not match the checksum of the dataset is not used or kept."""
 
-    class DummyResponse(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    monkeypatch.setattr(
-        "urllib.request.urlopen", lambda req, timeout: DummyResponse(b"changed content")
-    )
+    monkeypatch.setattr("urllib.request.urlopen", lambda req, timeout: Response(b"changed content"))
     data = Data(data_base_path=str(tmp_path))
 
     with pytest.raises(ValueError, match="SHA-256"):
@@ -437,13 +440,6 @@ def test_ucr_series_come_from_the_archive_and_are_labeled_by_their_names(tmp_pat
     content = archive.getvalue()
     downloads = []
 
-    class Response(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
     def urlopen(req, timeout):
         downloads.append(req.full_url)
         return Response(content)
@@ -475,13 +471,6 @@ def test_drift_streams_are_listed_by_source():
 
 def _serve(monkeypatch, files):
     """Makes each download of a URL in ``files`` return its content, with a matching checksum."""
-
-    class Response(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
 
     monkeypatch.setattr(
         "urllib.request.urlopen", lambda req, timeout: Response(files[req.full_url])

@@ -45,5 +45,11 @@ jobs:
         run: |
           # uv prefers wheels by default, matching pip's --prefer-binary.
           uv pip install --system --group runtime --group test -e .
+      # The examples download their datasets, for example 74 MB of KDD Cup 99 from OpenML.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pysad
+          key: pysad-examples-data-${{ hashFiles('pysad/utils/data.py', 'examples/**') }}
+          restore-keys: pysad-examples-data-
       - name: Run examples
         run: pytest -m examples -n auto

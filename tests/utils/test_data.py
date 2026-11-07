@@ -184,7 +184,7 @@ def test_get_data_download_and_cache(tmp_path, monkeypatch):
         def __exit__(self, *args):
             pass
 
-    def dummy_urlopen(req):
+    def dummy_urlopen(req, timeout):
         nonlocal download_count
         download_count += 1
         assert "cardio.mat" in req.full_url
@@ -236,7 +236,7 @@ def test_download_atomic_cleanup_on_error(tmp_path, monkeypatch):
     """Test that failed downloads clean up any temporary files."""
     monkeypatch.setenv("PYSAD_DATA_DIR", str(tmp_path))
 
-    def failing_urlopen(req):
+    def failing_urlopen(req, timeout):
         raise urllib.error.URLError("Network connection failed")
 
     monkeypatch.setattr("urllib.request.urlopen", failing_urlopen)
@@ -261,7 +261,7 @@ def test_download_tries_again_after_a_server_error(tmp_path, monkeypatch):
         def __exit__(self, *args):
             pass
 
-    def urlopen(req):
+    def urlopen(req, timeout):
         calls.append(req.full_url)
         if len(calls) == 1:
             raise urllib.error.HTTPError(req.full_url, 504, "Gateway Time-out", {}, None)
@@ -279,10 +279,41 @@ def test_download_tries_again_after_a_server_error(tmp_path, monkeypatch):
     assert (tmp_path / "cardio.mat").read_bytes() == b"content"
 
 
+def test_download_tries_again_after_a_read_timeout(tmp_path, monkeypatch):
+    calls = []
+
+    class Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    class StalledResponse(Response):
+        def read(self, *args):
+            raise TimeoutError("The read operation timed out")
+
+    def urlopen(req, timeout):
+        calls.append(timeout)
+        return StalledResponse() if len(calls) == 1 else Response(b"content")
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(pysad.utils.data, "_RETRY_SECONDS", 0.0)
+    monkeypatch.setitem(
+        pysad.utils.data._CHECKSUMS, "cardio.mat", hashlib.sha256(b"content").hexdigest()
+    )
+
+    Data(data_base_path=str(tmp_path))._download("cardio.mat", str(tmp_path / "cardio.mat"))
+
+    assert len(calls) == 2
+    assert all(timeout is not None for timeout in calls)
+    assert (tmp_path / "cardio.mat").read_bytes() == b"content"
+
+
 def test_download_does_not_try_again_after_a_client_error(tmp_path, monkeypatch):
     calls = []
 
-    def urlopen(req):
+    def urlopen(req, timeout):
         calls.append(req.full_url)
         raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
 
@@ -314,7 +345,9 @@ def test_download_with_a_wrong_checksum_raises_and_leaves_no_file(tmp_path, monk
         def __exit__(self, *args):
             pass
 
-    monkeypatch.setattr("urllib.request.urlopen", lambda req: DummyResponse(b"changed content"))
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda req, timeout: DummyResponse(b"changed content")
+    )
     data = Data(data_base_path=str(tmp_path))
 
     with pytest.raises(ValueError, match="SHA-256"):
@@ -411,7 +444,7 @@ def test_ucr_series_come_from_the_archive_and_are_labeled_by_their_names(tmp_pat
         def __exit__(self, *args):
             pass
 
-    def urlopen(req):
+    def urlopen(req, timeout):
         downloads.append(req.full_url)
         return Response(content)
 
@@ -446,7 +479,9 @@ def _serve(monkeypatch, files):
         def __exit__(self, *args):
             pass
 
-    monkeypatch.setattr("urllib.request.urlopen", lambda req: Response(files[req.full_url]))
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda req, timeout: Response(files[req.full_url])
+    )
     real_source = pysad.utils.data._source
 
     def source(name):

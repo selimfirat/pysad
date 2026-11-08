@@ -9,7 +9,7 @@ Detector
    A row that ends with "shingles" gives a multivariate detector that gets the last 10 values as one point, from :class:`~pysad.transform.preprocessing.ShingleTransformer`.
 
 Series
-   The number of NAB series that the detector ran on. The ESD detectors need the period of a series, so they run only on the 14 seasonal series.
+   The number of NAB series that the detector ran on. HoltWinters and the ESD detectors need the period of a series, so they run only on the 14 seasonal series.
 
 Standard, Low false alerts, Low misses
    The NAB score with each profile.
@@ -25,14 +25,14 @@ Time and Commit
    :header-rows: 1
    :class: benchmark-table best-columns
 
-The ESD detectors run on fewer series than the other detectors, so the summary does not compare them on equal terms. The next table compares all the detectors on the 14 seasonal series only.
+HoltWinters and the ESD detectors run on fewer series than the other detectors, so the summary does not compare them on equal terms. The next table compares all the detectors on the 14 seasonal series only.
 
 .. csv-table::
    :file: ../benchmark/univariate_seasonal.csv
    :header-rows: 1
    :class: benchmark-table best-columns
 
-Each UCR series has one anomaly. The next table gives the percentage of the UCR series that each detector solves, and the mean AUROC after the training part of each series. The ESD detectors do not run on these series, because the archive gives no periods.
+Each UCR series has one anomaly. The next table gives the percentage of the UCR series that each detector solves, and the mean AUROC after the training part of each series. HoltWinters and the ESD detectors do not run on these series, because the archive gives no periods.
 
 .. csv-table::
    :file: ../benchmark/univariate_ucr.csv

@@ -17,6 +17,7 @@ NUM_NEXT = 20
 UNIVARIATE_MODELS = {
     "ChangeFinder",
     "DAMP",
+    "HoltWinters",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -53,6 +54,8 @@ MODEL_PARAMS = {
     # The anomaly likelihood leaves its probationary period before the round trip.
     "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 40, "num_columns": 256},
     "IForestASD": {"window_size": 32},
+    # Violations count toward failures before and after the round trip.
+    "HoltWinters": {"period": 4, "threshold": 1},
     # The window is summarized before and after the round trip.
     "DILOF": {"num_neighbors": 5, "window_size": 24},
     # A window that slides before and after the round trip.

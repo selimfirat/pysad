@@ -129,7 +129,9 @@ class HoltWinters(BaseModel):
                 previous + self.slope_
             )
             self.slope_ = self.beta * (self.intercept_ - previous) + (1.0 - self.beta) * self.slope_
-            self.seasonal_[k] = self.gamma * (x - self.intercept_) + (1.0 - self.gamma) * self.seasonal_[k]
+            self.seasonal_[k] = (
+                self.gamma * (x - self.intercept_) + (1.0 - self.gamma) * self.seasonal_[k]
+            )
             error = abs(x - forecast)
             if np.isnan(self.deviation_[k]):
                 self.deviation_[k] = error

@@ -39,6 +39,7 @@ class HoltWinters(BaseModel):
     - The paper does not say when the model smooths the seasonal cycle. This model smooths it at the end of each period. RRDtool also moves the mean of the seasonal coefficients into the baseline when it smooths them, which the paper does not describe and this model does not do.
     - The model rejects NaN values. The paper forecasts several steps ahead to fill missing values.
     - The paper does not give default parameters. The defaults ``alpha=0.1``, ``beta=0.0035`` and ``gamma=0.1`` are those of the paper's RRDtool example, for a daily period of 288 values. The defaults ``delta=2.0``, ``window_size=9`` and ``threshold=7`` are the RRDtool defaults that the paper gives.
+    - A failure is at least ``threshold`` violations in the window, as in RRDtool. The paper's text says more than ``threshold`` violations.
     - The paper's failure is a binary indicator. This model returns the number of violations in the window for a failure, so that the scores rank failures.
 
     Args:

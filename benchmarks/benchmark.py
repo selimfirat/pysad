@@ -131,8 +131,8 @@ SHORT_NAMES = {
 # its defaults, plus the arguments that it requires. The values of a series are scaled to [0, 1].
 UNIVARIATE = {
     "ChangeFinder": lambda n, period: models.ChangeFinder(),
-    # HTM learns during NAB's probationary period, as in NAB.
     "HoltWinters": lambda n, period: models.HoltWinters(period),
+    # HTM learns during NAB's probationary period, as in NAB.
     "HTM": lambda n, period: models.HTM(
         min_val=0.0, max_val=1.0, probationary_period=nab_probation(n), random_state=0
     ),

@@ -106,12 +106,23 @@ docs = [
 lint = [
   "pre-commit==4.6.2",
 ]
-# The libraries that benchmarks/compare.py compares PySAD with. River needs Python 3.11 or newer.
+# The libraries that benchmarks/compare.py compares PySAD with. CapyMOA needs Java, and
+# scikit-learn 1.8 or newer.
 compare = [
-  {include-group = "runtime"},
+  "numpy==2.2.6",
+  "scikit-learn==1.9.1",
+  "scipy>=1.15.4",
   "pyod>=3.6.2",
   "pillow>=12.3.0",
-  "river==0.26.1; python_version >= '3.11'",
+  "river==0.26.1",
+  "capymoa==0.15.1",
+]
+# The compared libraries that need NumPy 1. StreamAD needs statsmodels 0.13.5, which has no wheels
+# for Python 3.12 or newer and fails to import with SciPy 1.16 or newer.
+compare-numpy1 = [
+  "scipy==1.15.3",
+  "streamad==0.3.1",
+  "alibi-detect==0.13.0",
 ]
 dev = [
   {include-group = "runtime"},
@@ -131,6 +142,19 @@ pysad = ["py.typed"]
 # `uv sync` would otherwise add the dev group to whatever --group asks for; Read the Docs
 # and CI name the groups they need explicitly.
 default-groups = []
+# The two compare groups pin different versions of NumPy and scikit-learn than the other groups.
+conflicts = [
+  [{group = "compare"}, {group = "compare-numpy1"}],
+  [{group = "compare"}, {group = "runtime"}],
+  [{group = "compare"}, {group = "dev"}],
+  [{group = "compare-numpy1"}, {group = "runtime"}],
+  [{group = "compare-numpy1"}, {group = "test"}],
+  [{group = "compare-numpy1"}, {group = "dev"}],
+]
+
+[tool.uv.dependency-groups]
+compare = {requires-python = ">=3.11"}
+compare-numpy1 = {requires-python = "<3.12"}
 
 [tool.pytest.ini_options]
 addopts = ["--verbose", "-m", "not examples"]
@@ -223,6 +247,7 @@ module = [
     "pysad.models.loop",
     "pysad.models.mcod",
     "pysad.models.median_absolute_deviation",
+    "pysad.models.midas",
     "pysad.models.mstream",
     "pysad.models.nets",
     "pysad.models.null_model",

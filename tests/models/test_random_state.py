@@ -7,6 +7,7 @@ from pysad.models import (
     D3,
     HTM,
     LODA,
+    MIDAS,
     SAND,
     ApproxStorm,
     EXPoSE,
@@ -48,6 +49,7 @@ MODELS = {
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": lambda **kw: KitNet(grace_feature_mapping=20, grace_anomaly_detector=30, **kw),
     "LODA": lambda **kw: LODA(num_random_cuts=20, **kw),
+    "MIDAS": lambda **kw: MIDAS(num_buckets=4, tick_size=5, **kw),
     "MStream": lambda **kw: MStream(**kw),
     "OnlineIsolationForest": lambda **kw: OnlineIsolationForest(
         num_trees=10, max_leaf_samples=8, window_size=32, **kw
@@ -66,12 +68,16 @@ NAMES = list(MODELS)
 UNIVARIATE_MODELS = (SAND,)
 # These models take each instance as [timestamp, value].
 TIMESTAMPED_MODELS = (HTM,)
+# These models take each instance as an edge [source, destination].
+EDGE_MODELS = (MIDAS,)
 
 
 def _data(model):
     X = np.random.RandomState(0).rand(80, NUM_FEATURES)
     if isinstance(model, TIMESTAMPED_MODELS):
         return np.column_stack([3600.0 * np.arange(len(X)), X[:, 0]])
+    if isinstance(model, EDGE_MODELS):
+        return np.floor(10.0 * X[:, :2])
     return X[:, :1] if isinstance(model, UNIVARIATE_MODELS) else X
 
 

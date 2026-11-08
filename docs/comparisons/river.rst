@@ -71,11 +71,11 @@ River's ``HalfSpaceTrees`` gives every point the score 0 until its first window 
 
 River recommends that you scale the data of ``OneClassSVM`` with ``StandardScaler`` and add features with ``RBFSampler``. This comparison uses the defaults of all the detectors, so ``OneClassSVM`` gets the points without these steps.
 
-To run the comparison, install the ``compare`` dependency group, which needs Python 3.11 or newer. Then run the script from the root of the repository:
+To run the comparison, install the ``compare`` dependency group, which needs Python 3.11 or newer. The group includes CapyMOA, which needs Java, as :doc:`capymoa` describes. Then run the script from the root of the repository:
 
 .. code-block:: console
 
    $ pip install -e . --group compare
    $ python benchmarks/compare.py
 
-The script writes ``docs/benchmark/comparison_river.csv`` and ``docs/benchmark/comparison_pyod.csv``. With the same versions of the libraries, a new run gives the same AUROC and AUPR. Only the times change.
+The script runs the libraries that are installed. With this group, it writes ``docs/benchmark/comparison_river.csv``, ``docs/benchmark/comparison_pyod.csv`` and ``docs/benchmark/comparison_capymoa.csv``. StreamAD and Alibi Detect need NumPy 1, so they have their own group, as :doc:`streamad` describes. With the same versions of the libraries, a new run gives the same AUROC and AUPR. Only the times change.

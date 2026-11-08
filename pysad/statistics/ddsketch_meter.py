@@ -29,8 +29,14 @@ class DDSketchMeter(UnivariateStatistic):
     then holds if the largest value is at most ``x_q * gamma ** (max_buckets - 1)``
     (Proposition 4). Memory is O(max_buckets).
 
-    Without merges, the estimates equal those of the authors' Python implementation
-    ``ddsketch`` (sketches-py) with the logarithmic mapping. With merges they can
+    ``merge`` combines bucket counts from another meter with the same relative
+    accuracy and collapses buckets to this meter's limit (Algorithm 4). It keeps
+    this meter's quantile and leaves the other meter unchanged. Collapsed buckets
+    cannot be recovered by merging into a meter with a larger limit, so quantiles
+    in those buckets may still fall outside the relative-error guarantee.
+
+    Without bucket collapses, the estimates equal those of the authors' Python implementation
+    ``ddsketch`` (sketches-py) with the logarithmic mapping. With collapses they can
     differ: sketches-py bounds the range of bucket indices, and its negative store
     merges the values closest to zero, but the paper bounds the number of non-empty
     buckets, and this class follows the paper.
@@ -106,6 +112,44 @@ class DDSketchMeter(UnivariateStatistic):
             first, second = heapq.nsmallest(2, store) if num > 0 else heapq.nlargest(2, store)
             store[second] += store.pop(first)
 
+        return self
+
+    def merge(self, other: DDSketchMeter) -> DDSketchMeter:
+        """Adds another meter's observations, preserving this meter's bucket limit.
+
+        Uses Algorithm 4 of :cite:`masson2019ddsketch`, with negative buckets
+        collapsed from the highest index as in Section 2.2. Work and temporary
+        storage depend on the bucket limits, not the number of observations.
+
+        Args:
+            other (DDSketchMeter): Meter with the same relative accuracy. Its
+                quantile and bucket limit may differ. It is left unchanged unless
+                it is this meter itself, in which case all counts are doubled.
+
+        Raises:
+            ValueError: If the meters have different relative accuracies.
+
+        Returns:
+            DDSketchMeter: self.
+        """
+        if self.relative_accuracy != other.relative_accuracy:
+            raise ValueError("Meters must have the same relative_accuracy to merge.")
+
+        for store, incoming, reverse in (
+            (self._positive, other._positive, False),
+            (self._negative, other._negative, True),
+        ):
+            for key, count in incoming.items():
+                store[key] = store.get(key, 0) + count
+
+            if len(store) > self.max_buckets:
+                keys = sorted(store, reverse=reverse)
+                cutoff = len(keys) - self.max_buckets
+                # Collapsing adjacent buckets repeatedly adds all removed counts here.
+                store[keys[cutoff]] += sum(store.pop(key) for key in keys[:cutoff])
+
+        self._zero_count += other._zero_count
+        self.num_items += other.num_items
         return self
 
     def remove(self, num: float) -> DDSketchMeter:

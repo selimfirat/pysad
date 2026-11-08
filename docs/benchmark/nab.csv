@@ -8,7 +8,7 @@ SeasonalHybridESD,14,7.21,3.25,18.07,7.21
 ExactStorm,58,4.79,1.2,8.94,17.72
 HalfSpaceTrees,58,43.74,31.0,51.24,31.99
 IForestASD,58,18.16,5.81,30.06,12.75
-IncrementalLOF,58,18.15,8.76,26.98,35.41
+IncrementalLOF,58,18.68,8.96,27.61,35.41
 Inqmad,58,39.73,23.75,47.17,21.37
 KitNet,58,24.13,8.93,33.52,27.19
 LODA,58,55.13,44.46,61.18,54.68
@@ -22,7 +22,7 @@ xStream,58,25.43,14.53,31.89,34.06
 ExactStorm+shingles,58,0.8,0.8,2.04,4.64
 HalfSpaceTrees+shingles,58,29.18,18.69,36.04,21.4
 IForestASD+shingles,58,23.87,11.19,30.96,13.73
-IncrementalLOF+shingles,58,16.11,10.63,20.69,17.81
+IncrementalLOF+shingles,58,16.16,10.73,21.44,17.81
 Inqmad+shingles,58,8.81,7.45,16.11,23.21
 KitNet+shingles,58,10.9,3.53,16.75,15.49
 LODA+shingles,58,43.12,32.25,50.42,42.27

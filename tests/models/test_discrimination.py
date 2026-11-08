@@ -42,6 +42,9 @@ UNIVARIATE_MODELS = {
 # timestamps, so that a period of the stream is one day.
 TIMESTAMPED_MODELS = {"HTM"}
 
+# These models take each instance as an edge [source, destination].
+EDGE_MODELS = {"MIDAS"}
+
 # Subspace detectors score the distance of the direction of an instance from a low-rank subspace,
 # so they need normal instances near such a subspace.
 SUBSPACE_MODELS = {"ADeMS"}
@@ -82,6 +85,15 @@ def _subspace_stream():
     anomalies, y = _anomalies(rng)
     directions = rng.normal(size=(len(anomalies), NUM_FEATURES))
     X[anomalies] += 6.0 * directions / np.linalg.norm(directions, axis=1, keepdims=True)
+    return X, y
+
+
+def _edge_stream():
+    """Edges between 5 nodes, with each anomaly as an edge between two nodes not seen before."""
+    rng = np.random.default_rng(SEED)
+    X = rng.integers(0, 5, size=(NUM_INSTANCES, 2)).astype(np.float64)
+    anomalies, y = _anomalies(rng)
+    X[anomalies] = 100.0 + np.arange(2 * len(anomalies)).reshape(-1, 2)
     return X, y
 
 
@@ -169,6 +181,8 @@ def test_scores_rank_anomalies_above_chance(model_name):
     elif model_name in TIMESTAMPED_MODELS:
         X, y = _univariate_stream()
         X = np.column_stack([3600.0 * np.arange(len(X)), X])
+    elif model_name in EDGE_MODELS:
+        X, y = _edge_stream()
     elif model_name in SUBSPACE_MODELS:
         X, y = _subspace_stream()
     else:

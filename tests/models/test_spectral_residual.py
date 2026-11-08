@@ -45,6 +45,46 @@ def test_spectral_residual_warmup():
     assert np.all(scores[29:] != 0.0)
 
 
+def test_spectral_residual_matches_microsoft_saliency_with_paper_extension():
+    from pysad.models import SpectralResidual
+
+    # microsoft/anomalydetector, revision a3260ea0ddfb868986b924a245e003a97143f9df:
+    # spectral_residual_transform with mag_window=3, run on each 16-point window
+    # with four copies of Eq. (9)'s estimate (m=3), then scored with Eq. (7), z=6.
+    # Only numerical outputs are retained; no reference source is copied.
+    values = np.array([2, 3, 2, 4, 3, 5, 4, 3, 2, 4, 3, 5, 4, 3, 2, 8, 4, 2, 3, 4])
+    expected = [
+        0.39534678249265637,
+        -0.22232560929693612,
+        -0.4318152063717016,
+        -0.760112938362248,
+        -0.541585731825312,
+    ]
+    model = SpectralResidual(
+        window_size=16,
+        num_average_points=6,
+        num_estimated_points=4,
+        num_gradient_points=3,
+    )
+
+    scores = model.fit_score(values.reshape(-1, 1))
+
+    np.testing.assert_allclose(scores[15:], expected, rtol=1e-13, atol=1e-14)
+
+
+@pytest.mark.parametrize("scale", [1e-150, 1.0, 1e150])
+def test_spectral_residual_stays_finite_at_different_amplitudes(scale):
+    from pysad.models import SpectralResidual
+
+    values = scale * np.tile([0.0, 1.0, -1.0, 0.0], 40)
+    values[100] = 3.0 * scale
+
+    with np.errstate(all="raise"):
+        scores = SpectralResidual().fit_score(values.reshape(-1, 1))
+
+    assert np.isfinite(scores).all()
+
+
 def test_spectral_residual_scores_do_not_depend_on_the_scale():
     from pysad.models import SpectralResidual
 

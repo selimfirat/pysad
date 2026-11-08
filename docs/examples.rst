@@ -178,6 +178,21 @@ It prints:
    22 raw scores are at least 0.99
    likelihood alerts at [549, 2620, 4001], the anomaly starts at 4000
 
+Flag anomalies with a dynamic threshold
+---------------------------------------
+
+This script scores the telemetry value of a SMAP channel with the median absolute deviation. Then it applies the nonparametric dynamic threshold of Telemanom, which outputs 0 for a nominal point and the score of the anomalous sequence for a flagged point. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_dynamic_threshold.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Flagged points: 37, of which in an anomaly range: 25
+   AUROC: 0.646
+
 Postprocess scores
 ------------------
 
@@ -219,6 +234,20 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.807
+
+Score forecast errors of a River forecaster
+-------------------------------------------
+
+This script scores a seasonal series with spikes with :class:`~pysad.models.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast. River needs Python 3.11 or newer.
+
+.. literalinclude:: ../examples/example_predictive_anomaly_detector.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 1.000
 
 Find anomalies in a seasonal series
 -----------------------------------
@@ -481,6 +510,20 @@ It prints:
 
    AUROC: 0.750
 
+Use anytime outliers with AnyOut
+--------------------------------
+
+This script scores each point with AnyOut. AnyOut keeps the stream in a tree of clusters, where each level describes the data in more detail than the level above it. A point descends the tree until its time budget ends, and its score is the distance to the mean of the closest cluster at that level. Here the budget is 4 levels.
+
+.. literalinclude:: ../examples/example_anyout.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.763
+
 Use a matrix sketch detector
 ----------------------------
 
@@ -557,6 +600,22 @@ It prints:
    Warning from index 1026, drift at index 1067 (zero-based)
 
 The rate changes at index 1000. On this stream, the meter detects the drift later than the HDDM meters, because it compares the error rate since the last drift with its lowest value. After a drift, the next update forgets the earlier values.
+
+Detect a fall in the accuracy of a sliding window
+-------------------------------------------------
+
+This script streams the same bits as the DDM example: 1,000 bits with an error rate of 0.2 followed by 1,000 bits with an error rate of 0.5. It updates :class:`~pysad.statistics.FHDDMMeter` directly and stops at the first drift. The meter keeps the accuracy of the last 100 values and compares it with the largest accuracy of a full window since the last drift. A drift is a difference of at least the Hoeffding bound.
+
+.. literalinclude:: ../examples/example_fhddm.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Drift at index 1054 (zero-based), error rate in the window 0.40
+
+The rate changes at index 1000. The meter has no warning level. On this stream, it detects the drift earlier than :class:`~pysad.statistics.DDMMeter`, because the window forgets the values before the change. After a drift, the next update empties the window.
 
 Detect a rise in the error rate from the distance between errors
 -----------------------------------------------------------------

@@ -107,6 +107,22 @@ Calibrate with the anomaly likelihood of HTM
 
 The calibrator returns 0.5 for the first ``learning_period + num_estimation_samples`` scores, 388 by default. During a run of anomalous scores, only the first score reaches ``1 - 1e-5``. The next scores of the run get ``0.999``.
 
+Threshold the scores of a window without a risk level
+-----------------------------------------------------
+
+:class:`~pysad.transform.postprocessing.NonparametricDynamicThresholdPostprocessor` is the threshold of Telemanom. It smooths the scores and picks the threshold that removes the most of the mean and the standard deviation of the recent scores with the fewest anomalies. Then it drops the anomalous sequences whose maximum is close to the next lower maximum. The output is 0 for a normal point, so an alert is a score above 0. The scores must be nonnegative, for example prediction errors:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import NonparametricDynamicThresholdPostprocessor
+
+   threshold = NonparametricDynamicThresholdPostprocessor()
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if threshold.fit_transform_partial(model.fit_score_partial(x)) > 0:
+           alerts.append(t)
+
 Smooth noisy scores
 -------------------
 

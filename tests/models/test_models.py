@@ -14,6 +14,7 @@ def test_unsupervised_models():
         SAND,
         TEDA,
         ADeMS,
+        AnyOut,
         ApproxStorm,
         ChangeFinder,
         ExactStorm,
@@ -49,6 +50,7 @@ def test_unsupervised_models():
     model_classes = {
         RelativeEntropy: {"min_val": 0.0, "max_val": 1.0},
         ADeMS: {},
+        AnyOut: [{}, {"outlier_score": "density"}],
         ApproxStorm: {},
         ChangeFinder: [{}, {"change_point": False}],
         CPOD: {},

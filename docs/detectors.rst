@@ -102,6 +102,10 @@ These detectors take points with one or more features. A feature is one measured
      - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
      - Nothing
      - Fixed: a window of ``window_size`` points and the sums of its micro-clusters
+   * - :class:`~pysad.models.AnyOut`
+     - Distance to the mean, or Gaussian density, of the closest cluster at the level of a ClusTree that the time budget ``depth`` reaches :cite:`assent2012anyout`
+     - Nothing
+     - Fixed: a tree of at most ``max_height`` levels, with at most 3 to the power ``max_height`` leaf clusters
    * - :class:`~pysad.models.ADeMS`
      - Residual of each point after its projection on a Frequent Directions sketch of the normal points :cite:`huang2015streaming`
      - Nothing (initial points to use a threshold)
@@ -181,8 +185,8 @@ These detectors take points with exactly one feature. Give each value as an arra
      - The subsequence length
      - Grows slowly: a batch of ``batch_size`` values and one ``centroid_length`` by ``centroid_length`` matrix per cluster, with at most ``num_clusters`` new clusters per batch
 
-PyOD integrations
------------------
+Integrations
+------------
 
 These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod>`_ on a stream. A batch detector trains on a complete dataset. For instructions, see :doc:`guides/pyod`.
 
@@ -196,6 +200,8 @@ These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod
      - Trains the detector on a window of recent points and trains it again every ``sliding_size`` points :cite:`xstream`.
    * - :class:`~pysad.models.integrations.OneFitModel`
      - Trains the detector once on initial points and then only scores.
+
+:class:`~pysad.models.integrations.PredictiveAnomalyDetector` scores each value of a univariate stream by its deviation from the one-step forecast of a `River <https://riverml.xyz/>`_ forecaster, the plug-in method of EGADS :cite:`laptev2015generic`. The forecaster learns each value after the model scores it.
 
 Baselines for testing
 ---------------------

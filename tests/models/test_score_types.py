@@ -35,6 +35,7 @@ def _model_specs():
         ApproxStorm,
         ChangeFinder,
         ExactStorm,
+        EXPoSE,
         HalfSpaceTrees,
         HoltWinters,
         IForestASD,
@@ -85,6 +86,7 @@ def _model_specs():
         ("D3", lambda: D3(window_size=20, sample_fraction=0.5, max_radius=0.3), NUM_FEATURES),
         ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
+        ("EXPoSE", lambda: EXPoSE(num_random_features=50), NUM_FEATURES),
         (
             "HalfSpaceTrees",
             lambda: HalfSpaceTrees(

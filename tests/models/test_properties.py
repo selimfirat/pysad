@@ -102,6 +102,7 @@ def _model_params(model_name, num_features, data):
         "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.1},
         "DILOF": {"num_neighbors": 3, "window_size": 12},
         "ExactStorm": {"window_size": 20, "max_radius": 0.1},
+        "EXPoSE": {"num_random_features": 50},
         "HalfSpaceTrees": {
             "feature_mins": np.array(zeros),
             "feature_maxes": np.array(ones),

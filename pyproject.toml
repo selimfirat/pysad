@@ -209,6 +209,7 @@ module = [
     "pysad.models.half_space_trees",
     "pysad.models.holt_winters",
     "pysad.models.exact_storm",
+    "pysad.models.expose",
     "pysad.models.htm.encoders",
     "pysad.models.htm.htm",
     "pysad.models.htm.spatial_pooler",

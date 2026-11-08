@@ -95,6 +95,7 @@ DETECTORS = {
     "D3": lambda X, seed: models.D3(random_state=seed),
     "DILOF": lambda X, seed: models.DILOF(),
     "ExactStorm": lambda X, seed: models.ExactStorm(),
+    "EXPoSE": lambda X, seed: models.EXPoSE(random_state=seed),
     "HalfSpaceTrees": lambda X, seed: models.HalfSpaceTrees(**_ranges(X), random_state=seed),
     "IForestASD": lambda X, seed: models.IForestASD(random_state=seed),
     "IncrementalLOF": lambda X, seed: models.IncrementalLOF(),

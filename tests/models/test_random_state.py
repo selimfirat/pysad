@@ -9,6 +9,7 @@ from pysad.models import (
     LODA,
     SAND,
     ApproxStorm,
+    EXPoSE,
     HalfSpaceTrees,
     Inqmad,
     KitNet,
@@ -30,6 +31,7 @@ MODELS = {
         window_size=20, max_radius=0.5, num_neighbors=3, sample_fraction=0.25, **kw
     ),
     "D3": lambda **kw: D3(window_size=20, sample_fraction=0.5, max_radius=0.3, **kw),
+    "EXPoSE": lambda **kw: EXPoSE(num_random_features=50, **kw),
     "HalfSpaceTrees": lambda **kw: HalfSpaceTrees(
         [0.0] * NUM_FEATURES,
         [1.0] * NUM_FEATURES,

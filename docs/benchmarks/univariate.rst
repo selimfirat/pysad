@@ -12,10 +12,10 @@ Series
    The number of NAB series that the detector ran on. HoltWinters and the ESD detectors need the period of a series, so they run only on the 14 seasonal series.
 
 Standard, Low false alerts, Low misses
-   The NAB score with each profile.
+   The NAB score with each profile, evaluated using NAB's official scoring code. Each profile optimizes a single threshold across all series. For :class:`~pysad.models.KNNCAD`, the results match the official NAB scoreboard (58.0, 43.4, and 64.8). Detectors without native unit scores in :math:`[0, 1]` are calibrated online with :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator` so their scores share a common scale across series.
 
 AUROC
-   The mean AUROC over the series with anomalies. A NAB window holds many points that look normal, so the AUROC of every detector is near 0.5.
+   The mean point-wise AUROC over the series with anomalies. A NAB anomaly window holds many points that look normal, so the point-wise AUROC of every detector is near 0.5. Scores are rounded to 9 significant digits before computing metrics to reduce platform-dependent floating-point noise in otherwise equal scores.
 
 Time and Commit
    The median time of one ``fit_score_partial`` call in milliseconds, and the commit of PySAD that gave the results.
@@ -31,6 +31,16 @@ HoltWinters and the ESD detectors run on fewer series than the other detectors, 
    :file: ../benchmark/univariate_seasonal.csv
    :header-rows: 1
    :class: benchmark-table best-columns
+
+NAB evaluation protocol
+-----------------------
+
+The benchmark follows the evaluation protocol of the Numenta Anomaly Benchmark:
+
+- **Official scoring algorithm**: The NAB scores use the official scoring algorithm of NAB (ported from ``sweeper.py`` and ``optimizer.py``), with window-based early-detection rewards, probationary periods (the first 15% of points, at most 750), and single global threshold optimization across all series.
+- **Score calibration**: NAB's global threshold sweep requires scores across all files to share a common scale. Detectors with native unit scores in :math:`[0, 1]` (:class:`~pysad.models.HTM`, :class:`~pysad.models.KNNCAD`, and :class:`~pysad.models.RelativeEntropy`) feed raw scores directly. Other detectors are calibrated online with :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator` before thresholding.
+- **Point-wise AUROC vs. NAB score**: Point-wise metrics treat every point inside a window equally and do not reward early warning or discount subsequent alerts. PySAD reports both the event-based NAB scores and point-wise AUROC for completeness.
+- **Score rounding**: Rounding scores to 9 significant digits reduces platform-dependent floating-point noise in otherwise equal scores. Repeated input values can receive different scores as a streaming detector learns, so rounding does not guarantee that identical inputs tie.
 
 Each UCR series has one anomaly. The next table gives the percentage of the UCR series that each detector solves, and the mean AUROC after the training part of each series. HoltWinters and the ESD detectors do not run on these series, because the archive gives no periods.
 

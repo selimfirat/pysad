@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Hashable, Sequence
+from collections.abc import Callable, Hashable, Sequence
 from typing import Any
 
 import numpy as np
@@ -25,15 +25,25 @@ class RiverAnomalyDetector(base.AnomalyDetector):
     but must contain exactly the same keys. Missing or new features raise
     ``ValueError`` before the wrapped model is called. Feature names need not be
     sortable. Scoring may establish the feature order, but never fits the model.
-    Pass ``feature_names`` when wrapping a fitted model to match its column order.
+
+    ``model_factory`` must return a new, untrained PySAD model on each call. Use a
+    model class for default parameters, or ``functools.partial`` for custom ones.
+    The created model is available as ``model_``. River's default ``clone()``
+    creates an untrained model and resets inferred feature names;
+    ``clone(include_attributes=True)`` copies the learned model and feature order.
 
     Args:
-        model (BaseModel): A PySAD model to score and train in place.
+        model_factory (callable): A zero-argument callable that creates a fresh PySAD model.
         feature_names (sequence of hashable or None): Feature names in the model's column order. Names must be unique. If None, use the first dictionary's key order (Default=None).
     """
 
-    def __init__(self, model: BaseModel, feature_names: Sequence[Hashable] | None = None) -> None:
-        self.model = model
+    def __init__(
+        self,
+        model_factory: Callable[[], BaseModel],
+        feature_names: Sequence[Hashable] | None = None,
+    ) -> None:
+        self.model_factory = model_factory
+        self.model_ = model_factory()
         self.feature_names = None if feature_names is None else tuple(feature_names)
         self.feature_names_ = self.feature_names
         if self.feature_names is not None and len(self.feature_names) != len(
@@ -48,7 +58,7 @@ class RiverAnomalyDetector(base.AnomalyDetector):
         Args:
             x (dict): Numeric feature values with the fixed feature names.
         """
-        self.model.fit_partial(self._to_array(x))
+        self.model_.fit_partial(self._to_array(x))
 
     def score_one(self, x: dict[Any, Any]) -> float:
         """Scores one feature dictionary without learning from it.
@@ -59,7 +69,7 @@ class RiverAnomalyDetector(base.AnomalyDetector):
         Returns:
             float: The wrapped model's anomaly score.
         """
-        return self.model.score_partial(self._to_array(x))
+        return self.model_.score_partial(self._to_array(x))
 
     def _to_array(self, x: dict[Any, Any]) -> np.ndarray:
         if self.feature_names_ is None:

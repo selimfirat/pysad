@@ -43,6 +43,7 @@ from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .spectral_residual import SpectralResidual
 from .standard_absolute_deviation import StandardAbsoluteDeviation
+from .stream_km_plusplus import StreamKMPlusPlus
 from .stream_pipeline import StreamPipeline
 from .teda import TEDA
 from .thresh_leap import ThreshLEAP
@@ -91,6 +92,7 @@ __all__ = [
     "SmartSifter",
     "SpectralResidual",
     "StandardAbsoluteDeviation",
+    "StreamKMPlusPlus",
     "StreamPipeline",
     "TEDA",
     "ThreshLEAP",

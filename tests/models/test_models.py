@@ -42,6 +42,7 @@ def test_unsupervised_models():
         SmartSifter,
         SpectralResidual,
         StandardAbsoluteDeviation,
+        StreamKMPlusPlus,
         ThreshLEAP,
         xStream,
     )
@@ -87,6 +88,7 @@ def test_unsupervised_models():
         SmartSifter: {},
         SpectralResidual: {},
         StandardAbsoluteDeviation: [{}, {"absolute": False}],
+        StreamKMPlusPlus: {},
         TEDA: {},
         ThreshLEAP: {},
         xStream: {},

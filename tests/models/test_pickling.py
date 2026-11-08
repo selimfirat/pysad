@@ -32,6 +32,9 @@ UNIVARIATE_MODELS = {
 # These models take each instance as [timestamp, value].
 TIMESTAMPED_MODELS = {"HTM"}
 
+# These models take each instance as an edge [source, destination].
+EDGE_MODELS = {"MIDAS"}
+
 MODEL_PARAMS = {
     # The tree splits, merges and discards entries before and after the round trip.
     "AnyOut": {"max_height": 2, "decay": 0.1, "snapshot_interval": 5},
@@ -76,6 +79,8 @@ MODEL_PARAMS = {
     "ThreshLEAP": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 3},
     # Micro-clusters form, expire and dissolve within the first instances.
     "MCOD": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 2},
+    # Ticks start and end before and after the round trip.
+    "MIDAS": {"tick_size": 7},
     # Cells empty out and fill again within the first instances.
     "NETS": {"window_size": 30, "max_radius": 0.6},
     "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
@@ -113,6 +118,8 @@ def _data(model_name):
         t = np.arange(num_instances)
         values = 0.5 + 0.4 * np.sin(2 * np.pi * t / 4) + 0.05 * rng.rand(num_instances)
         X = np.column_stack([3600.0 * t, values])
+    elif model_name in EDGE_MODELS:
+        X = rng.randint(0, 5, size=(num_instances, 2)).astype(np.float64)
     else:
         X = rng.rand(num_instances, 3)
     y = (rng.rand(num_instances) > 0.9).astype(int)

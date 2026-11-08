@@ -76,6 +76,9 @@ runtime = [
 test = [
   # PandasStreamer takes DataFrames.
   "pandas==2.3.3",
+  # examples/example_plot_stream.py draws with matplotlib.
+  "matplotlib==3.10.9; python_version < '3.11'",
+  "matplotlib==3.11.2; python_version >= '3.11'",
   # PolarsStreamer takes Polars DataFrames.
   "polars==2.0.0; python_version < '3.11'",
   "polars==2.1.0; python_version >= '3.11'",

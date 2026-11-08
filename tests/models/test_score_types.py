@@ -45,6 +45,7 @@ def _model_specs():
         LocalOutlierProbability,
         MatrixProfile,
         MedianAbsoluteDeviation,
+        MemStream,
         MStream,
         NullModel,
         OnlineIsolationForest,
@@ -125,6 +126,7 @@ def _model_specs():
         ("MedianAbsoluteDeviation-signed", lambda: MedianAbsoluteDeviation(absolute=False), 1),
         # MIDAS takes each instance as an edge [source, destination].
         ("MIDAS", lambda: MIDAS(tick_size=5), 2),
+        ("MemStream", lambda: MemStream(window_size=8, num_epochs=20), NUM_FEATURES),
         ("MStream", lambda: MStream(), NUM_FEATURES),
         ("NETS", lambda: NETS(window_size=20, max_radius=0.3), NUM_FEATURES),
         ("NullModel", lambda: NullModel(), NUM_FEATURES),

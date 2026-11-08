@@ -42,6 +42,10 @@ These detectors take points with one or more features. A feature is one measured
      - Time-decayed counts of random subspace grids :cite:`sathe2016subspace`
      - The range of each feature
      - Fixed: ``num_hash_fns`` hash tables of ``hash_range`` slots
+   * - :class:`~pysad.models.MemStream`
+     - Denoising autoencoder encodings queried by discounted nearest-neighbor distance :cite:`bhatia2022memstream`
+     - A normal stream prefix of ``window_size`` points, or a separate normal calibration block
+     - Fixed: ``window_size`` points and encodings, plus encoder weights
    * - :class:`~pysad.models.MStream`
      - Decayed count-min sketch counts of each feature and of the whole point, in the current time tick against the earlier ticks :cite:`bhatia2021mstream`
      - Nothing

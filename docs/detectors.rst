@@ -110,6 +110,10 @@ These detectors take points with one or more features. A feature is one measured
      - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
      - Nothing
      - Fixed: a window of ``window_size`` points and the sums of its micro-clusters
+   * - :class:`~pysad.models.STARE`
+     - How much lower the kernel density at a point is than the densities at the nearest grid cell centers in the window, updated only where the window changed :cite:`yoon2020ultrafast`
+     - Nothing
+     - Fixed: the cell counts of each slide of a window of ``window_size`` points
    * - :class:`~pysad.models.AnyOut`
      - Distance to the mean, or Gaussian density, of the closest cluster at the level of a ClusTree that the time budget ``depth`` reaches :cite:`assent2012anyout`
      - Nothing

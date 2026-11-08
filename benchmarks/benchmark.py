@@ -108,6 +108,7 @@ DETECTORS = {
     "MStream": lambda X, seed: models.MStream(random_state=seed),
     "NETS": lambda X, seed: models.NETS(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
+    "OnlineKMeans": lambda X, seed: models.OnlineKMeans(random_state=seed),
     "OnlineOneClassSVM": lambda X, seed: models.OnlineOneClassSVM(),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
     "RSForest": lambda X, seed: models.RSForest(random_state=seed),

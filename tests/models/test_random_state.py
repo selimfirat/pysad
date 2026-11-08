@@ -15,6 +15,7 @@ from pysad.models import (
     KitNet,
     MStream,
     OnlineIsolationForest,
+    OnlineKMeans,
     RandomModel,
     RobustRandomCutForest,
     RSForest,
@@ -51,6 +52,7 @@ MODELS = {
     "OnlineIsolationForest": lambda **kw: OnlineIsolationForest(
         num_trees=10, max_leaf_samples=8, window_size=32, **kw
     ),
+    "OnlineKMeans": lambda **kw: OnlineKMeans(num_clusters=2, **kw),
     "RandomModel": lambda **kw: RandomModel(**kw),
     "RobustRandomCutForest": lambda **kw: RobustRandomCutForest(tree_size=32, **kw),
     "RSForest": lambda **kw: RSForest(window_size=20, num_trees=5, max_depth=8, **kw),

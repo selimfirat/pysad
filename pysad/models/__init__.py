@@ -30,6 +30,7 @@ from .mstream import MStream
 from .nets import NETS
 from .null_model import NullModel
 from .online_isolation_forest import OnlineIsolationForest
+from .online_kmeans import OnlineKMeans
 from .online_one_class_svm import OnlineOneClassSVM
 from .perfect_model import PerfectModel
 from .random_model import RandomModel
@@ -76,6 +77,7 @@ __all__ = [
     "NETS",
     "NullModel",
     "OnlineIsolationForest",
+    "OnlineKMeans",
     "OnlineOneClassSVM",
     "PerfectModel",
     "RandomModel",

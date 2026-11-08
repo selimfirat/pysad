@@ -17,6 +17,7 @@ NUM_NEXT = 20
 UNIVARIATE_MODELS = {
     "ChangeFinder",
     "DAMP",
+    "HoltWinters",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -27,6 +28,9 @@ UNIVARIATE_MODELS = {
     "SpectralResidual",
     "StandardAbsoluteDeviation",
 }
+
+# These models take each instance as [timestamp, value].
+TIMESTAMPED_MODELS = {"HTM"}
 
 MODEL_PARAMS = {
     # The tree splits, merges and discards entries before and after the round trip.
@@ -40,6 +44,8 @@ MODEL_PARAMS = {
     },
     # Core points form and expire within the first instances.
     "CPOD": {"window_size": 30, "max_radius": 0.6},
+    # Sample values expire and their chains move on before and after the round trip.
+    "D3": {"window_size": 30, "sample_fraction": 0.5, "max_radius": 0.6},
     "HalfSpaceTrees": {
         "feature_mins": [0.0, 0.0, 0.0],
         "feature_maxes": [1.0, 1.0, 1.0],
@@ -47,7 +53,11 @@ MODEL_PARAMS = {
         "num_trees": 5,
         "max_depth": 8,
     },
+    # The anomaly likelihood leaves its probationary period before the round trip.
+    "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 40, "num_columns": 256},
     "IForestASD": {"window_size": 32},
+    # Violations count toward failures before and after the round trip.
+    "HoltWinters": {"period": 4, "threshold": 1},
     # The window is summarized before and after the round trip.
     "DILOF": {"num_neighbors": 5, "window_size": 24},
     # A window that slides before and after the round trip.
@@ -99,6 +109,10 @@ def _data(model_name):
     if model_name in UNIVARIATE_MODELS:
         t = np.arange(num_instances)
         X = (0.5 + 0.4 * np.sin(2 * np.pi * t / 4) + 0.05 * rng.rand(num_instances)).reshape(-1, 1)
+    elif model_name in TIMESTAMPED_MODELS:
+        t = np.arange(num_instances)
+        values = 0.5 + 0.4 * np.sin(2 * np.pi * t / 4) + 0.05 * rng.rand(num_instances)
+        X = np.column_stack([3600.0 * t, values])
     else:
         X = rng.rand(num_instances, 3)
     y = (rng.rand(num_instances) > 0.9).astype(int)

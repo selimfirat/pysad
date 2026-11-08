@@ -19,8 +19,10 @@ def _model_specs():
     from pysad import models
     from pysad.models import (
         CPOD,
+        D3,
         DAMP,
         DILOF,
+        HTM,
         KELOS,
         KNNCAD,
         LODA,
@@ -34,6 +36,7 @@ def _model_specs():
         ChangeFinder,
         ExactStorm,
         HalfSpaceTrees,
+        HoltWinters,
         IForestASD,
         IncrementalLOF,
         KitNet,
@@ -79,6 +82,7 @@ def _model_specs():
         ("ChangeFinder", lambda: ChangeFinder(), 1),
         ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
         ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),
+        ("D3", lambda: D3(window_size=20, sample_fraction=0.5, max_radius=0.3), NUM_FEATURES),
         ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
@@ -87,6 +91,14 @@ def _model_specs():
                 feature_mins=mins, feature_maxes=maxes, window_size=20, num_trees=5, max_depth=5
             ),
             NUM_FEATURES,
+        ),
+        ("HoltWinters", lambda: HoltWinters(period=4, threshold=1), 1),
+        # HTM takes each instance as [timestamp, value].
+        ("HTM", lambda: HTM(min_val=0.0, max_val=1.0, probationary_period=20, num_columns=256), 2),
+        (
+            "HTM-raw",
+            lambda: HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=256),
+            2,
         ),
         ("IForestASD", lambda: IForestASD(window_size=32), NUM_FEATURES),
         ("IncrementalLOF", lambda: IncrementalLOF(window_size=20), NUM_FEATURES),

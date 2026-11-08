@@ -92,6 +92,7 @@ DETECTORS = {
     "AnyOut": lambda X, seed: models.AnyOut(),
     "ApproxStorm": lambda X, seed: models.ApproxStorm(random_state=seed),
     "CPOD": lambda X, seed: models.CPOD(),
+    "D3": lambda X, seed: models.D3(random_state=seed),
     "DILOF": lambda X, seed: models.DILOF(),
     "ExactStorm": lambda X, seed: models.ExactStorm(),
     "HalfSpaceTrees": lambda X, seed: models.HalfSpaceTrees(**_ranges(X), random_state=seed),
@@ -127,10 +128,15 @@ SHORT_NAMES = {
 
 
 # The univariate detectors run once on each NAB series with anomalies, in the order of the file,
-# because none of them draws random numbers. Each detector gets its defaults, plus the arguments
-# that it requires. A series is scaled to [0, 1].
+# because none of them draws random numbers, except HTM, which runs with seed 0. Each detector gets
+# its defaults, plus the arguments that it requires. The values of a series are scaled to [0, 1].
 UNIVARIATE = {
     "ChangeFinder": lambda n, period: models.ChangeFinder(),
+    "HoltWinters": lambda n, period: models.HoltWinters(period),
+    # HTM learns during NAB's probationary period, as in NAB.
+    "HTM": lambda n, period: models.HTM(
+        min_val=0.0, max_val=1.0, probationary_period=nab_probation(n), random_state=0
+    ),
     # KNNCAD learns during NAB's probationary period, as in NAB.
     "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
@@ -144,7 +150,7 @@ UNIVARIATE = {
 }
 # As for DETECTORS, only benchmark the models present in the checkout.
 UNIVARIATE = {name: factory for name, factory in UNIVARIATE.items() if name in models.__all__}
-# The ESD detectors need the period of a series, so they run only on these series. Each period is a
+# The seasonal detectors need the period of a series, so they run only on these series. Each period is a
 # day, in points, where the autocorrelation at a lag of one day is at least 0.5.
 PERIODS = {
     "nab/artificialWithAnomaly/art_daily_flatmiddle.csv": 288,
@@ -162,7 +168,10 @@ PERIODS = {
     "nab/realKnownCause/cpu_utilization_asg_misconfiguration.csv": 288,
     "nab/realKnownCause/nyc_taxi.csv": 48,
 }
-SEASONAL = ["SeasonalESD", "SeasonalHybridESD"]
+SEASONAL = ["HoltWinters", "SeasonalESD", "SeasonalHybridESD"]
+# These detectors take each point as [timestamp, value]. The UCR series have no timestamps, so these
+# detectors do not run on them.
+TIMESTAMPED = ["HTM"]
 
 
 @functools.cache
@@ -194,7 +203,7 @@ def label(detector):
     return f":class:`~pysad.models.{detector}`"
 
 
-# The UCR series with at most this many points, 84 of the 250, keep the run short. The ESD detectors
+# The UCR series with at most this many points, 84 of the 250, keep the run short. The seasonal detectors
 # do not run on them, because the archive does not give the periods.
 UCR_MAX_POINTS = 20_000
 # A run solves a UCR series when its highest score after the training part is at most this many
@@ -275,7 +284,7 @@ def nab_probation(n):
 # another scale on each series, so they are calibrated before NAB uses one threshold for all. The
 # calibrator compares each score with all the earlier scores of the series. With the default window
 # of 300 scores, its values have steps of 1/300, and many points tie at the highest value.
-NAB_UNIT_SCORES = ["KNNCAD", "RelativeEntropy"]
+NAB_UNIT_SCORES = ["HTM", "KNNCAD", "RelativeEntropy"]
 
 # NAB's scoring, ported from nab/sweeper.py and nab/optimizer.py of the Numenta Anomaly Benchmark
 # (MIT license) at the commit that Data downloads the series from. Each profile gives the weights of
@@ -390,10 +399,16 @@ def read_nab():
 
 
 def run_univariate(series, detector, points=None):
-    X, y = Data().get_data(series)
+    # The base branch's Data.get_data has no timestamps argument, so pass it only when needed.
+    X, y = (
+        Data().get_data(series, timestamps=True)
+        if detector in TIMESTAMPED
+        else Data().get_data(series)
+    )
     X, y = X[:points], y[:points]
-    span = X.max() - X.min()
-    X = (X - X.min()) / (span if span > 0 else 1.0)
+    values = X[:, -1]  # the timestamps, if any, come first
+    span = values.max() - values.min()
+    X[:, -1] = (values - values.min()) / (span if span > 0 else 1.0)
     if detector in UNIVARIATE:
         model = UNIVARIATE[detector](len(X), PERIODS.get(series))
     else:
@@ -692,7 +707,7 @@ def write_univariate_tables(results, nab):
             for d in sorted(detectors, key=lambda d: -score(d, "standard"))
         ],
     )
-    ucr = [d for d in detectors if d in UNIVARIATE and d not in SEASONAL]
+    ucr = [d for d in detectors if d in UNIVARIATE and d not in SEASONAL + TIMESTAMPED]
     write_csv(
         "univariate_ucr.csv",
         ["Detector", "Series", "Solved (%)", "AUROC"],
@@ -1065,7 +1080,12 @@ def main():
     if "univariate" in parts:
         jobs += [(series, d, 0, points) for d in univariate for series in series_of(d)]
         if not args.ci:  # the training part of most UCR series is longer than CI_POINTS
-            jobs += [(s, d, 0, None) for d in univariate if d not in SEASONAL for s in ucr_series()]
+            jobs += [
+                (s, d, 0, None)
+                for d in univariate
+                if d not in SEASONAL + TIMESTAMPED
+                for s in ucr_series()
+            ]
     if "drift" in parts:
         for stream in DRIFT:
             Data().get_data(stream)

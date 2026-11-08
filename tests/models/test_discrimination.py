@@ -26,6 +26,7 @@ ANOMALY_RATE = 0.05
 UNIVARIATE_MODELS = {
     "ChangeFinder",
     "DAMP",
+    "HoltWinters",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -36,6 +37,10 @@ UNIVARIATE_MODELS = {
     "SpectralResidual",
     "StandardAbsoluteDeviation",
 }
+
+# These models take each instance as [timestamp, value], and get the univariate stream with hourly
+# timestamps, so that a period of the stream is one day.
+TIMESTAMPED_MODELS = {"HTM"}
 
 # Subspace detectors score the distance of the direction of an instance from a low-rank subspace,
 # so they need normal instances near such a subspace.
@@ -94,6 +99,15 @@ def _model_params(model_name, X):
     feature_mins, feature_maxes = X.min(axis=0), X.max(axis=0)
     params = {
         "HalfSpaceTrees": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
+        "HTM": {
+            "min_val": feature_mins[-1],
+            "max_val": feature_maxes[-1],
+            "num_columns": 512,
+            # The anomaly likelihood needs a longer stream than this one to settle.
+            "likelihood": False,
+        },
+        # The anomalies are single spikes, so one violation in the window is a failure.
+        "HoltWinters": {"period": 24, "threshold": 1},
         "IForestASD": {"window_size": WARMUP},
         "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32},
         # Grace periods that end with the warmup.
@@ -152,6 +166,9 @@ def _models():
 def test_scores_rank_anomalies_above_chance(model_name):
     if model_name in UNIVARIATE_MODELS:
         X, y = _univariate_stream()
+    elif model_name in TIMESTAMPED_MODELS:
+        X, y = _univariate_stream()
+        X = np.column_stack([3600.0 * np.arange(len(X)), X])
     elif model_name in SUBSPACE_MODELS:
         X, y = _subspace_stream()
     else:

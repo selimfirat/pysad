@@ -35,6 +35,15 @@ Calibrate the scores and raise alerts
 
 The condition ``t >= 200`` skips a warm-up period of 200 points. During the warm-up, the model and the calibrator have too little data, and their output is not stable.
 
+To get the alerts as 0/1 labels, for example for :class:`~pysad.evaluation.PrecisionMetric`, use :class:`~pysad.transform.postprocessing.ThresholdFilter`. It gives 1 for a value at or above its threshold, and 0 otherwise:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import ThresholdFilter
+
+   threshold_filter = ThresholdFilter(threshold=0.99)
+   label = threshold_filter.transform_partial(calibrated)
+
 Choose the threshold
 --------------------
 
@@ -122,6 +131,24 @@ Threshold the scores of a window without a risk level
    for t, x in enumerate(streamer.iter(X)):
        if threshold.fit_transform_partial(model.fit_score_partial(x)) > 0:
            alerts.append(t)
+
+Label the scores with a running quantile
+----------------------------------------
+
+:class:`~pysad.transform.postprocessing.QuantileFilter` gives a score the label 1 if the score is at least the ``q`` quantile of the previous scores, and 0 otherwise. It keeps an estimate of the quantile in constant memory, so it uses every score since the start of the stream. This is the ``QuantileFilter`` of River:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import QuantileFilter
+
+   quantile_filter = QuantileFilter(q=0.99)
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if quantile_filter.fit_transform_partial(model.fit_score_partial(x)):
+           alerts.append(t)
+
+About 1 in 100 scores gets the label 1, also when the stream has no anomalies. Unlike the conformal calibrator, the filter does not forget old scores. Thus it follows a change in the scores slowly.
 
 Smooth noisy scores
 -------------------

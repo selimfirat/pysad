@@ -35,10 +35,10 @@ Functions
      - 5 rules, for example the average and the maximum of the scores
      - None
    * - Score postprocessors
-     - Running averages, maximums, medians and z-scores of the scores
+     - Running averages, maximums, medians and z-scores of the scores, and the dynamic threshold of Telemanom
      - None
    * - Scores to labels
-     - Probability calibrators, then a threshold on the probability
+     - :class:`~pysad.transform.postprocessing.ThresholdFilter` and :class:`~pysad.transform.postprocessing.QuantileFilter`, also after a probability calibrator
      - ``ThresholdFilter`` and ``QuantileFilter``
    * - Probability calibrators
      - Gaussian tail, conformal and SPOT
@@ -48,6 +48,8 @@ Functions
      - ``progressive_val_score``, with an approximate ROC AUC
 
 Both libraries have Half-Space Trees, LODA, an incremental local outlier factor and the standard absolute deviation. PySAD has more detectors for anomaly detection, and also the tools around a detector: ensemblers, postprocessors and calibrators. River has the other tasks of machine learning on streams. Use River if anomaly detection is one step of a larger River pipeline.
+
+:class:`~pysad.transform.postprocessing.QuantileFilter` gives the same labels as River's ``QuantileFilter`` from the seventh score on. It does not decide whether the detector learns from a point with the label 1. The loop in :doc:`../guides/alerts` makes that choice.
 
 Results
 -------

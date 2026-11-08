@@ -79,6 +79,9 @@ test = [
   # examples/example_plot_stream.py draws with matplotlib.
   "matplotlib==3.10.9; python_version < '3.11'",
   "matplotlib==3.11.2; python_version >= '3.11'",
+  # PolarsStreamer takes Polars DataFrames.
+  "polars==2.0.0; python_version < '3.11'",
+  "polars==2.1.0; python_version >= '3.11'",
   # The reference that LocalOutlierProbability is tested against.
   "PyNomaly==0.4.0",
   # The batch detectors that the tests and examples run through pysad.models.integrations.
@@ -204,9 +207,13 @@ module = [
     "pysad.models.approx_storm",
     "pysad.models.change_finder",
     "pysad.models.cpod",
+    "pysad.models.d3",
     "pysad.models.dilof",
     "pysad.models.half_space_trees",
+    "pysad.models.holt_winters",
     "pysad.models.exact_storm",
+    "pysad.models.htm.encoders",
+    "pysad.models.htm.htm",
     "pysad.models.htm.spatial_pooler",
     "pysad.models.iforest_asd",
     "pysad.models.incremental_lof",
@@ -244,5 +251,5 @@ check_untyped_defs = true
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]
-module = ["pandas.*", "scipy.*", "sklearn.*"]
+module = ["pandas.*", "polars.*", "scipy.*", "sklearn.*"]
 ignore_missing_imports = true

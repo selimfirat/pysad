@@ -183,7 +183,7 @@ for message in consumer:  # for example, a Kafka consumer
     score = model.fit_score_partial(x)
 ```
 
-`ArrayStreamer` and `PandasStreamer` replay arrays and DataFrames as streams for experiments.
+`ArrayStreamer`, `PandasStreamer` and `PolarsStreamer` replay arrays and pandas or Polars DataFrames as streams for experiments.
 
 ### Use a PyOD model on a stream
 
@@ -238,6 +238,7 @@ These starting points come from the design of each method. They are not benchmar
 | `MCOD` | Micro-cluster-based distance-based outliers (Kontaki et al., ICDE 2011) |
 | `NETS` | Set-based distance-based outliers on a cell grid (Yoon et al., PVLDB 2019) |
 | `CPOD` | Core point-based distance-based outliers (Tran et al., PVLDB 2020) |
+| `D3` | Distance-based outliers from a kernel density over a chain sample of a window (Subramaniam et al., VLDB 2006) |
 | `ThreshLEAP` | Distance-based outliers with minimal, newest-first probing (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | Online one-class SVM, NORMA (Kivinen et al., IEEE TSP 2004) |
@@ -256,7 +257,9 @@ These starting points come from the design of each method. They are not benchmar
 |---|---|
 | `SeasonalHybridESD` | Seasonal Hybrid ESD (Hochenbaum et al., 2017) |
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
+| `HTM` | Hierarchical Temporal Memory, the numenta detector of NAB, on timestamped values (Ahmad et al., Neurocomputing 2017) |
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
+| `HoltWinters` | Holt-Winters forecasting with a seasonal confidence band and a failure window (Brutlag, USENIX LISA 2000) |
 | `ChangeFinder` | Outlier and change point detection with discounting AR models (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | Matrix profile discords with STAMPI (Yeh et al., ICDM 2016) |
 | `DAMP` | Left matrix profile discords with a backward search that stops early (Lu et al., KDD 2022) |
@@ -280,11 +283,11 @@ The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) p
 |---|---|
 | Preprocessing | `InstanceStandardScaler`, `InstanceUnitNormScaler`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
 | Projection | `StreamhashProjector`, `GaussianRandomProjector`, `SparseRandomProjector` |
-| Postprocessing | Running and windowed average, max, median and z-score of scores |
+| Postprocessing | Running and windowed average, max, median and z-score of scores, and `QuantileFilter` for 0/1 labels |
 | Calibration | `AnomalyLikelihoodProbabilityCalibrator`, `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
 | Ensembling | Average, maximum, median, average-of-maximum and maximum-of-average score ensemblers |
 | Evaluation | `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric` |
-| Streaming data | `ArrayStreamer`, `PandasStreamer`, and `Data` for 17 labeled ODDS benchmark datasets, downloaded on first use |
+| Streaming data | `ArrayStreamer`, `PandasStreamer`, `PolarsStreamer`, and `Data` for 17 labeled ODDS benchmark datasets, downloaded on first use |
 | Statistics | Running mean, variance, median, min, max, sum and count |
 
 ## Contributing

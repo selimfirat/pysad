@@ -183,7 +183,7 @@ for message in consumer:  # 例如一个 Kafka 消费者
     score = model.fit_score_partial(x)
 ```
 
-`ArrayStreamer` 和 `PandasStreamer` 可以把数组和 DataFrame 当作数据流回放，便于做实验。
+`ArrayStreamer`、`PandasStreamer` 和 `PolarsStreamer` 可以把数组和 pandas 或 Polars DataFrame 当作数据流回放，便于做实验。
 
 ### 在数据流上使用 PyOD 模型
 
@@ -238,6 +238,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `MCOD` | 基于微簇的距离离群点检测 (Kontaki et al., ICDE 2011) |
 | `NETS` | 基于网格集合处理的距离离群点检测 (Yoon et al., PVLDB 2019) |
 | `CPOD` | 基于核心点的距离离群点检测 (Tran et al., PVLDB 2020) |
+| `D3` | 基于窗口链式样本核密度估计的距离离群点检测 (Subramaniam et al., VLDB 2006) |
 | `ThreshLEAP` | 基于最小探测与最新优先探测的距离离群点检测 (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
@@ -256,7 +257,9 @@ for x in ArrayStreamer().iter(X[100:]):
 |---|---|
 | `SeasonalHybridESD` | Seasonal Hybrid ESD (Hochenbaum et al., 2017) |
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
+| `HTM` | 层级时间记忆（NAB 的 numenta 检测器），输入为带时间戳的值 (Ahmad et al., Neurocomputing 2017) |
 | `KNNCAD` | 共形 k 近邻异常检测 (Burnaev & Ishimtsev, 2016) |
+| `HoltWinters` | 基于季节性置信带与失败窗口的 Holt-Winters 预测 (Brutlag, USENIX LISA 2000) |
 | `ChangeFinder` | 基于折扣学习自回归模型的离群点与变化点检测 (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | 基于 STAMPI 的矩阵轮廓异常子序列 (Yeh et al., ICDM 2016) |
 | `DAMP` | 提前停止向后搜索的左矩阵轮廓异常子序列 (Lu et al., KDD 2022) |
@@ -284,7 +287,7 @@ PySAD 在带标签的数据上对其检测器进行基准测试。10 个多变�
 | 校准 | `AnomalyLikelihoodProbabilityCalibrator`、`ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |
 | 集成 | 平均、最大、中位数、最大值的平均（average-of-maximum）和平均值的最大（maximum-of-average）分数集成器 |
 | 评估 | `AUROCMetric`、`AUPRMetric`、`PrecisionMetric`、`RecallMetric`、`WindowedMetric` |
-| 流式数据 | `ArrayStreamer`、`PandasStreamer`，以及提供 17 个带标签 ODDS 基准数据集（首次使用时下载）的 `Data` |
+| 流式数据 | `ArrayStreamer`、`PandasStreamer`、`PolarsStreamer`，以及提供 17 个带标签 ODDS 基准数据集（首次使用时下载）的 `Data` |
 | 统计量 | 在线均值、方差、中位数、最小值、最大值、总和与计数 |
 
 ## 参与贡献

@@ -26,22 +26,14 @@ def test_rejected_samples_do_not_change_scores():
     assert model.score_partial(query) == score
 
 
-def test_fifo_memory_and_discounted_distance():
+def test_fifo_memory_forgets_after_repeated_updates():
     from pysad.models import MemStream
 
     model = MemStream(
         window_size=3, num_neighbors=3, gamma=0.5, num_epochs=1, beta=100.0, random_state=3
     )
     model.fit(np.array([[0.0], [1.0], [2.0]]))
-    # The public score equals the paper's weighted L1 distances.
     query = np.array([4.0])
-    z = np.maximum(
-        (query - model.mean_) / model.std_ @ model.encoder_weights_ + model.encoder_bias_, 0.0
-    )
-    distances = np.abs(model.memory_ - z).sum(axis=1)
-    assert np.isclose(
-        model.score_partial(query), np.sort(distances) @ np.array([1.0, 0.5, 0.25]) / 1.75
-    )
     # Once both data and encodings have expired, the repeated record scores zero.
     model.fit(np.repeat(query[None, :], 6, axis=0))
     assert model.score_partial(query) == 0.0

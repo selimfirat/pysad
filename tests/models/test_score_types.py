@@ -60,6 +60,7 @@ def _model_specs():
         SmartSifter,
         SpectralResidual,
         StandardAbsoluteDeviation,
+        StreamKMPlusPlus,
         StreamPipeline,
         ThreshLEAP,
         xStream,
@@ -161,6 +162,7 @@ def _model_specs():
         ("SpectralResidual", lambda: SpectralResidual(window_size=30), 1),
         ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),
         ("StandardAbsoluteDeviation-signed", lambda: StandardAbsoluteDeviation(absolute=False), 1),
+        ("StreamKMPlusPlus", lambda: StreamKMPlusPlus(), NUM_FEATURES),
         (
             "StreamPipeline",
             lambda: StreamPipeline(

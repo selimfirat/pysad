@@ -110,6 +110,10 @@ These detectors take points with one or more features. A feature is one measured
      - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
      - Nothing
      - Fixed: a window of ``window_size`` points and the sums of its micro-clusters
+   * - :class:`~pysad.models.StreamKMPlusPlus`
+     - Distance to the nearest center of a streaming coreset clustering :cite:`ackermann2012streamkmpp`
+     - Nothing
+     - Grows with the log of the stream length: a buffer of ``coreset_size`` points and one coreset of ``coreset_size`` points per merge-and-reduce level
    * - :class:`~pysad.models.AnyOut`
      - Distance to the mean, or Gaussian density, of the closest cluster at the level of a ClusTree that the time budget ``depth`` reaches :cite:`assent2012anyout`
      - Nothing

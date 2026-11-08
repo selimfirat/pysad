@@ -89,6 +89,14 @@ It prints:
 
    AUROC: 0.742
 
+Use a River pipeline
+--------------------
+
+This script puts a PySAD detector after a River scaler. It scores each dictionary before learning from it. See :doc:`guides/pipelines` for the fixed feature mapping.
+
+.. literalinclude:: ../examples/example_river_pipeline.py
+   :language: python
+
 Project high-dimensional data
 -----------------------------
 

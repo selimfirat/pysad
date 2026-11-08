@@ -81,6 +81,31 @@ Chain the stages into one model
 
 ``fit_score_partial`` gives the same scores as the loop in the first section. ``score_partial`` scores a point with the current state of each stage and does not fit any stage. A calibrator is a postprocessor, so put it last in ``postprocessors``.
 
+Use a PySAD model in River
+--------------------------------
+
+:class:`~pysad.integrations.RiverAnomalyDetector` exposes a PySAD model through River's ``learn_one`` and ``score_one`` methods. It requires Python 3.11 or newer and works as the final stage of a River pipeline:
+
+.. code-block:: python
+
+   from river import preprocessing
+
+   from pysad.integrations import RiverAnomalyDetector
+   from pysad.models import LODA
+
+   pipeline = preprocessing.StandardScaler() | RiverAnomalyDetector(LODA(random_state=0))
+
+   for x in streamer.iter(X):
+       features = dict(enumerate(x))
+       score = pipeline.score_one(features)
+       pipeline.learn_one(features)
+
+Call ``score_one`` before ``learn_one`` for each point. The wrapper scores without fitting the PySAD model, and preserves its score range and warm-up behavior. River controls when the other pipeline stages learn.
+
+The first dictionary fixes the feature order. Later dictionaries may list the keys in any order, but missing or new keys raise ``ValueError``. When wrapping an already fitted model, pass ``feature_names`` in its original column order, for example ``RiverAnomalyDetector(model, feature_names=("cpu", "latency"))``. The feature mapping stays fixed in size as the stream grows.
+
+See ``examples/example_river_pipeline.py`` for a complete evaluation loop.
+
 Combine several detectors
 -------------------------
 

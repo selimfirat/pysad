@@ -181,8 +181,8 @@ These detectors take points with exactly one feature. Give each value as an arra
      - The subsequence length
      - Grows slowly: a batch of ``batch_size`` values and one ``centroid_length`` by ``centroid_length`` matrix per cluster, with at most ``num_clusters`` new clusters per batch
 
-PyOD integrations
------------------
+Integrations
+------------
 
 These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod>`_ on a stream. A batch detector trains on a complete dataset. For instructions, see :doc:`guides/pyod`.
 
@@ -196,6 +196,8 @@ These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod
      - Trains the detector on a window of recent points and trains it again every ``sliding_size`` points :cite:`xstream`.
    * - :class:`~pysad.models.integrations.OneFitModel`
      - Trains the detector once on initial points and then only scores.
+
+:class:`~pysad.models.integrations.PredictiveAnomalyDetector` scores each value of a univariate stream by its deviation from the one-step forecast of a `River <https://riverml.xyz/>`_ forecaster, the plug-in method of EGADS :cite:`laptev2015generic`. The forecaster learns each value after the model scores it.
 
 Baselines for testing
 ---------------------

@@ -503,6 +503,14 @@ It prints:
 
    AUROC: 0.651
 
+Load credit-card fraud transactions
+-----------------------------------
+
+This script loads OpenML 1597 through the shared dataset cache and streams the first five transactions in their original time order. ``Class`` is separate from the 30 features. See :doc:`guides/stream_data` for the source and dataset license.
+
+.. literalinclude:: ../examples/example_creditcard.py
+   :language: python
+
 Use a multi-aspect stream detector
 ----------------------------------
 

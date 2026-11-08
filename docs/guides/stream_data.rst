@@ -149,6 +149,20 @@ Load a benchmark dataset
 
 ``Data`` downloads a dataset the first time you use it. It caches the file in ``~/.cache/pysad``. To use a different folder, set the ``PYSAD_DATA_DIR`` environment variable. You can also give the folder to ``Data``: ``Data("path/to/folder")``.
 
+Credit-card fraud transactions
+------------------------------
+
+``Data.datasets("creditcard")`` lists ``creditcard/creditcard.arff``, downloaded from `OpenML 1597, version 1 <https://www.openml.org/d/1597>`_. It contains 284,807 European card transactions over two days in September 2013, including 492 frauds. The source is the research collaboration between Worldline and the Machine Learning Group of ULB; the credited authors are Andrea Dal Pozzolo, Olivier Caelen and Gianluca Bontempi.
+
+``get_data`` preserves the original transaction time order, including the order of transactions with equal times. It returns 30 numeric features in source column order: ``Time`` (seconds since the first transaction), the PCA features ``V1`` through ``V28``, and ``Amount``. ``Class`` is returned separately as ``y``: 1 for fraud and 0 otherwise. No scaling, sampling or shuffling is applied. Use ``ArrayStreamer()`` or ``get_iterator(..., shuffle=False)`` to keep that order; ``get_iterator`` and ``get_stream`` shuffle by default.
+
+The `OpenML metadata <https://www.openml.org/api/v1/json/data/1597>`_ lists the license as "Public". The `original publisher on Kaggle <https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud>`_ specifies "Database: Open Database, Contents: Database Contents", also exposed by its `metadata API <https://www.kaggle.com/api/v1/datasets/view/mlg-ulb/creditcardfraud>`_. These are the `Open Database License (ODbL) 1.0 <https://opendatacommons.org/licenses/odbl/1-0/>`_ for the database and the `Database Contents License (DbCL) 1.0 <https://opendatacommons.org/licenses/dbcl/1-0/>`_ for its contents. Retain attribution and these license notices when redistributing the data; ODbL also sets share-alike conditions for derived databases. The dataset has its own terms, separate from PySAD's software license.
+
+The first load downloads the ARFF file into the shared dataset cache and verifies its SHA-256 checksum. Later loads reuse that file, including with ``download=False``. PySAD does not bundle the transactions.
+
+.. literalinclude:: ../../examples/example_creditcard.py
+   :language: python
+
 Next steps
 ----------
 

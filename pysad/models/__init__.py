@@ -3,17 +3,22 @@ The :mod:`pysad.models` module includes anomaly detection models to score the an
 """
 
 from .adems import ADeMS
+from .anyout import AnyOut
 from .approx_storm import ApproxStorm
 from .change_finder import ChangeFinder
 from .cpod import CPOD
+from .d3 import D3
 from .damp import DAMP
 from .dilof import DILOF
 from .exact_storm import ExactStorm
 from .expose import EXPoSE
 from .half_space_trees import HalfSpaceTrees
+from .holt_winters import HoltWinters
+from .htm.htm import HTM
 from .iforest_asd import IForestASD
 from .incremental_lof import IncrementalLOF
 from .inqmad import Inqmad
+from .kelos import KELOS
 from .kitnet import KitNet
 from .knn_cad import KNNCAD
 from .loda import LODA
@@ -39,21 +44,27 @@ from .spectral_residual import SpectralResidual
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .stream_pipeline import StreamPipeline
 from .teda import TEDA
+from .thresh_leap import ThreshLEAP
 from .xstream import xStream
 
 __all__ = [
     "ADeMS",
+    "AnyOut",
     "ApproxStorm",
     "ChangeFinder",
     "CPOD",
+    "D3",
     "DAMP",
     "DILOF",
     "ExactStorm",
     "EXPoSE",
     "HalfSpaceTrees",
+    "HoltWinters",
+    "HTM",
     "IForestASD",
     "IncrementalLOF",
     "Inqmad",
+    "KELOS",
     "KitNet",
     "KNNCAD",
     "LODA",
@@ -80,5 +91,6 @@ __all__ = [
     "StandardAbsoluteDeviation",
     "StreamPipeline",
     "TEDA",
+    "ThreshLEAP",
     "xStream",
 ]

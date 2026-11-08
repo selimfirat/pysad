@@ -82,6 +82,14 @@ These detectors take points with one or more features. A feature is one measured
      - The neighbor counts of :class:`~pysad.models.ExactStorm`, faster with core points that index the window by distance rings :cite:`tran2020cpod`
      - Nothing
      - Fixed: a window of ``window_size`` points, its core points and the window points within 2R of each core point
+   * - :class:`~pysad.models.D3`
+     - Negative number of window points within a radius, estimated from a kernel density over a chain sample of the window :cite:`subramaniam2006online`
+     - Nothing
+     - Fixed: a window of ``window_size`` points and a sample of ``sample_fraction`` times ``window_size`` points
+   * - :class:`~pysad.models.ThreshLEAP`
+     - The number of neighbors below k that a probe finds when it tests the window newest first and stops at k neighbors :cite:`cao2014scalable`
+     - Nothing
+     - Fixed: a window of ``window_size`` points
    * - :class:`~pysad.models.IncrementalLOF`
      - Local outlier factor in a sliding window :cite:`pokrajac2007incremental`
      - Nothing
@@ -94,6 +102,14 @@ These detectors take points with one or more features. A feature is one measured
      - The local outlier factor of :class:`~pysad.models.IncrementalLOF` in a window that keeps a density-preserving summary of old points :cite:`na2018dilof`
      - Nothing
      - Fixed: a window of at most ``window_size`` points and their ``num_neighbors`` nearest neighbors
+   * - :class:`~pysad.models.KELOS`
+     - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
+     - Nothing
+     - Fixed: a window of ``window_size`` points and the sums of its micro-clusters
+   * - :class:`~pysad.models.AnyOut`
+     - Distance to the mean, or Gaussian density, of the closest cluster at the level of a ClusTree that the time budget ``depth`` reaches :cite:`assent2012anyout`
+     - Nothing
+     - Fixed: a tree of at most ``max_height`` levels, with at most 3 to the power ``max_height`` leaf clusters
    * - :class:`~pysad.models.ADeMS`
      - Residual of each point after its projection on a Frequent Directions sketch of the normal points :cite:`huang2015streaming`
      - Nothing (initial points to use a threshold)
@@ -118,7 +134,7 @@ These detectors take points with one or more features. A feature is one measured
 Univariate detectors
 --------------------
 
-These detectors take points with exactly one feature. Give each value as an array of shape ``(1,)``.
+These detectors take points with exactly one feature. Give each value as an array of shape ``(1,)``. :class:`~pysad.models.HTM` also takes the time of each value: give each point as the array ``[timestamp, value]``.
 
 .. list-table::
    :header-rows: 1
@@ -144,10 +160,18 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from the running mean or recent median in standard deviations :cite:`hochenbaum2017automatic`
      - ``window_size`` when using ``subtracted_statistic="median"``
      - Fixed; median mode retains only the last ``window_size`` values while variance remains an all-history running statistic
+   * - :class:`~pysad.models.HoltWinters`
+     - Violations of a confidence band of seasonal deviations around a Holt-Winters forecast, counted in a moving window :cite:`brutlag2000aberrant`
+     - The period
+     - Fixed: a seasonal coefficient and a deviation for each of the ``period`` points of the cycle, and the last ``window_size`` violations
    * - :class:`~pysad.models.ChangeFinder`
      - Logarithmic loss under an autoregressive model that sequentially discounting learning fits, and a second such model on the smoothed losses for change points :cite:`takeuchi2006unifying`
      - Nothing
      - Fixed: ``order`` values and ``window_size`` scores
+   * - :class:`~pysad.models.HTM`
+     - The fraction of active columns that the temporal memory of Hierarchical Temporal Memory did not predict, turned into an anomaly likelihood :cite:`ahmad2017unsupervised`
+     - The range of the values (``min_val`` and ``max_val``), and a timestamp in seconds since the Unix epoch with each value
+     - Grows slowly: at most 128 segments of 32 synapses for each of the 65,536 cells, and a window of 8,640 scores
    * - :class:`~pysad.models.KNNCAD`
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`
      - A probationary period: at least 48 values that it learns from before it scores
@@ -173,8 +197,8 @@ These detectors take points with exactly one feature. Give each value as an arra
      - The subsequence length
      - Grows slowly: a batch of ``batch_size`` values and one ``centroid_length`` by ``centroid_length`` matrix per cluster, with at most ``num_clusters`` new clusters per batch
 
-PyOD integrations
------------------
+Integrations
+------------
 
 These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod>`_ on a stream. A batch detector trains on a complete dataset. For instructions, see :doc:`guides/pyod`.
 
@@ -188,6 +212,8 @@ These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod
      - Trains the detector on a window of recent points and trains it again every ``sliding_size`` points :cite:`xstream`.
    * - :class:`~pysad.models.integrations.OneFitModel`
      - Trains the detector once on initial points and then only scores.
+
+:class:`~pysad.models.integrations.PredictiveAnomalyDetector` scores each value of a univariate stream by its deviation from the one-step forecast of a `River <https://riverml.xyz/>`_ forecaster, the plug-in method of EGADS :cite:`laptev2015generic`. The forecaster learns each value after the model scores it.
 
 Baselines for testing
 ---------------------

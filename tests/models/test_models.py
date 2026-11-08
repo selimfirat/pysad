@@ -3,8 +3,11 @@ def test_unsupervised_models():
 
     from pysad.models import (
         CPOD,
+        D3,
         DAMP,
         DILOF,
+        HTM,
+        KELOS,
         KNNCAD,
         LODA,
         MCOD,
@@ -12,11 +15,13 @@ def test_unsupervised_models():
         SAND,
         TEDA,
         ADeMS,
+        AnyOut,
         ApproxStorm,
         ChangeFinder,
         ExactStorm,
         EXPoSE,
         HalfSpaceTrees,
+        HoltWinters,
         IForestASD,
         IncrementalLOF,
         Inqmad,
@@ -36,6 +41,7 @@ def test_unsupervised_models():
         SmartSifter,
         SpectralResidual,
         StandardAbsoluteDeviation,
+        ThreshLEAP,
         xStream,
     )
     from pysad.utils import fix_seed
@@ -47,15 +53,19 @@ def test_unsupervised_models():
     model_classes = {
         RelativeEntropy: {"min_val": 0.0, "max_val": 1.0},
         ADeMS: {},
+        AnyOut: [{}, {"outlier_score": "density"}],
         ApproxStorm: {},
         ChangeFinder: [{}, {"change_point": False}],
         CPOD: {},
+        D3: {"window_size": 50},
         DILOF: {"num_neighbors": 5, "window_size": 40},
         ExactStorm: {},
         EXPoSE: {"num_random_features": 50},
         HalfSpaceTrees: {"feature_mins": [0.0], "feature_maxes": [1.0]},
+        HoltWinters: [{"period": 10}, {"period": 10, "threshold": 1}],
         IForestASD: {},
         IncrementalLOF: {"window_size": 20},
+        KELOS: {},
         KitNet: {},
         KNNCAD: {"probationary_period": 50},
         LODA: {},
@@ -77,6 +87,7 @@ def test_unsupervised_models():
         SpectralResidual: {},
         StandardAbsoluteDeviation: [{}, {"absolute": False}],
         TEDA: {},
+        ThreshLEAP: {},
         xStream: {},
         RobustRandomCutForest: {},
         Inqmad: {"input_shape": X.shape[1], "dim_x": 128},
@@ -88,6 +99,17 @@ def test_unsupervised_models():
         elif type(params_dict) is list:
             for params in params_dict:
                 helper_test_model(X, model_cls, params)
+
+    # HTM takes each instance as [timestamp, value].
+    X_timestamped = np.column_stack([3600.0 * np.arange(len(X)), X])
+    for likelihood in (True, False):
+        params = {
+            "min_val": 0.0,
+            "max_val": 1.0,
+            "probationary_period": 50,
+            "likelihood": likelihood,
+        }
+        helper_test_model(X_timestamped, HTM, params)
 
 
 def helper_test_model(X, model_cls, params_dict):

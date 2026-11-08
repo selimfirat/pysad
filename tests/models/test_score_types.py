@@ -1,3 +1,5 @@
+import importlib.util
+
 import numpy as np
 import pytest
 
@@ -17,8 +19,11 @@ def _model_specs():
     from pysad import models
     from pysad.models import (
         CPOD,
+        D3,
         DAMP,
         DILOF,
+        HTM,
+        KELOS,
         KNNCAD,
         LODA,
         MCOD,
@@ -26,11 +31,13 @@ def _model_specs():
         SAND,
         TEDA,
         ADeMS,
+        AnyOut,
         ApproxStorm,
         ChangeFinder,
         ExactStorm,
         EXPoSE,
         HalfSpaceTrees,
+        HoltWinters,
         IForestASD,
         IncrementalLOF,
         KitNet,
@@ -53,6 +60,7 @@ def _model_specs():
         SpectralResidual,
         StandardAbsoluteDeviation,
         StreamPipeline,
+        ThreshLEAP,
         xStream,
     )
     from pysad.models.integrations import OneFitModel, ReferenceWindowModel
@@ -64,6 +72,7 @@ def _model_specs():
     # (name, factory, number of features)
     specs = [
         ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
+        ("AnyOut", lambda: AnyOut(max_height=2, outlier_score="density"), NUM_FEATURES),
         (
             "ApproxStorm",
             lambda: ApproxStorm(
@@ -74,6 +83,7 @@ def _model_specs():
         ("ChangeFinder", lambda: ChangeFinder(), 1),
         ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
         ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),
+        ("D3", lambda: D3(window_size=20, sample_fraction=0.5, max_radius=0.3), NUM_FEATURES),
         ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         ("EXPoSE", lambda: EXPoSE(num_random_features=50), NUM_FEATURES),
@@ -84,8 +94,17 @@ def _model_specs():
             ),
             NUM_FEATURES,
         ),
+        ("HoltWinters", lambda: HoltWinters(period=4, threshold=1), 1),
+        # HTM takes each instance as [timestamp, value].
+        ("HTM", lambda: HTM(min_val=0.0, max_val=1.0, probationary_period=20, num_columns=256), 2),
+        (
+            "HTM-raw",
+            lambda: HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=256),
+            2,
+        ),
         ("IForestASD", lambda: IForestASD(window_size=32), NUM_FEATURES),
         ("IncrementalLOF", lambda: IncrementalLOF(window_size=20), NUM_FEATURES),
+        ("KELOS", lambda: KELOS(window_size=20, radius=0.3, num_neighbors=3), NUM_FEATURES),
         (
             "KitNet",
             lambda: KitNet(grace_feature_mapping=10, grace_anomaly_detector=10),
@@ -149,6 +168,11 @@ def _model_specs():
             NUM_FEATURES,
         ),
         ("TEDA", lambda: TEDA(), NUM_FEATURES),
+        (
+            "ThreshLEAP",
+            lambda: ThreshLEAP(window_size=20, max_radius=0.3, num_neighbors=3),
+            NUM_FEATURES,
+        ),
         ("xStream", lambda: xStream(), NUM_FEATURES),
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (
@@ -159,6 +183,20 @@ def _model_specs():
             NUM_FEATURES,
         ),
     ]
+
+    # River needs Python 3.11 or newer, so the test group installs it only there.
+    if importlib.util.find_spec("river") is not None:
+        from river import time_series
+
+        from pysad.models.integrations import PredictiveAnomalyDetector
+
+        specs.append(
+            (
+                "PredictiveAnomalyDetector",
+                lambda: PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=0)),
+                1,
+            )
+        )
 
     return specs
 

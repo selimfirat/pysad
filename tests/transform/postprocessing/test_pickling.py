@@ -11,10 +11,12 @@ NUM_FIT = 60
 NUM_NEXT = 20
 
 POSTPROCESSOR_PARAMS = {
+    "NonparametricDynamicThresholdPostprocessor": {"window_size": 16, "span": 1},
     "RunningAveragePostprocessor": {"window_size": 16},
     "RunningMaxPostprocessor": {"window_size": 16},
     "RunningMedianPostprocessor": {"window_size": 16},
     "RunningZScorePostprocessor": {"window_size": 16},
+    "ThresholdFilter": {"threshold": 0.5},
 }
 
 

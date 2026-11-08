@@ -17,6 +17,7 @@ NUM_NEXT = 20
 UNIVARIATE_MODELS = {
     "ChangeFinder",
     "DAMP",
+    "HoltWinters",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -28,7 +29,12 @@ UNIVARIATE_MODELS = {
     "StandardAbsoluteDeviation",
 }
 
+# These models take each instance as [timestamp, value].
+TIMESTAMPED_MODELS = {"HTM"}
+
 MODEL_PARAMS = {
+    # The tree splits, merges and discards entries before and after the round trip.
+    "AnyOut": {"max_height": 2, "decay": 0.1, "snapshot_interval": 5},
     # Safe inliers form, are removed from the sample and expire within the first instances.
     "ApproxStorm": {
         "window_size": 30,
@@ -38,6 +44,8 @@ MODEL_PARAMS = {
     },
     # Core points form and expire within the first instances.
     "CPOD": {"window_size": 30, "max_radius": 0.6},
+    # Sample values expire and their chains move on before and after the round trip.
+    "D3": {"window_size": 30, "sample_fraction": 0.5, "max_radius": 0.6},
     "HalfSpaceTrees": {
         "feature_mins": [0.0, 0.0, 0.0],
         "feature_maxes": [1.0, 1.0, 1.0],
@@ -45,19 +53,27 @@ MODEL_PARAMS = {
         "num_trees": 5,
         "max_depth": 8,
     },
+    # The anomaly likelihood leaves its probationary period before the round trip.
+    "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 40, "num_columns": 256},
     "IForestASD": {"window_size": 32},
+    # Violations count toward failures before and after the round trip.
+    "HoltWinters": {"period": 4, "threshold": 1},
     # The window is summarized before and after the round trip.
     "DILOF": {"num_neighbors": 5, "window_size": 24},
     # A window that slides before and after the round trip.
     "IncrementalLOF": {"num_neighbors": 5, "window_size": 20},
     # The initial sample completes before the round trip, so the restored model has rho and tau.
     "Inqmad": {"input_shape": 3, "dim_x": 32, "initial_size": 30},
+    # Clusters form and dissolve as the window slides before and after the round trip.
+    "KELOS": {"window_size": 30, "radius": 0.6, "num_neighbors": 3},
     # Its autoencoders still train on the instances scored after the round trip.
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 50},
     "KNNCAD": {"probationary_period": 50},
     "MatrixProfile": {"window_length": 4, "history_size": 30},
     "DAMP": {"window_length": 4, "history_size": 20},
     "SpectralResidual": {"window_size": 8, "num_average_points": 3},
+    # The window slides before and after the round trip.
+    "ThreshLEAP": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 3},
     # Micro-clusters form, expire and dissolve within the first instances.
     "MCOD": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 2},
     # Cells empty out and fill again within the first instances.
@@ -93,6 +109,10 @@ def _data(model_name):
     if model_name in UNIVARIATE_MODELS:
         t = np.arange(num_instances)
         X = (0.5 + 0.4 * np.sin(2 * np.pi * t / 4) + 0.05 * rng.rand(num_instances)).reshape(-1, 1)
+    elif model_name in TIMESTAMPED_MODELS:
+        t = np.arange(num_instances)
+        values = 0.5 + 0.4 * np.sin(2 * np.pi * t / 4) + 0.05 * rng.rand(num_instances)
+        X = np.column_stack([3600.0 * t, values])
     else:
         X = rng.rand(num_instances, 3)
     y = (rng.rand(num_instances) > 0.9).astype(int)

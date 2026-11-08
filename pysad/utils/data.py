@@ -1,4 +1,5 @@
 import csv
+import gzip
 import hashlib
 import json
 import os
@@ -495,6 +496,100 @@ _SMD_CHECKSUMS = {
     ),
 }
 
+# The test halves of the NASA SMAP and MSL telemetry channels of Telemanom (Caltech, BSD-style
+# license). The bucket of Telemanom no longer serves them, so they come from the copy in the TranAD
+# repository (BSD-3-Clause) at a fixed commit. The labels are the anomaly ranges of Telemanom at a
+# fixed commit.
+_NASA = "https://raw.githubusercontent.com/imperial-qore/TranAD/7ffb98d0c18189cc3d9ab732b4cb0278200a0af0/data/SMAP_MSL/test/"
+_NASA_LABELS = "telemanom/labeled_anomalies.csv"
+_NASA_LABELS_URL = "https://raw.githubusercontent.com/khundman/telemanom/2e6c5b6c3558e7835601519b7bdef37c649bdbdc/labeled_anomalies.csv"
+_NASA_LABELS_CHECKSUM = "057ce2d6c8875982bf4e5404aefea14efdcbce413d80826d2b737c95b59b7539"
+_SMAP_CHECKSUMS = {
+    "P-1.npy": "5dbed44bbd0a643e5e3131578c233e73428c70cc678ea9727dde4f3a2da53ce1",
+    "S-1.npy": "76dbe1a9717b1fc4e6e7119883c4ccdf984764a1e8599b225a4241b67d043652",
+    "E-1.npy": "b3426072dcf0b153bc34acefc827e2a8933d1c3d86ae20674504ad1ad7000f86",
+    "E-2.npy": "47f7e5bafc9bbc8f4f3f3547f2e77f794ab24bcaaa9662c7020fd18c2384129b",
+    "E-3.npy": "86865b2a9b95eb854d7a75755d27001dc8337d0f24d45fcf4202b7dcd796f13c",
+    "E-4.npy": "d0e6cc6c43e986b49a1eea5c7b37efc0f15bf73b96b816a11d84b5755e28f750",
+    "E-5.npy": "e1d0d97f898c474cccf04c7ff9cb57e319a215bf2ef51c61302ba944c69d3ceb",
+    "E-6.npy": "cc791f2bb1b9ef88af2702eacf2265c4b9991eb2c224c8faffcdbe8fac53baa2",
+    "E-7.npy": "229a2fa46dc670b911e35fd939f4380eae71fd112c8e7957f0a30c2113afe408",
+    "E-8.npy": "75c44c1016aa13059013cb85bfca05289de9f7b844b9c0a0090a181fa420f713",
+    "E-9.npy": "567a05e4c2bf3b80778f9f2ddb2e310a3b48e48c01eb653b43dda22575dfb759",
+    "E-10.npy": "d1d28e86edff75219683e0d18c5342fdc240fc17a263bee47065c7e7b03f6d49",
+    "E-11.npy": "7e92f952316e2996e6dad1595eff26fc88be8a37c026f11b6d55e4df27af7a81",
+    "E-12.npy": "d00acd9fb12fb9e97315d266963e8dedb051a29f8fa0bf3f4cdcc5f27c7029d1",
+    "E-13.npy": "e869a18acde867b1aca34a346d6e7158fe391cb46722619ea1e3ed0f3ffa3e65",
+    "A-1.npy": "7509b72cd170003c3135e12d1f4c67b263dc5be58aabedf12ed14e7561fe6dc2",
+    "D-1.npy": "49ec824e3f887a59c012599acfc080471702ed3c2d243cc73dd8f8e2e1205711",
+    "P-2.npy": "b57b1730a3fea656a8ba9a35e4fc537501744c84c4408a0dbea14efe9375d4c9",
+    "P-3.npy": "e3193c5386eeef89e74f20dfda2125952ef95b621338bceed747a17c7ad334c5",
+    "D-2.npy": "06233a61aabed60cf25a8d983182ef4d5673ee7dd6dd5337df76c9014f8e8080",
+    "D-3.npy": "81c676e4741b4047c4c9e88521ed09c6c5c0323e6ab78a06328323776a5492c3",
+    "D-4.npy": "cfd4a2d02f94983d92ac300cc4d88ce64bb5e497b18468d04cc102572e7f8a09",
+    "A-2.npy": "48776d8e71a7d1b24d51adce4e21fc9aca968fea7aa1e06b073c4f219991311a",
+    "A-3.npy": "a0d169d1cdb6b5e6af41782c64d2fedb8d585312069fedd052e3294b4f526c85",
+    "A-4.npy": "311760674bd5dafdd05cc91c39123330e1ad3dcfeeadb93385756d15b2d69592",
+    "G-1.npy": "1de5cba1063374e9ab488020d53a380a9a412e24f91b11ffb4361260aa240613",
+    "G-2.npy": "e32d52571233429743f9e30fb68682ece87408f2393c9d36d96e9e8238578cab",
+    "D-5.npy": "3840a275b0ac6d50ccb499d7d225a081ab44098c67abed5a91e5ce3534cc2ceb",
+    "D-6.npy": "16b49e76d9e9ee125159b841cde0e7d29b1f8bfe1cd64474cd886e1a5d41593f",
+    "D-7.npy": "3ac8e58d26b2fcd4f276a60ea15d24ad3306a7ea829f719d61752d4e3feae36f",
+    "F-1.npy": "359a895d7be89c775c7e743a6bba889944bc173faee8d996b9ea3b0cf7a35dad",
+    "P-4.npy": "a52c4146fef3a001cf4a878eca3c0738ea228ff23f97880607c1650e1e73a44e",
+    "G-3.npy": "b6d8bd083551ae1c720df050f4b96ecba080e885833499fd8f0d20c7b89a74fc",
+    "T-1.npy": "570153ed8c8368cde8122f87ee1078eaf33ccaa972baf3e7ea81cc3a1ee41004",
+    "T-2.npy": "6245ae92ccb55f3a9cffe6b28b05b1c8644b5ff6033f5f9017c89d485340c445",
+    "D-8.npy": "a7e8cd34563f2e0c846afb0a0a87e5b7151c16e44e36376db2fe774f145b183d",
+    "D-9.npy": "ccf6c64b3cc2dd4bfb408d7225b3540f4a68de4be7808c12e642697b61f9bfbd",
+    "F-2.npy": "fad0245c5da022c75d0e8aba2b2dc6d3a7533acb1ec2531696aa2158fd22cb26",
+    "G-4.npy": "f4ca6997c44f3eb2f407a0fa45dd7c236d4540e36b3ff2cafdd1d73900fa29d0",
+    "T-3.npy": "ee251c98320e7164f233b4a3f9f5e1a0f447ce6d4c70e6d402e9705ae3c06103",
+    "D-11.npy": "e5703acb3633dc8285ed755d9b74d2e2a08fc00ebb9e04aba34e37fcf47231ed",
+    "D-12.npy": "5b6eb79d58d5017ff04b8bd0275c8e14915e272352f528646c63d7cef1d6598f",
+    "B-1.npy": "4d6b0b3f0e31efd04fafbf6fea70710196095d9f5773ed714d6f4668b423146a",
+    "G-6.npy": "634a6702fd8132143ec49767774910a75f50e8962cedcce4e1b98e15d0e39579",
+    "G-7.npy": "51c434210b75beedb37304dcce9e68c4bce0cac4e1d52b0f70a13b59ea7b31ef",
+    "P-7.npy": "4b253756e2e4d0283a6c83064ed5730558e345b3e6f85d1dc4018a7c1b655786",
+    "R-1.npy": "6bce84dddd243d5b82a7d47c42a3237b550564c28c7dcf92b11c58de1ca0d010",
+    "A-5.npy": "45290a92c44a1f6e77a7531ed4fdbbb9b98c4516a2f851694429b67cf5d650a8",
+    "A-6.npy": "cd72a62bc1758e487259988a4b93b31086a32ab48d0181a66f1af5cc1ce0e416",
+    "A-7.npy": "ef8212b614006f1c771e630de1778f3037f78b9f860bbf9a9422b8e147790d8c",
+    "D-13.npy": "242836dc5c0f6ebe3e1256c66430219e5369e2c525435f4da4f9b7ff10dc24a1",
+    "A-8.npy": "16f318c276d5cead94e89c37773068511a35f34ea0830e25fdd3eb7f57cd5a71",
+    "A-9.npy": "0672a0de39d40511f289d157d81b9e74f6ebbee1bccf9ce23c704dc1baf69566",
+    "F-3.npy": "89594ed83d720ebb56cd72485eed1fdd64f4f405ad00ea2659f33d828f6fe915",
+}
+_MSL_CHECKSUMS = {
+    "M-6.npy": "4138b2b33f919eb0791b0d2f5337f605bcfc533b07ed91015bfbbcda1c08a612",
+    "M-1.npy": "58e16675dc0bada099130d02bd29279ea20c764bf3415bb5adefd626ef94dd56",
+    "M-2.npy": "1bee2419bc4b5d9a7a71e830c1af5c98837ab31640da553f8f0d3eff9e86af49",
+    "S-2.npy": "fb9651f2d378bfceef7d694cbe3cb7eafd36b8113241da247b98da53caefaeea",
+    "P-10.npy": "2a34698f41fd1a16324f26d86a9443f3c633e7554f524e53d4773b40ca83a52a",
+    "T-4.npy": "330499f248367f9bb3eae4eadc105fa9d44bfee3913a3d4b066f9dd3c43a4156",
+    "T-5.npy": "164cc73b9f82861959f61c54828c3ac70e6ffcc005b38c84a620c125106a6041",
+    "F-7.npy": "8474d57429c8541ad5efd4635c8751e3d90fb1feeba3a4b94958cada77f90665",
+    "M-3.npy": "3c43c068fddbf661c6e7cbd933f8b10adcef9cd446818a160ef7c62994fb3d3a",
+    "M-4.npy": "bac52a304556631942d5e548a4ecc1cbf3aae3409aeb5c8eaaf3126b1ae83ac2",
+    "M-5.npy": "e4d8cf724bf78d94daae0dc66d5f1a3023545229e15ab9aa3877c267a41b57b5",
+    "P-15.npy": "2284348ac1fc998b5aa76c5bbfbeff977f36b17f9602b6654dc65552b50954ae",
+    "C-1.npy": "ea8bf028555a09a45b5fd5003958c8500da46b12178c963186293db14e3c8aab",
+    "C-2.npy": "dca3a5cc07ec3899c2b9c6bc28a889d9872a670d08677065d39da1326c14c2b4",
+    "T-12.npy": "6848f4f7eec6c086862e0daf766617994935e265f2cd9bf229282609c13986bf",
+    "T-13.npy": "ebdf225ad1b21faf4c0c3013de07f1ab77cefd1329587421cfa424128b9433a6",
+    "F-4.npy": "6b9610c11604ecc64ee537533d7392b4337a0d50ef4bf9ae84783e7262fa9612",
+    "F-5.npy": "4ab308e3835547b8144acf8df136c9895ce759b30de0851fb23eca999877036e",
+    "D-14.npy": "65400342172e5a01f36c389bd85b8bedce410965e155a10cc600c3c3834d8bc7",
+    "T-9.npy": "4746b631cc292906c2cbc3ede7d472268f2c799bca41e13f2b0253bf016617b4",
+    "P-14.npy": "2a34698f41fd1a16324f26d86a9443f3c633e7554f524e53d4773b40ca83a52a",
+    "T-8.npy": "5778979c00621904c36f09bc432b462b87623b7ebc0255dcb4829895b2359b34",
+    "P-11.npy": "dad84034fd7ad1b2dd4bcbdaefc345719c2fb1b1d3a7713257c612fc995ecc44",
+    "D-15.npy": "0c5691a3fc17b87d06eb23548931ffa589a5f4bed608b6db40ac976cd5695acd",
+    "D-16.npy": "85d98f5b6223a10d5ac1c881872cd7c6b93f288236632c282093a41dbba31490",
+    "M-7.npy": "28f065fa569a5073eca60f99dd2d3dc93b449ed61e53e543d36e43392fd27bf1",
+    "F-8.npy": "ebb950663e30ec91e52b6b422528bc4025563506af7fea6303eeabe5b2cd674e",
+}
+
 # The INSECTS streams (CC BY 4.0) as the ARCUS paper published them on Google Drive, with the
 # southern house mosquito as the anomaly class. Each entry has the Drive id and the checksum.
 _INSECTS = "https://drive.usercontent.google.com/download?export=download&confirm=t&id="
@@ -516,12 +611,15 @@ _INSECTS_FILES = {
         "fa97083433d50675835f1f78223fba2ffbf1f80729764e8017be1824f436d95e",
     ),
 }
-_SOURCES = ("odds", "nab", "ucr", "kddcup99", "smd", "insects")
+_SOURCES = ("odds", "nab", "ucr", "kddcup99", "smd", "smap", "msl", "insects")
 
 # A download that fails with a server error or a network error is tried again, after 5 and then 10
-# seconds.
+# seconds. A connection that sends no data for 60 seconds counts as a network error. The download asks
+# for gzip, because some servers send their files slowly, for example OpenML sends the 74 MB of KDD Cup
+# 99 at about 100 KB/s, and as 2 MB with gzip.
 _ATTEMPTS = 3
 _RETRY_SECONDS = 5.0
+_TIMEOUT_SECONDS = 60.0
 
 
 def _source(name: str) -> tuple[str, str]:
@@ -540,6 +638,12 @@ def _source(name: str) -> tuple[str, str]:
         ][1]
     if name.startswith("smd/"):
         return _SMD + "test/" + name[len("smd/") :], _SMD_CHECKSUMS[name[len("smd/") :]][0]
+    if name == _NASA_LABELS:
+        return _NASA_LABELS_URL, _NASA_LABELS_CHECKSUM
+    if name.startswith("smap/"):
+        return _NASA + name[len("smap/") :], _SMAP_CHECKSUMS[name[len("smap/") :]]
+    if name.startswith("msl/"):
+        return _NASA + name[len("msl/") :], _MSL_CHECKSUMS[name[len("msl/") :]]
     if name.startswith("insects/"):
         drive_id, checksum = _INSECTS_FILES[name[len("insects/") :]]
         return _INSECTS + drive_id, checksum
@@ -565,8 +669,9 @@ class Data:
     datasets come from the Outlier Detection DataSets (ODDS) repository mirror
     (:cite:`rayana2016odds`, hosted in the PyOD repository at a fixed commit). The univariate
     series come from the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly Archive.
-    The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD)
-    and INSECTS. Each download must match a SHA-256 checksum. :meth:`datasets` lists the datasets, and
+    The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD),
+    the NASA SMAP and MSL telemetry of Telemanom (:cite:`hundman2018detecting`) and INSECTS. Each
+    download must match a SHA-256 checksum. :meth:`datasets` lists the datasets, and
     :meth:`get_stream` gives the stream of a run of the PySAD benchmark.
 
     Downloaded datasets are cached in a local directory. The cache directory
@@ -592,8 +697,10 @@ class Data:
                 - ``"odds"``: the 17 multivariate datasets of ODDS, for example ``"cardio.mat"``.
                 - ``"nab"``: the 58 univariate series of the Numenta Anomaly Benchmark, for example ``"nab/realKnownCause/nyc_taxi.csv"``. The points in an anomaly window of NAB have the label 1.
                 - ``"ucr"``: the 250 univariate series of the UCR Time Series Anomaly Archive, for example ``"ucr/025_UCR_Anomaly_DISTORTEDInternalBleeding14_2800_5607_5634.txt"``. The last two numbers of a name are the first and the last point of the anomaly, counted from 1. These points have the label 1. The number before them is the length of the training part, which has no anomalies. The first series download the archive of 184 MB.
-                - ``"kddcup99"``: ``"kddcup99/http.csv"``, the 58,724 http connections of logged in users of the KDD Cup 99 10% file, in their original order. The 3 features are ``log(x + 0.1)`` of the duration, the bytes from the source and the bytes to the destination. The attacks have the label 1. The first use downloads the file of 74 MB.
+                - ``"kddcup99"``: ``"kddcup99/http.csv"``, the 58,724 http connections of logged in users of the KDD Cup 99 10% file, in their original order. The 3 features are ``log(x + 0.1)`` of the duration, the bytes from the source and the bytes to the destination. The attacks have the label 1. The first use downloads the file of 74 MB, which the server compresses to 2 MB.
                 - ``"smd"``: the test halves of the 28 machines of the Server Machine Dataset, for example ``"smd/machine-1-1.txt"``, with one point of 38 features each minute.
+                - ``"smap"``: the test halves of the 54 telemetry channels of the SMAP satellite, for example ``"smap/P-1.npy"``, with 25 features. The first feature is the telemetry value, and the others are the one-hot encoded commands that the spacecraft received. The points in an anomaly range of Telemanom have the label 1. Channel P-2 has two rows of ranges, and both rows label it.
+                - ``"msl"``: the test halves of the 27 telemetry channels of the MSL rover Curiosity, for example ``"msl/M-1.npy"``, with 55 features in the same layout as ``"smap"``.
                 - ``"insects"``: the 4 INSECTS streams of the ARCUS paper, for example ``"insects/abrupt.csv"``, with 33 features. The southern house mosquito is the anomaly class.
 
         Returns:
@@ -612,6 +719,10 @@ class Data:
             return ["kddcup99/http.csv"]
         if source == "smd":
             return ["smd/" + name for name in _SMD_CHECKSUMS]
+        if source == "smap":
+            return ["smap/" + name for name in _SMAP_CHECKSUMS]
+        if source == "msl":
+            return ["msl/" + name for name in _MSL_CHECKSUMS]
         if source == "insects":
             return ["insects/" + name for name in _INSECTS_FILES]
         raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
@@ -634,13 +745,21 @@ class Data:
         temp_path = temp_file.name
         try:
             temp_file.close()
-            req = urllib.request.Request(url, headers={"User-Agent": "pysad"})
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "pysad", "Accept-Encoding": "gzip"}
+            )
             for attempt in range(_ATTEMPTS):
                 try:
-                    with urllib.request.urlopen(req) as response, open(temp_path, "wb") as f:
-                        shutil.copyfileobj(response, f)
+                    with (
+                        urllib.request.urlopen(req, timeout=_TIMEOUT_SECONDS) as response,
+                        open(temp_path, "wb") as f,
+                    ):
+                        gzipped = response.headers.get("Content-Encoding") == "gzip"
+                        shutil.copyfileobj(
+                            gzip.GzipFile(fileobj=response) if gzipped else response, f
+                        )
                     break
-                except urllib.error.URLError as error:
+                except OSError as error:  # URLError, or TimeoutError while reading the response
                     client_error = isinstance(error, urllib.error.HTTPError) and error.code < 500
                     if client_error or attempt == _ATTEMPTS - 1:
                         raise
@@ -674,16 +793,24 @@ class Data:
 
         return X
 
-    def get_data(self, data_file: str, download: bool = True) -> tuple[np.ndarray, np.ndarray]:
+    def get_data(
+        self, data_file: str, download: bool = True, timestamps: bool = False
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Loads the data given the filename or path, downloading it if not present.
 
         Args:
             data_file (str): Path or filename of the data.
             download (bool): Whether to download the dataset if not present locally (Default=True).
+            timestamps (bool): Whether to give each point of a NAB series as ``[timestamp, value]``, with the timestamp in seconds since the Unix epoch, as :class:`~pysad.models.HTM` takes it. NAB gives local times without a time zone, and the timestamps read them as UTC (Default=False).
 
         Returns:
             tuple[np.ndarray, np.ndarray]: The feature vectors of shape (num_instances, num_features) and the labels of shape (num_instances,).
+
+        Raises:
+            ValueError: If ``timestamps`` is True and ``data_file`` is not a NAB series.
         """
+        if timestamps and not data_file.startswith("nab/"):
+            raise ValueError(f"Only the NAB series have timestamps, got {data_file!r}.")
         if os.path.exists(data_file):
             data_path = data_file
         else:
@@ -723,11 +850,13 @@ class Data:
                 self._download(file_name, data_path)
 
         if file_name.startswith("nab/"):
-            return self._load_nab(file_name, data_path, download)
+            return self._load_nab(file_name, data_path, download, timestamps)
         if file_name.startswith("ucr/"):
             return self._load_ucr(file_name, data_path)
         if file_name.startswith("smd/"):
             return self._load_smd(file_name, data_path, download)
+        if file_name.startswith(("smap/", "msl/")):
+            return self._load_nasa(file_name, data_path, download)
         if data_path.endswith(".mat"):
             from scipy.io import loadmat
 
@@ -743,8 +872,10 @@ class Data:
 
         return X, y
 
-    def _load_nab(self, name: str, data_path: str, download: bool) -> tuple[np.ndarray, np.ndarray]:
-        """Loads a NAB series and labels the points in its anomaly windows with 1."""
+    def _load_nab(
+        self, name: str, data_path: str, download: bool, timestamps: bool
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Loads a NAB series, with the timestamps if `timestamps` is True, and labels the points in its anomaly windows with 1."""
         windows_path = os.path.join(self.data_base_path, "nab", "combined_windows.json")
         if not os.path.exists(windows_path):
             if not download:
@@ -762,7 +893,10 @@ class Data:
         for start, end in windows:
             y[(times >= np.datetime64(start)) & (times <= np.datetime64(end))] = 1
 
-        return np.array([[float(row[1])] for row in rows]), y
+        values = np.array([[float(row[1])] for row in rows])
+        if timestamps:
+            return np.column_stack([times.astype(np.float64), values]), y
+        return values, y
 
     def _extract_ucr(self, name: str, data_path: str) -> None:
         """Copies a UCR series out of the archive, and downloads the archive if it is not present."""
@@ -814,6 +948,29 @@ class Data:
             self._download(labels_name, labels_path)
 
         return np.loadtxt(data_path, delimiter=","), np.loadtxt(labels_path, dtype=int)
+
+    def _load_nasa(
+        self, name: str, data_path: str, download: bool
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Loads the test half of a SMAP or MSL channel and labels the points of its anomaly ranges with 1."""
+        labels_path = os.path.join(self.data_base_path, _NASA_LABELS)
+        if not os.path.exists(labels_path):
+            if not download:
+                raise FileNotFoundError(
+                    f"The SMAP and MSL labels were not found at '{labels_path}' and download=False."
+                )
+            self._download(_NASA_LABELS, labels_path)
+        spacecraft, file_name = name.split("/")
+        X = np.load(data_path)
+        y = np.zeros(len(X), dtype=int)
+        with open(labels_path, newline="") as f:
+            for row in csv.DictReader(f):
+                # A channel can have more than one row. The ranges include their last point.
+                if row["spacecraft"] == spacecraft.upper() and row["chan_id"] + ".npy" == file_name:
+                    for start, end in json.loads(row["anomaly_sequences"]):
+                        y[start : end + 1] = 1
+
+        return X, y
 
     def get_iterator(
         self,

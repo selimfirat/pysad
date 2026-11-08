@@ -35,10 +35,10 @@ Functions
      - 5 rules, for example the average and the maximum of the scores
      - None
    * - Score postprocessors
-     - Running averages, maximums, medians and z-scores of the scores
+     - Running averages, maximums, medians and z-scores of the scores, and the dynamic threshold of Telemanom
      - None
    * - Scores to labels
-     - Probability calibrators, then a threshold on the probability
+     - :class:`~pysad.transform.postprocessing.ThresholdFilter`, also after a probability calibrator
      - ``ThresholdFilter`` and ``QuantileFilter``
    * - Probability calibrators
      - Gaussian tail, conformal and SPOT

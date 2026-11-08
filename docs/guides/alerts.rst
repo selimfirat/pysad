@@ -35,6 +35,15 @@ Calibrate the scores and raise alerts
 
 The condition ``t >= 200`` skips a warm-up period of 200 points. During the warm-up, the model and the calibrator have too little data, and their output is not stable.
 
+To get the alerts as 0/1 labels, for example for :class:`~pysad.evaluation.PrecisionMetric`, use :class:`~pysad.transform.postprocessing.ThresholdFilter`. It gives 1 for a value at or above its threshold, and 0 otherwise:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import ThresholdFilter
+
+   threshold_filter = ThresholdFilter(threshold=0.99)
+   label = threshold_filter.transform_partial(calibrated)
+
 Choose the threshold
 --------------------
 

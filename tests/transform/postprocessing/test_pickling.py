@@ -16,6 +16,7 @@ POSTPROCESSOR_PARAMS = {
     "RunningMaxPostprocessor": {"window_size": 16},
     "RunningMedianPostprocessor": {"window_size": 16},
     "RunningZScorePostprocessor": {"window_size": 16},
+    "ThresholdFilter": {"threshold": 0.5},
 }
 
 

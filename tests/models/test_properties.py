@@ -53,6 +53,9 @@ UNIVARIATE_MODELS = {
 # These models take each instance as [timestamp, value].
 TIMESTAMPED_MODELS = {"HTM"}
 
+# These models take each instance as an edge [source, destination].
+EDGE_MODELS = {"MIDAS"}
+
 # Values the streams are drawn from. Small pools make constant features and duplicate instances
 # likely; the float range covers values far from 0 and from each other.
 FINITE_VALUES = st.one_of(
@@ -133,6 +136,7 @@ def _model_params(model_name, num_features, data):
         "LODA": {"num_bins": 5, "num_random_cuts": 10},
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         # The drawn values reach -1e6, below the domain of log(1 + x).
+        "MIDAS": {"num_buckets": 16, "tick_size": 3},
         "MStream": {"log_transform": False},
         "NETS": {"window_size": 20, "max_radius": 0.1},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
@@ -185,7 +189,7 @@ def _draw_case(model_name, data, min_length=1):
     """Draws a stream and labels for `model_name`, and returns them with its constructor args."""
     if model_name in UNIVARIATE_MODELS:
         num_features = 1
-    elif model_name in TIMESTAMPED_MODELS:
+    elif model_name in TIMESTAMPED_MODELS or model_name in EDGE_MODELS:
         num_features = 2
     else:
         num_features = data.draw(st.integers(1, MAX_FEATURES), label="num_features")

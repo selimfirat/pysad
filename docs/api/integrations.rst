@@ -13,3 +13,4 @@ This module holds wrappers that run PyOD batch detectors and River forecasters o
    ReferenceWindowModel
    OneFitModel
    PredictiveAnomalyDetector
+   PYODModel

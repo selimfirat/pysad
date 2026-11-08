@@ -230,6 +230,7 @@ These starting points come from the design of each method. They are not benchmar
 | `RSForest` | RS-Forest random space tree density (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) |
 | `MStream` | MStream multi-aspect stream counts (Bhatia et al., WWW 2021) |
+| `MIDAS` | MIDAS edge counts of a graph stream (Bhatia et al., AAAI 2020) |
 | `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) |

@@ -13,3 +13,4 @@ This module holds random projections that reduce the number of features. See :do
    GaussianRandomProjector
    SparseRandomProjector
    StreamhashProjector
+   BaseSKLearnProjector

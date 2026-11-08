@@ -503,6 +503,14 @@ It prints:
 
    AUROC: 0.651
 
+Load credit-card fraud transactions
+-----------------------------------
+
+This script loads OpenML 1597 through the shared dataset cache and streams the first five transactions in their original time order. ``Class`` is separate from the 30 features. See :doc:`guides/stream_data` for the source and dataset license.
+
+.. literalinclude:: ../examples/example_creditcard.py
+   :language: python
+
 Use a multi-aspect stream detector
 ----------------------------------
 
@@ -516,6 +524,25 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.992
+
+Detect a burst of graph edges
+------------------------------
+
+This script scores a small, reproducible edge stream with :class:`~pysad.models.MIDAS`. Each row is ``[source, destination]``, where the two integers identify the nodes of a directed edge. Keep the same ID for a node throughout the stream; these values are categorical identifiers.
+
+``tick_size=4`` groups every four consecutive edges into one tick. PySAD uses edge counts to define ticks, so no timestamp column is needed. The first 20 ticks contain each of four edges once. The final tick repeats the edge ``[0, 1]`` four times, creating a burst. The fixed ``random_state`` makes the sketch hashes reproducible.
+
+.. literalinclude:: ../examples/example_midas.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Maximum regular score: 0.000
+   Last burst edge score: 7.500
+
+Higher scores mean more anomalous edges. As the repeated edge accumulates within the final tick, its score rises above the regular scores. All edges in the first tick score zero because MIDAS needs an earlier tick for comparison.
 
 Use a local density detector
 ----------------------------

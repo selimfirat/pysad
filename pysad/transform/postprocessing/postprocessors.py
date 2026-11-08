@@ -6,6 +6,7 @@ from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.core.base_statistic import UnivariateStatistic
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.max_meter import MaxMeter
+from pysad.statistics.quantile_meter import QuantileMeter
 from pysad.statistics.running_statistic import RunningStatistic
 from pysad.statistics.variance_meter import VarianceMeter
 
@@ -115,3 +116,60 @@ class ZScorePostprocessor(_ZScorePostprocessor):
 
     def __init__(self) -> None:
         super().__init__(VarianceMeter(), AverageMeter())
+
+
+class QuantileFilter(BasePostprocessor):
+    """A postprocessor that labels a score 1 if it is at least the ``q`` quantile of the previous scores, and 0 otherwise.
+
+    This is the ``QuantileFilter`` of River (https://github.com/online-ml/river, BSD-3-Clause license). The quantile comes from :class:`~pysad.statistics.QuantileMeter`, the P^2 algorithm of :cite:`jain1985psquare`, so the memory stays constant.
+    ``fit_transform_partial`` labels the score with the quantile of the scores before it, then fits the score, as River does.
+
+    These are the differences from River:
+
+    - River labels a score 0 when the quantile of the previous scores is exactly 0. This class labels it 1 if the score is at least 0.
+    - River does not learn the detector from the scores that it labels 1, unless ``protect_anomaly_detector=False``. A postprocessor does not own the detector, so this class leaves that choice to the caller, see :doc:`/guides/alerts`.
+    - With 2 to 5 previous scores, the quantile can differ from River's. :class:`~pysad.statistics.QuantileMeter` interpolates between the sorted scores for the first four scores and uses the central P^2 marker from the fifth score, as the paper does. River's ``Quantile`` takes one of the sorted scores until the sixth score. With more previous scores, the two quantiles and the labels are the same.
+
+    Args:
+        q (float): The quantile of the previous scores that a score must reach to get the label 1, in the open interval (0, 1) (Default=0.95).
+    """
+
+    def __init__(self, q: float = 0.95) -> None:
+        self.meter = QuantileMeter(q=q)
+
+    def fit_partial(self, score: float) -> QuantileFilter:
+        """Updates the quantile with the next score.
+
+        Args:
+            score (float): Input score.
+
+        Returns:
+            object: self.
+        """
+        self.meter.update(score)
+
+        return self
+
+    def transform_partial(self, score: float) -> float:
+        """Labels the score with the quantile of the fitted scores.
+
+        Args:
+            score (float): The input score.
+
+        Returns:
+            float: 1.0 if the score is at least the quantile of the fitted scores, and 0.0 otherwise or if no score was fitted.
+        """
+        return float(self.meter.num_items > 0 and score >= self.meter.get())
+
+    def fit_transform_partial(self, score: float) -> float:
+        """Labels the score with the quantile of the previous scores, then fits the score.
+
+        Args:
+            score (float): Input score.
+
+        Returns:
+            float: 1.0 if the score is at least the quantile of the previous scores, and 0.0 otherwise.
+        """
+        label = self.transform_partial(score)
+        self.fit_partial(score)
+        return label

@@ -11,6 +11,7 @@ def test_unsupervised_models():
         KNNCAD,
         LODA,
         MCOD,
+        MIDAS,
         NETS,
         SAND,
         TEDA,
@@ -19,6 +20,7 @@ def test_unsupervised_models():
         ApproxStorm,
         ChangeFinder,
         ExactStorm,
+        EXPoSE,
         HalfSpaceTrees,
         HoltWinters,
         IForestASD,
@@ -59,6 +61,7 @@ def test_unsupervised_models():
         D3: {"window_size": 50},
         DILOF: {"num_neighbors": 5, "window_size": 40},
         ExactStorm: {},
+        EXPoSE: {"num_random_features": 50},
         HalfSpaceTrees: {"feature_mins": [0.0], "feature_maxes": [1.0]},
         HoltWinters: [{"period": 10}, {"period": 10, "threshold": 1}],
         IForestASD: {},
@@ -108,6 +111,10 @@ def test_unsupervised_models():
             "likelihood": likelihood,
         }
         helper_test_model(X_timestamped, HTM, params)
+
+    # MIDAS takes each instance as an edge [source, destination].
+    X_edges = np.random.RandomState(0).randint(0, 10, size=(len(X), 2)).astype(np.float64)
+    helper_test_model(X_edges, MIDAS, {"tick_size": 10})
 
 
 def helper_test_model(X, model_cls, params_dict):

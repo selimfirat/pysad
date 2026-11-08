@@ -230,6 +230,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `RSForest` | RS-Forest 随机空间树密度估计 (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash 子空间离群点检测 (Sathe & Aggarwal, ICDM 2016) |
 | `MStream` | MStream 多方面数据流计数 (Bhatia et al., WWW 2021) |
+| `MIDAS` | MIDAS 图数据流的边计数 (Bhatia et al., AAAI 2020) |
 | `IForestASD` | 滑动窗口上的孤立森林 (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | 在线孤立森林 (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET 自编码器集成 (Mirsky et al., NDSS 2018) |
@@ -250,6 +251,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `Inqmad` | InQMAD 量子测量密度估计 (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | 基于带折扣学习的有限混合模型 (Yamanishi et al., KDD 2000) |
 | `TEDA` | 典型性与离心率数据分析 (Angelov, EALS 2014) |
+| `EXPoSE` | 与核均值嵌入的期望相似度 (Schneider et al., Machine Learning 2016) |
 
 **单变量**
 

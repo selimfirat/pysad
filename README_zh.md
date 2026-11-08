@@ -238,6 +238,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `MCOD` | 基于微簇的距离离群点检测 (Kontaki et al., ICDE 2011) |
 | `NETS` | 基于网格集合处理的距离离群点检测 (Yoon et al., PVLDB 2019) |
 | `CPOD` | 基于核心点的距离离群点检测 (Tran et al., PVLDB 2020) |
+| `D3` | 基于窗口链式样本核密度估计的距离离群点检测 (Subramaniam et al., VLDB 2006) |
 | `ThreshLEAP` | 基于最小探测与最新优先探测的距离离群点检测 (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
@@ -258,6 +259,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `HTM` | 层级时间记忆（NAB 的 numenta 检测器），输入为带时间戳的值 (Ahmad et al., Neurocomputing 2017) |
 | `KNNCAD` | 共形 k 近邻异常检测 (Burnaev & Ishimtsev, 2016) |
+| `HoltWinters` | 基于季节性置信带与失败窗口的 Holt-Winters 预测 (Brutlag, USENIX LISA 2000) |
 | `ChangeFinder` | 基于折扣学习自回归模型的离群点与变化点检测 (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | 基于 STAMPI 的矩阵轮廓异常子序列 (Yeh et al., ICDM 2016) |
 | `DAMP` | 提前停止向后搜索的左矩阵轮廓异常子序列 (Lu et al., KDD 2022) |

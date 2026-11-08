@@ -26,6 +26,7 @@ ANOMALY_RATE = 0.05
 UNIVARIATE_MODELS = {
     "ChangeFinder",
     "DAMP",
+    "HoltWinters",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -105,6 +106,8 @@ def _model_params(model_name, X):
             # The anomaly likelihood needs a longer stream than this one to settle.
             "likelihood": False,
         },
+        # The anomalies are single spikes, so one violation in the window is a failure.
+        "HoltWinters": {"period": 24, "threshold": 1},
         "IForestASD": {"window_size": WARMUP},
         "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32},
         # Grace periods that end with the warmup.

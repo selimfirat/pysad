@@ -148,6 +148,20 @@ It prints:
 
    27 alerts, 17 of them true anomalies
 
+Label scores with a fixed threshold
+-----------------------------------
+
+This script calibrates each score to a value between 0 and 1. Then it turns the value into a 0/1 label with a fixed threshold, and measures the precision and the recall of the labels. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_threshold_filter.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Precision: 0.656, recall: 0.318
+
 Raise alerts at a chosen risk
 -----------------------------
 
@@ -279,6 +293,22 @@ It prints:
    SeasonalHybridESD flagged [150, 260, 340], true anomalies [150, 260, 340]
 
 Both variants find the three spikes and flag no normal values. :doc:`guides/seasonal` explains when to use each variant.
+
+Detect an outage with Holt-Winters forecasting
+----------------------------------------------
+
+This script finds a 12-hour drop in a series with a daily cycle with :class:`~pysad.models.HoltWinters`. The model forecasts each value from a baseline, a trend and a seasonal cycle. A value is a violation if it falls outside a band of two seasonal deviations around its forecast. A failure is at least 7 violations among the last 9 values.
+
+.. literalinclude:: ../examples/example_holt_winters.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Failures from 606 to 625, outage at [600, 612)
+
+The first failure is the 7th value of the outage. The failures go on after the outage ends, because the baseline learned part of the drop, so the normal values are above their forecasts until the baseline adapts again.
 
 Find an unusual shape with the matrix profile
 ---------------------------------------------
@@ -523,6 +553,20 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.750
+
+Count the neighbors of a sensor reading with D3
+-----------------------------------------------
+
+This script scores the readings of one temperature sensor with D3. D3 keeps a random sample of the last 1,000 readings and puts a kernel on each sampled reading. These kernels give a density estimate of the window. The score of a reading is the negative estimated number of window readings within a radius of it, so a reading with few neighbors gets a high score.
+
+.. literalinclude:: ../examples/example_d3.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.876
 
 Use anytime outliers with AnyOut
 --------------------------------

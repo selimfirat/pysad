@@ -19,6 +19,7 @@ def _model_specs():
     from pysad import models
     from pysad.models import (
         CPOD,
+        D3,
         DAMP,
         DILOF,
         HTM,
@@ -35,6 +36,7 @@ def _model_specs():
         ChangeFinder,
         ExactStorm,
         HalfSpaceTrees,
+        HoltWinters,
         IForestASD,
         IncrementalLOF,
         KitNet,
@@ -80,6 +82,7 @@ def _model_specs():
         ("ChangeFinder", lambda: ChangeFinder(), 1),
         ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
         ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),
+        ("D3", lambda: D3(window_size=20, sample_fraction=0.5, max_radius=0.3), NUM_FEATURES),
         ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (
@@ -89,6 +92,7 @@ def _model_specs():
             ),
             NUM_FEATURES,
         ),
+        ("HoltWinters", lambda: HoltWinters(period=4, threshold=1), 1),
         # HTM takes each instance as [timestamp, value].
         ("HTM", lambda: HTM(min_val=0.0, max_val=1.0, probationary_period=20, num_columns=256), 2),
         (

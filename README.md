@@ -238,6 +238,7 @@ These starting points come from the design of each method. They are not benchmar
 | `MCOD` | Micro-cluster-based distance-based outliers (Kontaki et al., ICDE 2011) |
 | `NETS` | Set-based distance-based outliers on a cell grid (Yoon et al., PVLDB 2019) |
 | `CPOD` | Core point-based distance-based outliers (Tran et al., PVLDB 2020) |
+| `D3` | Distance-based outliers from a kernel density over a chain sample of a window (Subramaniam et al., VLDB 2006) |
 | `ThreshLEAP` | Distance-based outliers with minimal, newest-first probing (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | Online one-class SVM, NORMA (Kivinen et al., IEEE TSP 2004) |
@@ -258,6 +259,7 @@ These starting points come from the design of each method. They are not benchmar
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `HTM` | Hierarchical Temporal Memory, the numenta detector of NAB, on timestamped values (Ahmad et al., Neurocomputing 2017) |
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
+| `HoltWinters` | Holt-Winters forecasting with a seasonal confidence band and a failure window (Brutlag, USENIX LISA 2000) |
 | `ChangeFinder` | Outlier and change point detection with discounting AR models (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | Matrix profile discords with STAMPI (Yeh et al., ICDM 2016) |
 | `DAMP` | Left matrix profile discords with a backward search that stops early (Lu et al., KDD 2022) |

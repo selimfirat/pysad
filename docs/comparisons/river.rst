@@ -38,7 +38,7 @@ Functions
      - Running averages, maximums, medians and z-scores of the scores, and the dynamic threshold of Telemanom
      - None
    * - Scores to labels
-     - :class:`~pysad.transform.postprocessing.QuantileFilter`, or probability calibrators and then a threshold on the probability
+     - :class:`~pysad.transform.postprocessing.ThresholdFilter` and :class:`~pysad.transform.postprocessing.QuantileFilter`, also after a probability calibrator
      - ``ThresholdFilter`` and ``QuantileFilter``
    * - Probability calibrators
      - Gaussian tail, conformal and SPOT

@@ -6,6 +6,7 @@ from .postprocessors import (
     AveragePostprocessor,
     MaxPostprocessor,
     QuantileFilter,
+    ThresholdFilter,
     ZScorePostprocessor,
 )
 from .running_postprocessors import (
@@ -25,5 +26,6 @@ __all__ = [
     "RunningMaxPostprocessor",
     "RunningMedianPostprocessor",
     "RunningZScorePostprocessor",
+    "ThresholdFilter",
     "ZScorePostprocessor",
 ]

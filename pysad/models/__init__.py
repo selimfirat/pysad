@@ -7,10 +7,12 @@ from .anyout import AnyOut
 from .approx_storm import ApproxStorm
 from .change_finder import ChangeFinder
 from .cpod import CPOD
+from .d3 import D3
 from .damp import DAMP
 from .dilof import DILOF
 from .exact_storm import ExactStorm
 from .half_space_trees import HalfSpaceTrees
+from .holt_winters import HoltWinters
 from .htm.htm import HTM
 from .iforest_asd import IForestASD
 from .incremental_lof import IncrementalLOF
@@ -50,10 +52,12 @@ __all__ = [
     "ApproxStorm",
     "ChangeFinder",
     "CPOD",
+    "D3",
     "DAMP",
     "DILOF",
     "ExactStorm",
     "HalfSpaceTrees",
+    "HoltWinters",
     "HTM",
     "IForestASD",
     "IncrementalLOF",

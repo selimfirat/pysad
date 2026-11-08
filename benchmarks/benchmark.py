@@ -132,6 +132,7 @@ SHORT_NAMES = {
 UNIVARIATE = {
     "ChangeFinder": lambda n, period: models.ChangeFinder(),
     # HTM learns during NAB's probationary period, as in NAB.
+    "HoltWinters": lambda n, period: models.HoltWinters(period),
     "HTM": lambda n, period: models.HTM(
         min_val=0.0, max_val=1.0, probationary_period=nab_probation(n), random_state=0
     ),
@@ -148,7 +149,7 @@ UNIVARIATE = {
 }
 # As for DETECTORS, only benchmark the models present in the checkout.
 UNIVARIATE = {name: factory for name, factory in UNIVARIATE.items() if name in models.__all__}
-# The ESD detectors need the period of a series, so they run only on these series. Each period is a
+# The seasonal detectors need the period of a series, so they run only on these series. Each period is a
 # day, in points, where the autocorrelation at a lag of one day is at least 0.5.
 PERIODS = {
     "nab/artificialWithAnomaly/art_daily_flatmiddle.csv": 288,
@@ -166,7 +167,7 @@ PERIODS = {
     "nab/realKnownCause/cpu_utilization_asg_misconfiguration.csv": 288,
     "nab/realKnownCause/nyc_taxi.csv": 48,
 }
-SEASONAL = ["SeasonalESD", "SeasonalHybridESD"]
+SEASONAL = ["HoltWinters", "SeasonalESD", "SeasonalHybridESD"]
 # These detectors take each point as [timestamp, value]. The UCR series have no timestamps, so these
 # detectors do not run on them.
 TIMESTAMPED = ["HTM"]
@@ -201,7 +202,7 @@ def label(detector):
     return f":class:`~pysad.models.{detector}`"
 
 
-# The UCR series with at most this many points, 84 of the 250, keep the run short. The ESD detectors
+# The UCR series with at most this many points, 84 of the 250, keep the run short. The seasonal detectors
 # do not run on them, because the archive does not give the periods.
 UCR_MAX_POINTS = 20_000
 # A run solves a UCR series when its highest score after the training part is at most this many

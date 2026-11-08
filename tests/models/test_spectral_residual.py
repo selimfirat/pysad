@@ -34,6 +34,36 @@ def test_spectral_residual_scores_follow_the_equations_of_the_paper():
     np.testing.assert_allclose(scores[15:], expected, rtol=1e-10)
 
 
+def test_spectral_residual_scores_match_the_saliency_map_of_the_authors_code():
+    from pysad.models import SpectralResidual
+
+    X = np.sin(2 * np.pi * np.arange(24) / 8)
+    X[20] += 3.0
+
+    scores = SpectralResidual(
+        window_size=16,
+        filter_size=3,
+        num_average_points=6,
+        num_estimated_points=4,
+        num_gradient_points=3,
+    ).fit_score(X.reshape(-1, 1))
+
+    # Eq. (7) on the saliency map of spectral_residual_transform in https://github.com/microsoft/anomalydetector
+    # (commit a3260ea), applied to the window that the model extends with Eqs. (8) and (9).
+    expected = [
+        -0.5284428184,
+        -0.1477996531,
+        -0.319879954,
+        -0.9173249264,
+        -0.5284428184,
+        0.7544467932,
+        0.06439015293,
+        -0.2497613378,
+        -0.6798316253,
+    ]
+    np.testing.assert_allclose(scores[15:], expected, rtol=1e-9)
+
+
 def test_spectral_residual_warmup():
     from pysad.models import SpectralResidual
 

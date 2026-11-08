@@ -192,6 +192,14 @@ It prints:
    22 raw scores are at least 0.99
    likelihood alerts at [549, 2620, 4001], the anomaly starts at 4000
 
+Plot the alerts
+---------------
+
+This script calibrates the scores of LODA on a synthetic stream. Then it plots the features, the calibrated scores with the threshold, and the alerts against the labels. It needs matplotlib, which PySAD does not install. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_plot_stream.py
+   :language: python
+
 Flag anomalies with a dynamic threshold
 ---------------------------------------
 

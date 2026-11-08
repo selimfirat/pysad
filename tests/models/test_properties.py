@@ -38,6 +38,7 @@ MAX_EXAMPLES = 10
 UNIVARIATE_MODELS = {
     "ChangeFinder",
     "DAMP",
+    "HoltWinters",
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
@@ -115,6 +116,8 @@ def _model_params(model_name, num_features, data):
             "num_columns": 64,
             "num_cells_per_column": 4,
         },
+        # A short period and a threshold of 1, so that the streams reach the failure rule.
+        "HoltWinters": {"period": 2, "window_size": 3, "threshold": 1},
         "IForestASD": {"window_size": 20, "n_estimators": 10},
         "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
         "Inqmad": {"input_shape": num_features, "dim_x": 16},

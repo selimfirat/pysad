@@ -10,14 +10,15 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class BaseSKLearnProjector(BaseTransformer):
+    """Abstract base projector class to wrap the random sklearn projectors.
+
+    Args:
+        num_components (int or 'auto'): The number of dimensions that the target will be projected into.
+    """
+
     num_components: int | Literal["auto"]
 
     def __init__(self, num_components: int | Literal["auto"]) -> None:
-        """Abstract base projector class to wrap the random sklearn projectors.
-
-        Args:
-            num_components (int or 'auto'): The number of dimensions that the target will be projected into.
-        """
         super().__init__(cast(int, num_components))
         self._components: Any | None = None
 

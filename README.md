@@ -258,6 +258,7 @@ These starting points come from the design of each method. They are not benchmar
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `HTM` | Hierarchical Temporal Memory, the numenta detector of NAB, on timestamped values (Ahmad et al., Neurocomputing 2017) |
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
+| `HoltWinters` | Holt-Winters forecasting with a seasonal confidence band and a failure window (Brutlag, USENIX LISA 2000) |
 | `ChangeFinder` | Outlier and change point detection with discounting AR models (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | Matrix profile discords with STAMPI (Yeh et al., ICDM 2016) |
 | `DAMP` | Left matrix profile discords with a backward search that stops early (Lu et al., KDD 2022) |

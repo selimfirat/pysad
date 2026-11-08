@@ -152,6 +152,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from the running mean or recent median in standard deviations :cite:`hochenbaum2017automatic`
      - ``window_size`` when using ``subtracted_statistic="median"``
      - Fixed; median mode retains only the last ``window_size`` values while variance remains an all-history running statistic
+   * - :class:`~pysad.models.HoltWinters`
+     - Violations of a confidence band of seasonal deviations around a Holt-Winters forecast, counted in a moving window :cite:`brutlag2000aberrant`
+     - The period
+     - Fixed: a seasonal coefficient and a deviation for each of the ``period`` points of the cycle, and the last ``window_size`` violations
    * - :class:`~pysad.models.ChangeFinder`
      - Logarithmic loss under an autoregressive model that sequentially discounting learning fits, and a second such model on the smoothed losses for change points :cite:`takeuchi2006unifying`
      - Nothing

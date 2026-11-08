@@ -266,6 +266,22 @@ It prints:
 
 Both variants find the three spikes and flag no normal values. :doc:`guides/seasonal` explains when to use each variant.
 
+Detect an outage with Holt-Winters forecasting
+----------------------------------------------
+
+This script finds a 12-hour drop in a series with a daily cycle with :class:`~pysad.models.HoltWinters`. The model forecasts each value from a baseline, a trend and a seasonal cycle. A value is a violation if it falls outside a band of two seasonal deviations around its forecast. A failure is at least 7 violations among the last 9 values.
+
+.. literalinclude:: ../examples/example_holt_winters.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Failures from 606 to 625, outage at [600, 612)
+
+The first failure is the 7th value of the outage. The failures go on after the outage ends, because the baseline learned part of the drop, so the normal values are above their forecasts until the baseline adapts again.
+
 Find an unusual shape with the matrix profile
 ---------------------------------------------
 

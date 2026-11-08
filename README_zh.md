@@ -258,6 +258,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
 | `HTM` | 层级时间记忆（NAB 的 numenta 检测器），输入为带时间戳的值 (Ahmad et al., Neurocomputing 2017) |
 | `KNNCAD` | 共形 k 近邻异常检测 (Burnaev & Ishimtsev, 2016) |
+| `HoltWinters` | 基于季节性置信带与失败窗口的 Holt-Winters 预测 (Brutlag, USENIX LISA 2000) |
 | `ChangeFinder` | 基于折扣学习自回归模型的离群点与变化点检测 (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | 基于 STAMPI 的矩阵轮廓异常子序列 (Yeh et al., ICDM 2016) |
 | `DAMP` | 提前停止向后搜索的左矩阵轮廓异常子序列 (Lu et al., KDD 2022) |

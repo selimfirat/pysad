@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from pysad.models import (
+    HTM,
     LODA,
     SAND,
     ApproxStorm,
@@ -35,6 +36,9 @@ MODELS = {
         max_depth=8,
         **kw,
     ),
+    "HTM": lambda **kw: HTM(
+        min_val=0.0, max_val=1.0, probationary_period=20, num_columns=256, **kw
+    ),
     "Inqmad": lambda **kw: Inqmad(input_shape=NUM_FEATURES, dim_x=32, initial_size=20, **kw),
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": lambda **kw: KitNet(grace_feature_mapping=20, grace_anomaly_detector=30, **kw),
@@ -54,10 +58,14 @@ MODELS = {
 
 NAMES = list(MODELS)
 UNIVARIATE_MODELS = (SAND,)
+# These models take each instance as [timestamp, value].
+TIMESTAMPED_MODELS = (HTM,)
 
 
 def _data(model):
     X = np.random.RandomState(0).rand(80, NUM_FEATURES)
+    if isinstance(model, TIMESTAMPED_MODELS):
+        return np.column_stack([3600.0 * np.arange(len(X)), X[:, 0]])
     return X[:, :1] if isinstance(model, UNIVARIATE_MODELS) else X
 
 

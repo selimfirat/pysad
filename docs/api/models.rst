@@ -19,6 +19,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    DILOF
    ExactStorm
    HalfSpaceTrees
+   HTM
    IForestASD
    IncrementalLOF
    Inqmad

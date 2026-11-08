@@ -42,9 +42,13 @@ class StreamKMPlusPlus(BaseModel):
         self.random_state = random_state
         self.rng_ = check_random_state(random_state)
         self.centers_ = np.empty((0, 0))  # the current centers, (num_clusters, num_features)
-        self._buffer = np.empty((0, 0))  # the points since the last reduce, (coreset_size, num_features)
+        self._buffer = np.empty(
+            (0, 0)
+        )  # the points since the last reduce, (coreset_size, num_features)
         self._num_buffered = 0  # the number of points in the buffer
-        self._levels: list[tuple[np.ndarray, np.ndarray] | None] = []  # one coreset per level, or None
+        self._levels: list[
+            tuple[np.ndarray, np.ndarray] | None
+        ] = []  # one coreset per level, or None
 
     def __getstate__(self) -> dict:
         state = self.__dict__.copy()
@@ -56,9 +60,7 @@ class StreamKMPlusPlus(BaseModel):
         self.__dict__.update(state)
         self.rng_ = check_random_state(self.rng_)
 
-    def _coreset(
-        self, points: np.ndarray, weights: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def _coreset(self, points: np.ndarray, weights: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Reduces `points` with `weights` to a weighted coreset of at most `coreset_size` points.
 
         The first point is picked with probability proportional to its weight, and each next point with probability proportional to its weight times its squared distance to the nearest point already picked. Each picked point is weighted by the total weight of the points closest to it. A point already picked, or identical to one, has distance zero and is never picked again. When every remaining point coincides with a picked one, the coreset holds the points picked so far.
@@ -85,9 +87,7 @@ class StreamKMPlusPlus(BaseModel):
                 probs = probs / total
             idx = int(self.rng_.choice(num_points, p=probs))
             sampled.append(idx)
-            min_dists = np.minimum(
-                min_dists, ((points - points[idx]) ** 2).sum(axis=1)
-            )
+            min_dists = np.minimum(min_dists, ((points - points[idx]) ** 2).sum(axis=1))
 
         sampled_points = points[sampled]
         nearest = (
@@ -154,21 +154,15 @@ class StreamKMPlusPlus(BaseModel):
                 probs = probs / total
             idx = int(self.rng_.choice(num_points, p=probs))
             centers[j] = points[idx]
-            min_dists = np.minimum(
-                min_dists, ((points - points[idx]) ** 2).sum(axis=1)
-            )
+            min_dists = np.minimum(min_dists, ((points - points[idx]) ** 2).sum(axis=1))
 
         for _ in range(self.num_iterations):
-            nearest = (
-                ((points[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2).argmin(axis=1)
-            )
+            nearest = ((points[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2).argmin(axis=1)
             new_centers = centers.copy()
             for j in range(num_centers):
                 members = nearest == j
                 if members.any():
-                    new_centers[j] = np.average(
-                        points[members], axis=0, weights=weights[members]
-                    )
+                    new_centers[j] = np.average(points[members], axis=0, weights=weights[members])
             if np.array_equal(new_centers, centers):
                 break
             centers = new_centers

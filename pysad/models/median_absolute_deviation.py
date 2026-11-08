@@ -11,7 +11,7 @@ from pysad.utils.validation import check_univariate
 class MedianAbsoluteDeviation(BaseModel):
     """Scores each value of a univariate stream by its distance to the median of a sliding window, in units of the scaled median absolute deviation (MAD) of that window :cite:`hochenbaum2017automatic`.
 
-    The model keeps the last ``window_size`` values. For each score it computes the median of the window and its MAD, ``median_i |x_i - median_j(x_j)|`` (Eq. 7 of the paper), and returns ``(x - median) / (b * MAD)``. ``fit_score_partial`` adds the value to the window before it scores the value, as the paper's test does on its batch.
+    The model keeps the last ``window_size`` values. For each score it computes the median of the window and its MAD, ``median_i |x_i - median_j(x_j)|`` (Eq. 7 of the paper), and returns ``(x - median) / (b * MAD)``. If the MAD is 0, it divides by 1e-10 instead, so that a value off the median gets a large finite score. ``fit_score_partial`` scores the value before it adds the value to the window, while the paper's test includes the value in its batch.
 
     This is a streaming MAD score component, not the S-H-ESD method of the paper. It does not apply STL decomposition or generalized ESD. Use :class:`pysad.models.SeasonalHybridESD` for the modified STL plus median and MAD ESD detector of the paper.
 
@@ -66,7 +66,8 @@ class MedianAbsoluteDeviation(BaseModel):
         val = check_univariate(X, "MedianAbsoluteDeviation")
         window = np.asarray(self.window)
         median = np.median(window)
-        mad = self.b * np.median(np.abs(window - median))
-        score = (val - median) / (mad + 1e-10)
+        scale = self.b * np.median(np.abs(window - median))
+        # A window of equal values has a MAD of 0. The other values then score (x - median) / 1e-10.
+        score = (val - median) / (scale if scale > 0 else 1e-10)
 
         return float(abs(score) if self.absolute else score)

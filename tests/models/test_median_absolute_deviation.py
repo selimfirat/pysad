@@ -9,7 +9,8 @@ VALUES = np.array([3, 1, 4, 1, 5, 9, 2, 6], dtype=float)
 # Hand-computed signed scores for VALUES with b=1.4826 and a window longer
 # than the stream: fit_score_partial scores each value before it learns it, so
 # the median and the MAD (Eq. 7 of the paper) are computed over the values
-# before the current one, and the score is (value - median) / (b * MAD + 1e-10).
+# before the current one, and the score is (value - median) / (b * MAD), or
+# (value - median) / 1e-10 if the MAD is 0.
 # For example, at the sixth value (9) the median of [3, 1, 4, 1, 5] is 3, the
 # absolute deviations from it are [0, 2, 1, 2, 2] with median 2, so the score is
 # 6 / (1.4826 * 2) = 2.023472. The first value has no earlier values and scores
@@ -33,7 +34,7 @@ def expected_scores(values, window_size=500, b=1.4826, absolute=True):
             continue
         median = np.median(window)
         mad = np.median(np.abs(window - median))
-        score = (values[t] - median) / (b * mad + 1e-10)
+        score = (values[t] - median) / (b * mad if mad > 0 else 1e-10)
         scores.append(abs(score) if absolute else score)
     return np.asarray(scores)
 
@@ -81,6 +82,14 @@ def test_median_absolute_deviation_b_scales_scores():
 
     # The first two values have no MAD above 0, so b does not change their scores.
     assert_allclose(unit_scores[2:], default_scores[2:] * 1.4826)
+
+
+def test_median_absolute_deviation_scores_do_not_depend_on_the_scale():
+    # Min-max scaling a series with a large range leaves a small MAD. The scores stay the same.
+    scores = MedianAbsoluteDeviation().fit_score(VALUES.reshape(-1, 1))
+    small_scores = MedianAbsoluteDeviation().fit_score(1e-6 * VALUES.reshape(-1, 1))
+
+    assert_allclose(small_scores[2:], scores[2:])
 
 
 def test_median_absolute_deviation_invalid_window_size():

@@ -46,6 +46,10 @@ These detectors take points with one or more features. A feature is one measured
      - Decayed count-min sketch counts of each feature and of the whole point, in the current time tick against the earlier ticks :cite:`bhatia2021mstream`
      - Nothing
      - Fixed: two counts for each of ``num_buckets`` buckets of every feature and of ``num_hash_fns`` sketch rows
+   * - :class:`~pysad.models.MIDAS`
+     - Count-min sketch counts of each edge ``[source, destination]`` of a graph stream, in the current time tick against the earlier ticks :cite:`bhatia2020midas`
+     - Nothing
+     - Fixed: two sketches of ``num_hash_fns`` rows of ``num_buckets`` counts
    * - :class:`~pysad.models.IForestASD`
      - Isolation Forest on a sliding window :cite:`ding2013anomaly`
      - Nothing (initial points optional)

@@ -510,6 +510,20 @@ It prints:
 
    AUROC: 0.750
 
+Count the neighbors of a sensor reading with D3
+-----------------------------------------------
+
+This script scores the readings of one temperature sensor with D3. D3 keeps a random sample of the last 1,000 readings and puts a kernel on each sampled reading. These kernels give a density estimate of the window. The score of a reading is the negative estimated number of window readings within a radius of it, so a reading with few neighbors gets a high score.
+
+.. literalinclude:: ../examples/example_d3.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.876
+
 Use anytime outliers with AnyOut
 --------------------------------
 

@@ -82,6 +82,10 @@ These detectors take points with one or more features. A feature is one measured
      - The neighbor counts of :class:`~pysad.models.ExactStorm`, faster with core points that index the window by distance rings :cite:`tran2020cpod`
      - Nothing
      - Fixed: a window of ``window_size`` points, its core points and the window points within 2R of each core point
+   * - :class:`~pysad.models.D3`
+     - Negative number of window points within a radius, estimated from a kernel density over a chain sample of the window :cite:`subramaniam2006online`
+     - Nothing
+     - Fixed: a window of ``window_size`` points and a sample of ``sample_fraction`` times ``window_size`` points
    * - :class:`~pysad.models.ThreshLEAP`
      - The number of neighbors below k that a probe finds when it tests the window newest first and stops at k neighbors :cite:`cao2014scalable`
      - Nothing

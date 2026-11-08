@@ -43,6 +43,8 @@ MODEL_PARAMS = {
     },
     # Core points form and expire within the first instances.
     "CPOD": {"window_size": 30, "max_radius": 0.6},
+    # Sample values expire and their chains move on before and after the round trip.
+    "D3": {"window_size": 30, "sample_fraction": 0.5, "max_radius": 0.6},
     "HalfSpaceTrees": {
         "feature_mins": [0.0, 0.0, 0.0],
         "feature_maxes": [1.0, 1.0, 1.0],

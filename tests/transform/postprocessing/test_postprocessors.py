@@ -4,6 +4,7 @@ from pysad.transform.postprocessing import (
     AveragePostprocessor,
     MaxPostprocessor,
     NonparametricDynamicThresholdPostprocessor,
+    QuantileFilter,
     RunningAveragePostprocessor,
     RunningMaxPostprocessor,
     RunningMedianPostprocessor,
@@ -32,6 +33,7 @@ def test_postprocessors_shape():
         MaxPostprocessor: {},
         ZScorePostprocessor: {},
         NonparametricDynamicThresholdPostprocessor: {"window_size": 30},
+        QuantileFilter: {},
         RunningAveragePostprocessor: {"window_size": 30},
         RunningMaxPostprocessor: {"window_size": 30},
         RunningMedianPostprocessor: {"window_size": 30},
@@ -150,6 +152,7 @@ def test_postprocessors_partial_matches_batch():
         MaxPostprocessor: {},
         ZScorePostprocessor: {},
         NonparametricDynamicThresholdPostprocessor: {"window_size": WINDOW_SIZE},
+        QuantileFilter: {"q": 0.5},
         RunningAveragePostprocessor: {"window_size": WINDOW_SIZE},
         RunningMaxPostprocessor: {"window_size": WINDOW_SIZE},
         RunningMedianPostprocessor: {"window_size": WINDOW_SIZE},
@@ -236,6 +239,38 @@ def test_dynamic_threshold_rejects_negative_scores():
 
     with pytest.raises(ValueError, match="nonnegative"):
         NonparametricDynamicThresholdPostprocessor().fit_partial(-1.0)
+
+
+def test_quantile_filter_labels_scores_with_the_quantile_of_the_previous_scores():
+    import numpy as np
+
+    # With at most four previous scores, the quantile is exact.
+    out = QuantileFilter(q=0.5).fit_transform(np.array([3.0, 1.0, 4.0, 2.0, 2.5]))
+
+    # Previous medians: none, 3, 2, 3, 2.5.
+    np.testing.assert_array_equal(out, [0.0, 0.0, 1.0, 0.0, 1.0])
+
+
+def test_quantile_filter_flags_about_one_minus_q_of_the_scores():
+    import numpy as np
+
+    scores = np.random.default_rng(0).gamma(2.0, size=20_000)
+
+    for q in [0.5, 0.9, 0.99]:
+        out = QuantileFilter(q=q).fit_transform(scores)
+
+        assert set(np.unique(out)) == {0.0, 1.0}
+        assert abs(out.mean() - (1 - q)) < 0.01, q
+
+
+def test_quantile_filter_transform_partial_does_not_learn():
+    import numpy as np
+
+    postprocessor = QuantileFilter(q=0.5).fit(np.array([1.0, 2.0, 3.0]))
+
+    assert postprocessor.transform_partial(2.0) == 1.0
+    assert postprocessor.transform_partial(1.5) == 0.0
+    assert postprocessor.transform_partial(2.0) == 1.0
 
 
 def test_threshold_filter_labels_scores_at_or_above_the_threshold():

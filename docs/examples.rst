@@ -207,6 +207,20 @@ It prints:
    Flagged points: 37, of which in an anomaly range: 25
    AUROC: 0.646
 
+Label scores with a running quantile
+------------------------------------
+
+This script scores the cardio dataset with LODA. Then it labels each score 1 if the score is at least the 0.9 quantile of the previous scores, and 0 otherwise. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_quantile_filter.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Precision: 0.381, recall: 0.636
+
 Postprocess scores
 ------------------
 

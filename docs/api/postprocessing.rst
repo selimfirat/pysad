@@ -17,5 +17,6 @@ This module holds postprocessors that smooth, normalize, or threshold scores, or
    RunningZScorePostprocessor
    AveragePostprocessor
    MaxPostprocessor
+   QuantileFilter
    ThresholdFilter
    ZScorePostprocessor

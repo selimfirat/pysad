@@ -283,7 +283,7 @@ The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) p
 |---|---|
 | Preprocessing | `InstanceStandardScaler`, `InstanceUnitNormScaler`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
 | Projection | `StreamhashProjector`, `GaussianRandomProjector`, `SparseRandomProjector` |
-| Postprocessing | Running and windowed average, max, median and z-score of scores |
+| Postprocessing | Running and windowed average, max, median and z-score of scores, and `QuantileFilter` for 0/1 labels |
 | Calibration | `AnomalyLikelihoodProbabilityCalibrator`, `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
 | Ensembling | Average, maximum, median, average-of-maximum and maximum-of-average score ensemblers |
 | Evaluation | `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric` |

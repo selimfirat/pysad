@@ -183,7 +183,7 @@ for message in consumer:  # 例如一个 Kafka 消费者
     score = model.fit_score_partial(x)
 ```
 
-`ArrayStreamer` 和 `PandasStreamer` 可以把数组和 DataFrame 当作数据流回放，便于做实验。
+`ArrayStreamer`、`PandasStreamer` 和 `PolarsStreamer` 可以把数组和 pandas 或 Polars DataFrame 当作数据流回放，便于做实验。
 
 ### 在数据流上使用 PyOD 模型
 
@@ -287,7 +287,7 @@ PySAD 在带标签的数据上对其检测器进行基准测试。10 个多变�
 | 校准 | `AnomalyLikelihoodProbabilityCalibrator`、`ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |
 | 集成 | 平均、最大、中位数、最大值的平均（average-of-maximum）和平均值的最大（maximum-of-average）分数集成器 |
 | 评估 | `AUROCMetric`、`AUPRMetric`、`PrecisionMetric`、`RecallMetric`、`WindowedMetric` |
-| 流式数据 | `ArrayStreamer`、`PandasStreamer`，以及提供 17 个带标签 ODDS 基准数据集（首次使用时下载）的 `Data` |
+| 流式数据 | `ArrayStreamer`、`PandasStreamer`、`PolarsStreamer`，以及提供 17 个带标签 ODDS 基准数据集（首次使用时下载）的 `Data` |
 | 统计量 | 在线均值、方差、中位数、最小值、最大值、总和与计数 |
 
 ## 参与贡献

@@ -183,7 +183,7 @@ for message in consumer:  # for example, a Kafka consumer
     score = model.fit_score_partial(x)
 ```
 
-`ArrayStreamer` and `PandasStreamer` replay arrays and DataFrames as streams for experiments.
+`ArrayStreamer`, `PandasStreamer` and `PolarsStreamer` replay arrays and pandas or Polars DataFrames as streams for experiments.
 
 ### Use a PyOD model on a stream
 
@@ -287,7 +287,7 @@ The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) p
 | Calibration | `AnomalyLikelihoodProbabilityCalibrator`, `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
 | Ensembling | Average, maximum, median, average-of-maximum and maximum-of-average score ensemblers |
 | Evaluation | `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric` |
-| Streaming data | `ArrayStreamer`, `PandasStreamer`, and `Data` for 17 labeled ODDS benchmark datasets, downloaded on first use |
+| Streaming data | `ArrayStreamer`, `PandasStreamer`, `PolarsStreamer`, and `Data` for 17 labeled ODDS benchmark datasets, downloaded on first use |
 | Statistics | Running mean, variance, median, min, max, sum and count |
 
 ## Contributing

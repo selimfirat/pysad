@@ -12,7 +12,7 @@ Series
    The number of NAB series that the detector ran on. HoltWinters and the ESD detectors need the period of a series, so they run only on the 14 seasonal series.
 
 Standard, Low false alerts, Low misses
-   The NAB score with each profile, evaluated using NAB's official scoring code. Each profile optimizes a single threshold across all series. For detectors with native unit scores in :math:`[0, 1]` (such as :class:`~pysad.models.KNNCAD`), the results match the official NAB scoreboard (58.0, 43.4, and 64.8). Other detectors are calibrated online with :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator` so their scores share a common scale across series.
+   The NAB score with each profile, evaluated using NAB's official scoring code. Each profile optimizes a single threshold across all series. For :class:`~pysad.models.KNNCAD`, the results match the official NAB scoreboard (58.0, 43.4, and 64.8). Detectors without native unit scores in :math:`[0, 1]` are calibrated online with :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator` so their scores share a common scale across series.
 
 AUROC
    The mean point-wise AUROC over the series with anomalies. A NAB anomaly window holds many points that look normal, so the point-wise AUROC of every detector is near 0.5. Scores are rounded to 9 significant digits before computing metrics so that identical input values produce true ties across platforms.

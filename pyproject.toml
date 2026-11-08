@@ -223,6 +223,7 @@ module = [
     "pysad.models.loop",
     "pysad.models.mcod",
     "pysad.models.median_absolute_deviation",
+    "pysad.models.midas",
     "pysad.models.mstream",
     "pysad.models.nets",
     "pysad.models.null_model",

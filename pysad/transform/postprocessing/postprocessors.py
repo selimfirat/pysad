@@ -115,3 +115,38 @@ class ZScorePostprocessor(_ZScorePostprocessor):
 
     def __init__(self) -> None:
         super().__init__(VarianceMeter(), AverageMeter())
+
+
+class ThresholdFilter(BasePostprocessor):
+    """A postprocessor that turns a score into a label with a fixed threshold, like ``ThresholdFilter`` of River.
+
+    The output is 1.0 (anomalous) if the score is at least ``threshold``, and 0.0 (normal) otherwise. Unlike River, the filter does not wrap a detector and does not keep the anomalies out of the detector. To keep them out, call ``fit_partial`` of the model only for the points with the output 0.
+
+    Args:
+        threshold (float): The lowest score that gets the label 1.
+    """
+
+    def __init__(self, threshold: float) -> None:
+        self.threshold = threshold
+
+    def fit_partial(self, score: float) -> ThresholdFilter:
+        """Does nothing, because the threshold is fixed.
+
+        Args:
+            score (float): Input score.
+
+        Returns:
+            object: self.
+        """
+        return self
+
+    def transform_partial(self, score: float) -> float:
+        """Labels the score.
+
+        Args:
+            score (float): The input score.
+
+        Returns:
+            float: 1.0 if the score is at least ``threshold``, 0.0 otherwise.
+        """
+        return float(score >= self.threshold)

@@ -8,6 +8,7 @@ from pysad.transform.postprocessing import (
     RunningMaxPostprocessor,
     RunningMedianPostprocessor,
     RunningZScorePostprocessor,
+    ThresholdFilter,
     ZScorePostprocessor,
 )
 
@@ -35,6 +36,7 @@ def test_postprocessors_shape():
         RunningMaxPostprocessor: {"window_size": 30},
         RunningMedianPostprocessor: {"window_size": 30},
         RunningZScorePostprocessor: {"window_size": 30},
+        ThresholdFilter: {"threshold": 5},
     }
 
     for postprocessor_cls, params_dict in postprocessors.items():
@@ -152,6 +154,7 @@ def test_postprocessors_partial_matches_batch():
         RunningMaxPostprocessor: {"window_size": WINDOW_SIZE},
         RunningMedianPostprocessor: {"window_size": WINDOW_SIZE},
         RunningZScorePostprocessor: {"window_size": WINDOW_SIZE},
+        ThresholdFilter: {"threshold": 4},
     }
 
     for postprocessor_cls, params_dict in postprocessors.items():
@@ -233,3 +236,11 @@ def test_dynamic_threshold_rejects_negative_scores():
 
     with pytest.raises(ValueError, match="nonnegative"):
         NonparametricDynamicThresholdPostprocessor().fit_partial(-1.0)
+
+
+def test_threshold_filter_labels_scores_at_or_above_the_threshold():
+    import numpy as np
+
+    out = ThresholdFilter(threshold=4).fit_transform(np.array(SCORES, dtype=float))
+
+    np.testing.assert_array_equal(out, [0, 0, 1, 0, 1, 1, 0, 1, 1, 0])

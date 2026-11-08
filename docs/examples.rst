@@ -148,6 +148,20 @@ It prints:
 
    27 alerts, 17 of them true anomalies
 
+Label scores with a fixed threshold
+-----------------------------------
+
+This script calibrates each score to a value between 0 and 1. Then it turns the value into a 0/1 label with a fixed threshold, and measures the precision and the recall of the labels. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_threshold_filter.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Precision: 0.656, recall: 0.318
+
 Raise alerts at a chosen risk
 -----------------------------
 

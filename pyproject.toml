@@ -76,8 +76,9 @@ runtime = [
 test = [
   # PandasStreamer takes DataFrames.
   "pandas==2.3.3",
-  # plot_stream draws with matplotlib.
-  "matplotlib>=3.8",
+  # examples/example_plot_stream.py draws with matplotlib.
+  "matplotlib==3.10.9; python_version < '3.11'",
+  "matplotlib==3.11.2; python_version >= '3.11'",
   # The reference that LocalOutlierProbability is tested against.
   "PyNomaly==0.4.0",
   # The batch detectors that the tests and examples run through pysad.models.integrations.
@@ -241,7 +242,7 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
 
-# Dependencies without type hints or stubs, and matplotlib, which the mypy hook does not install.
+# Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]
-module = ["matplotlib.*", "pandas.*", "scipy.*", "sklearn.*"]
+module = ["pandas.*", "scipy.*", "sklearn.*"]
 ignore_missing_imports = true

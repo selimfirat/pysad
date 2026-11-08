@@ -170,19 +170,7 @@ If the data changes permanently, for example after a deployment, the model in th
 Plot the alerts
 ---------------
 
-To see where the alerts fall, collect the calibrated scores and pass them to :func:`~pysad.utils.plot_stream` with the threshold. The function needs matplotlib, so install it with ``pip install matplotlib``. The figure has three panels: the features, the scores with the threshold, and the alerts. If you have labels, pass them as ``y`` to show the anomalies under the alerts:
-
-.. code-block:: python
-
-   from pysad.utils import plot_stream
-
-   model = LODA()
-   calibrator = ConformalProbabilityCalibrator(window_size=1000)
-
-   calibrated = [calibrator.fit_transform_partial(model.fit_score_partial(x)) for x in streamer.iter(X)]
-   plot_stream(X, np.array(calibrated), threshold=0.99)
-
-For :class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator`, pass the raw scores and an array with ``threshold_`` after each point.
+To see where the alerts fall, plot the calibrated scores with the threshold. The script ``examples/example_plot_stream.py`` in :doc:`../examples` draws three panels with matplotlib: the features, the scores with the threshold, and the alerts against the labels. PySAD does not install matplotlib, so install it with ``pip install matplotlib``.
 
 Next steps
 ----------

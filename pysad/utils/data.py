@@ -13,6 +13,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import numpy as np
+from scipy.io import arff
 
 from pysad.utils.array_streamer import ArrayStreamer
 
@@ -611,7 +612,11 @@ _INSECTS_FILES = {
         "fa97083433d50675835f1f78223fba2ffbf1f80729764e8017be1824f436d95e",
     ),
 }
-_SOURCES = ("odds", "nab", "ucr", "kddcup99", "smd", "smap", "msl", "insects")
+# OpenML dataset 1597, version 1. The publisher lists ODbL for the database and
+# DbCL for its contents; OpenML's metadata calls the license "Public".
+_CREDITCARD = "https://openml.org/data/v1/download/1673544/creditcard.arff"
+_CREDITCARD_CHECKSUM = "fdaf12730dc1fc426f318b71349f24f5c5fd00aa1152940be7e7509ae3d89d2a"
+_SOURCES = ("odds", "nab", "ucr", "kddcup99", "smd", "smap", "msl", "insects", "creditcard")
 
 # A download that fails with a server error or a network error is tried again, after 5 and then 10
 # seconds. A connection that sends no data for 60 seconds counts as a network error. The download asks
@@ -628,6 +633,8 @@ def _source(name: str) -> tuple[str, str]:
         return _NAB + "labels/combined_windows.json", _NAB_WINDOWS
     if name.startswith("nab/"):
         return _NAB + "data/" + name[len("nab/") :], _NAB_CHECKSUMS[name[len("nab/") :]]
+    if name == "creditcard/creditcard.arff":
+        return _CREDITCARD, _CREDITCARD_CHECKSUM
     if name == _UCR_ARCHIVE:
         return _UCR, _UCR_CHECKSUM
     if name == _KDDCUP99_ARCHIVE:
@@ -670,8 +677,9 @@ class Data:
     (:cite:`rayana2016odds`, hosted in the PyOD repository at a fixed commit). The univariate
     series come from the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly Archive.
     The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD),
-    the NASA SMAP and MSL telemetry of Telemanom (:cite:`hundman2018detecting`) and INSECTS. Each
-    download must match a SHA-256 checksum. :meth:`datasets` lists the datasets, and
+    the NASA SMAP and MSL telemetry of Telemanom (:cite:`hundman2018detecting`), INSECTS and
+    credit-card fraud (OpenML 1597). Each download must match a SHA-256 checksum.
+    :meth:`datasets` lists the datasets, and
     :meth:`get_stream` gives the stream of a run of the PySAD benchmark.
 
     Downloaded datasets are cached in a local directory. The cache directory
@@ -701,6 +709,7 @@ class Data:
                 - ``"smd"``: the test halves of the 28 machines of the Server Machine Dataset, for example ``"smd/machine-1-1.txt"``, with one point of 38 features each minute.
                 - ``"smap"``: the test halves of the 54 telemetry channels of the SMAP satellite, for example ``"smap/P-1.npy"``, with 25 features. The first feature is the telemetry value, and the others are the one-hot encoded commands that the spacecraft received. The points in an anomaly range of Telemanom have the label 1. Channel P-2 has two rows of ranges, and both rows label it.
                 - ``"msl"``: the test halves of the 27 telemetry channels of the MSL rover Curiosity, for example ``"msl/M-1.npy"``, with 55 features in the same layout as ``"smap"``.
+                - ``"creditcard"``: ``"creditcard/creditcard.arff"``, the 284,807 transactions of OpenML 1597, version 1, in their original time order. The 30 features are Time (elapsed seconds), V1 through V28 and Amount. Class is returned separately as the label: 1 for fraud, 0 otherwise. The database is under ODbL 1.0 and its contents under DbCL 1.0; see :doc:`/guides/stream_data` for the source links and license details.
                 - ``"insects"``: the 4 INSECTS streams of the ARCUS paper, for example ``"insects/abrupt.csv"``, with 33 features. The southern house mosquito is the anomaly class.
 
         Returns:
@@ -723,6 +732,8 @@ class Data:
             return ["smap/" + name for name in _SMAP_CHECKSUMS]
         if source == "msl":
             return ["msl/" + name for name in _MSL_CHECKSUMS]
+        if source == "creditcard":
+            return ["creditcard/creditcard.arff"]
         if source == "insects":
             return ["insects/" + name for name in _INSECTS_FILES]
         raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
@@ -849,6 +860,10 @@ class Data:
             else:
                 self._download(file_name, data_path)
 
+        if file_name == "creditcard/creditcard.arff":
+            records, metadata = arff.loadarff(data_path)
+            X = np.column_stack([records[n] for n in metadata.names() if n != "Class"])
+            return X, records["Class"].astype(int)
         if file_name.startswith("nab/"):
             return self._load_nab(file_name, data_path, download, timestamps)
         if file_name.startswith("ucr/"):

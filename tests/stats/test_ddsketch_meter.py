@@ -142,3 +142,85 @@ def test_invalid_quantile_raises(q):
 def test_invalid_relative_accuracy_raises(relative_accuracy):
     with pytest.raises(ValueError, match="relative_accuracy must be"):
         DDSketchMeter(relative_accuracy=relative_accuracy)
+
+
+@pytest.mark.parametrize("stream", ["lognormal", "normal", "with_zeros"])
+@pytest.mark.parametrize("q", QUANTILES)
+def test_merge_partitioned_stream_preserves_quantile_accuracy_and_counts(stream, q):
+    values = _streams()[stream]
+    meter = DDSketchMeter(q=q)
+    for partition in np.array_split(values, 7):
+        other = DDSketchMeter(q=0.25)
+        before = _run_meter(other, partition)
+        assert meter.merge(other) is meter
+        assert other.num_items == len(partition)
+        assert other.get() == before
+
+    exact = np.quantile(values, q, method="lower")
+    assert meter.num_items == len(values)
+    assert meter.q == q
+    assert abs(meter.get() - exact) <= 0.01 * abs(exact) + 1e-12
+
+
+@pytest.mark.parametrize("sign", [-1.0, 1.0])
+def test_merge_collapses_to_receiver_bucket_limit(sign):
+    values = sign * np.geomspace(1.0, 1e6, 100)
+    meter = DDSketchMeter(max_buckets=3)
+    for partition in np.array_split(values, 4):
+        other = DDSketchMeter(max_buckets=10)
+        _run_meter(other, partition)
+        meter.merge(other)
+
+    # Every rank is queried: a bounded sketch can return at most three distinct values.
+    estimates = set()
+    for rank in range(len(values)):
+        meter.q = rank / (len(values) - 1)
+        estimates.add(meter.get())
+    assert len(estimates) <= 3
+    assert meter.num_items == len(values)
+    assert meter.get() == pytest.approx(values.max(), rel=0.01)
+    for value in values:
+        meter.remove(float(value))
+    assert meter.num_items == 0
+    assert meter.get() == 0.0
+
+
+@pytest.mark.parametrize("sign", [-1.0, 1.0])
+def test_merge_bounded_partitioned_stream_keeps_uncollapsed_quantile_accurate(sign):
+    values = sign * np.geomspace(1.0, 100.0, 2000)
+    meter = DDSketchMeter(q=0.99, max_buckets=50)
+    for partition in np.array_split(values, 5):
+        other = DDSketchMeter(max_buckets=50)
+        _run_meter(other, partition)
+        meter.merge(other)
+    exact = np.quantile(values, 0.99, method="lower")
+    assert meter.get() == pytest.approx(exact, rel=0.01)
+    assert meter.num_items == len(values)
+
+
+@pytest.mark.parametrize("values", [[], [0.0, 0.0], [-4.0, 0.0, 2.0, 2.0]])
+def test_merge_empty_and_self(values):
+    meter = DDSketchMeter()
+    _run_meter(meter, values)
+    before = meter.get()
+    meter.merge(DDSketchMeter())
+    assert meter.get() == before
+    meter.merge(meter)
+    assert meter.num_items == 2 * len(values)
+    assert meter.get() == before
+    for value in values * 2:
+        meter.remove(value)
+    assert meter.num_items == 0
+    assert meter.get() == 0.0
+
+
+def test_merge_rejects_different_relative_accuracy_without_changing_meters():
+    meter = DDSketchMeter()
+    other = DDSketchMeter(relative_accuracy=0.02)
+    meter.update(1.0)
+    other.update(100.0)
+    before = meter.get(), other.get()
+    with pytest.raises(ValueError, match="relative_accuracy"):
+        meter.merge(other)
+    assert (meter.get(), other.get()) == before
+    assert meter.num_items == other.num_items == 1

@@ -99,6 +99,7 @@ def _model_params(model_name, num_features, data):
             "snapshot_interval": 5,
         },
         "CPOD": {"window_size": 20, "max_radius": 0.1},
+        "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.1},
         "DILOF": {"num_neighbors": 3, "window_size": 12},
         "ExactStorm": {"window_size": 20, "max_radius": 0.1},
         "HalfSpaceTrees": {

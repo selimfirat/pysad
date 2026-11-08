@@ -92,6 +92,7 @@ DETECTORS = {
     "AnyOut": lambda X, seed: models.AnyOut(),
     "ApproxStorm": lambda X, seed: models.ApproxStorm(random_state=seed),
     "CPOD": lambda X, seed: models.CPOD(),
+    "D3": lambda X, seed: models.D3(random_state=seed),
     "DILOF": lambda X, seed: models.DILOF(),
     "ExactStorm": lambda X, seed: models.ExactStorm(),
     "HalfSpaceTrees": lambda X, seed: models.HalfSpaceTrees(**_ranges(X), random_state=seed),

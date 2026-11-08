@@ -7,6 +7,7 @@ from .anyout import AnyOut
 from .approx_storm import ApproxStorm
 from .change_finder import ChangeFinder
 from .cpod import CPOD
+from .d3 import D3
 from .damp import DAMP
 from .dilof import DILOF
 from .exact_storm import ExactStorm
@@ -51,6 +52,7 @@ __all__ = [
     "ApproxStorm",
     "ChangeFinder",
     "CPOD",
+    "D3",
     "DAMP",
     "DILOF",
     "ExactStorm",

@@ -3,6 +3,7 @@ def test_unsupervised_models():
 
     from pysad.models import (
         CPOD,
+        D3,
         DAMP,
         DILOF,
         HTM,
@@ -55,6 +56,7 @@ def test_unsupervised_models():
         ApproxStorm: {},
         ChangeFinder: [{}, {"change_point": False}],
         CPOD: {},
+        D3: {"window_size": 50},
         DILOF: {"num_neighbors": 5, "window_size": 40},
         ExactStorm: {},
         HalfSpaceTrees: {"feature_mins": [0.0], "feature_maxes": [1.0]},

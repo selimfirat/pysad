@@ -201,6 +201,7 @@ module = [
     "pysad.models.approx_storm",
     "pysad.models.change_finder",
     "pysad.models.cpod",
+    "pysad.models.d3",
     "pysad.models.dilof",
     "pysad.models.half_space_trees",
     "pysad.models.holt_winters",

@@ -19,6 +19,7 @@ def _model_specs():
     from pysad import models
     from pysad.models import (
         CPOD,
+        D3,
         DAMP,
         DILOF,
         HTM,
@@ -81,6 +82,7 @@ def _model_specs():
         ("ChangeFinder", lambda: ChangeFinder(), 1),
         ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
         ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),
+        ("D3", lambda: D3(window_size=20, sample_fraction=0.5, max_radius=0.3), NUM_FEATURES),
         ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
         (

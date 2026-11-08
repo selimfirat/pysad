@@ -3,6 +3,7 @@ import warnings
 from pysad.transform.postprocessing import (
     AveragePostprocessor,
     MaxPostprocessor,
+    NonparametricDynamicThresholdPostprocessor,
     RunningAveragePostprocessor,
     RunningMaxPostprocessor,
     RunningMedianPostprocessor,
@@ -29,6 +30,7 @@ def test_postprocessors_shape():
         AveragePostprocessor: {},
         MaxPostprocessor: {},
         ZScorePostprocessor: {},
+        NonparametricDynamicThresholdPostprocessor: {"window_size": 30},
         RunningAveragePostprocessor: {"window_size": 30},
         RunningMaxPostprocessor: {"window_size": 30},
         RunningMedianPostprocessor: {"window_size": 30},
@@ -145,6 +147,7 @@ def test_postprocessors_partial_matches_batch():
         AveragePostprocessor: {},
         MaxPostprocessor: {},
         ZScorePostprocessor: {},
+        NonparametricDynamicThresholdPostprocessor: {"window_size": WINDOW_SIZE},
         RunningAveragePostprocessor: {"window_size": WINDOW_SIZE},
         RunningMaxPostprocessor: {"window_size": WINDOW_SIZE},
         RunningMedianPostprocessor: {"window_size": WINDOW_SIZE},
@@ -172,3 +175,61 @@ def test_max_postprocessor_memory_does_not_grow_with_the_stream():
 
     np.testing.assert_allclose(out, np.maximum.accumulate(scores))
     assert len(postprocessor.meter.lst) == 0
+
+
+def test_dynamic_threshold_scores_a_spike_with_eq_4():
+    import numpy as np
+
+    scores = np.array([1.0, 2.0] * 20 + [10.0])
+    # span=1 turns off the smoothing, so the window holds the raw scores.
+    out = NonparametricDynamicThresholdPostprocessor(window_size=41, span=1).fit_transform(scores)
+
+    # Every z with a threshold below the spike gives the same objective, and the largest wins.
+    mean, std = scores.mean(), scores.std()
+    z = max(z for z in np.arange(2.5, 10.5, 0.5) if mean + z * std < 10.0)
+    np.testing.assert_array_equal(out[:-1], 0.0)
+    np.testing.assert_allclose(out[-1], (10.0 - (mean + z * std)) / (mean + std))
+
+
+def test_dynamic_threshold_flags_spikes_of_a_noisy_stream():
+    import numpy as np
+
+    scores = np.random.default_rng(0).exponential(size=3000)
+    spikes = [1000, 1800, 2500]
+    scores[spikes] += 30.0
+    out = NonparametricDynamicThresholdPostprocessor(window_size=500, span=3).fit_transform(scores)
+
+    assert (out[spikes] > 0).all()
+    assert (out > 0).mean() < 0.01
+
+
+def test_dynamic_threshold_pruning_removes_every_sequence_when_p_is_one():
+    import numpy as np
+
+    scores = np.random.default_rng(0).exponential(size=1000)
+    scores[[300, 700]] += 30.0
+
+    # A percent decrease cannot exceed 1, so pruning reclassifies every sequence as nominal.
+    np.testing.assert_array_equal(
+        NonparametricDynamicThresholdPostprocessor(window_size=200, p=1.0).fit_transform(scores),
+        0.0,
+    )
+
+
+def test_dynamic_threshold_returns_zero_for_constant_stream():
+    import numpy as np
+
+    for value in [0.0, 0.1, 3.5]:
+        np.testing.assert_array_equal(
+            NonparametricDynamicThresholdPostprocessor(window_size=50).fit_transform(
+                np.full(200, value)
+            ),
+            0.0,
+        )
+
+
+def test_dynamic_threshold_rejects_negative_scores():
+    import pytest
+
+    with pytest.raises(ValueError, match="nonnegative"):
+        NonparametricDynamicThresholdPostprocessor().fit_partial(-1.0)

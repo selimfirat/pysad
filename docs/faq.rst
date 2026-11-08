@@ -79,7 +79,7 @@ To use a scikit-learn transformer, fit it to historical data. Then transform eac
        x = scaler.transform(x.reshape(1, -1))[0]  # one row in, one row out
        score = model.fit_score_partial(x)
 
-River models take each point as a dict. Convert the dict to a NumPy array, with the same key order for every point. For the stages that PySAD has for each point, see :doc:`guides/pipelines`.
+River models take each point as a dict. Convert the dict to a NumPy array, with the same key order for every point. For the stages that PySAD has for each point, see :doc:`guides/pipelines`. To score a univariate stream by the forecast errors of a River forecaster, wrap the forecaster in :class:`~pysad.models.integrations.PredictiveAnomalyDetector`.
 
 .. _faq-input:
 

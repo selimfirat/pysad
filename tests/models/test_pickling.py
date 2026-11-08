@@ -29,6 +29,8 @@ UNIVARIATE_MODELS = {
 }
 
 MODEL_PARAMS = {
+    # The tree splits, merges and discards entries before and after the round trip.
+    "AnyOut": {"max_height": 2, "decay": 0.1, "snapshot_interval": 5},
     # Safe inliers form, are removed from the sample and expire within the first instances.
     "ApproxStorm": {
         "window_size": 30,

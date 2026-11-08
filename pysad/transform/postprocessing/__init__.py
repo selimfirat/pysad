@@ -8,6 +8,7 @@ from .postprocessors import (
     ZScorePostprocessor,
 )
 from .running_postprocessors import (
+    NonparametricDynamicThresholdPostprocessor,
     RunningAveragePostprocessor,
     RunningMaxPostprocessor,
     RunningMedianPostprocessor,
@@ -17,6 +18,7 @@ from .running_postprocessors import (
 __all__ = [
     "AveragePostprocessor",
     "MaxPostprocessor",
+    "NonparametricDynamicThresholdPostprocessor",
     "RunningAveragePostprocessor",
     "RunningMaxPostprocessor",
     "RunningMedianPostprocessor",

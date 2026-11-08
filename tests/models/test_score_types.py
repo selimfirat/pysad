@@ -1,3 +1,5 @@
+import importlib.util
+
 import numpy as np
 import pytest
 
@@ -167,6 +169,20 @@ def _model_specs():
             NUM_FEATURES,
         ),
     ]
+
+    # River needs Python 3.11 or newer, so the test group installs it only there.
+    if importlib.util.find_spec("river") is not None:
+        from river import time_series
+
+        from pysad.models.integrations import PredictiveAnomalyDetector
+
+        specs.append(
+            (
+                "PredictiveAnomalyDetector",
+                lambda: PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=0)),
+                1,
+            )
+        )
 
     return specs
 

@@ -235,6 +235,20 @@ It prints:
 
    AUROC: 0.807
 
+Score forecast errors of a River forecaster
+-------------------------------------------
+
+This script scores a seasonal series with spikes with :class:`~pysad.models.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast. River needs Python 3.11 or newer.
+
+.. literalinclude:: ../examples/example_predictive_anomaly_detector.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 1.000
+
 Find anomalies in a seasonal series
 -----------------------------------
 

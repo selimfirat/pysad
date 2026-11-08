@@ -82,6 +82,8 @@ test = [
   "pyod>=3.6.2",
   # Security floor for pillow, a transitive dependency of pyod via matplotlib.
   "pillow>=12.3.0",
+  # The forecasters that the tests and examples run through PredictiveAnomalyDetector. River needs Python 3.11 or newer.
+  "river==0.26.1; python_version >= '3.11'",
   "hypothesis==6.168.5",
   # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
   "mmh3==5.3.1",

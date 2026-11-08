@@ -11,6 +11,7 @@ import numpy as np
 from .array_streamer import ArrayStreamer
 from .data import Data
 from .pandas_streamer import PandasStreamer
+from .polars_streamer import PolarsStreamer
 from .synthetic import generate_stream
 from .validation import check_feature_bounds, check_univariate
 from .window import Window
@@ -19,6 +20,7 @@ __all__ = [
     "ArrayStreamer",
     "Data",
     "PandasStreamer",
+    "PolarsStreamer",
     "Window",
     "_iterate",
     "check_feature_bounds",

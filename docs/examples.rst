@@ -355,6 +355,25 @@ It prints:
    2025-01-01T11:58:00 score=4.1992
    2025-01-01T11:05:00 score=4.1908
 
+Stream a Polars DataFrame
+-------------------------
+
+This script scores the rows of a Polars DataFrame. It keeps the timestamps in a column outside the features. Then it prints the timestamps with the highest scores.
+
+.. literalinclude:: ../examples/example_polars_streamer.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Highest-scoring anomaly alerts:
+   2025-01-01T11:10:00 score=5.8440
+   2025-01-01T12:00:00 score=5.8106
+   2025-01-01T10:20:00 score=4.8580
+   2025-01-01T11:58:00 score=4.2457
+   2025-01-01T11:05:00 score=4.2420
+
 Use a density detector
 ----------------------
 

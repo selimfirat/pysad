@@ -569,3 +569,46 @@ def test_insects_streams_have_the_label_in_the_last_column(tmp_path, monkeypatch
 
     np.testing.assert_array_equal(X, [[0.5, 0.25], [0.75, 1.0]])
     np.testing.assert_array_equal(y, [0, 1])
+
+
+def test_creditcard_keeps_transaction_order_and_separates_class_in_shared_cache(
+    tmp_path, monkeypatch
+):
+    from pysad.utils import Data
+
+    monkeypatch.setenv("PYSAD_DATA_DIR", str(tmp_path))
+    names = ["Time", *(f"V{i}" for i in range(1, 29)), "Amount"]
+    header = "@relation creditcard\n" + "".join(f"@attribute {n} numeric\n" for n in names)
+    header += "@attribute Class {'0','1'}\n@data\n"
+    rows = [
+        "0," + "1," * 28 + "10.5,'0'",
+        "0," + "2," * 28 + "20.5,'1'",
+        "1," + "3," * 28 + "30.5,'0'",
+    ]
+    content = (header + "\n".join(rows) + "\n").encode()
+    url = "https://openml.org/data/v1/download/1673544/creditcard.arff"
+    _serve(monkeypatch, {url: content})
+
+    assert Data.datasets("creditcard") == ["creditcard/creditcard.arff"]
+    with pytest.raises(FileNotFoundError, match="download=False"):
+        Data().get_data("creditcard/creditcard.arff", download=False)
+    X, y = Data().get_data("creditcard/creditcard.arff")
+
+    assert X.shape == (3, 30)
+    assert X.dtype == np.float64
+    np.testing.assert_array_equal(X[:, 0], [0, 0, 1])
+    np.testing.assert_array_equal(X[:, 1:29], [[1] * 28, [2] * 28, [3] * 28])
+    np.testing.assert_array_equal(X[:, -1], [10.5, 20.5, 30.5])
+    np.testing.assert_array_equal(y, [0, 1, 0])
+    assert (tmp_path / "creditcard/creditcard.arff").read_bytes() == content
+
+    def offline(req, timeout):
+        pytest.fail("A cached dataset must not need the network")
+
+    monkeypatch.setattr("urllib.request.urlopen", offline)
+    cached_X, cached_y = Data().get_data("creditcard/creditcard.arff", download=False)
+    np.testing.assert_array_equal(cached_X, X)
+    np.testing.assert_array_equal(cached_y, y)
+    stream = list(Data().get_iterator("creditcard/creditcard.arff", shuffle=False))
+    np.testing.assert_array_equal([x for x, _ in stream], X)
+    np.testing.assert_array_equal([label for _, label in stream], y)

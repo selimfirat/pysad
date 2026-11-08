@@ -1,5 +1,5 @@
 """
-The :mod:`pysad.core` module covers base classes of the `PySAD`.
+The :mod:`pysad.core` module defines the base classes for metrics, models, postprocessors, statistics, streamers, and transformers.
 """
 
 from .base_metric import BaseMetric

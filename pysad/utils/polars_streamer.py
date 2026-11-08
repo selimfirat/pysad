@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, overload
+
+import numpy as np
+
+from pysad.core.base_streamer import BaseStreamer
+from pysad.utils.array_streamer import ArrayStreamer
+
+if TYPE_CHECKING:
+    import polars as pl
+
+
+class PolarsStreamer(BaseStreamer):
+    """Simulator class to iterate the rows of Polars DataFrames as NumPy arrays.
+
+    Args:
+        shuffle (bool): Whether to shuffle the data initially (Default=False).
+        random_state (int, np.random.RandomState or None): Seed or random number generator for the shuffling. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
+    """
+
+    def __init__(
+        self, shuffle: bool = False, random_state: int | np.random.RandomState | None = None
+    ) -> None:
+        super().__init__(shuffle=shuffle)
+
+        self.array_iterator = ArrayStreamer(shuffle=shuffle, random_state=random_state)
+
+    @overload
+    def iter(self, X: pl.DataFrame, y: None = None) -> Iterator[np.ndarray]: ...
+
+    @overload
+    def iter(
+        self, X: pl.DataFrame, y: pl.DataFrame | pl.Series
+    ) -> Iterator[tuple[np.ndarray, Any]]: ...
+
+    def iter(
+        self, X: pl.DataFrame, y: pl.DataFrame | pl.Series | None = None
+    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
+        """Iterates Polars dataframes of features and possibly labels.
+
+        Args:
+            X (pl.DataFrame): The features of the instances to iterate.
+            y (pl.DataFrame, pl.Series or None): If not None, the labels to iterate in the same order (Default=None).
+        """
+        if y is None:
+            for x in self.array_iterator.iter(X.to_numpy()):
+                yield x
+        else:
+            if len(X) != len(y):
+                raise ValueError("X and y must have the same length.")
+
+            for x, yr in self.array_iterator.iter(X.to_numpy(), y.to_numpy()):
+                yield x, yr

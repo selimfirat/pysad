@@ -11,8 +11,15 @@ NUM_FIT = 60
 NUM_NEXT = 20
 
 CALIBRATOR_PARAMS = {
+    "AnomalyLikelihoodProbabilityCalibrator": {
+        "learning_period": 20,
+        "num_estimation_samples": 20,
+        "window_size": 40,
+        "reestimation_period": 7,
+    },
     "ConformalProbabilityCalibrator": {"window_size": 20},
     "GaussianTailProbabilityCalibrator": {"window_size": 20, "short_window_size": 5},
+    "SPOTProbabilityCalibrator": {"num_init": 30, "level": 0.8, "q": 1e-3, "depth": 5},
 }
 
 

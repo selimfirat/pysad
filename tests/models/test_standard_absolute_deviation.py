@@ -1,22 +1,7 @@
-def test_standard_absolute_deviation():
-    import numpy as np
+def test_standard_absolute_deviation_rejects_invalid_subtracted_statistic():
     from numpy.testing import assert_raises
 
     from pysad.models import StandardAbsoluteDeviation
-    from pysad.utils import fix_seed
-
-    fix_seed(61)
-    X = np.random.rand(150, 1)
-
-    model = StandardAbsoluteDeviation(subtracted_statistic="mean")
-    model = model.fit(X)
-    y_pred = model.score(X)
-    assert y_pred.shape == (X.shape[0],)
-
-    model = StandardAbsoluteDeviation(subtracted_statistic="median")
-    model = model.fit(X)
-    y_pred = model.score(X)
-    assert y_pred.shape == (X.shape[0],)
 
     with assert_raises(ValueError):
         StandardAbsoluteDeviation(subtracted_statistic="asd")

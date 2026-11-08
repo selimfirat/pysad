@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import lru_cache
 
 import numpy as np
@@ -10,7 +12,7 @@ from pysad.utils.validation import check_univariate
 
 
 @lru_cache(maxsize=1024)
-def _critical_value(alpha, num_tails, n, i):
+def _critical_value(alpha: float, num_tails: float, n: int, i: int) -> float:
     # The critical value of the i-th ESD test on n values. It depends only on these numbers, so it
     # is computed once instead of once per scored instance.
     p = 1.0 - alpha / (num_tails * (n - i + 1))
@@ -38,8 +40,14 @@ class SeasonalESD(BaseModel):
     """
 
     def __init__(
-        self, period, window_size, max_anomalies=0.1, alpha=0.05, direction="pos", robust=True
-    ):
+        self,
+        period: int,
+        window_size: int,
+        max_anomalies: float = 0.1,
+        alpha: float = 0.05,
+        direction: str = "pos",
+        robust: bool = True,
+    ) -> None:
         if window_size <= 2 * period:
             raise ValueError("window_size must be greater than 2 * period.")
 
@@ -62,29 +70,29 @@ class SeasonalESD(BaseModel):
             period=period, window_size=window_size, robust=robust
         )
 
-    def _as_value(self, X):
+    def _as_value(self, X: np.ndarray) -> float:
         return check_univariate(X, "SeasonalESD")
 
-    def _center_scale(self, values):
+    def _center_scale(self, values: np.ndarray) -> tuple[float, float]:
         return np.mean(values), np.std(values, ddof=1)
 
-    def _candidate_window(self, X):
+    def _candidate_window(self, X: np.ndarray) -> np.ndarray:
         value = self._as_value(X)
         values = self.window.get() + [value]
         values = values[-self.window_size :]
 
         return np.asarray(values, dtype=np.float64)
 
-    def _current_window(self):
+    def _current_window(self) -> np.ndarray:
         return np.asarray(self.window.get(), dtype=np.float64)
 
-    def _critical_value(self, n, i):
+    def _critical_value(self, n: int, i: int) -> float:
         return _critical_value(self.alpha, 2.0 if self.direction == "both" else 1.0, n, i)
 
-    def _esd(self, values):
+    def _esd(self, values: np.ndarray) -> list[tuple[int, float, float]]:
         remaining_values = np.asarray(values, dtype=np.float64)
         remaining_indices = np.arange(remaining_values.shape[0])
-        candidates = []
+        candidates: list[tuple[int, float, float]] = []
 
         for i in range(1, max(1, int(self.max_anomalies * values.shape[0])) + 1):
             center, scale = self._center_scale(remaining_values)
@@ -115,7 +123,7 @@ class SeasonalESD(BaseModel):
 
         return candidates[:selected_count]
 
-    def fit_partial(self, X, y=None):
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> SeasonalESD:
         """Adds the next instance to the model window.
 
         Args:
@@ -128,7 +136,7 @@ class SeasonalESD(BaseModel):
         self.window.update(self._as_value(X))
         return self
 
-    def _score_window(self, values):
+    def _score_window(self, values: np.ndarray) -> float:
         if values.shape[0] < self.window_size:
             return 0.0
 
@@ -142,7 +150,7 @@ class SeasonalESD(BaseModel):
 
         return 0.0
 
-    def score_partial(self, X):
+    def score_partial(self, X: np.ndarray) -> float:
         """Scores the next instance in the window that ends with it, without adding it to the window.
 
         Args:
@@ -153,7 +161,7 @@ class SeasonalESD(BaseModel):
         """
         return self._score_window(self._candidate_window(X))
 
-    def fit_score_partial(self, X, y=None):
+    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Adds the next instance to the window and scores it.
 
         Args:
@@ -186,7 +194,7 @@ class SeasonalHybridESD(SeasonalESD):
         ValueError: If ``period`` is less than 2, ``window_size`` is at most ``2 * period``, ``max_anomalies`` is not greater than 0 and at most 0.49, ``alpha`` is not strictly between 0 and 1, or ``direction`` is not ``"pos"``, ``"neg"`` or ``"both"``.
     """
 
-    def _center_scale(self, values):
+    def _center_scale(self, values: np.ndarray) -> tuple[float, float]:
         center = np.median(values)
         scale = 1.4826 * np.median(np.abs(values - center))
         return center, scale

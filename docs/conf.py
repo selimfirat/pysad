@@ -58,7 +58,7 @@ linkcheck_ignore = [r"https?://odds\.cs\.stonybrook\.edu/?"]
 llms_txt_summary = (
     "PySAD is a Python library that finds anomalies (unusual data points) in data streams. "
     "It scores each point when the point arrives. "
-    "It has 16 streaming detectors, calibrated alerts and streaming evaluation."
+    "It has streaming detectors, calibrated alerts and streaming evaluation."
 )
 llms_txt_uri_template = "{base_url}{docname}.html"
 

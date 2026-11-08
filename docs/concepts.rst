@@ -99,13 +99,19 @@ The scale of the raw scores is different for each detector. Some detectors give 
 Calibration
 -----------
 
-A calibrator converts a raw score into a value between 0 and 1. PySAD has two calibrators:
+A calibrator converts a raw score into a value between 0 and 1. PySAD has four calibrators:
+
+:class:`~pysad.transform.probability_calibration.AnomalyLikelihoodProbabilityCalibrator`
+   Gives the anomaly likelihood of HTM (Hierarchical Temporal Memory), the detector of Numenta. It fits a Gaussian to the averages of each 10 consecutive recent scores. It returns one minus the probability that such an average is further from the mean than the average of the last 10 scores, on the same side of the mean. The value is 0.5 at the mean and close to 1 far from it. It expects scores between 0 and 1.
 
 :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`
    Gives the fraction of recent scores that are lower than the new score. A value of 0.99 means that the new score is higher than 99% of the scores in the window. In statistics, this value is one minus the conformal p-value. It makes no assumption about the distribution of the scores.
 
 :class:`~pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator`
    Fits a Gaussian (bell-shaped) distribution to the mean and variance of recent scores. It gives the probability that a value from this distribution is lower than the new score. It assumes that the scores are approximately Gaussian.
+
+:class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator`
+   Fits a Generalized Pareto distribution to the highest scores with extreme value theory. It gives one minus the probability that a score is higher than the new score. It makes no assumption about the distribution of the scores, and it estimates the probability of scores that are higher than all scores seen so far.
 
 With the conformal calibrator, a threshold such as 0.99 has the same meaning for every detector. If most recent scores come from normal points, about 1% of normal points raise an alert. A false alert is an alert for a normal point. To get fewer false alerts, increase the threshold.
 
@@ -121,7 +127,7 @@ Prequential evaluation (predict, then train) is the standard way to measure a de
        model.fit_partial(x)
        metric.update(label, score)
 
-Most examples in this documentation call ``fit_score_partial`` instead. It scores each point before the detector learns from it, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores.
+Most examples in this documentation call ``fit_score_partial`` instead. It scores each point before the detector learns from it, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores. :func:`~pysad.evaluation.evaluate_stream` runs this loop for a labeled stream and returns the value of each metric.
 
 Detectors need some data before their scores are stable. This first part of the stream is the warm-up period. A metric over the full stream includes the warm-up period. To see how the results change over time, compute the metric separately on consecutive parts of the stream, as :doc:`guides/evaluate` shows.
 
@@ -150,14 +156,16 @@ Normal behavior changes over time. This change is drift. A detector follows drif
      - Detectors
      - Effect
    * - A window of recent data
-     - :class:`~pysad.models.xStream`, :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.ExactStorm`, :class:`~pysad.models.IForestASD`, :class:`~pysad.models.SeasonalESD`, :class:`~pysad.models.SeasonalHybridESD`, :class:`~pysad.models.KNNCAD`, :class:`~pysad.models.MedianAbsoluteDeviation`
+     - :class:`~pysad.models.xStream`, :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.ExactStorm`, :class:`~pysad.models.ApproxStorm`, :class:`~pysad.models.MCOD`, :class:`~pysad.models.NETS`, :class:`~pysad.models.CPOD`, :class:`~pysad.models.D3`, :class:`~pysad.models.ThreshLEAP`, :class:`~pysad.models.IncrementalLOF`, :class:`~pysad.models.KELOS`, :class:`~pysad.models.IForestASD`, :class:`~pysad.models.SeasonalESD`, :class:`~pysad.models.SeasonalHybridESD`, :class:`~pysad.models.KNNCAD`, :class:`~pysad.models.MatrixProfile`, :class:`~pysad.models.DAMP`, :class:`~pysad.models.MedianAbsoluteDeviation`, :class:`~pysad.models.SpectralResidual`
      - Data older than the window has no effect. A smaller window follows drift faster.
    * - Time decay
-     - :class:`~pysad.models.RSHash`, :class:`~pysad.models.RobustRandomCutForest`, :class:`~pysad.models.Inqmad`
-     - Old points count less and less. A larger ``decay`` (``time_decay`` for :class:`~pysad.models.RobustRandomCutForest`, ``alpha`` for :class:`~pysad.models.Inqmad`) follows drift faster. :class:`~pysad.models.Inqmad` learns only from points that it classifies as normal. With the default ``time_decay=0``, :class:`~pysad.models.RobustRandomCutForest` keeps a uniform sample of the whole stream and does not forget.
+     - :class:`~pysad.models.RSHash`, :class:`~pysad.models.RobustRandomCutForest`, :class:`~pysad.models.Inqmad`, :class:`~pysad.models.OnlineOneClassSVM`, :class:`~pysad.models.ChangeFinder`, :class:`~pysad.models.AnyOut`, :class:`~pysad.models.HoltWinters`
+     - Old points count less and less. A larger ``decay`` (``time_decay`` for :class:`~pysad.models.RobustRandomCutForest`, ``alpha`` for :class:`~pysad.models.Inqmad`, ``learning_rate`` for :class:`~pysad.models.OnlineOneClassSVM`, ``discount`` for :class:`~pysad.models.ChangeFinder`, ``alpha``, ``beta`` and ``gamma`` for :class:`~pysad.models.HoltWinters`) follows drift faster. :class:`~pysad.models.Inqmad` learns only from points that it classifies as normal. With the default ``time_decay=0``, :class:`~pysad.models.RobustRandomCutForest` keeps a uniform sample of the whole stream and does not forget.
    * - No forgetting
-     - :class:`~pysad.models.LODA`, :class:`~pysad.models.StandardAbsoluteDeviation`, :class:`~pysad.models.RelativeEntropy`
+     - :class:`~pysad.models.LODA`, :class:`~pysad.models.ADeMS`, :class:`~pysad.models.StandardAbsoluteDeviation`, :class:`~pysad.models.RelativeEntropy`, :class:`~pysad.models.TEDA`
      - Every point since the start counts equally, so the detector reacts more slowly to drift as the stream grows.
+
+:class:`~pysad.models.DILOF` keeps the newest half of its window. Each time the window is full, it replaces the oldest half with a summary half its size, so old points count less and less.
 
 :class:`~pysad.models.KitNet` learns only during its grace periods, the first points of the stream. :class:`~pysad.models.LocalOutlierProbability` learns only from its initial points. After that, these two detectors do not follow drift.
 

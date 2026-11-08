@@ -1,8 +1,12 @@
+from __future__ import annotations
+
+from typing import Any
+
 from pysad.core.base_model import BaseModel
 
 
 class PYODModel(BaseModel):
-    def __init__(self, model_cls, **kwargs):
+    def __init__(self, model_cls: type[Any], **kwargs: Any) -> None:
         """Abstract base class for PYOD models.
 
         Args:
@@ -11,8 +15,8 @@ class PYODModel(BaseModel):
         """
         self.model_cls = model_cls
         self.kwargs = kwargs
-        self.model = None
+        self.model: Any = None
 
-    def reset_model(self):
+    def reset_model(self) -> None:
         """Removes the old model from the memory and instantiates a new one."""
         self.model = self.model_cls(**self.kwargs)

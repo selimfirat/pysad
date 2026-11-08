@@ -35,6 +35,15 @@ Calibrate the scores and raise alerts
 
 The condition ``t >= 200`` skips a warm-up period of 200 points. During the warm-up, the model and the calibrator have too little data, and their output is not stable.
 
+To get the alerts as 0/1 labels, for example for :class:`~pysad.evaluation.PrecisionMetric`, use :class:`~pysad.transform.postprocessing.ThresholdFilter`. It gives 1 for a value at or above its threshold, and 0 otherwise:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import ThresholdFilter
+
+   threshold_filter = ThresholdFilter(threshold=0.99)
+   label = threshold_filter.transform_partial(calibrated)
+
 Choose the threshold
 --------------------
 
@@ -68,6 +77,78 @@ Calibrate with a Gaussian fit
    calibrator = GaussianTailProbabilityCalibrator(window_size=1000)
 
 This calibrator assumes that the scores are approximately Gaussian (bell-shaped). Many detectors give skewed scores, with a long tail of high values. For skewed scores, this calibrator raises more alerts than the threshold suggests. If you are not sure that your scores are Gaussian, use the conformal calibrator.
+
+Calibrate with extreme value theory
+-----------------------------------
+
+:class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator` fits a Generalized Pareto distribution to the scores above a high quantile of the first ``num_init`` scores. You set the risk ``q``, which is the probability that a normal score raises an alert:
+
+.. code-block:: python
+
+   from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+   calibrator = SPOTProbabilityCalibrator(q=1e-3, num_init=500)
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if calibrator.fit_transform_partial(model.fit_score_partial(x)) > 1 - 1e-3:
+           alerts.append(t)
+
+A score gets a calibrated value above ``1 - q`` when the score is above ``calibrator.threshold_``. The calibrator does not learn from these scores. Unlike the conformal calibrator, this calibrator does not need a large window for a small ``q``, because the fitted distribution extends beyond the highest score seen so far. It returns 0 for the first ``num_init`` scores.
+
+If the scores drift, set ``depth``, for example ``depth=10``. The calibrator then fits the distribution to the difference between each score and the mean of the last ``depth`` scores.
+
+Calibrate with the anomaly likelihood of HTM
+--------------------------------------------
+
+:class:`~pysad.transform.probability_calibration.AnomalyLikelihoodProbabilityCalibrator` gives the anomaly likelihood that the HTM detector of Numenta uses in NAB. It averages the last 10 scores, fits a Gaussian to these averages, and gives a value near 1 when the newest average is far from their mean. A single high score changes the average only a little, so the calibrator reacts to a sustained increase of the scores more than to one noisy point. Its bounds on the fitted Gaussian expect scores between 0 and 1. The paper alerts at a likelihood of at least ``1 - 1e-5``:
+
+.. code-block:: python
+
+   from pysad.transform.probability_calibration import AnomalyLikelihoodProbabilityCalibrator
+
+   calibrator = AnomalyLikelihoodProbabilityCalibrator()
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if calibrator.fit_transform_partial(model.fit_score_partial(x)) >= 1 - 1e-5:
+           alerts.append(t)
+
+The calibrator returns 0.5 for the first ``learning_period + num_estimation_samples`` scores, 388 by default. During a run of anomalous scores, only the first score reaches ``1 - 1e-5``. The next scores of the run get ``0.999``.
+
+Threshold the scores of a window without a risk level
+-----------------------------------------------------
+
+:class:`~pysad.transform.postprocessing.NonparametricDynamicThresholdPostprocessor` is the threshold of Telemanom. It smooths the scores and picks the threshold that removes the most of the mean and the standard deviation of the recent scores with the fewest anomalies. Then it drops the anomalous sequences whose maximum is close to the next lower maximum. The output is 0 for a normal point, so an alert is a score above 0. The scores must be nonnegative, for example prediction errors:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import NonparametricDynamicThresholdPostprocessor
+
+   threshold = NonparametricDynamicThresholdPostprocessor()
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if threshold.fit_transform_partial(model.fit_score_partial(x)) > 0:
+           alerts.append(t)
+
+Label the scores with a running quantile
+----------------------------------------
+
+:class:`~pysad.transform.postprocessing.QuantileFilter` gives a score the label 1 if the score is at least the ``q`` quantile of the previous scores, and 0 otherwise. It keeps an estimate of the quantile in constant memory, so it uses every score since the start of the stream. This is the ``QuantileFilter`` of River:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import QuantileFilter
+
+   quantile_filter = QuantileFilter(q=0.99)
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if quantile_filter.fit_transform_partial(model.fit_score_partial(x)):
+           alerts.append(t)
+
+About 1 in 100 scores gets the label 1, also when the stream has no anomalies. Unlike the conformal calibrator, the filter does not forget old scores. Thus it follows a change in the scores slowly.
 
 Smooth noisy scores
 -------------------

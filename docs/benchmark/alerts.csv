@@ -1,9 +1,9 @@
 Calibrator,Threshold,Expected,False alerts,Range,Precision,Recall,F1
-:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.95,0.050,0.028,0.017 to 0.047,0.414,0.269,0.249
-:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.99,0.010,0.004,0.002 to 0.008,0.542,0.085,0.122
-:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.995,0.005,0.001,0.000 to 0.002,0.545,0.029,0.050
-:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,1 - anomaly rate,,0.061,0.040 to 0.098,0.427,0.336,0.351
-:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,0.95,0.050,0.000,0.000 to 0.001,0.234,0.001,0.001
-:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,0.99,0.010,0.000,0.000 to 0.000,,0.000,0.000
-:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,0.995,0.005,0.000,0.000 to 0.000,,0.000,0.000
-:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,1 - anomaly rate,,0.014,0.000 to 0.061,0.403,0.020,0.025
+:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.95,0.050,0.028,0.017 to 0.045,0.407,0.255,0.239
+:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.99,0.010,0.004,0.002 to 0.006,0.517,0.076,0.110
+:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,0.995,0.005,0.001,0.000 to 0.002,0.527,0.027,0.047
+:class:`Conformal <pysad.transform.probability_calibration.ConformalProbabilityCalibrator>`,1 - anomaly rate,,0.065,0.040 to 0.102,0.406,0.325,0.337
+:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,0.95,0.050,0.000,0.000 to 0.005,0.188,0.002,0.003
+:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,0.99,0.010,0.000,0.000 to 0.003,0.171,0.000,0.001
+:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,0.995,0.005,0.000,0.000 to 0.003,0.120,0.000,0.001
+:class:`Gaussian tail <pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator>`,1 - anomaly rate,,0.015,0.000 to 0.055,0.377,0.020,0.026

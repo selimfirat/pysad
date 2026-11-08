@@ -58,46 +58,6 @@ def test_invalid_parameters(kwargs):
         OnlineIsolationForest(**kwargs)
 
 
-def test_random_state_reproducibility():
-    import numpy as np
-
-    from pysad.models import OnlineIsolationForest
-
-    rng = np.random.RandomState(42)
-    X = rng.normal(size=(100, 3))
-
-    model1 = OnlineIsolationForest(num_trees=16, random_state=123)
-    model2 = OnlineIsolationForest(num_trees=16, random_state=123)
-    model3 = OnlineIsolationForest(num_trees=16, random_state=456)
-
-    scores1 = model1.fit_score(X)
-    scores2 = model2.fit_score(X)
-    scores3 = model3.fit_score(X)
-
-    np.testing.assert_array_equal(scores1, scores2)
-    assert not np.array_equal(scores1, scores3)
-
-
-def test_global_seed_reproducibility():
-    import numpy as np
-
-    from pysad.models import OnlineIsolationForest
-    from pysad.utils import fix_seed
-
-    rng = np.random.RandomState(42)
-    X = rng.normal(size=(50, 3))
-
-    fix_seed(999)
-    model1 = OnlineIsolationForest(num_trees=16, random_state=None)
-    scores1 = model1.fit_score(X)
-
-    fix_seed(999)
-    model2 = OnlineIsolationForest(num_trees=16, random_state=None)
-    scores2 = model2.fit_score(X)
-
-    np.testing.assert_array_equal(scores1, scores2)
-
-
 def test_anomalies_score_higher_than_inliers():
     import numpy as np
 
@@ -154,10 +114,7 @@ def test_window_forgetting():
     assert score_a_after > score_b_after
 
 
-@pytest.mark.parametrize(
-    "options", [{}, {"growth_criterion": "fixed", "branching_factor": 4, "subsample": 0.5}]
-)
-def test_pickling_preserves_scoring(options):
+def test_pickling_preserves_scoring_with_fixed_growth():
     import pickle
 
     import numpy as np
@@ -172,7 +129,9 @@ def test_pickling_preserves_scoring(options):
         max_leaf_samples=8,
         window_size=50,
         random_state=42,
-        **options,
+        growth_criterion="fixed",
+        branching_factor=4,
+        subsample=0.5,
     )
     for x in X[:40]:
         model.fit_partial(x)

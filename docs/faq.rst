@@ -79,7 +79,7 @@ To use a scikit-learn transformer, fit it to historical data. Then transform eac
        x = scaler.transform(x.reshape(1, -1))[0]  # one row in, one row out
        score = model.fit_score_partial(x)
 
-River models take each point as a dict. Convert the dict to a NumPy array, with the same key order for every point. For the stages that PySAD has for each point, see :doc:`guides/pipelines`.
+River models take each point as a dict. Convert the dict to a NumPy array, with the same key order for every point. For the stages that PySAD has for each point, see :doc:`guides/pipelines`. To score a univariate stream by the forecast errors of a River forecaster, wrap the forecaster in :class:`~pysad.models.integrations.PredictiveAnomalyDetector`.
 
 .. _faq-input:
 
@@ -184,6 +184,9 @@ Some detectors give 0 by design, during a warm-up or for every point that is not
 
 - :class:`~pysad.models.KitNet` gives 0 during its first grace period, the first 100 points with the defaults. For a short stream, lower ``grace_feature_mapping`` and ``grace_anomaly_detector``.
 - :class:`~pysad.models.KNNCAD` gives 0 until it gets ``probationary_period`` points.
+- :class:`~pysad.models.MatrixProfile` gives 0 for the first ``window_length + ceil(window_length / 2)`` points, because no earlier subsequence lies outside the trivial-match zone of the newest one.
+- :class:`~pysad.models.DAMP` gives 0 for the first ``probationary_period`` points, ``4 * window_length`` with the defaults. These points only serve as neighbors of the later subsequences.
+- :class:`~pysad.models.SpectralResidual` gives 0 for the first ``window_size - 1`` points, until its window is full.
 - :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` give 0 until the window is full. After that, they give 0 for every point that their test does not flag.
 - :class:`~pysad.models.RelativeEntropy` gives only 0 or 1. It gives 1 only when the values of the window have a new distribution.
 - :class:`~pysad.models.LocalOutlierProbability` gives a probability, which is often exactly 0 for normal points.
@@ -268,7 +271,7 @@ Extend :class:`~pysad.core.BaseModel` and implement ``fit_partial`` and ``score_
 Which detectors can PySAD include?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-PySAD includes a detector only if its paper has 50 or more citations. If your detector does not meet this rule yet, share it as a :class:`~pysad.core.BaseModel` subclass. We can then add a link to it in the documentation. See :doc:`inclusion_criteria`.
+PySAD includes a detector only if its paper has 20 or more citations, appeared at an A* venue, or has an official GitHub repository with 50 or more stars, or if the streaming detector has a top-three score on a public streaming benchmark such as NAB. If your detector does not meet this rule yet, share it as a :class:`~pysad.core.BaseModel` subclass. We can then add a link to it in the documentation. See :doc:`inclusion_criteria`.
 
 How do I cite PySAD?
 ~~~~~~~~~~~~~~~~~~~~

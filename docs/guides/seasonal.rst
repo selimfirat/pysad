@@ -93,6 +93,8 @@ The decomposer subtracts a running estimate of the trend and of the cycle. It is
 
 :class:`~pysad.transform.preprocessing.ModifiedSTLResidualTransformer` gives the residual that :class:`~pysad.models.SeasonalESD` tests, and it plugs into the same loop: ``ModifiedSTLResidualTransformer(period=24, window_size=24 * 14)`` in place of the decomposer. It fits STL again on the last ``window_size`` values for each new value, so it is slower.
 
+:class:`~pysad.transform.preprocessing.OneShotSTL` updates a full trend and seasonal decomposition with each new value, at the same cost for every value :cite:`he2023oneshotstl`. Use ``OneShotSTL(period=24)`` in place of the decomposer. It gives 0 for the first four periods, which it uses to estimate the cycle. Unlike the running estimate, it follows abrupt changes of the trend. With ``shift_window``, it also follows a cycle that moves by a few values.
+
 Next steps
 ----------
 

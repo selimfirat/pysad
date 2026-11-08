@@ -63,8 +63,8 @@ jobs:
 
             const message = isPr
               ? 'Thanks for your first pull request to PySAD! CI will run the tests shortly.\n' +
-                'Please make sure the change comes with a test and, for new features or models,\n' +
-                'a note in `CHANGES.txt`. See `.github/CONTRIBUTING.md` for the full checklist.'
+                'Please make sure the change comes with a test. See `.github/CONTRIBUTING.md`\n' +
+                'for the full checklist.'
               : 'Thanks for opening your first issue in PySAD! A maintainer will take a look soon.\n' +
                 'In the meantime, please make sure the issue includes the PySAD version, a short\n' +
                 'code snippet that reproduces the problem, and the full traceback if there is one.';

@@ -3,10 +3,13 @@ import warnings
 from pysad.transform.postprocessing import (
     AveragePostprocessor,
     MaxPostprocessor,
+    NonparametricDynamicThresholdPostprocessor,
+    QuantileFilter,
     RunningAveragePostprocessor,
     RunningMaxPostprocessor,
     RunningMedianPostprocessor,
     RunningZScorePostprocessor,
+    ThresholdFilter,
     ZScorePostprocessor,
 )
 
@@ -29,10 +32,13 @@ def test_postprocessors_shape():
         AveragePostprocessor: {},
         MaxPostprocessor: {},
         ZScorePostprocessor: {},
+        NonparametricDynamicThresholdPostprocessor: {"window_size": 30},
+        QuantileFilter: {},
         RunningAveragePostprocessor: {"window_size": 30},
         RunningMaxPostprocessor: {"window_size": 30},
         RunningMedianPostprocessor: {"window_size": 30},
         RunningZScorePostprocessor: {"window_size": 30},
+        ThresholdFilter: {"threshold": 5},
     }
 
     for postprocessor_cls, params_dict in postprocessors.items():
@@ -145,10 +151,13 @@ def test_postprocessors_partial_matches_batch():
         AveragePostprocessor: {},
         MaxPostprocessor: {},
         ZScorePostprocessor: {},
+        NonparametricDynamicThresholdPostprocessor: {"window_size": WINDOW_SIZE},
+        QuantileFilter: {"q": 0.5},
         RunningAveragePostprocessor: {"window_size": WINDOW_SIZE},
         RunningMaxPostprocessor: {"window_size": WINDOW_SIZE},
         RunningMedianPostprocessor: {"window_size": WINDOW_SIZE},
         RunningZScorePostprocessor: {"window_size": WINDOW_SIZE},
+        ThresholdFilter: {"threshold": 4},
     }
 
     for postprocessor_cls, params_dict in postprocessors.items():
@@ -172,3 +181,101 @@ def test_max_postprocessor_memory_does_not_grow_with_the_stream():
 
     np.testing.assert_allclose(out, np.maximum.accumulate(scores))
     assert len(postprocessor.meter.lst) == 0
+
+
+def test_dynamic_threshold_scores_a_spike_with_eq_4():
+    import numpy as np
+
+    scores = np.array([1.0, 2.0] * 20 + [10.0])
+    # span=1 turns off the smoothing, so the window holds the raw scores.
+    out = NonparametricDynamicThresholdPostprocessor(window_size=41, span=1).fit_transform(scores)
+
+    # Every z with a threshold below the spike gives the same objective, and the largest wins.
+    mean, std = scores.mean(), scores.std()
+    z = max(z for z in np.arange(2.5, 10.5, 0.5) if mean + z * std < 10.0)
+    np.testing.assert_array_equal(out[:-1], 0.0)
+    np.testing.assert_allclose(out[-1], (10.0 - (mean + z * std)) / (mean + std))
+
+
+def test_dynamic_threshold_flags_spikes_of_a_noisy_stream():
+    import numpy as np
+
+    scores = np.random.default_rng(0).exponential(size=3000)
+    spikes = [1000, 1800, 2500]
+    scores[spikes] += 30.0
+    out = NonparametricDynamicThresholdPostprocessor(window_size=500, span=3).fit_transform(scores)
+
+    assert (out[spikes] > 0).all()
+    assert (out > 0).mean() < 0.01
+
+
+def test_dynamic_threshold_pruning_removes_every_sequence_when_p_is_one():
+    import numpy as np
+
+    scores = np.random.default_rng(0).exponential(size=1000)
+    scores[[300, 700]] += 30.0
+
+    # A percent decrease cannot exceed 1, so pruning reclassifies every sequence as nominal.
+    np.testing.assert_array_equal(
+        NonparametricDynamicThresholdPostprocessor(window_size=200, p=1.0).fit_transform(scores),
+        0.0,
+    )
+
+
+def test_dynamic_threshold_returns_zero_for_constant_stream():
+    import numpy as np
+
+    for value in [0.0, 0.1, 3.5]:
+        np.testing.assert_array_equal(
+            NonparametricDynamicThresholdPostprocessor(window_size=50).fit_transform(
+                np.full(200, value)
+            ),
+            0.0,
+        )
+
+
+def test_dynamic_threshold_rejects_negative_scores():
+    import pytest
+
+    with pytest.raises(ValueError, match="nonnegative"):
+        NonparametricDynamicThresholdPostprocessor().fit_partial(-1.0)
+
+
+def test_quantile_filter_labels_scores_with_the_quantile_of_the_previous_scores():
+    import numpy as np
+
+    # With at most four previous scores, the quantile is exact.
+    out = QuantileFilter(q=0.5).fit_transform(np.array([3.0, 1.0, 4.0, 2.0, 2.5]))
+
+    # Previous medians: none, 3, 2, 3, 2.5.
+    np.testing.assert_array_equal(out, [0.0, 0.0, 1.0, 0.0, 1.0])
+
+
+def test_quantile_filter_flags_about_one_minus_q_of_the_scores():
+    import numpy as np
+
+    scores = np.random.default_rng(0).gamma(2.0, size=20_000)
+
+    for q in [0.5, 0.9, 0.99]:
+        out = QuantileFilter(q=q).fit_transform(scores)
+
+        assert set(np.unique(out)) == {0.0, 1.0}
+        assert abs(out.mean() - (1 - q)) < 0.01, q
+
+
+def test_quantile_filter_transform_partial_does_not_learn():
+    import numpy as np
+
+    postprocessor = QuantileFilter(q=0.5).fit(np.array([1.0, 2.0, 3.0]))
+
+    assert postprocessor.transform_partial(2.0) == 1.0
+    assert postprocessor.transform_partial(1.5) == 0.0
+    assert postprocessor.transform_partial(2.0) == 1.0
+
+
+def test_threshold_filter_labels_scores_at_or_above_the_threshold():
+    import numpy as np
+
+    out = ThresholdFilter(threshold=4).fit_transform(np.array(SCORES, dtype=float))
+
+    np.testing.assert_array_equal(out, [0, 0, 1, 0, 1, 1, 0, 1, 1, 0])

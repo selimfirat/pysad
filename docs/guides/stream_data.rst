@@ -41,6 +41,25 @@ Stream a pandas DataFrame
    for timestamp, x in zip(df.index, PandasStreamer().iter(df)):
        score = model.fit_score_partial(x)
 
+Stream a Polars DataFrame
+-------------------------
+
+:class:`~pysad.utils.PolarsStreamer` gives the rows of a Polars DataFrame as NumPy arrays. A Polars DataFrame has no index, so drop the timestamp column from the features and read it in the same loop:
+
+.. code-block:: python
+
+   import polars as pl
+
+   from pysad.models import LODA
+   from pysad.utils import PolarsStreamer
+
+   df = pl.read_csv("metrics.csv", try_parse_dates=True)
+   features = df.drop("timestamp")
+
+   model = LODA()
+   for timestamp, x in zip(df["timestamp"], PolarsStreamer().iter(features)):
+       score = model.fit_score_partial(x)
+
 Read from a message queue or a socket
 -------------------------------------
 

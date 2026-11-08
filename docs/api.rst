@@ -14,7 +14,7 @@ Each page lists the public classes and functions of one module. Each name has a 
      - Streaming anomaly detectors
      - ``pysad.models``
    * - :doc:`api/integrations`
-     - Wrappers for PyOD detectors
+     - Wrappers for PyOD detectors and River forecasters
      - ``pysad.models.integrations``
    * - :doc:`api/preprocessing`
      - Scalers and seasonal decomposition

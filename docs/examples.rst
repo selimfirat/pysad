@@ -299,6 +299,20 @@ It prints:
 
    AUROC: 0.807
 
+Fit a PyOD model once
+---------------------
+
+This script fits a batch KNN on the first 100 points, then only scores the rest of the stream. The model does not learn from the stream. See :doc:`guides/pyod`.
+
+.. literalinclude:: ../examples/example_one_fit_model.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.857
+
 Score forecast errors of a River forecaster
 -------------------------------------------
 

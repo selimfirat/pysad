@@ -20,6 +20,8 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
      - Measure the ranking when anomalies are rare. AUPR is the area under the precision-recall curve. A random detector gets the fraction of anomalies in the stream, so compare AUPR only on the same data.
    * - :class:`~pysad.evaluation.PrecisionMetric`
      - Measure the fraction of alerts that are true anomalies, for a given threshold.
+   * - :class:`~pysad.evaluation.F1Metric`
+     - Measure the harmonic mean of precision and recall for a given threshold. Returns 0.0 for an empty stream or when there are no true or predicted anomalies.
    * - :class:`~pysad.evaluation.RecallMetric`
      - Measure the fraction of anomalies that raise an alert, for a given threshold.
    * - :class:`~pysad.evaluation.BalancedAccuracyMetric`
@@ -32,7 +34,7 @@ If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.ev
 
 .. code-block:: python
 
-   from pysad.evaluation import AUPRMetric, AUROCMetric, evaluate_stream
+   from pysad.evaluation import AUPRMetric, AUROCMetric, F1Metric, evaluate_stream
    from pysad.models import LODA
    from pysad.utils import Data
 
@@ -42,8 +44,14 @@ If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.ev
        model=LODA(random_state=0),
        X=X,
        y=y,
-       metrics={"AUROC": AUROCMetric(), "AUPR": AUPRMetric()},
+       metrics={
+           "AUROC": AUROCMetric(),
+           "AUPR": AUPRMetric(),
+           "F1": F1Metric(threshold=3.0),
+       },
    )
+
+The F1 threshold of 3.0 above is illustrative; choose a raw-score threshold on prior validation data for your detector. Scores equal to the threshold count as anomalies. With ``threshold=None``, pass binary predictions instead of raw scores.
 
 If the metrics get transformed scores, write the loop yourself and update every metric with the same score. Precision and recall need a threshold. In this example, the metrics get the calibrated score, a value between 0 and 1 (see :doc:`alerts`). As a result, the threshold 0.95 has the same meaning for every detector:
 
@@ -82,7 +90,7 @@ If the metrics get transformed scores, write the loop yourself and update every 
 
 The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores. During this final run of anomalies, most of the recent scores are from anomalies too.
 
-The scikit-learn wrappers keep every label and score. Their ``get`` methods compute the metric over all stored values. Each call takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals.
+``F1Metric`` keeps only TP, FP and FN counts, so updating and reading it take constant time and memory. The scikit-learn wrappers keep every label and score that they get, and ``get`` computes the metric over all of them. As a result, each of their ``get`` calls takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals, not for every point.
 
 ``BalancedAccuracyMetric`` stores only four confusion counts. Its memory use and update and query costs stay constant as the stream grows. For an empty stream, it returns 0.0. For a stream with one true class, it returns that class's recall. Nonempty binary results match scikit-learn. See ``examples/example_balanced_accuracy.py``.
 

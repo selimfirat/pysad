@@ -13,6 +13,7 @@ This module holds streaming metrics. Each metric updates its value one point at 
    AUROCMetric
    AUPRMetric
    BalancedAccuracyMetric
+   F1Metric
    PrecisionMetric
    RecallMetric
    WindowedMetric

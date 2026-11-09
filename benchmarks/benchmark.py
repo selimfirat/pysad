@@ -105,6 +105,7 @@ DETECTORS = {
     "LODA": lambda X, seed: models.LODA(random_state=seed),
     "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[: warmup(len(X))]),
     "MCOD": lambda X, seed: models.MCOD(),
+    "MemStream": lambda X, seed: models.MemStream(random_state=seed),
     "MStream": lambda X, seed: models.MStream(random_state=seed),
     "NETS": lambda X, seed: models.NETS(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),

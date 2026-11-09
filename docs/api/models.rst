@@ -34,6 +34,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    MatrixProfile
    MCOD
    MedianAbsoluteDeviation
+   MemStream
    MIDAS
    MStream
    NETS

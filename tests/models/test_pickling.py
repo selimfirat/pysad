@@ -79,6 +79,7 @@ MODEL_PARAMS = {
     "ThreshLEAP": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 3},
     # Micro-clusters form, expire and dissolve within the first instances.
     "MCOD": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 2},
+    "MemStream": {"window_size": 8, "num_epochs": 20},
     # Ticks start and end before and after the round trip.
     "MIDAS": {"tick_size": 7},
     # Cells empty out and fill again within the first instances.

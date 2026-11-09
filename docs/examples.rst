@@ -769,3 +769,11 @@ It prints:
    Drift detected at index 1102 (zero-based), distance 0.60
 
 The spread changes at index 1000. After a drift, the window keeps only its newest values, so the next test compares values of the new distribution only.
+
+MemStream
+---------
+
+MemStream trains a denoising autoencoder on a small normal calibration block, then scores each new point against its bounded memory of accepted encodings. The calibration block must be normal; the labels are used here only to select that block. Monitoring starts after the calibration segment.
+
+.. literalinclude:: ../examples/example_memstream.py
+   :language: python

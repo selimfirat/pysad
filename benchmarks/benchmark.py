@@ -134,6 +134,7 @@ SHORT_NAMES = {
 # The values of a series are scaled to [0, 1].
 UNIVARIATE = {
     "ChangeFinder": lambda n, period: models.ChangeFinder(),
+    "DAMP": lambda n, period: models.DAMP(window_length=SHINGLE_SIZE),
     "HoltWinters": lambda n, period: models.HoltWinters(period),
     # HTM learns during NAB's probationary period, as in NAB.
     "HTM": lambda n, period: models.HTM(
@@ -141,6 +142,7 @@ UNIVARIATE = {
     ),
     # KNNCAD learns during NAB's probationary period, as in NAB.
     "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
+    "MatrixProfile": lambda n, period: models.MatrixProfile(window_length=SHINGLE_SIZE),
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
     "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
     # Fix the length without labels, as for shingles, and initialize in the standard warm-up.

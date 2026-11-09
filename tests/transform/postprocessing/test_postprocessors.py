@@ -124,6 +124,22 @@ def test_zscore_postprocessors_output_values():
         )
 
 
+def test_postprocessors_return_zero_before_the_first_fit():
+    # StreamPipeline.score_partial transforms a score before any postprocessor is fitted (#625).
+    for postprocessor in [
+        AveragePostprocessor(),
+        MaxPostprocessor(),
+        NonparametricDynamicThresholdPostprocessor(),
+        QuantileFilter(),
+        RunningAveragePostprocessor(window_size=WINDOW_SIZE),
+        RunningMaxPostprocessor(window_size=WINDOW_SIZE),
+        RunningMedianPostprocessor(window_size=WINDOW_SIZE),
+        RunningZScorePostprocessor(window_size=WINDOW_SIZE),
+        ZScorePostprocessor(),
+    ]:
+        assert postprocessor.transform_partial(0.7) == 0.0, type(postprocessor).__name__
+
+
 def test_zscore_postprocessors_return_zero_for_constant_stream():
     import numpy as np
 

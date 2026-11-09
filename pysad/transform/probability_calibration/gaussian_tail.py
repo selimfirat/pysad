@@ -81,8 +81,10 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
             score (float): Input score.
 
         Returns:
-            float: One minus the Gaussian tail p-value of the score.
+            float: One minus the Gaussian tail p-value of the score, or 0.0 before the first fit.
         """
+        if not self.short_window:
+            return 0.0
         if self.short_window_size == 1:
             short_mean = score
         else:

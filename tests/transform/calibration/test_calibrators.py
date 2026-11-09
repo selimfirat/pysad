@@ -59,6 +59,21 @@ def test_conformal_calibrator_values():
     assert np.all(calibrated_scores == 0.0)
 
 
+def test_calibrators_return_zero_before_the_first_fit():
+    # StreamPipeline.score_partial transforms a score before any calibrator is fitted (#625).
+    from pysad.transform.probability_calibration import (
+        ConformalProbabilityCalibrator,
+        GaussianTailProbabilityCalibrator,
+    )
+
+    for calibrator in [
+        ConformalProbabilityCalibrator(),
+        GaussianTailProbabilityCalibrator(),
+        GaussianTailProbabilityCalibrator(running_statistics=False),
+    ]:
+        assert calibrator.transform_partial(0.7) == 0.0, type(calibrator).__name__
+
+
 def test_gaussian_tail_calibrator_global_statistics():
     import numpy as np
     from scipy.stats import norm

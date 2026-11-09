@@ -22,6 +22,8 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
      - Measure the fraction of alerts that are true anomalies, for a given threshold.
    * - :class:`~pysad.evaluation.RecallMetric`
      - Measure the fraction of anomalies that raise an alert, for a given threshold.
+   * - :class:`~pysad.evaluation.BalancedAccuracyMetric`
+     - Give normal points and anomalies equal weight through their mean recall. Set a threshold for scores, or pass 0/1 predictions.
 
 Measure several metrics at once
 -------------------------------
@@ -80,7 +82,9 @@ If the metrics get transformed scores, write the loop yourself and update every 
 
 The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores. During this final run of anomalies, most of the recent scores are from anomalies too.
 
-A metric keeps every label and score that it gets, and ``get`` computes the metric over all of them. As a result, each ``get`` call takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals, not for every point.
+The scikit-learn wrappers keep every label and score. Their ``get`` methods compute the metric over all stored values. Each call takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals.
+
+``BalancedAccuracyMetric`` stores only four confusion counts. Its memory use and update and query costs stay constant as the stream grows. For an empty stream, it returns 0.0. For a stream with one true class, it returns that class's recall. Nonempty binary results match scikit-learn. See ``examples/example_balanced_accuracy.py``.
 
 Follow the performance over time
 --------------------------------

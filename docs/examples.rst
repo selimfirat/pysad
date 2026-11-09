@@ -33,6 +33,15 @@ It prints:
 
    AUROC: 0.867
 
+Integrate a one-dimensional stream
+----------------------------------
+
+This script uses one feature per point. It scores each point before the update and calibrates the raw score.
+See :doc:`guides/one_dimensional_integration` for input shapes, feature bounds, and the py-outlier wrapper mismatch.
+
+.. literalinclude:: ../examples/example_one_dimensional_integration.py
+   :language: python
+
 Scale features online
 ---------------------
 

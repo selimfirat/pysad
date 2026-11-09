@@ -9,7 +9,7 @@ if __name__ == "__main__":
     metric = AUROCMetric()
 
     for x, label in Data().get_iterator("arrhythmia.mat", shuffle=False):
-        score = model.fit_score_partial(x)  # learn from x, then score it
+        score = model.fit_score_partial(x)
         metric.update(label, score)
 
     print(f"AUROC: {metric.get():.3f}")

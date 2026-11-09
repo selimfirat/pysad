@@ -51,7 +51,8 @@ class KSWINMeter(UnivariateStatistic):
             that draws ``W``. ``None`` uses NumPy's global random state (Default=None).
 
     Raises:
-        ValueError: If ``alpha`` is not in (0, 1).
+        ValueError: If ``alpha`` is not in (0, 1), or ``window_size`` is less than
+            ``2 * stat_size``.
 
     Attributes:
         alpha (float): The significance level of the test.
@@ -70,6 +71,9 @@ class KSWINMeter(UnivariateStatistic):
     ) -> None:
         if not 0.0 < alpha < 1.0:
             raise ValueError("alpha must be in (0, 1).")
+        # W is drawn without replacement from the window_size - stat_size older values.
+        if window_size < 2 * stat_size:
+            raise ValueError("window_size must be at least 2 * stat_size.")
 
         self.alpha = alpha
         self.window_size = window_size

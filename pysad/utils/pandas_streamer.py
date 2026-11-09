@@ -12,8 +12,23 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
+def _iter_rows(data: pd.DataFrame | pd.Series) -> Iterator[Any]:
+    dtype = data.iloc[:0].to_numpy().dtype
+    if dtype.kind in "biu":
+        column = data if data.ndim == 1 else data.iloc[:, 0]
+        if column.hasnans:
+            # Missing integers use floats. Missing booleans use objects.
+            dtype = np.dtype(object if dtype.kind == "b" else np.float64)
+
+    for i in range(len(data)):
+        yield data.iloc[i : i + 1].to_numpy(dtype=dtype)[0]
+
+
 class PandasStreamer(BaseStreamer):
-    """Simulator class to iterate dataframe(s).
+    """Stream DataFrame rows as NumPy arrays.
+
+    If shuffle is False, convert one row at a time.
+    Keep the row order and omit the index.
 
     Args:
         shuffle (bool): Whether to shuffle the data initially (Default=False).
@@ -38,18 +53,26 @@ class PandasStreamer(BaseStreamer):
     def iter(
         self, X: pd.DataFrame, y: pd.DataFrame | pd.Series | None = None
     ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
-        """Iterates pandas dataframes of features and possibly labels.
+        """Yield feature rows and optional labels in positional order.
+
+        If shuffle is True, yield the rows in shuffled order.
+        Series labels give scalars. DataFrame labels give one-dimensional arrays.
 
         Args:
             X (pd.DataFrame): The features of the instances to iterate.
             y (pd.DataFrame, pd.Series or None): If not None, the labels to iterate in the same order (Default=None).
         """
-        if y is None:
-            for x in self.array_iterator.iter(X.to_numpy()):
-                yield x
-        else:
-            if len(X) != len(y):
-                raise ValueError("X and y must have the same length.")
+        if y is not None and len(X) != len(y):
+            raise ValueError("X and y must have the same length.")
 
-            for x, yr in self.array_iterator.iter(X.to_numpy(), y.to_numpy()):
-                yield x, yr
+        if not self.shuffle:
+            if y is None:
+                yield from _iter_rows(X)
+            else:
+                yield from zip(_iter_rows(X), _iter_rows(y), strict=True)
+            return
+
+        if y is None:
+            yield from self.array_iterator.iter(X.to_numpy())
+        else:
+            yield from self.array_iterator.iter(X.to_numpy(), y.to_numpy())

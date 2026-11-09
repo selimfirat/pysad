@@ -39,6 +39,7 @@ from threadpoolctl import threadpool_limits
 
 import pysad
 from pysad import models
+from pysad.core.base_model import BaseModel
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import (
     ConformalProbabilityCalibrator,
@@ -62,6 +63,7 @@ TOLERANCE = 0.005
 # --check accepts this difference in a false alert rate, because one alert more or less on a small
 # dataset moves the rate by about 0.01.
 ALERT_TOLERANCE = 0.02
+SIGNIFICANT_DIGITS = 9  # the scores keep this many significant digits, see significant()
 
 
 # The multivariate detectors also run on these streams in their time order, to show how they follow
@@ -87,19 +89,34 @@ def _ranges(X):
 
 # Each detector gets its defaults, plus the arguments that it requires. X is scaled to [0, 1].
 DETECTORS = {
+    "ADeMS": lambda X, seed: models.ADeMS(),
+    "AnyOut": lambda X, seed: models.AnyOut(),
+    "ApproxStorm": lambda X, seed: models.ApproxStorm(random_state=seed),
+    "CPOD": lambda X, seed: models.CPOD(),
+    "D3": lambda X, seed: models.D3(random_state=seed),
+    "DILOF": lambda X, seed: models.DILOF(),
     "ExactStorm": lambda X, seed: models.ExactStorm(),
+    "EXPoSE": lambda X, seed: models.EXPoSE(random_state=seed),
     "HalfSpaceTrees": lambda X, seed: models.HalfSpaceTrees(**_ranges(X), random_state=seed),
     "IForestASD": lambda X, seed: models.IForestASD(random_state=seed),
     "IncrementalLOF": lambda X, seed: models.IncrementalLOF(),
     "Inqmad": lambda X, seed: models.Inqmad(X.shape[1], random_state=seed),
+    "KELOS": lambda X, seed: models.KELOS(),
     "KitNet": lambda X, seed: models.KitNet(random_state=seed),
     "LODA": lambda X, seed: models.LODA(random_state=seed),
     "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[: warmup(len(X))]),
     "MCOD": lambda X, seed: models.MCOD(),
+    "MemStream": lambda X, seed: models.MemStream(random_state=seed),
+    "MStream": lambda X, seed: models.MStream(random_state=seed),
+    "NETS": lambda X, seed: models.NETS(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
+    "OnlineOneClassSVM": lambda X, seed: models.OnlineOneClassSVM(),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
+    "RSForest": lambda X, seed: models.RSForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
     "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
+    "TEDA": lambda X, seed: models.TEDA(),
+    "ThreshLEAP": lambda X, seed: models.ThreshLEAP(),
     "xStream": lambda X, seed: models.xStream(random_state=seed),
 }
 # CI runs this script against the base checkout too, where a newly added model
@@ -113,21 +130,36 @@ SHORT_NAMES = {
 }
 
 
-# The univariate detectors run once on each NAB series with anomalies, in the order of the file,
-# because none of them draws random numbers. Each detector gets its defaults, plus the arguments
-# that it requires. A series is scaled to [0, 1].
+# The univariate detectors run once on each NAB and UCR series, in file order, with seed 0 for
+# stochastic detectors. Each detector gets its defaults, plus the arguments that it requires.
+# The values of a series are scaled to [0, 1].
 UNIVARIATE = {
+    "ChangeFinder": lambda n, period: models.ChangeFinder(),
+    "DAMP": lambda n, period: models.DAMP(window_length=SHINGLE_SIZE),
+    "HoltWinters": lambda n, period: models.HoltWinters(period),
+    # HTM learns during NAB's probationary period, as in NAB.
+    "HTM": lambda n, period: models.HTM(
+        min_val=0.0, max_val=1.0, probationary_period=nab_probation(n), random_state=0
+    ),
     # KNNCAD learns during NAB's probationary period, as in NAB.
     "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
+    "MatrixProfile": lambda n, period: models.MatrixProfile(window_length=SHINGLE_SIZE),
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
     "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
+    # Fix the length without labels, as for shingles, and initialize in the standard warm-up.
+    "SAND": lambda n, period: models.SAND(
+        subsequence_length=SHINGLE_SIZE, batch_size=WARMUP_POINTS, random_state=0
+    ),
     "StandardAbsoluteDeviation": lambda n, period: models.StandardAbsoluteDeviation(),
     # A window of 3 periods and one point, because R's stl() needs more than 2 periods, and an odd
     # window makes the robust STL match R.
     "SeasonalESD": lambda n, period: models.SeasonalESD(period, 3 * period + 1),
     "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(period, 3 * period + 1),
+    "SpectralResidual": lambda n, period: models.SpectralResidual(),
 }
-# The ESD detectors need the period of a series, so they run only on these series. Each period is a
+# As for DETECTORS, only benchmark the models present in the checkout.
+UNIVARIATE = {name: factory for name, factory in UNIVARIATE.items() if name in models.__all__}
+# The seasonal detectors need the period of a series, so they run only on these series. Each period is a
 # day, in points, where the autocorrelation at a lag of one day is at least 0.5.
 PERIODS = {
     "nab/artificialWithAnomaly/art_daily_flatmiddle.csv": 288,
@@ -145,7 +177,10 @@ PERIODS = {
     "nab/realKnownCause/cpu_utilization_asg_misconfiguration.csv": 288,
     "nab/realKnownCause/nyc_taxi.csv": 48,
 }
-SEASONAL = ["SeasonalESD", "SeasonalHybridESD"]
+SEASONAL = ["HoltWinters", "SeasonalESD", "SeasonalHybridESD"]
+# These detectors take each point as [timestamp, value]. The UCR series have no timestamps, so these
+# detectors do not run on them.
+TIMESTAMPED = ["HTM"]
 
 
 @functools.cache
@@ -177,7 +212,7 @@ def label(detector):
     return f":class:`~pysad.models.{detector}`"
 
 
-# The UCR series with at most this many points, 84 of the 250, keep the run short. The ESD detectors
+# The UCR series with at most this many points, 84 of the 250, keep the run short. The seasonal detectors
 # do not run on them, because the archive does not give the periods.
 UCR_MAX_POINTS = 20_000
 # A run solves a UCR series when its highest score after the training part is at most this many
@@ -218,6 +253,16 @@ FIELDS = [
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
 
 
+def significant(scores):
+    """The scores rounded to SIGNIFICANT_DIGITS significant digits.
+
+    Platforms round matrix products and functions such as ``log`` differently in the last bits. Many
+    series repeat a few values, so a detector gives many equal scores, and such a difference changes
+    the order of these ties and so the metrics. The rounding keeps the ties equal.
+    """
+    return np.array([float(f"{s:.{SIGNIFICANT_DIGITS}g}") for s in scores])
+
+
 def warmup(n):
     """The number of first points of a stream whose scores do not count in the metrics.
 
@@ -248,7 +293,7 @@ def nab_probation(n):
 # another scale on each series, so they are calibrated before NAB uses one threshold for all. The
 # calibrator compares each score with all the earlier scores of the series. With the default window
 # of 300 scores, its values have steps of 1/300, and many points tie at the highest value.
-NAB_UNIT_SCORES = ["KNNCAD", "RelativeEntropy"]
+NAB_UNIT_SCORES = ["HTM", "KNNCAD", "RelativeEntropy"]
 
 # NAB's scoring, ported from nab/sweeper.py and nab/optimizer.py of the Numenta Anomaly Benchmark
 # (MIT license) at the commit that Data downloads the series from. Each profile gives the weights of
@@ -362,11 +407,34 @@ def read_nab():
         return {row["detector"]: row for row in csv.DictReader(f)}
 
 
+def score_stream(model: BaseModel, X: np.ndarray) -> tuple[np.ndarray, float]:
+    """Collect rounded scores and measure milliseconds per point.
+
+    Args:
+        model (BaseModel): Score each point before learning from it.
+        X (np.ndarray): Stream with one point per row.
+
+    Returns:
+        tuple[np.ndarray, float]: Rounded scores and time per point. Timing excludes score rounding.
+    """
+    start = time.perf_counter()
+    with np.errstate(all="ignore"):
+        scores = np.array([float(model.fit_score_partial(x)) for x in X])
+    seconds = time.perf_counter() - start
+    return significant(scores), round(1000 * seconds / len(X), 3)
+
+
 def run_univariate(series, detector, points=None):
-    X, y = Data().get_data(series)
+    # The base branch's Data.get_data has no timestamps argument, so pass it only when needed.
+    X, y = (
+        Data().get_data(series, timestamps=True)
+        if detector in TIMESTAMPED
+        else Data().get_data(series)
+    )
     X, y = X[:points], y[:points]
-    span = X.max() - X.min()
-    X = (X - X.min()) / (span if span > 0 else 1.0)
+    values = X[:, -1]  # the timestamps, if any, come first
+    span = values.max() - values.min()
+    X[:, -1] = (values - values.min()) / (span if span > 0 else 1.0)
     if detector in UNIVARIATE:
         model = UNIVARIATE[detector](len(X), PERIODS.get(series))
     else:
@@ -374,10 +442,7 @@ def run_univariate(series, detector, points=None):
             X = ShingleTransformer(SHINGLE_SIZE).fit_transform(X)
         fix_seed(0)
         model = DETECTORS[detector.removesuffix(SHINGLED)](X, 0)
-    start = time.perf_counter()
-    with np.errstate(all="ignore"):
-        scores = np.array([float(model.fit_score_partial(x)) for x in X])
-    seconds = time.perf_counter() - start
+    scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     if detector in NAB_UNIT_SCORES:
         nab = (scores, y)
@@ -394,7 +459,7 @@ def run_univariate(series, detector, points=None):
         "seed": 0,
         "auroc": round(roc_auc_score(y, scores), 4) if both else np.nan,
         "aupr": round(average_precision_score(y, scores), 4) if both else np.nan,
-        "ms_per_point": round(1000 * seconds / len(X), 3),
+        "ms_per_point": ms_per_point,
     }
 
 
@@ -404,10 +469,7 @@ def run_ucr(series, detector):
     span = X.max() - X.min()
     X = (X - X.min()) / (span if span > 0 else 1.0)
     model = UNIVARIATE[detector](len(X), None)
-    start = time.perf_counter()
-    with np.errstate(all="ignore"):
-        scores = np.array([float(model.fit_score_partial(x)) for x in X])
-    seconds = time.perf_counter() - start
+    scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     train = int(series.split("_")[-3])  # the training part has no anomalies, so it does not count
     anomaly = np.flatnonzero(y)
@@ -419,7 +481,7 @@ def run_ucr(series, detector):
         "seed": 0,
         "auroc": round(roc_auc_score(y, scores), 4) if valid else np.nan,
         "aupr": round(average_precision_score(y, scores), 4) if valid else np.nan,
-        "ms_per_point": round(1000 * seconds / len(X), 3),
+        "ms_per_point": ms_per_point,
         "solved": int(anomaly[0] - UCR_MARGIN <= top <= anomaly[-1] + UCR_MARGIN)
         if valid
         else np.nan,
@@ -441,10 +503,7 @@ def _run(dataset, detector, seed, points):
     X, y = load(dataset, seed, points)
     fix_seed(seed)
     model = DETECTORS[detector](X, seed)
-    start = time.perf_counter()
-    with np.errstate(all="ignore"):  # a score that is not finite makes the metrics NaN
-        scores = np.array([float(model.fit_score_partial(x)) for x in X])
-    seconds = time.perf_counter() - start
+    scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     row = {"dataset": dataset, "detector": detector, "seed": seed}
     for name, calibrator in CALIBRATORS.items() if dataset not in DRIFT else []:
@@ -457,7 +516,7 @@ def _run(dataset, detector, seed, points):
         **row,
         "auroc": round(roc_auc_score(y, scores), 4) if valid else np.nan,
         "aupr": round(average_precision_score(y, scores), 4) if valid else np.nan,
-        "ms_per_point": round(1000 * seconds / len(X), 3),
+        "ms_per_point": ms_per_point,
     }
 
 
@@ -662,7 +721,7 @@ def write_univariate_tables(results, nab):
             for d in sorted(detectors, key=lambda d: -score(d, "standard"))
         ],
     )
-    ucr = [d for d in detectors if d in UNIVARIATE and d not in SEASONAL]
+    ucr = [d for d in detectors if d in UNIVARIATE and d not in SEASONAL + TIMESTAMPED]
     write_csv(
         "univariate_ucr.csv",
         ["Detector", "Series", "Solved (%)", "AUROC"],
@@ -1035,7 +1094,12 @@ def main():
     if "univariate" in parts:
         jobs += [(series, d, 0, points) for d in univariate for series in series_of(d)]
         if not args.ci:  # the training part of most UCR series is longer than CI_POINTS
-            jobs += [(s, d, 0, None) for d in univariate if d not in SEASONAL for s in ucr_series()]
+            jobs += [
+                (s, d, 0, None)
+                for d in univariate
+                if d not in SEASONAL + TIMESTAMPED
+                for s in ucr_series()
+            ]
     if "drift" in parts:
         for stream in DRIFT:
             Data().get_data(stream)
@@ -1111,7 +1175,9 @@ def main():
             before = [old_nab.get(d, {}).get(f, "missing") for f in NAB_FIELDS[2:]]
             print(f"{d}: NAB scores {before} -> {[nab[d][f] for f in NAB_FIELDS[2:]]}")
         if changed or changed_nab:
-            detectors = sorted({k[1] for k, _, _ in changed} | set(changed_nab))
+            detectors = sorted(
+                {d.removesuffix(SHINGLED) for d in [*(k[1] for k, _, _ in changed), *changed_nab]}
+            )
             print(
                 f"{len(changed) + len(changed_nab)} results changed. Run: python benchmarks/benchmark.py "
                 f"--detectors {','.join(detectors)}, then commit docs/benchmark/."

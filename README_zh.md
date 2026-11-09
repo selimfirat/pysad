@@ -183,7 +183,7 @@ for message in consumer:  # 例如一个 Kafka 消费者
     score = model.fit_score_partial(x)
 ```
 
-`ArrayStreamer` 和 `PandasStreamer` 可以把数组和 DataFrame 当作数据流回放，便于做实验。
+`ArrayStreamer`、`PandasStreamer` 和 `PolarsStreamer` 可以把数组和 pandas 或 Polars DataFrame 当作数据流回放，便于做实验。
 
 ### 在数据流上使用 PyOD 模型
 
@@ -227,14 +227,32 @@ for x in ArrayStreamer().iter(X[100:]):
 | `LODA` | LODA 轻量级在线异常检测器 (Pevný, *Machine Learning* 2016) |
 | `HalfSpaceTrees` | Half-Space Trees (Tan et al., IJCAI 2011) |
 | `RobustRandomCutForest` | Robust Random Cut Forest (Guha et al., ICML 2016) |
+| `RSForest` | RS-Forest 随机空间树密度估计 (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash 子空间离群点检测 (Sathe & Aggarwal, ICDM 2016) |
+| `MStream` | MStream 多方面数据流计数 (Bhatia et al., WWW 2021) |
+| `MemStream` | MemStream 去噪自编码器与先进先出记忆 (Bhatia et al., WWW 2022) |
+| `MIDAS` | MIDAS 图数据流的边计数 (Bhatia et al., AAAI 2020) |
 | `IForestASD` | 滑动窗口上的孤立森林 (Ding & Fei, IFAC 2013) |
+| `OnlineIsolationForest` | 在线孤立森林 (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET 自编码器集成 (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM 基于距离的离群点检测 (Angiulli & Fassetti, CIKM 2007) |
+| `ApproxStorm` | 基于窗口采样的 Approx-STORM 距离离群点检测 (Angiulli & Fassetti, CIKM 2007) |
 | `MCOD` | 基于微簇的距离离群点检测 (Kontaki et al., ICDE 2011) |
+| `NETS` | 基于网格集合处理的距离离群点检测 (Yoon et al., PVLDB 2019) |
+| `CPOD` | 基于核心点的距离离群点检测 (Tran et al., PVLDB 2020) |
+| `D3` | 基于窗口链式样本核密度估计的距离离群点检测 (Subramaniam et al., VLDB 2006) |
+| `ThreshLEAP` | 基于最小探测与最新优先探测的距离离群点检测 (Cao et al., ICDE 2014) |
+| `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
+| `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
+| `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |
+| `KELOS` | 基于窗口微簇的核密度局部离群点检测 (Qin et al., EDBT 2019) |
+| `AnyOut` | 基于 ClusTree 最近簇距离的随时离群点检测 (Assent et al., DASFAA 2012) |
+| `ADeMS` | Frequent Directions 矩阵概要 (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | 局部离群概率 (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD 量子测量密度估计 (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | 基于带折扣学习的有限混合模型 (Yamanishi et al., KDD 2000) |
+| `TEDA` | 典型性与离心率数据分析 (Angelov, EALS 2014) |
+| `EXPoSE` | 与核均值嵌入的期望相似度 (Schneider et al., Machine Learning 2016) |
 
 **单变量**
 
@@ -242,8 +260,15 @@ for x in ArrayStreamer().iter(X[100:]):
 |---|---|
 | `SeasonalHybridESD` | Seasonal Hybrid ESD (Hochenbaum et al., 2017) |
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
+| `HTM` | 层级时间记忆（NAB 的 numenta 检测器），输入为带时间戳的值 (Ahmad et al., Neurocomputing 2017) |
 | `KNNCAD` | 共形 k 近邻异常检测 (Burnaev & Ishimtsev, 2016) |
+| `HoltWinters` | 基于季节性置信带与失败窗口的 Holt-Winters 预测 (Brutlag, USENIX LISA 2000) |
+| `ChangeFinder` | 基于折扣学习自回归模型的离群点与变化点检测 (Takeuchi & Yamanishi, TKDE 2006) |
+| `MatrixProfile` | 基于 STAMPI 的矩阵轮廓异常子序列 (Yeh et al., ICDM 2016) |
+| `DAMP` | 提前停止向后搜索的左矩阵轮廓异常子序列 (Lu et al., KDD 2022) |
+| `SpectralResidual` | 滑动窗口上的谱残差显著性 (Ren et al., KDD 2019) |
 | `RelativeEntropy` | 基于窗口的相对熵 (Wang et al., IM 2011) |
+| `SAND` | 基于 k-Shape 聚类的流式子序列异常检测 (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | 滑动窗口上的中位数绝对偏差 (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | 在线 3-sigma 规则 (Hochenbaum et al., 2017) |
 
@@ -251,7 +276,7 @@ for x in ArrayStreamer().iter(X[100:]):
 
 ## 基准测试
 
-PySAD 在带标签的数据上对其检测器进行基准测试。10 个多变量检测器在 [ODDS](http://odds.cs.stonybrook.edu/) 数据库的 17 个数据集以及 8 条存在漂移的真实数据流上运行。单变量检测器在 Numenta 异常基准（NAB）和 UCR 档案库的序列上运行。每个检测器在每个数据集上使用默认参数运行一次，并且在从每个点学习之前先为它打分（`fit_score_partial`）。
+PySAD 在带标签的数据上对其检测器进行基准测试。多变量检测器在 [ODDS](http://odds.cs.stonybrook.edu/) 数据库的 17 个数据集以及 8 条存在漂移的真实数据流上运行。单变量检测器在 Numenta 异常基准（NAB）和 UCR 档案库的序列上运行。每个检测器在每个数据集上使用默认参数运行一次，并且在从每个点学习之前先为它打分（`fit_score_partial`）。
 
 [基准测试结果](https://pysad.readthedocs.io/en/stable/benchmark.html) 页面展示了全部结果。[评估方法](https://pysad.readthedocs.io/en/stable/benchmarks/methodology.html) 说明了实验步骤、指标以及结果的局限性，[数据集](https://pysad.readthedocs.io/en/stable/benchmarks/datasets.html) 页面介绍了所用数据。要运行基准测试，请按照 [运行基准测试](https://pysad.readthedocs.io/en/stable/benchmarks/run.html) 中的说明使用 `python benchmarks/benchmark.py`。对每个修改检测器的拉取请求，CI 都会运行一个简化版基准测试，并列出发生变化的结果。
 
@@ -262,10 +287,10 @@ PySAD 在带标签的数据上对其检测器进行基准测试。10 个多变�
 | 预处理 | `InstanceStandardScaler`、`InstanceUnitNormScaler`、`SeasonalTrendDecomposer`、`ModifiedSTLResidualTransformer`、`OneShotSTL` |
 | 投影 | `StreamhashProjector`、`GaussianRandomProjector`、`SparseRandomProjector` |
 | 后处理 | 对分数计算累计和窗口化的平均值、最大值、中位数和 z 分数 |
-| 校准 | `ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |
+| 校准 | `AnomalyLikelihoodProbabilityCalibrator`、`ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |
 | 集成 | 平均、最大、中位数、最大值的平均（average-of-maximum）和平均值的最大（maximum-of-average）分数集成器 |
 | 评估 | `AUROCMetric`、`AUPRMetric`、`PrecisionMetric`、`RecallMetric`、`WindowedMetric` |
-| 流式数据 | `ArrayStreamer`、`PandasStreamer`，以及提供 17 个带标签 ODDS 基准数据集（首次使用时下载）的 `Data` |
+| 流式数据 | `ArrayStreamer`、`PandasStreamer`、`PolarsStreamer`，以及提供 17 个带标签 ODDS 基准数据集（首次使用时下载）的 `Data` |
 | 统计量 | 在线均值、方差、中位数、最小值、最大值、总和与计数 |
 
 ## 参与贡献

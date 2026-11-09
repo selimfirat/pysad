@@ -6,34 +6,39 @@ from pysad.core.base_transformer import BaseTransformer
 
 
 class InstanceStandardScaler(BaseTransformer):
-    """Scales each feature vector to zero mean and unit standard deviation across its features.
+    """Scale each feature vector to zero mean and unit standard deviation.
 
-    The scaler computes the mean and the standard deviation per instance, over the features of that instance. It subtracts the mean from each feature and divides the result by the standard deviation. It learns nothing from previous instances.
+    Compute the mean and standard deviation across the features of each instance.
+    Subtract the mean, then divide by the standard deviation.
+    Constant finite vectors have zero variance and return zeros, including one-feature inputs.
+    The scaler learns nothing from previous instances.
     """
 
     def __init__(self) -> None:
         super().__init__(-1)
 
     def fit_partial(self, X: np.ndarray) -> InstanceStandardScaler:
-        """Fits particular (next) timestep's features to train the scaler.
+        """Return the scaler without learning from the input.
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            object: self.
+            InstanceStandardScaler: The scaler.
         """
         return self
 
     def transform_partial(self, X: np.ndarray) -> np.ndarray:
-        """Scales particular (next) timestep's vector.
+        """Scale one feature vector across its features.
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            np.float64 array of shape (num_features,): Scaled feature vector.
+            np.float64 array of shape (num_features,): Scaled features, or zeros for a constant finite vector.
         """
+        if X.size and np.isfinite(X[0]) and (X == X[0]).all():
+            return np.zeros_like(X, dtype=np.float64)
 
         X_mean = X.mean()
         X_std = X.std()

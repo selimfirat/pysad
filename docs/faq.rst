@@ -57,7 +57,12 @@ Yes. :class:`~pysad.models.integrations.ReferenceWindowModel` trains a PyOD dete
 Does PySAD work with scikit-learn or River?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-PySAD works next to them, but its classes are not scikit-learn estimators or River models. They have no ``get_params`` method, so ``clone`` and ``GridSearchCV`` do not accept them, and a scikit-learn ``Pipeline`` cannot score with them.
+Use :class:`~pysad.integrations.SklearnAnomalyDetector` to score batches with a fitted PySAD model in a scikit-learn ``Pipeline``.
+Its ``fit`` method does not train the model. It supports fitted inference, not ``GridSearchCV``.
+``score_samples`` returns negative PySAD scores, so lower values mean more anomalous instances.
+Set ``threshold`` in PySAD score units for ``decision_function`` and ``predict``.
+``predict`` returns -1 above the threshold and 1 at or below it.
+See :doc:`api/sklearn` and :doc:`examples`.
 
 To use a scikit-learn transformer, fit it to historical data. Then transform each point before the detector scores it:
 
@@ -79,7 +84,8 @@ To use a scikit-learn transformer, fit it to historical data. Then transform eac
        x = scaler.transform(x.reshape(1, -1))[0]  # one row in, one row out
        score = model.fit_score_partial(x)
 
-River models take each point as a dict. Convert the dict to a NumPy array, with the same key order for every point. For the stages that PySAD has for each point, see :doc:`guides/pipelines`.
+Use :class:`~pysad.integrations.RiverAnomalyDetector` to run a PySAD detector in a River pipeline.
+It maps feature dictionaries to arrays in a fixed feature order. For the stages that PySAD has for each point, see :doc:`guides/pipelines`. To score a univariate stream by the forecast errors of a River forecaster, wrap the forecaster in :class:`~pysad.models.integrations.PredictiveAnomalyDetector`.
 
 .. _faq-input:
 
@@ -184,6 +190,9 @@ Some detectors give 0 by design, during a warm-up or for every point that is not
 
 - :class:`~pysad.models.KitNet` gives 0 during its first grace period, the first 100 points with the defaults. For a short stream, lower ``grace_feature_mapping`` and ``grace_anomaly_detector``.
 - :class:`~pysad.models.KNNCAD` gives 0 until it gets ``probationary_period`` points.
+- :class:`~pysad.models.MatrixProfile` gives 0 for the first ``window_length + ceil(window_length / 2)`` points, because no earlier subsequence lies outside the trivial-match zone of the newest one.
+- :class:`~pysad.models.DAMP` gives 0 for the first ``probationary_period`` points, ``4 * window_length`` with the defaults. These points only serve as neighbors of the later subsequences.
+- :class:`~pysad.models.SpectralResidual` gives 0 for the first ``window_size - 1`` points, until its window is full.
 - :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` give 0 until the window is full. After that, they give 0 for every point that their test does not flag.
 - :class:`~pysad.models.RelativeEntropy` gives only 0 or 1. It gives 1 only when the values of the window have a new distribution.
 - :class:`~pysad.models.LocalOutlierProbability` gives a probability, which is often exactly 0 for normal points.

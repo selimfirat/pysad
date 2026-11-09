@@ -35,6 +35,15 @@ Calibrate the scores and raise alerts
 
 The condition ``t >= 200`` skips a warm-up period of 200 points. During the warm-up, the model and the calibrator have too little data, and their output is not stable.
 
+To get the alerts as 0/1 labels, for example for :class:`~pysad.evaluation.PrecisionMetric`, use :class:`~pysad.transform.postprocessing.ThresholdFilter`. It gives 1 for a value at or above its threshold, and 0 otherwise:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import ThresholdFilter
+
+   threshold_filter = ThresholdFilter(threshold=0.99)
+   label = threshold_filter.transform_partial(calibrated)
+
 Choose the threshold
 --------------------
 
@@ -89,6 +98,58 @@ A score gets a calibrated value above ``1 - q`` when the score is above ``calibr
 
 If the scores drift, set ``depth``, for example ``depth=10``. The calibrator then fits the distribution to the difference between each score and the mean of the last ``depth`` scores.
 
+Calibrate with the anomaly likelihood of HTM
+--------------------------------------------
+
+:class:`~pysad.transform.probability_calibration.AnomalyLikelihoodProbabilityCalibrator` gives the anomaly likelihood that the HTM detector of Numenta uses in NAB. It averages the last 10 scores, fits a Gaussian to these averages, and gives a value near 1 when the newest average is far from their mean. A single high score changes the average only a little, so the calibrator reacts to a sustained increase of the scores more than to one noisy point. Its bounds on the fitted Gaussian expect scores between 0 and 1. The paper alerts at a likelihood of at least ``1 - 1e-5``:
+
+.. code-block:: python
+
+   from pysad.transform.probability_calibration import AnomalyLikelihoodProbabilityCalibrator
+
+   calibrator = AnomalyLikelihoodProbabilityCalibrator()
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if calibrator.fit_transform_partial(model.fit_score_partial(x)) >= 1 - 1e-5:
+           alerts.append(t)
+
+The calibrator returns 0.5 for the first ``learning_period + num_estimation_samples`` scores, 388 by default. During a run of anomalous scores, only the first score reaches ``1 - 1e-5``. The next scores of the run get ``0.999``.
+
+Threshold the scores of a window without a risk level
+-----------------------------------------------------
+
+:class:`~pysad.transform.postprocessing.NonparametricDynamicThresholdPostprocessor` is the threshold of Telemanom. It smooths the scores and picks the threshold that removes the most of the mean and the standard deviation of the recent scores with the fewest anomalies. Then it drops the anomalous sequences whose maximum is close to the next lower maximum. The output is 0 for a normal point, so an alert is a score above 0. The scores must be nonnegative, for example prediction errors:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import NonparametricDynamicThresholdPostprocessor
+
+   threshold = NonparametricDynamicThresholdPostprocessor()
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if threshold.fit_transform_partial(model.fit_score_partial(x)) > 0:
+           alerts.append(t)
+
+Label the scores with a running quantile
+----------------------------------------
+
+:class:`~pysad.transform.postprocessing.QuantileFilter` gives a score the label 1 if the score is at least the ``q`` quantile of the previous scores, and 0 otherwise. It keeps an estimate of the quantile in constant memory, so it uses every score since the start of the stream. This is the ``QuantileFilter`` of River:
+
+.. code-block:: python
+
+   from pysad.transform.postprocessing import QuantileFilter
+
+   quantile_filter = QuantileFilter(q=0.99)
+
+   alerts = []
+   for t, x in enumerate(streamer.iter(X)):
+       if quantile_filter.fit_transform_partial(model.fit_score_partial(x)):
+           alerts.append(t)
+
+About 1 in 100 scores gets the label 1, also when the stream has no anomalies. Unlike the conformal calibrator, the filter does not forget old scores. Thus it follows a change in the scores slowly.
+
 Smooth noisy scores
 -------------------
 
@@ -132,6 +193,11 @@ With ``fit_score_partial``, the model learns from every point, and also from ano
            model.fit_partial(x)
 
 If the data changes permanently, for example after a deployment, the model in this loop never learns the new normal behavior. If you find such a change, reset the model, or let it learn from all points again.
+
+Plot the alerts
+---------------
+
+To see where the alerts fall, plot the calibrated scores with the threshold. The script ``examples/example_plot_stream.py`` in :doc:`../examples` draws three panels with matplotlib: the features, the scores with the threshold, and the alerts against the labels. PySAD does not install matplotlib, so install it with ``pip install matplotlib``.
 
 Next steps
 ----------

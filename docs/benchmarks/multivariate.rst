@@ -1,7 +1,7 @@
 Multivariate detectors
 ======================
 
-This page compares the 10 multivariate detectors on |num_datasets| ODDS datasets and on 8 real streams with drift. The best value of each column of a summary table is in bold. :doc:`methodology` explains the steps of a run and the metrics.
+This page compares the multivariate detectors on |num_datasets| ODDS datasets and on 8 real streams with drift. The best value of each column of a summary table is in bold. :doc:`methodology` explains the steps of a run and the metrics.
 
 ODDS datasets
 -------------
@@ -44,7 +44,7 @@ The next table gives the AUPR on each dataset. The AUPR of a random detector is 
 Streams with drift
 ------------------
 
-In a real stream, the normal points change over time, and an old pattern can come back. This change is called drift. Many detectors forget old points to follow drift, for example with a sliding window. These tables compare the 10 multivariate detectors on 8 real streams in their time order:
+In a real stream, the normal points change over time, and an old pattern can come back. This change is called drift. Many detectors forget old points to follow drift, for example with a sliding window. These tables compare the multivariate detectors on 8 real streams in their time order:
 
 - KDD http: network connections, with attacks in 10 bursts.
 - INSECTS A, I, IG and IR: optical sensor values of flying insects, with abrupt, incremental, incremental and gradual, and incremental and reoccurring drift.

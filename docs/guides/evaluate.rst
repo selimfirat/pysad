@@ -20,13 +20,44 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
      - Measure the ranking when anomalies are rare. AUPR is the area under the precision-recall curve. A random detector gets the fraction of anomalies in the stream, so compare AUPR only on the same data.
    * - :class:`~pysad.evaluation.PrecisionMetric`
      - Measure the fraction of alerts that are true anomalies, for a given threshold.
+   * - :class:`~pysad.evaluation.F1Metric`
+     - Measure the harmonic mean of precision and recall for a given threshold. Returns 0.0 for an empty stream or when there are no true or predicted anomalies.
+   * - :class:`~pysad.evaluation.MatthewsCorrelationMetric`
+     - Measure binary predictions when class sizes differ. It uses all four confusion counts and supports a score threshold.
    * - :class:`~pysad.evaluation.RecallMetric`
      - Measure the fraction of anomalies that raise an alert, for a given threshold.
 
 Measure several metrics at once
 -------------------------------
 
-Update every metric with the same score. Precision and recall need a threshold. In this example, the metrics get the calibrated score, a value between 0 and 1 (see :doc:`alerts`). As a result, the threshold 0.95 has the same meaning for every detector:
+If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.evaluate_stream`. It scores each point before the detector learns from it. Then it updates every metric with the label and score. It returns the value of each metric at the end of the stream.
+
+``X`` and ``y`` accept arrays, lists, and single-use generators. The function consumes both inputs once, in the same order. Each instance must have shape ``(num_features,)``. Each label must be 1 for an anomaly or 0 for a normal point. The inputs must have equal lengths. If one input ends first, the function raises ``ValueError``. The model and metrics keep updates from earlier pairs.
+
+This example passes generators without copying the input arrays. The evaluation loop does not store the full stream. The metrics can still keep all labels and scores:
+
+.. code-block:: python
+
+   from pysad.evaluation import AUPRMetric, AUROCMetric, F1Metric, evaluate_stream
+   from pysad.models import LODA
+   from pysad.utils import Data
+
+   X, y = Data().get_data("cardio.mat")
+
+   results = evaluate_stream(
+       model=LODA(random_state=0),
+       X=(x for x in X),
+       y=(int(label) for label in y),
+       metrics={
+           "AUROC": AUROCMetric(),
+           "AUPR": AUPRMetric(),
+           "F1": F1Metric(threshold=3.0),
+       },
+   )
+
+The F1 threshold of 3.0 above is illustrative; choose a raw-score threshold on prior validation data for your detector. Scores equal to the threshold count as anomalies. With ``threshold=None``, pass binary predictions instead of raw scores.
+
+If the metrics get transformed scores, write the loop yourself and update every metric with the same score. Precision and recall need a threshold. In this example, the metrics get the calibrated score, a value between 0 and 1 (see :doc:`alerts`). As a result, the threshold 0.95 has the same meaning for every detector:
 
 .. code-block:: python
 
@@ -63,7 +94,9 @@ Update every metric with the same score. Precision and recall need a threshold. 
 
 The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores. During this final run of anomalies, most of the recent scores are from anomalies too.
 
-A metric keeps every label and score that it gets, and ``get`` computes the metric over all of them. As a result, each ``get`` call takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals, not for every point.
+``F1Metric`` keeps only TP, FP and FN counts, so updating and reading it take constant time and memory. The sklearn wrapper metrics keep every label and score that they get, and ``get`` computes the metric over all of them. As a result, each of their ``get`` calls takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals, not for every point.
+
+:class:`~pysad.evaluation.MatthewsCorrelationMetric` keeps four confusion counts instead of the stream history. It uses constant memory and constant work for each update and result. A zero denominator returns 0.0, including before the first update. See ``examples/example_matthews_correlation.py``.
 
 Follow the performance over time
 --------------------------------
@@ -105,10 +138,8 @@ Randomized detectors give a different result for each seed (value of ``random_st
    results = []
    for seed in range(5):
        model = LODA(random_state=seed)
-       metric = AUROCMetric()
-       for x, label in ArrayStreamer().iter(X, y):
-           metric.update(label, model.fit_score_partial(x))
-       results.append(metric.get())
+       auroc = evaluate_stream(model=model, X=X, y=y, metrics={"AUROC": AUROCMetric()})["AUROC"]
+       results.append(auroc)
 
    print(f"AUROC: {np.mean(results):.3f} ± {np.std(results):.3f}")
 
@@ -116,7 +147,7 @@ Randomized detectors give a different result for each seed (value of ``random_st
 
    AUROC: 0.956 ± 0.008
 
-To compare detectors, give every detector the same points in the same stream order. ``fit_score_partial`` scores each point before the detector learns from it, as :doc:`/concepts` explains.
+To compare detectors, give every detector the same points in the same stream order. ``evaluate_stream`` scores each point before the detector learns from it, as :doc:`/concepts` explains.
 
 Next steps
 ----------

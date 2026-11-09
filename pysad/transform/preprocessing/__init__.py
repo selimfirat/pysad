@@ -1,5 +1,5 @@
-""" "
-The :mod:`pysad.transform.preprocessing` module includes preprocessing methods to transform inputs such as normalizers.
+"""
+The :mod:`pysad.transform.preprocessing` module provides transformers that change each point before the detector gets it.
 """
 
 from .identity_scaler import IdentityScaler

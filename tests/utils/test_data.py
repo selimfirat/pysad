@@ -1,3 +1,4 @@
+import gzip
 import hashlib
 import io
 import os
@@ -9,6 +10,20 @@ import pytest
 
 import pysad.utils.data
 from pysad.utils.data import Data
+
+
+class Response(io.BytesIO):
+    """A response of urlopen with the given body and headers."""
+
+    def __init__(self, body=b"", headers=None):
+        super().__init__(body)
+        self.headers = headers or {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
 
 
 def test_get_data_mat(monkeypatch, tmp_path):
@@ -177,18 +192,11 @@ def test_get_data_download_and_cache(tmp_path, monkeypatch):
 
     download_count = 0
 
-    class DummyResponse(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    def dummy_urlopen(req):
+    def dummy_urlopen(req, timeout):
         nonlocal download_count
         download_count += 1
         assert "cardio.mat" in req.full_url
-        return DummyResponse(b"MATLAB dummy content")
+        return Response(b"MATLAB dummy content")
 
     monkeypatch.setattr("urllib.request.urlopen", dummy_urlopen)
     monkeypatch.setitem(
@@ -236,7 +244,7 @@ def test_download_atomic_cleanup_on_error(tmp_path, monkeypatch):
     """Test that failed downloads clean up any temporary files."""
     monkeypatch.setenv("PYSAD_DATA_DIR", str(tmp_path))
 
-    def failing_urlopen(req):
+    def failing_urlopen(req, timeout):
         raise urllib.error.URLError("Network connection failed")
 
     monkeypatch.setattr("urllib.request.urlopen", failing_urlopen)
@@ -254,14 +262,7 @@ def test_download_atomic_cleanup_on_error(tmp_path, monkeypatch):
 def test_download_tries_again_after_a_server_error(tmp_path, monkeypatch):
     calls = []
 
-    class Response(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    def urlopen(req):
+    def urlopen(req, timeout):
         calls.append(req.full_url)
         if len(calls) == 1:
             raise urllib.error.HTTPError(req.full_url, 504, "Gateway Time-out", {}, None)
@@ -279,10 +280,52 @@ def test_download_tries_again_after_a_server_error(tmp_path, monkeypatch):
     assert (tmp_path / "cardio.mat").read_bytes() == b"content"
 
 
+def test_download_tries_again_after_a_read_timeout(tmp_path, monkeypatch):
+    calls = []
+
+    class StalledResponse(Response):
+        def read(self, *args):
+            raise TimeoutError("The read operation timed out")
+
+    def urlopen(req, timeout):
+        calls.append(timeout)
+        return StalledResponse() if len(calls) == 1 else Response(b"content")
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(pysad.utils.data, "_RETRY_SECONDS", 0.0)
+    monkeypatch.setitem(
+        pysad.utils.data._CHECKSUMS, "cardio.mat", hashlib.sha256(b"content").hexdigest()
+    )
+
+    Data(data_base_path=str(tmp_path))._download("cardio.mat", str(tmp_path / "cardio.mat"))
+
+    assert len(calls) == 2
+    assert all(timeout is not None for timeout in calls)
+    assert (tmp_path / "cardio.mat").read_bytes() == b"content"
+
+
+def test_download_decompresses_a_gzip_response(tmp_path, monkeypatch):
+    headers = []
+
+    def urlopen(req, timeout):
+        headers.append(req.get_header("Accept-encoding"))
+        return Response(gzip.compress(b"content"), headers={"Content-Encoding": "gzip"})
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setitem(
+        pysad.utils.data._CHECKSUMS, "cardio.mat", hashlib.sha256(b"content").hexdigest()
+    )
+
+    Data(data_base_path=str(tmp_path))._download("cardio.mat", str(tmp_path / "cardio.mat"))
+
+    assert headers == ["gzip"]
+    assert (tmp_path / "cardio.mat").read_bytes() == b"content"
+
+
 def test_download_does_not_try_again_after_a_client_error(tmp_path, monkeypatch):
     calls = []
 
-    def urlopen(req):
+    def urlopen(req, timeout):
         calls.append(req.full_url)
         raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
 
@@ -307,14 +350,7 @@ def test_explicit_data_base_path_wins(tmp_path):
 def test_download_with_a_wrong_checksum_raises_and_leaves_no_file(tmp_path, monkeypatch):
     """A download that does not match the checksum of the dataset is not used or kept."""
 
-    class DummyResponse(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    monkeypatch.setattr("urllib.request.urlopen", lambda req: DummyResponse(b"changed content"))
+    monkeypatch.setattr("urllib.request.urlopen", lambda req, timeout: Response(b"changed content"))
     data = Data(data_base_path=str(tmp_path))
 
     with pytest.raises(ValueError, match="SHA-256"):
@@ -383,6 +419,19 @@ def test_nab_series_are_labeled_by_their_anomaly_windows(tmp_path):
     np.testing.assert_array_equal(X[:, 0], [1, 2, 30, 4, 5])
     np.testing.assert_array_equal(y, [0, 1, 1, 0, 0])
 
+    X, _ = Data(data_base_path=str(tmp_path)).get_data(
+        "nab/realKnownCause/nyc_taxi.csv", download=False, timestamps=True
+    )
+
+    # 2014-07-01 00:00:00 UTC is 1404172800 seconds after the Unix epoch.
+    np.testing.assert_array_equal(X[:, 0], 1404172800 + 1800 * np.arange(5))
+    np.testing.assert_array_equal(X[:, 1], [1, 2, 30, 4, 5])
+
+
+def test_only_nab_series_have_timestamps():
+    with pytest.raises(ValueError, match="NAB"):
+        Data().get_data("cardio.mat", timestamps=True)
+
 
 def test_ucr_datasets_are_listed_by_source():
     names = Data.datasets("ucr")
@@ -404,14 +453,7 @@ def test_ucr_series_come_from_the_archive_and_are_labeled_by_their_names(tmp_pat
     content = archive.getvalue()
     downloads = []
 
-    class Response(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    def urlopen(req):
+    def urlopen(req, timeout):
         downloads.append(req.full_url)
         return Response(content)
 
@@ -432,6 +474,10 @@ def test_drift_streams_are_listed_by_source():
     assert Data.datasets("kddcup99") == ["kddcup99/http.csv"]
     assert len(Data.datasets("smd")) == 28
     assert "smd/machine-1-1.txt" in Data.datasets("smd")
+    assert len(Data.datasets("smap")) == 54
+    assert "smap/P-1.npy" in Data.datasets("smap")
+    assert len(Data.datasets("msl")) == 27
+    assert "msl/M-1.npy" in Data.datasets("msl")
     assert len(Data.datasets("insects")) == 4
     assert "insects/abrupt.csv" in Data.datasets("insects")
 
@@ -439,14 +485,9 @@ def test_drift_streams_are_listed_by_source():
 def _serve(monkeypatch, files):
     """Makes each download of a URL in ``files`` return its content, with a matching checksum."""
 
-    class Response(io.BytesIO):
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    monkeypatch.setattr("urllib.request.urlopen", lambda req: Response(files[req.full_url]))
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda req, timeout: Response(files[req.full_url])
+    )
     real_source = pysad.utils.data._source
 
     def source(name):
@@ -488,6 +529,38 @@ def test_smd_streams_load_the_test_half_and_its_labels(tmp_path, monkeypatch):
     np.testing.assert_array_equal(y, [0, 1, 0])
 
 
+def test_smap_and_msl_channels_label_every_point_of_their_anomaly_ranges(tmp_path, monkeypatch):
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    smap, msl = np.arange(16.0).reshape(8, 2), np.arange(12.0).reshape(4, 3)
+    labels = (
+        "chan_id,spacecraft,anomaly_sequences,class,num_values\n"
+        'P-2,SMAP,"[[1, 2]]",[point],8\n'
+        'P-2,SMAP,"[[5, 5], [7, 7]]","[point, point]",8\n'
+        'M-1,MSL,"[[0, 1]]",[point],4\n'
+    )
+    _serve(
+        monkeypatch,
+        {
+            pysad.utils.data._NASA + "P-2.npy": npy(smap),
+            pysad.utils.data._NASA + "M-1.npy": npy(msl),
+            pysad.utils.data._NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    X, y = data.get_data("smap/P-2.npy")
+    np.testing.assert_array_equal(X, smap)
+    np.testing.assert_array_equal(y, [0, 1, 1, 0, 0, 1, 0, 1])
+
+    X, y = data.get_data("msl/M-1.npy")
+    np.testing.assert_array_equal(X, msl)
+    np.testing.assert_array_equal(y, [1, 1, 0, 0])
+
+
 def test_insects_streams_have_the_label_in_the_last_column(tmp_path, monkeypatch):
     drive_id = pysad.utils.data._INSECTS_FILES["abrupt.csv"][0]
     _serve(monkeypatch, {pysad.utils.data._INSECTS + drive_id: b"0.5,0.25,0\n0.75,1.0,1\n"})
@@ -496,3 +569,46 @@ def test_insects_streams_have_the_label_in_the_last_column(tmp_path, monkeypatch
 
     np.testing.assert_array_equal(X, [[0.5, 0.25], [0.75, 1.0]])
     np.testing.assert_array_equal(y, [0, 1])
+
+
+def test_creditcard_keeps_transaction_order_and_separates_class_in_shared_cache(
+    tmp_path, monkeypatch
+):
+    from pysad.utils import Data
+
+    monkeypatch.setenv("PYSAD_DATA_DIR", str(tmp_path))
+    names = ["Time", *(f"V{i}" for i in range(1, 29)), "Amount"]
+    header = "@relation creditcard\n" + "".join(f"@attribute {n} numeric\n" for n in names)
+    header += "@attribute Class {'0','1'}\n@data\n"
+    rows = [
+        "0," + "1," * 28 + "10.5,'0'",
+        "0," + "2," * 28 + "20.5,'1'",
+        "1," + "3," * 28 + "30.5,'0'",
+    ]
+    content = (header + "\n".join(rows) + "\n").encode()
+    url = "https://openml.org/data/v1/download/1673544/creditcard.arff"
+    _serve(monkeypatch, {url: content})
+
+    assert Data.datasets("creditcard") == ["creditcard/creditcard.arff"]
+    with pytest.raises(FileNotFoundError, match="download=False"):
+        Data().get_data("creditcard/creditcard.arff", download=False)
+    X, y = Data().get_data("creditcard/creditcard.arff")
+
+    assert X.shape == (3, 30)
+    assert X.dtype == np.float64
+    np.testing.assert_array_equal(X[:, 0], [0, 0, 1])
+    np.testing.assert_array_equal(X[:, 1:29], [[1] * 28, [2] * 28, [3] * 28])
+    np.testing.assert_array_equal(X[:, -1], [10.5, 20.5, 30.5])
+    np.testing.assert_array_equal(y, [0, 1, 0])
+    assert (tmp_path / "creditcard/creditcard.arff").read_bytes() == content
+
+    def offline(req, timeout):
+        pytest.fail("A cached dataset must not need the network")
+
+    monkeypatch.setattr("urllib.request.urlopen", offline)
+    cached_X, cached_y = Data().get_data("creditcard/creditcard.arff", download=False)
+    np.testing.assert_array_equal(cached_X, X)
+    np.testing.assert_array_equal(cached_y, y)
+    stream = list(Data().get_iterator("creditcard/creditcard.arff", shuffle=False))
+    np.testing.assert_array_equal([x for x, _ in stream], X)
+    np.testing.assert_array_equal([label for _, label in stream], y)

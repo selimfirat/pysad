@@ -13,21 +13,38 @@ import numpy as np
 import pytest
 
 import pysad.models
+from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
 
 NUM_INSTANCES = 12
 
 UNIVARIATE_MODELS = {
+    "ChangeFinder",
+    "DAMP",
+    "HoltWinters",
     "KNNCAD",
+    "MatrixProfile",
     "MedianAbsoluteDeviation",
     "RelativeEntropy",
+    "SAND",
     "SeasonalESD",
     "SeasonalHybridESD",
+    "SpectralResidual",
     "StandardAbsoluteDeviation",
 }
 
 
+# These models take each instance as [timestamp, value].
+TIMESTAMPED_MODELS = {"HTM"}
+
+# These models take each instance as an edge [source, destination].
+EDGE_MODELS = {"MIDAS"}
+
+
 def _num_features(name):
+    if name in TIMESTAMPED_MODELS or name in EDGE_MODELS:
+        return 2
     return 1 if name in UNIVARIATE_MODELS else 3
 
 
@@ -42,10 +59,16 @@ def _params(name, num_features):
             "num_trees": 5,
             "max_depth": 5,
         },
+        "HTM": {"min_val": 0.0, "max_val": 1.0, "num_columns": 256},
+        "HoltWinters": {"period": 2},
         "IForestASD": {"window_size": 20, "n_estimators": 10},
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
+        "MemStream": {"window_size": 4, "num_epochs": 20},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
+        "MatrixProfile": {"window_length": 3},
+        "DAMP": {"window_length": 3, "probationary_period": 4},
+        "SpectralResidual": {"window_size": 8, "num_average_points": 3},
         "LocalOutlierProbability": {
             "initial_X": np.random.RandomState(0).rand(12, num_features),
             "num_neighbors": 10,
@@ -53,13 +76,20 @@ def _params(name, num_features):
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
         "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 5},
         "RobustRandomCutForest": {"num_trees": 3, "shingle_size": 2, "tree_size": 16},
+        "RSForest": {"window_size": 5, "num_trees": 5, "max_depth": 5},
         "RSHash": {
             "feature_mins": np.array(zeros),
             "feature_maxes": np.array(ones),
             "num_components": 10,
         },
+        "SAND": {"subsequence_length": 2, "centroid_length": 4, "num_clusters": 2, "batch_size": 6},
         "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
+        "StreamPipeline": {
+            "model": pysad.models.LODA(),
+            "preprocessors": [ShingleTransformer(shingle_size=2)],
+            "postprocessors": [RunningZScorePostprocessor(window_size=10)],
+        },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
     }
 

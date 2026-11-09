@@ -1,6 +1,6 @@
 """Evaluate a detector from single-use generators with several metrics at once."""
 
-from pysad.evaluation import AUPRMetric, AUROCMetric, WindowedMetric, evaluate_stream
+from pysad.evaluation import AUPRMetric, AUROCMetric, F1Metric, WindowedMetric, evaluate_stream
 from pysad.models import LODA
 from pysad.utils import Data
 
@@ -14,6 +14,8 @@ if __name__ == "__main__":
         metrics={
             "AUROC": AUROCMetric(),
             "AUPR": AUPRMetric(),
+            # Illustrative raw-score cutoff; choose a threshold on prior validation data.
+            "F1": F1Metric(threshold=3.0),
             "Windowed AUROC": WindowedMetric(metric_cls=AUROCMetric, window_size=100),
         },
     )

@@ -292,6 +292,44 @@ class TestArrayStreamer:
             np.testing.assert_array_equal(xi, X[i])
             assert yi == y[i]
 
+    def test_array_streamer_first_row_memory(self):
+        """Unshuffled streams yield the first row with bounded extra memory."""
+        import tracemalloc
+
+        from pysad.utils import ArrayStreamer
+
+        X = np.broadcast_to(np.array([1, 2]), (100_000, 2))
+        y = np.broadcast_to(3, (len(X),))
+        for labels in (None, y):
+            tracemalloc.start()
+            try:
+                first = next(ArrayStreamer(shuffle=False).iter(X, labels))
+                _, peak = tracemalloc.get_traced_memory()
+            finally:
+                tracemalloc.stop()
+
+            # Materializing 100,000 indices requires several megabytes.
+            assert peak < 100_000
+            if labels is None:
+                np.testing.assert_array_equal(first, [1, 2])
+            else:
+                np.testing.assert_array_equal(first[0], [1, 2])
+                assert first[1] == 3
+
+    def test_array_streamer_seeded_row_order(self):
+        """Seeded shuffling preserves the permutation and feature-label pairing."""
+        from pysad.utils import ArrayStreamer
+
+        X = np.arange(12).reshape(6, 2)
+        y = np.arange(6)
+        expected = [0, 1, 5, 2, 4, 3]
+        streamer = ArrayStreamer(shuffle=True, random_state=42)
+
+        np.testing.assert_array_equal(list(streamer.iter(X)), X[expected])
+        rows = list(streamer.iter(X, y))
+        np.testing.assert_array_equal([row for row, _ in rows], X[expected])
+        np.testing.assert_array_equal([label for _, label in rows], y[expected])
+
     def test_array_streamer_length_mismatch(self):
         """Test ArrayStreamer rejects labels of a different length."""
         import pytest

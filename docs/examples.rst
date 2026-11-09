@@ -89,6 +89,14 @@ It prints:
 
    AUROC: 0.742
 
+Use a River pipeline
+--------------------
+
+This script puts a PySAD detector after a River scaler. It scores each dictionary before learning from it. See :doc:`guides/pipelines` for the fixed feature mapping.
+
+.. literalinclude:: ../examples/example_river_pipeline.py
+   :language: python
+
 Project high-dimensional data
 -----------------------------
 
@@ -191,6 +199,14 @@ It prints:
 
    22 raw scores are at least 0.99
    likelihood alerts at [549, 2620, 4001], the anomaly starts at 4000
+
+Plot the alerts
+---------------
+
+This script calibrates the scores of LODA on a synthetic stream. Then it plots the features, the calibrated scores with the threshold, and the alerts against the labels. It needs matplotlib, which PySAD does not install. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_plot_stream.py
+   :language: python
 
 Flag anomalies with a dynamic threshold
 ---------------------------------------
@@ -399,6 +415,25 @@ It prints:
    2025-01-01T11:58:00 score=4.1992
    2025-01-01T11:05:00 score=4.1908
 
+Stream a Polars DataFrame
+-------------------------
+
+This script scores the rows of a Polars DataFrame. It keeps the timestamps in a column outside the features. Then it prints the timestamps with the highest scores.
+
+.. literalinclude:: ../examples/example_polars_streamer.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Highest-scoring anomaly alerts:
+   2025-01-01T11:10:00 score=5.8440
+   2025-01-01T12:00:00 score=5.8106
+   2025-01-01T10:20:00 score=4.8580
+   2025-01-01T11:58:00 score=4.2457
+   2025-01-01T11:05:00 score=4.2420
+
 Use a density detector
 ----------------------
 
@@ -484,6 +519,14 @@ It prints:
 
    AUROC: 0.651
 
+Load credit-card fraud transactions
+-----------------------------------
+
+This script loads OpenML 1597 through the shared dataset cache and streams the first five transactions in their original time order. ``Class`` is separate from the 30 features. See :doc:`guides/stream_data` for the source and dataset license.
+
+.. literalinclude:: ../examples/example_creditcard.py
+   :language: python
+
 Use a multi-aspect stream detector
 ----------------------------------
 
@@ -497,6 +540,25 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.992
+
+Detect a burst of graph edges
+------------------------------
+
+This script scores a small, reproducible edge stream with :class:`~pysad.models.MIDAS`. Each row is ``[source, destination]``, where the two integers identify the nodes of a directed edge. Keep the same ID for a node throughout the stream; these values are categorical identifiers.
+
+``tick_size=4`` groups every four consecutive edges into one tick. PySAD uses edge counts to define ticks, so no timestamp column is needed. The first 20 ticks contain each of four edges once. The final tick repeats the edge ``[0, 1]`` four times, creating a burst. The fixed ``random_state`` makes the sketch hashes reproducible.
+
+.. literalinclude:: ../examples/example_midas.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Maximum regular score: 0.000
+   Last burst edge score: 7.500
+
+Higher scores mean more anomalous edges. As the repeated edge accumulates within the final tick, its score rises above the regular scores. All edges in the first tick score zero because MIDAS needs an earlier tick for comparison.
 
 Use a local density detector
 ----------------------------
@@ -707,3 +769,11 @@ It prints:
    Drift detected at index 1102 (zero-based), distance 0.60
 
 The spread changes at index 1000. After a drift, the window keeps only its newest values, so the next test compares values of the new distribution only.
+
+MemStream
+---------
+
+MemStream trains a denoising autoencoder on a small normal calibration block, then scores each new point against its bounded memory of accepted encodings. The calibration block must be normal; the labels are used here only to select that block. Monitoring starts after the calibration segment.
+
+.. literalinclude:: ../examples/example_memstream.py
+   :language: python

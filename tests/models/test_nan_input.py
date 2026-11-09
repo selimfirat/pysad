@@ -38,9 +38,12 @@ UNIVARIATE_MODELS = {
 # These models take each instance as [timestamp, value].
 TIMESTAMPED_MODELS = {"HTM"}
 
+# These models take each instance as an edge [source, destination].
+EDGE_MODELS = {"MIDAS"}
+
 
 def _num_features(name):
-    if name in TIMESTAMPED_MODELS:
+    if name in TIMESTAMPED_MODELS or name in EDGE_MODELS:
         return 2
     return 1 if name in UNIVARIATE_MODELS else 3
 
@@ -60,6 +63,7 @@ def _params(name, num_features):
         "HoltWinters": {"period": 2},
         "IForestASD": {"window_size": 20, "n_estimators": 10},
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
+        "MemStream": {"window_size": 4, "num_epochs": 20},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
         "MatrixProfile": {"window_length": 3},

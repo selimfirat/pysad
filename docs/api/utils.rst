@@ -12,6 +12,7 @@ This module holds streamers, benchmark datasets and helper functions. A streamer
 
    ArrayStreamer
    PandasStreamer
+   PolarsStreamer
    Data
    Window
 

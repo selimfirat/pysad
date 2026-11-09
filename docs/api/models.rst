@@ -19,6 +19,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    DAMP
    DILOF
    ExactStorm
+   EXPoSE
    HalfSpaceTrees
    HoltWinters
    HTM
@@ -33,6 +34,8 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    MatrixProfile
    MCOD
    MedianAbsoluteDeviation
+   MemStream
+   MIDAS
    MStream
    NETS
    OnlineIsolationForest

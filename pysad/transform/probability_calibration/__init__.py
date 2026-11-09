@@ -1,5 +1,5 @@
 """
-The :mod:`pysad.transform.probability_calibration` module includes probability calibrators to convert module scores into true probabilities for decision-making on anomalousness.
+The :mod:`pysad.transform.probability_calibration` module provides calibrators that convert anomaly-detector scores into values between 0 and 1, where a higher value means a more anomalous point.
 """
 
 from .anomaly_likelihood import AnomalyLikelihoodProbabilityCalibrator

@@ -27,6 +27,7 @@ def _model_specs():
         KNNCAD,
         LODA,
         MCOD,
+        MIDAS,
         NETS,
         SAND,
         TEDA,
@@ -35,6 +36,7 @@ def _model_specs():
         ApproxStorm,
         ChangeFinder,
         ExactStorm,
+        EXPoSE,
         HalfSpaceTrees,
         HoltWinters,
         IForestASD,
@@ -43,6 +45,7 @@ def _model_specs():
         LocalOutlierProbability,
         MatrixProfile,
         MedianAbsoluteDeviation,
+        MemStream,
         MStream,
         NullModel,
         OnlineIsolationForest,
@@ -85,6 +88,7 @@ def _model_specs():
         ("D3", lambda: D3(window_size=20, sample_fraction=0.5, max_radius=0.3), NUM_FEATURES),
         ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
         ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
+        ("EXPoSE", lambda: EXPoSE(num_random_features=50), NUM_FEATURES),
         (
             "HalfSpaceTrees",
             lambda: HalfSpaceTrees(
@@ -120,6 +124,9 @@ def _model_specs():
         ("MCOD", lambda: MCOD(window_size=20, max_radius=0.3, num_neighbors=2), NUM_FEATURES),
         ("MedianAbsoluteDeviation", lambda: MedianAbsoluteDeviation(), 1),
         ("MedianAbsoluteDeviation-signed", lambda: MedianAbsoluteDeviation(absolute=False), 1),
+        # MIDAS takes each instance as an edge [source, destination].
+        ("MIDAS", lambda: MIDAS(tick_size=5), 2),
+        ("MemStream", lambda: MemStream(window_size=8, num_epochs=20), NUM_FEATURES),
         ("MStream", lambda: MStream(), NUM_FEATURES),
         ("NETS", lambda: NETS(window_size=20, max_radius=0.3), NUM_FEATURES),
         ("NullModel", lambda: NullModel(), NUM_FEATURES),

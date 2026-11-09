@@ -7,11 +7,14 @@ from pysad.models import (
     D3,
     HTM,
     LODA,
+    MIDAS,
     SAND,
     ApproxStorm,
+    EXPoSE,
     HalfSpaceTrees,
     Inqmad,
     KitNet,
+    MemStream,
     MStream,
     OnlineIsolationForest,
     RandomModel,
@@ -30,6 +33,7 @@ MODELS = {
         window_size=20, max_radius=0.5, num_neighbors=3, sample_fraction=0.25, **kw
     ),
     "D3": lambda **kw: D3(window_size=20, sample_fraction=0.5, max_radius=0.3, **kw),
+    "EXPoSE": lambda **kw: EXPoSE(num_random_features=50, **kw),
     "HalfSpaceTrees": lambda **kw: HalfSpaceTrees(
         [0.0] * NUM_FEATURES,
         [1.0] * NUM_FEATURES,
@@ -45,6 +49,8 @@ MODELS = {
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": lambda **kw: KitNet(grace_feature_mapping=20, grace_anomaly_detector=30, **kw),
     "LODA": lambda **kw: LODA(num_random_cuts=20, **kw),
+    "MIDAS": lambda **kw: MIDAS(num_buckets=4, tick_size=5, **kw),
+    "MemStream": lambda **kw: MemStream(window_size=8, num_epochs=20, **kw),
     "MStream": lambda **kw: MStream(**kw),
     "OnlineIsolationForest": lambda **kw: OnlineIsolationForest(
         num_trees=10, max_leaf_samples=8, window_size=32, **kw
@@ -62,12 +68,16 @@ NAMES = list(MODELS)
 UNIVARIATE_MODELS = (SAND,)
 # These models take each instance as [timestamp, value].
 TIMESTAMPED_MODELS = (HTM,)
+# These models take each instance as an edge [source, destination].
+EDGE_MODELS = (MIDAS,)
 
 
 def _data(model):
     X = np.random.RandomState(0).rand(80, NUM_FEATURES)
     if isinstance(model, TIMESTAMPED_MODELS):
         return np.column_stack([3600.0 * np.arange(len(X)), X[:, 0]])
+    if isinstance(model, EDGE_MODELS):
+        return np.floor(10.0 * X[:, :2])
     return X[:, :1] if isinstance(model, UNIVARIATE_MODELS) else X
 
 

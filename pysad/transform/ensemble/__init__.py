@@ -1,5 +1,5 @@
 """
-The :mod:`pysad.transform.ensemble` module consist of ensemblers to combine scores from multiple anomaly detectors.
+The :mod:`pysad.transform.ensemble` module provides ensemblers that combine the scores of several detectors into one score.
 """
 
 from .ensemblers import (

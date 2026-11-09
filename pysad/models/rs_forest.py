@@ -22,6 +22,14 @@ class RSForest(BaseModel):
     - The paper does not score the instances that build the trees. The model gives them the score 0.0.
     - The paper calls the HPD interval an interval for the mean of the feature. Its analysis in Section III-A uses ``mu ± 1.645 sigma`` for a normal feature, which is the interval of the values. The model follows the analysis.
 
+    Reference comparison:
+        Shubhomoy Das's `ad_examples implementation <https://github.com/shubhomoydas/ad_examples/blob/bc58c35b8dfbb917eda36bcb4303b1e6b1213713/ad_examples/aad/random_split_trees.py>`_
+        (repository license MIT; source header BSD 3-Clause) provides RS-Trees and buffered profile replacement. No authors' implementation was found. No reference code is copied here.
+
+        Unlike that implementation, this model uses the paper's termination node rather than always scoring at the leaf. It negates and divides the reference's mean count-over-relative-volume score by ``window_size``. With identical trees and ``node_size_limit=0``, the normalized scores agree to floating-point precision across window replacements. Trees drawn independently with the same seed differ because random numbers are consumed in a different order. At a split threshold, this model goes right on equality; the reference goes left.
+
+        The reference's ``HPDByInverseCDF`` evaluates an empirical CDF at probability levels and widens the result by three *variances*. This model follows Section II-B instead: a shortest sample interval widened by three *standard deviations*. It also handles warmup, label filtering, and window replacement through the per-instance API; the reference leaves stream scheduling to its caller. The defaults follow the paper rather than the reference's 100 trees of depth 10.
+
     Memory is fixed: two node profiles, the split features and points, and one volume per node for each of ``num_trees`` trees of depth ``max_depth``, about 32 MB with the defaults. The first window is kept until the trees are built.
 
     Args:

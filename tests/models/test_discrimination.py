@@ -42,6 +42,9 @@ UNIVARIATE_MODELS = {
 # timestamps, so that a period of the stream is one day.
 TIMESTAMPED_MODELS = {"HTM"}
 
+# These models take each instance as an edge [source, destination].
+EDGE_MODELS = {"MIDAS"}
+
 # Subspace detectors score the distance of the direction of an instance from a low-rank subspace,
 # so they need normal instances near such a subspace.
 SUBSPACE_MODELS = {"ADeMS"}
@@ -85,6 +88,15 @@ def _subspace_stream():
     return X, y
 
 
+def _edge_stream():
+    """Edges between 5 nodes, with each anomaly as an edge between two nodes not seen before."""
+    rng = np.random.default_rng(SEED)
+    X = rng.integers(0, 5, size=(NUM_INSTANCES, 2)).astype(np.float64)
+    anomalies, y = _anomalies(rng)
+    X[anomalies] = 100.0 + np.arange(2 * len(anomalies)).reshape(-1, 2)
+    return X, y
+
+
 def _univariate_stream():
     """A seasonal series of period 24, with the anomalies as spikes of 3 in either direction."""
     rng = np.random.default_rng(SEED)
@@ -118,6 +130,7 @@ def _model_params(model_name, X):
         "LocalOutlierProbability": {"initial_X": X[:100]},
         "RelativeEntropy": {"min_val": feature_mins[0], "max_val": feature_maxes[0]},
         "RobustRandomCutForest": {"num_trees": 10, "tree_size": 64},
+        "MemStream": {"window_size": 8, "num_epochs": 20},
         # The normal values go below -1, out of the domain of log(1 + x). The values are continuous,
         # so fewer buckets than the default make the normal values share buckets.
         "MStream": {"num_buckets": 32, "log_transform": False},
@@ -169,6 +182,8 @@ def test_scores_rank_anomalies_above_chance(model_name):
     elif model_name in TIMESTAMPED_MODELS:
         X, y = _univariate_stream()
         X = np.column_stack([3600.0 * np.arange(len(X)), X])
+    elif model_name in EDGE_MODELS:
+        X, y = _edge_stream()
     elif model_name in SUBSPACE_MODELS:
         X, y = _subspace_stream()
     else:

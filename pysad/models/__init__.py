@@ -11,6 +11,7 @@ from .d3 import D3
 from .damp import DAMP
 from .dilof import DILOF
 from .exact_storm import ExactStorm
+from .expose import EXPoSE
 from .half_space_trees import HalfSpaceTrees
 from .holt_winters import HoltWinters
 from .htm.htm import HTM
@@ -25,6 +26,8 @@ from .loop import LocalOutlierProbability
 from .matrix_profile import MatrixProfile
 from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
+from .memstream import MemStream
+from .midas import MIDAS
 from .mstream import MStream
 from .nets import NETS
 from .null_model import NullModel
@@ -56,6 +59,7 @@ __all__ = [
     "DAMP",
     "DILOF",
     "ExactStorm",
+    "EXPoSE",
     "HalfSpaceTrees",
     "HoltWinters",
     "HTM",
@@ -69,7 +73,9 @@ __all__ = [
     "LocalOutlierProbability",
     "MatrixProfile",
     "MCOD",
+    "MIDAS",
     "MedianAbsoluteDeviation",
+    "MemStream",
     "MStream",
     "NETS",
     "NullModel",

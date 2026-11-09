@@ -6,7 +6,7 @@ Detector,Standard,AUROC
 :class:`~pysad.models.KNNCAD`,48.9,0.527
 :class:`~pysad.models.SmartSifter`,45.1,0.535
 ":class:`~pysad.models.LODA`, shingles",42.3,0.612
-:class:`~pysad.models.IncrementalLOF`,35.4,0.502
+:class:`~pysad.models.IncrementalLOF`,35.4,0.501
 :class:`~pysad.models.xStream`,34.1,0.564
 ":class:`~pysad.models.RobustRandomCutForest`, shingles",33.2,0.616
 :class:`~pysad.models.RSHash`,32.8,0.556

@@ -40,6 +40,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 autosummary_generate = True
 autodoc_default_options = {"members": True, "inherited-members": True}
 autodoc_typehints = "none"
+autodoc_mock_imports = ["river"]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),

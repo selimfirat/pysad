@@ -183,7 +183,7 @@ for message in consumer:  # for example, a Kafka consumer
     score = model.fit_score_partial(x)
 ```
 
-`ArrayStreamer` and `PandasStreamer` replay arrays and DataFrames as streams for experiments.
+`ArrayStreamer`, `PandasStreamer` and `PolarsStreamer` replay arrays and pandas or Polars DataFrames as streams for experiments.
 
 ### Use a PyOD model on a stream
 
@@ -230,6 +230,7 @@ These starting points come from the design of each method. They are not benchmar
 | `RSForest` | RS-Forest random space tree density (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) |
 | `MStream` | MStream multi-aspect stream counts (Bhatia et al., WWW 2021) |
+| `MIDAS` | MIDAS edge counts of a graph stream (Bhatia et al., AAAI 2020) |
 | `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
 | `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) |
@@ -250,6 +251,7 @@ These starting points come from the design of each method. They are not benchmar
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | Finite mixtures with discounting learning (Yamanishi et al., KDD 2000) |
 | `TEDA` | Typicality and eccentricity data analytics (Angelov, EALS 2014) |
+| `EXPoSE` | Expected similarity to the kernel mean embedding (Schneider et al., Machine Learning 2016) |
 
 **Univariate**
 
@@ -287,7 +289,7 @@ The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) p
 | Calibration | `AnomalyLikelihoodProbabilityCalibrator`, `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
 | Ensembling | Average, maximum, median, average-of-maximum and maximum-of-average score ensemblers |
 | Evaluation | `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric` |
-| Streaming data | `ArrayStreamer`, `PandasStreamer`, and `Data` for 17 labeled ODDS benchmark datasets, downloaded on first use |
+| Streaming data | `ArrayStreamer`, `PandasStreamer`, `PolarsStreamer`, and `Data` for 17 labeled ODDS benchmark datasets, downloaded on first use |
 | Statistics | Running mean, variance, median, min, max, sum and count |
 
 ## Contributing

@@ -16,6 +16,9 @@ Each page lists the public classes and functions of one module. Each name has a 
    * - :doc:`api/integrations`
      - Wrappers for PyOD detectors and River forecasters
      - ``pysad.models.integrations``
+   * - :doc:`api/river`
+     - PySAD models in River pipelines (Python 3.11+)
+     - ``pysad.integrations``
    * - :doc:`api/preprocessing`
      - Scalers and seasonal decomposition
      - ``pysad.transform.preprocessing``
@@ -49,6 +52,7 @@ Each page lists the public classes and functions of one module. Each name has a 
 
    api/models
    api/integrations
+   api/river
    api/preprocessing
    api/projection
    api/postprocessing

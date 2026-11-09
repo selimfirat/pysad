@@ -1,23 +1,35 @@
-def _direct_score(window, x, num_neighbors, cell_size):
-    """The local outlier score of Definition 2.3, computed from scratch on the grid of the window."""
+def _direct_score(window, x, num_neighbors, cell_size, density_window=None):
+    """The local outlier score of Definition 2.3, computed from scratch on the grid of the window.
+
+    If given, `density_window` is the window of the last update of all the nearest kernel centers, which were skipped since.
+    """
     import numpy as np
 
     side = cell_size / np.sqrt(window.shape[1])
-    cells, weights = np.unique(np.floor(window / side), axis=0, return_counts=True)
-    centers = (cells + 0.5) * side
 
-    def nearest(point):
+    def grid(window):
+        cells, weights = np.unique(np.floor(window / side), axis=0, return_counts=True)
+        return (cells + 0.5) * side, weights
+
+    def nearest(centers, point):
         return np.argsort(np.linalg.norm(centers - point, axis=1), kind="stable")[:num_neighbors]
 
-    def density(point, idx):
+    def density(point, cell_center, window):
+        centers, weights = grid(window)
+        idx = nearest(centers, cell_center)
         w = weights[idx] / weights[idx].sum()
         dists = np.abs(centers[idx] - point)
         h = w @ dists
+        h[h <= 0.0] = 0.001  # the bandwidth of the reference implementation
         return w @ np.prod(np.exp(-0.5 * (dists / h) ** 2) / (np.sqrt(2 * np.pi) * h), axis=1)
 
-    idx = nearest((np.floor(x / side) + 0.5) * side)
-    neighbor_densities = np.array([density(centers[i], nearest(centers[i])) for i in idx])
-    return (neighbor_densities.mean() - density(x, idx)) / neighbor_densities.std()
+    centers, _ = grid(window)
+    cell_center = (np.floor(x / side) + 0.5) * side
+    density_window = window if density_window is None else density_window
+    neighbor_densities = np.array(
+        [density(c, c, density_window) for c in centers[nearest(centers, cell_center)]]
+    )
+    return (neighbor_densities.mean() - density(x, cell_center, window)) / neighbor_densities.std()
 
 
 def test_stare_with_skip_threshold_0_matches_a_direct_computation_on_the_window():
@@ -58,6 +70,54 @@ def test_stare_with_skip_threshold_0_matches_a_direct_computation_on_the_window(
     queries = np.concatenate([np.arange(0.05, 1.0, 0.1), np.arange(5.05, 6.0, 0.1), [0.33, 2.0]])
     expected = [_direct_score(window, q, num_neighbors, cell_size) for q in queries[:, None]]
     np.testing.assert_allclose(model.score(queries[:, None]), expected, rtol=1e-9)
+
+
+def test_stare_uses_the_reference_bandwidth_in_a_constant_feature():
+    """The kernel centers and the instances have one value in the second feature, so the density at a kernel center has bandwidth 0 there."""
+    import numpy as np
+
+    from pysad.models import STARE
+
+    rng = np.random.RandomState(3)
+    window_size, num_neighbors, cell_size = 200, 3, 0.1
+    X = np.column_stack([rng.uniform(0.0, 1.0, 2 * window_size), np.full(2 * window_size, 0.5)])
+
+    model = STARE(
+        window_size=window_size,
+        slide_size=40,
+        num_neighbors=num_neighbors,
+        cell_size=cell_size,
+        skip_threshold=0.0,
+    ).fit(X)
+
+    queries = np.column_stack([np.arange(0.05, 1.0, 0.1), np.full(10, 0.5)])
+    expected = [_direct_score(X[-window_size:], q, num_neighbors, cell_size) for q in queries]
+    np.testing.assert_allclose(model.score(queries), expected, rtol=1e-9)
+
+
+def test_stare_scores_a_skipped_cell_with_its_current_nearest_kernel_centers():
+    """The window is one slide. Cells 0 to 2 hold 20 instances each, cell 4 expires, and cell 9 appears while cell 7 stays.
+
+    The error of every kernel center near cell 0 stays below skip_threshold, so their local densities are from the first window, but the expired cell 4 is no longer one of the nearest kernel centers of cell 0; cell 7 is.
+    """
+    import numpy as np
+
+    from pysad.models import STARE
+
+    cluster = np.repeat([0.05, 0.15, 0.25], 20)
+    first = np.concatenate([cluster, [0.45, 0.75]])[:, None]
+    second = np.concatenate([cluster, [0.75, 0.95]])[:, None]
+    model = STARE(
+        window_size=len(first),
+        slide_size=len(first),
+        num_neighbors=4,
+        cell_size=0.1,
+        skip_threshold=0.1,
+    ).fit(np.vstack([first, second]))
+
+    x = np.array([0.03])
+    expected = _direct_score(second, x, num_neighbors=4, cell_size=0.1, density_window=first)
+    np.testing.assert_allclose(model.score_partial(x), expected, rtol=1e-9)
 
 
 def test_stare_scores_a_point_away_from_the_clusters_highest():

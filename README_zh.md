@@ -230,6 +230,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `RSForest` | RS-Forest 随机空间树密度估计 (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash 子空间离群点检测 (Sathe & Aggarwal, ICDM 2016) |
 | `MStream` | MStream 多方面数据流计数 (Bhatia et al., WWW 2021) |
+| `MemStream` | MemStream 去噪自编码器与先进先出记忆 (Bhatia et al., WWW 2022) |
 | `MIDAS` | MIDAS 图数据流的边计数 (Bhatia et al., AAAI 2020) |
 | `IForestASD` | 滑动窗口上的孤立森林 (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | 在线孤立森林 (Leveni et al., ICML 2024) |
@@ -275,7 +276,7 @@ for x in ArrayStreamer().iter(X[100:]):
 
 ## 基准测试
 
-PySAD 在带标签的数据上对其检测器进行基准测试。10 个多变量检测器在 [ODDS](http://odds.cs.stonybrook.edu/) 数据库的 17 个数据集以及 8 条存在漂移的真实数据流上运行。单变量检测器在 Numenta 异常基准（NAB）和 UCR 档案库的序列上运行。每个检测器在每个数据集上使用默认参数运行一次，并且在从每个点学习之前先为它打分（`fit_score_partial`）。
+PySAD 在带标签的数据上对其检测器进行基准测试。多变量检测器在 [ODDS](http://odds.cs.stonybrook.edu/) 数据库的 17 个数据集以及 8 条存在漂移的真实数据流上运行。单变量检测器在 Numenta 异常基准（NAB）和 UCR 档案库的序列上运行。每个检测器在每个数据集上使用默认参数运行一次，并且在从每个点学习之前先为它打分（`fit_score_partial`）。
 
 [基准测试结果](https://pysad.readthedocs.io/en/stable/benchmark.html) 页面展示了全部结果。[评估方法](https://pysad.readthedocs.io/en/stable/benchmarks/methodology.html) 说明了实验步骤、指标以及结果的局限性，[数据集](https://pysad.readthedocs.io/en/stable/benchmarks/datasets.html) 页面介绍了所用数据。要运行基准测试，请按照 [运行基准测试](https://pysad.readthedocs.io/en/stable/benchmarks/run.html) 中的说明使用 `python benchmarks/benchmark.py`。对每个修改检测器的拉取请求，CI 都会运行一个简化版基准测试，并列出发生变化的结果。
 

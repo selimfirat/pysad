@@ -97,6 +97,17 @@ This script puts a PySAD detector after a River scaler. It scores each dictionar
 .. literalinclude:: ../examples/example_river_pipeline.py
    :language: python
 
+Use a scikit-learn pipeline
+----------------------------------------
+
+Fit the scaler and PySAD model on historical data before wrapping them.
+Batch scoring leaves the model unchanged.
+Lower ``score_samples`` values mean more anomalous instances.
+The threshold uses PySAD score units. ``predict`` returns -1 above the threshold and 1 at or below it.
+
+.. literalinclude:: ../examples/example_sklearn_pipeline.py
+   :language: python
+
 Project high-dimensional data
 -----------------------------
 

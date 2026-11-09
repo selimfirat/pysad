@@ -1,9 +1,10 @@
 import pytest
 
 # pysad.transform.ensemble._combination copies the score combination functions of combo 0.1.3.
-# The expected values below were computed with combo 0.1.3, so they pin the copy to its results.
-# The bootstrap and dynamic buckets are the exception: combo gives every bucket the same estimators
-# for an int random_state, so those values come from the copy (#627).
+# The expected values below come from combo 0.1.3. They pin the copy to its results.
+# The bootstrap and dynamic buckets are exceptions.
+# With an int random_state, combo gives every bucket the same estimators.
+# Those expected values come from the copy (#627).
 SCORES = [
     [0.1, 0.5, 0.9, 0.2, 0.7, 0.4],
     [0.8, 0.2, 0.4, 0.6, 0.1, 0.3],

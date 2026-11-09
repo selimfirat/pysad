@@ -26,7 +26,11 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
 Measure several metrics at once
 -------------------------------
 
-If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.evaluate_stream`. It scores each point, updates every metric with the score, and then lets the detector learn from the point. It returns the value of each metric at the end of the stream:
+If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.evaluate_stream`. It scores each point before the detector learns from it. Then it updates every metric with the label and score. It returns the value of each metric at the end of the stream.
+
+``X`` and ``y`` accept arrays, lists, and single-use generators. The function consumes both inputs once, in the same order. Each instance must have shape ``(num_features,)``. Each label must be 1 for an anomaly or 0 for a normal point. The inputs must have equal lengths. If one input ends first, the function raises ``ValueError``. The model and metrics keep updates from earlier pairs.
+
+This example passes generators without copying the input arrays. The evaluation loop does not store the full stream. The metrics can still keep all labels and scores:
 
 .. code-block:: python
 
@@ -38,8 +42,8 @@ If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.ev
 
    results = evaluate_stream(
        model=LODA(random_state=0),
-       X=X,
-       y=y,
+       X=(x for x in X),
+       y=(int(label) for label in y),
        metrics={"AUROC": AUROCMetric(), "AUPR": AUPRMetric()},
    )
 

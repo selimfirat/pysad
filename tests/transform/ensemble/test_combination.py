@@ -2,6 +2,8 @@ import pytest
 
 # pysad.transform.ensemble._combination copies the score combination functions of combo 0.1.3.
 # The expected values below were computed with combo 0.1.3, so they pin the copy to its results.
+# The bootstrap and dynamic buckets are the exception: combo gives every bucket the same estimators
+# for an int random_state, so those values come from the copy (#627).
 SCORES = [
     [0.1, 0.5, 0.9, 0.2, 0.7, 0.4],
     [0.8, 0.2, 0.4, 0.6, 0.1, 0.3],
@@ -28,12 +30,12 @@ SCORES = [
         (
             "aom",
             {"n_buckets": 2, "bootstrap_estimators": True, "random_state": 0},
-            [0.9, 0.4, 0.6, 0.8],
+            [0.8, 0.5, 0.75, 0.6000000000000001],
         ),
         (
             "aom",
             {"n_buckets": 3, "method": "dynamic", "random_state": 0},
-            [0.9, 0.4000000000000001, 0.6, 0.8000000000000002],
+            [0.6, 0.5333333333333333, 0.7999999999999999, 0.6],
         ),
         ("moa", {"n_buckets": 3, "random_state": 0}, [0.65, 0.45, 0.6, 0.7]),
         (
@@ -41,7 +43,11 @@ SCORES = [
             {"n_buckets": 2, "bootstrap_estimators": True, "random_state": 0},
             [0.6, 0.3, 0.46666666666666673, 0.43333333333333335],
         ),
-        ("moa", {"n_buckets": 3, "method": "dynamic", "random_state": 0}, [0.65, 0.35, 0.55, 0.65]),
+        (
+            "moa",
+            {"n_buckets": 3, "method": "dynamic", "random_state": 0},
+            [0.65, 0.44999999999999996, 0.7, 0.65],
+        ),
     ],
 )
 def test_combination_matches_combo(name, kwargs, expected):

@@ -58,7 +58,9 @@ Do not calculate bounds from future evaluation points.
 Choose distinct limits that cover the expected values.
 The example uses known limits of 0 and 40.
 
-Bounds configure the detector and do not scale or clip inputs.
+HalfSpaceTrees uses the bounds to build its trees without scaling inputs.
+RSHash uses the bounds to normalize each feature internally with ``(x - feature_mins) / (feature_maxes - feature_mins)``.
+Neither detector clips inputs to the bounds.
 If you scale the input, express the bounds in the same units.
 If the expected range changes, create a detector with new bounds and fit recent history.
 

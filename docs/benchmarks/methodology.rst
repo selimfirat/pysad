@@ -38,6 +38,7 @@ These detectors get more arguments in step 3:
 - :class:`~pysad.models.HTM` gets each point with its timestamp, the range from 0 to 1, the probationary period of NAB, and the seed 0. It does not run on the UCR series, which have no timestamps.
 - :class:`~pysad.models.KNNCAD` learns during the probationary period of NAB, as in NAB.
 - :class:`~pysad.models.RelativeEntropy` gets the range from 0 to 1.
+- :class:`~pysad.models.SAND` gets a fixed subsequence length of 10, a batch size of 256, and ``random_state=0`` on both NAB and UCR. See :doc:`univariate` for its initialization and scoring protocol.
 - :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` get the period of the series and a window of 3 periods and one point. The R package of their paper needs more than 2 periods. With an odd window, the detectors give the same anomalies as the R package.
 
 Metrics

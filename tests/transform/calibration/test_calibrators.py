@@ -60,7 +60,7 @@ def test_conformal_calibrator_values():
 
 
 def test_calibrators_return_zero_before_the_first_fit():
-    # StreamPipeline.score_partial transforms a score before any calibrator is fitted (#625).
+    # StreamPipeline.score_partial transforms a score before any postprocessor or calibrator learns (#625).
     from pysad.transform.probability_calibration import (
         ConformalProbabilityCalibrator,
         GaussianTailProbabilityCalibrator,

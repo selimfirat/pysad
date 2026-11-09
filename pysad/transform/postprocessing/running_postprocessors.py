@@ -131,7 +131,8 @@ class NonparametricDynamicThresholdPostprocessor(BasePostprocessor):
             score (float): Ignored, the method uses the last fitted score.
 
         Returns:
-            float: The score of the anomalous sequence that contains the last fitted score, or 0 if that score is nominal or no score was fitted.
+            float: The score of the anomalous sequence that contains the last fitted score.
+                Returns 0 if that score is nominal or before the first fit.
         """
         if self.num_seen_ == 0:
             return 0.0

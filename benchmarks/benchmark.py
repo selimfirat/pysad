@@ -105,6 +105,7 @@ DETECTORS = {
     "LODA": lambda X, seed: models.LODA(random_state=seed),
     "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[: warmup(len(X))]),
     "MCOD": lambda X, seed: models.MCOD(),
+    "MemStream": lambda X, seed: models.MemStream(random_state=seed),
     "MStream": lambda X, seed: models.MStream(random_state=seed),
     "NETS": lambda X, seed: models.NETS(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
@@ -129,9 +130,9 @@ SHORT_NAMES = {
 }
 
 
-# The univariate detectors run once on each NAB series with anomalies, in the order of the file,
-# because none of them draws random numbers, except HTM, which runs with seed 0. Each detector gets
-# its defaults, plus the arguments that it requires. The values of a series are scaled to [0, 1].
+# The univariate detectors run once on each NAB and UCR series, in file order, with seed 0 for
+# stochastic detectors. Each detector gets its defaults, plus the arguments that it requires.
+# The values of a series are scaled to [0, 1].
 UNIVARIATE = {
     "ChangeFinder": lambda n, period: models.ChangeFinder(),
     "HoltWinters": lambda n, period: models.HoltWinters(period),
@@ -143,6 +144,10 @@ UNIVARIATE = {
     "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
     "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
+    # Fix the length without labels, as for shingles, and initialize in the standard warm-up.
+    "SAND": lambda n, period: models.SAND(
+        subsequence_length=SHINGLE_SIZE, batch_size=WARMUP_POINTS, random_state=0
+    ),
     "StandardAbsoluteDeviation": lambda n, period: models.StandardAbsoluteDeviation(),
     # A window of 3 periods and one point, because R's stl() needs more than 2 periods, and an odd
     # window makes the robust STL match R.

@@ -137,6 +137,7 @@ def _model_params(model_name, num_features, data):
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         # The drawn values reach -1e6, below the domain of log(1 + x).
         "MIDAS": {"num_buckets": 16, "tick_size": 3},
+        "MemStream": {"window_size": 8, "num_epochs": 20},
         "MStream": {"log_transform": False},
         "NETS": {"window_size": 20, "max_radius": 0.1},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},

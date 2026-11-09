@@ -130,6 +130,7 @@ def _model_params(model_name, X):
         "LocalOutlierProbability": {"initial_X": X[:100]},
         "RelativeEntropy": {"min_val": feature_mins[0], "max_val": feature_maxes[0]},
         "RobustRandomCutForest": {"num_trees": 10, "tree_size": 64},
+        "MemStream": {"window_size": 8, "num_epochs": 20},
         # The normal values go below -1, out of the domain of log(1 + x). The values are continuous,
         # so fewer buckets than the default make the normal values share buckets.
         "MStream": {"num_buckets": 32, "log_transform": False},

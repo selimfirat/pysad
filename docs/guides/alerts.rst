@@ -194,6 +194,11 @@ With ``fit_score_partial``, the model learns from every point, and also from ano
 
 If the data changes permanently, for example after a deployment, the model in this loop never learns the new normal behavior. If you find such a change, reset the model, or let it learn from all points again.
 
+Plot the alerts
+---------------
+
+To see where the alerts fall, plot the calibrated scores with the threshold. The script ``examples/example_plot_stream.py`` in :doc:`../examples` draws three panels with matplotlib: the features, the scores with the threshold, and the alerts against the labels. PySAD does not install matplotlib, so install it with ``pip install matplotlib``.
+
 Next steps
 ----------
 

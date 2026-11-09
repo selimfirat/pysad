@@ -56,3 +56,85 @@ def test_rs_forest_rejects_a_zero_window_size():
 
     with pytest.raises(ValueError, match="window_size"):
         RSForest(window_size=0)
+
+
+def test_rs_forest_replaces_the_reference_only_at_window_boundaries():
+    from pysad.models import RSForest
+
+    rng = np.random.default_rng(42)
+    window_size = 64
+    model = RSForest(
+        window_size=window_size, num_trees=10, max_depth=8, node_size_limit=2, random_state=0
+    ).fit(rng.normal(loc=-1.0, scale=0.1, size=(window_size, 2)))
+    probes = np.array([[-1.0, -1.0], [1.0, 1.0]])
+    before = model.score(probes)
+    assert before[0] < before[1]
+
+    for center in (1.0, -1.0):
+        window = rng.normal(loc=center, scale=0.1, size=(window_size, 2))
+        model.fit(window[:-1])
+        np.testing.assert_array_equal(model.score(probes), before)
+        model.fit_partial(window[-1])
+        after = model.score(probes)
+        assert (after[0] < after[1]) == (center == -1.0)
+        before = after
+
+
+def test_rs_forest_uses_the_termination_node_and_window_normalization():
+    from pysad.models import RSForest
+
+    window_size = 16
+    model = RSForest(
+        window_size=window_size,
+        num_trees=5,
+        max_depth=6,
+        node_size_limit=window_size,
+        random_state=0,
+    ).fit(np.random.default_rng(0).normal(size=(window_size, 2)))
+    probes = np.array([[0.0, 0.0], [100.0, -100.0]])
+    # All paths terminate at the root: its relative volume is 1.
+    np.testing.assert_array_equal(model.score(probes), -1.0)
+    for i in range(window_size):
+        model.fit_partial(probes[0], y=i % 2)
+    # Labeled anomalies do not enter the profile, but N remains the window size.
+    np.testing.assert_array_equal(model.score(probes), -0.5)
+
+
+def test_rs_forest_initialization_ignores_labeled_anomalies():
+    from pysad.models import RSForest
+
+    X = np.random.default_rng(0).normal(size=(32, 2))
+    model = RSForest(window_size=16, num_trees=5, max_depth=6, random_state=0)
+    assert model.fit_score_partial(np.array([1e6, -1e6]), y=1) == 0.0
+    scores = model.fit_score(X)
+    expected = RSForest(window_size=16, num_trees=5, max_depth=6, random_state=0).fit_score(X)
+    np.testing.assert_array_equal(scores, expected)
+
+
+@pytest.mark.parametrize("scale", [0.0, 1e-120, 1e120])
+def test_rs_forest_scores_remain_finite_at_different_feature_scales(scale):
+    from pysad.models import RSForest
+
+    X = scale * np.random.default_rng(0).normal(size=(128, 3))
+    model = RSForest(window_size=16, num_trees=5, max_depth=8, random_state=0)
+    scores = model.fit_score(X)
+    assert np.isfinite(scores).all()
+    if scale:
+        expected = RSForest(window_size=16, num_trees=5, max_depth=8, random_state=0).fit_score(
+            X / scale
+        )
+        np.testing.assert_allclose(scores, expected)
+
+
+def test_rs_forest_serialized_memory_stays_bounded_across_windows():
+    import pickle
+
+    from pysad.models import RSForest
+
+    rng = np.random.default_rng(0)
+    model = RSForest(window_size=16, num_trees=5, max_depth=6, random_state=0)
+    model.fit(rng.normal(size=(16, 3)))
+    initial_size = len(pickle.dumps(model))
+    for _ in range(20):
+        model.fit(rng.normal(size=(160, 3)))
+        assert len(pickle.dumps(model)) == initial_size

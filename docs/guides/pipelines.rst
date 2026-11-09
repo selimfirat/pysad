@@ -81,6 +81,35 @@ Chain the stages into one model
 
 ``fit_score_partial`` gives the same scores as the loop in the first section. ``score_partial`` scores a point with the current state of each stage and does not fit any stage. A calibrator is a postprocessor, so put it last in ``postprocessors``.
 
+Use a PySAD model in River
+--------------------------------
+
+:class:`~pysad.integrations.RiverAnomalyDetector` exposes a PySAD model through River's ``learn_one`` and ``score_one`` methods. It requires Python 3.11 or newer and works as the final stage of a River pipeline:
+
+.. code-block:: python
+
+   from functools import partial
+
+   from river import preprocessing
+
+   from pysad.integrations import RiverAnomalyDetector
+   from pysad.models import LODA
+
+   pipeline = preprocessing.StandardScaler() | RiverAnomalyDetector(partial(LODA, random_state=0))
+
+   for x in streamer.iter(X):
+       features = dict(enumerate(x))
+       score = pipeline.score_one(features)
+       pipeline.learn_one(features)
+
+Call ``score_one`` before ``learn_one`` for each point. The wrapper scores without fitting the PySAD model, and preserves its score range and warm-up behavior. River controls when the other pipeline stages learn.
+
+The first dictionary fixes the feature order. Later dictionaries may list the keys in any order, but missing or new keys raise ``ValueError``. Pass ``feature_names`` to set the column order explicitly, for example ``feature_names=("cpu", "latency")``. The feature mapping stays fixed in size as the stream grows.
+
+Pass a model class, such as ``RiverAnomalyDetector(LODA)``, or a zero-argument factory that creates a fresh model with custom parameters, as above. The adapter exposes the created model as ``model_``. River's ``clone()`` returns an untrained adapter, resetting inferred feature names and retaining explicit ones. Use ``clone(include_attributes=True)`` to copy both learned state and feature mapping, including in pipelines.
+
+See ``examples/example_river_pipeline.py`` for a complete evaluation loop.
+
 Combine several detectors
 -------------------------
 

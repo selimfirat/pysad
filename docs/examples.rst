@@ -89,6 +89,14 @@ It prints:
 
    AUROC: 0.742
 
+Use a River pipeline
+--------------------
+
+This script puts a PySAD detector after a River scaler. It scores each dictionary before learning from it. See :doc:`guides/pipelines` for the fixed feature mapping.
+
+.. literalinclude:: ../examples/example_river_pipeline.py
+   :language: python
+
 Project high-dimensional data
 -----------------------------
 
@@ -191,6 +199,14 @@ It prints:
 
    22 raw scores are at least 0.99
    likelihood alerts at [549, 2620, 4001], the anomaly starts at 4000
+
+Plot the alerts
+---------------
+
+This script calibrates the scores of LODA on a synthetic stream. Then it plots the features, the calibrated scores with the threshold, and the alerts against the labels. It needs matplotlib, which PySAD does not install. See :doc:`guides/alerts`.
+
+.. literalinclude:: ../examples/example_plot_stream.py
+   :language: python
 
 Flag anomalies with a dynamic threshold
 ---------------------------------------
@@ -753,3 +769,11 @@ It prints:
    Drift detected at index 1102 (zero-based), distance 0.60
 
 The spread changes at index 1000. After a drift, the window keeps only its newest values, so the next test compares values of the new distribution only.
+
+MemStream
+---------
+
+MemStream trains a denoising autoencoder on a small normal calibration block, then scores each new point against its bounded memory of accepted encodings. The calibration block must be normal; the labels are used here only to select that block. Monitoring starts after the calibration segment.
+
+.. literalinclude:: ../examples/example_memstream.py
+   :language: python

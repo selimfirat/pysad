@@ -26,6 +26,7 @@ from .loop import LocalOutlierProbability
 from .matrix_profile import MatrixProfile
 from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
+from .memstream import MemStream
 from .midas import MIDAS
 from .mstream import MStream
 from .nets import NETS
@@ -75,6 +76,7 @@ __all__ = [
     "MCOD",
     "MIDAS",
     "MedianAbsoluteDeviation",
+    "MemStream",
     "MStream",
     "NETS",
     "NullModel",

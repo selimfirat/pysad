@@ -63,6 +63,7 @@ def _params(name, num_features):
         "HoltWinters": {"period": 2},
         "IForestASD": {"window_size": 20, "n_estimators": 10},
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
+        "MemStream": {"window_size": 4, "num_epochs": 20},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
         "KNNCAD": {"probationary_period": 48},
         "MatrixProfile": {"window_length": 3},

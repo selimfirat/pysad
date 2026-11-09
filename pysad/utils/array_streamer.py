@@ -36,8 +36,9 @@ class ArrayStreamer(BaseStreamer):
             X (np.array of shape (num_instances, num_features)): The features array.
             y (np.array of shape (num_instances,)): The array containing labels (Default=None).
         """
-        indices = list(range(len(X)))
+        indices: range | list[int] = range(len(X))
         if self.shuffle:
+            indices = list(indices)
             check_random_state(self.random_state).shuffle(indices)
 
         if y is None:

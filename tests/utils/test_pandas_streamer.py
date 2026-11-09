@@ -153,10 +153,22 @@ def test_pandas_streamer_label_values_and_shapes(label_kind, shuffle):
         assert label.dtype == expected.dtype
 
 
-@pytest.mark.parametrize("with_labels", [False, True])
-def test_pandas_streamer_unshuffled_memory(with_labels):
-    df = pd.DataFrame({"a": np.arange(100_000), "b": np.zeros(100_000)})
-    labels = df if with_labels else None
+@pytest.mark.parametrize("num_rows", [1_000, 1_000_000])
+@pytest.mark.parametrize("data_kind", ["mixed", "integer", "nullable", "missing"])
+@pytest.mark.parametrize("label_kind", [None, "series", "frame"])
+def test_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind):
+    df = pd.DataFrame({"a": np.arange(num_rows)})
+    if data_kind == "mixed":
+        df["b"] = np.zeros(num_rows)
+    elif data_kind in ("nullable", "missing"):
+        df = df.astype("Int64")
+        if data_kind == "missing":
+            df.iloc[-1, 0] = pd.NA
+    labels = None
+    if label_kind == "series":
+        labels = df["a"].copy()
+    elif label_kind == "frame":
+        labels = df.copy()
     rows = PandasStreamer().iter(df, labels)
 
     tracemalloc.start()
@@ -167,8 +179,11 @@ def test_pandas_streamer_unshuffled_memory(with_labels):
         tracemalloc.stop()
         rows.close()
 
-    np.testing.assert_array_equal(first[0] if with_labels else first, [0, 0])
-    assert peak < 500_000
+    expected = [0, 0] if data_kind == "mixed" else [0]
+    np.testing.assert_array_equal(first if labels is None else first[0], expected)
+    if labels is not None:
+        np.testing.assert_array_equal(first[1], 0 if label_kind == "series" else expected)
+    assert peak < 50_000
 
 
 @pytest.mark.parametrize("as_frame", [False, True])

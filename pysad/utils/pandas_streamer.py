@@ -16,7 +16,11 @@ def _iter_rows(data: pd.DataFrame | pd.Series) -> Iterator[Any]:
     dtype = data.iloc[:0].to_numpy().dtype
     if dtype.kind in "biu":
         column = data if data.ndim == 1 else data.iloc[:, 0]
-        if column.hasnans:
+        # NumPy integer and boolean columns cannot contain missing values.
+        # Scan nullable columns in chunks to bound temporary memory.
+        if not isinstance(column.dtype, np.dtype) and any(
+            column.array[start : start + 1024].isna().any() for start in range(0, len(column), 1024)
+        ):
             # Missing integers use floats. Missing booleans use objects.
             dtype = np.dtype(object if dtype.kind == "b" else np.float64)
 

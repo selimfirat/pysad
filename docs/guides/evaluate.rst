@@ -110,6 +110,32 @@ The first window has the lowest AUROC, because the detector starts with no data 
 
 :class:`~pysad.evaluation.WindowedMetric` computes the same values and gives only their average, here 0.923. Use it to report one number that gives the same weight to each window of the stream. With AUPR, a window without anomalies gives 0 and lowers this average.
 
+Track recent performance
+------------------------
+
+:class:`~pysad.evaluation.RollingMetric` evaluates only the most recent label-score pairs.
+Each update drops the oldest pair when the window is full.
+It differs from ``WindowedMetric``, which averages results from consecutive windows that do not overlap.
+
+.. code-block:: python
+
+   from pysad.evaluation import RecallMetric, RollingMetric
+
+   metric = RollingMetric(RecallMetric, window_size=100, threshold=0.5)
+   print(metric.get())  # None, because the window is empty.
+   metric.update(1, 0.8)
+   metric.update(1, 0.2)
+   print(metric.get())  # 0.5, from the two available pairs.
+
+An empty window returns ``None`` for every metric class.
+A nonempty window follows the selected metric's behavior, including errors for undefined results.
+For example, ``AUROCMetric`` needs both label classes in the recent window.
+Updates take O(1) time, and storage holds at most ``window_size`` pairs.
+Each ``get()`` creates a fresh metric, replays the window, and reads its result.
+AUROC and AUPR reads take O(window_size * log(window_size)) time because they sort scores.
+Read less often to reduce this cost.
+See ``examples/example_rolling_metric.py`` for a complete stream example.
+
 Report a stable result
 ----------------------
 

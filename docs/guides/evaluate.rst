@@ -20,6 +20,8 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
      - Measure the ranking when anomalies are rare. AUPR is the area under the precision-recall curve. A random detector gets the fraction of anomalies in the stream, so compare AUPR only on the same data.
    * - :class:`~pysad.evaluation.PrecisionMetric`
      - Measure the fraction of alerts that are true anomalies, for a given threshold.
+   * - :class:`~pysad.evaluation.MatthewsCorrelationMetric`
+     - Measure binary predictions when class sizes differ. It uses all four confusion counts and supports a score threshold.
    * - :class:`~pysad.evaluation.RecallMetric`
      - Measure the fraction of anomalies that raise an alert, for a given threshold.
 
@@ -80,7 +82,9 @@ If the metrics get transformed scores, write the loop yourself and update every 
 
 The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores. During this final run of anomalies, most of the recent scores are from anomalies too.
 
-A metric keeps every label and score that it gets, and ``get`` computes the metric over all of them. As a result, each ``get`` call takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals, not for every point.
+The sklearn wrapper metrics keep every label and score. Their ``get`` methods compute results from this history. As a result, each ``get`` call takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals, not for every point.
+
+:class:`~pysad.evaluation.MatthewsCorrelationMetric` keeps four confusion counts instead of the stream history. It uses constant memory and constant work for each update and result. A zero denominator returns 0.0, including before the first update. See ``examples/example_matthews_correlation.py``.
 
 Follow the performance over time
 --------------------------------

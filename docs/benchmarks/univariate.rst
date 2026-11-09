@@ -32,6 +32,8 @@ HoltWinters and the ESD detectors run on fewer series than the other detectors, 
    :header-rows: 1
    :class: benchmark-table best-columns
 
+.. include:: ../benchmark/median_absolute_deviation.rst
+
 NAB evaluation protocol
 -----------------------
 

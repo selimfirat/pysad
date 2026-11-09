@@ -17,13 +17,16 @@ PICKLE_SKIP_METRICS = {"BaseSKLearnMetric", "WindowedMetric", "evaluate_stream"}
 WINDOWED_METRICS = [
     "AUROCMetric",
     "AUPRMetric",
+    "F1Metric",
     "MatthewsCorrelationMetric",
     "PrecisionMetric",
     "RecallMetric",
 ]
 
-# Binary metrics use a threshold to turn scores into 0/1 predictions.
+# F1, precision and recall are defined on predicted classes, so they get a threshold to turn the
+# scores below into 0/1 predictions.
 METRIC_KWARGS = {
+    "F1Metric": {"threshold": 0.5},
     "MatthewsCorrelationMetric": {"threshold": 0.5},
     "PrecisionMetric": {"threshold": 0.5},
     "RecallMetric": {"threshold": 0.5},

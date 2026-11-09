@@ -44,7 +44,7 @@ Stream a pandas DataFrame
 Stream a Polars DataFrame
 -------------------------
 
-:class:`~pysad.utils.PolarsStreamer` gives the rows of a Polars DataFrame as NumPy arrays. A Polars DataFrame has no index, so drop the timestamp column from the features and read it in the same loop:
+:class:`~pysad.utils.PolarsStreamer` gives the rows of a Polars DataFrame as NumPy arrays. With ``shuffle=False``, it converts fixed-size row buffers. This avoids a NumPy copy of the full frame and keeps NumPy dtypes and timestamp precision. A Polars DataFrame has no index, so drop the timestamp column from the features and read it in the same loop:
 
 .. code-block:: python
 

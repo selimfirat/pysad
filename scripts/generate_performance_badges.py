@@ -1,6 +1,6 @@
 """Regenerate the JSON data behind the README performance badges.
 
-The badges show throughput, memory and detector count. Their values come from
+The badges show throughput and detector count. Their values come from
 the benchmark data in docs/benchmark/ and from the detector catalog, so they
 stay in sync with the measured performance of the library.
 
@@ -75,13 +75,12 @@ def _badge(label: str, message: str, color: str) -> dict:
 
 
 def main() -> None:
-    """Write the three badge JSON files to docs/_static/."""
+    """Write the two badge JSON files to docs/_static/."""
     count = _detector_count()
     rate = _format_rate(_median_points_per_second())
 
     badges = {
         "throughput.json": _badge("throughput", rate, "green"),
-        "memory.json": _badge("memory", "bounded", "green"),
         "detectors.json": _badge("detectors", str(count), "blue"),
     }
 

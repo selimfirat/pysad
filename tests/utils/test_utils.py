@@ -368,3 +368,107 @@ class TestArrayStreamer:
 
         assert default == list(ArrayStreamer(shuffle=True, random_state=4).iter(X))
         assert default != list(ArrayStreamer(shuffle=True, random_state=8).iter(X))
+
+
+class TestPlotStream:
+    """Tests for plot_stream."""
+
+    def _use_agg_backend(self):
+        import matplotlib
+
+        matplotlib.use("Agg")
+
+    def test_plot_stream_returns_figure_and_three_axes(self):
+        """plot_stream returns a figure and three axes."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        rng = np.random.default_rng(0)
+        X = rng.normal(size=(50, 2))
+        scores = rng.random(50)
+
+        fig, axes = plot_stream(X, scores)
+
+        assert len(axes) == 3
+        assert len(fig.axes) == 3
+        plt.close(fig)
+
+    def test_plot_stream_draws_score_and_threshold_lines(self):
+        """With a threshold, the scores panel shows the score line and the threshold line."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+
+        _, axes = plot_stream(scores.reshape(-1, 1), scores)
+
+        assert len(axes[1].get_lines()) == 1
+
+        _, axes = plot_stream(scores.reshape(-1, 1), scores, threshold=0.5)
+
+        assert len(axes[1].get_lines()) == 2
+        threshold_line = axes[1].get_lines()[1]
+        assert threshold_line.get_ydata()[0] == 0.5
+
+        plt.close("all")
+
+    def test_plot_stream_draws_confidence_band(self):
+        """With lower and upper bounds, the scores panel shows the confidence band."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+        lower = scores - 0.1
+        upper = scores + 0.1
+
+        _, axes = plot_stream(scores.reshape(-1, 1), scores, lower=lower, upper=upper)
+
+        assert len(axes[1].collections) >= 1
+
+        plt.close("all")
+
+    def test_plot_stream_draws_alert_spikes(self):
+        """With alerts and labels, the alerts panel shows the spikes."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+        alerts = np.array([2])
+        labels = np.array([0, 0, 0, 0, 1])
+
+        _, axes = plot_stream(scores.reshape(-1, 1), scores, alerts=alerts, labels=labels)
+
+        assert len(axes[2].collections) >= 1
+
+        plt.close("all")
+
+    def test_plot_stream_without_optional_args(self):
+        """plot_stream works with only the features and the scores."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        rng = np.random.default_rng(0)
+        X = rng.normal(size=(20, 3))
+        scores = rng.random(20)
+
+        fig, axes = plot_stream(X, scores)
+
+        assert len(axes[0].get_lines()) == 3
+        assert len(axes[1].get_lines()) == 1
+
+        plt.close(fig)

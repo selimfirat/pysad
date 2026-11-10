@@ -85,7 +85,6 @@ def test_unsupervised_models():
         OnlineOneClassSVM: {},
         PCBIsolationForest: {
             "num_trees": 10,
-            "max_leaf_samples": 8,
             "window_size": 40,
             "stat_size": 10,
         },

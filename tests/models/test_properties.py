@@ -144,7 +144,6 @@ def _model_params(model_name, num_features, data):
         "OnlineOneClassSVM": {"window_size": 10},
         "PCBIsolationForest": {
             "num_trees": 5,
-            "max_leaf_samples": 4,
             "window_size": 10,
             "stat_size": 3,
         },

@@ -89,7 +89,6 @@ MODEL_PARAMS = {
     "OnlineOneClassSVM": {"window_size": 32},
     "PCBIsolationForest": {
         "num_trees": 10,
-        "max_leaf_samples": 8,
         "window_size": 32,
         "stat_size": 10,
     },

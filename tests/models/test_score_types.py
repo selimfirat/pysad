@@ -135,9 +135,7 @@ def _model_specs():
         ("OnlineOneClassSVM", lambda: OnlineOneClassSVM(), NUM_FEATURES),
         (
             "PCBIsolationForest",
-            lambda: PCBIsolationForest(
-                num_trees=10, max_leaf_samples=8, window_size=32, stat_size=10
-            ),
+            lambda: PCBIsolationForest(num_trees=10, window_size=32, stat_size=10),
             NUM_FEATURES,
         ),
         ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),

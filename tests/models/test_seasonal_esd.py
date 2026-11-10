@@ -155,3 +155,23 @@ def test_seasonal_hybrid_esd_matches_r_anomaly_detection(direction, expected):
     # The values i for which AnomalyDetectionVec(X[i - 96 : i + 1], period = 24, direction) of
     # Twitter's AnomalyDetection R package (commit 1f5deaa) flags the last value.
     assert np.flatnonzero(scores > 0).tolist() == expected
+
+
+@pytest.mark.parametrize("model_name", ["SeasonalESD", "SeasonalHybridESD"])
+@pytest.mark.parametrize(("scale", "offset"), [(1e-12, 0.0), (1e-6, 0.0), (1e6, 0.0), (1e-4, 1e6)])
+def test_seasonal_esd_flags_do_not_depend_on_units(model_name, scale, offset):
+    import numpy as np
+
+    import pysad.models
+
+    t = np.arange(24 * 8)
+    X = 10 + 3 * np.sin(2 * np.pi * t / 24) + 0.3 * np.sin(0.7 * t**2)
+    X[[100, 130, 170]] += [4, -4, 5]
+
+    def flags(values):
+        model = getattr(pysad.models, model_name)(period=24, window_size=97)
+        return np.flatnonzero(model.fit_score(values.reshape(-1, 1)) > 0).tolist()
+
+    expected = flags(X)
+    assert expected
+    assert flags(offset + scale * X) == expected

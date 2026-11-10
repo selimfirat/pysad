@@ -52,8 +52,17 @@ intersphinx_mapping = {
 
 bibtex_bibfiles = ["refs.bib"]
 
-# The ODDS site blocks automated clients by IP address through Cloudflare.
-linkcheck_ignore = [r"https?://odds\.cs\.stonybrook\.edu/?"]
+# These services block automated clients.
+linkcheck_ignore = [
+    r"https?://odds\.cs\.stonybrook\.edu/?",
+    r"https://scholar\.google\.com/",
+    # DOI links redirect to bot challenges at these publishers.
+    r"https://doi\.org/10\.1080/",  # Taylor & Francis
+    r"https://doi\.org/10\.1093/",  # Oxford University Press
+    r"https://doi\.org/10\.1137/",  # SIAM
+    r"https://doi\.org/10\.1145/",  # ACM
+    r"https://doi\.org/10\.14778/",  # VLDB papers on ACM
+]
 
 # llms.txt lists the rendered pages, because the API pages get their text from docstrings.
 llms_txt_summary = (

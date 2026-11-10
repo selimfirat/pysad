@@ -32,6 +32,8 @@ HoltWinters and the ESD detectors run on fewer series than the other detectors, 
    :header-rows: 1
    :class: benchmark-table best-columns
 
+.. include:: ../benchmark/median_absolute_deviation.rst
+
 NAB evaluation protocol
 -----------------------
 
@@ -48,3 +50,18 @@ Each UCR series has one anomaly. The next table gives the percentage of the UCR 
    :file: ../benchmark/univariate_ucr.csv
    :header-rows: 1
    :class: benchmark-table best-columns
+
+SAND configuration and protocol
+-------------------------------
+
+:class:`~pysad.models.SAND` :cite:`boniol2021sand` runs on all NAB series and the selected UCR series with ``subsequence_length=10`` and ``random_state=0``. The length is fixed before evaluation, using the same length as the benchmark's shingles; it uses neither anomaly labels nor the anomaly lengths encoded in UCR filenames. It is a reproducible baseline, and may miss anomalies at other scales. The centroid length remains the default, four times the subsequence length (40), and the number of clusters remains 6.
+
+The batch size is 256 instead of the model's default of 5,000, so initialization completes within the standard warm-up and the short CI run exercises scoring. SAND returns zero for the first 256 scores, including the point that completes the first batch. Fitting that point initializes the clusters and the distance mean and standard deviation from the first batch. Each subsequent ``fit_score_partial`` call scores the subsequence ending at the current point using the last complete batch's model and normalization, then fits the point. Completing another batch updates the model only after that point has been scored. No future values or retrospective averaging of scores are used. This follows PySAD's prequential interface; the paper instead clusters a batch before scoring it, as documented in the model's docstring.
+
+SAND uses the same evaluation cutoffs as the other detectors: point-wise NAB metrics omit the standard warm-up, NAB event scores omit NAB's probationary period, and UCR metrics omit the training prefix. These cutoffs are not extended for SAND. If a cutoff is shorter than 256 points, the remaining initialization scores count in the metrics. The first batch is not assumed to be anomaly-free. NAB event scoring uses the online conformal calibration described above; point-wise NAB and UCR metrics use the raw scores.
+
+Run this configuration from the repository root::
+
+   python benchmarks/benchmark.py --detectors SAND --parts univariate --jobs 1
+
+Add ``--ci /tmp/sand.csv`` for the first 2,000 points of each NAB series, without UCR or changes to the published result tables.

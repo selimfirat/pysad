@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from math import sqrt
 
 from sklearn.metrics import average_precision_score, roc_auc_score
 
@@ -139,3 +140,73 @@ class AUPRMetric(BaseSKLearnMetric):
         if not y_true:
             raise ValueError("No samples recorded. PR AUC score is not defined in that case.")
         return average_precision_score(y_true, y_pred)
+
+
+class MatthewsCorrelationMetric(BaseMetric):
+    """Measure Matthews correlation for binary labels and predictions.
+
+    Use this metric when class sizes differ, for example when anomalies are rare.
+    It uses true positives, true negatives, false positives, and false negatives.
+    It keeps four counts, with constant memory and constant work per update.
+    It does not store labels or scores.
+
+    The result ranges from -1 for opposite predictions to 1 for perfect predictions.
+    Zero means no correlation. An empty stream or a zero denominator returns 0.0.
+
+    Args:
+        threshold (float | None): Scores at or above this value predict anomaly label 1.
+            None requires predictions of 0 or 1 (Default=None).
+    """
+
+    def __init__(self, threshold: float | None = None) -> None:
+        super().__init__()
+        self.threshold = threshold
+        self.tp_ = 0
+        self.tn_ = 0
+        self.fp_ = 0
+        self.fn_ = 0
+
+    def update(self, y_true: int, y_pred: float) -> None:
+        """Add one label and prediction to the counts.
+
+        Args:
+            y_true (int): True label, 1 for an anomaly or 0 for a normal point.
+            y_pred (float): Binary prediction, or anomaly score when threshold is set.
+
+        Raises:
+            ValueError: The label or binary prediction differs from 0 and 1.
+        """
+        if y_true not in (0, 1):
+            raise ValueError("y_true must be 0 or 1.")
+        if self.threshold is None:
+            if y_pred not in (0, 1):
+                raise ValueError("y_pred must be 0 or 1 when threshold is None.")
+            predicted = y_pred == 1
+        else:
+            predicted = y_pred >= self.threshold
+
+        if y_true == 1:
+            if predicted:
+                self.tp_ += 1
+            else:
+                self.fn_ += 1
+        elif predicted:
+            self.fp_ += 1
+        else:
+            self.tn_ += 1
+
+    def get(self) -> float:
+        """Return the correlation without changing the counts.
+
+        Returns:
+            float: Current correlation, or 0.0 when the denominator is zero.
+        """
+        denominator = (
+            (self.tp_ + self.fp_)
+            * (self.tp_ + self.fn_)
+            * (self.tn_ + self.fp_)
+            * (self.tn_ + self.fn_)
+        )
+        if denominator == 0:
+            return 0.0
+        return (self.tp_ * self.tn_ - self.fp_ * self.fn_) / sqrt(denominator)

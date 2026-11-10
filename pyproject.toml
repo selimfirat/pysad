@@ -226,6 +226,7 @@ module = [
     "pysad.transform.preprocessing.*",
     "pysad.transform.probability_calibration.*",
     "pysad.transform.projection.*",
+    "pysad.transform.stream_generators.*",
     "pysad.utils.*",
     "pysad.models.adems",
     "pysad.models.anyout",

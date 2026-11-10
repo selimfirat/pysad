@@ -25,12 +25,15 @@ Each page lists the public classes and functions of one module. Each name has a 
    * - :doc:`api/preprocessing`
      - Scalers and seasonal decomposition
      - ``pysad.transform.preprocessing``
-   * - :doc:`api/projection`
-     - Random projections
-     - ``pysad.transform.projection``
-   * - :doc:`api/postprocessing`
-     - Score smoothing and normalization
-     - ``pysad.transform.postprocessing``
+    * - :doc:`api/projection`
+      - Random projections
+      - ``pysad.transform.projection``
+    * - :doc:`api/stream_generators`
+      - Adversarial stream generators
+      - ``pysad.transform.stream_generators``
+    * - :doc:`api/postprocessing`
+      - Score smoothing and normalization
+      - ``pysad.transform.postprocessing``
    * - :doc:`api/ensemble`
      - Score ensemblers
      - ``pysad.transform.ensemble``
@@ -59,6 +62,7 @@ Each page lists the public classes and functions of one module. Each name has a 
    api/sklearn
    api/preprocessing
    api/projection
+   api/stream_generators
    api/postprocessing
    api/ensemble
    api/calibration

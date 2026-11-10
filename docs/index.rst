@@ -110,7 +110,7 @@ A batch detector needs the whole dataset before it can score a point. A stream d
 
       :doc:`Benchmarks <benchmark>`
 
-      AUROC, AUPR and time per point for all multivariate detectors across |num_datasets| labeled datasets.
+      Mean AUROC and time per point for all multivariate detectors across |num_datasets| labeled datasets.
 
    .. container:: card
 

@@ -1,5 +1,7 @@
 """The metrics of benchmarks/benchmark.py."""
 
+import csv
+
 import numpy as np
 import pytest
 from sklearn.metrics import average_precision_score, roc_auc_score
@@ -77,3 +79,44 @@ def test_sand_benchmark_scores_before_update_and_reproduces_metrics(monkeypatch,
     assert row["seed"] == 0
     assert row["auroc"] == round(roc_auc_score(y[cutoff:], expected), 4)
     assert row["aupr"] == round(average_precision_score(y[cutoff:], expected), 4)
+
+
+def test_summary_has_no_mean_aupr(tmp_path):
+    benchmark = load_benchmark()
+    datasets = ["ds1", "ds2"]
+    results = {}
+    for ds in datasets:
+        # A: best AUROC, C: worst AUROC but best AUPR. AUPR must not drive the order.
+        for detector, auroc, aupr, ms in [
+            ("LODA", 0.9, 0.4, 1.0),
+            ("RSHash", 0.8, 0.5, 2.0),
+            ("xStream", 0.7, 0.9, 1.5),
+        ]:
+            results[(ds, detector, 0)] = {
+                "dataset": ds,
+                "detector": detector,
+                "seed": 0,
+                "auroc": auroc,
+                "aupr": aupr,
+                "ms_per_point": ms,
+                "commit": "abc",
+            }
+    benchmark.OUT = tmp_path
+    benchmark.write_ranking(results, {ds: ds for ds in datasets}, "")
+    with open(tmp_path / "summary.csv", newline="") as f:
+        rows = list(csv.DictReader(f))
+    assert list(rows[0].keys()) == [
+        "Detector",
+        "Mean rank",
+        "Mean AUROC",
+        "Time per point (ms)",
+        "Commit",
+    ]
+    assert [
+        row["Detector"] for row in rows
+    ] == [f":class:`~pysad.models.{d}`" for d in ["LODA", "RSHash", "xStream"]]
+    # The per-dataset AUPR table still exists, with one value per dataset and detector.
+    with open(tmp_path / "aupr.csv", newline="") as f:
+        aupr_rows = list(csv.DictReader(f))
+    assert [row["Dataset"] for row in aupr_rows] == datasets
+    assert float(aupr_rows[0]["xStream"].replace("*", "")) == 0.9  # the best cell is bolded

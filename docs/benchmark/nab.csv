@@ -1,10 +1,13 @@
 detector,series,standard,reward_low_fp,reward_low_fn,seasonal_standard
 ChangeFinder,58,22.61,11.44,27.72,17.13
+DAMP,58,8.35,3.49,18.18,16.8
 HoltWinters,14,33.25,19.92,40.83,33.25
 HTM,58,64.16,56.78,68.35,64.59
 KNNCAD,58,57.99,43.41,64.81,48.9
+MatrixProfile,58,3.62,1.75,6.44,3.89
 MedianAbsoluteDeviation,58,33.83,20.65,40.66,8.16
 RelativeEntropy,58,58.87,53.23,62.52,55.73
+SAND,58,5.57,1.83,8.14,18.5
 StandardAbsoluteDeviation,58,42.04,31.88,48.85,50.05
 SeasonalESD,14,23.02,10.29,34.01,23.02
 SeasonalHybridESD,14,7.21,3.25,18.07,7.21

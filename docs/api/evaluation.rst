@@ -16,6 +16,7 @@ This module holds streaming metrics. Each metric updates its value one point at 
    MatthewsCorrelationMetric
    PrecisionMetric
    RecallMetric
+   RollingMetric
    WindowedMetric
    BaseSKLearnMetric
 

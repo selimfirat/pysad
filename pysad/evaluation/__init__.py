@@ -12,6 +12,7 @@ from .metrics import (
     RecallMetric,
 )
 from .prequential import evaluate_stream
+from .rolling_metric import RollingMetric
 from .windowed_metric import WindowedMetric
 
 __all__ = [
@@ -22,6 +23,7 @@ __all__ = [
     "MatthewsCorrelationMetric",
     "PrecisionMetric",
     "RecallMetric",
+    "RollingMetric",
     "WindowedMetric",
     "evaluate_stream",
 ]

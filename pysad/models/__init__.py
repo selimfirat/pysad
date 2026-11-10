@@ -34,6 +34,7 @@ from .null_model import NullModel
 from .online_isolation_forest import OnlineIsolationForest
 from .online_one_class_svm import OnlineOneClassSVM
 from .perfect_model import PerfectModel
+from .pewma import PEWMA
 from .random_model import RandomModel
 from .relative_entropy import RelativeEntropy
 from .robust_random_cut_forest import RobustRandomCutForest
@@ -82,6 +83,7 @@ __all__ = [
     "OnlineIsolationForest",
     "OnlineOneClassSVM",
     "PerfectModel",
+    "PEWMA",
     "RandomModel",
     "RelativeEntropy",
     "RobustRandomCutForest",

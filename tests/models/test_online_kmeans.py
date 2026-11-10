@@ -70,3 +70,22 @@ def test_outlier_gets_the_highest_score():
     scores = OnlineKMeans(random_state=0).fit_score(X)
 
     assert scores.argmax() == len(X) - 1
+
+
+def test_new_center_replaces_the_oldest_when_max_centers_is_reached():
+    from pysad.models import OnlineKMeans
+
+    # The initial centers 0 and 1 fill max_centers, and the far instance 10 always opens a center.
+    model = OnlineKMeans(num_clusters=1, max_centers=2, random_state=0)
+    model.fit(np.array([[0.0], [1.0], [10.0]]))
+
+    assert model.score_partial(np.array([10.0])) == 0.0
+    assert model.score_partial(np.array([1.0])) == 0.0
+    assert model.score_partial(np.array([0.0])) == 1.0
+
+
+def test_max_centers_must_exceed_num_clusters():
+    from pysad.models import OnlineKMeans
+
+    with pytest.raises(ValueError, match="max_centers"):
+        OnlineKMeans(num_clusters=10, max_centers=10)

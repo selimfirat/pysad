@@ -141,7 +141,7 @@ These detectors take points with one or more features. A feature is one measured
    * - :class:`~pysad.models.OnlineKMeans`
      - Squared distance to the nearest center of online k-means, which opens each point as a new center with a probability that grows with its distance :cite:`liberty2016online`
      - Nothing
-     - Grows: the centers, ``O(num_clusters * log(n) * log(gamma * n))`` in expectation after ``n`` points, where ``gamma`` is the ratio of the largest to the smallest distance between two points. Centers are never removed
+     - Fixed: the ``max_centers`` most recent centers
 
 Univariate detectors
 --------------------

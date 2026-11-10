@@ -553,6 +553,20 @@ It prints:
 
    AUROC: 0.651
 
+Use a distance-based detector
+-----------------------------
+
+This script scores each point with MCOD. MCOD keeps the last ``window_size`` points and scores each point by the fraction of them that are not its neighbors, that is, farther than the radius. It groups the window into micro-clusters to compute fewer distances, so it gives the same scores as :class:`~pysad.models.ExactStorm`. With ``max_radius=None``, the first ``calibration_size`` points set the radius.
+
+.. literalinclude:: ../examples/example_mcod.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.843
+
 Load credit-card fraud transactions
 -----------------------------------
 

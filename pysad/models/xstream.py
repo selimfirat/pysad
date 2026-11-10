@@ -108,6 +108,71 @@ class xStream(BaseModel):
 
         return float(score[0])
 
+    def score_explain_partial(self, X: np.ndarray) -> np.ndarray:
+        """Returns per-feature attribution weights for the anomaly score of the next instance.
+
+        The score of an instance is the negated average, over the chains, of the per-chain surprise
+        ``best = min_d [ log2(1 + count_d) + d ]``. A chain's surprise is small when the instance
+        falls into a bin shared with few reference instances (more anomalous) and large when it falls
+        into a common bin (more normal).
+
+        Each chain's surprise is attributed to the projected feature the chain splits on at the depth
+        that achieves the minimum. The attribution is propagated from the projected features back to
+        the original features through the absolute StreamHash projection weights, so every original
+        feature receives a non-negative weight. The weights sum to one.
+
+        This method neither changes nor keeps ``X``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to explain.
+
+        Returns:
+            np.float64 array of shape (num_features,): Non-negative attribution weights, one per
+            feature, summing to one. A larger weight means the feature's chain observed a more common
+            bin; a smaller weight means a rarer, more anomalous bin.
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        num_features = x.shape[0]
+        projected = self.streamhash.transform_partial(x).reshape(1, -1)
+        num_components = projected.shape[1]
+
+        chains = self.hs_chains
+        keys = chains._bin_keys(projected)
+        counts = np.fromiter(
+            map(chains.counts.get, keys, repeat(0)),
+            dtype=np.float64,
+            count=len(keys),
+        ).reshape(1, chains.nchains, chains.depth)
+
+        # Per-chain surprise: min over depths of log2(1 + count) + depth.
+        depth_vals = np.log2(1.0 + counts) + chains._depths
+        best = np.min(depth_vals, axis=2)  # (1, nchains)
+        d_star = np.argmin(depth_vals, axis=2)[0]  # (nchains,)
+
+        # The projected feature each chain splits on at its winning depth.
+        winning_feature = chains.fs[np.arange(chains.nchains), d_star]
+
+        # Attribute each chain's surprise to its winning projected feature.
+        projected_attr = np.bincount(
+            winning_feature, weights=best[0], minlength=num_components
+        ).astype(np.float64)
+
+        # Propagate from projected features to the original features through the projection magnitudes.
+        projection = self.streamhash._get_projection_matrix(num_features)
+        attribution = projected_attr @ np.abs(projection)  # (num_features,)
+
+        total = float(attribution.sum())
+        if total > 0.0:
+            attribution = attribution / total
+
+        return attribution
+
     def _set_bin_widths(self, window: np.ndarray) -> None:
         # Sets the bin widths to half the range of the first window and counts the first window again with them.
         mn, mx = get_minmax_array(window)

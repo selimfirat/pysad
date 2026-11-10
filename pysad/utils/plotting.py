@@ -1,6 +1,6 @@
 """Streaming plot helpers for features, scores and alerts.
 
-Matplotlib is imported only when a helper runs, so ``pysad`` stays importable
+The helpers import matplotlib only when they run, so ``pysad`` stays importable
 without it. The helpers draw a figure that a caller can show or save.
 """
 
@@ -29,7 +29,8 @@ def plot_stream(
     Args:
         X (np.ndarray): The features of the stream, shape (num_instances, num_features).
         scores (np.ndarray): The anomaly scores, shape (num_instances,).
-        threshold (float | None): The alert threshold drawn as a horizontal line (Default=None).
+        threshold (float | None): The alert threshold. The helper draws it as a
+            horizontal line (Default=None).
         lower (np.ndarray | None): The lower bound of the confidence band,
             shape (num_instances,) (Default=None).
         upper (np.ndarray | None): The upper bound of the confidence band,

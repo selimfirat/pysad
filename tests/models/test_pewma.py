@@ -63,8 +63,9 @@ def test_pewma_forgets_a_spike_sooner_than_an_ewma():
     pewma_scores = PEWMA(beta=1.0).fit_score(X)
     ewma_scores = PEWMA(beta=0.0).fit_score(X)
 
-    # Both give the spike the weight alpha, but PEWMA gives the likely values after it a smaller
-    # weight, so its standard deviation shrinks back sooner and these values score higher.
+    # Both models give the spike the weight alpha.
+    # PEWMA gives the likely values after it a smaller weight.
+    # Its standard deviation shrinks back sooner, so these values score higher.
     assert pewma_scores[150] > 10.0 and ewma_scores[150] > 10.0
     assert pewma_scores[151:].mean() > ewma_scores[151:].mean()
 

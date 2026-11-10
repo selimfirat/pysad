@@ -68,7 +68,7 @@ class PEWMA(BaseModel):
 
         Args:
             X (np.float64 array of shape (1,)): The value to fit. This model is univariate.
-            y (int): Ignored since the model is unsupervised (Default=None).
+            y (int): The model ignores this label (Default=None).
 
         Returns:
             object: The model itself.

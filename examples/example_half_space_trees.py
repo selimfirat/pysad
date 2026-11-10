@@ -7,9 +7,10 @@ from pysad.utils import ArrayStreamer, Data, get_minmax_array
 if __name__ == "__main__":
     X, y = Data().get_data("cardio.mat")
 
-    # The trees split the feature space between these bounds. Here they come from the first
-    # window_size points, so later points can fall outside them. Use the known range of each
-    # feature instead when you have it.
+    # The trees split the feature space between these bounds.
+    # Here they come from the first window_size points.
+    # Later points can fall outside them.
+    # If you know each feature range, use it instead.
     feature_mins, feature_maxes = get_minmax_array(X[:250])
 
     model = HalfSpaceTrees(feature_mins, feature_maxes, window_size=250, random_state=0)

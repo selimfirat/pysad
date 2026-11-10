@@ -36,6 +36,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    MedianAbsoluteDeviation
    MemStream
    MIDAS
+   MiLOF
    MStream
    NETS
    OnlineIsolationForest

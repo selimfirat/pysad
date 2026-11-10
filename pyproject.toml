@@ -243,6 +243,7 @@ module = [
     "pysad.models.htm.spatial_pooler",
     "pysad.models.iforest_asd",
     "pysad.models.incremental_lof",
+    "pysad.models.milof",
     "pysad.models.inqmad",
     "pysad.models.kelos",
     "pysad.models.kitnet",

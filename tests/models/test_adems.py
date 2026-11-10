@@ -41,6 +41,21 @@ def test_scores_do_not_depend_on_the_scale_of_an_instance():
     assert model.score_partial(np.zeros(4)) == 0.0
 
 
+def test_pickling_mid_stream_keeps_later_scores():
+    import pickle
+
+    from pysad.models import ADeMS
+
+    X = np.random.RandomState(0).normal(size=(60, 8))
+    for split in range(1, X.shape[0]):
+        model = ADeMS().fit(X[:split])
+        restored = pickle.loads(pickle.dumps(model))
+
+        np.testing.assert_array_equal(
+            restored.fit_score(X[split:]), model.fit_score(X[split:]), err_msg=f"split={split}"
+        )
+
+
 def test_rejects_a_threshold_without_initial_X():
     from pysad.models import ADeMS
 

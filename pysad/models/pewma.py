@@ -11,25 +11,35 @@ from pysad.utils.validation import _finite_float, _int_at_least, check_univariat
 class PEWMA(BaseModel):
     r"""Probabilistic exponentially weighted moving average (PEWMA) :cite:`carter2012probabilistic`.
 
-    PEWMA keeps exponentially weighted moving averages :math:`s_1` of the values and :math:`s_2` of their squares, with the estimates :math:`\hat{X}_t = s_1` and :math:`\hat{\sigma}_t = \sqrt{s_2 - s_1^2}`. For each value :math:`X_t` it computes :math:`Z_t = (X_t - \hat{X}_t) / \hat{\sigma}_t` and :math:`P_t = e^{-Z_t^2 / 2} / \sqrt{2 \pi}`, then updates both averages with the weight
+    PEWMA keeps exponentially weighted moving averages :math:`s_1` of the values and :math:`s_2` of their squares.
+    These give the mean estimate :math:`\hat{X}_t = s_1` and standard deviation estimate :math:`\hat{\sigma}_t = \sqrt{s_2 - s_1^2}`.
+    For each value :math:`X_t`, it computes :math:`Z_t = (X_t - \hat{X}_t) / \hat{\sigma}_t`.
+    It then computes the probability density :math:`P_t = e^{-Z_t^2 / 2} / \sqrt{2 \pi}`.
+    It updates both averages with the weight
 
     .. math::
 
         \alpha_t = 1 - 1/t \text{ for } t \le T, \qquad \alpha_t = (1 - \beta P_t) \alpha \text{ for } t > T,
 
-    as in :math:`s_1 \leftarrow \alpha_t s_1 + (1 - \alpha_t) X_t`. During the training period of :math:`T` values, :math:`s_1` and :math:`s_2` are the exact means of the values and of their squares. After it, a likely value gets a small weight :math:`\alpha_t` and moves the estimates more than an unlikely one. With ``beta=0``, the model is an EWMA with the weight :math:`\alpha`. The model keeps two numbers, so its memory is fixed and one call costs O(1). It takes no ``random_state``, because it draws no random numbers.
+    as in :math:`s_1 \leftarrow \alpha_t s_1 + (1 - \alpha_t) X_t`.
+    During the training period of :math:`T` values, :math:`s_1` is the exact mean of the values.
+    The average :math:`s_2` is the exact mean of their squares.
+    After training, a likely value gets a small weight :math:`\alpha_t`.
+    It moves the estimates more than an unlikely value.
+    With ``beta=0``, the model is an EWMA with the weight :math:`\alpha`.
+    The model keeps two numbers, so its memory is fixed and one call costs O(1).
+    It takes no ``random_state``, because it draws no random numbers.
 
-    The score of a value is :math:`|Z_t|`, computed with the estimates before the model fits the value.
+    The model scores each value as :math:`|Z_t|` with the estimates before it fits that value.
 
     Deviations from the paper:
 
-    - The paper raises an alert when :math:`P_t` is below a threshold. The model returns :math:`|Z_t|`, which ranks values in the same order as :math:`-P_t`, so that a higher score is more anomalous. :math:`P_t` is below a threshold :math:`\tau` exactly when :math:`|Z_t|` is above :math:`\sqrt{-2 \ln(\tau \sqrt{2 \pi})}`.
-    - The paper uses the exact means :math:`s_1` and :math:`s_2` for the first :math:`T - 1` values and starts the probability weight at value :math:`T`. The model uses them for the first :math:`T` values (`count_ <= training_period`) and starts the weight at value :math:`T + 1`.
-    - The paper does not define :math:`Z_t` when :math:`\hat{\sigma}_t = 0`, as before the second value or on a constant stream. The model then uses :math:`Z_t = 0`, so the value scores 0 and gets the largest probability :math:`P_t`. Rounding can make :math:`s_2 - s_1^2` slightly negative, and the model then uses :math:`\hat{\sigma}_t = 0`.
+    - The paper raises an alert when :math:`P_t` is below a threshold. The model returns :math:`|Z_t|`, which ranks values in the same order as :math:`-P_t`. A higher score is more anomalous. The alert threshold :math:`\tau` corresponds to a score threshold of :math:`\sqrt{-2 \ln(\tau \sqrt{2 \pi})}`.
+    - The paper does not define :math:`Z_t` when :math:`\hat{\sigma}_t = 0`. This occurs before the second value or on a constant stream. The model then uses :math:`Z_t = 0`. The value scores 0 and gets the largest probability :math:`P_t`. Rounding can make :math:`s_2 - s_1^2` slightly negative. The model then uses :math:`\hat{\sigma}_t = 0`.
 
     Args:
         alpha (float): The weight :math:`\alpha` of the previous averages after the training period, in [0, 1] (Default=0.99).
-        beta (float): The weight :math:`\beta` of the probability of a value in :math:`\alpha_t`, in [0, 1]. With 0, the model is an EWMA (Default=1.0).
+        beta (float): The probability weight :math:`\beta` in :math:`\alpha_t`, in [0, 1]. With 0, the model is an EWMA (Default=1.0).
         training_period (int): The number :math:`T` of first values whose averages are exact means. It must be at least 1 (Default=14).
 
     Raises:

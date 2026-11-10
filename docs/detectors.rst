@@ -169,7 +169,7 @@ These detectors take points with exactly one feature. Give each value as an arra
      - ``window_size`` when using ``subtracted_statistic="median"``
      - Fixed; median mode retains only the last ``window_size`` values while variance remains an all-history running statistic
    * - :class:`~pysad.models.PEWMA`
-     - Distance from an exponentially weighted moving average in standard deviations, where each value's weight depends on its probability under a normal distribution :cite:`carter2012probabilistic`
+     - Distance from an exponentially weighted moving average in standard deviations. Each value's weight depends on its probability under a normal distribution :cite:`carter2012probabilistic`.
      - Nothing
      - Fixed: two moving averages
    * - :class:`~pysad.models.HoltWinters`

@@ -11,6 +11,7 @@ This module holds streamers, benchmark datasets and helper functions. A streamer
    :toctree: ../generated
 
    ArrayStreamer
+   CSVStreamer
    PandasStreamer
    PolarsStreamer
    Data

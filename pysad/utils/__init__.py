@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 
 from .array_streamer import ArrayStreamer
+from .csv_streamer import CSVStreamer
 from .data import Data
 from .pandas_streamer import PandasStreamer
 from .polars_streamer import PolarsStreamer
@@ -18,6 +19,7 @@ from .window import Window
 
 __all__ = [
     "ArrayStreamer",
+    "CSVStreamer",
     "Data",
     "PandasStreamer",
     "PolarsStreamer",

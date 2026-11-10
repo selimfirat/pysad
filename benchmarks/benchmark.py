@@ -39,6 +39,7 @@ from threadpoolctl import threadpool_limits
 
 import pysad
 from pysad import models
+from pysad.core.base_model import BaseModel
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import (
     ConformalProbabilityCalibrator,
@@ -105,6 +106,7 @@ DETECTORS = {
     "LODA": lambda X, seed: models.LODA(random_state=seed),
     "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[: warmup(len(X))]),
     "MCOD": lambda X, seed: models.MCOD(),
+    "MemStream": lambda X, seed: models.MemStream(random_state=seed),
     "MStream": lambda X, seed: models.MStream(random_state=seed),
     "NETS": lambda X, seed: models.NETS(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
@@ -128,11 +130,12 @@ SHORT_NAMES = {
 }
 
 
-# The univariate detectors run once on each NAB series with anomalies, in the order of the file,
-# because none of them draws random numbers, except HTM, which runs with seed 0. Each detector gets
-# its defaults, plus the arguments that it requires. The values of a series are scaled to [0, 1].
+# The univariate detectors run once on each NAB and UCR series, in file order, with seed 0 for
+# stochastic detectors. Each detector gets its defaults, plus the arguments that it requires.
+# The values of a series are scaled to [0, 1].
 UNIVARIATE = {
     "ChangeFinder": lambda n, period: models.ChangeFinder(),
+    "DAMP": lambda n, period: models.DAMP(window_length=SHINGLE_SIZE),
     "HoltWinters": lambda n, period: models.HoltWinters(period),
     # HTM learns during NAB's probationary period, as in NAB.
     "HTM": lambda n, period: models.HTM(
@@ -140,8 +143,13 @@ UNIVARIATE = {
     ),
     # KNNCAD learns during NAB's probationary period, as in NAB.
     "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
+    "MatrixProfile": lambda n, period: models.MatrixProfile(window_length=SHINGLE_SIZE),
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
     "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
+    # Fix the length without labels, as for shingles, and initialize in the standard warm-up.
+    "SAND": lambda n, period: models.SAND(
+        subsequence_length=SHINGLE_SIZE, batch_size=WARMUP_POINTS, random_state=0
+    ),
     "StandardAbsoluteDeviation": lambda n, period: models.StandardAbsoluteDeviation(),
     # A window of 3 periods and one point, because R's stl() needs more than 2 periods, and an odd
     # window makes the robust STL match R.
@@ -399,6 +407,23 @@ def read_nab():
         return {row["detector"]: row for row in csv.DictReader(f)}
 
 
+def score_stream(model: BaseModel, X: np.ndarray) -> tuple[np.ndarray, float]:
+    """Collect rounded scores and measure milliseconds per point.
+
+    Args:
+        model (BaseModel): Score each point before learning from it.
+        X (np.ndarray): Stream with one point per row.
+
+    Returns:
+        tuple[np.ndarray, float]: Rounded scores and time per point. Timing excludes score rounding.
+    """
+    start = time.perf_counter()
+    with np.errstate(all="ignore"):
+        scores = np.array([float(model.fit_score_partial(x)) for x in X])
+    seconds = time.perf_counter() - start
+    return significant(scores), round(1000 * seconds / len(X), 3)
+
+
 def run_univariate(series, detector, points=None):
     # The base branch's Data.get_data has no timestamps argument, so pass it only when needed.
     X, y = (
@@ -417,11 +442,7 @@ def run_univariate(series, detector, points=None):
             X = ShingleTransformer(SHINGLE_SIZE).fit_transform(X)
         fix_seed(0)
         model = DETECTORS[detector.removesuffix(SHINGLED)](X, 0)
-    start = time.perf_counter()
-    with np.errstate(all="ignore"):
-        scores = np.array([float(model.fit_score_partial(x)) for x in X])
-    seconds = time.perf_counter() - start
-    scores = significant(scores)
+    scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     if detector in NAB_UNIT_SCORES:
         nab = (scores, y)
@@ -438,7 +459,7 @@ def run_univariate(series, detector, points=None):
         "seed": 0,
         "auroc": round(roc_auc_score(y, scores), 4) if both else np.nan,
         "aupr": round(average_precision_score(y, scores), 4) if both else np.nan,
-        "ms_per_point": round(1000 * seconds / len(X), 3),
+        "ms_per_point": ms_per_point,
     }
 
 
@@ -448,11 +469,7 @@ def run_ucr(series, detector):
     span = X.max() - X.min()
     X = (X - X.min()) / (span if span > 0 else 1.0)
     model = UNIVARIATE[detector](len(X), None)
-    start = time.perf_counter()
-    with np.errstate(all="ignore"):
-        scores = np.array([float(model.fit_score_partial(x)) for x in X])
-    seconds = time.perf_counter() - start
-    scores = significant(scores)
+    scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     train = int(series.split("_")[-3])  # the training part has no anomalies, so it does not count
     anomaly = np.flatnonzero(y)
@@ -464,7 +481,7 @@ def run_ucr(series, detector):
         "seed": 0,
         "auroc": round(roc_auc_score(y, scores), 4) if valid else np.nan,
         "aupr": round(average_precision_score(y, scores), 4) if valid else np.nan,
-        "ms_per_point": round(1000 * seconds / len(X), 3),
+        "ms_per_point": ms_per_point,
         "solved": int(anomaly[0] - UCR_MARGIN <= top <= anomaly[-1] + UCR_MARGIN)
         if valid
         else np.nan,
@@ -486,11 +503,7 @@ def _run(dataset, detector, seed, points):
     X, y = load(dataset, seed, points)
     fix_seed(seed)
     model = DETECTORS[detector](X, seed)
-    start = time.perf_counter()
-    with np.errstate(all="ignore"):  # a score that is not finite makes the metrics NaN
-        scores = np.array([float(model.fit_score_partial(x)) for x in X])
-    seconds = time.perf_counter() - start
-    scores = significant(scores)
+    scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     row = {"dataset": dataset, "detector": detector, "seed": seed}
     for name, calibrator in CALIBRATORS.items() if dataset not in DRIFT else []:
@@ -503,7 +516,7 @@ def _run(dataset, detector, seed, points):
         **row,
         "auroc": round(roc_auc_score(y, scores), 4) if valid else np.nan,
         "aupr": round(average_precision_score(y, scores), 4) if valid else np.nan,
-        "ms_per_point": round(1000 * seconds / len(X), 3),
+        "ms_per_point": ms_per_point,
     }
 
 

@@ -76,7 +76,8 @@ class ADeMS(BaseModel):
         k = min(
             self.num_components_, int((s > s[0] * (max(D.shape) * np.finfo(s.dtype).eps)).sum())
         )
-        self.components_ = U[:, :k]
+        # A copy, since pickle stores a view as a contiguous array, which changes the rounding of _residual.
+        self.components_ = U[:, :k].copy()
 
     def _residual(self, y: np.ndarray) -> float:
         U = self.components_

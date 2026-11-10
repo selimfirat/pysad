@@ -76,6 +76,9 @@ runtime = [
 test = [
   # PandasStreamer takes DataFrames.
   "pandas==2.3.3",
+  # examples/example_plot_stream.py draws with matplotlib.
+  "matplotlib==3.10.9; python_version < '3.11'",
+  "matplotlib==3.11.2; python_version >= '3.11'",
   # PolarsStreamer takes Polars DataFrames.
   "polars==2.0.0; python_version < '3.11'",
   "polars==2.1.0; python_version >= '3.11'",
@@ -85,12 +88,12 @@ test = [
   "pyod>=3.6.2",
   # Security floor for pillow, a transitive dependency of pyod via matplotlib.
   "pillow>=12.3.0",
-  # The forecasters that the tests and examples run through PredictiveAnomalyDetector. River needs Python 3.11 or newer.
+  # Adapters for River pipelines in pysad.integrations. River needs Python 3.11 or newer.
   "river==0.26.1; python_version >= '3.11'",
   "hypothesis==6.168.5",
   # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
   "mmh3==5.3.1",
-  "pytest==9.1.1",
+  "pytest==9.2.0",
   "pytest-cov==7.1.0",
   "pytest-xdist==3.8.0",
 ]
@@ -216,6 +219,7 @@ warn_redundant_casts = true
 module = [
     "pysad.core.*",
     "pysad.evaluation.*",
+    "pysad.integrations.*",
     "pysad.statistics.*",
     "pysad.transform.ensemble.*",
     "pysad.transform.postprocessing.*",
@@ -274,5 +278,5 @@ check_untyped_defs = true
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]
-module = ["pandas.*", "polars.*", "scipy.*", "sklearn.*"]
+module = ["pandas.*", "polars.*", "river.*", "scipy.*", "sklearn.*"]
 ignore_missing_imports = true

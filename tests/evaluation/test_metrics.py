@@ -1,3 +1,6 @@
+import pytest
+
+
 def helper_test_all_metrics(metric_classes, y_true, y_pred):
     import numpy as np
 
@@ -320,3 +323,54 @@ def test_empty_metric_contract():
 
     with pytest.raises(ValueError, match="No samples recorded"):
         AUPRMetric().get()
+
+
+@pytest.mark.parametrize("threshold", [None, 0.5])
+def test_matthews_correlation_stream(threshold):
+    from pysad.evaluation import MatthewsCorrelationMetric
+
+    metric = MatthewsCorrelationMetric(threshold=threshold)
+    labels = [1, 0, 0, 1, 1, 0, 0]
+    predictions = [1, 0, 1, 0, 1, 0, 0]
+    scores = [0.9, 0.1, 0.5, 0.4, 0.8, 0.2, 0.3]
+    expected = [0.0, 1.0, 0.5, 0.0, 1 / 6, 1 / 3, 5 / 12]
+    assert metric.get() == 0.0
+    for label, prediction, score, value in zip(labels, predictions, scores, expected, strict=True):
+        metric.update(label, prediction if threshold is None else score)
+        assert metric.get() == pytest.approx(value)
+        assert metric.get() == pytest.approx(value)
+
+
+@pytest.mark.parametrize(
+    "labels,predictions,expected",
+    [
+        ([0, 1], [1, 0], -1.0),
+        ([0, 1, 0, 1], [0, 0, 1, 1], 0.0),
+        ([0, 0], [0, 1], 0.0),
+        ([1, 1], [0, 1], 0.0),
+        ([0, 1], [0, 0], 0.0),
+        ([0, 1], [1, 1], 0.0),
+        ([0] * 99 + [1], [0] * 100, 0.0),
+    ],
+)
+def test_matthews_correlation_edge_cases(labels, predictions, expected):
+    from pysad.evaluation import MatthewsCorrelationMetric
+
+    metric = MatthewsCorrelationMetric()
+    for label, prediction in zip(labels, predictions, strict=True):
+        metric.update(label, prediction)
+    assert metric.get() == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "threshold,label,prediction", [(None, 2, 1), (None, 1, 0.9), (0.5, -1, 0.8)]
+)
+def test_matthews_correlation_rejects_nonbinary_inputs(threshold, label, prediction):
+    from pysad.evaluation import MatthewsCorrelationMetric
+
+    metric = MatthewsCorrelationMetric(threshold=threshold)
+    metric.update(1, 1)
+    metric.update(0, 0)
+    with pytest.raises(ValueError):
+        metric.update(label, prediction)
+    assert metric.get() == 1.0

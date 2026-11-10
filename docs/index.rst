@@ -110,7 +110,7 @@ A batch detector needs the whole dataset before it can score a point. A stream d
 
       :doc:`Benchmarks <benchmark>`
 
-      AUROC, AUPR and time per point for all 10 multivariate detectors across |num_datasets| labeled datasets.
+      AUROC, AUPR and time per point for all multivariate detectors across |num_datasets| labeled datasets.
 
    .. container:: card
 
@@ -193,6 +193,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
 
    guides/index
    guides/stream_data
+   guides/one_dimensional_integration
    guides/choose_detector
    guides/alerts
    guides/evaluate

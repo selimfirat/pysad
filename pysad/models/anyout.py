@@ -75,6 +75,8 @@ class AnyOut(BaseModel):
         snapshot_interval (int): The snapshot interval t_snap of Eq. 11.1, in instances. A node about to split discards an entry that weighs less than 2^(-`decay` `snapshot_interval`) (Default=1000).
     """
 
+    origin_: np.ndarray
+
     def __init__(
         self,
         depth: int | None = None,
@@ -114,6 +116,10 @@ class AnyOut(BaseModel):
         x = np.asarray(X, dtype=np.float64)
         if self.root_ is None:
             self.root_ = _Node(len(x), self._time)
+            # The cluster features hold each instance minus the first one, so that SS / n - mean^2
+            # does not cancel to rounding noise on values far from 0. The scores do not change.
+            self.origin_ = x.copy()
+        x = x - self.origin_
 
         path: list[tuple[_Node, int]] = []  # the inner nodes of the descent and their entries
         node = self.root_
@@ -216,6 +222,7 @@ class AnyOut(BaseModel):
         if self.root_ is None:
             return 0.0
 
+        x = x - self.origin_
         node = self.root_
         i = node.closest(x)
         for _ in range(1, self.height_ if self.depth is None else self.depth):

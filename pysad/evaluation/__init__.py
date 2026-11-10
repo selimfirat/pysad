@@ -3,7 +3,14 @@ The :mod:`pysad.evaluation` module includes evaluation metrics for anomaly detec
 """
 
 from .f1_metric import F1Metric
-from .metrics import AUPRMetric, AUROCMetric, BaseSKLearnMetric, PrecisionMetric, RecallMetric
+from .metrics import (
+    AUPRMetric,
+    AUROCMetric,
+    BaseSKLearnMetric,
+    MatthewsCorrelationMetric,
+    PrecisionMetric,
+    RecallMetric,
+)
 from .prequential import evaluate_stream
 from .rolling_metric import RollingMetric
 from .windowed_metric import WindowedMetric
@@ -13,6 +20,7 @@ __all__ = [
     "AUROCMetric",
     "BaseSKLearnMetric",
     "F1Metric",
+    "MatthewsCorrelationMetric",
     "PrecisionMetric",
     "RecallMetric",
     "RollingMetric",

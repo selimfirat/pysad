@@ -219,3 +219,25 @@ def test_bucket_ensemblers_random_state_reproducibility(ensembler_cls):
     fix_seed(11)
     cls(n_buckets=3, random_state=42).fit_transform(scores)
     np.testing.assert_array_equal(np.random.rand(3), expected_draw)
+
+
+@pytest.mark.parametrize(
+    "ensembler_cls",
+    ["AverageOfMaximumScoreEnsembler", "MaximumOfAverageScoreEnsembler"],
+)
+@pytest.mark.parametrize("params", [{"bootstrap_estimators": True}, {"method": "dynamic"}])
+def test_bucket_ensemblers_draw_distinct_buckets_with_an_int_seed(ensembler_cls, params):
+    """An int random_state draws the buckets like a RandomState with that seed (#627)."""
+    import numpy as np
+
+    from pysad.transform import ensemble as ensemble_module
+
+    cls = getattr(ensemble_module, ensembler_cls)
+    scores = np.random.RandomState(1).rand(20)
+
+    from_seed = cls(n_buckets=5, random_state=0, **params).transform_partial(scores)
+    from_generator = cls(
+        n_buckets=5, random_state=np.random.RandomState(0), **params
+    ).transform_partial(scores)
+
+    assert from_seed == from_generator

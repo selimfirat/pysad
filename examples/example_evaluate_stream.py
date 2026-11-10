@@ -1,4 +1,4 @@
-"""Evaluate a detector on a labeled stream with several metrics at once."""
+"""Evaluate a detector from single-use generators with several metrics at once."""
 
 from pysad.evaluation import AUPRMetric, AUROCMetric, F1Metric, WindowedMetric, evaluate_stream
 from pysad.models import LODA
@@ -9,8 +9,8 @@ if __name__ == "__main__":
 
     results = evaluate_stream(
         model=LODA(random_state=0),
-        X=X,
-        y=y,
+        X=(x for x in X),
+        y=(int(label) for label in y),
         metrics={
             "AUROC": AUROCMetric(),
             "AUPR": AUPRMetric(),

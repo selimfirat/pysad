@@ -553,6 +553,20 @@ It prints:
 
    AUROC: 0.651
 
+Give Half-Space Trees the feature ranges
+----------------------------------------
+
+This script scores each point with Half-Space Trees. The trees split the feature space between a minimum and a maximum for each feature, so the model needs ``feature_mins`` and ``feature_maxes`` before the stream starts. Here :func:`~pysad.utils.get_minmax_array` takes them from the first window. Later points can fall outside these bounds, so pass the known range of each feature when you have it.
+
+.. literalinclude:: ../examples/example_half_space_trees.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.926
+
 Load credit-card fraud transactions
 -----------------------------------
 

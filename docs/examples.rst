@@ -609,6 +609,20 @@ It prints:
 
    AUROC: 0.651
 
+Use an online isolation forest
+------------------------------
+
+This script scores each point with OnlineIsolationForest. The forest keeps a bounded window of recent points. It scores each point before it learns it. When the window is full, it forgets the oldest point. A point is anomalous when the trees isolate it on a short path.
+
+.. literalinclude:: ../examples/example_online_isolation_forest.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.676
+
 Load credit-card fraud transactions
 -----------------------------------
 
@@ -677,6 +691,20 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.727
+
+Use an expected similarity detector
+-----------------------------------
+
+This script scores each point with EXPoSE. EXPoSE maps each point to random Fourier features and keeps a running kernel mean embedding of the fitted points. The score is the negative expected similarity divided by the squared norm of the embedding. A higher score means more anomalous.
+
+.. literalinclude:: ../examples/example_expose.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.496
 
 Summarize old points with DILOF
 -------------------------------

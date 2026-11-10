@@ -158,7 +158,7 @@ def test_seasonal_hybrid_esd_matches_r_anomaly_detection(direction, expected):
 
 
 @pytest.mark.parametrize("model_name", ["SeasonalESD", "SeasonalHybridESD"])
-@pytest.mark.parametrize(("scale", "offset"), [(1e-12, 0.0), (1e-6, 0.0), (1e6, 0.0), (1e-3, 1e6)])
+@pytest.mark.parametrize(("scale", "offset"), [(1e-12, 0.0), (1e-6, 0.0), (1e6, 0.0), (1e-4, 1e6)])
 def test_seasonal_esd_flags_do_not_depend_on_units(model_name, scale, offset):
     import numpy as np
 

@@ -636,9 +636,10 @@ def write_tables(results, nab=None):
 def write_ranking(results, datasets, prefix):
     """The summary, the AUROC and the AUPR tables of the multivariate detectors.
 
-    ``datasets`` maps each dataset to its name in the tables. AUROC values at or below 0.5 and
-    AUPR values at or below the fraction of anomalies of the dataset are no better than chance,
-    and they are in italics. The best value of each row is in bold.
+    ``datasets`` maps each dataset to its name in the tables.
+    Italics mark AUROC values at or below 0.5 and AUPR values at or below the anomaly fraction.
+    The chance comparison rounds the anomaly fraction to four decimal places, like stored metrics.
+    Bold marks the best value in each row.
     """
     detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
     if not detectors:
@@ -699,9 +700,10 @@ def write_ranking(results, datasets, prefix):
             best = f"{np.nanmax(row):.3f}"
             marked = []
             for c, v in zip(cells, row, strict=True):
-                below = v <= (0.5 if metric == "auroc" else fractions[j])
+                # Metrics in results.csv have four decimal places.
+                below = v <= (0.5 if metric == "auroc" else round(fractions[j], 4))
                 if c == best and below:
-                    marked.append(f"***{c}***")
+                    marked.append(f":strong-emphasis:`{c}`")
                 elif c == best:
                     marked.append(f"**{c}**")
                 elif below:

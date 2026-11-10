@@ -4,10 +4,26 @@
 import os
 import sys
 
+from docutils import nodes
+from sphinx.application import Sphinx
+from sphinx.util.docutils import SphinxRole
+
 sys.path.insert(0, os.path.abspath(".."))
 
 from pysad.utils import Data
 from pysad.version import __version__
+
+
+class StrongEmphasis(SphinxRole):
+    """Render text in bold and italics."""
+
+    def run(self) -> tuple[list[nodes.Node], list[nodes.system_message]]:
+        return [nodes.strong("", "", nodes.emphasis("", self.text))], []
+
+
+def setup(app: Sphinx) -> None:
+    app.add_role("strong-emphasis", StrongEmphasis())
+
 
 # The docs write the number of datasets as |num_datasets|, so that it follows Data.datasets().
 rst_epilog = f"\n.. |num_datasets| replace:: {len(Data.datasets())}\n"

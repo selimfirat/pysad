@@ -59,3 +59,26 @@ def test_rejects_more_components_than_sketch_columns(num_components, sketch_size
     model = ADeMS(num_components=num_components, sketch_size=sketch_size)
     with pytest.raises(ValueError, match="sketch size"):
         model.fit_partial(np.ones(num_features))
+
+
+def test_pickle_mid_stream_keeps_later_scores_exactly():
+    import pickle
+
+    from pysad.models import ADeMS
+
+    # A view of the SVD output is not contiguous. Pickle stores it as a contiguous array, and BLAS
+    # can round products differently on each layout, so a restored model must keep exact scores.
+
+    for trial in range(50):
+        rng = np.random.RandomState(trial)
+        num_features = int(rng.randint(1, 9))
+        n = int(rng.randint(10, 60))
+        X = rng.normal(size=(n, num_features))
+        split = int(rng.randint(2, n - 1))
+
+        model = ADeMS().fit(X[:split])
+        restored = pickle.loads(pickle.dumps(model))
+
+        expected = model.fit_score(X[split:])
+        actual = restored.fit_score(X[split:])
+        np.testing.assert_array_equal(actual, expected)

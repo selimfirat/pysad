@@ -73,7 +73,8 @@ class ADeMS(BaseModel):
         self.sketch_ = U[:, :ell] * np.sqrt(np.maximum(s[:ell] ** 2 - shrink, 0.0))
         # The singular vectors with nonzero singular values, as np.linalg.matrix_rank decides.
         k = min(self.num_components_, int((s > s[0] * max(D.shape) * np.finfo(s.dtype).eps).sum()))
-        self.components_ = U[:, :k]
+        # A copy keeps its memory layout after a round trip through pickle, so scores stay identical.
+        self.components_ = U[:, :k].copy()
 
     def _residual(self, y: np.ndarray) -> float:
         U = self.components_

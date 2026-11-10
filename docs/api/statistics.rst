@@ -31,6 +31,7 @@ See ``examples/example_ddsketch_merge.py`` for a partitioned-stream example.
    MaxMeter
    MedianMeter
    MinMeter
+   OnlinePeriodicityMeter
    PageHinkleyMeter
    QuantileMeter
    SumMeter

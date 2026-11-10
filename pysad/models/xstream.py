@@ -129,7 +129,7 @@ class xStream(BaseModel):
         Returns:
             np.float64 array of shape (num_features,): Non-negative attribution weights, one per
             feature, summing to one. A larger weight means the feature's chain observed a more common
-            bin; a smaller weight means a rarer, more anomalous bin.
+            bin. A smaller weight means a rarer, more anomalous bin.
 
         Raises:
             ValueError: If `X` holds NaN.

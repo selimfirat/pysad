@@ -25,6 +25,8 @@ Time and Commit
    :header-rows: 1
    :class: benchmark-table best-columns
 
+† marks a result at or below chance. A random detector gets AUROC 0.5 and AUPR equal to the anomaly fraction of the dataset. A NAB score of 0 is chance: a detector without alerts gets 0.
+
 HoltWinters and the ESD detectors run on fewer series than the other detectors, so the summary does not compare them on equal terms. The next table compares all the detectors on the 14 seasonal series only.
 
 .. csv-table::

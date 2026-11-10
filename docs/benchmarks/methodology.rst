@@ -50,6 +50,9 @@ AUROC
 AUPR
    The average precision over all the score thresholds. A random detector gets the fraction of anomalies in the dataset, and a perfect detector gets 1.
 
+Chance
+   AUROC 0.5 is chance: a random detector gets 0.5. The anomaly fraction of the dataset is chance for AUPR. A NAB score of 0 is chance: a detector without alerts gets 0. The benchmark tables mark results at or below chance with †.
+
 NAB score
    NAB marks a window of points around each anomaly, and its score counts each window as one event. The first alert in a window detects it, and an early alert counts more than a late one. A window without an alert is a miss. An alert outside the windows is a false alert, and a false alert soon after a window costs less than others. NAB uses one alert threshold for all the series of a detector, the threshold that gives the highest score. Then it scales the score: a detector without alerts gets 0, and a perfect detector gets 100. The score leaves out the probationary period of each series, which is its first 15% of points, at most 750.
 

@@ -64,6 +64,7 @@ TOLERANCE = 0.005
 # dataset moves the rate by about 0.01.
 ALERT_TOLERANCE = 0.02
 SIGNIFICANT_DIGITS = 9  # the scores keep this many significant digits, see significant()
+CHANCE_MARK = "†"  # marks a result at or below chance
 
 
 # The multivariate detectors also run on these streams in their time order, to show how they follow
@@ -261,6 +262,16 @@ def significant(scores):
     the order of these ties and so the metrics. The rounding keeps the ties equal.
     """
     return np.array([float(f"{s:.{SIGNIFICANT_DIGITS}g}") for s in scores])
+
+
+def chance_mark(value, chance):
+    """The chance mark for ``value`` when it is at or below ``chance``, else an empty string.
+
+    A non-finite or missing value never gets the mark.
+    """
+    if value is None or chance is None or not np.isfinite(value):
+        return ""
+    return CHANCE_MARK if value <= chance else ""
 
 
 def warmup(n):
@@ -566,9 +577,14 @@ def write_tables(results, nab=None):
     write_univariate_tables(
         {k: r for k, r in results.items() if k[0].startswith(("nab/", "ucr/"))}, nab or read_nab()
     )
-    write_ranking({k: r for k, r in results.items() if k[0] in DRIFT}, DRIFT, "drift_")
+    # The anomaly fraction of each dataset and stream, the chance level of AUPR.
+    drift_rates = {stream: float(load(stream, 0)[1].mean()) for stream in DRIFT}
+    odds_rates = {ds: Data().describe(f"{ds}.mat")["anomaly_rate"] for ds in DATASETS}
+    write_ranking(
+        {k: r for k, r in results.items() if k[0] in DRIFT}, DRIFT, "drift_", drift_rates
+    )
     results = {k: r for k, r in results.items() if k[0] in DATASETS}
-    detectors = write_ranking(results, {ds: ds for ds in DATASETS}, "")
+    detectors = write_ranking(results, {ds: ds for ds in DATASETS}, "", odds_rates)
 
     write_csv(
         "alerts.csv",
@@ -623,10 +639,11 @@ def write_tables(results, nab=None):
     )
 
 
-def write_ranking(results, datasets, prefix):
+def write_ranking(results, datasets, prefix, chance_rates=None):
     """The summary, the AUROC and the AUPR tables of the multivariate detectors.
 
-    ``datasets`` maps each dataset to its name in the tables.
+    ``datasets`` maps each dataset to its name in the tables. ``chance_rates`` maps each dataset
+    to its anomaly fraction, the chance level of AUPR.
     """
     detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
     if not detectors:
@@ -647,6 +664,7 @@ def write_ranking(results, datasets, prefix):
         for d in detectors
     ]
     auroc, aupr = (np.nanmean(tables[metric], axis=0) for metric in ["auroc", "aupr"])
+    mean_chance_aupr = float(np.nanmean([chance_rates.get(ds, np.nan) for ds in datasets]))
     # Rank 1 is the highest AUROC of a dataset. Equal mean ranks, as the page rounds them, go by
     # mean AUROC, then mean AUPR, then time per point.
     order = sorted(
@@ -659,8 +677,8 @@ def write_ranking(results, datasets, prefix):
             [
                 f":class:`~pysad.models.{detectors[i]}`",
                 f"{rank[i]:.1f}",
-                f"{auroc[i]:.3f}",
-                f"{aupr[i]:.3f}",
+                f"{auroc[i]:.3f}" + chance_mark(auroc[i], 0.5),
+                f"{aupr[i]:.3f}" + chance_mark(aupr[i], mean_chance_aupr),
                 f"{ms[i]:.2f}",
                 commit_links(results, detectors[i]),
             ]
@@ -672,7 +690,15 @@ def write_ranking(results, datasets, prefix):
         for ds, row in zip(datasets, table[:, order], strict=True):
             cells = [f"{v:.3f}" for v in row]
             best = f"{np.nanmax(row):.3f}"
-            rows.append([datasets[ds], *(f"**{c}**" if c == best else c for c in cells)])
+            marked = []
+            for cell, value in zip(cells, row, strict=True):
+                cell = f"**{cell}**" if cell == best else cell
+                if metric == "auroc":
+                    cell = cell + chance_mark(value, 0.5)
+                else:
+                    cell = cell + chance_mark(value, chance_rates.get(ds))
+                marked.append(cell)
+            rows.append([datasets[ds], *marked])
         header = [SHORT_NAMES.get(detectors[i], detectors[i]) for i in order]
         write_csv(f"{prefix}{metric}.csv", ["Dataset", *header], rows)
     return detectors
@@ -713,8 +739,12 @@ def write_univariate_tables(results, nab):
             [
                 label(d),
                 len(series_of(d)),
-                *(f"{score(d, p):.1f}" for p in NAB_PROFILES),
-                f"{mean_auroc(d, series_of(d)):.3f}",
+                *(
+                    f"{score(d, p):.1f}" + chance_mark(score(d, p), 0.0)
+                    for p in NAB_PROFILES
+                ),
+                f"{mean_auroc(d, series_of(d)):.3f}"
+                + chance_mark(mean_auroc(d, series_of(d)), 0.5),
                 f"{np.median([number(r['ms_per_point']) for k, r in results.items() if k[1] == d]):.2f}",
                 commit_links(results, d),
             ]
@@ -731,7 +761,7 @@ def write_univariate_tables(results, nab):
                     f":class:`~pysad.models.{d}`",
                     len(ucr_series()),
                     f"{100 * np.nanmean([number(results[s, d, 0]['solved']) for s in ucr_series()]):.1f}",
-                    f"{mean_auroc(d, ucr_series()):.3f}",
+                    f"{mean_auroc(d, ucr_series()):.3f}" + chance_mark(mean_auroc(d, ucr_series()), 0.5),
                 ]
                 for d in ucr
                 if all((s, d, 0) in results for s in ucr_series())
@@ -745,8 +775,8 @@ def write_univariate_tables(results, nab):
         [
             [
                 label(d),
-                f"{score(d, 'seasonal_standard'):.1f}",
-                f"{mean_auroc(d, PERIODS):.3f}",
+                f"{score(d, 'seasonal_standard'):.1f}" + chance_mark(score(d, 'seasonal_standard'), 0.0),
+                f"{mean_auroc(d, PERIODS):.3f}" + chance_mark(mean_auroc(d, PERIODS), 0.5),
             ]
             for d in sorted(detectors, key=lambda d: -score(d, "seasonal_standard"))
         ],
@@ -1193,7 +1223,15 @@ def main():
     write_csv(
         "nab.csv",
         NAB_FIELDS,
-        [[nab[d].get(f, "") for f in NAB_FIELDS] for d in NAB_DETECTORS if d in nab],
+        [
+            [
+                nab[d].get(f, "") + chance_mark(number(nab[d].get(f)), 0.0)
+                if f in NAB_FIELDS[2:]
+                else nab[d].get(f, "")
+                for f in NAB_FIELDS
+            ]
+            for d in NAB_DETECTORS if d in nab
+        ],
     )
     write_tables(results, nab)
 

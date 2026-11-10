@@ -1,7 +1,7 @@
 Detector,Series,Solved (%),AUROC
 :class:`~pysad.models.ChangeFinder`,84,61.9,0.605
-:class:`~pysad.models.SpectralResidual`,84,36.9,0.460
+:class:`~pysad.models.SpectralResidual`,84,36.9,0.460†
 :class:`~pysad.models.MedianAbsoluteDeviation`,84,11.9,0.547
-:class:`~pysad.models.KNNCAD`,84,8.3,0.496
+:class:`~pysad.models.KNNCAD`,84,8.3,0.496†
 :class:`~pysad.models.StandardAbsoluteDeviation`,84,8.3,0.540
 :class:`~pysad.models.RelativeEntropy`,84,7.1,0.504

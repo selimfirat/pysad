@@ -24,6 +24,7 @@ class PEWMA(BaseModel):
     Deviations from the paper:
 
     - The paper raises an alert when :math:`P_t` is below a threshold. The model returns :math:`|Z_t|`, which ranks values in the same order as :math:`-P_t`, so that a higher score is more anomalous. :math:`P_t` is below a threshold :math:`\tau` exactly when :math:`|Z_t|` is above :math:`\sqrt{-2 \ln(\tau \sqrt{2 \pi})}`.
+    - The paper uses the exact means :math:`s_1` and :math:`s_2` for the first :math:`T - 1` values and starts the probability weight at value :math:`T`. The model uses them for the first :math:`T` values (`count_ <= training_period`) and starts the weight at value :math:`T + 1`.
     - The paper does not define :math:`Z_t` when :math:`\hat{\sigma}_t = 0`, as before the second value or on a constant stream. The model then uses :math:`Z_t = 0`, so the value scores 0 and gets the largest probability :math:`P_t`. Rounding can make :math:`s_2 - s_1^2` slightly negative, and the model then uses :math:`\hat{\sigma}_t = 0`.
 
     Args:

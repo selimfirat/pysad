@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 
-from sklearn.metrics import average_precision_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import average_precision_score, roc_auc_score
 
 from pysad.core.base_metric import BaseMetric
 
@@ -45,62 +45,73 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         pass
 
 
-def _apply_threshold(y_pred: list[float], threshold: float | None) -> list[float] | list[int]:
-    """Turns anomaly scores into 0/1 predictions when a threshold is given.
+class _BaseConfusionMetric(BaseMetric):
+    """Accumulate binary confusion counts without retaining samples."""
 
-    Args:
-        y_pred (list[float]): Predicted classes or scores.
-        threshold (float | None): The score at or above which an instance is predicted anomalous. If None, y_pred is returned unchanged.
+    def __init__(self, threshold: float | None = None) -> None:
+        super().__init__()
+        self.threshold = threshold
+        self.true_positives_ = 0
+        self.false_positives_ = 0
+        self.false_negatives_ = 0
+        self.invalid_labels_ = False
 
-    Returns:
-        list[float] | list[int]: The predicted classes.
-    """
-    if threshold is None:
-        return y_pred
+    def update(self, y_true: int, y_pred: float) -> None:
+        """Record a binary label and prediction, applying the threshold on arrival.
 
-    return [1 if score >= threshold else 0 for score in y_pred]
+        Args:
+            y_true (int): Ground truth class, either 0 or 1.
+            y_pred (float): Predicted class, or anomaly score when a threshold is set.
+        """
+        if y_true not in (0, 1) or (self.threshold is None and y_pred not in (0, 1)):
+            self.invalid_labels_ = True
+            return
+
+        predicted = y_pred == 1 if self.threshold is None else y_pred >= self.threshold
+        if y_true == 1:
+            if predicted:
+                self.true_positives_ += 1
+            else:
+                self.false_negatives_ += 1
+        elif predicted:
+            self.false_positives_ += 1
+
+    def _ratio(self, denominator: int) -> float:
+        if self.invalid_labels_:
+            raise ValueError("Precision and recall require binary labels and predictions (0 or 1).")
+        return self.true_positives_ / denominator if denominator else 0.0
 
 
-class PrecisionMetric(BaseSKLearnMetric):
-    """Precision wrapper class for sklearn.
+class PrecisionMetric(_BaseConfusionMetric):
+    """Streaming precision from binary confusion counts.
 
     Precision is defined on predicted classes. With the default ``threshold=None``, ``y_pred`` must be 0 or 1 and is used as given. To pass anomaly scores, set ``threshold``. Scores at or above it are predicted anomalous (1) and the rest normal (0).
 
-    Calling ``get()`` before any samples have been recorded returns ``0.0``.
+    Only confusion counts are retained, so updates and queries take constant time. The threshold is applied when each sample is recorded. Calling ``get()`` before any samples have been recorded, or when the denominator is zero, returns ``0.0``.
 
     Args:
         threshold (float | None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions. (Default=None).
     """
 
-    def __init__(self, threshold: float | None = None) -> None:
-        super().__init__()
-        self.threshold = threshold
-
-    def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
-        if not y_true:
-            return 0.0
-        return precision_score(y_true, _apply_threshold(y_pred, self.threshold))
+    def get(self) -> float:
+        """Return true positives divided by all predicted positives."""
+        return self._ratio(self.true_positives_ + self.false_positives_)
 
 
-class RecallMetric(BaseSKLearnMetric):
-    """Recall wrapper class for sklearn.
+class RecallMetric(_BaseConfusionMetric):
+    """Streaming recall from binary confusion counts.
 
     Recall is defined on predicted classes. With the default ``threshold=None``, ``y_pred`` must be 0 or 1 and is used as given. To pass anomaly scores, set ``threshold``. Scores at or above it are predicted anomalous (1) and the rest normal (0).
 
-    Calling ``get()`` before any samples have been recorded returns ``0.0``.
+    Only confusion counts are retained, so updates and queries take constant time. The threshold is applied when each sample is recorded. Calling ``get()`` before any samples have been recorded, or when the denominator is zero, returns ``0.0``.
 
     Args:
         threshold (float | None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions. (Default=None).
     """
 
-    def __init__(self, threshold: float | None = None) -> None:
-        super().__init__()
-        self.threshold = threshold
-
-    def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
-        if not y_true:
-            return 0.0
-        return recall_score(y_true, _apply_threshold(y_pred, self.threshold))
+    def get(self) -> float:
+        """Return true positives divided by all actual positives."""
+        return self._ratio(self.true_positives_ + self.false_negatives_)
 
 
 class AUROCMetric(BaseSKLearnMetric):

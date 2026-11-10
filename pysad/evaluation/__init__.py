@@ -18,10 +18,10 @@ __all__ = [
     "AUPRMetric",
     "AUROCMetric",
     "BaseSKLearnMetric",
+    "evaluate_stream",
     "F1Metric",
     "MatthewsCorrelationMetric",
     "PrecisionMetric",
     "RecallMetric",
     "WindowedMetric",
-    "evaluate_stream",
 ]

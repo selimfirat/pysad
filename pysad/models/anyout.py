@@ -66,6 +66,7 @@ class AnyOut(BaseModel):
     - A split that would make the tree taller than `max_height` levels is never made, as in MOA. The leaf then merges its closest pair of entries, the rule of the thesis for a node that has no time to split. Thus the tree holds at most 3^`max_height` leaf entries.
     - Before a node splits, it discards its entry with the smallest n if n < 2^(-`decay` `snapshot_interval`) (Eq. 11.1), and the cluster feature of the entry is subtracted from the entries above it. Since no snapshots are taken, `snapshot_interval` only sets this threshold.
     - The tree is built by insertion, not by the bulk loading that some experiments of the thesis use. The confidence 1 - e^(-s) of Section 14.4.4 only orders the instances of a constant stream for more computation time, so this class does not compute it.
+    - The cluster features hold the sums of `x - ref`, where `ref` is the first fitted instance. Adding a constant to a feature then leaves every distance and variance unchanged, and the variance keeps its precision when the values are far from 0.
 
     Args:
         depth (int | None): The number of tree levels that the descent of an instance reads before it is scored, at least 1. None reads down to a leaf (Default=None).
@@ -93,6 +94,8 @@ class AnyOut(BaseModel):
         self.root_: _Node | None = None
         self.height_ = 1
         self._time = 0
+        # The cluster features hold sums relative to the first fitted instance.
+        self._ref: np.ndarray | None = None
 
     def _decay_node(self, node: _Node) -> None:
         factor = 2.0 ** (-self.decay * (self._time - node.ts))
@@ -113,7 +116,9 @@ class AnyOut(BaseModel):
         """
         x = np.asarray(X, dtype=np.float64)
         if self.root_ is None:
+            self._ref = x.copy()
             self.root_ = _Node(len(x), self._time)
+        x = x - self._ref  # the cluster features hold the sums of x - ref
 
         path: list[tuple[_Node, int]] = []  # the inner nodes of the descent and their entries
         node = self.root_
@@ -215,6 +220,7 @@ class AnyOut(BaseModel):
         x = np.asarray(X, dtype=np.float64)
         if self.root_ is None:
             return 0.0
+        x = x - self._ref
 
         node = self.root_
         i = node.closest(x)

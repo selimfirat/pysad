@@ -107,3 +107,25 @@ def test_anyout_rejects_an_unknown_outlier_score():
 
     with pytest.raises(ValueError, match="outlier_score"):
         AnyOut(outlier_score="median")
+
+
+def test_anyout_scores_do_not_change_when_a_feature_gets_a_constant_offset():
+    """Adding a constant to a feature leaves every distance and variance of the tree unchanged."""
+    import numpy as np
+
+    from pysad.models import AnyOut
+
+    X, _ = generate_stream()
+    shifted = X.copy()
+    shifted[:, 0] += 1e6
+
+    for params in [
+        {},
+        {"outlier_score": "density", "depth": 1},
+        {"outlier_score": "density", "depth": 2},
+    ]:
+        scores = AnyOut(**params).fit_score(X)
+        shifted_scores = AnyOut(**params).fit_score(shifted)
+        np.testing.assert_allclose(
+            shifted_scores, scores, rtol=1e-7, atol=1e-9, err_msg=str(params)
+        )

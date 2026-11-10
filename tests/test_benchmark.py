@@ -112,9 +112,9 @@ def test_summary_has_no_mean_aupr(tmp_path):
         "Time per point (ms)",
         "Commit",
     ]
-    assert [
-        row["Detector"] for row in rows
-    ] == [f":class:`~pysad.models.{d}`" for d in ["LODA", "RSHash", "xStream"]]
+    assert [row["Detector"] for row in rows] == [
+        f":class:`~pysad.models.{d}`" for d in ["LODA", "RSHash", "xStream"]
+    ]
     # The per-dataset AUPR table still exists, with one value per dataset and detector.
     with open(tmp_path / "aupr.csv", newline="") as f:
         aupr_rows = list(csv.DictReader(f))

@@ -21,7 +21,9 @@ def test_pewma_with_zero_beta_is_an_ewma_with_weight_alpha():
 
     x = np.random.RandomState(1).normal(size=100)
     alpha, training_period = 0.9, 10
-    scores = PEWMA(alpha=alpha, beta=0.0, training_period=training_period).fit_score(x.reshape(-1, 1))
+    scores = PEWMA(alpha=alpha, beta=0.0, training_period=training_period).fit_score(
+        x.reshape(-1, 1)
+    )
 
     s1, s2 = x[:training_period].mean(), (x[:training_period] ** 2).mean()
     for t in range(training_period, len(x)):

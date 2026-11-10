@@ -67,7 +67,7 @@ class PEWMA(BaseModel):
         if self.count_ <= self.training_period:
             weight = 1.0 - 1.0 / self.count_
         else:
-            p = math.exp(-self._z(x) ** 2 / 2.0) / math.sqrt(2.0 * math.pi)
+            p = math.exp(-(self._z(x) ** 2) / 2.0) / math.sqrt(2.0 * math.pi)
             weight = (1.0 - self.beta * p) * self.alpha
 
         self.s1_ = weight * self.s1_ + (1.0 - weight) * x

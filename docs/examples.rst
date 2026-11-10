@@ -19,6 +19,62 @@ It prints:
 
    AUROC: 0.758
 
+Score a stream with LODA
+------------------------
+
+This script scores each point of cardio with LODA. LODA estimates the density of a point from sparse random projections. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_loda.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.946
+
+Score a stream with HalfSpaceTrees
+----------------------------------
+
+This script scores each point of cardio with HalfSpaceTrees. It compares each point to the density of the previous window, using the min and max of each feature. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_half_space_trees.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.928
+
+Score a stream with xStream
+---------------------------
+
+This script scores each point of cardio with xStream. xStream bins StreamHash projections into half-space chains. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_xstream.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.845
+
+Score a stream with KitNet
+--------------------------
+
+This script scores each point of cardio with KitNet. KitNet is an ensemble of small autoencoders made for network traffic. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_kitnet.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.878
+
 Score a synthetic stream
 ------------------------
 

@@ -50,6 +50,7 @@ def _model_specs():
         NullModel,
         OnlineIsolationForest,
         OnlineOneClassSVM,
+        PCBIsolationForest,
         PerfectModel,
         RandomModel,
         RelativeEntropy,
@@ -132,6 +133,13 @@ def _model_specs():
         ("NullModel", lambda: NullModel(), NUM_FEATURES),
         ("OnlineIsolationForest", lambda: OnlineIsolationForest(), NUM_FEATURES),
         ("OnlineOneClassSVM", lambda: OnlineOneClassSVM(), NUM_FEATURES),
+        (
+            "PCBIsolationForest",
+            lambda: PCBIsolationForest(
+                num_trees=10, max_leaf_samples=8, window_size=32, stat_size=10
+            ),
+            NUM_FEATURES,
+        ),
         ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),
         ("RandomModel", lambda: RandomModel(), NUM_FEATURES),
         # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses

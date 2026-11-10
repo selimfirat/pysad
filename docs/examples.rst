@@ -19,6 +19,62 @@ It prints:
 
    AUROC: 0.758
 
+Score a stream with LODA
+------------------------
+
+This script scores each point of cardio with LODA. LODA estimates the density of a point from sparse random projections. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_loda.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.946
+
+Score a stream with HalfSpaceTrees
+----------------------------------
+
+This script scores each point of cardio with HalfSpaceTrees. It compares each point to the density of the previous window, using the min and max of each feature. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_half_space_trees.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.928
+
+Score a stream with xStream
+---------------------------
+
+This script scores each point of cardio with xStream. xStream bins StreamHash projections into half-space chains. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_xstream.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.845
+
+Score a stream with KitNet
+--------------------------
+
+This script scores each point of cardio with KitNet. KitNet is an ensemble of small autoencoders made for network traffic. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_kitnet.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.878
+
 Score a synthetic stream
 ------------------------
 
@@ -32,6 +88,15 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.867
+
+Integrate a one-dimensional stream
+----------------------------------
+
+This script uses one feature per point. It scores each point before the update and calibrates the raw score.
+See :doc:`guides/one_dimensional_integration` for input shapes, feature bounds, and the py-outlier wrapper mismatch.
+
+.. literalinclude:: ../examples/example_one_dimensional_integration.py
+   :language: python
 
 Scale features online
 ---------------------
@@ -95,6 +160,17 @@ Use a River pipeline
 This script puts a PySAD detector after a River scaler. It scores each dictionary before learning from it. See :doc:`guides/pipelines` for the fixed feature mapping.
 
 .. literalinclude:: ../examples/example_river_pipeline.py
+   :language: python
+
+Use a scikit-learn pipeline
+----------------------------------------
+
+Fit the scaler and PySAD model on historical data before wrapping them.
+Batch scoring leaves the model unchanged.
+Lower ``score_samples`` values mean more anomalous instances.
+The threshold uses PySAD score units. ``predict`` returns -1 above the threshold and 1 at or below it.
+
+.. literalinclude:: ../examples/example_sklearn_pipeline.py
    :language: python
 
 Project high-dimensional data
@@ -278,6 +354,20 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.807
+
+Fit a PyOD model once
+---------------------
+
+This script fits a batch KNN on the first 100 points, then only scores the rest of the stream. The model does not learn from the stream. See :doc:`guides/pyod`.
+
+.. literalinclude:: ../examples/example_one_fit_model.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.857
 
 Score forecast errors of a River forecaster
 -------------------------------------------
@@ -519,6 +609,20 @@ It prints:
 
    AUROC: 0.651
 
+Use an online isolation forest
+------------------------------
+
+This script scores each point with OnlineIsolationForest. The forest keeps a bounded window of recent points. It scores each point before it learns it. When the window is full, it forgets the oldest point. A point is anomalous when the trees isolate it on a short path.
+
+.. literalinclude:: ../examples/example_online_isolation_forest.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.676
+
 Load credit-card fraud transactions
 -----------------------------------
 
@@ -587,6 +691,20 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.727
+
+Use an expected similarity detector
+-----------------------------------
+
+This script scores each point with EXPoSE. EXPoSE maps each point to random Fourier features and keeps a running kernel mean embedding of the fitted points. The score is the negative expected similarity divided by the squared norm of the embedding. A higher score means more anomalous.
+
+.. literalinclude:: ../examples/example_expose.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.496
 
 Summarize old points with DILOF
 -------------------------------

@@ -1,3 +1,6 @@
+import pytest
+
+
 def generate_stream(seed=61):
     import numpy as np
 
@@ -35,7 +38,8 @@ def _three_clusters():
     return centers[labels] + rng.normal(0.0, [0.5, 2.0], size=(63, 2)), labels
 
 
-def test_anyout_scores_against_the_closest_cluster_of_a_one_level_tree():
+@pytest.mark.parametrize("offset", [0.0, 1e6])
+def test_anyout_scores_against_the_closest_cluster_of_a_one_level_tree(offset):
     """A one-level tree merges its closest entries, so it holds one entry per distant cluster."""
     import numpy as np
     from scipy.stats import norm
@@ -43,7 +47,8 @@ def test_anyout_scores_against_the_closest_cluster_of_a_one_level_tree():
     from pysad.models import AnyOut
 
     X, labels = _three_clusters()
-    x = np.array([9.0, 3.0])
+    X += offset
+    x = np.array([9.0, 3.0]) + offset
     cluster = X[labels == 1]
 
     mean_model = AnyOut(max_height=1, decay=0.0).fit(X)

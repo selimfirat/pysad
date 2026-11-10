@@ -3,7 +3,9 @@
 Copied from combo 0.1.3 :cite:`zhao2020combo` (``combo/models/score_comb.py``,
 https://github.com/yzhao062/combo), the functions PyOD's ``pyod.models.combination`` wraps,
 so that pysad does not need combo, which is only published as a source distribution. The
-logic is unchanged. For licensing information, see the end of this file.
+logic is unchanged, except that ``aom`` and ``moa`` resolve ``random_state`` once per call. combo
+passes an int seed to each bucket draw, which restarts the generator and gives every bucket the
+same estimators. For licensing information, see the end of this file.
 """
 
 import numpy as np
@@ -122,6 +124,7 @@ def _aom_moa_helper(
         raise NotImplementedError(f"{mode} is not implemented")
 
     scores = check_array(scores)
+    random_state = check_random_state(random_state)
     n_estimators = scores.shape[1]
     if not 2 <= n_buckets <= n_estimators:
         raise ValueError(f"n_buckets must be between 2 and {n_estimators}, got {n_buckets}.")

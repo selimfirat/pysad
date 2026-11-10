@@ -19,6 +19,7 @@ WINDOWED_METRICS = [
     "AUPRMetric",
     "BalancedAccuracyMetric",
     "F1Metric",
+    "MatthewsCorrelationMetric",
     "PrecisionMetric",
     "RecallMetric",
 ]
@@ -28,6 +29,7 @@ WINDOWED_METRICS = [
 METRIC_KWARGS = {
     "BalancedAccuracyMetric": {"threshold": 0.5},
     "F1Metric": {"threshold": 0.5},
+    "MatthewsCorrelationMetric": {"threshold": 0.5},
     "PrecisionMetric": {"threshold": 0.5},
     "RecallMetric": {"threshold": 0.5},
 }

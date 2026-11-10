@@ -35,20 +35,23 @@ def _left_matrix_profile(values, m, lag, first):
 
 # A history shorter than the probationary period keeps fewer values than the model learns from.
 @pytest.mark.parametrize("history_size", [10000, 100, M - 1])
-def test_scores_are_bounded_by_the_exact_left_matrix_profile(history_size):
+# A z-normalized distance does not depend on a constant offset of the series. Values near 1e6
+# keep only about 1e-10 of absolute precision, so the scores match to a looser tolerance.
+@pytest.mark.parametrize(("offset", "tol"), [(0.0, 1e-9), (1e6, 1e-6)])
+def test_scores_are_bounded_by_the_exact_left_matrix_profile(history_size, offset, tol):
     from pysad.models import DAMP
 
-    values = _series()
+    values = _series() + offset
     scores = DAMP(window_length=M, history_size=history_size).fit_score(values.reshape(-1, 1))
     exact = _left_matrix_profile(values, M, history_size, first=4 * M)
 
     # Each score lies between the exact value and the best-so-far score, and is exact when it is
     # a new best-so-far score.
     best_so_far = np.maximum.accumulate(exact)
-    np.testing.assert_array_less(exact - 1e-9, scores)
-    np.testing.assert_array_less(scores, best_so_far + 1e-9)
+    np.testing.assert_array_less(exact - tol, scores)
+    np.testing.assert_array_less(scores, best_so_far + tol)
     new_best = exact == best_so_far
-    np.testing.assert_allclose(scores[new_best], exact[new_best], rtol=1e-9, atol=1e-9)
+    np.testing.assert_allclose(scores[new_best], exact[new_best], rtol=tol, atol=tol)
     np.testing.assert_array_equal(scores[: 4 * M], 0.0)
 
 

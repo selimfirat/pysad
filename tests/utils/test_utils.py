@@ -160,7 +160,7 @@ class TestWindow:
 
         window = Window(window_size=5)
         assert window.window_size == 5
-        assert window.window == []
+        assert window.get() == []
 
     def test_window_update_within_size(self):
         """Test Window update within size limit."""
@@ -200,8 +200,8 @@ class TestWindow:
         window.update(2.0)
         assert window.get() == [2.0]
 
-    def test_window_get_copy(self):
-        """Test that Window.get() returns the actual list."""
+    def test_window_get_returns_items_in_order(self):
+        """Test that Window.get() returns the window items, oldest first."""
         from pysad.utils import Window
 
         window = Window(window_size=5)
@@ -211,8 +211,7 @@ class TestWindow:
         result1 = window.get()
         result2 = window.get()
 
-        # Should be the same list
-        assert result1 is result2
+        assert result1 == result2 == [1.0, 2.0]
 
     def test_unlimited_window_initialization(self):
         """Test UnlimitedWindow initialization."""
@@ -220,7 +219,7 @@ class TestWindow:
 
         window = UnlimitedWindow()
         assert window.window_size is None
-        assert window.window == []
+        assert window.get() == []
 
     def test_unlimited_window_growth(self):
         """Test UnlimitedWindow unlimited growth."""

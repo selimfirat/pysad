@@ -105,7 +105,11 @@ def _model_specs():
             2,
         ),
         ("IForestASD", lambda: IForestASD(window_size=32), NUM_FEATURES),
-        ("IDK", lambda: models.IDK(input_shape=NUM_FEATURES, window_size=20, num_samples=4), NUM_FEATURES),
+        (
+            "IDK",
+            lambda: models.IDK(input_shape=NUM_FEATURES, window_size=20, num_samples=4),
+            NUM_FEATURES,
+        ),
         ("IncrementalLOF", lambda: IncrementalLOF(window_size=20), NUM_FEATURES),
         ("KELOS", lambda: KELOS(window_size=20, radius=0.3, num_neighbors=3), NUM_FEATURES),
         (

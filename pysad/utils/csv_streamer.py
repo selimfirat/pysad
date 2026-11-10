@@ -38,9 +38,7 @@ class CSVStreamer:
         self.delimiter = delimiter
         self.encoding = encoding
 
-    def iter(
-        self, path: str | PathLike[str]
-    ) -> Iterator[np.ndarray | tuple[np.ndarray, float]]:
+    def iter(self, path: str | PathLike[str]) -> Iterator[np.ndarray | tuple[np.ndarray, float]]:
         """Open a CSV file and yield its features and optional labels.
 
         Each call reads the file from the beginning. The file is opened on first

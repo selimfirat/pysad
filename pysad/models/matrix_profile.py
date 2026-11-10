@@ -97,8 +97,16 @@ def _nearest_distance(series: np.ndarray, query: np.ndarray) -> float:
     means, stds = neighbors.mean(axis=1), neighbors.std(axis=1)
     constant = neighbors.max(axis=1) == neighbors.min(axis=1)
     query_constant = query.max() == query.min()
+    # Center the query and each window before the dot product. This keeps the
+    # products small when the series holds a large constant offset, so forming
+    # the Pearson numerator does not subtract two large, nearly equal values and
+    # cancel its significant digits. Centering only the query is not enough:
+    # the residual centering error multiplied by the offset still corrupts the
+    # numerator.
+    centered_query = query - query.mean()
+    centered_neighbors = neighbors - means[:, None]
     with np.errstate(divide="ignore", invalid="ignore"):
-        correlations = (np.correlate(series, query) - m * means * query.mean()) / (
+        correlations = np.sum(centered_neighbors * centered_query[None, :], axis=1) / (
             m * stds * query.std()
         )
     squared = 2 * m * (1 - np.minimum(correlations, 1.0))

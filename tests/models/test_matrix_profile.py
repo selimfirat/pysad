@@ -73,6 +73,24 @@ def test_inserted_discords_get_the_highest_scores():
     assert all(700 <= i < 720 + M or 1000 <= i < 1020 + M for i in top)
 
 
+def test_constant_offset_does_not_change_scores():
+    """Adding a constant to the series must not change the z-normalized scores."""
+    from pysad.models import DAMP, MatrixProfile
+
+    rng = np.random.default_rng(0)
+    values = np.sin(2 * np.pi * np.arange(600) / 50) + 0.1 * rng.normal(size=600)
+    values[400:420] += 1.5  # the discord
+
+    for model in (MatrixProfile, DAMP):
+        base = model(window_length=M, history_size=HISTORY).fit_score(values.reshape(-1, 1))
+        for offset in (1e6, 1e7):
+            shifted = model(window_length=M, history_size=HISTORY).fit_score(
+                (values + offset).reshape(-1, 1)
+            )
+            np.testing.assert_allclose(shifted, base, atol=1e-6)
+            assert shifted.argmax() == base.argmax()
+
+
 def test_score_partial_does_not_change_the_model():
     from pysad.models import MatrixProfile
 

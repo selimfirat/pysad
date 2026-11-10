@@ -26,6 +26,8 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
      - Measure binary predictions when class sizes differ. It uses all four confusion counts and supports a score threshold.
    * - :class:`~pysad.evaluation.RecallMetric`
      - Measure the fraction of anomalies that raise an alert, for a given threshold.
+   * - :class:`~pysad.evaluation.BalancedAccuracyMetric`
+     - Give normal points and anomalies equal weight through their mean recall. Set a threshold for scores, or pass 0/1 predictions.
 
 Measure several metrics at once
 -------------------------------
@@ -97,6 +99,8 @@ The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.
 ``F1Metric`` keeps only TP, FP and FN counts, so updating and reading it take constant time and memory. The sklearn wrapper metrics keep every label and score that they get, and ``get`` computes the metric over all of them. As a result, each of their ``get`` calls takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals, not for every point.
 
 :class:`~pysad.evaluation.MatthewsCorrelationMetric` keeps four confusion counts instead of the stream history. It uses constant memory and constant work for each update and result. A zero denominator returns 0.0, including before the first update. See ``examples/example_matthews_correlation.py``.
+
+``BalancedAccuracyMetric`` stores only four confusion counts. Its memory use and update and query costs stay constant as the stream grows. For an empty stream, it returns 0.0. For a stream with one true class, it returns that class's recall. Nonempty binary results match scikit-learn. See ``examples/example_balanced_accuracy.py``.
 
 Follow the performance over time
 --------------------------------

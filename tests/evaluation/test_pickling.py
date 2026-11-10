@@ -17,6 +17,7 @@ PICKLE_SKIP_METRICS = {"BaseSKLearnMetric", "RollingMetric", "WindowedMetric", "
 WINDOWED_METRICS = [
     "AUROCMetric",
     "AUPRMetric",
+    "BalancedAccuracyMetric",
     "F1Metric",
     "MatthewsCorrelationMetric",
     "PrecisionMetric",
@@ -26,6 +27,7 @@ WINDOWED_METRICS = [
 # F1, precision and recall are defined on predicted classes, so they get a threshold to turn the
 # scores below into 0/1 predictions.
 METRIC_KWARGS = {
+    "BalancedAccuracyMetric": {"threshold": 0.5},
     "F1Metric": {"threshold": 0.5},
     "MatthewsCorrelationMetric": {"threshold": 0.5},
     "PrecisionMetric": {"threshold": 0.5},

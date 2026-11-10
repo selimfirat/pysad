@@ -2,6 +2,7 @@
 The :mod:`pysad.evaluation` module includes evaluation metrics for anomaly detection on streaming data.
 """
 
+from .balanced_accuracy import BalancedAccuracyMetric
 from .f1_metric import F1Metric
 from .metrics import (
     AUPRMetric,
@@ -18,6 +19,7 @@ from .windowed_metric import WindowedMetric
 __all__ = [
     "AUPRMetric",
     "AUROCMetric",
+    "BalancedAccuracyMetric",
     "BaseSKLearnMetric",
     "F1Metric",
     "MatthewsCorrelationMetric",

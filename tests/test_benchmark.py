@@ -77,3 +77,74 @@ def test_sand_benchmark_scores_before_update_and_reproduces_metrics(monkeypatch,
     assert row["seed"] == 0
     assert row["auroc"] == round(roc_auc_score(y[cutoff:], expected), 4)
     assert row["aupr"] == round(average_precision_score(y[cutoff:], expected), 4)
+
+
+def test_write_ranking_marks_chance_level_and_fraction_column(tmp_path, monkeypatch):
+    """The tables mark values at or below chance, and the summary shows Mean AUPR / fraction."""
+    benchmark = load_benchmark()
+
+    def fake_load(dataset, seed=0, points=None):
+        if dataset == "B":
+            n = 16
+            y = np.array([0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        else:
+            n = 8
+            y = np.array([0, 0, 1, 1, 1, 0, 0, 0])
+        return np.zeros((n, 1)), y
+
+    monkeypatch.setattr(benchmark, "OUT", tmp_path)
+    monkeypatch.setattr(benchmark, "load", fake_load)
+
+    rows = [
+        ("A", "LODA", 0.80, 0.50, 1.0),
+        ("A", "RSHash", 0.90, 0.70, 1.0),
+        ("A", "TEDA", 0.50, 0.25, 1.0),
+        ("B", "LODA", 0.40, 0.10, 1.0),
+        ("B", "RSHash", 0.60, 0.40, 1.0),
+        ("B", "TEDA", 0.50, 0.25, 1.0),
+        ("C", "LODA", 0.50, 0.50, 1.0),
+        ("C", "RSHash", 0.50, 0.50, 1.0),
+        ("C", "TEDA", 0.50, 0.50, 1.0),
+    ]
+    results = {}
+    for dataset, detector, auroc, aupr, ms in rows:
+        results[(dataset, detector, 0)] = {
+            "dataset": dataset,
+            "detector": detector,
+            "seed": 0,
+            "auroc": f"{auroc:.3f}",
+            "aupr": f"{aupr:.3f}",
+            "ms_per_point": f"{ms:.2f}",
+            "commit": "abc123",
+        }
+
+    benchmark.write_ranking(results, {"A": "A", "B": "B", "C": "C"}, "")
+
+    summary = (tmp_path / "summary.csv").read_text().splitlines()
+    assert summary[0] == (
+        "Detector,Mean rank,Mean AUROC,Mean AUPR,Mean AUPR / fraction,Time per point (ms),Commit"
+    )
+    assert summary[1] == (
+        ":class:`~pysad.models.RSHash`,1.3,0.667,0.533,1.333,1.00,"
+        "`abc123 <https://github.com/selimfirat/pysad/commit/abc123>`__"
+    )
+    assert summary[2] == (
+        ":class:`~pysad.models.LODA`,2.3,0.567,0.367,0.800,1.00,"
+        "`abc123 <https://github.com/selimfirat/pysad/commit/abc123>`__"
+    )
+    assert summary[3] == (
+        ":class:`~pysad.models.TEDA`,2.3,0.500,0.333,0.833,1.00,"
+        "`abc123 <https://github.com/selimfirat/pysad/commit/abc123>`__"
+    )
+
+    aupr = (tmp_path / "aupr.csv").read_text().splitlines()
+    assert aupr[0] == "Dataset,Fraction of anomalies,RSHash,LODA,TEDA"
+    assert aupr[1] == "A,0.500,**0.700**,*0.500*,*0.250*"
+    assert aupr[2] == "B,0.250,**0.400**,*0.100*,*0.250*"
+    assert aupr[3] == "C,0.500,***0.500***,***0.500***,***0.500***"
+
+    auroc = (tmp_path / "auroc.csv").read_text().splitlines()
+    assert auroc[0] == "Dataset,RSHash,LODA,TEDA"
+    assert auroc[1] == "A,**0.900**,0.800,*0.500*"
+    assert auroc[2] == "B,**0.600**,*0.400*,*0.500*"
+    assert auroc[3] == "C,***0.500***,***0.500***,***0.500***"

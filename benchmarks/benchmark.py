@@ -284,6 +284,16 @@ def load(dataset, seed, points=None):
     )
 
 
+def anomaly_fraction(dataset):
+    """The fraction of anomalies among the evaluated points of a dataset.
+
+    The first points are the warm-up and do not count in the metrics. The value is the reference
+    of a random detector for AUPR on this dataset.
+    """
+    _, y = load(dataset, 0)
+    return float(y[warmup(len(y)) :].mean())
+
+
 def nab_probation(n):
     """NAB's probationary period of a series of n points: 15%, at most 750. NAB does not score it."""
     return min(n * 15 // 100, 750)
@@ -626,7 +636,9 @@ def write_tables(results, nab=None):
 def write_ranking(results, datasets, prefix):
     """The summary, the AUROC and the AUPR tables of the multivariate detectors.
 
-    ``datasets`` maps each dataset to its name in the tables.
+    ``datasets`` maps each dataset to its name in the tables. AUROC values at or below 0.5 and
+    AUPR values at or below the fraction of anomalies of the dataset are no better than chance,
+    and they are in italics. The best value of each row is in bold.
     """
     detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
     if not detectors:
@@ -637,6 +649,7 @@ def write_ranking(results, datasets, prefix):
             [float(r[metric]) for k, r in results.items() if k[:2] == (dataset, detector)]
         )
 
+    fractions = np.array([anomaly_fraction(ds) for ds in datasets])
     tables = {
         metric: np.array([[mean(metric, ds, d) for d in detectors] for ds in datasets])
         for metric in ["auroc", "aupr"]
@@ -647,6 +660,9 @@ def write_ranking(results, datasets, prefix):
         for d in detectors
     ]
     auroc, aupr = (np.nanmean(tables[metric], axis=0) for metric in ["auroc", "aupr"])
+    aupr_over_fraction = np.array(
+        [np.nanmean(tables["aupr"][:, i] / fractions) for i in range(len(detectors))]
+    )
     # Rank 1 is the highest AUROC of a dataset. Equal mean ranks, as the page rounds them, go by
     # mean AUROC, then mean AUPR, then time per point.
     order = sorted(
@@ -654,13 +670,22 @@ def write_ranking(results, datasets, prefix):
     )
     write_csv(
         f"{prefix}summary.csv",
-        ["Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)", "Commit"],
+        [
+            "Detector",
+            "Mean rank",
+            "Mean AUROC",
+            "Mean AUPR",
+            "Mean AUPR / fraction",
+            "Time per point (ms)",
+            "Commit",
+        ],
         [
             [
                 f":class:`~pysad.models.{detectors[i]}`",
                 f"{rank[i]:.1f}",
                 f"{auroc[i]:.3f}",
                 f"{aupr[i]:.3f}",
+                f"{aupr_over_fraction[i]:.3f}",
                 f"{ms[i]:.2f}",
                 commit_links(results, detectors[i]),
             ]
@@ -669,12 +694,30 @@ def write_ranking(results, datasets, prefix):
     )
     for metric, table in tables.items():  # the columns in the order of the summary
         rows = []
-        for ds, row in zip(datasets, table[:, order], strict=True):
+        for j, (ds, row) in enumerate(zip(datasets, table[:, order], strict=True)):
             cells = [f"{v:.3f}" for v in row]
             best = f"{np.nanmax(row):.3f}"
-            rows.append([datasets[ds], *(f"**{c}**" if c == best else c for c in cells)])
+            marked = []
+            for c, v in zip(cells, row, strict=True):
+                below = v <= (0.5 if metric == "auroc" else fractions[j])
+                if c == best and below:
+                    marked.append(f"***{c}***")
+                elif c == best:
+                    marked.append(f"**{c}**")
+                elif below:
+                    marked.append(f"*{c}*")
+                else:
+                    marked.append(c)
+            if metric == "aupr":
+                rows.append([datasets[ds], f"{fractions[j]:.3f}", *marked])
+            else:
+                rows.append([datasets[ds], *marked])
         header = [SHORT_NAMES.get(detectors[i], detectors[i]) for i in order]
-        write_csv(f"{prefix}{metric}.csv", ["Dataset", *header], rows)
+        if metric == "aupr":
+            header = ["Dataset", "Fraction of anomalies", *header]
+        else:
+            header = ["Dataset", *header]
+        write_csv(f"{prefix}{metric}.csv", header, rows)
     return detectors
 
 

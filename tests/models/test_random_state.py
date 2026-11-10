@@ -6,6 +6,7 @@ import pytest
 from pysad.models import (
     D3,
     HTM,
+    IDK,
     LODA,
     MIDAS,
     SAND,
@@ -45,6 +46,7 @@ MODELS = {
     "HTM": lambda **kw: HTM(
         min_val=0.0, max_val=1.0, probationary_period=20, num_columns=256, **kw
     ),
+    "IDK": lambda **kw: IDK(input_shape=NUM_FEATURES, window_size=30, num_samples=4, **kw),
     "Inqmad": lambda **kw: Inqmad(input_shape=NUM_FEATURES, dim_x=32, initial_size=20, **kw),
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": lambda **kw: KitNet(grace_feature_mapping=20, grace_anomaly_detector=30, **kw),

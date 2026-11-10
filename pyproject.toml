@@ -236,6 +236,7 @@ module = [
     "pysad.models.dilof",
     "pysad.models.half_space_trees",
     "pysad.models.holt_winters",
+    "pysad.models.idks",
     "pysad.models.exact_storm",
     "pysad.models.expose",
     "pysad.models.htm.encoders",

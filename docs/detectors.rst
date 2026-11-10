@@ -130,6 +130,10 @@ These detectors take points with one or more features. A feature is one measured
      - Quantum measurement density estimation :cite:`gallego2022inqmad`
      - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``)
      - Fixed: a ``dim_x`` by ``dim_x`` matrix
+   * - :class:`~pysad.models.IDK`
+     - Similarity to the data distribution of a sliding window, from hypersphere partitions of the Isolation Distributional Kernel :cite:`xu2026idks`
+     - The number of features, the window size, the number of partitions and the number of samples per partition
+     - Fixed: a window of ``window_size`` points and ``num_partitions * num_samples`` hypersphere samples
    * - :class:`~pysad.models.TEDA`
      - Eccentricity from the recursive mean and variance :cite:`angelov2014anomaly`
      - Nothing

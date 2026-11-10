@@ -123,6 +123,7 @@ def _model_params(model_name, num_features, data):
         },
         # A short period and a threshold of 1, so that the streams reach the failure rule.
         "HoltWinters": {"period": 2, "window_size": 3, "threshold": 1},
+        "IDK": {"input_shape": num_features},
         "IForestASD": {"window_size": 20, "n_estimators": 10},
         "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
         "Inqmad": {"input_shape": num_features, "dim_x": 16},

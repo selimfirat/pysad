@@ -98,6 +98,7 @@ DETECTORS = {
     "ExactStorm": lambda X, seed: models.ExactStorm(),
     "EXPoSE": lambda X, seed: models.EXPoSE(random_state=seed),
     "HalfSpaceTrees": lambda X, seed: models.HalfSpaceTrees(**_ranges(X), random_state=seed),
+    "IDK": lambda X, seed: models.IDK(X.shape[1], random_state=seed),
     "IForestASD": lambda X, seed: models.IForestASD(random_state=seed),
     "IncrementalLOF": lambda X, seed: models.IncrementalLOF(),
     "Inqmad": lambda X, seed: models.Inqmad(X.shape[1], random_state=seed),

@@ -23,7 +23,7 @@ def _critical_value(alpha: float, num_tails: float, n: int, i: int) -> float:
 class SeasonalESD(BaseModel):
     """Flags seasonal anomalies in a univariate stream with the Seasonal ESD (S-ESD) test over a sliding window :cite:`hochenbaum2017automatic`.
 
-    This is the S-ESD method of the paper (Eq. 5). It computes the modified STL residual ``X - seasonal - median(X)`` over a fixed-size window, with the periodic STL of R (see :class:`pysad.transform.preprocessing.ModifiedSTLResidualTransformer`), then applies generalized ESD with the mean and the standard deviation to the residuals. The reference implementation of the paper, Twitter's AnomalyDetection R package, has no S-ESD: it always uses the median and the MAD, as :class:`SeasonalHybridESD` does. This model follows the R package in everything else. The test stops when the scale of the remaining values is at most 1e-10, where R stops only when the MAD is exactly 0, so that the floating-point noise of a series without anomalies raises no alerts. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
+    This is the S-ESD method of the paper (Eq. 5). It computes the modified STL residual ``X - seasonal - median(X)`` over a fixed-size window, with the periodic STL of R (see :class:`pysad.transform.preprocessing.ModifiedSTLResidualTransformer`), then applies generalized ESD with the mean and the standard deviation to the residuals. The reference implementation of the paper, Twitter's AnomalyDetection R package, has no S-ESD: it always uses the median and the MAD, as :class:`SeasonalHybridESD` does. This model follows the R package in everything else. The test stops when the scale of the remaining values is at most ``window_size`` times the float64 machine epsilon times the largest absolute value in the window, a bound on the rounding error of the residuals, where R stops only when the MAD is exactly 0, so that the floating-point noise of a series without anomalies raises no alerts. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
 
     The score of an instance is the ESD test statistic of the newest value if the test flags it as an anomaly, else 0.0. The score is 0.0 until the window holds ``window_size`` values.
 
@@ -89,14 +89,14 @@ class SeasonalESD(BaseModel):
     def _critical_value(self, n: int, i: int) -> float:
         return _critical_value(self.alpha, 2.0 if self.direction == "both" else 1.0, n, i)
 
-    def _esd(self, values: np.ndarray) -> list[tuple[int, float, float]]:
+    def _esd(self, values: np.ndarray, min_scale: float) -> list[tuple[int, float, float]]:
         remaining_values = np.asarray(values, dtype=np.float64)
         remaining_indices = np.arange(remaining_values.shape[0])
         candidates: list[tuple[int, float, float]] = []
 
         for i in range(1, max(1, int(self.max_anomalies * values.shape[0])) + 1):
             center, scale = self._center_scale(remaining_values)
-            if scale <= 1e-10:
+            if scale <= min_scale:
                 break
 
             deviations = remaining_values - center
@@ -141,7 +141,10 @@ class SeasonalESD(BaseModel):
             return 0.0
 
         residuals = self.residual_transformer.transform_window(values)
-        anomalies = self._esd(residuals)
+        # The rounding error of the residuals grows with the window size and the largest value.
+        anomalies = self._esd(
+            residuals, min_scale=self.window_size * np.finfo(np.float64).eps * np.abs(values).max()
+        )
         latest_idx = values.shape[0] - 1
 
         for idx, statistic, _ in anomalies:
@@ -178,7 +181,7 @@ class SeasonalESD(BaseModel):
 class SeasonalHybridESD(SeasonalESD):
     """Flags seasonal anomalies in a univariate stream with the Seasonal Hybrid ESD (S-H-ESD) test over a sliding window :cite:`hochenbaum2017automatic`.
 
-    This is the S-H-ESD method of the paper. It uses the same periodic modified STL residual as :class:`SeasonalESD`, then replaces the mean and the standard deviation of ESD with the median and the MAD-based scale (1.4826 times the MAD) in the test statistic. For each window, the test flags the anomalies that ``AnomalyDetectionVec(window, max_anoms = max_anomalies, direction = direction, alpha = alpha, period = period)`` of Twitter's AnomalyDetection R package, the reference implementation of the paper, flags. The exception is an even ``window_size``, for which the robust STL sometimes differs from R, as :class:`pysad.transform.preprocessing.ModifiedSTLResidualTransformer` documents. Use an odd ``window_size`` to match R. The test stops when the scale of the remaining values is at most 1e-10, where R stops only when the MAD is exactly 0, so that the floating-point noise of a series without anomalies raises no alerts. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
+    This is the S-H-ESD method of the paper. It uses the same periodic modified STL residual as :class:`SeasonalESD`, then replaces the mean and the standard deviation of ESD with the median and the MAD-based scale (1.4826 times the MAD) in the test statistic. For each window, the test flags the anomalies that ``AnomalyDetectionVec(window, max_anoms = max_anomalies, direction = direction, alpha = alpha, period = period)`` of Twitter's AnomalyDetection R package, the reference implementation of the paper, flags. The exception is an even ``window_size``, for which the robust STL sometimes differs from R, as :class:`pysad.transform.preprocessing.ModifiedSTLResidualTransformer` documents. Use an odd ``window_size`` to match R. The test stops when the scale of the remaining values is at most ``window_size`` times the float64 machine epsilon times the largest absolute value in the window, a bound on the rounding error of the residuals, where R stops only when the MAD is exactly 0, so that the floating-point noise of a series without anomalies raises no alerts. The paper runs the test on a full batch. This model runs it on the most recent ``window_size`` values for each instance.
 
     The score of an instance is the test statistic of the newest value if the test flags it as an anomaly, else 0.0. The score is 0.0 until the window holds ``window_size`` values.
 

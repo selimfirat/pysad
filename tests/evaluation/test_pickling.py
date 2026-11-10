@@ -14,11 +14,20 @@ WINDOW_SIZE = 16
 # rather than being default-constructible itself; it is covered separately below. evaluate_stream is
 # a function, not a metric.
 PICKLE_SKIP_METRICS = {"BaseSKLearnMetric", "WindowedMetric", "evaluate_stream"}
-WINDOWED_METRICS = ["AUROCMetric", "AUPRMetric", "PrecisionMetric", "RecallMetric"]
+WINDOWED_METRICS = [
+    "AUROCMetric",
+    "AUPRMetric",
+    "F1Metric",
+    "MatthewsCorrelationMetric",
+    "PrecisionMetric",
+    "RecallMetric",
+]
 
-# Precision and recall are defined on predicted classes, so they get a threshold to turn the
+# F1, precision and recall are defined on predicted classes, so they get a threshold to turn the
 # scores below into 0/1 predictions.
 METRIC_KWARGS = {
+    "F1Metric": {"threshold": 0.5},
+    "MatthewsCorrelationMetric": {"threshold": 0.5},
     "PrecisionMetric": {"threshold": 0.5},
     "RecallMetric": {"threshold": 0.5},
 }

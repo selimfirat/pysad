@@ -13,6 +13,12 @@ Each guide shows how to do one task. Before you use a guide, learn the basic loo
 
    .. container:: card
 
+      :doc:`one_dimensional_integration`
+
+      Connect one-dimensional inputs, score before each update, set bounds, and calibrate scores.
+
+   .. container:: card
+
       :doc:`choose_detector`
 
       Find candidate detectors for your data and compare them.

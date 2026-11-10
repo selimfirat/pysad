@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 
 from pysad.models import SpectralResidual
+from pysad.utils import ArrayStreamer
 
 if __name__ == "__main__":
     t = np.arange(2000)
@@ -17,7 +18,9 @@ if __name__ == "__main__":
     # Each score compares the saliency of the newest value with that of the 21 values before it,
     # in a window of the last 30 values and 5 estimated values after them.
     model = SpectralResidual(window_size=30)
-    scores = model.fit_score(values.reshape(-1, 1))
+    scores = np.array(
+        [model.fit_score_partial(value) for value in ArrayStreamer().iter(values.reshape(-1, 1))]
+    )
 
     # The scores are 0 until the window is full, so skip them.
     print(f"AUROC: {roc_auc_score(labels[100:], scores[100:]):.3f}")

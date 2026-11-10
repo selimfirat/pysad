@@ -230,6 +230,7 @@ These starting points come from the design of each method. They are not benchmar
 | `RSForest` | RS-Forest random space tree density (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) |
 | `MStream` | MStream multi-aspect stream counts (Bhatia et al., WWW 2021) |
+| `MemStream` | MemStream denoising autoencoder with FIFO memory (Bhatia et al., WWW 2022) |
 | `MIDAS` | MIDAS edge counts of a graph stream (Bhatia et al., AAAI 2020) |
 | `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
@@ -275,7 +276,7 @@ These starting points come from the design of each method. They are not benchmar
 
 ## Benchmarks
 
-PySAD benchmarks its detectors on labeled data. The 10 multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
+PySAD benchmarks its detectors on labeled data. The multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
 
 The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) page shows all the results. The [evaluation methodology](https://pysad.readthedocs.io/en/stable/benchmarks/methodology.html) explains the steps, the metrics and the limits of the results, and the [datasets](https://pysad.readthedocs.io/en/stable/benchmarks/datasets.html) page describes the data. To run the benchmark, use `python benchmarks/benchmark.py`, as [Run the benchmark](https://pysad.readthedocs.io/en/stable/benchmarks/run.html) shows. On each pull request that changes a detector, CI runs a short form of the benchmark and lists the results that moved.
 

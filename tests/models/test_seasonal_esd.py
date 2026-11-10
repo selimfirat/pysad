@@ -155,3 +155,43 @@ def test_seasonal_hybrid_esd_matches_r_anomaly_detection(direction, expected):
     # The values i for which AnomalyDetectionVec(X[i - 96 : i + 1], period = 24, direction) of
     # Twitter's AnomalyDetection R package (commit 1f5deaa) flags the last value.
     assert np.flatnonzero(scores > 0).tolist() == expected
+
+
+@pytest.mark.parametrize("model_name", ["SeasonalESD", "SeasonalHybridESD"])
+def test_seasonal_esd_flags_the_same_instances_at_any_unit_scale(model_name):
+    import numpy as np
+
+    import pysad.models
+
+    rng = np.random.RandomState(0)
+    t = np.arange(400)
+    X = np.sin(2 * np.pi * t / 24) + 0.1 * rng.randn(400)
+    X[[150, 300]] += 3
+
+    model_cls = getattr(pysad.models, model_name)
+    flagged_at_unit_one = None
+    for unit in (1.0, 1e-9, 1e-12):
+        model = model_cls(period=24, window_size=97)
+        scores = model.fit_score((unit * X).reshape(-1, 1))
+        flagged = np.flatnonzero(scores > 0).tolist()
+        if flagged_at_unit_one is None:
+            flagged_at_unit_one = flagged
+        assert flagged == flagged_at_unit_one
+
+    assert 150 in flagged_at_unit_one
+    assert 300 in flagged_at_unit_one
+
+
+@pytest.mark.parametrize("model_name", ["SeasonalESD", "SeasonalHybridESD"])
+def test_seasonal_esd_flags_nothing_on_a_clean_periodic_series_with_a_large_offset(model_name):
+    import numpy as np
+
+    import pysad.models
+
+    t = np.arange(97)
+    X = (1e9 + np.sin(2 * np.pi * t / 24)).reshape(-1, 1)
+
+    model = getattr(pysad.models, model_name)(period=24, window_size=97)
+    scores = model.fit_score(X)
+
+    assert not np.any(scores > 0)

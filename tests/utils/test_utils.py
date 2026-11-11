@@ -212,6 +212,8 @@ class TestWindow:
         result2 = window.get()
 
         assert result1 == result2 == [1.0, 2.0]
+        assert len(window) == 2
+        assert list(window) == [1.0, 2.0]
 
     def test_unlimited_window_initialization(self):
         """Test UnlimitedWindow initialization."""

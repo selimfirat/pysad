@@ -1,4 +1,5 @@
 from collections import deque
+from collections.abc import Iterator
 from typing import Any
 
 
@@ -40,6 +41,14 @@ class Window:
             list: The items in the window, oldest first.
         """
         return list(self.window)
+
+    def __len__(self) -> int:
+        """Returns the number of items currently in the window."""
+        return len(self.window)
+
+    def __iter__(self) -> Iterator[Any]:
+        """Iterates over the items in the window, oldest first."""
+        return iter(self.window)
 
 
 class UnlimitedWindow(Window):

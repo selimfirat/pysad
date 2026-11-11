@@ -16,37 +16,13 @@ import pysad.models
 from pysad.transform.postprocessing import RunningZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
+from tests.models.conftest import num_features_for
 
 NUM_INSTANCES = 12
 
-UNIVARIATE_MODELS = {
-    "ChangeFinder",
-    "DAMP",
-    "HoltWinters",
-    "KNNCAD",
-    "MatrixProfile",
-    "MedianAbsoluteDeviation",
-    "PEWMA",
-    "RelativeEntropy",
-    "SAND",
-    "SeasonalESD",
-    "SeasonalHybridESD",
-    "SpectralResidual",
-    "StandardAbsoluteDeviation",
-}
-
-
-# These models take each instance as [timestamp, value].
-TIMESTAMPED_MODELS = {"HTM"}
-
-# These models take each instance as an edge [source, destination].
-EDGE_MODELS = {"MIDAS"}
-
 
 def _num_features(name):
-    if name in TIMESTAMPED_MODELS or name in EDGE_MODELS:
-        return 2
-    return 1 if name in UNIVARIATE_MODELS else 3
+    return num_features_for(name)
 
 
 def _params(name, num_features):

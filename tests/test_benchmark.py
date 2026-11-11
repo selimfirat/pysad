@@ -218,3 +218,40 @@ def test_write_ranking_compares_chance_at_stored_precision(tmp_path, monkeypatch
     with (tmp_path / "aupr.csv").open() as stream:
         row = next(csv.DictReader(stream))
     assert row["RSForest"] == ("*0.043*" if marked else "0.044")
+
+
+def test_changed_benchmark_detectors_isolates_table_edits():
+    """Editing a detector entry in benchmark.py only flags that detector, not the whole suite."""
+    from pathlib import Path
+
+    benchmark = load_benchmark()
+    source = (Path(__file__).resolve().parents[1] / "benchmarks" / "benchmark.py").read_text()
+
+    assert benchmark._changed_benchmark_detectors(source, source) == set()
+
+    added = source.replace(
+        '"PEWMA": lambda n, period: models.PEWMA(),\n',
+        '"PEWMA": lambda n, period: models.PEWMA(),\n    "NewModel": lambda n, period: models.PEWMA(),\n',
+    )
+    assert benchmark._changed_benchmark_detectors(source, added) == {"NewModel"}
+
+    modified = source.replace(
+        '"PEWMA": lambda n, period: models.PEWMA(),',
+        '"PEWMA": lambda n, period: models.PEWMA(alpha=0.9),',
+    )
+    assert benchmark._changed_benchmark_detectors(source, modified) == {"PEWMA"}
+
+    shared_change = source.replace("WARMUP_POINTS = 256", "WARMUP_POINTS = 128")
+    assert benchmark._changed_benchmark_detectors(source, shared_change) is None
+
+
+def test_pysad_files_excludes_unrelated_package_reexports():
+    """Detector dependency sets do not pull in unrelated modules through package __init__.py files."""
+    benchmark = load_benchmark()
+    loda_files = benchmark.pysad_files([benchmark.models.LODA])
+    assert "pysad/models/loda.py" in loda_files
+    assert "pysad/core/base_model.py" in loda_files
+    assert "pysad/utils/polars_streamer.py" not in loda_files
+    assert "pysad/utils/pandas_streamer.py" not in loda_files
+    assert "pysad/utils/synthetic.py" not in loda_files
+    assert "pysad/utils/validation.py" not in loda_files

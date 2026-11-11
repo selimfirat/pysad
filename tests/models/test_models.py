@@ -1,124 +1,73 @@
-def test_unsupervised_models():
-    import numpy as np
+import copy
 
-    from pysad.models import (
-        CPOD,
-        D3,
-        DAMP,
-        DILOF,
-        HTM,
-        KELOS,
-        KNNCAD,
-        LODA,
-        MCOD,
-        MIDAS,
-        NETS,
-        PEWMA,
-        SAND,
-        TEDA,
-        ADeMS,
-        AnyOut,
-        ApproxStorm,
-        ChangeFinder,
-        ExactStorm,
-        EXPoSE,
-        HalfSpaceTrees,
-        HoltWinters,
-        IForestASD,
-        IncrementalLOF,
-        Inqmad,
-        KitNet,
-        LocalOutlierProbability,
-        MatrixProfile,
-        MedianAbsoluteDeviation,
-        MemStream,
-        MStream,
-        NullModel,
-        OnlineIsolationForest,
-        OnlineOneClassSVM,
-        RandomModel,
-        RelativeEntropy,
-        RobustRandomCutForest,
-        RSForest,
-        RSHash,
-        SmartSifter,
-        SpectralResidual,
-        StandardAbsoluteDeviation,
-        ThreshLEAP,
-        xStream,
-    )
-    from pysad.utils import fix_seed
+import numpy as np
+import pytest
 
-    fix_seed(61)
+import pysad.models
+from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.preprocessing import ShingleTransformer
+from pysad.utils import fix_seed
+from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS
 
-    X = np.random.rand(150, 1)
-
-    model_classes = {
-        RelativeEntropy: {"min_val": 0.0, "max_val": 1.0},
-        ADeMS: {},
-        AnyOut: [{}, {"outlier_score": "density"}],
-        ApproxStorm: {},
-        ChangeFinder: [{}, {"change_point": False}],
-        CPOD: {},
-        D3: {"window_size": 50},
-        DILOF: {"num_neighbors": 5, "window_size": 40},
-        ExactStorm: {},
-        EXPoSE: {"num_random_features": 50},
-        HalfSpaceTrees: {"feature_mins": [0.0], "feature_maxes": [1.0]},
-        HoltWinters: [{"period": 10}, {"period": 10, "threshold": 1}],
-        IForestASD: {},
-        IncrementalLOF: {"window_size": 20},
-        KELOS: {},
-        KitNet: {},
-        KNNCAD: {"probationary_period": 50},
-        LODA: {},
-        LocalOutlierProbability: {"initial_X": True},
-        MatrixProfile: {"window_length": 10},
-        DAMP: {"window_length": 10},
-        MCOD: {},
-        MedianAbsoluteDeviation: [{}, {"absolute": False}],
-        MemStream: {"window_size": 8, "num_epochs": 20},
-        MStream: {},
-        NETS: {},
-        NullModel: {},
-        OnlineIsolationForest: {},
-        OnlineOneClassSVM: {},
-        PEWMA: [{}, {"beta": 0.0}],
-        RandomModel: {},
-        RSForest: {"window_size": 50},
-        RSHash: {"feature_mins": [0.0], "feature_maxes": [1.0]},
-        SAND: {"subsequence_length": 4, "batch_size": 40},
-        SmartSifter: {},
-        SpectralResidual: {},
-        StandardAbsoluteDeviation: [{}, {"absolute": False}],
-        TEDA: {},
-        ThreshLEAP: {},
-        xStream: {},
-        RobustRandomCutForest: {},
-        Inqmad: {"input_shape": X.shape[1], "dim_x": 128},
-    }
-
-    for model_cls, params_dict in model_classes.items():
-        if type(params_dict) is dict:
-            helper_test_model(X, model_cls, params_dict)
-        elif type(params_dict) is list:
-            for params in params_dict:
-                helper_test_model(X, model_cls, params)
-
-    # HTM takes each instance as [timestamp, value].
-    X_timestamped = np.column_stack([3600.0 * np.arange(len(X)), X])
-    for likelihood in (True, False):
-        params = {
-            "min_val": 0.0,
-            "max_val": 1.0,
-            "probationary_period": 50,
-            "likelihood": likelihood,
+MODEL_CASES = {
+    "AnyOut": [{}, {"outlier_score": "density"}],
+    "ChangeFinder": [{}, {"change_point": False}],
+    "D3": [{"window_size": 50}],
+    "DAMP": [{"window_length": 10}],
+    "DILOF": [{"num_neighbors": 5, "window_size": 40}],
+    "EXPoSE": [{"num_random_features": 50}],
+    "HalfSpaceTrees": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
+    "HoltWinters": [{"period": 10}, {"period": 10, "threshold": 1}],
+    "HTM": [
+        {"min_val": 0.0, "max_val": 1.0, "probationary_period": 50, "likelihood": True},
+        {"min_val": 0.0, "max_val": 1.0, "probationary_period": 50, "likelihood": False},
+    ],
+    "IncrementalLOF": [{"window_size": 20}],
+    "Inqmad": [{"input_shape": 1, "dim_x": 128}],
+    "KNNCAD": [{"probationary_period": 50}],
+    "LocalOutlierProbability": [{"initial_X": True}],
+    "MatrixProfile": [{"window_length": 10}],
+    "MedianAbsoluteDeviation": [{}, {"absolute": False}],
+    "MemStream": [{"window_size": 8, "num_epochs": 20}],
+    "MIDAS": [{"tick_size": 10}],
+    "PEWMA": [{}, {"beta": 0.0}],
+    "RelativeEntropy": [{"min_val": 0.0, "max_val": 1.0}],
+    "RSForest": [{"window_size": 50}],
+    "RSHash": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
+    "SAND": [{"subsequence_length": 4, "batch_size": 40}],
+    "SeasonalESD": [{"period": 10, "window_size": 31}],
+    "SeasonalHybridESD": [{"period": 10, "window_size": 31}],
+    "StandardAbsoluteDeviation": [{}, {"absolute": False}],
+    "StreamPipeline": [
+        {
+            "model": pysad.models.LODA(),
+            "preprocessors": [ShingleTransformer(shingle_size=2)],
+            "postprocessors": [RunningZScorePostprocessor(window_size=20)],
         }
-        helper_test_model(X_timestamped, HTM, params)
+    ],
+}
 
-    # MIDAS takes each instance as an edge [source, destination].
-    X_edges = np.random.RandomState(0).randint(0, 10, size=(len(X), 2)).astype(np.float64)
-    helper_test_model(X_edges, MIDAS, {"tick_size": 10})
+
+def _parametrized_cases():
+    cases = []
+    for name in pysad.models.__all__:
+        param_list = MODEL_CASES.get(name, [{}])
+        for index, params in enumerate(param_list):
+            case_id = name if len(param_list) == 1 else f"{name}-{index}"
+            cases.append(pytest.param(name, params, id=case_id))
+    return cases
+
+
+@pytest.mark.parametrize("model_name,params_dict", _parametrized_cases())
+def test_unsupervised_models(model_name, params_dict):
+    fix_seed(61)
+    X = np.random.rand(150, 1)
+    if model_name in TIMESTAMPED_MODELS:
+        X = np.column_stack([3600.0 * np.arange(len(X)), X])
+    elif model_name in EDGE_MODELS:
+        X = np.random.RandomState(0).randint(0, 10, size=(len(X), 2)).astype(np.float64)
+
+    helper_test_model(X, getattr(pysad.models, model_name), copy.deepcopy(params_dict))
 
 
 def helper_test_model(X, model_cls, params_dict):
@@ -130,7 +79,8 @@ def helper_test_model(X, model_cls, params_dict):
         train_X = X
         model = model_cls(**params_dict)
 
-    y_pred = model.fit_score(train_X)
+    y = np.zeros(train_X.shape[0], dtype=np.int32) if model_cls.__name__ == "PerfectModel" else None
+    y_pred = model.fit_score(train_X, y)
     assert y_pred.shape == (train_X.shape[0],)
 
 

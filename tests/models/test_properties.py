@@ -26,6 +26,7 @@ import pysad.models
 from pysad.transform.postprocessing import RunningZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
+from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, UNIVARIATE_MODELS
 
 SEED = 61
 MAX_FEATURES = 4
@@ -34,28 +35,6 @@ MAX_STREAM_LENGTH = 70
 # Examples per model and property. CI runs the suite on one core in places, so keep it small;
 # raise it locally to search further.
 MAX_EXAMPLES = 10
-
-UNIVARIATE_MODELS = {
-    "ChangeFinder",
-    "DAMP",
-    "HoltWinters",
-    "KNNCAD",
-    "MatrixProfile",
-    "MedianAbsoluteDeviation",
-    "PEWMA",
-    "RelativeEntropy",
-    "SAND",
-    "SeasonalESD",
-    "SeasonalHybridESD",
-    "SpectralResidual",
-    "StandardAbsoluteDeviation",
-}
-
-# These models take each instance as [timestamp, value].
-TIMESTAMPED_MODELS = {"HTM"}
-
-# These models take each instance as an edge [source, destination].
-EDGE_MODELS = {"MIDAS"}
 
 # Values the streams are drawn from. Small pools make constant features and duplicate instances
 # likely; the float range covers values far from 0 and from each other.

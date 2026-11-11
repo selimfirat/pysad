@@ -1,84 +1,66 @@
+import inspect
 import pickle
 
 import numpy as np
 import pytest
 
-from pysad.models import (
-    D3,
-    HTM,
-    LODA,
-    MIDAS,
-    SAND,
-    ApproxStorm,
-    EXPoSE,
-    HalfSpaceTrees,
-    Inqmad,
-    KitNet,
-    MemStream,
-    MStream,
-    OnlineIsolationForest,
-    RandomModel,
-    RobustRandomCutForest,
-    RSForest,
-    RSHash,
-    SmartSifter,
-    xStream,
-)
+import pysad.models
+from pysad.models import RandomModel
 from pysad.utils import fix_seed
+from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, UNIVARIATE_MODELS
 
 NUM_FEATURES = 3
 
-MODELS = {
-    "ApproxStorm": lambda **kw: ApproxStorm(
-        window_size=20, max_radius=0.5, num_neighbors=3, sample_fraction=0.25, **kw
-    ),
-    "D3": lambda **kw: D3(window_size=20, sample_fraction=0.5, max_radius=0.3, **kw),
-    "EXPoSE": lambda **kw: EXPoSE(num_random_features=50, **kw),
-    "HalfSpaceTrees": lambda **kw: HalfSpaceTrees(
-        [0.0] * NUM_FEATURES,
-        [1.0] * NUM_FEATURES,
-        window_size=20,
-        num_trees=5,
-        max_depth=8,
-        **kw,
-    ),
-    "HTM": lambda **kw: HTM(
-        min_val=0.0, max_val=1.0, probationary_period=20, num_columns=256, **kw
-    ),
-    "Inqmad": lambda **kw: Inqmad(input_shape=NUM_FEATURES, dim_x=32, initial_size=20, **kw),
+MODEL_PARAMS = {
+    "ApproxStorm": {
+        "window_size": 20,
+        "max_radius": 0.5,
+        "num_neighbors": 3,
+        "sample_fraction": 0.25,
+    },
+    "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.3},
+    "EXPoSE": {"num_random_features": 50},
+    "HalfSpaceTrees": {
+        "feature_mins": [0.0] * NUM_FEATURES,
+        "feature_maxes": [1.0] * NUM_FEATURES,
+        "window_size": 20,
+        "num_trees": 5,
+        "max_depth": 8,
+    },
+    "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 256},
+    "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32, "initial_size": 20},
     # Short grace periods, so that the autoencoders are built and trained within the data.
-    "KitNet": lambda **kw: KitNet(grace_feature_mapping=20, grace_anomaly_detector=30, **kw),
-    "LODA": lambda **kw: LODA(num_random_cuts=20, **kw),
-    "MIDAS": lambda **kw: MIDAS(num_buckets=4, tick_size=5, **kw),
-    "MemStream": lambda **kw: MemStream(window_size=8, num_epochs=20, **kw),
-    "MStream": lambda **kw: MStream(**kw),
-    "OnlineIsolationForest": lambda **kw: OnlineIsolationForest(
-        num_trees=10, max_leaf_samples=8, window_size=32, **kw
-    ),
-    "RandomModel": lambda **kw: RandomModel(**kw),
-    "RobustRandomCutForest": lambda **kw: RobustRandomCutForest(tree_size=32, **kw),
-    "RSForest": lambda **kw: RSForest(window_size=20, num_trees=5, max_depth=8, **kw),
-    "RSHash": lambda **kw: RSHash([0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES, **kw),
-    "SAND": lambda **kw: SAND(subsequence_length=4, batch_size=24, **kw),
-    "SmartSifter": lambda **kw: SmartSifter(**kw),
-    "xStream": lambda **kw: xStream(n_chains=10, depth=10, window_size=20, **kw),
+    "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 30},
+    "LODA": {"num_random_cuts": 20},
+    "MIDAS": {"num_buckets": 4, "tick_size": 5},
+    "MemStream": {"window_size": 8, "num_epochs": 20},
+    "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
+    "RobustRandomCutForest": {"tree_size": 32},
+    "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
+    "RSHash": {"feature_mins": [0.0] * NUM_FEATURES, "feature_maxes": [1.0] * NUM_FEATURES},
+    "SAND": {"subsequence_length": 4, "batch_size": 24},
+    "xStream": {"n_chains": 10, "depth": 10, "window_size": 20},
 }
 
-NAMES = list(MODELS)
-UNIVARIATE_MODELS = (SAND,)
-# These models take each instance as [timestamp, value].
-TIMESTAMPED_MODELS = (HTM,)
-# These models take each instance as an edge [source, destination].
-EDGE_MODELS = (MIDAS,)
+NAMES = [
+    name
+    for name in pysad.models.__all__
+    if "random_state" in inspect.signature(getattr(pysad.models, name).__init__).parameters
+]
+MODELS = {
+    name: (lambda name=name, **kw: getattr(pysad.models, name)(**MODEL_PARAMS.get(name, {}), **kw))
+    for name in NAMES
+}
 
 
 def _data(model):
     X = np.random.RandomState(0).rand(80, NUM_FEATURES)
-    if isinstance(model, TIMESTAMPED_MODELS):
+    name = type(model).__name__
+    if name in TIMESTAMPED_MODELS:
         return np.column_stack([3600.0 * np.arange(len(X)), X[:, 0]])
-    if isinstance(model, EDGE_MODELS):
+    if name in EDGE_MODELS:
         return np.floor(10.0 * X[:, :2])
-    return X[:, :1] if isinstance(model, UNIVARIATE_MODELS) else X
+    return X[:, :1] if name in UNIVARIATE_MODELS else X
 
 
 def _scores(model):

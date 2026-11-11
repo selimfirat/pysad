@@ -9,32 +9,11 @@ from pysad.transform.postprocessing import RunningZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
+from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, UNIVARIATE_MODELS
 
 SEED = 61
 NUM_FIT = 60
 NUM_NEXT = 20
-
-UNIVARIATE_MODELS = {
-    "ChangeFinder",
-    "DAMP",
-    "HoltWinters",
-    "KNNCAD",
-    "MatrixProfile",
-    "MedianAbsoluteDeviation",
-    "PEWMA",
-    "RelativeEntropy",
-    "SAND",
-    "SeasonalESD",
-    "SeasonalHybridESD",
-    "SpectralResidual",
-    "StandardAbsoluteDeviation",
-}
-
-# These models take each instance as [timestamp, value].
-TIMESTAMPED_MODELS = {"HTM"}
-
-# These models take each instance as an edge [source, destination].
-EDGE_MODELS = {"MIDAS"}
 
 MODEL_PARAMS = {
     # The tree splits, merges and discards entries before and after the round trip.

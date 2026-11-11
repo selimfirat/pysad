@@ -21,6 +21,7 @@ synthetic uniform streams.
 """
 
 import argparse
+import ast
 import csv
 import functools
 import os
@@ -853,6 +854,58 @@ def commit():
     return git("rev-parse", "--short", "HEAD").strip() + ("-dirty" if dirty else "")
 
 
+_DETECTOR_TABLES = {
+    "DETECTORS",
+    "UNIVARIATE",
+    "SHORT_NAMES",
+    "SEASONAL",
+    "TIMESTAMPED",
+    "NAB_UNIT_SCORES",
+}
+
+
+def _parse_detector_tables(source):
+    """The detector registration tables in a benchmark.py source string, and the rest of its AST."""
+    tree = ast.parse(source)
+    tables, body = {}, []
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id in _DETECTOR_TABLES
+            and isinstance(node.value, (ast.Dict, ast.List))
+        ):
+            name = node.targets[0].id
+            if isinstance(node.value, ast.Dict):
+                tables[name] = {
+                    ast.literal_eval(k): ast.dump(v)
+                    for k, v in zip(node.value.keys, node.value.values, strict=True)
+                }
+            else:
+                tables[name] = {ast.literal_eval(elt) for elt in node.value.elts}
+        else:
+            body.append(node)
+    tree.body = body
+    return tables, ast.dump(tree)
+
+
+def _changed_benchmark_detectors(base_source, head_source):
+    """Detectors changed between two benchmark.py sources, or None if shared benchmark code changed."""
+    base_tables, base_rest = _parse_detector_tables(base_source)
+    head_tables, head_rest = _parse_detector_tables(head_source)
+    if base_rest != head_rest:
+        return None
+    changed = set()
+    for name in _DETECTOR_TABLES:
+        before, after = base_tables.get(name, {}), head_tables.get(name, {})
+        if isinstance(before, dict) and isinstance(after, dict):
+            changed |= {k for k in before.keys() | after.keys() if before.get(k) != after.get(k)}
+        else:
+            changed |= set(before) ^ set(after)
+    return changed
+
+
 def changed_detectors(base, path=None):
     """The detectors whose results a change since ``base`` can move.
 
@@ -860,15 +913,22 @@ def changed_detectors(base, path=None):
     """
     files = git("diff", "--name-only", base).split()
     common = pysad_files([Data, fix_seed, ShingleTransformer, *CALIBRATORS.values()])
-    if common & set(files) or "benchmarks/benchmark.py" in files or "pyproject.toml" in files:
+    if common & set(files) or "pyproject.toml" in files:
         return [*DETECTORS, *UNIVARIATE]
-    edited = set()  # detectors whose committed results changed, so that every row comes from a run
+    edited = set()  # detectors whose committed results or registration changed
+    if "benchmarks/benchmark.py" in files:
+        bench_changed = _changed_benchmark_detectors(
+            git("show", f"{base}:benchmarks/benchmark.py"), Path(__file__).read_text()
+        )
+        if bench_changed is None:
+            return [*DETECTORS, *UNIVARIATE]
+        edited |= bench_changed
     name = path and path.relative_to(ROOT).as_posix()
     if name in files:
         before = {
             key(row): row for row in csv.DictReader(git("show", f"{base}:{name}").splitlines())
         }
-        edited = {
+        edited |= {
             k[1].removesuffix(SHINGLED)
             for k, row in read_results(path).items()
             if before.get(k) != row
@@ -933,6 +993,8 @@ def pysad_files(objects):
         if path in files:
             continue
         files.add(path)
+        if path.endswith("/__init__.py"):
+            continue
         for value in vars(module).values():
             name = (
                 value.__name__

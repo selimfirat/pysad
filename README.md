@@ -247,6 +247,7 @@ These starting points come from the design of each method. They are not benchmar
 | `DILOF` | Density summarizing incremental LOF (Na et al., KDD 2018) |
 | `KELOS` | Kernel density local outliers over micro-clusters of a window (Qin et al., EDBT 2019) |
 | `AnyOut` | Anytime outliers by distance to the closest cluster of a ClusTree (Assent et al., DASFAA 2012) |
+| `SDOstream` | Sparse data observers with exponential fading, a low-density stream model (Hartl et al., ESANN 2020) |
 | `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |

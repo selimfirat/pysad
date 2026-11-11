@@ -20,6 +20,7 @@ UNIVARIATE_MODELS = {
     "HoltWinters",
     "KNNCAD",
     "MatrixProfile",
+    "OeSNNUAD",
     "MedianAbsoluteDeviation",
     "PEWMA",
     "RelativeEntropy",
@@ -84,6 +85,8 @@ MODEL_PARAMS = {
     # Ticks start and end before and after the round trip.
     "MIDAS": {"tick_size": 7},
     # Cells empty out and fill again within the first instances.
+    # The repository fills and the neurons merge before and after the round trip.
+    "OeSNNUAD": {"window_size": 8, "epsilon": 2.0},
     "NETS": {"window_size": 30, "max_radius": 0.6},
     "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
     # A window that wraps before and after the round trip.

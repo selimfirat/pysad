@@ -39,6 +39,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    MStream
    NETS
    OnlineIsolationForest
+   OeSNNUAD
    OnlineOneClassSVM
    PEWMA
    RelativeEntropy

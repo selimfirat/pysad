@@ -168,6 +168,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from the running mean or recent median in standard deviations :cite:`hochenbaum2017automatic`
      - ``window_size`` when using ``subtracted_statistic="median"``
      - Fixed; median mode retains only the last ``window_size`` values while variance remains an all-history running statistic
+   * - :class:`~pysad.models.OeSNNUAD`
+     - The prediction error of an evolving repository of spiking neurons, in standard deviations of the recent errors of the values that the model did not flag :cite:`maciag2021unsupervised`
+     - A warm-up of ``window_size`` values, which only fill the window
+     - Fixed: a window of ``window_size`` values, the weights and the output values of at most ``num_output_neurons`` neurons, and the errors of the last ``window_size - 1`` values
    * - :class:`~pysad.models.PEWMA`
      - Distance from an exponentially weighted moving average in standard deviations. Each value's weight depends on its probability under a normal distribution :cite:`carter2012probabilistic`.
      - Nothing

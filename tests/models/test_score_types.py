@@ -49,6 +49,7 @@ def _model_specs():
         MemStream,
         MStream,
         NullModel,
+        OeSNNUAD,
         OnlineIsolationForest,
         OnlineOneClassSVM,
         PerfectModel,
@@ -134,6 +135,7 @@ def _model_specs():
         ("OnlineIsolationForest", lambda: OnlineIsolationForest(), NUM_FEATURES),
         ("OnlineOneClassSVM", lambda: OnlineOneClassSVM(), NUM_FEATURES),
         ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),
+        ("OeSNNUAD", lambda: OeSNNUAD(window_size=20, epsilon=3.0), 1),
         ("PEWMA", lambda: PEWMA(), 1),
         ("RandomModel", lambda: RandomModel(), NUM_FEATURES),
         # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses

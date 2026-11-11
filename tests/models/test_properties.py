@@ -41,6 +41,7 @@ UNIVARIATE_MODELS = {
     "HoltWinters",
     "KNNCAD",
     "MatrixProfile",
+    "OeSNNUAD",
     "MedianAbsoluteDeviation",
     "PEWMA",
     "RelativeEntropy",
@@ -140,6 +141,8 @@ def _model_params(model_name, num_features, data):
         "MIDAS": {"num_buckets": 16, "tick_size": 3},
         "MemStream": {"window_size": 8, "num_epochs": 20},
         "MStream": {"log_transform": False},
+        # A window that the short streams reach, so that the model also scores after it.
+        "OeSNNUAD": {"window_size": 8, "epsilon": 2.0},
         "NETS": {"window_size": 20, "max_radius": 0.1},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
         "OnlineOneClassSVM": {"window_size": 10},

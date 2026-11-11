@@ -33,7 +33,9 @@ def test_public_exports_match_api_reference_pages():
         assert match is not None, f"Missing module directive in {rst_path}"
         module = match.group(1)
         names = set(re.findall(r"^\s{3}([A-Za-z_]\w*)\s*$", text, flags=re.M))
-        names |= set(re.findall(r"^\.\.\s+auto(?:class|function)::\s+([A-Za-z_]\w*)", text, flags=re.M))
+        names |= set(
+            re.findall(r"^\.\.\s+auto(?:class|function)::\s+([A-Za-z_]\w*)", text, flags=re.M)
+        )
         documented_by_module.setdefault(module, set()).update(names)
 
     for module, documented in documented_by_module.items():

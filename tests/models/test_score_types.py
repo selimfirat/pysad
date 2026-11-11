@@ -57,6 +57,7 @@ def _model_specs():
         RobustRandomCutForest,
         RSForest,
         RSHash,
+        SDOstream,
         SeasonalESD,
         SeasonalHybridESD,
         SmartSifter,
@@ -155,6 +156,7 @@ def _model_specs():
         ("RSForest", lambda: RSForest(window_size=20, num_trees=5, max_depth=8), NUM_FEATURES),
         ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
         ("SAND", lambda: SAND(subsequence_length=4, batch_size=40), 1),
+        ("SDOstream", lambda: SDOstream(), NUM_FEATURES),
         ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=0.17), 1),
         (
             "SeasonalHybridESD",

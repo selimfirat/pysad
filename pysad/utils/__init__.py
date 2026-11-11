@@ -9,8 +9,10 @@ from typing import Any
 import numpy as np
 
 from .array_streamer import ArrayStreamer
+from .csv_streamer import CSVStreamer
 from .data import Data
 from .pandas_streamer import PandasStreamer
+from .plotting import plot_stream
 from .polars_streamer import PolarsStreamer
 from .synthetic import generate_stream
 from .validation import check_feature_bounds, check_univariate
@@ -18,6 +20,7 @@ from .window import Window
 
 __all__ = [
     "ArrayStreamer",
+    "CSVStreamer",
     "Data",
     "PandasStreamer",
     "PolarsStreamer",
@@ -29,6 +32,7 @@ __all__ = [
     "generate_stream",
     "get_minmax_array",
     "get_minmax_scalar",
+    "plot_stream",
 ]
 
 

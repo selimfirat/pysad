@@ -15,6 +15,15 @@ class HalfSpaceTrees(BaseModel):
 
     Instances are scored against the reference mass profile built from the previous window before being recorded into the next one (Algorithm 3). Algorithm 3 does not score the first window: its first `window_size` instances only build the initial reference profile. pysad does score them, which departs from the paper (and from river and scikit-multiflow, which return a constant during the first window): each first-window instance that `initial_window_X` does not cover is scored against the partial profile of the n instances recorded before it in that window (without its own mass), and that score is rescaled by `window_size / n`, which estimates the mass a full window would hold, so that first-window scores are on the same scale as later ones. The very first instance of a stream without `initial_window_X` has n = 0 and scores 0.0. From the instance after the first window on, scoring follows Algorithm 3. As in the paper, each tree splits its own random work space by default: for every feature, a point s is drawn uniformly from [min, max] and the tree covers s ± 2 * max(s - min, max - s), so trees differ even on 1-D streams. The paper scores `r * 2^k` at the terminal node only (the node at maximum depth or the first one on the path holding at most sizeLimit instances), whereas pysad sums `r * 2^k` over every node on the path, with no sizeLimit early stop. The sum uses the mass of every level, and on 17 ODDS datasets it gave a higher AUROC than the terminal-node score on 16 of them. Each tree is a full binary tree of depth `max_depth`, kept in NumPy arrays: a split feature and a float64 split value for each of its 2^max_depth - 1 internal nodes, and two masses for each of its 2^(max_depth + 1) - 1 nodes, in the smallest unsigned integer type that holds `window_size`. With the defaults, the 25 trees take about 11 MB. A point is routed down every tree in one vectorized pass: each tree's current node is kept as one heap index, and each depth step reads the splits and advances that index for all trees at once, so no Python loop iterates over trees.
 
+    :meth:`score_explain_partial` returns the per-feature attribution weights of one instance.
+    Each tree routes the instance down one path from its root to a leaf. A node shared by few
+    reference instances indicates an anomalous region, so each internal node on the path
+    attributes a weight that is large when its mass is small, weighted by two raised to the
+    node's depth, to the feature it splits on. The weights are normalized to sum to one. A larger
+    weight means more of the instance's anomaly score comes from the nodes that split on that
+    feature. The weights have shape ``(num_features,)``. Before the first instance is fitted all masses
+    are zero, so the method returns zeros of shape ``(num_features,)``.
+
     Args:
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features. Integer arrays are converted to float.
         feature_maxes (np.float64 array of shape (num_features,)): Maximum boundary of the features, at least `feature_mins`. Integer arrays are converted to float.
@@ -220,6 +229,74 @@ class HalfSpaceTrees(BaseModel):
             float: The anomalousness score of the input instance. During the first window there is no previous window to score against, and Algorithm 3 does not score these instances. pysad scores them against the partial profile of the n instances recorded so far in that window, rescaled by `window_size / n` to the scale of a full window (0.0 when nothing has been recorded yet). This rescaling is pysad's own and is not part of the paper.
         """
         return self._score_path(self._path(X))
+
+    def score_explain_partial(self, X: np.ndarray) -> np.ndarray:
+        """Returns per-feature attribution weights for the anomaly score of the next instance.
+
+        Each tree routes the instance down one path from its root to a leaf. Every internal node
+        on that path contributes its mass, weighted by two raised to its depth, to the feature it
+        splits on. The weights are these per-feature contributions, normalized to sum to one, so
+        a larger weight means more of the instance's anomaly score comes from the nodes that split
+        on that feature.
+
+        This method neither changes nor keeps ``X``, and it does not record the instance. Before
+        the first instance is fitted all masses are zero, so it returns zeros of shape
+        ``(num_features,)``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to explain.
+
+        Returns:
+            np.float64 array of shape (num_features,): Non-negative attribution weights, one per
+            feature, summing to one (zeros when nothing has been fitted yet).
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        if self.step == 0:  # nothing fitted yet: no mass to attribute
+            return np.zeros(self.num_dimensions, dtype=np.float64)
+
+        path = self._path(x)  # mass cell indices, shape (max_depth + 1, num_trees)
+        num_trees = self.num_trees
+        num_splits = 2**self.max_depth - 1
+
+        # Mass of every internal node on every tree's path, shape (max_depth, num_trees).
+        mass = (
+            (self.l_mass if self.is_first_window else self.r_mass)
+            .reshape(-1)[path][: self.max_depth]
+            .astype(np.float64)
+        )
+
+        # Each tree blames the feature it splits on at its rarest node (fewest reference instances),
+        # weighted by two raised to that node's depth. A rare node indicates an anomalous region.
+        depth_weight = self._depth_weights[: self.max_depth, None]
+        rarity = depth_weight / (mass + 1.0)  # (max_depth, num_trees)
+        best_depth = np.argmin(mass, axis=0)  # (num_trees,) depth of the rarest node per tree
+        tree_id = np.arange(num_trees, dtype=np.intp)
+        rarity_weight = rarity[best_depth, tree_id]  # (num_trees,)
+
+        # Split feature of the rarest node on every tree's path, as a flat index into split_atts.
+        # Node n of tree t sits at t * num_splits + n, and n = path - t * num_nodes,
+        # so the flat index is path - t * (num_splits + 1).
+        best_node = path[best_depth, tree_id]
+        flat_split_index = best_node - tree_id * (num_splits + 1)
+        split_feature = self.split_atts.reshape(-1)[flat_split_index]  # (num_trees,)
+
+        attribution: np.ndarray = np.bincount(
+            split_feature,
+            weights=rarity_weight,
+            minlength=self.num_dimensions,
+        )
+
+        total = float(attribution.sum())
+        if total > 0.0:
+            attribution = attribution / total
+
+        return attribution
 
     def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Scores the next instance against the reference mass profile, and then updates the model with it.

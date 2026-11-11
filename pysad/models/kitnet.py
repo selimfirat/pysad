@@ -20,6 +20,14 @@ class KitNet(BaseModel):
         learning_rate (float): The default stochastic gradient descent learning rate for all autoencoders in the KitNET instance (Default=0.1).
         hidden_ratio (float): The default ratio of hidden to visible neurons. E.g., 0.75 will cause roughly a 25% compression in the hidden layer (Default=0.75).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the initial weights of the autoencoders, which all share it. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
+
+    :meth:`score_explain_partial` returns the per-feature attribution weights of one instance.
+    Each ensemble autoencoder reconstructs the features it maps, and its squared reconstruction
+    error is attributed to those features. The weights are these per-feature errors, normalized
+    to sum to one, so a larger weight means the autoencoders that use that feature reconstruct it
+    poorly. The weights have shape ``(num_features,)``. Before the first autoencoders exist---on
+    the first instance before it has been fitted---the method returns zeros of shape
+    ``(num_features,)``.
     """
 
     def __init__(
@@ -90,3 +98,44 @@ class KitNet(BaseModel):
             return 0.0
         else:
             return self.model.execute(X)
+
+    def score_explain_partial(self, X: np.ndarray) -> np.ndarray:
+        """Returns per-feature attribution weights for the anomaly score of the next instance.
+
+        Each ensemble autoencoder reconstructs the features it maps, and its squared reconstruction
+        error is attributed to those features. The weights are these per-feature errors, normalized
+        to sum to one, so a larger weight means the autoencoders that use that feature reconstruct
+        it poorly.
+
+        This method neither changes nor keeps ``X``. Before the first autoencoders exist---on the
+        first instance before it has been fitted---it returns zeros of shape ``(num_features,)``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to explain.
+
+        Returns:
+            np.float64 array of shape (num_features,): Non-negative attribution weights, one per
+            feature, summing to one (zeros before the first autoencoders exist).
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        if self.to_init or not self.model.ensembleLayer:
+            return np.zeros(x.shape[0], dtype=np.float64)
+
+        attribution: np.ndarray = np.zeros(x.shape[0], dtype=np.float64)
+        for autoencoder, features in zip(self.model.ensembleLayer, self.model.map, strict=True):
+            subset = np.asarray(list(features), dtype=np.intp)
+            normalized = autoencoder.normalize(x[subset])
+            reconstructed = autoencoder.reconstruct(normalized)
+            np.add.at(attribution, subset, (normalized - reconstructed) ** 2)
+
+        total = float(attribution.sum())
+        if total > 0.0:
+            attribution = attribution / total
+
+        return attribution

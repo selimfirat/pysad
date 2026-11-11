@@ -101,11 +101,11 @@ def _iter_bibtex_Literals(tree: ast.AST) -> list[str]:
 
 def collect_bibtex(root: Path) -> tuple[str, set[str]]:
     """Merges `docs/refs.bib` with all `__bibtex__` attributes in `pysad/`."""
-    sources: list[str] = [(root / "docs" / "refs.bib").read_text()]
+    sources: list[str] = [(root / "docs" / "refs.bib").read_text(encoding="utf-8")]
     for py_path in sorted((root / "pysad").rglob("*.py")):
         if "kitnet_model" in py_path.parts:
             continue
-        text = py_path.read_text()
+        text = py_path.read_text(encoding="utf-8")
         if "__bibtex__" not in text:
             continue
         sources.extend(_iter_bibtex_Literals(ast.parse(text)))
@@ -286,7 +286,7 @@ def expand_examples_gallery(text: str, root: Path) -> str:
     for py_path in sorted((root / "examples").glob("example_*.py")):
         if py_path.name in included:
             continue
-        source = py_path.read_text()
+        source = py_path.read_text(encoding="utf-8")
         tree = ast.parse(source)
         doc = ast.get_docstring(tree)
         start_line = 1
@@ -347,7 +347,7 @@ def doc_counts(root: Path) -> dict[str, int]:
     """Computes live counts exposed as reStructuredText substitutions across the docs."""
     num_detectors = sum(1 for name in pysad.models.__all__ if name not in NON_DETECTOR_MODELS)
     num_drift = 0
-    bench_tree = ast.parse((root / "benchmarks" / "benchmark.py").read_text())
+    bench_tree = ast.parse((root / "benchmarks" / "benchmark.py").read_text(encoding="utf-8"))
     for node in bench_tree.body:
         if (
             isinstance(node, ast.Assign)

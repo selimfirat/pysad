@@ -31,7 +31,7 @@ NON_BENCHMARK_MODELS = frozenset(
 
 def _package_exports(package: str) -> set[str]:
     init_py = ROOT.joinpath(*package.split("."), "__init__.py")
-    tree = ast.parse(init_py.read_text())
+    tree = ast.parse(init_py.read_text(encoding="utf-8"))
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(
             isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
@@ -50,7 +50,7 @@ def test_public_exports_match_api_reference_pages():
     """Every public name in each documented subpackage's __all__ appears on its docs/api/ page."""
     documented_by_module: dict[str, set[str]] = {}
     for rst_path in sorted((ROOT / "docs" / "api").glob("*.rst")):
-        text = expand_api_autosummary(rst_path.read_text())
+        text = expand_api_autosummary(rst_path.read_text(encoding="utf-8"))
         match = re.search(r"^\.\.\s+(?:current)?module::\s+(\S+)", text, flags=re.M)
         assert match is not None, f"Missing module directive in {rst_path}"
         module = match.group(1)
@@ -78,23 +78,29 @@ def test_docstring_citations_exist_in_bibliography(tmp_path):
     for py_path in (ROOT / "pysad").rglob("*.py"):
         if "kitnet_model" in py_path.parts:
             continue
-        for group in re.findall(r":cite:`([^`]+)`", py_path.read_text()):
+        for group in re.findall(r":cite:`([^`]+)`", py_path.read_text(encoding="utf-8")):
             cited_keys.update(key.strip() for key in group.split(","))
 
     missing = sorted(cited_keys - bib_keys)
     assert not missing, f"Citations missing from docs/refs.bib or __bibtex__: {missing}"
 
     (tmp_path / "docs").mkdir()
-    (tmp_path / "docs" / "refs.bib").write_text("@article{dup2020, title={One}}\n")
+    (tmp_path / "docs" / "refs.bib").write_text(
+        "@article{dup2020, title={One}}\n", encoding="utf-8"
+    )
     (tmp_path / "pysad").mkdir()
-    (tmp_path / "pysad" / "bad.py").write_text('__bibtex__ = "@article{dup2020, title={Two}}"\n')
+    (tmp_path / "pysad" / "bad.py").write_text(
+        '__bibtex__ = "@article{dup2020, title={Two}}"\n', encoding="utf-8"
+    )
     with pytest.raises(ValueError, match="Conflicting BibTeX"):
         collect_bibtex(tmp_path)
 
 
 def test_detectors_rst_covers_all_streaming_detectors():
     """Expanding docs/detectors.rst lists every streaming detector in pysad.models.__all__."""
-    expanded = expand_detectors_tables((ROOT / "docs" / "detectors.rst").read_text())
+    expanded = expand_detectors_tables(
+        (ROOT / "docs" / "detectors.rst").read_text(encoding="utf-8")
+    )
     documented = set(re.findall(r":class:`~pysad\.models\.([A-Za-z_]\w*)`", expanded))
     expected = set(pysad.models.__all__) - NON_DETECTOR_MODELS
     assert documented - NON_DETECTOR_MODELS == expected

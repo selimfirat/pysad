@@ -74,7 +74,7 @@ def _discover_module_exports(pkg: str) -> dict[str, list[str]]:
         sources.append((mod_name, ROOT / rel_path))
 
     for mod_name, py_file in sources:
-        tree = ast.parse(py_file.read_text())
+        tree = ast.parse(py_file.read_text(encoding="utf-8"))
         names = [
             node.name
             for node in tree.body
@@ -125,7 +125,7 @@ def _extract_docstring_block(text: str) -> str:
 
 def _render_pure_package(pkg: str) -> str:
     init_path = ROOT / pkg / "__init__.py"
-    doc_block = _extract_docstring_block(init_path.read_text())
+    doc_block = _extract_docstring_block(init_path.read_text(encoding="utf-8"))
     by_module = _discover_module_exports(pkg)
     imports = "\n".join(_format_import(mod, names) for mod, names in by_module.items())
     all_names = [name for names in by_module.values() for name in names]
@@ -137,7 +137,7 @@ def _render_pure_package(pkg: str) -> str:
 def _render_utils_package() -> str:
     pkg = "pysad/utils"
     init_path = ROOT / pkg / "__init__.py"
-    text = init_path.read_text()
+    text = init_path.read_text(encoding="utf-8")
     lines = text.splitlines()
     tree = ast.parse(text)
 
@@ -169,7 +169,7 @@ def _render_utils_package() -> str:
 def _render_integrations_package() -> str:
     pkg = "pysad/integrations"
     init_path = ROOT / pkg / "__init__.py"
-    text = init_path.read_text()
+    text = init_path.read_text(encoding="utf-8")
     lines = text.splitlines()
     tree = ast.parse(text)
 
@@ -210,12 +210,12 @@ def sync_all(check: bool = False) -> list[str]:
         (ROOT / "pysad/integrations/__init__.py", _render_integrations_package()),
     ]
     for path, expected in targets:
-        current = path.read_text()
+        current = path.read_text(encoding="utf-8")
         if current != expected:
             rel = path.relative_to(ROOT).as_posix()
             changed.append(rel)
             if not check:
-                path.write_text(expected)
+                path.write_text(expected, encoding="utf-8")
     return changed
 
 

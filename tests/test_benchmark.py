@@ -225,7 +225,9 @@ def test_changed_benchmark_detectors_isolates_table_edits():
     from pathlib import Path
 
     benchmark = load_benchmark()
-    source = (Path(__file__).resolve().parents[1] / "benchmarks" / "benchmark.py").read_text()
+    source = (Path(__file__).resolve().parents[1] / "benchmarks" / "benchmark.py").read_text(
+        encoding="utf-8"
+    )
 
     assert benchmark._changed_benchmark_detectors(source, source) == set()
 
@@ -331,7 +333,7 @@ def test_runtime_toml_ignores_tool_and_dev_sections():
     from pathlib import Path
 
     benchmark = load_benchmark()
-    source = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text()
+    source = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
 
     tool_edited = source.replace("disallow_untyped_defs = true", "disallow_untyped_defs = false")
     assert benchmark._runtime_toml(source) == benchmark._runtime_toml(tool_edited)
@@ -346,7 +348,9 @@ def test_example_pysad_files_isolates_example_imports():
 
     from tests.test_examples import _example_pysad_files
 
-    code = (Path(__file__).resolve().parents[1] / "examples" / "example_usage_short.py").read_text()
+    code = (Path(__file__).resolve().parents[1] / "examples" / "example_usage_short.py").read_text(
+        encoding="utf-8"
+    )
     files = _example_pysad_files(code)
     assert "pysad/models/loda.py" in files
     assert "pysad/evaluation/metrics.py" in files
@@ -366,7 +370,7 @@ def test_union_merged_files_have_no_duplicates():
     for path in sorted((root / "pysad").rglob("__init__.py")):
         if "kitnet_model" in path.parts:
             continue
-        tree = ast.parse(path.read_text())
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:
             if isinstance(node, ast.Assign) and any(
                 isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
@@ -374,11 +378,11 @@ def test_union_merged_files_have_no_duplicates():
                 exports = ast.literal_eval(node.value)
                 assert len(exports) == len(set(exports)), f"Duplicate in {path}: {exports}"
 
-    bib = (root / "docs" / "refs.bib").read_text()
+    bib = (root / "docs" / "refs.bib").read_text(encoding="utf-8")
     keys = re.findall(r"^@\w+\{([^,\s]+),", bib, flags=re.M)
     assert len(keys) == len(set(keys))
     assert keys == sorted(keys, key=str.lower)
 
-    examples_rst = (root / "docs" / "examples.rst").read_text()
+    examples_rst = (root / "docs" / "examples.rst").read_text(encoding="utf-8")
     includes = re.findall(r"^\.\. literalinclude::\s+(\S+)", examples_rst, flags=re.M)
     assert len(includes) == len(set(includes))

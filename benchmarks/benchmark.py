@@ -988,12 +988,13 @@ def changed_detectors(base, path=None):
         return [*DETECTORS, *UNIVARIATE]
     if "pyproject.toml" in files and _runtime_toml(
         git("show", f"{base}:pyproject.toml")
-    ) != _runtime_toml((ROOT / "pyproject.toml").read_text()):
+    ) != _runtime_toml((ROOT / "pyproject.toml").read_text(encoding="utf-8")):
         return [*DETECTORS, *UNIVARIATE]
     edited = set()  # detectors whose committed results or registration changed
     if "benchmarks/benchmark.py" in files:
         bench_changed = _changed_benchmark_detectors(
-            git("show", f"{base}:benchmarks/benchmark.py"), Path(__file__).read_text()
+            git("show", f"{base}:benchmarks/benchmark.py"),
+            Path(__file__).read_text(encoding="utf-8"),
         )
         if bench_changed is None:
             return [*DETECTORS, *UNIVARIATE]

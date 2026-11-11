@@ -115,8 +115,9 @@ def _models_changed_since(base: str) -> tuple[str, ...]:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         ).stdout
-        after = (ROOT / "pyproject.toml").read_text()
+        after = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         if before.split("\ndocs = [", 1)[0] != after.split("\ndocs = [", 1)[0]:
             return tuple(pysad.models.__all__)
     return tuple(name for name in pysad.models.__all__ if _model_pysad_files(name) & changed)

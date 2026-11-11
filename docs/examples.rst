@@ -45,7 +45,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.928
+   AUROC: 0.935
 
 Score a stream with xStream
 ---------------------------

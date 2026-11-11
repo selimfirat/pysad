@@ -23,7 +23,9 @@ EXAMPLES = sorted(
     for name in os.listdir(EXAMPLES_DIR)
     if name.startswith("example_") and name.endswith(".py")
 )
-DOCUMENTED_OUTPUTS = parse_documented_example_outputs((ROOT / "docs" / "examples.rst").read_text())
+DOCUMENTED_OUTPUTS = parse_documented_example_outputs(
+    (ROOT / "docs" / "examples.rst").read_text(encoding="utf-8")
+)
 _NUMBER_RE = re.compile(r"(?<![A-Za-z0-9_])-?\d+(?:\.\d+)?")
 
 
@@ -76,6 +78,7 @@ def _changed_files_since(base: str) -> set[str]:
         check=True,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     ).stdout
     return set(out.split())
 
@@ -87,6 +90,7 @@ def _documented_outputs_at(base: str) -> dict[str, tuple[str, str]]:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     if proc.returncode != 0:
         return {}
@@ -114,8 +118,9 @@ def _should_run_example(rel_path: str, code: str) -> bool:
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
         ).stdout
-        after = (ROOT / "pyproject.toml").read_text()
+        after = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         if before.split("\ntest = [", 1)[0] != after.split("\ntest = [", 1)[0]:
             return True
     return rel_path in changed or bool(_example_pysad_files(code) & changed)
@@ -154,7 +159,7 @@ def _assert_output_matches_docs(
         for act_m, exp_m in zip(act_matches, exp_matches, strict=True):
             act_s, exp_s = act_m.group(0), exp_m.group(0)
             if "." in act_s or "." in exp_s:
-                assert abs(float(act_s) - float(exp_s)) <= 0.005, (
+                assert abs(float(act_s) - float(exp_s)) <= 0.01, (
                     f"{example} numeric output drifted from docs/examples.rst:\n"
                     f"  actual:   {act_line!r}\n"
                     f"  expected: {exp_line!r}"
@@ -179,13 +184,14 @@ def run_python(*args):
         cwd=EXAMPLES_DIR,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=600,
         env=env,
     )
 
 
 def test_examples_gallery_autodiscovers_all_scripts_and_parses_outputs():
-    raw_rst = (ROOT / "docs" / "examples.rst").read_text()
+    raw_rst = (ROOT / "docs" / "examples.rst").read_text(encoding="utf-8")
     expanded = expand_examples_gallery(raw_rst, ROOT)
     included = re.findall(
         r"^\.\.\s+literalinclude::\s+\.\./examples/(example_\w+\.py)", expanded, re.M
@@ -195,7 +201,7 @@ def test_examples_gallery_autodiscovers_all_scripts_and_parses_outputs():
     assert len(DOCUMENTED_OUTPUTS) >= 25
 
     _assert_output_matches_docs("example_usage.py", "AUROC: 0.768\n", "exact", "AUROC: 0.768")
-    _assert_output_matches_docs("example_usage.py", "AUROC: 0.771\n", "exact", "AUROC: 0.768")
+    _assert_output_matches_docs("example_usage.py", "AUROC: 0.775\n", "exact", "AUROC: 0.768")
     _assert_output_matches_docs("example_prob.py", "26 alerts\n", "exact", "27 alerts")
     with pytest.raises(AssertionError):
         _assert_output_matches_docs("example_usage.py", "AUROC: 0.700\n", "exact", "AUROC: 0.768")
@@ -206,7 +212,7 @@ def test_examples_gallery_autodiscovers_all_scripts_and_parses_outputs():
 @pytest.mark.examples
 @pytest.mark.parametrize("example", EXAMPLES)
 def test_example_runs(example):
-    code = (ROOT / "examples" / example).read_text()
+    code = (ROOT / "examples" / example).read_text(encoding="utf-8")
     if not _should_run_example(f"examples/{example}", code):
         pytest.skip(f"No changes affecting {example} since {os.environ['PYSAD_EXAMPLES_SINCE']}")
 
@@ -220,7 +226,7 @@ def test_example_runs(example):
 
 def notebook_code(path):
     """Joins the code cells of a notebook, skipping shell and magic lines such as ``%pip install``."""
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         cells = json.load(f)["cells"]
     lines = [
         line

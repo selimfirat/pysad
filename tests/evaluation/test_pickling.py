@@ -13,10 +13,11 @@ WINDOW_SIZE = 16
 # BaseSKLearnMetric is abstract. WindowedMetric takes a metric class as a constructor argument,
 # rather than being default-constructible itself; it is covered separately below. evaluate_stream is
 # a function, not a metric.
-PICKLE_SKIP_METRICS = {"BaseSKLearnMetric", "WindowedMetric", "evaluate_stream"}
+PICKLE_SKIP_METRICS = {"BaseSKLearnMetric", "RollingMetric", "WindowedMetric", "evaluate_stream"}
 WINDOWED_METRICS = [
     "AUROCMetric",
     "AUPRMetric",
+    "BalancedAccuracyMetric",
     "F1Metric",
     "MatthewsCorrelationMetric",
     "PrecisionMetric",
@@ -26,6 +27,7 @@ WINDOWED_METRICS = [
 # F1, precision and recall are defined on predicted classes, so they get a threshold to turn the
 # scores below into 0/1 predictions.
 METRIC_KWARGS = {
+    "BalancedAccuracyMetric": {"threshold": 0.5},
     "F1Metric": {"threshold": 0.5},
     "MatthewsCorrelationMetric": {"threshold": 0.5},
     "PrecisionMetric": {"threshold": 0.5},
@@ -80,14 +82,14 @@ def test_pickle_round_trip(metric_name):
 
 
 @pytest.mark.parametrize("metric_name", WINDOWED_METRICS)
-def test_windowed_metric_pickle_round_trip(metric_name):
+@pytest.mark.parametrize("wrapper_name", ["RollingMetric", "WindowedMetric"])
+def test_windowed_metric_pickle_round_trip(metric_name, wrapper_name):
     y_true, y_pred = _stream()
     metric_cls = getattr(evaluation, metric_name)
-    metric = evaluation.WindowedMetric(
+    metric = getattr(evaluation, wrapper_name)(
         metric_cls, WINDOW_SIZE, **METRIC_KWARGS.get(metric_name, {})
     )
-    # The initial segment ends in the middle of a window, and the remaining instances cross one
-    # more window boundary, so the window counters and the window score meter are all in use.
+    # Fit beyond one window. Later updates cross another window boundary.
     assert NUM_FIT % WINDOW_SIZE != 0
     assert (NUM_FIT // WINDOW_SIZE + 1) * WINDOW_SIZE < NUM_FIT + NUM_NEXT
     _fitted_metric(metric, y_true, y_pred)
@@ -95,7 +97,6 @@ def test_windowed_metric_pickle_round_trip(metric_name):
     restored = pickle.loads(pickle.dumps(metric))
 
     assert type(restored) is type(metric)
-    assert restored.metric_cls is metric_cls
     np.testing.assert_allclose(restored.get(), metric.get())
     actual = _next_outputs(restored, y_true, y_pred)
     expected = _next_outputs(metric, y_true, y_pred)

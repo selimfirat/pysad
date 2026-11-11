@@ -114,6 +114,7 @@ DETECTORS = {
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
     "RSForest": lambda X, seed: models.RSForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
+    "SDOstream": lambda X, seed: models.SDOstream(random_state=seed),
     "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
     "TEDA": lambda X, seed: models.TEDA(),
     "ThreshLEAP": lambda X, seed: models.ThreshLEAP(),

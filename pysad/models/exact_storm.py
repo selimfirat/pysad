@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 
 from pysad.core.base_model import BaseModel
-from pysad.utils.window import Window
+from pysad.models._window import _RadiusCalibrator, _RingBuffer
 
 
 class ExactStorm(BaseModel):
@@ -28,13 +28,13 @@ class ExactStorm(BaseModel):
         calibration_size: int = 256,
         outlier_fraction: float = 0.05,
     ) -> None:
+        self.window_size = window_size
         self.max_radius = max_radius
         self.calibration_size = calibration_size
         self.outlier_fraction = outlier_fraction
-        self.window = Window(window_size=window_size)
+        self._buffer = _RingBuffer(window_size)
+        self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
         self.radius_: float | None = max_radius
-        self._calibration: list[np.ndarray] = []  # the first instances, while they set the radius
-        self._nearest = np.empty(0)  # the distance from each of them to its nearest other one
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> ExactStorm:
         """Updates the model with the next instance by adding it to the window.
@@ -46,19 +46,12 @@ class ExactStorm(BaseModel):
         Returns:
             object: self.
         """
-        X = np.array(X, dtype=np.float64)
-        self.window.update(X)
-        if self.max_radius is None and len(self._calibration) < self.calibration_size:
-            self._calibrate(X)
+        x = np.asarray(X, dtype=np.float64)
+        self._buffer.append(x)
+        if self._calibrator.active:
+            self.radius_ = self._calibrator.update(x)
 
         return self
-
-    def _calibrate(self, X: np.ndarray) -> None:
-        dists = np.linalg.norm(np.array(self._calibration) - X, axis=1) if self._calibration else []
-        self._nearest = np.append(np.minimum(self._nearest, dists), np.min(dists, initial=np.inf))
-        self._calibration.append(X)
-        if len(self._calibration) >= 2:
-            self.radius_ = float(np.quantile(self._nearest, 1 - self.outlier_fraction))
 
     def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance as if it arrived, without adding it to the window.
@@ -71,16 +64,17 @@ class ExactStorm(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        window = self.window.get()
-        window_size = self.window.window_size
-        start = 0 if window_size is None else max(len(window) - window_size + 1, 0)
-
-        return self._score(window[start:], X)
-
-    def _score(self, window: list[np.ndarray], X: np.ndarray) -> float:
-        if len(window) == 0 or self.radius_ is None:
+        first, second, num_window = self._buffer.active_slices()
+        if num_window == 0 or self.radius_ is None:
             return 1.0
 
-        dists = scipy.spatial.distance.cdist(window, [X])
+        query = np.asarray(X, dtype=np.float64).reshape(1, -1)  # (1, num_features)
+        neighbors = (
+            int((scipy.spatial.distance.cdist(first, query) <= self.radius_).sum())
+            if len(first) > 0
+            else 0
+        )
+        if second is not None and len(second) > 0:
+            neighbors += int((scipy.spatial.distance.cdist(second, query) <= self.radius_).sum())
 
-        return float(1.0 - np.mean(dists <= self.radius_))
+        return 1.0 - neighbors / num_window

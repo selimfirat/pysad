@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import wraps
@@ -21,6 +22,10 @@ def _to_float_score(score: float | np.number | np.ndarray | list[float]) -> floa
     Returns:
         float: The score as a Python float.
     """
+    if type(score) is float:
+        return score
+    if isinstance(score, (int, np.floating, np.integer)) and not isinstance(score, bool):
+        return float(score)
     score = np.asarray(score)
     if score.size != 1:
         raise ValueError(
@@ -30,12 +35,28 @@ def _to_float_score(score: float | np.number | np.ndarray | list[float]) -> floa
     return float(score.reshape(-1)[0])
 
 
+def _has_nan(X: Any) -> bool:
+    """Returns whether `X` is a floating or complex value/array containing NaN."""
+    if isinstance(X, np.ndarray):
+        return X.dtype.kind in "fc" and bool(np.isnan(X).any())
+    x = np.asarray(X)
+    return x.dtype.kind in "fc" and bool(np.isnan(x).any())
+
+
+def _clean_numeric_batch(X: Any) -> bool:
+    """Returns whether `X` is a numeric NumPy array free of NaN values."""
+    return isinstance(X, np.ndarray) and (
+        X.dtype.kind in "biu" or (X.dtype.kind in "fc" and not bool(np.isnan(X).any()))
+    )
+
+
 def _returns_float_score(method: Callable[..., Any]) -> Callable[..., float]:
     """Wraps a single-instance scoring method so that it returns a Python float."""
 
     @wraps(method)
     def wrapper(self: BaseModel, *args: Any, **kwargs: Any) -> float:
-        return _to_float_score(method(self, *args, **kwargs))
+        score = method(self, *args, **kwargs)
+        return score if type(score) is float else _to_float_score(score)
 
     # Marks the method as wrapped, so that __init_subclass__ doesn't wrap it twice.
     wrapper._returns_float_score = True  # type: ignore[attr-defined]
@@ -52,8 +73,7 @@ def _rejects_nan_input(method: Callable[..., Any]) -> Callable[..., Any]:
 
     @wraps(method)
     def wrapper(self: BaseModel, X: Any, *args: Any, **kwargs: Any) -> Any:
-        x = np.asarray(X)
-        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+        if _has_nan(X):
             raise ValueError(f"{type(self).__name__} does not accept NaN values.")
 
         return method(self, X, *args, **kwargs)
@@ -71,6 +91,10 @@ class BaseModel(ABC):
     Every model rejects an instance that holds NaN with a `ValueError` that names the model,
     from every public entry point, before any of its methods run; the model is left unchanged.
     """
+
+    _raw_fit_partial: Callable[..., Any]
+    _raw_score_partial: Callable[..., Any]
+    _raw_fit_score_partial: Callable[..., Any] | None = None
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -93,6 +117,13 @@ class BaseModel(ABC):
             method = cls.__dict__.get(name)
             if callable(method) and not getattr(method, "_rejects_nan_input", False):
                 setattr(cls, name, _rejects_nan_input(method))
+
+        cls._raw_fit_partial = inspect.unwrap(cls.fit_partial)
+        cls._raw_score_partial = inspect.unwrap(cls.score_partial)
+        raw_fit_score = inspect.unwrap(cls.fit_score_partial)
+        cls._raw_fit_score_partial = (
+            None if raw_fit_score is BaseModel.fit_score_partial else raw_fit_score
+        )
 
     @abstractmethod
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> BaseModel:
@@ -142,10 +173,14 @@ class BaseModel(ABC):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        score = self.score_partial(X)
-        self.fit_partial(X, y)
+        if _has_nan(X):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+        cls = type(self)
+        raw_score = cls._raw_score_partial(self, X)
+        score = raw_score if type(raw_score) is float else _to_float_score(raw_score)
+        cls._raw_fit_partial(self, X, y)
 
-        return _to_float_score(score)
+        return score
 
     def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> BaseModel:
         """Fits the model to all instances in order.
@@ -160,6 +195,18 @@ class BaseModel(ABC):
         Returns:
             object: The model itself.
         """
+        if _clean_numeric_batch(X):
+            if y is not None and len(X) != len(y):
+                raise ValueError("X and y must have the same length.")
+            fit_fn = type(self)._raw_fit_partial.__get__(self)
+            if y is None:
+                for i in range(len(X)):
+                    fit_fn(X[i], None)
+            else:
+                for i in range(len(X)):
+                    fit_fn(X[i], y[i])
+            return self
+
         for xi, yi in _iterate(X, y):
             self.fit_partial(xi, yi)
 
@@ -178,6 +225,13 @@ class BaseModel(ABC):
             np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
         """
         y_pred = np.empty(X.shape[0], dtype=np.float64)
+        if _clean_numeric_batch(X):
+            score_fn = type(self)._raw_score_partial.__get__(self)
+            for i in range(len(X)):
+                raw = score_fn(X[i])
+                y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+            return y_pred
+
         for i, (xi, _) in enumerate(_iterate(X)):
             y_pred[i] = _to_float_score(self.score_partial(xi))
 
@@ -197,6 +251,37 @@ class BaseModel(ABC):
             np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
         """
         y_pred = np.empty(X.shape[0], dtype=np.float64)
+        if _clean_numeric_batch(X):
+            if y is not None and len(X) != len(y):
+                raise ValueError("X and y must have the same length.")
+            cls = type(self)
+            if cls._raw_fit_score_partial is None:
+                score_fn = cls._raw_score_partial.__get__(self)
+                fit_fn = cls._raw_fit_partial.__get__(self)
+                if y is None:
+                    for i in range(len(X)):
+                        xi = X[i]
+                        raw = score_fn(xi)
+                        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+                        fit_fn(xi, None)
+                else:
+                    for i in range(len(X)):
+                        xi = X[i]
+                        raw = score_fn(xi)
+                        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+                        fit_fn(xi, y[i])
+            else:
+                fit_score_fn = cls._raw_fit_score_partial.__get__(self)
+                if y is None:
+                    for i in range(len(X)):
+                        raw = fit_score_fn(X[i], None)
+                        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+                else:
+                    for i in range(len(X)):
+                        raw = fit_score_fn(X[i], y[i])
+                        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+            return y_pred
+
         for i, (xi, yi) in enumerate(_iterate(X, y)):
             y_pred[i] = _to_float_score(self.fit_score_partial(xi, yi))
 

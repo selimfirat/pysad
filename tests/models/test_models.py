@@ -7,7 +7,7 @@ import pysad.models
 from pysad.transform.postprocessing import RunningZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
-from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS
+from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, active_model_names
 
 MODEL_CASES = {
     "AnyOut": [{}, {"outlier_score": "density"}],
@@ -50,7 +50,7 @@ MODEL_CASES = {
 
 def _parametrized_cases():
     cases = []
-    for name in pysad.models.__all__:
+    for name in active_model_names():
         param_list = MODEL_CASES.get(name, [{}])
         for index, params in enumerate(param_list):
             case_id = name if len(param_list) == 1 else f"{name}-{index}"

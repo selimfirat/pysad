@@ -4,6 +4,7 @@ import numpy as np
 import scipy
 
 from pysad.core.base_model import BaseModel
+from pysad.models._window import _RadiusCalibrator
 
 # Labels in cluster_: an empty slot and an instance in no micro-cluster (the set PD of the paper).
 _EMPTY = -2
@@ -41,8 +42,7 @@ class MCOD(BaseModel):
         self.calibration_size = calibration_size
         self.outlier_fraction = outlier_fraction
         self.radius_: float | None = max_radius
-        self._calibration: list[np.ndarray] = []  # the first instances, while they set the radius
-        self._nearest = np.empty(0)  # the distance from each of them to its nearest other one
+        self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
         self.points_ = np.empty((0, 0))  # the window as a ring buffer, (window_size, num_features)
         self.cluster_ = np.full(window_size, _EMPTY)  # the micro-cluster of each slot, or a label
         self.centers_ = np.empty((0, 0))  # (max micro-clusters, num_features)
@@ -70,9 +70,9 @@ class MCOD(BaseModel):
         self.cluster_[i] = _PD
         self._next = (i + 1) % self.window_size
 
-        if self.max_radius is None and len(self._calibration) < self.calibration_size:
-            self._calibrate(X)
-            if len(self._calibration) == self.calibration_size and self.radius_ is not None:
+        if self._calibrator.active:
+            self.radius_ = self._calibrator.update(X)
+            if not self._calibrator.active and self.radius_ is not None:
                 # The radius is fixed from now on, so the micro-clusters can form.
                 for j in np.flatnonzero(self.cluster_ == _PD).tolist():
                     if self.cluster_[j] == _PD:
@@ -81,13 +81,6 @@ class MCOD(BaseModel):
             self._insert(i)
 
         return self
-
-    def _calibrate(self, X: np.ndarray) -> None:
-        dists = np.linalg.norm(np.array(self._calibration) - X, axis=1) if self._calibration else []
-        self._nearest = np.append(np.minimum(self._nearest, dists), np.min(dists, initial=np.inf))
-        self._calibration.append(X)
-        if len(self._calibration) >= 2:
-            self.radius_ = float(np.quantile(self._nearest, 1 - self.outlier_fraction))
 
     def _expire(self, i: int) -> None:
         """Step 1 and Step 4 of the paper: removes slot i and dissolves a micro-cluster that is too small."""

@@ -4,6 +4,7 @@ import numpy as np
 import scipy
 
 from pysad.core.base_model import BaseModel
+from pysad.models._window import _RadiusCalibrator
 
 
 class CPOD(BaseModel):
@@ -34,8 +35,7 @@ class CPOD(BaseModel):
         self.calibration_size = calibration_size
         self.outlier_fraction = outlier_fraction
         self.radius_: float | None = max_radius
-        self._calibration: list[np.ndarray] = []  # the first instances, while they set the radius
-        self._nearest: np.ndarray = np.empty(0)  # the distance from each to its nearest other one
+        self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
         self.points_ = np.empty((0, 0))  # the window as a ring buffer, (window_size, num_features)
         self.cores_: np.ndarray = np.empty((0, 0))  # the core points, (capacity, num_features)
         # The ring of each window slot for each core point, 4 if none, (capacity, window_size).
@@ -69,21 +69,14 @@ class CPOD(BaseModel):
         self.points_[i] = X
         self._next = (i + 1) % self.window_size
 
-        if self.max_radius is None and len(self._calibration) < self.calibration_size:
-            self._calibrate(X)
+        if self._calibrator.active:
+            self.radius_ = self._calibrator.update(X)
             if self.radius_ is not None:
                 self._build()
         elif self.radius_ is not None:
             self._add(i)
 
         return self
-
-    def _calibrate(self, X: np.ndarray) -> None:
-        dists = np.linalg.norm(np.array(self._calibration) - X, axis=1) if self._calibration else []
-        self._nearest = np.append(np.minimum(self._nearest, dists), np.min(dists, initial=np.inf))
-        self._calibration.append(X)
-        if len(self._calibration) >= 2:
-            self.radius_ = float(np.quantile(self._nearest, 1 - self.outlier_fraction))
 
     def _ring(self, dists: np.ndarray) -> np.ndarray:
         """The ring k of each distance, with k = 4 for distances above 2R."""

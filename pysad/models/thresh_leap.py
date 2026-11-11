@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from pysad.core.base_model import BaseModel
+from pysad.models._window import _RadiusCalibrator, _RingBuffer
 
 
 class ThreshLEAP(BaseModel):
@@ -36,11 +37,8 @@ class ThreshLEAP(BaseModel):
         self.calibration_size = calibration_size
         self.outlier_fraction = outlier_fraction
         self.radius_: float | None = max_radius
-        self._calibration: list[np.ndarray] = []  # the first instances, while they set the radius
-        self._nearest = np.empty(0)  # the distance from each of them to its nearest other one
-        self.points_ = np.empty((0, 0))  # the window as a ring buffer, (window_size, num_features)
-        self._num = 0  # the number of instances in the window
-        self._next = 0  # the slot of the next instance, which holds the oldest one in a full window
+        self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
+        self._buffer = _RingBuffer(window_size)
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> ThreshLEAP:
         """Updates the model with the next instance. The oldest instance of a full window expires.
@@ -52,25 +50,12 @@ class ThreshLEAP(BaseModel):
         Returns:
             object: self.
         """
-        X = np.array(X, dtype=np.float64)
-        if self.points_.size == 0:
-            self.points_ = np.empty((self.window_size, len(X)))
-
-        self.points_[self._next] = X
-        self._next = (self._next + 1) % self.window_size
-        self._num = min(self._num + 1, self.window_size)
-
-        if self.max_radius is None and len(self._calibration) < self.calibration_size:
-            self._calibrate(X)
+        x = np.asarray(X, dtype=np.float64)
+        self._buffer.append(x)
+        if self._calibrator.active:
+            self.radius_ = self._calibrator.update(x)
 
         return self
-
-    def _calibrate(self, X: np.ndarray) -> None:
-        dists = np.linalg.norm(np.array(self._calibration) - X, axis=1) if self._calibration else []
-        self._nearest = np.append(np.minimum(self._nearest, dists), np.min(dists, initial=np.inf))
-        self._calibration.append(X)
-        if len(self._calibration) >= 2:
-            self.radius_ = float(np.quantile(self._nearest, 1 - self.outlier_fraction))
 
     def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance as if it arrived, without adding it to the window.
@@ -88,13 +73,14 @@ class ThreshLEAP(BaseModel):
 
         X = np.asarray(X, dtype=np.float64)
         k = self.num_neighbors
-        num_window = self._num - (self._num == self.window_size)  # The oldest one expires.
+        buf = self._buffer
+        num_window = buf.count - (buf.count == self.window_size)  # The oldest one expires.
         found = 0
         start, size = 0, k
         while found < k and start < num_window:
             stop = min(start + size, num_window)
-            slots = (self._next - 1 - np.arange(start, stop)) % self.window_size  # newest first
-            found += int((np.linalg.norm(self.points_[slots] - X, axis=1) <= self.radius_).sum())
+            slots = (buf.next_slot - 1 - np.arange(start, stop)) % self.window_size  # newest first
+            found += int((np.linalg.norm(buf.points[slots] - X, axis=1) <= self.radius_).sum())
             start, size = stop, 2 * size
 
         return 1.0 - min(found, k) / k

@@ -13,6 +13,7 @@ from tests.models.conftest import (
     EDGE_MODELS,
     TIMESTAMPED_MODELS,
     UNIVARIATE_MODELS,
+    active_model_names,
     short_stream_params,
 )
 
@@ -160,7 +161,7 @@ def _assert_same_scores(original, restored, X, y):
 
 def _model_params(xfail_models):
     params = []
-    for model_name in pysad.models.__all__:
+    for model_name in active_model_names():
         marks = []
         if model_name in xfail_models:
             marks.append(pytest.mark.xfail(reason=xfail_models[model_name], strict=True))
@@ -180,7 +181,7 @@ def test_pickle_round_trip(model_name):
     _assert_same_scores(model, restored, X, y)
 
 
-@pytest.mark.parametrize("model_name", pysad.models.__all__)
+@pytest.mark.parametrize("model_name", active_model_names())
 def test_deepcopy(model_name):
     X, y = _data(model_name)
     model = _fitted_model(model_name, X, y)

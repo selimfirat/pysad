@@ -30,6 +30,7 @@ from tests.models.conftest import (
     EDGE_MODELS,
     TIMESTAMPED_MODELS,
     UNIVARIATE_MODELS,
+    active_model_names,
     short_stream_params,
 )
 
@@ -178,7 +179,7 @@ def _models(test_name):
     known_failures = KNOWN_FAILURES.get(test_name, {})
     skipped = SKIPPED.get(test_name, {})
     params = []
-    for name in pysad.models.__all__:
+    for name in active_model_names():
         marks = []
         if name in known_failures:
             marks.append(pytest.mark.xfail(reason=known_failures[name], strict=True))

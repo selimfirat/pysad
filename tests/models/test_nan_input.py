@@ -14,9 +14,10 @@ import pytest
 
 import pysad.models
 from pysad.utils import fix_seed
-from tests.models.conftest import num_features_for, short_stream_params
+from tests.models.conftest import active_model_names, num_features_for, short_stream_params
 
 NUM_INSTANCES = 12
+ACTIVE_MODELS = list(active_model_names())
 
 
 def _num_features(name):
@@ -45,7 +46,7 @@ def _nan_instance(num_features):
     return instance
 
 
-@pytest.mark.parametrize("name", list(pysad.models.__all__), ids=list(pysad.models.__all__))
+@pytest.mark.parametrize("name", ACTIVE_MODELS, ids=ACTIVE_MODELS)
 def test_partial_methods_reject_nan(name):
     num_features = _num_features(name)
 
@@ -55,7 +56,7 @@ def test_partial_methods_reject_nan(name):
             getattr(model, method)(_nan_instance(num_features))
 
 
-@pytest.mark.parametrize("name", list(pysad.models.__all__), ids=list(pysad.models.__all__))
+@pytest.mark.parametrize("name", ACTIVE_MODELS, ids=ACTIVE_MODELS)
 def test_batch_methods_reject_nan(name):
     num_features = _num_features(name)
     X, y = _data(name, num_features)
@@ -74,7 +75,7 @@ def test_batch_methods_reject_nan(name):
             getattr(model, method)(*args)
 
 
-@pytest.mark.parametrize("name", list(pysad.models.__all__), ids=list(pysad.models.__all__))
+@pytest.mark.parametrize("name", ACTIVE_MODELS, ids=ACTIVE_MODELS)
 def test_stream_continues_after_a_rejected_nan(name):
     """The issue's poisoning case: one NaN no longer silences the scores that follow."""
     num_features = _num_features(name)

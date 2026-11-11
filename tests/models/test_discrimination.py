@@ -15,7 +15,12 @@ from pysad.transform.postprocessing import RunningZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
-from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, UNIVARIATE_MODELS
+from tests.models.conftest import (
+    EDGE_MODELS,
+    TIMESTAMPED_MODELS,
+    UNIVARIATE_MODELS,
+    active_model_names,
+)
 
 SEED = 0
 NUM_INSTANCES = 600
@@ -143,7 +148,7 @@ def _scores(model_name, X):
 
 def _models():
     params = []
-    for name in pysad.models.__all__:
+    for name in active_model_names():
         if name in REFERENCE_MODELS:
             continue
         marks = []

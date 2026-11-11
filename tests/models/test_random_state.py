@@ -7,7 +7,12 @@ import pytest
 import pysad.models
 from pysad.models import RandomModel
 from pysad.utils import fix_seed
-from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, UNIVARIATE_MODELS
+from tests.models.conftest import (
+    EDGE_MODELS,
+    TIMESTAMPED_MODELS,
+    UNIVARIATE_MODELS,
+    active_model_names,
+)
 
 NUM_FEATURES = 3
 
@@ -47,6 +52,7 @@ NAMES = [
     for name in pysad.models.__all__
     if "random_state" in inspect.signature(getattr(pysad.models, name).__init__).parameters
 ]
+ACTIVE_NAMES = [name for name in NAMES if name in set(active_model_names())]
 MODELS = {
     name: (lambda name=name, **kw: getattr(pysad.models, name)(**MODEL_PARAMS.get(name, {}), **kw))
     for name in NAMES
@@ -67,21 +73,21 @@ def _scores(model):
     return np.array([np.ravel(model.fit_score_partial(x))[0] for x in _data(model)])
 
 
-@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("name", ACTIVE_NAMES)
 def test_same_seed_gives_same_scores(name):
     np.testing.assert_array_equal(
         _scores(MODELS[name](random_state=5)), _scores(MODELS[name](random_state=5))
     )
 
 
-@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("name", ACTIVE_NAMES)
 def test_different_seeds_give_different_scores(name):
     assert not np.array_equal(
         _scores(MODELS[name](random_state=5)), _scores(MODELS[name](random_state=6))
     )
 
 
-@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("name", ACTIVE_NAMES)
 def test_seed_leaves_global_state_alone(name):
     fix_seed(11)
     expected = np.random.rand(3)
@@ -92,7 +98,7 @@ def test_seed_leaves_global_state_alone(name):
     np.testing.assert_array_equal(np.random.rand(3), expected)
 
 
-@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("name", ACTIVE_NAMES)
 def test_models_seeded_side_by_side_do_not_interfere(name):
     alone = _scores(MODELS[name](random_state=5))
 
@@ -106,7 +112,7 @@ def test_models_seeded_side_by_side_do_not_interfere(name):
     np.testing.assert_array_equal(side_by_side, alone)
 
 
-@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("name", ACTIVE_NAMES)
 def test_default_draws_from_global_state(name):
     # The global state after fix_seed(5) produces the same stream as RandomState(5).
     fix_seed(5)
@@ -118,7 +124,7 @@ def test_default_draws_from_global_state(name):
     )
 
 
-@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("name", ACTIVE_NAMES)
 def test_seeded_model_pickles_with_its_generator(name):
     model = MODELS[name](random_state=5)
     data = _data(model)

@@ -20,7 +20,7 @@ def _model_specs():
     from pysad.models.integrations import OneFitModel, ReferenceWindowModel
     from pysad.transform.postprocessing import RunningZScorePostprocessor
     from pysad.transform.preprocessing import ShingleTransformer
-    from tests.models.conftest import num_features_for, short_stream_params
+    from tests.models.conftest import active_model_names, num_features_for, short_stream_params
 
     mins, maxes = [0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES
     params = {
@@ -75,6 +75,7 @@ def _model_specs():
         "ThreshLEAP": {"window_size": 20, "max_radius": 0.3, "num_neighbors": 3},
     }
 
+    active = set(active_model_names())
     # (name, factory, number of features)
     specs = [
         (
@@ -87,25 +88,36 @@ def _model_specs():
             ),
             num_features_for(name, NUM_FEATURES),
         )
-        for name in models.__all__
+        for name in active_model_names()
     ]
-    specs += [
-        ("ChangeFinder-outlier", lambda: models.ChangeFinder(change_point=False), 1),
+    variants = [
         (
+            "ChangeFinder",
+            "ChangeFinder-outlier",
+            lambda: models.ChangeFinder(change_point=False),
+            1,
+        ),
+        (
+            "HTM",
             "HTM-raw",
             lambda: models.HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=256),
             2,
         ),
         (
+            "MedianAbsoluteDeviation",
             "MedianAbsoluteDeviation-signed",
             lambda: models.MedianAbsoluteDeviation(absolute=False),
             1,
         ),
         (
+            "StandardAbsoluteDeviation",
             "StandardAbsoluteDeviation-signed",
             lambda: models.StandardAbsoluteDeviation(absolute=False),
             1,
         ),
+    ]
+    specs += [(vid, fn, nf) for base_name, vid, fn, nf in variants if base_name in active]
+    specs += [
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (
             "ReferenceWindowModel",

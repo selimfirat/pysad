@@ -25,7 +25,6 @@ __all__ = [
     "PandasStreamer",
     "PolarsStreamer",
     "Window",
-    "_iterate",
     "check_feature_bounds",
     "check_univariate",
     "fix_seed",

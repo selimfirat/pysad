@@ -21,6 +21,7 @@ UNIVARIATE_MODELS = {
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
+    "OeSNNUAD",
     "PEWMA",
     "RelativeEntropy",
     "SAND",
@@ -85,6 +86,8 @@ MODEL_PARAMS = {
     "MIDAS": {"tick_size": 7},
     # Cells empty out and fill again within the first instances.
     "NETS": {"window_size": 30, "max_radius": 0.6},
+    # Output neurons merge and replace the oldest one before and after the round trip.
+    "OeSNNUAD": {"window_size": 20, "num_output_neurons": 4},
     "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
     # A window that wraps before and after the round trip.
     "OnlineOneClassSVM": {"window_size": 32},

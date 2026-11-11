@@ -145,6 +145,7 @@ UNIVARIATE = {
     "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
     "MatrixProfile": lambda n, period: models.MatrixProfile(window_length=SHINGLE_SIZE),
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
+    "OeSNNUAD": lambda n, period: models.OeSNNUAD(random_state=0),
     "PEWMA": lambda n, period: models.PEWMA(),
     "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
     # Fix the length without labels, as for shingles, and initialize in the standard warm-up.

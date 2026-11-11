@@ -16,6 +16,7 @@ from pysad.models import (
     KitNet,
     MemStream,
     MStream,
+    OeSNNUAD,
     OnlineIsolationForest,
     RandomModel,
     RobustRandomCutForest,
@@ -52,6 +53,7 @@ MODELS = {
     "MIDAS": lambda **kw: MIDAS(num_buckets=4, tick_size=5, **kw),
     "MemStream": lambda **kw: MemStream(window_size=8, num_epochs=20, **kw),
     "MStream": lambda **kw: MStream(**kw),
+    "OeSNNUAD": lambda **kw: OeSNNUAD(window_size=10, **kw),
     "OnlineIsolationForest": lambda **kw: OnlineIsolationForest(
         num_trees=10, max_leaf_samples=8, window_size=32, **kw
     ),
@@ -65,7 +67,7 @@ MODELS = {
 }
 
 NAMES = list(MODELS)
-UNIVARIATE_MODELS = (SAND,)
+UNIVARIATE_MODELS = (SAND, OeSNNUAD)
 # These models take each instance as [timestamp, value].
 TIMESTAMPED_MODELS = (HTM,)
 # These models take each instance as an edge [source, destination].

@@ -6,6 +6,7 @@ on:
     paths:
       - "pysad/**"
       - "examples/**"
+      - "docs/examples.rst"
       - "tests/test_examples.py"
       - "pyproject.toml"
       - ".github/workflows/examples.yml"
@@ -13,6 +14,7 @@ on:
     paths:
       - "pysad/**"
       - "examples/**"
+      - "docs/examples.rst"
       - "tests/test_examples.py"
       - "pyproject.toml"
       - ".github/workflows/examples.yml"

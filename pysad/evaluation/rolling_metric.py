@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Iterable
 from typing import Any
+
+import numpy as np
 
 from pysad.core.base_metric import BaseMetric
 
@@ -57,6 +60,19 @@ class RollingMetric(BaseMetric):
         self._pairs.append((y_true, y_pred))
         return self
 
+    def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> RollingMetric:
+        """Add batches of label-score pairs to the recent window."""
+        yt_list = y_true.tolist() if isinstance(y_true, np.ndarray) else list(y_true)
+        yp_list = y_pred.tolist() if isinstance(y_pred, np.ndarray) else list(y_pred)
+        if len(yt_list) != len(yp_list):
+            raise ValueError("y_true and y_pred must have the same length.")
+        if len(yt_list) >= self.window_size:
+            yt_list = yt_list[-self.window_size :]
+            yp_list = yp_list[-self.window_size :]
+            self._pairs.clear()
+        self._pairs.extend(zip(yt_list, yp_list, strict=True))
+        return self
+
     def get(self) -> float | None:
         """Recompute the metric without changing the window.
 
@@ -67,6 +83,6 @@ class RollingMetric(BaseMetric):
             return None
 
         metric = self.metric_cls(**self.metric_kwargs)
-        for y_true, y_pred in self._pairs:
-            metric.update(y_true, y_pred)
+        yt_win, yp_win = zip(*self._pairs, strict=True)
+        metric.update_batch(yt_win, yp_win)
         return metric.get()

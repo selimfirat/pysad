@@ -133,7 +133,7 @@ What PySAD contains
 
       .. rst-class:: number
 
-         16
+         |num_detectors|
 
       streaming detectors from published papers
 

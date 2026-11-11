@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from collections import deque
 
+import numpy as np
+
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.statistics.average_meter import AverageMeter
 from pysad.statistics.running_statistic import RunningStatistic
@@ -109,6 +111,28 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         window = list(self.short_window)[-self.short_window_size :]
 
         return self._calibrate(sum(window) / len(window))
+
+    def transform(self, scores: np.ndarray) -> np.ndarray:
+        """Transforms a 1-D batch of scores against the current frozen Gaussian statistics."""
+        arr = np.asarray(scores, dtype=np.float64)
+        if arr.ndim != 1:
+            return super().transform(scores)
+        n = len(arr)
+        if n == 0 or not self.short_window:
+            return np.zeros(n, dtype=np.float64)
+        if self.short_window_size == 1:
+            short_means = arr
+        else:
+            prev = list(self.short_window)[-(self.short_window_size - 1) :]
+            short_means = (sum(prev) + arr) / (len(prev) + 1)
+        mean = self.avg_meter.get()
+        var = self.var_meter.get()
+        if var <= 0:
+            return np.where(short_means > mean, 1.0, np.where(short_means < mean, 0.0, 0.5))
+        std = math.sqrt(var)
+        zs = ((short_means - mean) / std) / math.sqrt(2)
+        _erfc = math.erfc
+        return 1.0 - 0.5 * np.fromiter((_erfc(z) for z in zs.tolist()), dtype=np.float64, count=n)
 
     def _calibrate(self, short_mean: float) -> float:
         mean = self.avg_meter.get()

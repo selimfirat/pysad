@@ -295,3 +295,36 @@ def test_threshold_filter_labels_scores_at_or_above_the_threshold():
     out = ThresholdFilter(threshold=4).fit_transform(np.array(SCORES, dtype=float))
 
     np.testing.assert_array_equal(out, [0, 0, 1, 0, 1, 1, 0, 1, 1, 0])
+
+
+def test_postprocessors_batch_transform_matches_partial():
+    import numpy as np
+    import pytest
+
+    with pytest.raises(ValueError, match=r"window_size must be a positive integer\."):
+        NonparametricDynamicThresholdPostprocessor(window_size=0)
+
+    train = np.array(SCORES, dtype=float)
+    test = np.array([0.5, 2.5, 4.0, 7.5, 12.0])
+    for cls, kwargs in [
+        (AveragePostprocessor, {}),
+        (MaxPostprocessor, {}),
+        (ZScorePostprocessor, {}),
+        (RunningAveragePostprocessor, {"window_size": WINDOW_SIZE}),
+        (RunningMaxPostprocessor, {"window_size": WINDOW_SIZE}),
+        (RunningMedianPostprocessor, {"window_size": WINDOW_SIZE}),
+        (RunningZScorePostprocessor, {"window_size": WINDOW_SIZE}),
+        (NonparametricDynamicThresholdPostprocessor, {"window_size": 5, "span": 1}),
+        (QuantileFilter, {"q": 0.5}),
+        (ThresholdFilter, {"threshold": 4.0}),
+    ]:
+        unfitted = cls(**kwargs)
+        np.testing.assert_allclose(
+            unfitted.transform(test),
+            [unfitted.transform_partial(float(s)) for s in test],
+        )
+        fitted = cls(**kwargs).fit(train)
+        np.testing.assert_allclose(
+            fitted.transform(test),
+            [fitted.transform_partial(float(s)) for s in test],
+        )

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import importlib
 import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 
+from pysad.core.base_postprocessor import BasePostprocessor, _PostprocessorChain
+from pysad.core.base_transformer import BaseTransformer, _TransformerChain
 from pysad.utils import _iterate
 
 
@@ -92,6 +95,12 @@ class BaseModel(ABC):
     from every public entry point, before any of its methods run; the model is left unchanged.
     """
 
+    __bibtex__: ClassVar[str | None] = None
+    _input_kind: ClassVar[Literal["multivariate", "univariate", "timestamped", "edge"]] = (
+        "multivariate"
+    )
+    _detector_doc: ClassVar[tuple[str, str, str] | None] = None
+    _pipeline_cls: ClassVar[type[Any] | None] = None
     _raw_fit_partial: Callable[..., Any]
     _raw_score_partial: Callable[..., Any]
     _raw_fit_score_partial: Callable[..., Any] | None = None
@@ -286,3 +295,28 @@ class BaseModel(ABC):
             y_pred[i] = _to_float_score(self.fit_score_partial(xi, yi))
 
         return y_pred
+
+    @staticmethod
+    def _make_pipeline(
+        model: BaseModel,
+        preprocessors: tuple[BaseTransformer, ...] = (),
+        postprocessors: tuple[BasePostprocessor, ...] = (),
+    ) -> BaseModel:
+        pipeline_cls = BaseModel._pipeline_cls
+        if pipeline_cls is None:
+            pipeline_cls = importlib.import_module("pysad.models.stream_pipeline").StreamPipeline
+        return pipeline_cls(model, preprocessors=preprocessors, postprocessors=postprocessors)
+
+    def __or__(self, other: BasePostprocessor) -> BaseModel:
+        """Chains this model with a postprocessor or postprocessor chain into a StreamPipeline."""
+        if isinstance(other, BasePostprocessor):
+            p_steps = other.steps if isinstance(other, _PostprocessorChain) else (other,)
+            return self._make_pipeline(self, postprocessors=p_steps)
+        return NotImplemented
+
+    def __ror__(self, other: BaseTransformer) -> BaseModel:
+        """Chains a transformer or transformer chain before this model into a StreamPipeline."""
+        if isinstance(other, BaseTransformer):
+            t_steps = other.steps if isinstance(other, _TransformerChain) else (other,)
+            return self._make_pipeline(self, preprocessors=t_steps)
+        return NotImplemented

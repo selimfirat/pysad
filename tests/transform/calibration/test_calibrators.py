@@ -406,3 +406,69 @@ def test_anomaly_likelihood_alerts_at_the_start_of_a_run():
     first = np.flatnonzero(likelihoods >= 1 - 1e-5)
     assert len(first) == 1
     np.testing.assert_allclose(likelihoods[first[0] + 1 :], 0.999)
+
+
+def test_conformal_calibrator_sorted_window_matches_reference_across_evictions_and_ties():
+    from collections import deque
+
+    import numpy as np
+
+    from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+    rng = np.random.default_rng(123)
+    # Include ties, negative values, and multiple window turnovers.
+    scores = rng.choice([-2.0, 0.0, 0.0, 1.5, 1.5, 3.0, 7.2], size=200)
+    for window_size in [1, 5, 25]:
+        cal_partial = ConformalProbabilityCalibrator(window_size=window_size)
+        win = deque(maxlen=window_size)
+        expected = []
+        actual_partial = []
+        for s in scores:
+            win.append(float(s))
+            expected.append(sum(1 for v in win if v < s) / len(win))
+            actual_partial.append(cal_partial.fit_transform_partial(float(s)))
+        np.testing.assert_array_equal(actual_partial, expected)
+
+        cal_batch = ConformalProbabilityCalibrator(window_size=window_size)
+        np.testing.assert_array_equal(cal_batch.fit_transform(scores), expected)
+
+        probes = np.array([-5.0, -2.0, 0.0, 1.0, 1.5, 10.0])
+        np.testing.assert_array_equal(
+            cal_batch.transform(probes),
+            [cal_partial.transform_partial(float(p)) for p in probes],
+        )
+
+
+def test_all_calibrators_batch_transform_matches_partial():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import (
+        AnomalyLikelihoodProbabilityCalibrator,
+        ConformalProbabilityCalibrator,
+        GaussianTailProbabilityCalibrator,
+        SPOTProbabilityCalibrator,
+    )
+
+    rng = np.random.default_rng(99)
+    train = rng.exponential(size=120)
+    probes = rng.exponential(size=40)
+    for cls, kwargs in [
+        (ConformalProbabilityCalibrator, {"window_size": 30}),
+        (GaussianTailProbabilityCalibrator, {"window_size": 40, "short_window_size": 5}),
+        (GaussianTailProbabilityCalibrator, {"running_statistics": False, "short_window_size": 1}),
+        (
+            AnomalyLikelihoodProbabilityCalibrator,
+            {"learning_period": 20, "num_estimation_samples": 20, "reestimation_period": 10},
+        ),
+        (SPOTProbabilityCalibrator, {"num_init": 40, "level": 0.9, "depth": 5}),
+    ]:
+        cal_u = cls(**kwargs)
+        np.testing.assert_allclose(
+            cal_u.transform(probes),
+            [cal_u.transform_partial(float(p)) for p in probes],
+        )
+        cal_f = cls(**kwargs).fit(train)
+        np.testing.assert_allclose(
+            cal_f.transform(probes),
+            [cal_f.transform_partial(float(p)) for p in probes],
+        )

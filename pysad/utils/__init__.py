@@ -16,18 +16,18 @@ from .validation import check_feature_bounds, check_univariate
 from .window import Window
 
 __all__ = [
-    "ArrayStreamer",
-    "Data",
-    "PandasStreamer",
-    "PolarsStreamer",
-    "Window",
     "_iterate",
+    "ArrayStreamer",
     "check_feature_bounds",
     "check_univariate",
+    "Data",
     "fix_seed",
     "generate_stream",
     "get_minmax_array",
     "get_minmax_scalar",
+    "PandasStreamer",
+    "PolarsStreamer",
+    "Window",
 ]
 
 

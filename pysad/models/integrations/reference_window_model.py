@@ -37,6 +37,8 @@ class ReferenceWindowModel(PYODModel):
         initial_window_y: np.ndarray | None = None,
         **kwargs: Any,
     ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
         super().__init__(model_cls, **kwargs)
 
         self.window_size = window_size
@@ -128,6 +130,9 @@ class ReferenceWindowModel(PYODModel):
         """
         if self.model is None:  # there is no model before the first fit
             return 0.0
+
+        if hasattr(self.model, "score_one"):
+            return float(self.model.score_one(X))
 
         score = self.model.decision_function([X])[0]
 

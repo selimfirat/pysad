@@ -26,8 +26,8 @@ from .sum_squares_meter import SumSquaresMeter
 from .variance_meter import VarianceMeter
 
 __all__ = [
-    "ADWINMeter",
     "AbsStatistic",
+    "ADWINMeter",
     "AverageMeter",
     "CountMeter",
     "DDMMeter",

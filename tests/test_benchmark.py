@@ -230,19 +230,88 @@ def test_changed_benchmark_detectors_isolates_table_edits():
     assert benchmark._changed_benchmark_detectors(source, source) == set()
 
     added = source.replace(
-        '"PEWMA": lambda n, period: models.PEWMA(),\n',
-        '"PEWMA": lambda n, period: models.PEWMA(),\n    "NewModel": lambda n, period: models.PEWMA(),\n',
+        "DETECTOR_OVERRIDES = {}",
+        'DETECTOR_OVERRIDES = {"NewModel": lambda X, seed: models.LODA(random_state=seed)}',
     )
     assert benchmark._changed_benchmark_detectors(source, added) == {"NewModel"}
 
     modified = source.replace(
-        '"PEWMA": lambda n, period: models.PEWMA(),',
-        '"PEWMA": lambda n, period: models.PEWMA(alpha=0.9),',
+        "batch_size=WARMUP_POINTS, random_state=0",
+        "batch_size=128, random_state=0",
     )
-    assert benchmark._changed_benchmark_detectors(source, modified) == {"PEWMA"}
+    assert benchmark._changed_benchmark_detectors(source, modified) == {"SAND"}
 
     shared_change = source.replace("WARMUP_POINTS = 256", "WARMUP_POINTS = 128")
     assert benchmark._changed_benchmark_detectors(source, shared_change) is None
+
+
+def test_benchmark_auto_discovers_detectors_and_sub_registries(monkeypatch):
+    """Detectors added to pysad.models.__all__ populate DETECTORS/UNIVARIATE/SEASONAL/TIMESTAMPED."""
+    from pysad import models
+    from pysad.core import BaseModel
+
+    class DummyMultivariate(BaseModel):
+        def __init__(self, feature_mins, feature_maxes, random_state=None):
+            self.feature_mins = feature_mins
+            self.feature_maxes = feature_maxes
+            self.random_state = random_state
+
+        def fit_partial(self, X, y=None):
+            return self
+
+        def score_partial(self, X):
+            return 0.0
+
+    class DummySeasonal(BaseModel):
+        _input_kind = "univariate"
+
+        def __init__(self, period, window_size):
+            self.period = period
+            self.window_size = window_size
+
+        def fit_partial(self, X, y=None):
+            return self
+
+        def score_partial(self, X):
+            return 0.0
+
+    class DummyTimestamped(BaseModel):
+        _input_kind = "timestamped"
+
+        def __init__(self, min_val, max_val, random_state=None):
+            self.min_val = min_val
+            self.max_val = max_val
+            self.random_state = random_state
+
+        def fit_partial(self, X, y=None):
+            return self
+
+        def score_partial(self, X):
+            return 0.0
+
+    monkeypatch.setattr(models, "DummyMultivariate", DummyMultivariate, raising=False)
+    monkeypatch.setattr(models, "DummySeasonal", DummySeasonal, raising=False)
+    monkeypatch.setattr(models, "DummyTimestamped", DummyTimestamped, raising=False)
+    monkeypatch.setattr(
+        models,
+        "__all__",
+        [*models.__all__, "DummyMultivariate", "DummySeasonal", "DummyTimestamped"],
+    )
+
+    benchmark = load_benchmark()
+    assert "DummyMultivariate" in benchmark.DETECTORS
+    mv = benchmark.DETECTORS["DummyMultivariate"](np.zeros((10, 4)), 42)
+    assert mv.feature_mins.shape == (4,) and mv.random_state == 42
+
+    assert "DummySeasonal" in benchmark.UNIVARIATE
+    assert "DummySeasonal" in benchmark.SEASONAL
+    seas = benchmark.UNIVARIATE["DummySeasonal"](1000, 24)
+    assert seas.period == 24 and seas.window_size == 73
+
+    assert "DummyTimestamped" in benchmark.UNIVARIATE
+    assert "DummyTimestamped" in benchmark.TIMESTAMPED
+    ts = benchmark.UNIVARIATE["DummyTimestamped"](1000, None)
+    assert ts.min_val == 0.0 and ts.max_val == 1.0 and ts.random_state == 0
 
 
 def test_pysad_files_excludes_unrelated_package_reexports():

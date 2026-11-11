@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from pysad.core.base_metric import BaseMetric
+from pysad.evaluation.metrics import _confusion_counts_batch
 
 
 class F1Metric(BaseMetric):
@@ -57,6 +60,18 @@ class F1Metric(BaseMetric):
                 self.fp_ += 1
         elif y_true == 1:
             self.fn_ += 1
+
+    def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> F1Metric:
+        """Record batches of true labels and predictions or scores."""
+        counts = _confusion_counts_batch(y_true, y_pred, self.threshold)
+        if counts is None:
+            super().update_batch(y_true, y_pred)
+            return self
+        tp, fp, fn, _ = counts
+        self.tp_ += tp
+        self.fp_ += fp
+        self.fn_ += fn
+        return self
 
     def get(self) -> float:
         """Return the current F1 score, or 0.0 if its denominator is zero.

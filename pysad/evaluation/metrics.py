@@ -1,11 +1,59 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from collections.abc import Iterable
 from math import sqrt
 
+import numpy as np
 from sklearn.metrics import average_precision_score, precision_score, recall_score, roc_auc_score
 
 from pysad.core.base_metric import BaseMetric
+
+
+def _confusion_counts_batch(
+    y_true: Iterable[int],
+    y_pred: Iterable[float],
+    threshold: float | None,
+) -> tuple[int, int, int, int] | None:
+    """Validates binary inputs and returns ``(tp, fp, fn, tn)``, or ``None`` if non-numeric."""
+    yt_arr = y_true if isinstance(y_true, np.ndarray) else np.asarray(list(y_true))
+    yp_arr = y_pred if isinstance(y_pred, np.ndarray) else np.asarray(list(y_pred))
+    if yt_arr.ndim != 1 or yp_arr.ndim != 1:
+        if len(yt_arr) != len(yp_arr):
+            raise ValueError("y_true and y_pred must have the same length.")
+        return None
+    if len(yt_arr) != len(yp_arr):
+        raise ValueError("y_true and y_pred must have the same length.")
+    if len(yt_arr) == 0:
+        return (0, 0, 0, 0)
+    if yt_arr.dtype.kind not in "biuf" or yp_arr.dtype.kind not in "biuf":
+        return None
+
+    yt_valid = (yt_arr == 0) | (yt_arr == 1)
+    if threshold is None:
+        yp_valid = (yp_arr == 0) | (yp_arr == 1)
+        if not bool(yt_valid.all()):
+            if bool(yp_valid.all()) or int(np.flatnonzero(~yt_valid)[0]) <= int(
+                np.flatnonzero(~yp_valid)[0]
+            ):
+                raise ValueError("y_true must be 0 or 1.")
+            raise ValueError("y_pred must be 0 or 1 when threshold is None.")
+        if not bool(yp_valid.all()):
+            raise ValueError("y_pred must be 0 or 1 when threshold is None.")
+        pred_pos = yp_arr == 1
+    else:
+        if not bool(yt_valid.all()):
+            raise ValueError("y_true must be 0 or 1.")
+        pred_pos = yp_arr >= threshold
+
+    actual_pos = yt_arr == 1
+    n_pos = int(np.count_nonzero(actual_pos))
+    n_pred = int(np.count_nonzero(pred_pos))
+    tp = int(np.count_nonzero(actual_pos & pred_pos))
+    fp = n_pred - tp
+    fn = n_pos - tp
+    tn = len(yt_arr) - n_pos - fp
+    return (tp, fp, fn, tn)
 
 
 class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
@@ -24,6 +72,16 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         """
         self.y_true.append(y_true)
         self.y_pred.append(y_pred)
+
+    def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> BaseSKLearnMetric:
+        """Appends batches of true labels and predicted values in stream order."""
+        yt_list = y_true.tolist() if isinstance(y_true, np.ndarray) else list(y_true)
+        yp_list = y_pred.tolist() if isinstance(y_pred, np.ndarray) else list(y_pred)
+        if len(yt_list) != len(yp_list):
+            raise ValueError("y_true and y_pred must have the same length.")
+        self.y_true.extend(yt_list)
+        self.y_pred.extend(yp_list)
+        return self
 
     def get(self) -> float:
         """Gets the current value of the score.
@@ -46,7 +104,9 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         pass
 
 
-def _apply_threshold(y_pred: list[float], threshold: float | None) -> list[float] | list[int]:
+def _apply_threshold(
+    y_pred: list[float], threshold: float | None
+) -> list[float] | list[int] | np.ndarray:
     """Turns anomaly scores into 0/1 predictions when a threshold is given.
 
     Args:
@@ -54,10 +114,12 @@ def _apply_threshold(y_pred: list[float], threshold: float | None) -> list[float
         threshold (float | None): The score at or above which an instance is predicted anomalous. If None, y_pred is returned unchanged.
 
     Returns:
-        list[float] | list[int]: The predicted classes.
+        list[float] | list[int] | np.ndarray: The predicted classes.
     """
     if threshold is None:
         return y_pred
+    if len(y_pred) >= 256:
+        return (np.asarray(y_pred) >= threshold).astype(np.int64)
 
     return [1 if score >= threshold else 0 for score in y_pred]
 
@@ -183,6 +245,21 @@ class MatthewsCorrelationMetric(BaseMetric):
             self.fp_ += 1
         else:
             self.tn_ += 1
+
+    def update_batch(
+        self, y_true: Iterable[int], y_pred: Iterable[float]
+    ) -> MatthewsCorrelationMetric:
+        """Add batches of labels and predictions to the counts."""
+        counts = _confusion_counts_batch(y_true, y_pred, self.threshold)
+        if counts is None:
+            super().update_batch(y_true, y_pred)
+            return self
+        tp, fp, fn, tn = counts
+        self.tp_ += tp
+        self.fp_ += fp
+        self.fn_ += fn
+        self.tn_ += tn
+        return self
 
     def get(self) -> float:
         """Return the correlation without changing the counts.

@@ -1,4 +1,5 @@
 import functools
+import inspect
 import os
 import subprocess
 import sys
@@ -30,18 +31,29 @@ _SHARED_MODEL_TEST_FILES = frozenset(
     }
 )
 
-# Univariate models validate their input through check_univariate in their defining module.
+
+def _model_input_kind(name: str) -> str:
+    cls = getattr(pysad.models, name)
+    kind = getattr(cls, "_input_kind", None)
+    if kind is not None and kind != "multivariate":
+        return str(kind)
+    if hasattr(sys.modules[cls.__module__], "check_univariate"):
+        return "univariate"
+    return str(kind or "multivariate")
+
+
+# Univariate models validate their input through check_univariate or set _input_kind = "univariate".
 UNIVARIATE_MODELS = frozenset(
-    name
-    for name in pysad.models.__all__
-    if hasattr(sys.modules[getattr(pysad.models, name).__module__], "check_univariate")
+    name for name in pysad.models.__all__ if _model_input_kind(name) == "univariate"
 )
 
 # These models take each instance as [timestamp, value].
-TIMESTAMPED_MODELS = frozenset({"HTM"})
+TIMESTAMPED_MODELS = frozenset(
+    name for name in pysad.models.__all__ if _model_input_kind(name) == "timestamped"
+)
 
 # These models take each instance as an edge [source, destination].
-EDGE_MODELS = frozenset({"MIDAS"})
+EDGE_MODELS = frozenset(name for name in pysad.models.__all__ if _model_input_kind(name) == "edge")
 
 
 def num_features_for(name: str, default: int = 3) -> int:
@@ -118,6 +130,37 @@ def active_model_names() -> tuple[str, ...]:
     return _models_changed_since(base)
 
 
+def _auto_short_stream_params(cls: type[Any], num_features: int) -> dict[str, Any]:
+    """Derives required constructor arguments for a newly added detector from its signature."""
+    custom = getattr(cls, "_short_stream_params", None)
+    if callable(custom):
+        return dict(custom(num_features))
+    if isinstance(custom, dict):
+        return dict(custom)
+    sig = inspect.signature(cls.__init__)
+    defaults: dict[str, Any] = {
+        "feature_mins": np.zeros(num_features),
+        "feature_maxes": np.ones(num_features),
+        "min_val": 0.0,
+        "max_val": 1.0,
+        "period": 2,
+        "input_shape": num_features,
+        "initial_X": np.random.RandomState(0).rand(12, num_features),
+        "window_length": 3,
+        "subsequence_length": 2,
+        "probationary_period": 10,
+        "window_size": 8,
+    }
+    return {
+        p.name: defaults[p.name]
+        for p in sig.parameters.values()
+        if p.name != "self"
+        and p.default is inspect.Parameter.empty
+        and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+        and p.name in defaults
+    }
+
+
 def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
     """Returns constructor arguments for `name` sized to `num_features` and short test streams."""
     ones, zeros = [1.0] * num_features, [0.0] * num_features
@@ -162,7 +205,9 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
         },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
     }
-    return params.get(name, {})
+    if name in params:
+        return params[name]
+    return _auto_short_stream_params(getattr(pysad.models, name), num_features)
 
 
 @pytest.fixture

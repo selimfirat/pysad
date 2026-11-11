@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any, cast
+
+import numpy as np
 
 from pysad.core.base_metric import BaseMetric
 from pysad.statistics.average_meter import AverageMeter
@@ -41,7 +44,6 @@ class WindowedMetric(BaseMetric):
         self.num_windows = 1
 
     def _init_metric(self, **kwargs: Any) -> BaseMetric:
-
         return self.metric_cls(**kwargs)
 
     def update(self, y_true: int, y_pred: float) -> WindowedMetric:
@@ -64,6 +66,28 @@ class WindowedMetric(BaseMetric):
             self.score_meter.update(score)
             self.metric = self._init_metric(**self.metric_kwargs)
 
+        return self
+
+    def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> WindowedMetric:
+        """Updates the windowed metric with batches of true labels and predictions."""
+        yt: np.ndarray | list[int] = y_true if isinstance(y_true, np.ndarray) else list(y_true)
+        yp: np.ndarray | list[float] = y_pred if isinstance(y_pred, np.ndarray) else list(y_pred)
+        if len(yt) != len(yp):
+            raise ValueError("y_true and y_pred must have the same length.")
+        pos = 0
+        n = len(yt)
+        while pos < n:
+            rem = self.window_size - (self.step % self.window_size)
+            take = min(rem, n - pos)
+            end = pos + take
+            self.metric.update_batch(yt[pos:end], yp[pos:end])
+            self.step += take
+            if self.step % self.window_size == 0:
+                self.num_windows += 1
+                score = cast(float, self.metric.get())
+                self.score_meter.update(score)
+                self.metric = self._init_metric(**self.metric_kwargs)
+            pos = end
         return self
 
     def get(self) -> float | None:

@@ -16,26 +16,4 @@ See ``examples/example_ddsketch_merge.py`` for a partitioned-stream example.
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   ADWINMeter
-   AverageMeter
-   CountMeter
-   DDMMeter
-   DDSketchMeter
-   EDDMMeter
-   ExponentialMovingAverageMeter
-   FHDDMMeter
-   HDDMAMeter
-   HDDMWMeter
-   KSWINMeter
-   MaxMeter
-   MedianMeter
-   MinMeter
-   OnlinePeriodicityMeter
-   PageHinkleyMeter
-   QuantileMeter
-   SumMeter
-   SumSquaresMeter
-   VarianceMeter
-   AbsStatistic
-   RunningStatistic
+   :tail: AbsStatistic, RunningStatistic

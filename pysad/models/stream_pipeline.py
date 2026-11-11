@@ -5,8 +5,8 @@ from collections.abc import Sequence
 import numpy as np
 
 from pysad.core.base_model import BaseModel
-from pysad.core.base_postprocessor import BasePostprocessor
-from pysad.core.base_transformer import BaseTransformer
+from pysad.core.base_postprocessor import BasePostprocessor, _PostprocessorChain
+from pysad.core.base_transformer import BaseTransformer, _TransformerChain
 
 
 class StreamPipeline(BaseModel):
@@ -33,6 +33,28 @@ class StreamPipeline(BaseModel):
         self.model = model
         self.preprocessors = preprocessors
         self.postprocessors = postprocessors
+
+    def __or__(self, other: BasePostprocessor) -> StreamPipeline:
+        """Appends a postprocessor or postprocessor chain to this pipeline."""
+        if isinstance(other, BasePostprocessor):
+            p_steps = other.steps if isinstance(other, _PostprocessorChain) else (other,)
+            return StreamPipeline(
+                self.model,
+                preprocessors=tuple(self.preprocessors),
+                postprocessors=(*self.postprocessors, *p_steps),
+            )
+        return NotImplemented
+
+    def __ror__(self, other: BaseTransformer) -> StreamPipeline:
+        """Prepends a preprocessor or preprocessor chain to this pipeline."""
+        if isinstance(other, BaseTransformer):
+            t_steps = other.steps if isinstance(other, _TransformerChain) else (other,)
+            return StreamPipeline(
+                self.model,
+                preprocessors=(*t_steps, *self.preprocessors),
+                postprocessors=tuple(self.postprocessors),
+            )
+        return NotImplemented
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> StreamPipeline:
         """Updates every stage with the next instance, as ``fit_score_partial`` does.
@@ -83,3 +105,56 @@ class StreamPipeline(BaseModel):
             score = postprocessor.fit_transform_partial(score)
 
         return score
+
+    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> StreamPipeline:
+        """Fits every stage to all instances in order.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
+            y (np.int32 array of shape (num_instances,)): The labels of the instances, passed to the detector (Default=None).
+
+        Returns:
+            object: The pipeline itself.
+        """
+        self.fit_score(X, y)
+        return self
+
+    def score(self, X: np.ndarray) -> np.ndarray:
+        """Scores all instances in order with every stage, fitting no stage.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order.
+
+        Returns:
+            np.float64 array of shape (num_instances,): The outputs of the last stage in order.
+        """
+        for preprocessor in self.preprocessors:
+            X = preprocessor.transform(X)
+        scores = self.model.score(X)
+        for postprocessor in self.postprocessors:
+            scores = postprocessor.transform(scores)
+
+        return np.asarray(scores, dtype=np.float64)
+
+    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
+        """Fits every stage to all instances in order and returns the outputs of the last stage.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit and score, in order.
+            y (np.int32 array of shape (num_instances,)): The labels of the instances, passed to the detector (Default=None).
+
+        Returns:
+            np.float64 array of shape (num_instances,): The outputs of the last stage in order.
+        """
+        if y is not None and len(X) != len(y):
+            raise ValueError("X and y must have the same length.")
+        for preprocessor in self.preprocessors:
+            X = preprocessor.fit_transform(X)
+        scores = self.model.fit_score(X, y)
+        for postprocessor in self.postprocessors:
+            scores = postprocessor.fit_transform(scores)
+
+        return np.asarray(scores, dtype=np.float64)
+
+
+BaseModel._pipeline_cls = StreamPipeline

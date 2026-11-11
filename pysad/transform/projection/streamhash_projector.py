@@ -51,11 +51,11 @@ def _murmurhash3_x86_32(seeds: np.ndarray, byte_matrix: np.ndarray) -> np.ndarra
         h1 = h1 ^ k1[np.newaxis, :]
 
     h1 = h1 ^ np.uint32(length)
-    h1 = h1 ^ (h1 >> 16)
+    h1 = h1 ^ (h1 >> np.uint32(16))
     h1 = (h1 * np.uint32(0x85EBCA6B)).astype(np.uint32)
-    h1 = h1 ^ (h1 >> 13)
+    h1 = h1 ^ (h1 >> np.uint32(13))
     h1 = (h1 * np.uint32(0xC2B2AE35)).astype(np.uint32)
-    h1 = h1 ^ (h1 >> 16)
+    h1 = h1 ^ (h1 >> np.uint32(16))
 
     return h1
 
@@ -111,6 +111,24 @@ class StreamhashProjector(BaseTransformer):
         Y = np.dot(X, R.T).squeeze()
 
         return Y
+
+    def fit(self, X: np.ndarray) -> StreamhashProjector:
+        """Returns the projector unchanged without iterating the batch."""
+        return self
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        """Projects all instances in a 2-D batch using a single matrix product."""
+        if isinstance(X, np.ndarray) and X.ndim == 2:
+            if len(X) == 0:
+                return np.empty((0, self.n_components), dtype=np.float64)
+            R = self._get_projection_matrix(X.shape[1])
+            with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+                return np.asarray(X @ R.T, dtype=np.float64)
+        return super().transform(X)
+
+    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+        """Projects all instances in a 2-D batch using a single matrix product."""
+        return self.transform(X)
 
     def _get_projection_matrix(self, ndim: int) -> np.ndarray:
         """Returns the projection matrix for the given number of features, building and caching it on first use.

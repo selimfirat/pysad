@@ -9,14 +9,3 @@ This module holds postprocessors that smooth, normalize, or threshold scores, or
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   NonparametricDynamicThresholdPostprocessor
-   RunningAveragePostprocessor
-   RunningMaxPostprocessor
-   RunningMedianPostprocessor
-   RunningZScorePostprocessor
-   AveragePostprocessor
-   MaxPostprocessor
-   QuantileFilter
-   ThresholdFilter
-   ZScorePostprocessor

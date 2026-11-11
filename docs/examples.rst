@@ -17,7 +17,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.758
+   AUROC: 0.768
 
 Score a stream with LODA
 ------------------------
@@ -138,7 +138,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.543
+   AUROC: 0.545
 
 Chain the stages into one model
 -------------------------------
@@ -205,7 +205,7 @@ It prints:
 Evaluate with several metrics
 -----------------------------
 
-This script runs :func:`~pysad.evaluation.evaluate_stream` once and gets three metrics. The function scores each point before the detector learns from it.
+This script runs :func:`~pysad.evaluation.evaluate_stream` once and gets four metrics. The function scores each point before the detector learns from it.
 
 .. literalinclude:: ../examples/example_evaluate_stream.py
    :language: python
@@ -216,6 +216,7 @@ It prints:
 
    AUROC: 0.768
    AUPR: 0.489
+   F1: 0.252
    Windowed AUROC: 0.756
 
 Raise alerts with a calibrator
@@ -339,7 +340,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.811
+   AUROC: 0.817
 
 Run a PyOD model
 ----------------
@@ -353,7 +354,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.807
+   AUROC: 0.813
 
 Fit a PyOD model once
 ---------------------
@@ -499,11 +500,11 @@ It prints:
 .. code-block:: text
 
    Highest-scoring anomaly alerts:
-   2025-01-01T11:10:00 score=5.6249
-   2025-01-01T12:00:00 score=5.5371
-   2025-01-01T10:20:00 score=5.0840
-   2025-01-01T11:58:00 score=4.1992
-   2025-01-01T11:05:00 score=4.1908
+   2025-01-01T11:10:00 score=5.8440
+   2025-01-01T12:00:00 score=5.8106
+   2025-01-01T10:20:00 score=4.8580
+   2025-01-01T11:58:00 score=4.2457
+   2025-01-01T11:05:00 score=4.2420
 
 Stream a Polars DataFrame
 -------------------------
@@ -718,7 +719,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.726
+   AUROC: 0.727
 
 Use kernel density local outliers with KELOS
 --------------------------------------------
@@ -779,7 +780,7 @@ It prints:
 Track running statistics
 ------------------------
 
-This script tracks the mean and the variance of a stream. Running statistics update with each new value.
+This script tracks the mean, the variance and the 99th percentile of a stream. Running statistics update with each new value.
 
 .. literalinclude:: ../examples/example_statistics.py
    :language: python
@@ -789,6 +790,7 @@ It prints:
 .. code-block:: text
 
    mean: -0.048, standard deviation: 0.977
+   99th percentile: 2.248 (exact: 2.227)
 
 Track the mean with an adaptive window
 --------------------------------------
@@ -919,3 +921,5 @@ MemStream trains a denoising autoencoder on a small normal calibration block, th
 
 .. literalinclude:: ../examples/example_memstream.py
    :language: python
+
+.. auto-examples::

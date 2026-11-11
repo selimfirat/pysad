@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from pysad.core.base_metric import BaseMetric
+from pysad.evaluation.metrics import _confusion_counts_batch
 
 
 class BalancedAccuracyMetric(BaseMetric):
@@ -55,6 +58,21 @@ class BalancedAccuracyMetric(BaseMetric):
             self.fp_ += 1
         else:
             self.tn_ += 1
+
+    def update_batch(
+        self, y_true: Iterable[int], y_pred: Iterable[float]
+    ) -> BalancedAccuracyMetric:
+        """Record batches of true labels and predictions or scores."""
+        counts = _confusion_counts_batch(y_true, y_pred, self.threshold)
+        if counts is None:
+            super().update_batch(y_true, y_pred)
+            return self
+        tp, fp, fn, tn = counts
+        self.tp_ += tp
+        self.fp_ += fp
+        self.fn_ += fn
+        self.tn_ += tn
+        return self
 
     def get(self) -> float:
         """Return balanced accuracy without changing the counts.

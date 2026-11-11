@@ -49,8 +49,27 @@ class PYODScoreEnsembler(BasePostprocessor):
 
         return float(self._combine(score_array)[0])
 
+    def fit(self, scores: np.ndarray) -> PYODScoreEnsembler:
+        """Returns the ensembler unchanged without iterating the batch."""
+        return self
 
-class AverageScoreEnsembler(PYODScoreEnsembler):
+
+class _DeterministicScoreEnsembler(PYODScoreEnsembler):
+    """Base class for deterministic score ensemblers that can combine a full batch in one call."""
+
+    def transform(self, scores: np.ndarray) -> np.ndarray:
+        arr = np.asarray(scores, dtype=np.float64)
+        if len(arr) == 0:
+            return np.empty(0, dtype=np.float64)
+        if arr.ndim == 1:
+            arr = arr.reshape(-1, 1)
+        return np.asarray(self._combine(arr), dtype=np.float64).reshape(-1)
+
+    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+        return self.transform(scores)
+
+
+class AverageScoreEnsembler(_DeterministicScoreEnsembler):
     """Combines the scores of multiple anomaly detectors for the current instance by taking their weighted average :cite:`zhao2020combo`.
 
     Args:
@@ -58,7 +77,6 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
     """
 
     def __init__(self, estimator_weights: np.ndarray | None = None) -> None:
-
         self.estimator_weights = estimator_weights
 
     def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -73,7 +91,7 @@ class AverageScoreEnsembler(PYODScoreEnsembler):
         return average(scores, estimator_weights=self.estimator_weights)
 
 
-class MaximumScoreEnsembler(PYODScoreEnsembler):
+class MaximumScoreEnsembler(_DeterministicScoreEnsembler):
     """Combines the scores of multiple anomaly detectors for the current instance by taking their maximum :cite:`zhao2020combo`."""
 
     def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -88,7 +106,7 @@ class MaximumScoreEnsembler(PYODScoreEnsembler):
         return maximization(scores)
 
 
-class MedianScoreEnsembler(PYODScoreEnsembler):
+class MedianScoreEnsembler(_DeterministicScoreEnsembler):
     """Combines the scores of multiple anomaly detectors for the current instance by taking their median :cite:`zhao2020combo`."""
 
     def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:

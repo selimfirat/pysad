@@ -186,3 +186,29 @@ def test_changing_initial_window_after_construction_keeps_scores():
     caller_initial[:] = 0.0
 
     np.testing.assert_array_equal(_scores(model, X), expected)
+
+
+@pytest.mark.parametrize("window_size", [0, -5])
+def test_non_positive_window_size_raises(window_size):
+    from pysad.models.iforest_asd import _IsolationForest
+
+    with pytest.raises(ValueError, match="window_size"):
+        IForestASD(window_size=window_size)
+    with pytest.raises(ValueError, match="window_size"):
+        ReferenceWindowModel(_IsolationForest, window_size=window_size, sliding_size=4)
+
+
+@pytest.mark.parametrize("drift_threshold", [None, 0.05, 1.0])
+def test_fit_score_matches_fit_score_partial_with_drift_threshold(drift_threshold):
+    rng = np.random.RandomState(7)
+    X = np.concatenate(
+        [rng.normal(size=(WINDOW_SIZE * 2, 3)), rng.normal(loc=5.0, size=(WINDOW_SIZE + 5, 3))]
+    )
+    streamed = _scores(
+        IForestASD(window_size=WINDOW_SIZE, drift_threshold=drift_threshold, **IFOREST_KWARGS),
+        X,
+    )
+    batched = IForestASD(
+        window_size=WINDOW_SIZE, drift_threshold=drift_threshold, **IFOREST_KWARGS
+    ).fit_score(X)
+    np.testing.assert_array_equal(batched, streamed)

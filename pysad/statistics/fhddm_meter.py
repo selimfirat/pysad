@@ -42,7 +42,7 @@ class FHDDMMeter(UnivariateStatistic):
             values give fewer false drifts and later detections (Default=1e-6).
 
     Raises:
-        ValueError: If ``delta`` is not in (0, 1).
+        ValueError: If ``window_size`` is less than 1 or ``delta`` is not in (0, 1).
 
     Attributes:
         window_size (int): The number of the last values in the window.
@@ -53,6 +53,8 @@ class FHDDMMeter(UnivariateStatistic):
     """
 
     def __init__(self, window_size: int = 100, delta: float = 1e-6) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
         if not 0.0 < delta < 1.0:
             raise ValueError("delta must be in (0, 1).")
 

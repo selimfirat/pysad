@@ -9,8 +9,4 @@ This module holds wrappers that run PyOD batch detectors and River forecasters o
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   ReferenceWindowModel
-   OneFitModel
-   PredictiveAnomalyDetector
-   PYODModel
+   :tail: ReferenceWindowModel, OneFitModel, PredictiveAnomalyDetector, PYODModel

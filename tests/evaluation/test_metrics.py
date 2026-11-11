@@ -374,3 +374,64 @@ def test_matthews_correlation_rejects_nonbinary_inputs(threshold, label, predict
     with pytest.raises(ValueError):
         metric.update(label, prediction)
     assert metric.get() == 1.0
+
+
+def test_update_batch_matches_sequential_updates_across_all_metrics():
+    import numpy as np
+
+    from pysad.evaluation import (
+        AUPRMetric,
+        AUROCMetric,
+        BalancedAccuracyMetric,
+        F1Metric,
+        MatthewsCorrelationMetric,
+        PrecisionMetric,
+        RecallMetric,
+        RollingMetric,
+        WindowedMetric,
+    )
+
+    rng = np.random.default_rng(7)
+    y_true = rng.integers(0, 2, size=85)
+    scores = rng.random(size=85)
+    preds = (scores >= 0.5).astype(int)
+
+    specs = [
+        (lambda: AUROCMetric(), scores),
+        (lambda: AUPRMetric(), scores),
+        (lambda: PrecisionMetric(threshold=0.5), scores),
+        (lambda: RecallMetric(threshold=0.5), scores),
+        (lambda: F1Metric(threshold=0.5), scores),
+        (lambda: BalancedAccuracyMetric(threshold=0.5), scores),
+        (lambda: MatthewsCorrelationMetric(threshold=0.5), scores),
+        (lambda: F1Metric(), preds),
+        (lambda: BalancedAccuracyMetric(), preds),
+        (lambda: MatthewsCorrelationMetric(), preds),
+        (lambda: WindowedMetric(AUROCMetric, window_size=20, ignore_nonempty_last=False), scores),
+        (lambda: WindowedMetric(F1Metric, window_size=20, threshold=0.5), scores),
+        (lambda: RollingMetric(AUROCMetric, window_size=25), scores),
+        (lambda: RollingMetric(F1Metric, window_size=25, threshold=0.5), scores),
+    ]
+
+    for make_metric, yp in specs:
+        seq = make_metric()
+        for yt_i, yp_i in zip(y_true, yp, strict=True):
+            seq.update(int(yt_i), float(yp_i))
+
+        batched = make_metric()
+        assert batched.update_batch(y_true[:30], yp[:30]) is batched
+        batched.update_batch(y_true[30:], yp[30:])
+        assert batched.get() == pytest.approx(seq.get())
+
+    # Invalid batch leaves confusion-count metrics unmutated and raises ValueError.
+    for cls in (F1Metric, BalancedAccuracyMetric, MatthewsCorrelationMetric):
+        m = cls()
+        m.update(1, 1)
+        m.update(0, 0)
+        with pytest.raises(ValueError, match="y_true must be 0 or 1"):
+            m.update_batch([1, 2], [1, 0])
+        with pytest.raises(ValueError, match="y_pred must be 0 or 1"):
+            m.update_batch([1, 0], [1, 0.3])
+        with pytest.raises(ValueError, match="same length"):
+            m.update_batch([1, 0], [1])
+        assert m.get() == 1.0

@@ -30,6 +30,8 @@ class NETS(BaseModel):
         calibration_size: int = 256,
         outlier_fraction: float = 0.05,
     ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
         self.window_size = window_size
         self.max_radius = max_radius
         self.calibration_size = calibration_size

@@ -83,6 +83,9 @@ class NonparametricDynamicThresholdPostprocessor(BasePostprocessor):
         span (float): Span of the EWMA, so the smoothing factor is ``2 / (span + 1)`` (Default=105.0).
         p (float): Minimum percent decrease between the maxima of the anomalous sequences that pruning keeps (Default=0.13).
         z_values (tuple[float, ...]): Candidate numbers of standard deviations above the mean of the window (Default=(2.5, 3.0, ..., 10.0)).
+
+    Raises:
+        ValueError: If ``window_size`` is less than 1.
     """
 
     def __init__(
@@ -92,6 +95,8 @@ class NonparametricDynamicThresholdPostprocessor(BasePostprocessor):
         p: float = 0.13,
         z_values: tuple[float, ...] = _Z_VALUES,
     ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
         self.window_size = window_size
         self.span = span
         self.p = p
@@ -173,3 +178,10 @@ class NonparametricDynamicThresholdPostprocessor(BasePostprocessor):
             return 0.0
 
         return float((sequence_max[-1] - thresholds[best]) / (mean + std))
+
+    def transform(self, scores: np.ndarray) -> np.ndarray:
+        """Transforms a batch using the frozen window's last-score anomaly value."""
+        n = len(scores)
+        if n == 0:
+            return np.empty(0, dtype=np.float64)
+        return np.full(n, self.transform_partial(), dtype=np.float64)

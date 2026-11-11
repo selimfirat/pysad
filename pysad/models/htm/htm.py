@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar, Literal
+
 import numpy as np
 from sklearn.utils import check_random_state
 
@@ -70,6 +72,10 @@ class HTM(BaseModel):
     Raises:
         ValueError: If ``min_val`` is greater than ``max_val``.
     """
+
+    _input_kind: ClassVar[Literal["multivariate", "univariate", "timestamped", "edge"]] = (
+        "timestamped"
+    )
 
     def __init__(
         self,

@@ -145,3 +145,16 @@ def test_duplicate_instances_stay_finite_through_repeated_summaries():
     assert np.isfinite(scores).all()
     assert np.isfinite(probes).all()
     assert probes[2] > probes[0]
+
+
+def test_scores_are_unit_invariant():
+    from pysad.models import DILOF
+
+    rng = np.random.RandomState(0)
+    X = rng.normal(size=(300, 3))
+    X[[100, 101, 102]] += 8.0
+
+    base = DILOF(num_neighbors=7, window_size=100, threshold=None).fit_score(X)
+    for scale in (1e-9, 1e-12, 1e3):
+        scaled = DILOF(num_neighbors=7, window_size=100, threshold=None).fit_score(scale * X)
+        np.testing.assert_allclose(scaled, base)

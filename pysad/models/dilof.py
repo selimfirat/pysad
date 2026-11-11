@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from pysad.models.incremental_lof import _EPS, IncrementalLOF
+from pysad.models.incremental_lof import IncrementalLOF, _lrd_guard
 
 # The step size, its decay per iteration and the weight of the size constraint of the
 # summarization come from the paper. The number of iterations comes from its reference code.
@@ -120,18 +120,22 @@ class DILOF(IncrementalLOF):
         neighbor_dists = np.take_along_axis(dists, neighbors, axis=1)
         kth = neighbors[np.arange(half), neighbor_dists.argmax(axis=1)]
         k_dists = neighbor_dists.max(axis=1)
+        # Guard for the k-distance denominators, scaled by the typical k-distance so
+        # the summarization ratios stay unit-invariant. Falls back to the absolute
+        # _EPS when every k-distance is zero.
+        guard = _lrd_guard(k_dists)
 
         # The k-distance of each instance in the summary over its k-distance now, approximated.
         shares = np.exp(_sigmoid(lofs))
         neighbor_shares = shares[neighbors].sum(axis=1)
         self_ratios = (k_dists + neighbor_shares / shares.sum() * (max_dists - k_dists)) / (
-            k_dists + _EPS
+            k_dists + guard
         )
         # The k-th neighbor in the summary of the instances whose neighbors are likely removed.
         band = (dists > k_dists[:, None]) & (dists < 2.0 * (shares * k_dists)[:, None])
         moved = (neighbor_shares > neighbor_shares.mean()) & band.any(axis=1)
         kth[moved] = band[moved].argmax(axis=1)
-        kth_ratios = dists[np.arange(half), kth] / (k_dists + _EPS)
+        kth_ratios = dists[np.arange(half), kth] / (k_dists + guard)
         shape = np.exp(np.minimum(lofs, _MAX_EXP_LOF))
 
         y = np.full(half, 0.5)

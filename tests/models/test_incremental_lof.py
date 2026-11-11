@@ -52,3 +52,16 @@ def test_rejects_a_window_too_small_for_the_neighbors():
 
     with pytest.raises(ValueError, match="window_size"):
         IncrementalLOF(num_neighbors=10, window_size=11)
+
+
+def test_scores_are_unit_invariant():
+    from pysad.models import IncrementalLOF
+
+    rng = np.random.RandomState(0)
+    X = rng.normal(size=(300, 3))
+    X[[100, 101, 102]] += 8.0
+
+    base = IncrementalLOF(num_neighbors=7, window_size=100).fit_score(X)
+    for scale in (1e-9, 1e-12, 1e3):
+        scaled = IncrementalLOF(num_neighbors=7, window_size=100).fit_score(scale * X)
+        np.testing.assert_allclose(scaled, base)

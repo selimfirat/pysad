@@ -1,5 +1,7 @@
 """The metrics of benchmarks/benchmark.py."""
 
+import csv
+
 import numpy as np
 import pytest
 from sklearn.metrics import average_precision_score, roc_auc_score
@@ -77,6 +79,66 @@ def test_sand_benchmark_scores_before_update_and_reproduces_metrics(monkeypatch,
     assert row["seed"] == 0
     assert row["auroc"] == round(roc_auc_score(y[cutoff:], expected), 4)
     assert row["aupr"] == round(average_precision_score(y[cutoff:], expected), 4)
+
+
+@pytest.mark.parametrize(
+    ("scores", "expected"),
+    [
+        ([0.95, 0.995, 0.99, 0.2], [1 / np.sqrt(3), 0, -1 / np.sqrt(3), 1 / np.sqrt(3)]),
+        ([0.1, 0.1, 0.1, 0.1], [0, 0, 0, 0]),
+        ([1.0, 1.0, 1.0, 1.0], [0, 0, 0, 0]),
+    ],
+)
+def test_alert_mcc_uses_each_threshold(scores, expected):
+    benchmark = load_benchmark()
+    row = benchmark.alerts("conformal", np.array(scores), np.array([1, 0, 1, 0]), True)
+    for threshold, value in zip([0.95, 0.99, 0.995, "rate"], expected, strict=True):
+        assert row[f"conformal_{threshold}_mcc"] == round(value, 4)
+
+
+def test_alert_mcc_excludes_invalid_runs():
+    benchmark = load_benchmark()
+    row = benchmark.alerts("conformal", np.array([0.1, np.nan]), np.array([0, 1]), False)
+    assert np.isnan(row["conformal_0.95_mcc"])
+
+
+def test_alert_mcc_survives_csv_and_averages_runs(tmp_path, monkeypatch):
+    benchmark = load_benchmark()
+    monkeypatch.setattr(benchmark, "OUT", tmp_path)
+    labels = np.array([1, 0, 1, 0])
+    rows = []
+    for seed, scores in enumerate([[0.95, 0.995, 0.99, 0.2], [0.1, 0.1, 0.1, 0.1]]):
+        row = {
+            "dataset": "synthetic",
+            "detector": "LODA",
+            "seed": seed,
+            "auroc": 0.5,
+            "aupr": 0.5,
+            "ms_per_point": 0.1,
+        }
+        for name in benchmark.CALIBRATORS:
+            row.update(benchmark.alerts(name, np.array(scores), labels, True))
+        rows.append(row)
+    benchmark.write_csv(
+        "results.csv",
+        benchmark.FIELDS,
+        [[row.get(f, "") for f in benchmark.FIELDS] for row in rows],
+    )
+    results = benchmark.read_results(tmp_path / "results.csv")
+    monkeypatch.setattr(benchmark, "DATASETS", ["synthetic"])
+    monkeypatch.setattr(benchmark, "DRIFT", {})
+    monkeypatch.setattr(
+        benchmark, "load", lambda dataset, seed=0, points=None: (np.zeros((4, 1)), labels)
+    )
+    monkeypatch.setattr(
+        benchmark.Data,
+        "describe",
+        lambda self, name: {"points": 4, "features": 1, "anomaly_rate": 0.5},
+    )
+    benchmark.write_tables(results)
+    with (tmp_path / "alerts.csv").open() as stream:
+        table = list(csv.DictReader(stream))
+    assert [row["MCC"] for row in table] == ["0.289", "0.000", "-0.289", "0.289"] * 2
 
 
 @pytest.fixture
@@ -198,8 +260,6 @@ def test_best_values_at_chance_render_in_bold_and_italics(ranking_tables):
 @pytest.mark.parametrize("aupr, marked", [("0.0434", True), ("0.0435", True), ("0.0436", False)])
 def test_write_ranking_compares_chance_at_stored_precision(tmp_path, monkeypatch, aupr, marked):
     """Stored AUPR values compare against the rounded anomaly fraction."""
-    import csv
-
     benchmark = load_benchmark()
     # The last 23 labels contain one anomaly. The first seven labels are warmup.
     y = np.zeros(30, dtype=int)

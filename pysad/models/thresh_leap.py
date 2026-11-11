@@ -3,7 +3,8 @@ from __future__ import annotations
 import numpy as np
 
 from pysad.core.base_model import BaseModel
-from pysad.models._window import _RadiusCalibrator, _RingBuffer
+from pysad.models._window import _RadiusCalibrator
+from pysad.utils.window import RingBuffer
 
 
 class ThreshLEAP(BaseModel):
@@ -38,7 +39,7 @@ class ThreshLEAP(BaseModel):
         self.outlier_fraction = outlier_fraction
         self.radius_: float | None = max_radius
         self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
-        self._buffer = _RingBuffer(window_size)
+        self._buffer = RingBuffer(window_size)
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> ThreshLEAP:
         """Updates the model with the next instance. The oldest instance of a full window expires.

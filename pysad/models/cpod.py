@@ -36,7 +36,9 @@ class CPOD(BaseModel):
         self.max_radius = max_radius
         self.calibration_size = calibration_size
         self.outlier_fraction = outlier_fraction
-        self.radius_: float | None = max_radius
+        self.radius_: float | None = None
+        self._ring_thresholds: np.ndarray | None = None
+        self._set_radius(max_radius)
         self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
         self.points_ = np.empty((0, 0))  # the window as a ring buffer, (window_size, num_features)
         self.cores_: np.ndarray = np.empty((0, 0))  # the core points, (capacity, num_features)
@@ -48,6 +50,63 @@ class CPOD(BaseModel):
         self._num = 0  # the number of instances in the window
         self._next = 0  # the slot of the next instance, which holds the oldest one in a full window
 
+    def _set_radius(self, radius: float | None) -> None:
+        self.radius_ = radius
+        self._ring_thresholds = (
+            None if radius is None else np.array([0.5, 1.0, 1.5, 2.0], dtype=np.float64) * radius
+        )
+
+    @staticmethod
+    def _dists_to_point(points: np.ndarray, x: np.ndarray) -> np.ndarray:
+        if len(points) == 0:
+            return np.empty(0, dtype=np.float64)
+        diff = points - x
+        return np.sqrt(np.einsum("ij,ij->i", diff, diff))
+
+    def _grow_cores(self) -> np.ndarray:
+        num = max(len(self.linked_), 1)
+        start = len(self.linked_)
+        self.cores_ = np.concatenate([self.cores_, np.empty((num, self.cores_.shape[1]))])
+        self.rings_ = np.concatenate(
+            [self.rings_, np.full((num, self.window_size), 4, dtype=np.int8)]
+        )
+        self.half_ = np.concatenate([self.half_, np.zeros(num, dtype=np.int64)])
+        self.linked_ = np.concatenate([self.linked_, np.zeros(num, dtype=np.int64)])
+        return np.arange(start, start + num)
+
+    def _fit_with_dists(
+        self,
+        X: np.ndarray,
+        active: np.ndarray | None = None,
+        dists: np.ndarray | None = None,
+    ) -> None:
+        if self.points_.size == 0:
+            self.points_ = np.empty((self.window_size, len(X)))
+            self.cores_ = np.empty((0, len(X)))
+
+        i = self._next
+        if self._num == self.window_size:
+            self._remove(i)
+            if active is not None and dists is not None:
+                keep = self.linked_[active] > 0
+                active = active[keep]
+                dists = dists[keep]
+        else:
+            self._num += 1
+        self.points_[i] = X
+        self._next = (i + 1) % self.window_size
+
+        if self._calibrator.active:
+            prev_radius = self.radius_
+            self._set_radius(self._calibrator.update(X))
+            if self.radius_ is not None:
+                if self.radius_ != prev_radius:
+                    self._build()
+                else:
+                    self._add(i, active, dists)
+        elif self.radius_ is not None:
+            self._add(i, active, dists)
+
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> CPOD:
         """Updates the model with the next instance. The oldest instance of a full window expires.
 
@@ -58,46 +117,76 @@ class CPOD(BaseModel):
         Returns:
             object: self.
         """
-        X = np.array(X, dtype=np.float64)
-        if self.points_.size == 0:
-            self.points_ = np.empty((self.window_size, len(X)))
-            self.cores_ = np.empty((0, len(X)))
-
-        i = self._next
-        if self._num == self.window_size:
-            self._remove(i)
-        else:
-            self._num += 1
-        self.points_[i] = X
-        self._next = (i + 1) % self.window_size
-
-        if self._calibrator.active:
-            self.radius_ = self._calibrator.update(X)
-            if self.radius_ is not None:
-                self._build()
-        elif self.radius_ is not None:
-            self._add(i)
-
+        self._fit_with_dists(np.array(X, dtype=np.float64))
         return self
 
     def _ring(self, dists: np.ndarray) -> np.ndarray:
         """The ring k of each distance, with k = 4 for distances above 2R."""
-        assert self.radius_ is not None
-        return np.searchsorted(np.array([0.5, 1.0, 1.5, 2.0]) * self.radius_, dists).astype(np.int8)
+        assert self._ring_thresholds is not None
+        return np.searchsorted(self._ring_thresholds, dists).astype(np.int8)
 
     def _build(self) -> None:
         """Builds the core points of the window with the current radius."""
-        self.rings_[:] = 4
+        m = self._num
+        self.rings_[:, :m] = 4
         self.half_[:] = 0
         self.linked_[:] = 0
-        for i in range(self._num):
-            self._add(i)
+        if m == 0 or self.radius_ is None:
+            return
 
-    def _add(self, i: int) -> None:
+        pts = self.points_[:m]
+        pair_dists = scipy.spatial.distance.cdist(pts, pts)
+        pair_rings = self._ring(pair_dists)
+        core_pts: list[int] = []
+        for i in range(m):
+            if core_pts:
+                c_count = len(core_pts)
+                rings_i = pair_rings[core_pts, i]
+                self.rings_[:c_count, i] = rings_i
+                self.half_[:c_count] += rings_i == 0
+                self.linked_[:c_count] += rings_i <= 1
+                if (rings_i <= 1).any():
+                    continue
+
+            c = len(core_pts)
+            if c == len(self.linked_):
+                self._grow_cores()
+            self.cores_[c] = pts[i]
+            self.rings_[c, :m] = 4
+            if c > 0:
+                near3 = np.flatnonzero(pair_dists[core_pts, i] <= 3.0 * self.radius_)
+                if near3.size == 1:
+                    linked = np.flatnonzero(self.rings_[near3[0], :i] <= 1)
+                elif near3.size > 1:
+                    linked = np.flatnonzero((self.rings_[near3, :i] <= 1).any(axis=0))
+                else:
+                    linked = np.empty(0, dtype=np.intp)
+                if linked.size:
+                    r_linked = pair_rings[i, linked]
+                    self.rings_[c, linked] = r_linked
+                    self.half_[c] = int((r_linked == 0).sum()) + 1
+                    self.linked_[c] = int((r_linked <= 1).sum()) + 1
+                else:
+                    self.half_[c] = 1
+                    self.linked_[c] = 1
+            else:
+                self.half_[c] = 1
+                self.linked_[c] = 1
+            self.rings_[c, i] = 0
+            core_pts.append(i)
+
+    def _add(
+        self,
+        i: int,
+        active: np.ndarray | None = None,
+        dists: np.ndarray | None = None,
+    ) -> None:
         """Algorithm 2 of the paper for the instance in slot i."""
         assert self.radius_ is not None
-        active = np.flatnonzero(self.linked_)
-        dists = scipy.spatial.distance.cdist(self.cores_[active], self.points_[i : i + 1]).ravel()
+        pt = self.points_[i]
+        if active is None or dists is None:
+            active = np.flatnonzero(self.linked_)
+            dists = self._dists_to_point(self.cores_[active], pt)
         rings = self._ring(dists)
         self.rings_[active, i] = rings
         self.half_[active[rings == 0]] += 1
@@ -108,27 +197,30 @@ class CPOD(BaseModel):
         # A new core point at the instance in a free row.
         free = np.flatnonzero(self.linked_ == 0)
         if len(free) == 0:
-            num = max(len(self.linked_), 1)  # doubles the capacity
-            free = np.arange(len(self.linked_), len(self.linked_) + num)
-            self.cores_ = np.concatenate([self.cores_, np.empty((num, self.cores_.shape[1]))])
-            self.rings_ = np.concatenate(
-                [self.rings_, np.full((num, self.window_size), 4, dtype=np.int8)]
-            )
-            self.half_ = np.concatenate([self.half_, np.zeros(num, dtype=np.int64)])
-            self.linked_ = np.concatenate([self.linked_, np.zeros(num, dtype=np.int64)])
-        c = free[0]
-        self.cores_[c] = self.points_[i]
+            free = self._grow_cores()
+        c = int(free[0])
+        self.cores_[c] = pt
 
         # Its rings are within the instances linked to the core points within 3R of it (Theorem 3.7).
-        linked = np.flatnonzero((self.rings_[active[dists <= 3 * self.radius_]] <= 1).any(axis=0))
-        rings = self._ring(
-            scipy.spatial.distance.cdist(self.points_[linked], self.cores_[c : c + 1]).ravel()
-        )
-        self.rings_[c] = 4
-        self.rings_[c, linked] = rings
+        n = self._num
+        sub3 = active[dists <= 3.0 * self.radius_]
+        if sub3.size == 1:
+            linked = np.flatnonzero(self.rings_[sub3[0], :n] <= 1)
+        elif sub3.size > 1:
+            linked = np.flatnonzero((self.rings_[sub3, :n] <= 1).any(axis=0))
+        else:
+            linked = np.empty(0, dtype=np.intp)
+
+        self.rings_[c, :n] = 4
+        if linked.size:
+            rings_linked = self._ring(self._dists_to_point(self.points_[linked], pt))
+            self.rings_[c, linked] = rings_linked
+            self.half_[c] = int((rings_linked == 0).sum()) + 1
+            self.linked_[c] = int((rings_linked <= 1).sum()) + 1
+        else:
+            self.half_[c] = 1
+            self.linked_[c] = 1
         self.rings_[c, i] = 0
-        self.half_[c] = (rings == 0).sum() + 1
-        self.linked_[c] = (rings <= 1).sum() + 1
 
     def _remove(self, i: int) -> None:
         """Removes the expired instance in slot i. A core point with no linked window instance is removed."""
@@ -136,6 +228,46 @@ class CPOD(BaseModel):
         self.half_[rings == 0] -= 1
         self.linked_[rings <= 1] -= 1
         rings[:] = 4
+
+    def _score_with_dists(
+        self, X: np.ndarray
+    ) -> tuple[float, np.ndarray | None, np.ndarray | None]:
+        expiring = self._num == self.window_size
+        num_window = self._num - expiring
+        if num_window == 0 or self.radius_ is None:
+            return 1.0, None, None
+
+        active = np.flatnonzero(self.linked_)
+        dists = self._dists_to_point(self.cores_[active], X)
+        nearest = int(dists.argmin())
+        min_dist = float(dists[nearest])
+        if min_dist > 2.0 * self.radius_:  # Theorem 3.6: no candidates beyond 2R
+            return 1.0, active, dists
+
+        c = int(active[nearest])
+        n = self._num
+        num_neighbors = 0
+        if min_dist <= 0.5 * self.radius_:  # Theorems 3.3 and 3.4
+            num_neighbors = int(self.half_[c]) - int(expiring and self.rings_[c, self._next] == 0)
+            row = self.rings_[c, :n]
+            candidates = np.flatnonzero((row == 1) | (row == 2))
+        elif min_dist <= self.radius_:  # Theorem 3.5
+            candidates = np.flatnonzero(self.rings_[c, :n] <= 3)
+        else:  # Theorem 3.6, within 2R
+            sub2 = active[dists <= 2.0 * self.radius_]
+            if sub2.size == 1:
+                candidates = np.flatnonzero(self.rings_[sub2[0], :n] <= 1)
+            else:
+                candidates = np.flatnonzero((self.rings_[sub2, :n] <= 1).any(axis=0))
+
+        if expiring:  # The oldest instance expires when X arrives.
+            candidates = candidates[candidates != self._next]
+        if candidates.size:
+            num_neighbors += int(
+                (self._dists_to_point(self.points_[candidates], X) <= self.radius_).sum()
+            )
+
+        return float(1.0 - num_neighbors / num_window), active, dists
 
     def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance as if it arrived, without adding it to the window.
@@ -148,30 +280,19 @@ class CPOD(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        X = np.asarray(X, dtype=np.float64)
-        expiring = self._num == self.window_size
-        num_window = self._num - expiring
-        if num_window == 0 or self.radius_ is None:
-            return 1.0
+        return self._score_with_dists(np.asarray(X, dtype=np.float64))[0]
 
-        active = np.flatnonzero(self.linked_)
-        dists = scipy.spatial.distance.cdist(self.cores_[active], [X]).ravel()
-        nearest = dists.argmin()
-        c = active[nearest]
-        num_neighbors = 0
-        if dists[nearest] <= self.radius_ / 2:  # Theorems 3.3 and 3.4
-            num_neighbors = self.half_[c] - (expiring and self.rings_[c, self._next] == 0)
-            candidates = np.flatnonzero((self.rings_[c] == 1) | (self.rings_[c] == 2))
-        elif dists[nearest] <= self.radius_:  # Theorem 3.5
-            candidates = np.flatnonzero(self.rings_[c] <= 3)
-        else:  # Theorem 3.6, with no candidates beyond 2R
-            candidates = np.flatnonzero(
-                (self.rings_[active[dists <= 2 * self.radius_]] <= 1).any(axis=0)
-            )
-        if expiring:  # The oldest instance expires when X arrives.
-            candidates = candidates[candidates != self._next]
-        num_neighbors += (
-            scipy.spatial.distance.cdist(self.points_[candidates], [X]) <= self.radius_
-        ).sum()
+    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+        """Scores the next instance and adds it to the window, reusing core distances across both steps.
 
-        return float(1.0 - num_neighbors / num_window)
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to fit and score.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomalousness score of the input instance.
+        """
+        x = np.array(X, dtype=np.float64)
+        score, active, dists = self._score_with_dists(x)
+        self._fit_with_dists(x, active, dists)
+        return score

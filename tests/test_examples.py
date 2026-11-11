@@ -68,6 +68,15 @@ def _example_pysad_files(code: str) -> set[str]:
             )
             if isinstance(name, str) and name.split(".")[0] == "pysad":
                 todo.append(name)
+        for node in ast.walk(ast.parse(Path(module.__file__).read_text(encoding="utf-8"))):
+            target = sys.modules.get(node.module) if isinstance(node, ast.ImportFrom) else None
+            if (
+                target is not None
+                and target.__name__.split(".")[0] == "pysad"
+                and target.__file__ is not None
+                and not target.__file__.endswith("__init__.py")
+            ):
+                todo.append(target.__name__)
     return files
 
 

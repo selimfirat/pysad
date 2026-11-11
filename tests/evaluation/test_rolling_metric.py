@@ -59,3 +59,46 @@ def test_eviction_can_leave_one_class():
         metric.get()
     metric.update(0, 0.2)
     assert metric.get() == 1.0
+
+
+def test_rolling_confusion_metrics_match_batch_and_recover_from_invalid_pair():
+    import numpy as np
+
+    from pysad.evaluation import (
+        BalancedAccuracyMetric,
+        F1Metric,
+        MatthewsCorrelationMetric,
+        PrecisionMetric,
+        RecallMetric,
+        RollingMetric,
+    )
+
+    rng = np.random.default_rng(0)
+    yt = rng.integers(0, 2, size=60)
+    yp = rng.random(size=60)
+
+    for cls in (
+        PrecisionMetric,
+        RecallMetric,
+        F1Metric,
+        BalancedAccuracyMetric,
+        MatthewsCorrelationMetric,
+    ):
+        rolling_stream = RollingMetric(cls, window_size=12, threshold=0.5)
+        for t in range(len(yt)):
+            rolling_stream.update(int(yt[t]), float(yp[t]))
+            ref = cls(threshold=0.5)
+            start = max(0, t + 1 - 12)
+            ref.update_batch(yt[start : t + 1], yp[start : t + 1])
+            assert rolling_stream.get() == pytest.approx(ref.get())
+
+        rolling_batch = RollingMetric(cls, window_size=12, threshold=0.5)
+        rolling_batch.update_batch(yt, yp)
+        assert rolling_batch.get() == pytest.approx(rolling_stream.get())
+
+    bad = RollingMetric(PrecisionMetric, window_size=2)
+    bad.update(2, 1)
+    with pytest.raises(ValueError, match="y_true"):
+        bad.get()
+    bad.update(1, 1).update(1, 0)
+    assert bad.get() == pytest.approx(1.0)

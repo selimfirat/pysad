@@ -13,7 +13,7 @@ from .pandas_streamer import PandasStreamer
 from .polars_streamer import PolarsStreamer
 from .synthetic import generate_stream
 from .validation import check_feature_bounds, check_univariate
-from .window import Window
+from .window import RingBuffer, Window
 
 __all__ = [
     "_iterate",
@@ -27,6 +27,7 @@ __all__ = [
     "get_minmax_scalar",
     "PandasStreamer",
     "PolarsStreamer",
+    "RingBuffer",
     "Window",
 ]
 

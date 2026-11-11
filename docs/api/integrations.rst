@@ -1,12 +1,27 @@
 Integrations
 ============
 
-.. module:: pysad.models.integrations
+.. module:: pysad.integrations
 
-This module holds wrappers that run PyOD batch detectors and River forecasters on a stream. A batch detector fits a full dataset at once, not one point at a time. See :doc:`/guides/pyod`.
+This module holds bidirectional integrations between PySAD, PyOD, scikit-learn, and River: wrappers that run batch detectors and River forecasters on a stream, and adapters that expose PySAD detectors inside River and scikit-learn pipelines. See :doc:`/guides/pyod` and :doc:`/guides/pipelines`.
+
+Stream wrappers for external models
+-----------------------------------
 
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-   :tail: ReferenceWindowModel, OneFitModel, PredictiveAnomalyDetector, PYODModel
+   :exclude: RiverAnomalyDetector, SklearnAnomalyDetector
+   :tail: ReferenceWindowModel, OneFitModel, PredictiveAnomalyDetector
+
+River and scikit-learn pipeline adapters
+----------------------------------------
+
+River adapters require Python 3.11 or newer.
+
+.. autoclass:: RiverAnomalyDetector
+   :exclude-members: clone, mutate
+
+.. autoclass:: SklearnAnomalyDetector
+   :members: fit, score_samples, decision_function, predict

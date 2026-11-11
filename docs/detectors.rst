@@ -216,12 +216,12 @@ These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod
 
    * - Wrapper
      - Behavior
-   * - :class:`~pysad.models.integrations.ReferenceWindowModel`
+   * - :class:`~pysad.integrations.ReferenceWindowModel`
      - Trains the detector on a window of recent points and trains it again every ``sliding_size`` points :cite:`xstream`.
-   * - :class:`~pysad.models.integrations.OneFitModel`
+   * - :class:`~pysad.integrations.OneFitModel`
      - Trains the detector once on initial points and then only scores.
 
-:class:`~pysad.models.integrations.PredictiveAnomalyDetector` scores each value of a univariate stream by its deviation from the one-step forecast of a `River <https://riverml.xyz/>`_ forecaster, the plug-in method of EGADS :cite:`laptev2015generic`. The forecaster learns each value after the model scores it.
+:class:`~pysad.integrations.PredictiveAnomalyDetector` scores each value of a univariate stream by its deviation from the one-step forecast of a `River <https://riverml.xyz/>`_ forecaster, the plug-in method of EGADS :cite:`laptev2015generic`. The forecaster learns each value after the model scores it.
 
 Baselines for testing
 ---------------------

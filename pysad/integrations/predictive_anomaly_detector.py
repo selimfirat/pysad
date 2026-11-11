@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 
@@ -32,6 +32,8 @@ class PredictiveAnomalyDetector(BaseModel):
         TypeError: If probationary_period is not an int.
         ValueError: If probationary_period is negative.
     """
+
+    _is_detector: ClassVar[bool] = False
 
     def __init__(self, model: Any, relative: bool = False, probationary_period: int = 0) -> None:
         self.model = model

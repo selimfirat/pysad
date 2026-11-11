@@ -10,7 +10,7 @@ This module holds streamers, benchmark datasets and helper functions. A streamer
    :template: class.rst
    :toctree: ../generated
    :kind: classes
-   :tail: Data, Window
+   :tail: Data, RingBuffer, Window
 
 Functions
 ---------

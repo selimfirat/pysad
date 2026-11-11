@@ -17,8 +17,8 @@ def _model_specs():
     from pyod.models.iforest import IForest
 
     from pysad import models
-    from pysad.models.integrations import OneFitModel, ReferenceWindowModel
-    from pysad.transform.postprocessing import RunningZScorePostprocessor
+    from pysad.integrations import OneFitModel, ReferenceWindowModel
+    from pysad.transform.postprocessing import ZScorePostprocessor
     from pysad.transform.preprocessing import ShingleTransformer
     from tests.models.conftest import active_model_names, num_features_for, short_stream_params
 
@@ -70,7 +70,7 @@ def _model_specs():
         "StreamPipeline": {
             "model": models.LODA(),
             "preprocessors": [ShingleTransformer(shingle_size=2)],
-            "postprocessors": [RunningZScorePostprocessor(window_size=20)],
+            "postprocessors": [ZScorePostprocessor(window_size=20)],
         },
         "ThreshLEAP": {"window_size": 20, "max_radius": 0.3, "num_neighbors": 3},
     }
@@ -132,7 +132,7 @@ def _model_specs():
     if importlib.util.find_spec("river") is not None:
         from river import time_series
 
-        from pysad.models.integrations import PredictiveAnomalyDetector
+        from pysad.integrations import PredictiveAnomalyDetector
 
         specs.append(
             (
@@ -255,8 +255,7 @@ def test_float_scores_work_downstream():
         MedianScoreEnsembler,
     )
     from pysad.transform.postprocessing import (
-        RunningAveragePostprocessor,
-        RunningZScorePostprocessor,
+        AveragePostprocessor,
         ZScorePostprocessor,
     )
     from pysad.transform.probability_calibration import (
@@ -277,8 +276,8 @@ def test_float_scores_work_downstream():
         ConformalProbabilityCalibrator(window_size=50),
         GaussianTailProbabilityCalibrator(window_size=50),
         SPOTProbabilityCalibrator(num_init=50, level=0.9),
-        RunningAveragePostprocessor(window_size=10),
-        RunningZScorePostprocessor(window_size=10),
+        AveragePostprocessor(window_size=10),
+        ZScorePostprocessor(window_size=10),
         ZScorePostprocessor(),
     ]
     ensemblers = [AverageScoreEnsembler(), MaximumScoreEnsembler(), MedianScoreEnsembler()]

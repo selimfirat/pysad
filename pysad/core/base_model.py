@@ -99,8 +99,10 @@ class BaseModel(ABC):
     _input_kind: ClassVar[Literal["multivariate", "univariate", "timestamped", "edge"]] = (
         "multivariate"
     )
+    _is_detector: ClassVar[bool] = True
     _detector_doc: ClassVar[tuple[str, str, str] | None] = None
     _pipeline_cls: ClassVar[type[Any] | None] = None
+    _ensemble_cls: ClassVar[type[Any] | None] = None
     _raw_fit_partial: Callable[..., Any]
     _raw_score_partial: Callable[..., Any]
     _raw_fit_score_partial: Callable[..., Any] | None = None
@@ -319,4 +321,27 @@ class BaseModel(ABC):
         if isinstance(other, BaseTransformer):
             t_steps = other.steps if isinstance(other, _TransformerChain) else (other,)
             return self._make_pipeline(self, preprocessors=t_steps)
+        return NotImplemented
+
+    @staticmethod
+    def _make_ensemble(models: tuple[BaseModel, ...]) -> BaseModel:
+        ensemble_cls = BaseModel._ensemble_cls
+        if ensemble_cls is None:
+            ensemble_cls = importlib.import_module("pysad.models.model_ensemble").ModelEnsemble
+        return ensemble_cls(models)
+
+    def __and__(self, other: BaseModel) -> BaseModel:
+        """Combines this model with another model (or default ensemble) into a ModelEnsemble."""
+        if isinstance(other, BaseModel):
+            left = (
+                self.models
+                if getattr(self, "_default_ensembler", False) and hasattr(self, "models")
+                else (self,)
+            )
+            right = (
+                other.models
+                if getattr(other, "_default_ensembler", False) and hasattr(other, "models")
+                else (other,)
+            )
+            return self._make_ensemble((*left, *right))
         return NotImplemented

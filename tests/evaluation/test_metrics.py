@@ -292,17 +292,18 @@ def test_precision_recall_without_threshold_on_binary_predictions():
 
 
 def test_precision_recall_without_threshold_reject_scores():
-    """Test PrecisionMetric and RecallMetric do not pick a threshold for scores on their own."""
+    """Test PrecisionMetric and RecallMetric reject continuous scores immediately when threshold is None."""
     import pytest
 
     from pysad.evaluation import PrecisionMetric, RecallMetric
 
     for metric_cls in [PrecisionMetric, RecallMetric]:
         metric = metric_cls()
-        metric.update(1, 0.9)
-        metric.update(0, 0.2)
-        with pytest.raises(ValueError):
-            metric.get()
+        metric.update(1, 1)
+        assert not hasattr(metric, "y_true")
+        with pytest.raises(ValueError, match="y_pred must be 0 or 1"):
+            metric.update(1, 0.9)
+        assert metric.get() == 1.0
 
 
 def test_empty_metric_contract():
@@ -424,7 +425,13 @@ def test_update_batch_matches_sequential_updates_across_all_metrics():
         assert batched.get() == pytest.approx(seq.get())
 
     # Invalid batch leaves confusion-count metrics unmutated and raises ValueError.
-    for cls in (F1Metric, BalancedAccuracyMetric, MatthewsCorrelationMetric):
+    for cls in (
+        PrecisionMetric,
+        RecallMetric,
+        F1Metric,
+        BalancedAccuracyMetric,
+        MatthewsCorrelationMetric,
+    ):
         m = cls()
         m.update(1, 1)
         m.update(0, 0)

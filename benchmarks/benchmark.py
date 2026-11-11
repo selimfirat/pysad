@@ -83,9 +83,19 @@ DRIFT = {
 DRIFT_POINTS = 10_000
 
 
-NON_BENCHMARK_MODELS = frozenset({"NullModel", "PerfectModel", "RandomModel", "StreamPipeline"})
-# Fallback kinds keep this script compatible with base checkouts before _input_kind existed.
+# Fallback attributes keep this script compatible with base checkouts before _is_detector / _input_kind existed.
+_FALLBACK_NON_DETECTORS = frozenset(
+    {"ModelEnsemble", "NullModel", "PerfectModel", "RandomModel", "StreamPipeline"}
+)
 _FALLBACK_INPUT_KINDS = {"HTM": "timestamped", "MIDAS": "edge"}
+
+
+def _is_detector_model(name):
+    cls = getattr(models, name)
+    flag = getattr(cls, "_is_detector", None)
+    if flag is not None:
+        return bool(flag)
+    return name not in _FALLBACK_NON_DETECTORS
 
 
 def _model_input_kind(name):
@@ -194,7 +204,7 @@ UNIVARIATE_OVERRIDES = {
 DETECTORS = {
     name: DETECTOR_OVERRIDES.get(name) or _make_multivariate_factory(getattr(models, name))
     for name in models.__all__
-    if name not in NON_BENCHMARK_MODELS and _model_input_kind(name) == "multivariate"
+    if _is_detector_model(name) and _model_input_kind(name) == "multivariate"
 }
 # The per-dataset tables use these names, which are common in the papers, to fit the page.
 SHORT_NAMES = {
@@ -210,7 +220,7 @@ SHORT_NAMES = {
 UNIVARIATE = {
     name: UNIVARIATE_OVERRIDES.get(name) or _make_univariate_factory(getattr(models, name))
     for name in models.__all__
-    if name not in NON_BENCHMARK_MODELS and _model_input_kind(name) in ("univariate", "timestamped")
+    if _is_detector_model(name) and _model_input_kind(name) in ("univariate", "timestamped")
 }
 # The seasonal detectors need the period of a series, so they run only on these series. Each period is a
 # day, in points, where the autocorrelation at a lag of one day is at least 0.5.
@@ -1079,6 +1089,15 @@ def pysad_files(objects):
             )
             if isinstance(name, str) and name.split(".")[0] == "pysad":
                 todo.append(name)
+        for node in ast.walk(ast.parse(Path(module.__file__).read_text(encoding="utf-8"))):
+            target = sys.modules.get(node.module) if isinstance(node, ast.ImportFrom) else None
+            if (
+                target is not None
+                and target.__name__.split(".")[0] == "pysad"
+                and target.__file__ is not None
+                and not target.__file__.endswith("__init__.py")
+            ):
+                todo.append(target.__name__)
     return files
 
 

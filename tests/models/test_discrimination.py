@@ -11,7 +11,7 @@ import pytest
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 import pysad.models
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
@@ -125,11 +125,17 @@ def _model_params(model_name, X):
         # The spikes go in both directions.
         "SeasonalESD": {"period": 24, "window_size": 96, "direction": "both"},
         "SeasonalHybridESD": {"period": 24, "window_size": 96, "direction": "both"},
+        "ModelEnsemble": {
+            "models": [
+                pysad.models.LODA(random_state=0) | ZScorePostprocessor(window_size=WARMUP),
+                pysad.models.xStream(random_state=1) | ZScorePostprocessor(window_size=WARMUP),
+            ],
+        },
         "StreamPipeline": {
             "model": pysad.models.LODA(),
             "preprocessors": [ShingleTransformer(shingle_size=2)],
             "postprocessors": [
-                RunningZScorePostprocessor(window_size=WARMUP),
+                ZScorePostprocessor(window_size=WARMUP),
                 ConformalProbabilityCalibrator(window_size=WARMUP),
             ],
         },

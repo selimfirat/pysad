@@ -21,7 +21,6 @@ SUBPACKAGES: tuple[str, ...] = (
     "pysad.evaluation",
     "pysad.integrations",
     "pysad.models",
-    "pysad.models.integrations",
     "pysad.statistics",
     "pysad.transform.ensemble",
     "pysad.transform.postprocessing",

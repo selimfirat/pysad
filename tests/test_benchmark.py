@@ -355,6 +355,7 @@ def test_example_pysad_files_isolates_example_imports():
     assert "pysad/models/loda.py" in files
     assert "pysad/evaluation/metrics.py" in files
     assert "pysad/utils/data.py" in files
+    assert "pysad/utils/_datasets.py" in files
     assert "pysad/models/rshash.py" not in files
     assert "pysad/models/sand.py" not in files
 
@@ -368,8 +369,6 @@ def test_union_merged_files_have_no_duplicates():
     root = Path(__file__).resolve().parents[1]
 
     for path in sorted((root / "pysad").rglob("__init__.py")):
-        if "kitnet_model" in path.parts:
-            continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in tree.body:
             if isinstance(node, ast.Assign) and any(

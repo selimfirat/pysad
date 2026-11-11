@@ -373,7 +373,7 @@ It prints:
 Score forecast errors of a River forecaster
 -------------------------------------------
 
-This script scores a seasonal series with spikes with :class:`~pysad.models.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast. River needs Python 3.11 or newer.
+This script scores a seasonal series with spikes with :class:`~pysad.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast. River needs Python 3.11 or newer.
 
 .. literalinclude:: ../examples/example_predictive_anomaly_detector.py
    :language: python

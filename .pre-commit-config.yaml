@@ -11,9 +11,9 @@ ci:
   # installed for actionlint and zizmor gets a token for its online audits.
   skip: [actionlint, zizmor]
 
-# Vendored KitNET reference implementation, kept as upstream wrote it, and the NAB files of the
-# browser demo, kept byte for byte so that they match the checksums in pysad/utils/data.py.
-exclude: ^(pysad/models/kitnet_model/|examples/data/nab/)
+# NAB files of the browser demo, kept byte for byte so that they match the checksums in
+# pysad/utils/_datasets.py.
+exclude: ^examples/data/nab/
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

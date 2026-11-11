@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import heapq
-from collections.abc import Iterator, Mapping
 from typing import Any
 
 import numpy as np
@@ -11,107 +10,11 @@ from pysad.core.base_model import BaseModel
 from pysad.transform.preprocessing import ShingleTransformer
 
 
-class _Node:
-    # A leaf holds a point ``x`` and its bounding box (1, num_features). A branch holds the
-    # cut dimension and value and the bounding box (2, num_features) of the points below it.
-    __slots__ = ("x", "dim", "cut", "left", "right", "parent", "count", "bbox")
-
-    def __init__(
-        self,
-        x: np.ndarray | None = None,
-        dim: int | None = None,
-        cut: float | None = None,
-        left: _Node | None = None,
-        right: _Node | None = None,
-        count: int = 1,
-    ) -> None:
-        self.x = x
-        self.dim = dim
-        self.cut = cut
-        self.left = left
-        self.right = right
-        self.parent: _Node | None = None
-        self.count = count
-        self.bbox: np.ndarray | None = None if x is None else x.reshape(1, -1)
-
-
-class _ArenaNode:
-    """Lazy object view over a single node slot in ``_ForestArena``."""
-
-    __slots__ = ("_arena", "_slot")
-
-    def __init__(self, arena: _ForestArena, slot: int) -> None:
-        self._arena = arena
-        self._slot = slot
-
-    @property
-    def x(self) -> np.ndarray | None:
-        if self._arena.dim[self._slot] >= 0:
-            return None
-        return self._arena.bbox_low[self._slot]
-
-    @property
-    def dim(self) -> int | None:
-        d = int(self._arena.dim[self._slot])
-        return None if d < 0 else d
-
-    @property
-    def cut(self) -> float | None:
-        if self._arena.dim[self._slot] < 0:
-            return None
-        return float(self._arena.cut[self._slot])
-
-    @property
-    def count(self) -> int:
-        return int(self._arena.count[self._slot])
-
-    @property
-    def bbox(self) -> np.ndarray:
-        s = self._slot
-        if self._arena.dim[s] < 0:
-            return self._arena.bbox_low[s].reshape(1, -1)
-        return np.stack([self._arena.bbox_low[s], self._arena.bbox_high[s]])
-
-    @property
-    def left(self) -> _ArenaNode | None:
-        c = int(self._arena.left[self._slot])
-        return None if c < 0 else self._arena.view(c)
-
-    @property
-    def right(self) -> _ArenaNode | None:
-        c = int(self._arena.right[self._slot])
-        return None if c < 0 else self._arena.view(c)
-
-    @property
-    def parent(self) -> _ArenaNode | None:
-        p = int(self._arena.parent[self._slot])
-        return None if p < 0 else self._arena.view(p)
-
-
-class _LeavesView(Mapping[Any, _ArenaNode]):
-    """Mapping view from sample index to lazy ``_ArenaNode`` for ``_RCTree.leaves``."""
-
-    __slots__ = ("_arena", "_slots")
-
-    def __init__(self, arena: _ForestArena, slots: dict[Any, int]) -> None:
-        self._arena = arena
-        self._slots = slots
-
-    def __getitem__(self, key: Any) -> _ArenaNode:
-        return self._arena.view(self._slots[key])
-
-    def __iter__(self) -> Iterator[Any]:
-        return iter(self._slots)
-
-    def __len__(self) -> int:
-        return len(self._slots)
-
-    def __contains__(self, key: object) -> bool:
-        return key in self._slots
-
-
 class _ForestArena:
     """Structure-of-Arrays node arena shared across all trees of a forest."""
+
+    # Tree cut, duplicate, and collusive-displacement logic is adapted from RCTree of rrcf 0.4.4
+    # (https://github.com/kLabUM/rrcf); see license notice at the bottom of this file.
 
     def __init__(self, num_trees: int, initial_cap: int) -> None:
         cap = max(16, initial_cap)
@@ -133,48 +36,6 @@ class _ForestArena:
         self._iota = np.arange(max(num_trees, 16), dtype=np.intp)
         self._buf_lo = np.empty((max(num_trees, 1), 0), dtype=np.float64)
         self._buf_sp = np.empty((max(num_trees, 1), 0), dtype=np.float64)
-        self._views: dict[int, _ArenaNode] = {}
-
-    def __getstate__(self) -> dict[str, Any]:
-        state = self.__dict__.copy()
-        state["_views"] = {}
-        return state
-
-    def __setstate__(self, state: dict[str, Any]) -> None:
-        self.__dict__.update(state)
-        self._views = {}
-
-    def __deepcopy__(self, memo: dict[int, Any]) -> _ForestArena:
-        cls = self.__class__
-        dup = cls.__new__(cls)
-        memo[id(self)] = dup
-        dup.num_trees = self.num_trees
-        dup.cap = self.cap
-        dup.num_features = self.num_features
-        dup.roots = self.roots.copy()
-        dup.left = self.left.copy()
-        dup.right = self.right.copy()
-        dup.parent = self.parent.copy()
-        dup.sibling = self.sibling.copy()
-        dup.dim = self.dim.copy()
-        dup.cut = self.cut.copy()
-        dup.count = self.count.copy()
-        dup.bbox_low = self.bbox_low.copy()
-        dup.bbox_high = self.bbox_high.copy()
-        dup.free_slots = self.free_slots.copy()
-        dup.free_top = self.free_top
-        dup._iota = self._iota.copy()
-        dup._buf_lo = self._buf_lo.copy()
-        dup._buf_sp = self._buf_sp.copy()
-        dup._views = {}
-        return dup
-
-    def view(self, slot: int) -> _ArenaNode:
-        node = self._views.get(slot)
-        if node is None:
-            node = _ArenaNode(self, slot)
-            self._views[slot] = node
-        return node
 
     def ensure_features(self, num_features: int) -> None:
         if self.num_features == 0:
@@ -222,11 +83,6 @@ class _ForestArena:
         self.free_top += added
         self.cap = new_cap
 
-    def alloc_one(self) -> int:
-        self._ensure_free(1)
-        self.free_top -= 1
-        return int(self.free_slots[self.free_top])
-
     def alloc_many(self, k: int) -> np.ndarray:
         self._ensure_free(k)
         top = self.free_top
@@ -234,17 +90,8 @@ class _ForestArena:
         return self.free_slots[top - k : top].copy()
 
     def free_one(self, slot: int) -> None:
-        if self._views:
-            self._views.pop(slot, None)
         self.free_slots[self.free_top] = slot
         self.free_top += 1
-
-    def find_duplicate_one(self, point: np.ndarray, root: int) -> int:
-        curr = root
-        while self.dim[curr] >= 0:
-            d = int(self.dim[curr])
-            curr = int(self.left[curr]) if point[d] <= self.cut[curr] else int(self.right[curr])
-        return curr if bool((self.bbox_low[curr] == point).all()) else -1
 
     def find_duplicate_batch(
         self, point: np.ndarray, roots_sub: np.ndarray
@@ -289,6 +136,7 @@ class _ForestArena:
         span = np.maximum(high, point) - lo
         r = float(rng.uniform(0.0, float(span.sum())))
         span_cs = span.cumsum()
+        # If span.sum() rounds above span_cs[-1], fall back to dimension 0 as argmax does.
         d = int(span_cs.searchsorted(r))
         if d == len(span_cs):
             d = 0
@@ -360,44 +208,6 @@ class _ForestArena:
             best[idx_k] = b
         return float(best.sum())
 
-    def link_branch(
-        self,
-        tree_id: int,
-        branch: int,
-        leaf: int,
-        node: int,
-        parent: int,
-        d: int,
-        c_val: float,
-    ) -> None:
-        old_sib = int(self.sibling[node])
-        if c_val <= self.bbox_low[node, d]:
-            self.left[branch] = leaf
-            self.right[branch] = node
-        else:
-            self.left[branch] = node
-            self.right[branch] = leaf
-
-        self.dim[branch] = d
-        self.cut[branch] = c_val
-        self.count[branch] = 1 + int(self.count[node])
-        self.parent[leaf] = branch
-        self.parent[node] = branch
-        self.sibling[leaf] = node
-        self.sibling[node] = leaf
-        self.parent[branch] = parent
-
-        if parent < 0:
-            self.sibling[branch] = -1
-            self.roots[tree_id] = branch
-        else:
-            self.sibling[branch] = old_sib
-            self.sibling[old_sib] = branch
-            if self.left[parent] == node:
-                self.left[parent] = branch
-            else:
-                self.right[parent] = branch
-
     def unlink_leaf(self, tree_id: int, leaf: int) -> int:
         """Unlinks ``leaf`` (with count == 1) and its parent branch, freeing both; returns grandparent slot or -1."""
         if leaf == self.roots[tree_id]:
@@ -427,197 +237,6 @@ class _ForestArena:
         self.free_one(leaf)
         self.free_one(p)
         return gp
-
-
-class _RCTree:
-    # A robust random cut tree, adapted from RCTree of rrcf 0.4.4 (rrcf/rrcf.py,
-    # https://github.com/kLabUM/rrcf). It keeps the insert, forget, duplicate and codisp logic
-    # and the order of the random draws, without the leaf depths, which codisp does not need
-    # when it walks up to the root. For licensing information, see the end of this file.
-
-    def __init__(self, arena: _ForestArena | None = None, tree_id: int = 0) -> None:
-        self._arena = _ForestArena(1, 16) if arena is None else arena
-        self._tree_id = tree_id
-        self._slot_leaves: dict[Any, int] = {}
-        self.leaves = _LeavesView(self._arena, self._slot_leaves)
-
-    @property
-    def root(self) -> _ArenaNode | None:
-        r = int(self._arena.roots[self._tree_id])
-        return None if r < 0 else self._arena.view(r)
-
-    def find_duplicate(self, x: np.ndarray) -> _ArenaNode | None:
-        r = int(self._arena.roots[self._tree_id])
-        if r < 0:
-            return None
-        dup = self._arena.find_duplicate_one(np.asarray(x, dtype=np.float64), r)
-        return None if dup < 0 else self._arena.view(dup)
-
-    @staticmethod
-    def _cut(x: np.ndarray, bbox: np.ndarray, rng: np.random.RandomState) -> tuple[int, float]:
-        # The InsertPoint cut: a dimension drawn in proportion to its span and a uniform value in it.
-        # The trees run this for every node on every path, so it makes as few NumPy calls as it can.
-        high = np.maximum(bbox[-1], x)
-        low = np.minimum(bbox[0], x)
-        span = high - low
-        r = rng.uniform(0, span.sum())
-        span_sum = span.cumsum()
-        # The first dimension whose cumulative span reaches r. span.sum() can round above the last
-        # cumulative span, and then no dimension reaches r, so the first one is taken, as argmax does.
-        dim = int(span_sum.searchsorted(r))
-        if dim == len(span_sum):
-            dim = 0
-        return dim, float(low[dim] + span_sum[dim] - r)
-
-    @staticmethod
-    def _cut_batch(
-        x: np.ndarray, nodes: list[Any], rng: np.random.RandomState
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        if not nodes:
-            return np.empty(0, dtype=int), np.empty(0, dtype=float), np.empty(0, dtype=bool)
-
-        d = len(x)
-        lows = np.empty((len(nodes), d), dtype=np.float64)
-        highs = np.empty((len(nodes), d), dtype=np.float64)
-        for i, node in enumerate(nodes):
-            bbox = node.bbox
-            assert bbox is not None
-            lows[i] = bbox[0]
-            highs[i] = bbox[-1]
-
-        H = np.maximum(highs, x)
-        L = np.minimum(lows, x)
-        spans = H - L
-        span_sums = spans.sum(axis=1)
-        r = rng.uniform(0, span_sums)
-        span_cumsum = spans.cumsum(axis=1)
-
-        dims = (span_cumsum < r[:, None]).sum(axis=1)
-        dims = np.where(dims == d, 0, dims)
-
-        row_idx = np.arange(len(nodes))
-        cuts = L[row_idx, dims] + span_cumsum[row_idx, dims] - r
-
-        low_dims = lows[row_idx, dims]
-        high_dims = highs[row_idx, dims]
-        stopped = (cuts <= low_dims) | (cuts >= high_dims)
-
-        return dims, cuts, stopped
-
-    def insert(self, x: np.ndarray, index: Any, rng: np.random.RandomState) -> None:
-        point = np.asarray(x, dtype=np.float64).reshape(-1)
-        arena = self._arena
-        arena.ensure_features(len(point))
-        tid = self._tree_id
-        r = int(arena.roots[tid])
-        if r < 0:
-            leaf = arena.alloc_one()
-            arena.left[leaf] = -1
-            arena.right[leaf] = -1
-            arena.parent[leaf] = -1
-            arena.sibling[leaf] = -1
-            arena.dim[leaf] = -1
-            arena.count[leaf] = 1
-            arena.bbox_low[leaf] = point
-            arena.bbox_high[leaf] = point
-            arena.roots[tid] = leaf
-            self._slot_leaves[index] = leaf
-            return
-
-        dup = arena.find_duplicate_one(point, r)
-        if dup >= 0:
-            curr = dup
-            while curr >= 0:
-                arena.count[curr] += 1
-                curr = int(arena.parent[curr])
-            self._slot_leaves[index] = dup
-            return
-
-        node = r
-        parent = -1
-        while True:
-            d, c_val, stop = arena.cut_one_slot(point, node, rng)
-            if stop:
-                break
-            parent = node
-            nd = int(arena.dim[node])
-            node = int(arena.left[node]) if point[nd] <= arena.cut[node] else int(arena.right[node])
-
-        leaf = arena.alloc_one()
-        branch = arena.alloc_one()
-        arena.left[leaf] = -1
-        arena.right[leaf] = -1
-        arena.dim[leaf] = -1
-        arena.count[leaf] = 1
-        arena.bbox_low[leaf] = point
-        arena.bbox_high[leaf] = point
-
-        arena.link_branch(tid, branch, leaf, node, parent, d, c_val)
-        np.minimum(arena.bbox_low[node], point, out=arena.bbox_low[branch])
-        np.maximum(arena.bbox_high[node], point, out=arena.bbox_high[branch])
-
-        curr = parent
-        while curr >= 0:
-            arena.count[curr] += 1
-            np.minimum(arena.bbox_low[curr], point, out=arena.bbox_low[curr])
-            np.maximum(arena.bbox_high[curr], point, out=arena.bbox_high[curr])
-            curr = int(arena.parent[curr])
-
-        self._slot_leaves[index] = leaf
-
-    def forget(self, index: Any) -> None:
-        arena = self._arena
-        leaf = self._slot_leaves.pop(index)
-        if arena.count[leaf] > 1:
-            curr = leaf
-            while curr >= 0:
-                arena.count[curr] -= 1
-                curr = int(arena.parent[curr])
-            return
-
-        leaf_x = arena.bbox_low[leaf].copy()
-        gp = arena.unlink_leaf(self._tree_id, leaf)
-        if gp < 0:
-            return
-
-        curr = gp
-        while curr >= 0:
-            arena.count[curr] -= 1
-            curr = int(arena.parent[curr])
-
-        curr = gp
-        while curr >= 0:
-            if not bool(
-                ((arena.bbox_low[curr] == leaf_x) | (arena.bbox_high[curr] == leaf_x)).any()
-            ):
-                break
-            lc = int(arena.left[curr])
-            rc = int(arena.right[curr])
-            np.minimum(arena.bbox_low[lc], arena.bbox_low[rc], out=arena.bbox_low[curr])
-            np.maximum(arena.bbox_high[lc], arena.bbox_high[rc], out=arena.bbox_high[curr])
-            curr = int(arena.parent[curr])
-
-    def score(self, x: np.ndarray, rng: np.random.RandomState) -> float:
-        arena = self._arena
-        r = int(arena.roots[self._tree_id])
-        if r < 0:
-            return 0.0
-        point = np.asarray(x, dtype=np.float64).reshape(-1)
-        dup = arena.find_duplicate_one(point, r)
-        if dup >= 0:
-            return arena.codisp_sum(np.array([dup], dtype=np.int32), np.array([0], dtype=np.int32))
-
-        curr = r
-        while True:
-            _, _, stop = arena.cut_one_slot(point, curr, rng)
-            if stop:
-                break
-            nd = int(arena.dim[curr])
-            curr = int(arena.left[curr]) if point[nd] <= arena.cut[curr] else int(arena.right[curr])
-
-        return arena.codisp_sum(
-            np.array([curr], dtype=np.int32), np.array([int(arena.count[curr])], dtype=np.int32)
-        )
 
 
 class RobustRandomCutForest(BaseModel):
@@ -653,7 +272,7 @@ class RobustRandomCutForest(BaseModel):
         self.rng: np.random.RandomState = check_random_state(random_state)
         init_cap = max(16, min(num_trees * 8, num_trees * (2 * max(tree_size, 1) + 2)))
         self._arena = _ForestArena(num_trees, init_cap)
-        self.forest: list[_RCTree] = [_RCTree(self._arena, t) for t in range(self.num_trees)]
+        self._slot_leaves: list[dict[int, int]] = [{} for _ in range(self.num_trees)]
 
         # The (key, index) pairs of the instances in each tree, as a min-heap on the key.
         self.samples: list[list[tuple[float, int]]] = [[] for _ in range(self.num_trees)]
@@ -690,12 +309,13 @@ class RobustRandomCutForest(BaseModel):
 
     def _forget_trees(self, evicted: list[tuple[int, int]]) -> None:
         arena = self._arena
+        slot_leaves = self._slot_leaves
         dec_list: list[int] = []
         shrink_gps: list[int] = []
         shrink_leaves: list[int] = []
 
         for t, ev_idx in evicted:
-            leaf = self.forest[t]._slot_leaves.pop(ev_idx)
+            leaf = slot_leaves[t].pop(ev_idx)
             if arena.count[leaf] > 1:
                 dec_list.append(leaf)
                 continue
@@ -748,6 +368,7 @@ class RobustRandomCutForest(BaseModel):
             return self
 
         arena = self._arena
+        slot_leaves = self._slot_leaves
         arena.ensure_features(len(point))
         idx = self.index
         keys = self.time_decay * idx + self.rng.gumbel(size=self.num_trees)
@@ -809,7 +430,7 @@ class RobustRandomCutForest(BaseModel):
             arena.bbox_high[new_leaves] = point
             arena.roots[empty_tids] = new_leaves
             for t, lf in zip(empty_tids.tolist(), new_leaves.tolist(), strict=True):
-                self.forest[t]._slot_leaves[idx] = lf
+                slot_leaves[t][idx] = lf
             tids_arr = tids_arr[~empty_mask]
             roots_sub = roots_sub[~empty_mask]
 
@@ -822,7 +443,7 @@ class RobustRandomCutForest(BaseModel):
             dup_tids = tids_arr[is_dup]
             dup_slots = cand_leaves[is_dup]
             for t, lf in zip(dup_tids.tolist(), dup_slots.tolist(), strict=True):
-                self.forest[t]._slot_leaves[idx] = lf
+                slot_leaves[t][idx] = lf
             c_walk = dup_slots.copy()
             while len(c_walk) > 0:
                 arena.count[c_walk] += 1
@@ -945,9 +566,8 @@ class RobustRandomCutForest(BaseModel):
             arena.left[p_hp[was_left]] = b_hp[was_left]
             arena.right[p_hp[~was_left]] = b_hp[~was_left]
 
-        forest = self.forest
         for t, lf in zip(d_tids.tolist(), leaf_slots.tolist(), strict=True):
-            forest[t]._slot_leaves[idx] = lf
+            slot_leaves[t][idx] = lf
 
         anc = d_parents[has_p]
         if len(anc) > 0:
@@ -1043,7 +663,7 @@ class RobustRandomCutForest(BaseModel):
         return arena.codisp_sum(final_slots, init_counts) / self.num_trees
 
 
-# _RCTree is adapted from rrcf 0.4.4, which is distributed under the following license:
+# Tree cut and collusive displacement logic is adapted from rrcf 0.4.4, distributed under:
 #
 # MIT License
 #

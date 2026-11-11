@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import math
 import numbers
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 from numpy.typing import ArrayLike
 from sklearn.ensemble import IsolationForest
 
-from pysad.models.integrations.reference_window_model import ReferenceWindowModel
+from pysad.integrations.reference_window_model import ReferenceWindowModel
 from pysad.utils import _iterate
 
 
@@ -39,6 +39,8 @@ def _average_path_length(n_samples_leaf: np.ndarray) -> np.ndarray:
 
 
 class _IsolationForest(IsolationForest):
+    _higher_is_anomalous = True
+
     def fit(
         self,
         X: ArrayLike,
@@ -173,6 +175,8 @@ class IForestASD(ReferenceWindowModel):
         drift_threshold (float or None): Algorithm 2's anomaly-rate threshold :math:`u`, in ``[0, 1]``. The forest is rebuilt only when the fraction of instances labeled as anomalies in a full window is greater than or equal to this value. In their empirical evaluation on real-world benchmark datasets, the authors set :math:`u` to match each dataset's expected anomaly (contamination) rate. ``None`` retrains on every window (Default=None).
         **kwargs: Keyword arguments passed to scikit-learn's ``IsolationForest``, for example ``n_estimators``. ``contamination`` defaults to 0.1.
     """
+
+    _is_detector: ClassVar[bool] = True
 
     def __init__(
         self,

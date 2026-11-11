@@ -3,7 +3,7 @@ Postprocessing
 
 .. module:: pysad.transform.postprocessing
 
-This module holds postprocessors that smooth, normalize, or threshold scores, or turn them into 0/1 labels. The ``Running`` variants use a window of recent scores. The other variants use every score since the start of the stream. See :doc:`/guides/alerts`.
+This module holds postprocessors that smooth, normalize, or threshold scores, or turn them into 0/1 labels. Pass ``window_size`` to compute statistics over a sliding window of recent scores instead of the full stream. See :doc:`/guides/alerts`.
 
 .. autosummary::
    :nosignatures:

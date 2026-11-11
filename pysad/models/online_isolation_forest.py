@@ -557,7 +557,6 @@ class OnlineIsolationForest(BaseModel):
         binary = self.branching_factor == 2
         mls = self.max_leaf_samples
         inv_log = self._inv_log
-        p_leaf_pl = self._p_leaf_pl
         any_repacked = False
 
         for i, tree in enumerate(self.trees_):
@@ -570,7 +569,7 @@ class OnlineIsolationForest(BaseModel):
                     any_repacked = True
                 elif leaf is not None:
                     ns = leaf.data_size
-                    p_leaf_pl[i, leaf.slot] = leaf.depth + (
+                    self._p_leaf_pl[i, leaf.slot] = leaf.depth + (
                         0.0 if ns <= mls else math.log(ns / mls) * inv_log
                     )
 
@@ -590,7 +589,7 @@ class OnlineIsolationForest(BaseModel):
                         any_repacked = True
                     elif leaf is not None:
                         ns = leaf.data_size
-                        p_leaf_pl[i, leaf.slot] = leaf.depth + (
+                        self._p_leaf_pl[i, leaf.slot] = leaf.depth + (
                             0.0 if ns <= mls else math.log(ns / mls) * inv_log
                         )
 

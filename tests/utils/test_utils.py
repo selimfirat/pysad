@@ -252,6 +252,28 @@ class TestWindow:
         expected = [float(i) for i in range(10)]
         assert result == expected
 
+    def test_ring_buffer_scalar_and_vector_wraparound(self):
+        """Test RingBuffer chronological order and active slices for scalars and vectors."""
+        from pysad.utils import RingBuffer
+
+        scalar_buf = RingBuffer(window_size=3)
+        assert len(scalar_buf) == 0
+        np.testing.assert_array_equal(scalar_buf.to_array(), np.empty(0))
+
+        for val in (10.0, 20.0, 30.0, 40.0, 50.0):
+            scalar_buf.append(val)
+        assert len(scalar_buf) == 3
+        np.testing.assert_array_equal(scalar_buf.to_array(), [30.0, 40.0, 50.0])
+
+        vec_buf = RingBuffer(window_size=3)
+        for i in range(5):
+            vec_buf.append(np.array([float(i), float(10 * i)]))
+        np.testing.assert_array_equal(vec_buf.to_array(), [[2.0, 20.0], [3.0, 30.0], [4.0, 40.0]])
+        first, second, active_count = vec_buf.active_slices()
+        assert active_count == 2
+        active = first if second is None else np.vstack([a for a in (first, second) if len(a) > 0])
+        assert {tuple(row) for row in active} == {(3.0, 30.0), (4.0, 40.0)}
+
 
 class TestArrayStreamer:
     """Tests for ArrayStreamer class."""

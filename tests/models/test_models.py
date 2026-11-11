@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import pysad.models
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
 from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, active_model_names
@@ -38,11 +38,19 @@ MODEL_CASES = {
     "SeasonalESD": [{"period": 10, "window_size": 31}],
     "SeasonalHybridESD": [{"period": 10, "window_size": 31}],
     "StandardAbsoluteDeviation": [{}, {"absolute": False}],
+    "ModelEnsemble": [
+        {
+            "models": [
+                pysad.models.LODA(random_state=0) | ZScorePostprocessor(window_size=20),
+                pysad.models.xStream(random_state=1) | ZScorePostprocessor(window_size=20),
+            ]
+        }
+    ],
     "StreamPipeline": [
         {
             "model": pysad.models.LODA(),
             "preprocessors": [ShingleTransformer(shingle_size=2)],
-            "postprocessors": [RunningZScorePostprocessor(window_size=20)],
+            "postprocessors": [ZScorePostprocessor(window_size=20)],
         }
     ],
 }
@@ -120,15 +128,19 @@ def test_relative_entropy_no_warnings():
 
 
 def test_kitnet_sigmoid_does_not_overflow():
-    """KitNET's sigmoid saturates to 0 for large negative inputs without an overflow warning."""
+    """KitNET scores extreme negative and positive inputs without a sigmoid overflow warning."""
     import numpy as np
 
-    from pysad.models.kitnet_model.utils import sigmoid
+    from pysad.models import KitNet
+
+    model = KitNet(grace_feature_mapping=2, grace_anomaly_detector=2, random_state=0)
+    model.fit(np.array([[0.0, 0.0], [1.0, 1.0], [0.5, 0.5], [0.2, 0.8]]))
 
     with np.errstate(over="raise"):
-        y = sigmoid(np.array([-1000.0, 0.0, 1000.0]))
+        score = model.score_partial(np.array([-1e4, 1e4]))
 
-    np.testing.assert_array_equal(y, [0.0, 0.5, 1.0])
+    assert np.isfinite(score)
+    assert score >= 0.0
 
 
 def test_loop_scores_without_divide_warning_on_constant_reference():

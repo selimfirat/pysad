@@ -12,7 +12,13 @@ from pathlib import Path
 import pysad.models
 from pysad.utils import Data
 
-NON_DETECTOR_MODELS = frozenset({"NullModel", "PerfectModel", "RandomModel", "StreamPipeline"})
+
+def is_detector_model(name: str) -> bool:
+    """Returns whether `name` in `pysad.models` is a streaming anomaly detector."""
+    cls = getattr(pysad.models, name, None)
+    return cls is not None and bool(getattr(cls, "_is_detector", True))
+
+
 _EXAMPLE_ACRONYMS = {
     "adems": "ADeMS",
     "adwin": "ADWIN",
@@ -103,8 +109,6 @@ def collect_bibtex(root: Path) -> tuple[str, set[str]]:
     """Merges `docs/refs.bib` with all `__bibtex__` attributes in `pysad/`."""
     sources: list[str] = [(root / "docs" / "refs.bib").read_text(encoding="utf-8")]
     for py_path in sorted((root / "pysad").rglob("*.py")):
-        if "kitnet_model" in py_path.parts:
-            continue
         text = py_path.read_text(encoding="utf-8")
         if "__bibtex__" not in text:
             continue
@@ -149,6 +153,7 @@ def expand_api_autosummary(text: str) -> str:
         kept_options: list[str] = []
         kind: str | None = None
         tail_names: list[str] = []
+        exclude_names: set[str] = set()
         while i < len(lines) and re.match(r"^\s+:[A-Za-z0-9_-]+:", lines[i]):
             opt_match = re.match(r"^\s+:([A-Za-z0-9_-]+):\s*(.*)$", lines[i])
             assert opt_match is not None
@@ -157,6 +162,8 @@ def expand_api_autosummary(text: str) -> str:
                 kind = opt_val
             elif opt_name == "tail":
                 tail_names = [item.strip() for item in opt_val.split(",") if item.strip()]
+            elif opt_name == "exclude":
+                exclude_names.update(item.strip() for item in opt_val.split(",") if item.strip())
             else:
                 kept_options.append(lines[i])
             i += 1
@@ -179,7 +186,7 @@ def expand_api_autosummary(text: str) -> str:
             out.extend(lines[body_start:i])
             continue
 
-        selected = list(public_exports)
+        selected = [n for n in public_exports if n not in exclude_names]
         if kind == "classes":
             selected = [n for n in selected if inspect.isclass(getattr(module, n))]
         elif kind == "functions":
@@ -233,9 +240,7 @@ def expand_detectors_tables(text: str) -> str:
     """Appends rows to `docs/detectors.rst` for any detector in `pysad.models.__all__` not yet listed."""
     documented = set(re.findall(r":class:`~pysad\.models\.([A-Za-z_]\w*)`", text))
     missing = [
-        name
-        for name in pysad.models.__all__
-        if name not in NON_DETECTOR_MODELS and name not in documented
+        name for name in pysad.models.__all__ if is_detector_model(name) and name not in documented
     ]
     if not missing:
         return text
@@ -345,7 +350,7 @@ def parse_documented_example_outputs(text: str) -> dict[str, tuple[str, str]]:
 
 def doc_counts(root: Path) -> dict[str, int]:
     """Computes live counts exposed as reStructuredText substitutions across the docs."""
-    num_detectors = sum(1 for name in pysad.models.__all__ if name not in NON_DETECTOR_MODELS)
+    num_detectors = sum(1 for name in pysad.models.__all__ if is_detector_model(name))
     num_drift = 0
     bench_tree = ast.parse((root / "benchmarks" / "benchmark.py").read_text(encoding="utf-8"))
     for node in bench_tree.body:

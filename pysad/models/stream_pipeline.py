@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import ClassVar
 
 import numpy as np
 
@@ -14,7 +15,7 @@ class StreamPipeline(BaseModel):
 
     Each instance goes through the preprocessors in order, then the detector, and then the postprocessors in order. Calibrators, such as :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`, are postprocessors, so a calibrator goes last in ``postprocessors``. The pipeline is a model, so it has the same methods as a detector and can go where a detector goes, for example into an evaluation loop or next to other detectors in an ensemble.
 
-    ``fit_score_partial`` is the loop of :doc:`/guides/pipelines`: each preprocessor calls ``fit_transform_partial``, the detector calls ``fit_score_partial``, and each postprocessor calls ``fit_transform_partial``. ``fit_partial`` does the same and discards the score, so that the postprocessors learn the scores of the detector. ``score_partial`` calls ``transform_partial`` of each stage and ``score_partial`` of the detector, and fits no stage. A postprocessor such as :class:`~pysad.transform.postprocessing.RunningAveragePostprocessor` returns a statistic of the fitted scores only, so with it ``score_partial`` does not depend on the instance.
+    ``fit_score_partial`` is the loop of :doc:`/guides/pipelines`: each preprocessor calls ``fit_transform_partial``, the detector calls ``fit_score_partial``, and each postprocessor calls ``fit_transform_partial``. ``fit_partial`` does the same and discards the score, so that the postprocessors learn the scores of the detector. ``score_partial`` calls ``transform_partial`` of each stage and ``score_partial`` of the detector, and fits no stage. A postprocessor such as :class:`~pysad.transform.postprocessing.AveragePostprocessor` returns a statistic of the fitted scores only, so with it ``score_partial`` does not depend on the instance.
 
     The pipeline fits the stages that you pass, and does not copy them.
 
@@ -24,6 +25,8 @@ class StreamPipeline(BaseModel):
         postprocessors (sequence of BasePostprocessor): The postprocessors and calibrators to apply to each score, in order (Default=()).
     """
 
+    _is_detector: ClassVar[bool] = False
+
     def __init__(
         self,
         model: BaseModel,
@@ -31,8 +34,8 @@ class StreamPipeline(BaseModel):
         postprocessors: Sequence[BasePostprocessor] = (),
     ) -> None:
         self.model = model
-        self.preprocessors = preprocessors
-        self.postprocessors = postprocessors
+        self.preprocessors: tuple[BaseTransformer, ...] = tuple(preprocessors)
+        self.postprocessors: tuple[BasePostprocessor, ...] = tuple(postprocessors)
 
     def __or__(self, other: BasePostprocessor) -> StreamPipeline:
         """Appends a postprocessor or postprocessor chain to this pipeline."""
@@ -40,7 +43,7 @@ class StreamPipeline(BaseModel):
             p_steps = other.steps if isinstance(other, _PostprocessorChain) else (other,)
             return StreamPipeline(
                 self.model,
-                preprocessors=tuple(self.preprocessors),
+                preprocessors=self.preprocessors,
                 postprocessors=(*self.postprocessors, *p_steps),
             )
         return NotImplemented
@@ -52,7 +55,7 @@ class StreamPipeline(BaseModel):
             return StreamPipeline(
                 self.model,
                 preprocessors=(*t_steps, *self.preprocessors),
-                postprocessors=tuple(self.postprocessors),
+                postprocessors=self.postprocessors,
             )
         return NotImplemented
 

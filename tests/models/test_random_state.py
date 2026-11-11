@@ -152,7 +152,7 @@ def test_kitnet_autoencoders_share_one_generator():
         model.fit_partial(x)
 
     # Each autoencoder used to seed its own RandomState(1234), so same-sized ones started out identical.
-    weights = [ae.W for ae in model.model.ensembleLayer]
+    weights = [ae.W for ae in model.model.ensemble_layer]
     same_shape = [
         (a, b) for i, a in enumerate(weights) for b in weights[i + 1 :] if a.shape == b.shape
     ]

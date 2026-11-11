@@ -12,7 +12,8 @@ import pytest
 
 import pysad
 import pysad.models
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.ensemble import AverageScoreEnsembler
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 
@@ -66,11 +67,18 @@ def num_features_for(name: str, default: int = 3) -> int:
 def _model_pysad_files(name: str) -> set[str]:
     """Returns the repository-relative pysad source files that model `name` depends on."""
     objects: list[Any] = [getattr(pysad.models, name)]
+    if name == "ModelEnsemble":
+        objects += [
+            pysad.models.LODA,
+            pysad.models.xStream,
+            ZScorePostprocessor,
+            AverageScoreEnsembler,
+        ]
     if name == "StreamPipeline":
         objects += [
             pysad.models.LODA,
             ShingleTransformer,
-            RunningZScorePostprocessor,
+            ZScorePostprocessor,
             ConformalProbabilityCalibrator,
         ]
     files: set[str] = set()
@@ -199,10 +207,20 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
         "SAND": {"subsequence_length": 2, "centroid_length": 4, "num_clusters": 2, "batch_size": 6},
         "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
+        "ModelEnsemble": {
+            "models": [
+                pysad.models.LODA(num_bins=5, num_random_cuts=10, random_state=0)
+                | ZScorePostprocessor(window_size=10),
+                pysad.models.xStream(
+                    num_components=10, n_chains=10, depth=5, window_size=10, random_state=1
+                )
+                | ZScorePostprocessor(window_size=10),
+            ],
+        },
         "StreamPipeline": {
             "model": pysad.models.LODA(),
             "preprocessors": [ShingleTransformer(shingle_size=2)],
-            "postprocessors": [RunningZScorePostprocessor(window_size=10)],
+            "postprocessors": [ZScorePostprocessor(window_size=10)],
         },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
     }

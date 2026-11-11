@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
+from pysad.integrations import ReferenceWindowModel
 from pysad.models import IForestASD
-from pysad.models.integrations import ReferenceWindowModel
 from pysad.utils import fix_seed
 
 WINDOW_SIZE = 32

@@ -6,7 +6,7 @@ from typing import Any, cast
 import numpy as np
 
 from pysad.core.base_metric import BaseMetric
-from pysad.statistics.average_meter import AverageMeter
+from pysad.statistics.basic import AverageMeter
 
 
 class WindowedMetric(BaseMetric):

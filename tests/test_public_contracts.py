@@ -16,17 +16,13 @@ for _extra_dir in (ROOT / "docs", ROOT / "scripts"):
         sys.path.insert(0, str(_extra_dir))
 
 from _autodiscover import (  # noqa: E402
-    NON_DETECTOR_MODELS,
     collect_bibtex,
     doc_counts,
     expand_api_autosummary,
     expand_detectors_tables,
+    is_detector_model,
 )
 from sync_exports import sync_all  # noqa: E402
-
-NON_BENCHMARK_MODELS = frozenset(
-    {"MIDAS", "NullModel", "PerfectModel", "RandomModel", "StreamPipeline"}
-)
 
 
 def _package_exports(package: str) -> set[str]:
@@ -76,8 +72,6 @@ def test_docstring_citations_exist_in_bibliography(tmp_path):
 
     cited_keys: set[str] = set()
     for py_path in (ROOT / "pysad").rglob("*.py"):
-        if "kitnet_model" in py_path.parts:
-            continue
         for group in re.findall(r":cite:`([^`]+)`", py_path.read_text(encoding="utf-8")):
             cited_keys.update(key.strip() for key in group.split(","))
 
@@ -102,8 +96,8 @@ def test_detectors_rst_covers_all_streaming_detectors():
         (ROOT / "docs" / "detectors.rst").read_text(encoding="utf-8")
     )
     documented = set(re.findall(r":class:`~pysad\.models\.([A-Za-z_]\w*)`", expanded))
-    expected = set(pysad.models.__all__) - NON_DETECTOR_MODELS
-    assert documented - NON_DETECTOR_MODELS == expected
+    expected = {name for name in pysad.models.__all__ if is_detector_model(name)}
+    assert {name for name in documented if is_detector_model(name)} == expected
 
     counts = doc_counts(ROOT)
     assert counts["num_detectors"] == len(expected)
@@ -114,7 +108,12 @@ def test_streaming_detectors_are_registered_in_benchmark():
     """Every streaming detector in pysad.models.__all__ is registered in benchmarks/benchmark.py."""
     benchmark = load_benchmark()
     benchmarked = set(benchmark.DETECTORS) | set(benchmark.UNIVARIATE)
-    expected = set(pysad.models.__all__) - NON_BENCHMARK_MODELS
+    expected = {
+        name
+        for name in pysad.models.__all__
+        if is_detector_model(name)
+        and getattr(getattr(pysad.models, name), "_input_kind", "multivariate") != "edge"
+    }
     assert expected == benchmarked
 
 

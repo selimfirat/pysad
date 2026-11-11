@@ -27,6 +27,7 @@ In particular, you the agent MUST obey these rules while interacting on GitHub:
 # Commands
 
 - Install for development: `pip install -e . --group dev` (pip 25.1 or newer) or `uv sync --group dev`.
+- Sync package `__init__.py` exports after adding, renaming, or removing a public class: `python scripts/sync_exports.py`.
 - Run the unit tests: `pytest` (add `-n auto` to run them in parallel).
 - Run every script in `examples/` end to end: `pytest -m examples`.
 - Run the linters, the formatter, and mypy: `pre-commit run --all-files`.
@@ -54,20 +55,19 @@ In particular, you the agent MUST obey these rules while interacting on GitHub:
 
 # Project Structure
 
-- `pysad/core`: abstract base classes for models, transformers, postprocessors, statistics, metrics, and streamers.
-- `pysad/models`: streaming anomaly detectors that extend `BaseModel`.
-- `pysad/models/integrations`: wrappers that run batch models, such as PyOD models, on a stream through a reference window or a single fit.
-- `pysad/models/kitnet_model`: vendored KitNET reference code. Ruff, mypy, and coverage exclude it. Change it only to fix a bug, and keep the upstream style.
-- `pysad/transform/preprocessing`: per-instance scalers and seasonal decomposition.
-- `pysad/transform/postprocessing`: score postprocessors, with running (windowed) variants.
-- `pysad/transform/ensemble`: score ensemblers.
+- `pysad/core`: abstract base classes for models, transformers, postprocessors, score ensemblers, statistics, metrics, and streamers.
+- `pysad/models`: streaming anomaly detectors, pipelines (`StreamPipeline`), and ensembles (`ModelEnsemble`) that extend `BaseModel`.
+- `pysad/integrations`: bidirectional integrations that run batch models (PyOD, scikit-learn) and River forecasters on a stream, or expose PySAD detectors in River and scikit-learn pipelines.
+- `pysad/transform/preprocessing`: per-instance scalers, sliding-window shingling, and seasonal decomposition.
+- `pysad/transform/postprocessing`: score postprocessors (with optional `window_size`) and dynamic thresholding.
+- `pysad/transform/ensemble`: score ensemblers extending `BaseScoreEnsembler`.
 - `pysad/transform/probability_calibration`: calibrators that map scores to anomaly probabilities.
 - `pysad/transform/projection`: random and hashing projectors.
 - `pysad/statistics`: running statistics (meters) with `update` and `remove`.
-- `pysad/evaluation`: streaming metrics and windowed metrics.
-- `pysad/utils`: streamers, sliding windows, dataset download (`Data`), and `fix_seed`.
+- `pysad/evaluation`: streaming metrics, windowed metrics, and `evaluate_stream`.
+- `pysad/utils`: streamers, sliding windows (`Window`, `RingBuffer`), dataset download (`Data`), and `fix_seed`.
 - `examples/`: runnable scripts. CI runs them through `pytest -m examples`.
-- `docs/`: Sphinx documentation in reStructuredText. `docs/api.rst` lists every public class, and `docs/refs.bib` holds the cited papers.
+- `docs/`: Sphinx documentation in reStructuredText. `docs/api/` auto-discovers every public class from `pysad.*.__all__`, and `docs/refs.bib` (plus module-level `__bibtex__`) holds the cited papers.
 
 # Examples
 
@@ -84,9 +84,9 @@ In particular, you the agent MUST obey these rules while interacting on GitHub:
 - `score_partial` does not change the model state. Only `fit_partial` learns.
 - Keep model memory bounded. Keep a window or summary statistics instead of the whole stream.
 - Do not make up new methods or invent custom streaming adaptations (for example, adapting an offline or batch anomaly detection algorithm to the streaming setting yourself). Every detector or algorithm in PySAD must be based on a cited, peer-reviewed publication that already defines the streaming method, or port the public reference implementation of a streaming detector with a top-three score on a public streaming benchmark such as NAB. Batch algorithms should be wrapped via `ReferenceWindowModel` or `OneFitModel` rather than converted into ad-hoc streaming algorithms.
-- Implement each model as its paper describes. Cite the paper in the class docstring with `:cite:` and add the entry to `docs/refs.bib`. Document every deviation from the paper in the docstring. A detector from the benchmark route cites the benchmark and its reference implementation instead, and documents each difference from that implementation.
+- Implement each model as its paper describes. Cite the paper in the class docstring with `:cite:` and define `__bibtex__` at module scope (or add the entry to `docs/refs.bib`). Document every deviation from the paper in the docstring. A detector from the benchmark route cites the benchmark and its reference implementation instead, and documents each difference from that implementation.
 - Add only established models: the paper has 20 or more citations, appeared at an A* venue (CORE ranking), or has an official GitHub repository with 50 or more stars, or the streaming detector has a top-three score on a public streaming benchmark such as NAB (see `docs/inclusion_criteria.rst`).
-- A new public class goes in its subpackage's `__init__.py` and `__all__`, and in `docs/api.rst`.
+- Run `python scripts/sync_exports.py` after adding or removing a public class to update its subpackage's `__init__.py` and `__all__`; `docs/api/`, `docs/detectors.rst`, `benchmarks/benchmark.py`, and shared contract tests auto-discover from `__all__`.
 - Every stochastic component takes a `random_state` parameter and resolves it with `sklearn.utils.check_random_state`. `None` draws from NumPy's global random state.
 - Treat packages listed in `[project].dependencies` as required at runtime. Import them at module scope. Do not defer or guard them with function-local imports, `TYPE_CHECKING`, `try/except ImportError`, availability checks, or dynamic imports. Do not add optional extras.
 - Keep dependencies minimal. If a few lines of NumPy can replace a new runtime dependency, write the NumPy code.

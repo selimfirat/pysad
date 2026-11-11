@@ -191,7 +191,7 @@ Install PyOD first with `pip install pyod`.
 
 ```python
 from pyod.models.iforest import IForest
-from pysad.models.integrations import ReferenceWindowModel
+from pysad.integrations import ReferenceWindowModel
 
 # Train a batch Isolation Forest on the last 200 points, again every 50 points.
 model = ReferenceWindowModel(IForest, window_size=200, sliding_size=50, initial_window_X=X[:100])

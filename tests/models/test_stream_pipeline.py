@@ -1,6 +1,6 @@
 def _stages():
     from pysad.models import LODA
-    from pysad.transform.postprocessing import RunningZScorePostprocessor
+    from pysad.transform.postprocessing import ZScorePostprocessor
     from pysad.transform.preprocessing import ShingleTransformer
     from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 
@@ -8,7 +8,7 @@ def _stages():
         "model": LODA(random_state=0),
         "preprocessors": [ShingleTransformer(shingle_size=3)],
         "postprocessors": [
-            RunningZScorePostprocessor(window_size=50),
+            ZScorePostprocessor(window_size=50),
             ConformalProbabilityCalibrator(window_size=50),
         ],
     }
@@ -56,7 +56,7 @@ def test_stream_pipeline_pipe_operator_composition_and_batch_parity():
     import pytest
 
     from pysad.models import LODA, StreamPipeline
-    from pysad.transform.postprocessing import RunningZScorePostprocessor, ThresholdFilter
+    from pysad.transform.postprocessing import ThresholdFilter, ZScorePostprocessor
     from pysad.transform.preprocessing import InstanceStandardScaler, ShingleTransformer
     from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 
@@ -65,7 +65,7 @@ def test_stream_pipeline_pipe_operator_composition_and_batch_parity():
     t1 = InstanceStandardScaler()
     t2 = ShingleTransformer(shingle_size=3)
     m = LODA(random_state=0)
-    p1 = RunningZScorePostprocessor(window_size=30)
+    p1 = ZScorePostprocessor(window_size=30)
     p2 = ConformalProbabilityCalibrator(window_size=30)
 
     # Left-to-right, parenthesized chains, and incremental composition flatten identically.
@@ -89,7 +89,7 @@ def test_stream_pipeline_pipe_operator_composition_and_batch_parity():
             InstanceStandardScaler()
             | ShingleTransformer(shingle_size=3)
             | LODA(random_state=0)
-            | RunningZScorePostprocessor(window_size=30)
+            | ZScorePostprocessor(window_size=30)
             | ConformalProbabilityCalibrator(window_size=30)
         )
 
@@ -121,8 +121,8 @@ def test_stream_pipeline_pipe_operator_composition_and_batch_parity():
     )
 
     raw_scores = np.random.RandomState(9).rand(80)
-    p_chain_b = RunningZScorePostprocessor(window_size=15) | ThresholdFilter(threshold=1.0)
-    p_chain_s = RunningZScorePostprocessor(window_size=15) | ThresholdFilter(threshold=1.0)
+    p_chain_b = ZScorePostprocessor(window_size=15) | ThresholdFilter(threshold=1.0)
+    p_chain_s = ZScorePostprocessor(window_size=15) | ThresholdFilter(threshold=1.0)
     np.testing.assert_array_equal(
         p_chain_b.fit_transform(raw_scores),
         np.array([p_chain_s.fit_transform_partial(float(s)) for s in raw_scores]),
@@ -137,3 +137,22 @@ def test_stream_pipeline_pipe_operator_composition_and_batch_parity():
     with pytest.raises(ValueError, match="same length"):
         fresh.fit_score(X[:5], np.zeros(3, dtype=np.int32))
     assert len(fresh.preprocessors[1].recent) == 0
+
+
+def test_stream_pipeline_normalizes_stage_iterables_to_tuples():
+    import numpy as np
+
+    from pysad.models import LODA, StreamPipeline
+    from pysad.transform.postprocessing import ZScorePostprocessor
+    from pysad.transform.preprocessing import InstanceStandardScaler
+
+    pipe = StreamPipeline(
+        model=LODA(random_state=0),
+        preprocessors=(s for s in [InstanceStandardScaler()]),
+        postprocessors=(p for p in [ZScorePostprocessor(window_size=10)]),
+    )
+    assert isinstance(pipe.preprocessors, tuple)
+    assert isinstance(pipe.postprocessors, tuple)
+    X = np.random.RandomState(0).rand(10, 2)
+    assert pipe.fit_score(X).shape == (10,)
+    assert pipe.score(X).shape == (10,)

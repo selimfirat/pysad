@@ -112,5 +112,9 @@ def test_invalid_quantile_raises(q):
 
 
 def test_remove_is_not_supported():
-    with pytest.raises(NotImplementedError, match="cannot remove observations"):
-        QuantileMeter(q=0.5).remove(3.0)
+    from pysad.statistics import RunningStatistic
+
+    meter = QuantileMeter(q=0.5)
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(QuantileMeter, window_size=10, q=0.5)

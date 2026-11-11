@@ -48,7 +48,7 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pysad
-          key: pysad-data-${{ hashFiles('pysad/utils/data.py') }}
+          key: pysad-data-${{ hashFiles('pysad/utils/data.py', 'pysad/utils/_datasets.py') }}
       # Both runs use the benchmark.py of the pull request, so that only the code of pysad differs.
       - name: Resolve base commit and affected detectors
         id: base

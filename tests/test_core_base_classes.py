@@ -384,10 +384,9 @@ class TestAbstractClassInstantiation:
             BasePostprocessor()
 
     def test_base_statistic_abstract(self):
-        """Test that BaseStatistic can be instantiated but has no abstract methods."""
-        # BaseStatistic is abstract but has no abstract methods, so it can be instantiated
-        stat = BaseStatistic()
-        assert isinstance(stat, BaseStatistic)
+        """Test that BaseStatistic cannot be instantiated directly."""
+        with pytest.raises(TypeError):
+            BaseStatistic()
 
     def test_base_streamer_abstract(self):
         """Test that BaseStreamer cannot be instantiated directly."""

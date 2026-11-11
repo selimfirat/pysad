@@ -23,7 +23,7 @@ from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
 import pysad.models
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
 from tests.models.conftest import (
@@ -124,7 +124,7 @@ def _model_params(model_name, num_features, data):
         "StreamPipeline": {
             "model": pysad.models.LODA(num_bins=5, num_random_cuts=10),
             "preprocessors": [ShingleTransformer(shingle_size=2)],
-            "postprocessors": [RunningZScorePostprocessor(window_size=10)],
+            "postprocessors": [ZScorePostprocessor(window_size=10)],
         },
     }
 

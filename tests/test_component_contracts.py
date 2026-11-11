@@ -59,10 +59,6 @@ PROJECTOR_PARAMS: dict[str, dict[str, Any]] = {
 }
 POSTPROCESSOR_PARAMS: dict[str, dict[str, Any]] = {
     "NonparametricDynamicThresholdPostprocessor": {"window_size": 12},
-    "RunningAveragePostprocessor": {"window_size": 6},
-    "RunningMaxPostprocessor": {"window_size": 6},
-    "RunningMedianPostprocessor": {"window_size": 6},
-    "RunningZScorePostprocessor": {"window_size": 6},
     "ThresholdFilter": {"threshold": 1.0},
 }
 CALIBRATOR_PARAMS: dict[str, dict[str, Any]] = {
@@ -350,3 +346,41 @@ def test_non_model_random_state_determinism_and_global_isolation(name: str, cls:
     np.testing.assert_array_equal(out_5a, out_5b)
     if name != "KSWINMeter":
         assert not np.array_equal(out_5a, out_6)
+
+
+def test_bounded_components_do_not_grow_memory_after_warmup() -> None:
+    """Bounded meters, postprocessors, calibrators, and preprocessors keep O(1)/O(W) state."""
+    for name, cls in STATISTIC_CLASSES:
+        if name == "MedianMeter":
+            meter = pysad.statistics.RunningStatistic(cls, window_size=20)
+        else:
+            meter = cls(**STATISTIC_PARAMS.get(name, {}))
+        for i in range(300):
+            meter.update(float((i * 7) % 11) / 10.0)
+        size_after_warmup = len(pickle.dumps(meter))
+        for i in range(300, 2300):
+            meter.update(float((i * 7) % 11) / 10.0)
+        assert len(pickle.dumps(meter)) <= size_after_warmup + 512, name
+
+    for name, cls in POSTPROCESSOR_CLASSES:
+        kwargs = (
+            {"window_size": 20}
+            if name == "MedianPostprocessor"
+            else POSTPROCESSOR_PARAMS.get(name, {})
+        )
+        post = cls(**kwargs)
+        for i in range(200):
+            post.fit_transform_partial(float((i * 13) % 17) / 5.0)
+        size_after_warmup = len(pickle.dumps(post))
+        for i in range(200, 2000):
+            post.fit_transform_partial(float((i * 13) % 17) / 5.0)
+        assert len(pickle.dumps(post)) <= size_after_warmup + 256, name
+
+    for name, cls in CALIBRATOR_CLASSES:
+        cal = cls(**CALIBRATOR_PARAMS.get(name, {}))
+        for i in range(200):
+            cal.fit_transform_partial(float((i * 13) % 19) / 5.0)
+        size_after_warmup = len(pickle.dumps(cal))
+        for i in range(200, 2000):
+            cal.fit_transform_partial(float((i * 13) % 19) / 5.0)
+        assert len(pickle.dumps(cal)) <= size_after_warmup + 256, name

@@ -84,7 +84,7 @@ test = [
   "polars==2.1.0; python_version >= '3.11'",
   # The reference that LocalOutlierProbability is tested against.
   "PyNomaly==0.4.0",
-  # The batch detectors that the tests and examples run through pysad.models.integrations.
+  # The batch detectors that the tests and examples run through pysad.integrations.
   "pyod>=3.6.2",
   # Security floor for pillow, a transitive dependency of pyod via matplotlib.
   "pillow>=12.3.0",
@@ -167,15 +167,11 @@ markers = [
 
 [tool.coverage.run]
 source = ["pysad"]
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-omit = ["pysad/models/kitnet_model/*"]
 
 # Ruff reads the target Python version from requires-python above.
 [tool.ruff]
 # Most of the existing code already fits in 100 columns.
 line-length = 100
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-extend-exclude = ["pysad/models/kitnet_model"]
 
 [tool.ruff.lint]
 select = [
@@ -208,18 +204,11 @@ ignore = [
 [tool.mypy]
 python_version = "3.10"
 files = ["pysad"]
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-exclude = ["^pysad/models/kitnet_model/"]
 warn_unused_ignores = true
 warn_redundant_casts = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
-
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-[[tool.mypy.overrides]]
-module = ["pysad.models.kitnet_model.*"]
-ignore_errors = true
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]

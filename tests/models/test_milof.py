@@ -69,6 +69,51 @@ def test_rejects_invalid_parameters():
         MiLOF(num_neighbors=10, window_size=22, num_summaries=0)
 
 
+def test_kept_points_use_centers_as_neighbors_after_merge():
+    from scipy.spatial.distance import cdist
+
+    from pysad.models import MiLOF
+
+    rng = np.random.RandomState(0)
+    X = rng.normal(size=(40, 2))
+    model = MiLOF(num_neighbors=5, window_size=40, num_summaries=4, random_state=0).fit(X)
+
+    # One summarization ran and no further insert followed, so the kept points' k-distances and
+    # lrd values reflect the cluster centers as candidate neighbors (Algorithm 2, line 23).
+    half = model.window_size // 2
+    raw = model.X_[:half]
+    centers = model.centers_
+    cand = np.vstack([raw, centers])
+    k = model.num_neighbors
+
+    # k-distances are independent, so compute them all first; lrd values then use the finalized
+    # k-distances of the neighbors (a center's k-distance comes from center_k_dists_).
+    expected_k_dists = np.empty(half)
+    for i in range(half):
+        d = cdist(raw[i : i + 1], cand)[0]
+        d[i] = np.inf  # a point is not its own neighbor
+        nb = np.argpartition(d, k - 1)[:k]
+        expected_k_dists[i] = d[nb].max()
+
+    expected_lrds = np.empty(half)
+    for i in range(half):
+        d = cdist(raw[i : i + 1], cand)[0]
+        d[i] = np.inf
+        nb = np.argpartition(d, k - 1)[:k]
+        nd = d[nb]
+        is_center = nb >= half
+        k_dist_nb = np.where(
+            is_center,
+            model.center_k_dists_[np.clip(nb - half, 0, centers.shape[0] - 1)],
+            expected_k_dists[np.clip(nb, 0, half - 1)],
+        )
+        reach = np.maximum(k_dist_nb, nd)
+        expected_lrds[i] = 1.0 / (reach.mean() + 1e-10)
+
+    np.testing.assert_allclose(model.k_dists_[:half], expected_k_dists)
+    np.testing.assert_allclose(model.lrds_[:half], expected_lrds)
+
+
 def test_fixed_random_state_is_reproducible():
     from pysad.models import MiLOF
 

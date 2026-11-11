@@ -111,6 +111,10 @@ class MiLOF(IncrementalLOF):
         self._next = half
         self._update_neighbors(np.arange(half), exclude=None)
         self._update_lrds(np.arange(half))
+        # Recompute the k-nearest neighbors of the kept raw points against the kept raw points
+        # and the cluster centers, so that a center can set the k-distance and lrd of a kept
+        # point (Section 4.2.3 and Algorithm 2, line 23 of the paper).
+        self._update_kept_points_with_centers(centers, k_dists)
 
         self.centers_ = centers
         self.center_weights_ = weights
@@ -121,6 +125,32 @@ class MiLOF(IncrementalLOF):
         self._prev_k_dists = k_dists
         self._prev_lrds = lrds
         self._merge_step += 1
+
+    def _update_kept_points_with_centers(
+        self,
+        centers: np.ndarray,
+        center_k_dists: np.ndarray,
+    ) -> None:
+        # Recomputes the k nearest neighbors of the kept raw points against the kept raw points
+        # and the cluster centers, so that a center can be the k-th neighbor and set the
+        # k-distance and lrd of a kept point. The neighbor lists keep referring to raw slots;
+        # only the k-distances and lrd values are updated to reflect centers as candidates.
+        n = self.num_instances_
+        raw = self.X_[:n]
+        cand = np.vstack([raw, centers])  # (n + c, D)
+        dists = cdist(raw, cand)  # (n, n + c)
+        dists[np.arange(n), np.arange(n)] = np.inf  # a point is not its own neighbor
+        neighbors = np.argpartition(dists, self.num_neighbors - 1, axis=1)[:, : self.num_neighbors]
+        nd = np.take_along_axis(dists, neighbors, axis=1)  # (n, k)
+        self.k_dists_[:n] = nd.max(axis=1)
+        is_center = neighbors >= n
+        k_dist_nb = np.where(
+            is_center,
+            center_k_dists[np.clip(neighbors - n, 0, centers.shape[0] - 1)],
+            self.k_dists_[np.clip(neighbors, 0, n - 1)],
+        )
+        reach = np.maximum(k_dist_nb, nd)
+        self.lrds_[:n] = 1.0 / (reach.mean(axis=1) + _EPS)
 
     def _merge(
         self,

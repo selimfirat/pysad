@@ -5,8 +5,19 @@ from scipy.spatial.distance import cdist
 
 from pysad.core.base_model import BaseModel
 
-# Added to the mean reachability distance, so that duplicate instances get a finite density.
+# The lrd adds this fraction of the largest mean reachability distance among an instance and its
+# neighbors to its mean reachability distance, so that duplicate instances get a finite density.
 _EPS = 1e-10
+
+
+def _lof(reach: np.ndarray, neighbor_reach: np.ndarray) -> np.ndarray:
+    """The LOF of instances from their mean reachability distances, of shape (m,), and those of their neighbors, of shape (m, k)."""
+    # A floor relative to the distances keeps the LOF free of the unit of the values; an absolute
+    # one exceeds the distances of values in small units, which pulls each LOF towards 1.
+    largest = np.maximum(reach, neighbor_reach.max(axis=1))
+    # If every distance is 0, the instance and its neighbors are duplicates, with an LOF of 1.
+    floor = np.where(largest > 0.0, _EPS * largest, 1.0)
+    return (reach + floor) * (1.0 / (neighbor_reach + floor[:, None])).mean(axis=1)
 
 
 class IncrementalLOF(BaseModel):
@@ -16,7 +27,7 @@ class IncrementalLOF(BaseModel):
 
     `score_partial` returns the LOF of the instance against the current window, without inserting it. This equals scikit-learn's `LocalOutlierFactor(novelty=True)` fitted on the window, with the sign flipped. Until the window holds `num_neighbors + 1` instances, the score is 0.
 
-    Deviations from the paper: each instance has exactly `num_neighbors` neighbors, as in scikit-learn, while under ties the k-distance neighborhood of the paper can hold more. The lrd adds 1e-10 to the mean reachability distance, as scikit-learn does, so that duplicate instances get a finite density. The model does not keep the LOF values of the window instances, which the last update step of the paper maintains, because only arriving instances are scored. In Fig. 4 of the paper, the LOF of an arriving instance is computed after its insertion, so the k-distances and lrd values of its reverse neighbors are already updated. `score_partial` scores the instance before insertion, with the old k-distances and lrd values of its neighbors, so that scoring does not change the model state. The two scores differ when the instance enters the k-nearest neighbors of one of its neighbors. The paper has no sliding window and no window size. It deletes blocks of obsolete records when needed (Fig. 6), and its experiments only insert. The deletion of the oldest instance once the window holds `window_size` instances, and the default `window_size` of 1000, are choices of this implementation.
+    Deviations from the paper: each instance has exactly `num_neighbors` neighbors, as in scikit-learn, while under ties the k-distance neighborhood of the paper can hold more. The lrd adds 1e-10 times the largest mean reachability distance among the instance and its neighbors to its mean reachability distance, so that duplicate instances get a finite density, and an instance whose neighbors and itself all have a mean reachability distance of 0 has an LOF of 1. scikit-learn adds an absolute 1e-10, which exceeds the distances of values in small units and pulls each LOF towards 1. Both give the same scores up to a relative difference of about 1e-10, unless a mean reachability distance is 0. The model does not keep the LOF values of the window instances, which the last update step of the paper maintains, because only arriving instances are scored. In Fig. 4 of the paper, the LOF of an arriving instance is computed after its insertion, so the k-distances and lrd values of its reverse neighbors are already updated. `score_partial` scores the instance before insertion, with the old k-distances and lrd values of its neighbors, so that scoring does not change the model state. The two scores differ when the instance enters the k-nearest neighbors of one of its neighbors. The paper has no sliding window and no window size. It deletes blocks of obsolete records when needed (Fig. 6), and its experiments only insert. The deletion of the oldest instance once the window holds `window_size` instances, and the default `window_size` of 1000, are choices of this implementation.
 
     Args:
         num_neighbors (int): The number of nearest neighbors, k in the paper (Default=10).
@@ -50,7 +61,7 @@ class IncrementalLOF(BaseModel):
             self.neighbors_ = np.empty((self.window_size, k), dtype=np.intp)
             self.neighbor_dists_ = np.empty((self.window_size, k))
             self.k_dists_ = np.empty(self.window_size)
-            self.lrds_ = np.empty(self.window_size)
+            self.reach_dists_ = np.empty(self.window_size)  # the mean reachability distances
 
         p = self._next
         if self.num_instances_ == self.window_size:
@@ -64,7 +75,7 @@ class IncrementalLOF(BaseModel):
         if n == k + 1:
             # The first instances that all have k neighbors: static LOF on them.
             self._update_neighbors(np.arange(n), exclude=None)
-            self._update_lrds(np.arange(n))
+            self._update_reach_dists(np.arange(n))
         elif n > k + 1:
             self._insert(p)
 
@@ -86,7 +97,7 @@ class IncrementalLOF(BaseModel):
         self.neighbor_dists_[p] = dists[neighbors]
         self.k_dists_[p] = dists[neighbors].max()
 
-        self._update_lrds(np.concatenate([self._reverse_neighbors(updated), [p]]))
+        self._update_reach_dists(np.concatenate([self._reverse_neighbors(updated), [p]]))
 
     def _delete(self, p: int) -> None:
         # Deletion of the instance in slot p, from a full window.
@@ -94,7 +105,7 @@ class IncrementalLOF(BaseModel):
         updated = updated[updated != p]
         self._update_neighbors(updated, exclude=p)
         lrds = self._reverse_neighbors(updated)
-        self._update_lrds(lrds[lrds != p])
+        self._update_reach_dists(lrds[lrds != p])
 
     def _reverse_neighbors(self, updated: np.ndarray) -> np.ndarray:
         # The instances whose lrd changes when the k-distances of `updated` change: `updated`, and
@@ -115,10 +126,10 @@ class IncrementalLOF(BaseModel):
         self.neighbor_dists_[idx] = np.take_along_axis(dists, neighbors, axis=1)
         self.k_dists_[idx] = self.neighbor_dists_[idx].max(axis=1)
 
-    def _update_lrds(self, idx: np.ndarray) -> None:
+    def _update_reach_dists(self, idx: np.ndarray) -> None:
         # reach-dist(q, o) = max(k-distance(o), d(q, o)) for each neighbor o of q.
         reach = np.maximum(self.k_dists_[self.neighbors_[idx]], self.neighbor_dists_[idx])
-        self.lrds_[idx] = 1.0 / (reach.mean(axis=1) + _EPS)
+        self.reach_dists_[idx] = reach.mean(axis=1)
 
     def score_partial(self, X: np.ndarray) -> float:
         """Scores the instance by its LOF against the current window, without inserting it.
@@ -136,6 +147,5 @@ class IncrementalLOF(BaseModel):
         dists = cdist(np.atleast_2d(X), self.X_[:n])[0]  # (n,)
         neighbors = np.argpartition(dists, self.num_neighbors - 1)[: self.num_neighbors]
         reach = np.maximum(self.k_dists_[neighbors], dists[neighbors])
-        lrd = 1.0 / (reach.mean() + _EPS)
 
-        return float(self.lrds_[neighbors].mean() / lrd)
+        return float(_lof(reach.mean(keepdims=True), self.reach_dists_[neighbors][None])[0])

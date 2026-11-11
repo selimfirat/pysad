@@ -265,6 +265,7 @@ module = [
     "pysad.models.rs_forest",
     "pysad.models.rs_hash",
     "pysad.models.sand",
+    "pysad.models.sdostream",
     "pysad.models.seasonal_esd",
     "pysad.models.smart_sifter",
     "pysad.models.spectral_residual",

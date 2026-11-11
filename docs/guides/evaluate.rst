@@ -26,6 +26,8 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
      - Measure binary predictions when class sizes differ. It uses all four confusion counts and supports a score threshold.
    * - :class:`~pysad.evaluation.RecallMetric`
      - Measure the fraction of anomalies that raise an alert, for a given threshold.
+   * - :class:`~pysad.evaluation.BalancedAccuracyMetric`
+     - Give normal points and anomalies equal weight through their mean recall. Set a threshold for scores, or pass 0/1 predictions.
 
 Measure several metrics at once
 -------------------------------
@@ -98,6 +100,8 @@ The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.
 
 :class:`~pysad.evaluation.MatthewsCorrelationMetric` keeps four confusion counts instead of the stream history. It uses constant memory and constant work for each update and result. A zero denominator returns 0.0, including before the first update. See ``examples/example_matthews_correlation.py``.
 
+``BalancedAccuracyMetric`` stores only four confusion counts. Its memory use and update and query costs stay constant as the stream grows. For an empty stream, it returns 0.0. For a stream with one true class, it returns that class's recall. Nonempty binary results match scikit-learn. See ``examples/example_balanced_accuracy.py``.
+
 Follow the performance over time
 --------------------------------
 
@@ -125,6 +129,32 @@ A metric over the full stream hides changes over time. For example, it hides a d
 The first window has the lowest AUROC, because the detector starts with no data and learns during this window. This example shuffles ``cardio`` because all its anomalies are at the end. Each window must contain at least one anomaly and one normal point. If a window does not, AUROC is not defined and ``get`` raises an error.
 
 :class:`~pysad.evaluation.WindowedMetric` computes the same values and gives only their average, here 0.923. Use it to report one number that gives the same weight to each window of the stream. With AUPR, a window without anomalies gives 0 and lowers this average.
+
+Track recent performance
+------------------------
+
+:class:`~pysad.evaluation.RollingMetric` evaluates only the most recent label-score pairs.
+Each update drops the oldest pair when the window is full.
+It differs from ``WindowedMetric``, which averages results from consecutive windows that do not overlap.
+
+.. code-block:: python
+
+   from pysad.evaluation import RecallMetric, RollingMetric
+
+   metric = RollingMetric(RecallMetric, window_size=100, threshold=0.5)
+   print(metric.get())  # None, because the window is empty.
+   metric.update(1, 0.8)
+   metric.update(1, 0.2)
+   print(metric.get())  # 0.5, from the two available pairs.
+
+An empty window returns ``None`` for every metric class.
+A nonempty window follows the selected metric's behavior, including errors for undefined results.
+For example, ``AUROCMetric`` needs both label classes in the recent window.
+Updates take O(1) time, and storage holds at most ``window_size`` pairs.
+Each ``get()`` creates a fresh metric, replays the window, and reads its result.
+AUROC and AUPR reads take O(window_size * log(window_size)) time because they sort scores.
+Read less often to reduce this cost.
+See ``examples/example_rolling_metric.py`` for a complete stream example.
 
 Report a stable result
 ----------------------

@@ -122,6 +122,10 @@ These detectors take points with one or more features. A feature is one measured
      - Distance to the mean, or Gaussian density, of the closest cluster at the level of a ClusTree that the time budget ``depth`` reaches :cite:`assent2012anyout`
      - Nothing
      - Fixed: a tree of at most ``max_height`` levels, with at most 3 to the power ``max_height`` leaf clusters
+   * - :class:`~pysad.models.SDOstream`
+     - Median distance to the closest active observers of a low-density model that fades exponentially :cite:`hartl2020low`
+     - Nothing
+     - Fixed: ``num_observers`` points and the running quality of each point
    * - :class:`~pysad.models.ADeMS`
      - Residual of each point after its projection on a Frequent Directions sketch of the normal points :cite:`huang2015streaming`
      - Nothing (initial points to use a threshold)
@@ -172,6 +176,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from the running mean or recent median in standard deviations :cite:`hochenbaum2017automatic`
      - ``window_size`` when using ``subtracted_statistic="median"``
      - Fixed; median mode retains only the last ``window_size`` values while variance remains an all-history running statistic
+   * - :class:`~pysad.models.PEWMA`
+     - Distance from an exponentially weighted moving average in standard deviations. Each value's weight depends on its probability under a normal distribution :cite:`carter2012probabilistic`.
+     - Nothing
+     - Fixed: two moving averages
    * - :class:`~pysad.models.HoltWinters`
      - Violations of a confidence band of seasonal deviations around a Holt-Winters forecast, counted in a moving window :cite:`brutlag2000aberrant`
      - The period

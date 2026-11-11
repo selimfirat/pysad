@@ -1,6 +1,7 @@
 from collections import Counter, defaultdict
 
 import numpy as np
+import pytest
 
 from pysad.models import xStream
 
@@ -144,6 +145,23 @@ def test_xstream_explain_is_reproducible():
     np.testing.assert_array_equal(weights_a, weights_b)
 
 
+def test_xstream_explain_blames_the_out_of_range_feature():
+    rng = np.random.RandomState(0)
+    X = rng.randn(200, 5)
+    model = xStream(num_components=10, n_chains=50, depth=10, window_size=100, random_state=0)
+    model.fit(X)
+
+    reference = X[150]
+    normal_weight = model.score_explain_partial(reference)[3]
+
+    anomalous = reference.copy()
+    anomalous[3] = 9.0
+    weights = model.score_explain_partial(anomalous)
+
+    assert weights[3] > normal_weight
+    assert int(np.argmax(weights)) == 3
+
+
 def test_xstream_explain_rejects_nan():
     rng = np.random.RandomState(0)
     X = rng.randn(60, 6)
@@ -152,9 +170,5 @@ def test_xstream_explain_rejects_nan():
 
     anomalous = X[31].copy()
     anomalous[2] = np.nan
-    try:
+    with pytest.raises(ValueError, match="xStream does not accept NaN values"):
         model.score_explain_partial(anomalous)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("score_explain_partial did not reject NaN")

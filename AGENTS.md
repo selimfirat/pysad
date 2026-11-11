@@ -36,7 +36,7 @@ In particular, you the agent MUST obey these rules while interacting on GitHub:
 
 - Write tests that are sensitive to behavior changes and insensitive to structure changes. Assert public observable behavior, such as scores, shapes, and returned types, over private state, helper layout, call counts, or repr formatting.
 - If the assertion depends on random draws, seed the test. Otherwise, do not seed it. Pass `random_state=` to the model, or call `pysad.utils.fix_seed`, which seeds the global state that `random_state=None` draws from.
-- If you add a model, add it to the shared tests in `tests/models`. These tests run on every model, for example the score type, pickling, random state, and property tests. To find them, search for an existing model name.
+- If you add a model, the shared tests in `tests/models` (`test_models.py`, `test_score_types.py`, `test_nan_input.py`, `test_pickling.py`, `test_properties.py`, `test_discrimination.py`, and `test_random_state.py`) discover it automatically from `pysad.models.__all__`. Add an entry to `short_stream_params` in `tests/models/conftest.py` only if the model requires constructor arguments without defaults or smaller window sizes for short test streams.
 - If a test finds a bug that is out of scope for your change, mark the test `pytest.mark.xfail(reason=..., strict=True)` and file the bug. If the bug is fixed, the strict mark makes the test fail. The fix must remove the mark.
 - Match the surrounding test file. Most model tests import inside the test function.
 
@@ -94,7 +94,7 @@ In particular, you the agent MUST obey these rules while interacting on GitHub:
 
 # Python/NumPy Coding Style
 
-- Type function and method boundaries. mypy requires full type hints in `pysad.core`, `pysad.evaluation`, `pysad.statistics`, and `pysad.utils`. If you complete the type hints of a package, add it to that list in `pyproject.toml`.
+- Type function and method boundaries. mypy requires full type hints across the entire `pysad` package automatically (no `pyproject.toml` entry is needed when adding a module).
 - Keep argument validation minimal. Prefer type annotations and clear downstream failures over defensive checks.
 - If the code otherwise silently accepts a bad value with wrong semantics, add an explicit runtime check. An example is a `min_val` above `max_val`, which puts every instance into one bin. Do not add positivity, finiteness, range, or shape checks that fail on first use anyway.
 - Do not check established invariants again in `fit_partial` or `score_partial`.

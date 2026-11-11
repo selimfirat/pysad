@@ -20,7 +20,7 @@ def _model_specs():
     from pysad.models.integrations import OneFitModel, ReferenceWindowModel
     from pysad.transform.postprocessing import RunningZScorePostprocessor
     from pysad.transform.preprocessing import ShingleTransformer
-    from tests.models.conftest import num_features_for
+    from tests.models.conftest import num_features_for, short_stream_params
 
     mins, maxes = [0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES
     params = {
@@ -79,7 +79,12 @@ def _model_specs():
     specs = [
         (
             name,
-            lambda name=name: getattr(models, name)(**params.get(name, {})),
+            lambda name=name: getattr(models, name)(
+                **(
+                    params.get(name)
+                    or short_stream_params(name, num_features_for(name, NUM_FEATURES))
+                )
+            ),
             num_features_for(name, NUM_FEATURES),
         )
         for name in models.__all__

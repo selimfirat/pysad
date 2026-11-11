@@ -9,7 +9,12 @@ from pysad.transform.postprocessing import RunningZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
-from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, UNIVARIATE_MODELS
+from tests.models.conftest import (
+    EDGE_MODELS,
+    TIMESTAMPED_MODELS,
+    UNIVARIATE_MODELS,
+    short_stream_params,
+)
 
 SEED = 61
 NUM_FIT = 60
@@ -122,7 +127,9 @@ def _make_model(model_name, X):
             ],
         )
 
-    return model_cls(**MODEL_PARAMS.get(model_name, {}))
+    return model_cls(
+        **(MODEL_PARAMS.get(model_name) or short_stream_params(model_name, X.shape[1]))
+    )
 
 
 def _fitted_model(model_name, X, y):

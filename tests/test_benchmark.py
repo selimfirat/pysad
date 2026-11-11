@@ -255,3 +255,61 @@ def test_pysad_files_excludes_unrelated_package_reexports():
     assert "pysad/utils/pandas_streamer.py" not in loda_files
     assert "pysad/utils/synthetic.py" not in loda_files
     assert "pysad/utils/validation.py" not in loda_files
+
+
+def test_runtime_toml_ignores_tool_and_dev_sections():
+    """Tool and test configuration edits in pyproject.toml do not trigger a full benchmark run."""
+    from pathlib import Path
+
+    benchmark = load_benchmark()
+    source = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text()
+
+    tool_edited = source.replace("disallow_untyped_defs = true", "disallow_untyped_defs = false")
+    assert benchmark._runtime_toml(source) == benchmark._runtime_toml(tool_edited)
+
+    runtime_edited = source.replace('"scipy>=1.13.0",', '"scipy>=1.14.0",')
+    assert benchmark._runtime_toml(source) != benchmark._runtime_toml(runtime_edited)
+
+
+def test_example_pysad_files_isolates_example_imports():
+    """Example dependency tracing only includes the pysad modules imported by that example."""
+    from pathlib import Path
+
+    from tests.test_examples import _example_pysad_files
+
+    code = (Path(__file__).resolve().parents[1] / "examples" / "example_usage_short.py").read_text()
+    files = _example_pysad_files(code)
+    assert "pysad/models/loda.py" in files
+    assert "pysad/evaluation/metrics.py" in files
+    assert "pysad/utils/data.py" in files
+    assert "pysad/models/rshash.py" not in files
+    assert "pysad/models/sand.py" not in files
+
+
+def test_union_merged_files_have_no_duplicates():
+    """Files configured with merge=union keep unique entries and sorted bibliography keys."""
+    import ast
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+
+    for path in sorted((root / "pysad").rglob("__init__.py")):
+        if "kitnet_model" in path.parts:
+            continue
+        tree = ast.parse(path.read_text())
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
+            ):
+                exports = ast.literal_eval(node.value)
+                assert len(exports) == len(set(exports)), f"Duplicate in {path}: {exports}"
+
+    bib = (root / "docs" / "refs.bib").read_text()
+    keys = re.findall(r"^@\w+\{([^,\s]+),", bib, flags=re.M)
+    assert len(keys) == len(set(keys))
+    assert keys == sorted(keys, key=str.lower)
+
+    examples_rst = (root / "docs" / "examples.rst").read_text()
+    includes = re.findall(r"^\.\. literalinclude::\s+(\S+)", examples_rst, flags=re.M)
+    assert len(includes) == len(set(includes))

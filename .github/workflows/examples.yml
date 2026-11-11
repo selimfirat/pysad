@@ -52,4 +52,11 @@ jobs:
           key: pysad-examples-data-${{ hashFiles('pysad/utils/data.py', 'examples/**') }}
           restore-keys: pysad-examples-data-
       - name: Run examples
-        run: pytest -m examples -n auto
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            export PYSAD_EXAMPLES_SINCE="origin/$BASE_REF"
+          fi
+          pytest -m examples -n auto

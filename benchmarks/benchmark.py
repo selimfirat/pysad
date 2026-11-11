@@ -906,6 +906,11 @@ def _changed_benchmark_detectors(base_source, head_source):
     return changed
 
 
+def _runtime_toml(source):
+    """The build, project, and runtime dependency sections of pyproject.toml."""
+    return source.split("\ntest = [", 1)[0]
+
+
 def changed_detectors(base, path=None):
     """The detectors whose results a change since ``base`` can move.
 
@@ -913,7 +918,11 @@ def changed_detectors(base, path=None):
     """
     files = git("diff", "--name-only", base).split()
     common = pysad_files([Data, fix_seed, ShingleTransformer, *CALIBRATORS.values()])
-    if common & set(files) or "pyproject.toml" in files:
+    if common & set(files):
+        return [*DETECTORS, *UNIVARIATE]
+    if "pyproject.toml" in files and _runtime_toml(
+        git("show", f"{base}:pyproject.toml")
+    ) != _runtime_toml((ROOT / "pyproject.toml").read_text()):
         return [*DETECTORS, *UNIVARIATE]
     edited = set()  # detectors whose committed results or registration changed
     if "benchmarks/benchmark.py" in files:

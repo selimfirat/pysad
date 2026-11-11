@@ -20,6 +20,7 @@ class _MeterPostprocessor(BasePostprocessor):
 
     def __init__(self, meter: UnivariateStatistic | RunningStatistic) -> None:
         self.meter = meter
+        self.num_seen_ = 0
 
     def fit_partial(self, score: float) -> _MeterPostprocessor:
         """Fits the postprocessor to the (next) timestep's score. Running postprocessors only keep the scores in their window.
@@ -31,6 +32,7 @@ class _MeterPostprocessor(BasePostprocessor):
             object: self.
         """
         self.meter.update(score)
+        self.num_seen_ += 1
 
         return self
 
@@ -41,8 +43,10 @@ class _MeterPostprocessor(BasePostprocessor):
             score (float): The input score.
 
         Returns:
-            float: Transformed score.
+            float: Transformed score, or 0.0 before the first fit.
         """
+        if self.num_seen_ == 0:
+            return 0.0
         return self.meter.get()
 
 
@@ -61,6 +65,7 @@ class _ZScorePostprocessor(BasePostprocessor):
     ) -> None:
         self.variance_meter = variance_meter
         self.average_meter = average_meter
+        self.num_seen_ = 0
 
     def fit_partial(self, score: float) -> _ZScorePostprocessor:
         """Fits the postprocessor to the (next) timestep's score. Running postprocessors only keep the scores in their window.
@@ -73,6 +78,7 @@ class _ZScorePostprocessor(BasePostprocessor):
         """
         self.variance_meter.update(score)
         self.average_meter.update(score)
+        self.num_seen_ += 1
 
         return self
 
@@ -83,8 +89,10 @@ class _ZScorePostprocessor(BasePostprocessor):
             score (float): The input score.
 
         Returns:
-            float: Transformed score.
+            float: Transformed score, or 0.0 before the first fit.
         """
+        if self.num_seen_ == 0:
+            return 0.0
         variance = self.variance_meter.get()
         # Scores in a zero-variance window equal the mean, so their normalized
         # deviation is zero. Returning 0.0 also keeps downstream ensemblers usable.

@@ -29,6 +29,7 @@ def _model_specs():
         MCOD,
         MIDAS,
         NETS,
+        PEWMA,
         SAND,
         TEDA,
         ADeMS,
@@ -56,6 +57,7 @@ def _model_specs():
         RobustRandomCutForest,
         RSForest,
         RSHash,
+        SDOstream,
         SeasonalESD,
         SeasonalHybridESD,
         SmartSifter,
@@ -138,6 +140,7 @@ def _model_specs():
         ("OnlineIsolationForest", lambda: OnlineIsolationForest(), NUM_FEATURES),
         ("OnlineOneClassSVM", lambda: OnlineOneClassSVM(), NUM_FEATURES),
         ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),
+        ("PEWMA", lambda: PEWMA(), 1),
         ("RandomModel", lambda: RandomModel(), NUM_FEATURES),
         # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses
         (
@@ -158,6 +161,7 @@ def _model_specs():
         ("RSForest", lambda: RSForest(window_size=20, num_trees=5, max_depth=8), NUM_FEATURES),
         ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
         ("SAND", lambda: SAND(subsequence_length=4, batch_size=40), 1),
+        ("SDOstream", lambda: SDOstream(), NUM_FEATURES),
         ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=0.17), 1),
         (
             "SeasonalHybridESD",
@@ -265,17 +269,9 @@ def test_batch_methods_return_1d_arrays(name, factory, num_features):
 @pytest.mark.parametrize(
     "name,factory,num_features", MODEL_SPECS, ids=[spec[0] for spec in MODEL_SPECS]
 )
-def test_score_partial_before_the_first_fit_returns_a_score(name, factory, num_features, request):
+def test_score_partial_before_the_first_fit_returns_a_score(name, factory, num_features):
     """Regression test for #266: fit_score_partial scores each instance before it fits it, so
     every detector must score the first instance without an error."""
-    if name == "StreamPipeline":
-        request.applymarker(
-            pytest.mark.xfail(
-                reason="RunningZScorePostprocessor.transform_partial divides by zero before its first fit",
-                raises=ZeroDivisionError,
-                strict=True,
-            )
-        )
     if name == "PerfectModel":  # returns the labels that it was fitted with
         pytest.skip("PerfectModel needs a label before it can score")
     X, _ = _data(name, num_features)

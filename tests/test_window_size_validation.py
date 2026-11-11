@@ -2,7 +2,7 @@ from functools import partial
 
 import pytest
 
-from pysad.evaluation import PrecisionMetric, WindowedMetric
+from pysad.evaluation import PrecisionMetric, RollingMetric, WindowedMetric
 from pysad.statistics import AverageMeter, RunningStatistic
 from pysad.transform.postprocessing import (
     RunningAveragePostprocessor,
@@ -23,6 +23,7 @@ from pysad.utils import Window
     [
         pytest.param(partial(RunningStatistic, AverageMeter), id="RunningStatistic"),
         pytest.param(partial(WindowedMetric, PrecisionMetric), id="WindowedMetric"),
+        pytest.param(partial(RollingMetric, PrecisionMetric), id="RollingMetric"),
         Window,
         ConformalProbabilityCalibrator,
         GaussianTailProbabilityCalibrator,

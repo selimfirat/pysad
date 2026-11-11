@@ -21,6 +21,7 @@ UNIVARIATE_MODELS = {
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
+    "PEWMA",
     "RelativeEntropy",
     "SAND",
     "SeasonalESD",

@@ -15,7 +15,7 @@ __all__ = [
     "ensemble",
     "postprocessing",
     "preprocessing",
-    "projection",
     "probability_calibration",
+    "projection",
     "stream_generators",
 ]

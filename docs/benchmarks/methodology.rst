@@ -69,6 +69,7 @@ What the results do not show
 ----------------------------
 
 - Tuned parameters can give very different results. For example, :class:`~pysad.models.KitNet` trains on its first 1,100 points by default. 7 ODDS datasets have fewer points, so on them, KitNet never ends its training. :doc:`/guides/choose_detector` names the parameters with the largest effect.
+- :class:`~pysad.models.RSForest` scores every point 0.0 until its first window of 512 points is full. On streams with fewer points than 512, such as arrhythmia, glass, ionosphere, lympho, vertebral and wbc, every score after the warm-up is 0.0. Its AUROC is then 0.5 and its AUPR is the fraction of anomalies.
 - The points of the ODDS datasets are independent, so these streams have no drift and no seasonality. The streams with drift show how a detector follows changes over time, but they are only 8 streams. Their thinning also makes the changes faster in points.
 - The NAB scoreboard has no results for MAD, SAD and the ESD detectors. Their NAB scores depend on the calibration, which NAB does not use. The periods come from the data, because NAB gives no periods.
 - The UCR results come from the short series only. A longer series can be harder for a detector.

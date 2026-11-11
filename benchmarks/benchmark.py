@@ -34,7 +34,7 @@ from types import ModuleType
 
 import numpy as np
 from scipy.stats import rankdata
-from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.metrics import average_precision_score, matthews_corrcoef, roc_auc_score
 from threadpoolctl import threadpool_limits
 
 import pysad
@@ -114,6 +114,7 @@ DETECTORS = {
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
     "RSForest": lambda X, seed: models.RSForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
+    "SDOstream": lambda X, seed: models.SDOstream(random_state=seed),
     "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
     "TEDA": lambda X, seed: models.TEDA(),
     "ThreshLEAP": lambda X, seed: models.ThreshLEAP(),
@@ -145,6 +146,7 @@ UNIVARIATE = {
     "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
     "MatrixProfile": lambda n, period: models.MatrixProfile(window_length=SHINGLE_SIZE),
     "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
+    "PEWMA": lambda n, period: models.PEWMA(),
     "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
     # Fix the length without labels, as for shingles, and initialize in the standard warm-up.
     "SAND": lambda n, period: models.SAND(
@@ -237,7 +239,7 @@ CALIBRATOR_NAMES = {"conformal": "Conformal", "gaussian": "Gaussian tail"}  # sh
 # "rate" is 1 minus the anomaly rate of the stream, so the alerts match the number of anomalies.
 # It uses the labels, which a live stream does not have, so it shows the best case of a threshold.
 THRESHOLDS = [0.95, 0.99, 0.995, "rate"]
-ALERT_METRICS = ["false_alerts", "precision", "recall"]
+ALERT_METRICS = ["false_alerts", "precision", "recall", "mcc"]
 ALERT_FIELDS = [f"{c}_{t}_{m}" for c in CALIBRATORS for t in THRESHOLDS for m in ALERT_METRICS]
 FIELDS = [
     "dataset",
@@ -282,6 +284,16 @@ def load(dataset, seed, points=None):
     return Data().get_stream(
         f"{dataset}.mat", random_state=seed, max_points=points or MAX_POINTS, scale=True
     )
+
+
+def anomaly_fraction(dataset):
+    """The fraction of anomalies among the evaluated points of a dataset.
+
+    The first points are the warm-up and do not count in the metrics. The value is the reference
+    of a random detector for AUPR on this dataset.
+    """
+    _, y = load(dataset, 0)
+    return float(y[warmup(len(y)) :].mean())
 
 
 def nab_probation(n):
@@ -521,7 +533,7 @@ def _run(dataset, detector, seed, points):
 
 
 def alerts(calibrator, calibrated, y, valid):
-    """The false alert rate, the precision and the recall of the alerts at each threshold."""
+    """Return alert rates, precision, recall, and MCC at each threshold."""
     row = {}
     for t in THRESHOLDS:
         alert = calibrated >= (1 - y.mean() if t == "rate" else t)
@@ -529,6 +541,7 @@ def alerts(calibrator, calibrated, y, valid):
             alert[y == 0].mean(),
             (alert & (y == 1)).sum() / alert.sum() if alert.any() else np.nan,
             alert[y == 1].mean(),
+            matthews_corrcoef(y, alert) if valid else np.nan,
         ]
         for metric, value in zip(ALERT_METRICS, values, strict=True):
             row[f"{calibrator}_{t}_{metric}"] = round(value, 4) if valid else np.nan
@@ -581,6 +594,7 @@ def write_tables(results, nab=None):
             "Precision",
             "Recall",
             "F1",
+            "MCC",
         ],
         alert_rows(results, detectors),
     )
@@ -627,6 +641,9 @@ def write_ranking(results, datasets, prefix):
     """The summary, the AUROC and the AUPR tables of the multivariate detectors.
 
     ``datasets`` maps each dataset to its name in the tables.
+    Italics mark AUROC values at or below 0.5 and AUPR values at or below the anomaly fraction.
+    The chance comparison rounds the anomaly fraction to four decimal places, like stored metrics.
+    Bold marks the best value in each row.
     """
     detectors = [d for d in DETECTORS if any(k[1] == d for k in results)]
     if not detectors:
@@ -637,6 +654,7 @@ def write_ranking(results, datasets, prefix):
             [float(r[metric]) for k, r in results.items() if k[:2] == (dataset, detector)]
         )
 
+    fractions = np.array([anomaly_fraction(ds) for ds in datasets])
     tables = {
         metric: np.array([[mean(metric, ds, d) for d in detectors] for ds in datasets])
         for metric in ["auroc", "aupr"]
@@ -647,6 +665,9 @@ def write_ranking(results, datasets, prefix):
         for d in detectors
     ]
     auroc, aupr = (np.nanmean(tables[metric], axis=0) for metric in ["auroc", "aupr"])
+    aupr_over_fraction = np.array(
+        [np.nanmean(tables["aupr"][:, i] / fractions) for i in range(len(detectors))]
+    )
     # Rank 1 is the highest AUROC of a dataset. Equal mean ranks, as the page rounds them, go by
     # mean AUROC, then mean AUPR, then time per point.
     order = sorted(
@@ -654,13 +675,22 @@ def write_ranking(results, datasets, prefix):
     )
     write_csv(
         f"{prefix}summary.csv",
-        ["Detector", "Mean rank", "Mean AUROC", "Mean AUPR", "Time per point (ms)", "Commit"],
+        [
+            "Detector",
+            "Mean rank",
+            "Mean AUROC",
+            "Mean AUPR",
+            "Mean AUPR / fraction",
+            "Time per point (ms)",
+            "Commit",
+        ],
         [
             [
                 f":class:`~pysad.models.{detectors[i]}`",
                 f"{rank[i]:.1f}",
                 f"{auroc[i]:.3f}",
                 f"{aupr[i]:.3f}",
+                f"{aupr_over_fraction[i]:.3f}",
                 f"{ms[i]:.2f}",
                 commit_links(results, detectors[i]),
             ]
@@ -669,12 +699,31 @@ def write_ranking(results, datasets, prefix):
     )
     for metric, table in tables.items():  # the columns in the order of the summary
         rows = []
-        for ds, row in zip(datasets, table[:, order], strict=True):
+        for j, (ds, row) in enumerate(zip(datasets, table[:, order], strict=True)):
             cells = [f"{v:.3f}" for v in row]
             best = f"{np.nanmax(row):.3f}"
-            rows.append([datasets[ds], *(f"**{c}**" if c == best else c for c in cells)])
+            marked = []
+            for c, v in zip(cells, row, strict=True):
+                # Metrics in results.csv have four decimal places.
+                below = v <= (0.5 if metric == "auroc" else round(fractions[j], 4))
+                if c == best and below:
+                    marked.append(f":strong-emphasis:`{c}`")
+                elif c == best:
+                    marked.append(f"**{c}**")
+                elif below:
+                    marked.append(f"*{c}*")
+                else:
+                    marked.append(c)
+            if metric == "aupr":
+                rows.append([datasets[ds], f"{fractions[j]:.3f}", *marked])
+            else:
+                rows.append([datasets[ds], *marked])
         header = [SHORT_NAMES.get(detectors[i], detectors[i]) for i in order]
-        write_csv(f"{prefix}{metric}.csv", ["Dataset", *header], rows)
+        if metric == "aupr":
+            header = ["Dataset", "Fraction of anomalies", *header]
+        else:
+            header = ["Dataset", *header]
+        write_csv(f"{prefix}{metric}.csv", header, rows)
     return detectors
 
 
@@ -790,6 +839,7 @@ def alert_rows(results, detectors):
                     f"{np.nanmean(p):.3f}" if np.isfinite(p).any() else "",  # no run had alerts
                     f"{np.nanmean(r):.3f}",
                     f"{np.nanmean(f1):.3f}",
+                    f"{np.nanmean(values['mcc']):.3f}" if np.isfinite(values["mcc"]).any() else "",
                 ]
             )
     return rows

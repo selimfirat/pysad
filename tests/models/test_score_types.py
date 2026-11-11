@@ -31,6 +31,7 @@ def _model_specs():
         NETS,
         PEWMA,
         SAND,
+        STARE,
         TEDA,
         ADeMS,
         AnyOut,
@@ -165,6 +166,11 @@ def _model_specs():
         ("SpectralResidual", lambda: SpectralResidual(window_size=30), 1),
         ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),
         ("StandardAbsoluteDeviation-signed", lambda: StandardAbsoluteDeviation(absolute=False), 1),
+        (
+            "STARE",
+            lambda: STARE(window_size=20, slide_size=5, num_neighbors=3, cell_size=0.3),
+            NUM_FEATURES,
+        ),
         (
             "StreamPipeline",
             lambda: StreamPipeline(

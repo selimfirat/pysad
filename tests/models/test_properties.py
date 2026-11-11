@@ -133,6 +133,7 @@ def _model_params(model_name, num_features, data):
         "MatrixProfile": {"window_length": 4, "history_size": 20},
         "DAMP": {"window_length": 4, "history_size": 20},
         "SpectralResidual": {"window_size": 8, "num_average_points": 3},
+        "STARE": {"window_size": 12, "slide_size": 3, "num_neighbors": 2, "cell_size": 0.1},
         "ThreshLEAP": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         "LODA": {"num_bins": 5, "num_random_cuts": 10},
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},

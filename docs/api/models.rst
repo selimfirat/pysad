@@ -51,6 +51,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    SmartSifter
    SpectralResidual
    StandardAbsoluteDeviation
+   STARE
    TEDA
    ThreshLEAP
    xStream

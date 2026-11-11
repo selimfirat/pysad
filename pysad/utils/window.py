@@ -1,8 +1,12 @@
+from collections import deque
 from typing import Any
 
 
 class Window:
-    """Window to limit the instances in list and keep the size fixed when full.
+    """Window to limit the instances in a list and keep the size fixed when full.
+
+    The window holds at most ``window_size`` items, oldest first. Adding an item beyond the limit
+    drops the oldest item in constant time, independent of the window size.
 
     Args:
         window_size (int): The size of the window. Must be at least 1.
@@ -17,25 +21,25 @@ class Window:
             raise ValueError("window_size must be a positive integer.")
 
         self.window_size = window_size
-        self.window: list[Any] = []
+        self.window: deque[Any] = deque(maxlen=window_size)
 
     def update(self, num: Any) -> None:
-        """Adds new item to the window. Removes the tail if size exceeds the self.window_size.
+        """Adds new item to the window. Removes the oldest item if size exceeds window_size.
+
+        Adding an item takes constant time, independent of the window size.
 
         Args:
-            num (float): item to be added to the window.
+            num (float): Item to be added to the window.
         """
         self.window.append(num)
-        if self.window_size is not None and len(self.window) > self.window_size:
-            self.window = self.window[1:]
 
     def get(self) -> list[Any]:
-        """Method to obtain the window list.
+        """Method to obtain the window items.
 
         Returns:
-            list: The items in the window.
+            list: The items in the window, oldest first.
         """
-        return self.window
+        return list(self.window)
 
 
 class UnlimitedWindow(Window):
@@ -45,9 +49,9 @@ class UnlimitedWindow(Window):
         super().__init__(None)
 
     def update(self, num: Any) -> None:
-        """Adds new item to the window. Removes the tail if size exceeds the self.window_size.
+        """Adds new item to the window. The window never drops items.
 
         Args:
-            num (float): item to be added to the window.
+            num (float): Item to be added to the window.
         """
         self.window.append(num)

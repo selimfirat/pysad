@@ -38,7 +38,7 @@ Each page lists the public classes and functions of one module. Each name has a 
      - Score calibrators
      - ``pysad.transform.probability_calibration``
    * - :doc:`api/evaluation`
-     - Streaming metrics
+     - Streaming metrics, including :class:`~pysad.evaluation.RollingMetric`
      - ``pysad.evaluation``
    * - :doc:`api/statistics`
      - Running statistics

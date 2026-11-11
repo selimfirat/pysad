@@ -44,7 +44,9 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             score (float): Input score.
 
         Returns:
-            float: One minus the conformal p-value of the score.
+            float: One minus the conformal p-value of the score, or 0.0 before the first fit.
         """
         scores = self.window.get()
+        if not scores:
+            return 0.0
         return sum(1 for s in scores if s < score) / len(scores)

@@ -19,6 +19,62 @@ It prints:
 
    AUROC: 0.758
 
+Score a stream with LODA
+------------------------
+
+This script scores each point of cardio with LODA. LODA estimates the density of a point from sparse random projections. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_loda.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.946
+
+Score a stream with HalfSpaceTrees
+----------------------------------
+
+This script scores each point of cardio with HalfSpaceTrees. It compares each point to the density of the previous window, using the min and max of each feature. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_half_space_trees.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.928
+
+Score a stream with xStream
+---------------------------
+
+This script scores each point of cardio with xStream. xStream bins StreamHash projections into half-space chains. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_xstream.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.845
+
+Score a stream with KitNet
+--------------------------
+
+This script scores each point of cardio with KitNet. KitNet is an ensemble of small autoencoders made for network traffic. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_kitnet.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.878
+
 Score a synthetic stream
 ------------------------
 
@@ -553,6 +609,20 @@ It prints:
 
    AUROC: 0.651
 
+Use an online isolation forest
+------------------------------
+
+This script scores each point with OnlineIsolationForest. The forest keeps a bounded window of recent points. It scores each point before it learns it. When the window is full, it forgets the oldest point. A point is anomalous when the trees isolate it on a short path.
+
+.. literalinclude:: ../examples/example_online_isolation_forest.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.676
+
 Load credit-card fraud transactions
 -----------------------------------
 
@@ -621,6 +691,20 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.727
+
+Use an expected similarity detector
+-----------------------------------
+
+This script scores each point with EXPoSE. EXPoSE maps each point to random Fourier features and keeps a running kernel mean embedding of the fitted points. The score is the negative expected similarity divided by the squared norm of the embedding. A higher score means more anomalous.
+
+.. literalinclude:: ../examples/example_expose.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.496
 
 Summarize old points with DILOF
 -------------------------------
@@ -705,6 +789,30 @@ It prints:
 .. code-block:: text
 
    mean: -0.048, standard deviation: 0.977
+
+Track the mean with an adaptive window
+--------------------------------------
+
+This script streams 1,000 values with mean 0.25 followed by 1,000 values with mean 0.75.
+It updates :class:`~pysad.statistics.ADWINMeter` directly.
+ADWIN assumes values in [0, 1], so this example uses uniform samples within that range.
+For values in a known range ``[a, b]``, use ``(value - a) / (b - a)`` before each update.
+
+.. literalinclude:: ../examples/example_adwin.py
+   :language: python
+
+The mean changes at index 1000.
+The first drift occurs at index 1020, when the window shrinks to 381 values.
+Later updates can shrink the window again as ADWIN removes older values.
+The script ends with:
+
+.. code-block:: text
+
+   Final window size 992, mean 0.740
+
+``drift_detected`` reports whether the last update shrank the window.
+``width`` gives the number of values in the current window, and ``get()`` returns their mean.
+ADWIN selects its own window, so call ``update`` directly without ``remove`` or :class:`~pysad.statistics.RunningStatistic`.
 
 Detect a change in the mean
 ---------------------------

@@ -10,6 +10,7 @@ This module holds transformers that change each point before the detector gets i
    :template: class.rst
    :toctree: ../generated
 
+   DrainLogParser
    IdentityScaler
    InstanceStandardScaler
    InstanceUnitNormScaler

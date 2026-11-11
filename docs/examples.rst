@@ -790,6 +790,30 @@ It prints:
 
    mean: -0.048, standard deviation: 0.977
 
+Track the mean with an adaptive window
+--------------------------------------
+
+This script streams 1,000 values with mean 0.25 followed by 1,000 values with mean 0.75.
+It updates :class:`~pysad.statistics.ADWINMeter` directly.
+ADWIN assumes values in [0, 1], so this example uses uniform samples within that range.
+For values in a known range ``[a, b]``, use ``(value - a) / (b - a)`` before each update.
+
+.. literalinclude:: ../examples/example_adwin.py
+   :language: python
+
+The mean changes at index 1000.
+The first drift occurs at index 1020, when the window shrinks to 381 values.
+Later updates can shrink the window again as ADWIN removes older values.
+The script ends with:
+
+.. code-block:: text
+
+   Final window size 992, mean 0.740
+
+``drift_detected`` reports whether the last update shrank the window.
+``width`` gives the number of values in the current window, and ``get()`` returns their mean.
+ADWIN selects its own window, so call ``update`` directly without ``remove`` or :class:`~pysad.statistics.RunningStatistic`.
+
 Detect a change in the mean
 ---------------------------
 

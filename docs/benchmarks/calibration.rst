@@ -22,7 +22,7 @@ MCC
    It counts true and false predictions for both classes.
    A score of 1 means perfect agreement. A score of -1 means complete disagreement.
    Constant predictions give 0. Invalid runs do not count.
-   An empty cell means that no run contains MCC. Rerun the benchmark to fill it.
+   An empty cell means that no run has an MCC value. Rerun the benchmark to fill it.
 
 .. csv-table::
    :file: ../benchmark/alerts.csv

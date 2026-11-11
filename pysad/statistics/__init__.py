@@ -17,6 +17,7 @@ from .kswin_meter import KSWINMeter
 from .max_meter import MaxMeter
 from .median_meter import MedianMeter
 from .min_meter import MinMeter
+from .online_periodicity_meter import OnlinePeriodicityMeter
 from .page_hinkley_meter import PageHinkleyMeter
 from .quantile_meter import QuantileMeter
 from .running_statistic import RunningStatistic
@@ -40,6 +41,7 @@ __all__ = [
     "MaxMeter",
     "MedianMeter",
     "MinMeter",
+    "OnlinePeriodicityMeter",
     "PageHinkleyMeter",
     "QuantileMeter",
     "RunningStatistic",

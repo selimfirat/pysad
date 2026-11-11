@@ -4,4 +4,4 @@ The :mod:`pysad.transform` module contains modules to preprocess inputs, calibra
 
 from . import ensemble, postprocessing, preprocessing, probability_calibration, projection
 
-__all__ = ["ensemble", "postprocessing", "preprocessing", "projection", "probability_calibration"]
+__all__ = ["ensemble", "postprocessing", "preprocessing", "probability_calibration", "projection"]

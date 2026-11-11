@@ -21,11 +21,11 @@ __all__ = [
     "AUROCMetric",
     "BalancedAccuracyMetric",
     "BaseSKLearnMetric",
+    "evaluate_stream",
     "F1Metric",
     "MatthewsCorrelationMetric",
     "PrecisionMetric",
     "RecallMetric",
     "RollingMetric",
     "WindowedMetric",
-    "evaluate_stream",
 ]

@@ -1,7 +1,7 @@
 Run a detector in production
 ============================
 
-This guide shows how to start a detector from historical data and how to save and restore its state. It also shows how to run one detector per data source and how to control the time per point.
+Initialize a detector from history, save its state, handle multiple sources and measure processing time.
 
 The examples on this page use synthetic data. Replace it with your own history and stream:
 
@@ -17,7 +17,7 @@ The examples on this page use synthetic data. Replace it with your own history a
 Start from historical data
 --------------------------
 
-A new detector has no model of normal behavior, so its first scores are not reliable. A calibrator maps scores to values between 0 and 1. If you have historical data, fit the detector and the calibrator to it before the live stream starts:
+Fit the detector and calibrator on historical data before processing live points. This initializes the model and the calibrator’s 0-to-1 score scale:
 
 .. code-block:: python
 
@@ -30,14 +30,14 @@ A new detector has no model of normal behavior, so its first scores are not reli
    history_scores = model.fit_score(X_history)  # X_history has shape (num_points, num_features)
    calibrator.fit(history_scores)
 
-``fit_score`` processes the rows in order, as a stream. After this step, the first live points get reliable scores. You do not need a warm-up period, a first part of the stream with unreliable scores.
+``fit_score`` processes rows in order. Representative history reduces the live warm-up period. Make sure that the history reflects current conditions.
 
 Some detectors take initial data in the constructor instead, for example ``initial_window_X`` for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.integrations.ReferenceWindowModel`, or ``initial_X`` for :class:`~pysad.models.LocalOutlierProbability`.
 
 Save and restore the state
 --------------------------
 
-You can save PySAD detectors and calibrators with ``pickle``. The PySAD tests make sure that this works for every detector. Save the detector and the calibrator together, so that a restart continues from the same state:
+Save detectors and calibrators together with ``pickle`` to resume from the same state. Pickling is tested for every detector:
 
 .. code-block:: python
 
@@ -61,7 +61,7 @@ Save the state at a fixed interval, for example every 10,000 points. Also save i
 Run one detector per source
 ---------------------------
 
-Normal behavior is usually different for each data source, for example for each server. If the stream mixes data from several sources, keep one detector for each source:
+If sources have different normal behavior, such as separate servers, keep one detector per source:
 
 .. code-block:: python
 
@@ -84,12 +84,12 @@ Keep the input clean
 Choose when the detector learns
 -------------------------------
 
-If you call ``fit_score_partial``, the detector learns from every point and follows slow changes in the data. You can also use two other modes:
+``fit_score_partial`` learns from every point. To control learning:
 
 - To freeze the detector after a training period, call only ``score_partial``. The detector then does not follow changes in the data.
 - To keep anomalies out of the model, learn only from points that do not raise an alert. :doc:`alerts` shows this loop.
 
-If the data changes permanently, for example after a new software release, make a new detector. Start it from data after the change, because the old normal behavior no longer applies.
+After a permanent change, such as a software release, initialize a new detector using data from after the change.
 
 Control the time per point
 --------------------------
@@ -105,14 +105,14 @@ Measure the time per point on your own data before you go live:
        model.fit_score_partial(x)
    print(f"{(time.perf_counter() - start) / len(X_sample) * 1e6:.0f} µs per point")
 
-Most detectors take about the same time for every point. :class:`~pysad.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` train a new batch model at a fixed interval, so a few points take much longer than the others.
+Processing time is roughly constant for most detectors. :class:`~pysad.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` periodically retrain a batch model, causing slower updates.
 
 If a detector is too slow, use fewer ensemble members: ``num_trees`` for the tree-based detectors, ``num_random_cuts`` for LODA, ``n_chains`` for xStream or ``num_components`` for RSHash. You can also project the points to fewer features, as :doc:`pipelines` shows.
 
 Monitor the scores
 ------------------
 
-A change in the score distribution can show a problem with the data, for example a broken sensor. Track the mean of the recent scores with a running statistic:
+Score distribution changes indicate data problems, such as a broken sensor. Track the recent mean:
 
 .. code-block:: python
 

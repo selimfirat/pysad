@@ -48,7 +48,7 @@
 
 ## Why PySAD
 
-A batch detector needs the whole dataset before it can score a point. A stream does not give you the whole dataset. Points arrive one at a time, the data drifts (its distribution changes over time), and you must decide about each point before the next point arrives. PySAD is built for this setting. More than 60 publications on [Google Scholar](https://scholar.google.com/scholar?cites=3884618599898298487) cite it, and [30+ public repositories](https://github.com/selimfirat/pysad/network/dependents) on GitHub use it.
+Batch detectors train on a fixed dataset. Streaming detectors update as points arrive, without waiting for a complete dataset. PySAD provides a common interface for scoring and learning from each point, including streams whose distribution changes over time (drift). More than 60 publications on [Google Scholar](https://scholar.google.com/scholar?cites=3884618599898298487) cite it, and [30+ public repositories](https://github.com/selimfirat/pysad/network/dependents) on GitHub use it.
 
 <table>
 <tr>
@@ -72,7 +72,7 @@ From robust statistics (MAD, Seasonal Hybrid ESD) to forests, sketches and proje
 
 #### From scores to alerts
 
-The conformal calibrator converts a raw score into the fraction of recent scores that it exceeds. A threshold such as `0.99` then has the same meaning for every detector.
+The conformal calibrator converts a raw score into the fraction of recent scores that it exceeds. A threshold such as `0.99` selects scores by their rank in the recent window, regardless of the detector’s raw score scale. It does not give the probability that a point is an anomaly.
 
 </td>
 <td valign="top">
@@ -101,7 +101,7 @@ Preprocessors, random projections, score postprocessors, ensemblers and running 
 </tr>
 </table>
 
-Batch outlier detectors such as [PyOD](https://github.com/yzhao062/pyod) train on a fixed dataset and must train again to use new data. PySAD detectors learn from every point, and PySAD can still run PyOD models on a stream with `ReferenceWindowModel`. General online learning frameworks such as [River](https://github.com/online-ml/river) treat anomaly detection as one module among many. PySAD is only about streaming anomaly detection: its detectors come with calibration, postprocessing, ensembling and evaluation.
+Batch outlier detectors such as [PyOD](https://github.com/yzhao062/pyod) can score new points after training, but need retraining to update what they have learned. PySAD detectors learn from every point, and PySAD can still run PyOD models on a stream with `ReferenceWindowModel`. General online learning frameworks such as [River](https://github.com/online-ml/river) treat anomaly detection as one module among many. PySAD is only about streaming anomaly detection: its detectors come with calibration, postprocessing, ensembling and evaluation.
 
 ## Installation
 
@@ -203,7 +203,7 @@ for x in ArrayStreamer().iter(X[100:]):
     score = model.fit_score_partial(x)
 ```
 
-The [getting started tutorial](https://pysad.readthedocs.io/en/stable/getting_started.html) explains each step. The [how-to guides](https://pysad.readthedocs.io/en/stable/guides/index.html) cover alerts, evaluation, pipelines, seasonal series, production use and custom detectors.
+Follow the [getting started tutorial](https://pysad.readthedocs.io/en/stable/getting_started.html) for a complete first workflow. Read [concepts](https://pysad.readthedocs.io/en/stable/concepts.html) for the reasoning behind scoring, learning and calibration. Use the [how-to guides](https://pysad.readthedocs.io/en/stable/guides/index.html) for specific tasks and the [API reference](https://pysad.readthedocs.io/en/stable/api.html) for classes, methods and parameters.
 
 ## Detectors
 

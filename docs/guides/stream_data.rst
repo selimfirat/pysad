@@ -1,12 +1,12 @@
 Stream your own data
 ====================
 
-A PySAD detector takes one point at a time. A point is one observation of the stream, as a NumPy array of shape ``(num_features,)``. Any loop that makes such arrays can give data to a detector. This guide shows the common sources of data.
+Pass each observation as a NumPy array of shape ``(num_features,)``. Any loop yielding these arrays can feed a PySAD detector.
 
 Read a CSV file
 ---------------
 
-:class:`~pysad.utils.CSVStreamer` reads the file row by row, so that the file can be larger than memory. Select numeric features by zero-based column index. For a file with columns ``timestamp,cpu,memory,latency,label``:
+:class:`~pysad.utils.CSVStreamer` reads rows without loading the full file. Select numeric features by zero-based column index. For columns ``timestamp,cpu,memory,latency,label``:
 
 .. code-block:: python
 
@@ -23,7 +23,7 @@ The first record is treated as a header by default; use ``has_header=False`` for
 Stream a pandas DataFrame
 -------------------------
 
-:class:`~pysad.utils.PandasStreamer` gives the rows of a DataFrame as NumPy arrays. With ``shuffle=False``, it converts one row at a time. This avoids a NumPy copy of the full frame. It does not give the index. If you need the timestamps, read them from the index of the DataFrame in the same loop:
+:class:`~pysad.utils.PandasStreamer` yields NumPy rows without the index. With ``shuffle=False``, it converts one row at a time rather than copying the full frame. Read timestamps from the index alongside the stream:
 
 .. code-block:: python
 
@@ -41,7 +41,7 @@ Stream a pandas DataFrame
 Stream a Polars DataFrame
 -------------------------
 
-:class:`~pysad.utils.PolarsStreamer` gives the rows of a Polars DataFrame as NumPy arrays. With ``shuffle=False``, it converts fixed-size row buffers. This avoids a NumPy copy of the full frame and keeps NumPy dtypes and timestamp precision. A Polars DataFrame has no index, so drop the timestamp column from the features and read it in the same loop:
+:class:`~pysad.utils.PolarsStreamer` yields NumPy rows. With ``shuffle=False``, fixed-size buffers avoid copying the full frame and preserve dtypes and timestamp precision. Polars has no index. Read timestamps separately from the features:
 
 .. code-block:: python
 
@@ -60,7 +60,7 @@ Stream a Polars DataFrame
 Read from a message queue or a socket
 -------------------------------------
 
-Convert each message into a NumPy array of floats. This example uses a Kafka consumer. The pattern is the same for every source:
+Convert each message to a NumPy float array. For example, with a Kafka consumer:
 
 .. code-block:: python
 
@@ -96,12 +96,14 @@ Stream a NumPy array
    for x, label in ArrayStreamer().iter(X, y):
        score = model.fit_score_partial(x)
 
-To replay the rows in a random order, use ``ArrayStreamer(shuffle=True, random_state=0)``. Shuffle only data that has no time order, because the order of a real stream carries information.
+Use ``ArrayStreamer(shuffle=True, random_state=0)`` for reproducible shuffling. Preserve order when it carries temporal information.
+
+.. _one-dimensional-stream:
 
 Stream one value per point
 --------------------------
 
-Some detectors, such as :class:`~pysad.models.MedianAbsoluteDeviation`, are univariate: they take a point with one feature. Give each value as an array of shape ``(1,)``, not as a plain number:
+Univariate detectors, such as :class:`~pysad.models.MedianAbsoluteDeviation`, take each value as an array of shape ``(1,)``:
 
 .. code-block:: python
 
@@ -127,6 +129,53 @@ Some detectors, such as :class:`~pysad.models.MedianAbsoluteDeviation`, are univ
 
 To stream a 1-D array with :class:`~pysad.utils.ArrayStreamer`, first reshape the array to one column: ``values.reshape(-1, 1)``.
 
+Shape and scoring
+~~~~~~~~~~~~~~~~~
+
+Pass a feature vector, not a scalar or a row matrix of shape ``(1, 1)``.
+Batch input has shape ``(num_instances, num_features)``.
+The batch method ``score(X)`` returns a ``np.float64`` array of shape ``(num_instances,)``.
+Keep feature count and order fixed.
+
+``score_partial`` returns a Python ``float`` without learning, even on repeated calls.
+Higher scores mean more anomalous points, including when scores are negative.
+Use ``fit_score_partial`` to score before learning, or call ``score_partial`` followed by ``fit_partial`` to control updates.
+For a fixed model, fit history and then call only ``score_partial``.
+See :doc:`/concepts` for scoring order and :doc:`alerts` for selective updates.
+
+Set feature bounds
+~~~~~~~~~~~~~~~~~~
+
+:class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` require ``feature_mins`` and ``feature_maxes``, each with shape ``(1,)`` for a single feature.
+Use distinct limits covering expected feature values, not score ranges or alert thresholds.
+For history of shape ``(num_instances, 1)``, compute bounds with ``history.min(axis=0)`` and ``history.max(axis=0)``.
+Use data preceding the stream, not future evaluation points.
+
+HalfSpaceTrees uses bounds to build its trees without scaling inputs.
+RSHash normalizes internally with ``(x - feature_mins) / (feature_maxes - feature_mins)``.
+Neither clips inputs to the bounds.
+If you scale inputs, use bounds in the same units.
+If the expected range changes, create a detector with new bounds and fit recent history.
+
+Score and calibrate a sensor stream
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This example uses known bounds of 0 and 40, generates sensor values with one spike, and scores, calibrates and fits each point.
+The calibrator takes a scalar raw score, not the feature vector.
+Its ``fit_transform_partial`` includes the current score in the window before computing its rank.
+Calibrated values lie between 0 and 1. They are not anomaly probabilities.
+With 64 distinct scores, the largest value is ``63 / 64``.
+Choose the window and threshold together using :doc:`alerts`.
+
+The example skips alerts for 128 points, covering one model window and one calibration window.
+This warm-up is an example choice. The model learns from all points, including alerts.
+
+.. literalinclude:: ../../examples/example_one_dimensional_integration.py
+   :language: python
+
+Replace the generated values with your stream.
+For benchmark data from :class:`~pysad.utils.Data`, select one feature with ``X[:, :1]`` to preserve the batch shape for ``ArrayStreamer``.
+
 Load a benchmark dataset
 ------------------------
 
@@ -142,9 +191,9 @@ Load a benchmark dataset
    for x, label in data.get_iterator("arrhythmia.mat"):  # one point at a time
        ...
 
-``get_iterator`` gives the points in a random order. To get the same order each time, give a seed: ``get_iterator("arrhythmia.mat", random_state=0)``. To keep the order of the file, use ``get_iterator("arrhythmia.mat", shuffle=False)``. ``Data.datasets()`` lists the datasets that ``Data`` can download.
+``get_iterator`` shuffles by default. Set ``random_state=0`` for reproducible order or ``shuffle=False`` to preserve file order, for example ``get_iterator("arrhythmia.mat", shuffle=False)``. ``Data.datasets()`` lists available datasets.
 
-``Data`` downloads a dataset the first time you use it. It caches the file in ``~/.cache/pysad``. To use a different folder, set the ``PYSAD_DATA_DIR`` environment variable. You can also give the folder to ``Data``: ``Data("path/to/folder")``.
+``Data`` downloads each dataset once to ``~/.cache/pysad``. Override the folder with ``PYSAD_DATA_DIR`` or ``Data("path/to/folder")``.
 
 Credit-card fraud transactions
 ------------------------------

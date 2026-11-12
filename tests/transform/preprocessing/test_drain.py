@@ -25,9 +25,11 @@ def test_event_ids_follow_file_order_and_reuse_seen_templates():
 
 
 def test_similar_lines_merge_and_different_lines_split():
-    parser = DrainLogParser(depth=3, st=0.5)
-    # The two lines share the first three tokens and differ only in the last one, so they reach the
-    # same leaf and their similarity is 3 / 4 >= 0.5. The third line diverges at the third token.
+    parser = DrainLogParser(depth=5, st=0.5)
+    # The tree has one length layer and three token layers, so the lines share their first three
+    # tokens. The first two lines agree in three of four tokens, so the second line reaches the same
+    # leaf and matches the template of the first one. The third line differs in the third token, so
+    # it reaches another leaf.
     ids = _ids(
         parser,
         [
@@ -54,10 +56,11 @@ def test_a_line_at_the_threshold_matches_the_template():
 
 
 def test_the_first_template_wins_a_tie():
-    parser = DrainLogParser(depth=1, st=0.4)
-    # The first two lines agree in one of four tokens, so the second line gets its own template.
-    # The third line agrees with both templates in two of four tokens, so both templates match it.
-    ids = _ids(parser, ["a b c d", "a x y z", "a b y q"])
+    parser = DrainLogParser(depth=2, st=0.4)
+    # The lines have the same length, so they reach the same node. The second line agrees with the
+    # first template in one of four tokens, so it gets its own template. The third line agrees with
+    # both templates in two of four tokens, so both templates match it with the same similarity.
+    ids = _ids(parser, ["a b c d", "a x e f", "a b e x"])
     assert ids == [1, 2, 1]
 
 
@@ -86,6 +89,8 @@ def test_invalid_depth_raises():
         DrainLogParser(depth=True)
     with pytest.raises(ValueError):
         DrainLogParser(depth=0)
+    with pytest.raises(ValueError):
+        DrainLogParser(depth=1)
 
 
 def test_invalid_st_raises():
@@ -132,27 +137,73 @@ def test_batch_methods_reject_non_string_lines():
         parser.fit_transform(np.array([1.5, 2.5]))
 
 
+def test_the_length_layer_separates_lines_of_different_lengths():
+    parser = DrainLogParser()
+    # The first and third lines have four tokens, and the second line has five tokens. The length
+    # layer sends the second line to another node, so it gets its own event ID. The third line has
+    # the length of the first line, so it reuses the event ID of the first line.
+    ids = _ids(parser, ["INFO a b c", "INFO a b c d", "INFO a b c"])
+    assert ids == [1, 2, 1]
+    # A line with the length of the second line reuses its event ID.
+    assert _ids(parser, ["INFO a b c e"]) == [2]
+
+
+def test_tokens_with_digits_share_one_node():
+    parser = DrainLogParser()
+    # The first token holds a digit, so all three lines reach the same node.
+    ids = _ids(parser, ["120 bytes received", "121 bytes received", "99 bytes received"])
+    assert ids == [1, 1, 1]
+    # The second token holds a digit, so these lines also reach the same node.
+    assert _ids(parser, ["bytes 120 received", "bytes 121 received"]) == [2, 2]
+
+
+def test_depth_two_uses_only_the_length_layer():
+    parser = DrainLogParser(depth=2, st=0.4)
+    # The tree has one length layer and no token layer. The lines have the same length, so they
+    # reach the same node and the parser compares them.
+    ids = _ids(parser, ["a b c", "x b c"])
+    assert ids == [1, 1]
+
+
+def test_depth_three_adds_one_token_layer():
+    parser = DrainLogParser(depth=3, st=0.4)
+    # The tree has one length layer and one token layer. The first tokens differ, so the lines reach
+    # different nodes and the parser never compares them.
+    ids = _ids(parser, ["a b c", "x b c"])
+    assert ids == [1, 2]
+
+
+def test_the_default_depth_keeps_two_token_layers():
+    parser = DrainLogParser()
+    # The tree has one length layer and two token layers. The lines share their first two tokens, so
+    # they reach the same leaf. The first two lines agree in two of four tokens, so the second line
+    # matches the template of the first one.
+    ids = _ids(parser, ["a b 1 x", "a b 2 y", "a b 3 z"])
+    assert ids == [1, 1, 1]
+
+
 def test_the_depth_bounds_the_path_to_a_leaf():
     parser = DrainLogParser(depth=3, st=0.7)
-    # The path uses the first three tokens, so both lines reach the same leaf.
+    # The path uses the first token, so both lines reach the same leaf.
     ids = _ids(parser, ["a b c d", "a b c e"])
     # Three of four tokens agree, so the second line matches the template of the first line.
     assert ids == [1, 1]
 
 
 def test_lines_that_differ_within_the_depth_are_never_compared():
-    parser = DrainLogParser(depth=3, st=0.7)
-    # The third token differs, so the lines reach different leaves.
-    ids = _ids(parser, ["a b c d", "a b x d"])
+    parser = DrainLogParser(depth=4, st=0.7)
+    # The second token differs, so the lines reach different leaves.
+    ids = _ids(parser, ["a b c d", "a x c d"])
     # Three of four tokens agree, but the parser never compares lines of different leaves.
     assert ids == [1, 2]
 
 
 def test_max_child_stops_a_node_from_growing():
     parser = DrainLogParser(depth=2, max_child=1, st=0.4)
-    # The root holds one child, so the template of the second line is stored at the root.
-    # The third line agrees with that template in one of two tokens, so it matches it.
-    ids = _ids(parser, ["a x", "b y", "b z"])
+    # The root holds one child, so the length node of a second token count cannot be created. The
+    # template of the second line is stored at the root.
+    # The third line agrees with that template in two of three tokens, so it matches it.
+    ids = _ids(parser, ["a x", "b y c", "b z c"])
     assert ids == [1, 2, 2]
 
 

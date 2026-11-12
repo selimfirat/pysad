@@ -7,20 +7,23 @@ import numpy as np
 
 from pysad.core.base_transformer import BaseTransformer
 
+_WILDCARD = "*"
+
 
 class _Node:
-    """One node of the fixed-depth Drain tree.
+    """One node of the fixed-depth tree.
 
-    A node at depth ``k`` is reached by the first ``k`` tokens of a log line. Its children are keyed
-    by the next token, so each path down the tree spells one prefix of tokens. A missing token
-    (the line is shorter than the tree depth) is keyed by ``None``. Leaf nodes sit at depth
-    ``depth`` and hold the log templates whose lines share that path. When ``max_child`` stops a
-    node from growing, a new template may be stored at that node instead.
+    The root sits at level 0. Its children are the length nodes, and each length node is keyed by
+    the number of tokens of a log line. The children of a length node are the token nodes, and each
+    token node is keyed by the token at that position. A token that holds a digit uses the key
+    ``"*"``, so all such tokens share one node. A missing token uses the key ``None``. Leaf nodes
+    hold the log templates whose lines share that path. When ``max_child`` stops a node from
+    growing, a new template may be stored at that node instead.
     """
 
-    def __init__(self, depth: int) -> None:
-        self.depth = depth
-        self.children: dict[str | None, _Node] = {}
+    def __init__(self, level: int) -> None:
+        self.level = level
+        self.children: dict[str | int | None, _Node] = {}
         self.clusters: list[_LogCluster] = []
 
 
@@ -41,34 +44,43 @@ class _LogCluster:
 class DrainLogParser(BaseTransformer):
     """Parses each log line into an event ID with Drain's fixed-depth tree :cite:`he2017drain`.
 
-    Drain splits a log line into whitespace-separated tokens and walks one path down a tree whose
-    depth is fixed. At depth ``k`` the path follows the ``k``-th token. A leaf holds the templates
-    whose lines share that path. The new line is compared only with the templates in the leaf it
-    reaches. The depth of the tree and the number of children of a node are bounded by ``depth``
-    and ``max_child``, but a leaf can hold many templates, so the cost of one line grows with the
-    number of templates in its leaf.
+    Drain splits a log line into whitespace-separated tokens. The tree has one length layer and
+    ``depth - 2`` token layers, so the leaf sits at level ``depth - 1``. The root holds one child
+    per token count, so lines of different lengths never meet. Each length node holds the token
+    nodes, and each token node is keyed by the token at that position. A token that holds a digit
+    uses the key ``"*"``, so all such tokens share one node and the tree does not grow a branch
+    for every value. A leaf holds the templates whose lines share that path. The parser compares
+    the new line only with the templates in the leaf it reaches. The depth of the tree and the
+    number of children of a node are bounded by ``depth`` and ``max_child``, but a leaf can hold
+    many templates, so the cost of one line grows with the number of templates in its leaf.
 
     A line matches a template when the share of agreeing tokens is at least ``st``. A ``"*"`` in a
-    template matches any token. On a match, the line takes the template's event ID and the template
-    is generalized where the line differs. On no match, a new template and a new event ID are
-    created. Event IDs are handed out in the order templates first appear, so the IDs follow file
-    order.
+    template matches any token. On a match, the line takes the event ID of the template, and the
+    template is generalized where the line differs. On no match, the parser creates a new template
+    and a new event ID. Event IDs are handed out in the order the templates first appear, so the
+    IDs follow file order.
 
     ``fit_partial`` parses a line and remembers its template. ``transform_partial`` parses without
-    remembering and returns the matched event ID as a float, or ``-1.0`` when no template matches.
-    ``fit_transform_partial`` does both and returns the event ID.
+    remembering and returns the event ID of the matched template as a float, or ``-1.0`` when no
+    template matches. ``fit_transform_partial`` does both and returns the event ID.
 
-    Deviations from the paper:
+    Differences from the paper and its reference implementations:
 
-    * The paper checks templates only at the leaf. When ``max_child`` stops a node from growing, the
-      new template is stored at that node, and the search returns the shallowest match along the
-      path. This keeps the tree bounded and only matters when a node would exceed ``max_child``
-      children.
-    * Tokens are split on whitespace only. The optional regular expressions of the paper for masking
-      dynamic parameters are not implemented.
+    * The paper compares the templates only at the leaf. When ``max_child`` stops a node from
+      growing, the parser stores the new template at that node. The parser then compares the
+      templates of every node on the path and returns the shallowest match. This keeps the tree
+      bounded. It only matters when a node would exceed ``max_child`` children.
+    * The paper lets the user mask dynamic parameters with regular expressions. The parser splits
+      the line on whitespace only and does not mask parameters with regular expressions.
+    * The paper does not say how to break a tie between two templates with the same similarity.
+      The parser keeps the first template. The reference implementations keep the template with
+      more parameters.
+    * A ``"*"`` in a template matches any token and counts toward the similarity. The reference
+      implementations skip the wildcard positions of a template.
 
     Args:
-        depth (int): Fixed depth of the tree. It must be at least 1 (Default=4).
+        depth (int): Fixed depth of the tree. It must be at least 2. The tree has one length layer
+            and ``depth - 2`` token layers (Default=4).
         st (float): Similarity threshold between 0 and 1. A line matches a template when at least
             this share of tokens agrees (Default=0.4).
         max_child (int): Largest number of child nodes a node may hold. It bounds the tree
@@ -76,7 +88,8 @@ class DrainLogParser(BaseTransformer):
 
     Raises:
         TypeError: If ``depth`` or ``max_child`` is not an int, or ``st`` is not a real number.
-        ValueError: If ``depth`` or ``max_child`` is less than 1, or ``st`` is outside [0, 1].
+        ValueError: If ``depth`` is less than 2, ``max_child`` is less than 1, or ``st`` is outside
+            [0, 1].
     """
 
     depth: int
@@ -90,8 +103,8 @@ class DrainLogParser(BaseTransformer):
 
         if isinstance(depth, bool) or not isinstance(depth, numbers.Integral):
             raise TypeError(f"depth must be an int, got {depth!r}.")
-        if depth < 1:
-            raise ValueError(f"depth must be at least 1, got {depth}.")
+        if depth < 2:
+            raise ValueError(f"depth must be at least 2, got {depth}.")
         if isinstance(st, bool) or not isinstance(st, numbers.Real):
             raise TypeError(f"st must be a real number, got {st!r}.")
         st = float(st)
@@ -139,6 +152,33 @@ class DrainLogParser(BaseTransformer):
             )
         return value
 
+    def _path(self, tokens: list[str]) -> Iterator[_Node]:
+        """Yields the nodes on the path of ``tokens``, from the root to the leaf.
+
+        The path starts at the root and follows the length node of ``tokens``. It then follows one
+        token node per token layer. The path ends at the first node that does not exist.
+
+        Args:
+            tokens (list[str]): The whitespace-separated tokens of a log line.
+
+        Yields:
+            _Node: The nodes on the path, from the root to the leaf.
+        """
+        node = self.root_node
+        yield node
+        child = node.children.get(len(tokens))
+        if child is None:
+            return
+        node = child
+        yield node
+        for level in range(self.depth - 2):
+            key = _token_key(tokens[level] if level < len(tokens) else None)
+            child = node.children.get(key)
+            if child is None:
+                return
+            node = child
+            yield node
+
     def _search(self, tokens: list[str]) -> _LogCluster | None:
         """Returns the best-matching template along the path of ``tokens``.
 
@@ -152,17 +192,10 @@ class DrainLogParser(BaseTransformer):
         Returns:
             _LogCluster | None: The best matching cluster, or None when there is no match.
         """
-        node: _Node | None = self.root_node
-        for level in range(self.depth + 1):
-            if node is None:
-                return None
+        for node in self._path(tokens):
             match = _best_match(node.clusters, tokens, self.st)
             if match is not None:
                 return match
-            if level == self.depth:
-                break
-            token = tokens[level] if level < len(tokens) else None
-            node = node.children.get(token)
         return None
 
     def _insert(self, cluster: _LogCluster, tokens: list[str]) -> None:
@@ -176,15 +209,24 @@ class DrainLogParser(BaseTransformer):
             tokens (list[str]): The whitespace-separated tokens of a log line.
         """
         node = self.root_node
-        for level in range(self.depth):
-            token = tokens[level] if level < len(tokens) else None
-            child = node.children.get(token)
+        length = len(tokens)
+        child = node.children.get(length)
+        if child is None:
+            if len(node.children) >= self.max_child:
+                node.clusters.append(cluster)
+                return
+            child = _Node(1)
+            node.children[length] = child
+        node = child
+        for level in range(self.depth - 2):
+            key = _token_key(tokens[level] if level < len(tokens) else None)
+            child = node.children.get(key)
             if child is None:
                 if len(node.children) >= self.max_child:
                     node.clusters.append(cluster)
                     return
-                child = _Node(level + 1)
-                node.children[token] = child
+                child = _Node(level + 2)
+                node.children[key] = child
             node = child
         node.clusters.append(cluster)
 
@@ -310,6 +352,26 @@ class DrainLogParser(BaseTransformer):
         return np.array(values, dtype=np.float64)
 
 
+def _token_key(token: str | None) -> str | None:
+    """Returns the key of ``token`` in the tree.
+
+    A token that holds a digit uses the key ``"*"``, so all such tokens share one node. A missing
+    token uses the key ``None``.
+
+    Args:
+        token (str | None): The token at one position of a log line, or None when the line has no
+            token at that position.
+
+    Returns:
+        str | None: The key of the token in the tree.
+    """
+    if token is None:
+        return None
+    if any(char.isdigit() for char in token):
+        return _WILDCARD
+    return token
+
+
 def _best_match(clusters: list[_LogCluster], tokens: list[str], st: float) -> _LogCluster | None:
     """Returns the most similar cluster whose similarity is at least ``st``.
 
@@ -357,7 +419,7 @@ def _similarity(template: list[str], tokens: list[str]) -> float:
         tok = tokens[i] if i < len(tokens) else None
         if t is None or tok is None:
             continue
-        if t == "*" or t == tok:
+        if t == _WILDCARD or t == tok:
             matches += 1
     return matches / n
 
@@ -385,8 +447,8 @@ def _merge(template: list[str], tokens: list[str]) -> list[str]:
             out.append(tok)  # type: ignore[arg-type]
         elif tok is None:
             out.append(t)
-        elif t == "*" or t == tok:
+        elif t == _WILDCARD or t == tok:
             out.append(t)
         else:
-            out.append("*")
+            out.append(_WILDCARD)
     return out

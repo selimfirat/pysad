@@ -17,13 +17,13 @@ The examples on this page use a synthetic stream. Replace ``X`` with your own da
 Refit on a sliding window
 -------------------------
 
-:class:`~pysad.models.integrations.ReferenceWindowModel` keeps a window of recent points. It trains a detector on the window and scores each new point with that detector. Every ``sliding_size`` points, it trains a new detector on the current window:
+:class:`~pysad.integrations.ReferenceWindowModel` keeps a window of recent points. It trains a detector on the window and scores each new point with that detector. Every ``sliding_size`` points, it trains a new detector on the current window:
 
 .. code-block:: python
 
    from pyod.models.iforest import IForest
 
-   from pysad.models.integrations import ReferenceWindowModel
+   from pysad.integrations import ReferenceWindowModel
 
    model = ReferenceWindowModel(
        IForest,
@@ -54,13 +54,13 @@ The time per point is not constant. A point that starts a training run takes muc
 Train once
 ----------
 
-:class:`~pysad.models.integrations.OneFitModel` trains the detector once, on initial data, and then only scores:
+:class:`~pysad.integrations.OneFitModel` trains the detector once, on initial data, and then only scores:
 
 .. code-block:: python
 
    from pyod.models.knn import KNN
 
-   from pysad.models.integrations import OneFitModel
+   from pysad.integrations import OneFitModel
 
    model = OneFitModel(KNN, initial_X=X[:500], n_neighbors=10)
 

@@ -6,16 +6,16 @@ import numpy as np
 
 from pysad.utils import _iterate
 
-from .pyod_model import PYODModel
+from ._batch_model import _BatchModel
 
 # typing.Self needs Python 3.11; this TypeVar lets fit_partial return the subclass type.
 _ReferenceWindowModelT = TypeVar("_ReferenceWindowModelT", bound="ReferenceWindowModel")
 
 
-class ReferenceWindowModel(PYODModel):
+class ReferenceWindowModel(_BatchModel):
     """Runs a batch model on a stream by retraining it on a reference window at regular intervals :cite:`xstream`.
 
-    This wrapper keeps track of the reference window of size ``window_size``. For every ``sliding_size`` instances, it resets the model by training a new ``model_cls`` instance on the reference window. This implementation is based on the reference windowing described in :cite:`xstream`.
+    This wrapper keeps track of the reference window of size ``window_size``. For every ``sliding_size`` instances, it resets the model by training a new ``model_cls`` instance (such as a PyOD detector or scikit-learn outlier estimator) on the reference window. For scikit-learn :class:`~sklearn.base.OutlierMixin` estimators, ``decision_function`` is negated so higher scores mean more anomalous. This implementation is based on the reference windowing described in :cite:`xstream`.
 
     Without ``initial_window_X``, there is no reference window at the start. Until the first window is full, the model trains on all the instances so far when their number is a power of two (1, 2, 4, 8 and so on).
 
@@ -37,6 +37,8 @@ class ReferenceWindowModel(PYODModel):
         initial_window_y: np.ndarray | None = None,
         **kwargs: Any,
     ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
         super().__init__(model_cls, **kwargs)
 
         self.window_size = window_size
@@ -129,9 +131,7 @@ class ReferenceWindowModel(PYODModel):
         if self.model is None:  # there is no model before the first fit
             return 0.0
 
-        score = self.model.decision_function([X])[0]
-
-        return score
+        return self._score_one(X)
 
     def score(self, X: np.ndarray) -> np.ndarray:
         """Scores all instances in order.
@@ -148,7 +148,7 @@ class ReferenceWindowModel(PYODModel):
         if self.model is None:
             return np.zeros(len(X), dtype=np.float64)
 
-        return np.asarray(self.model.decision_function(X), dtype=np.float64).reshape(-1)
+        return self._score_batch(X)
 
     def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
         """Applies ``fit_score_partial`` to each instance in order and returns the scores.

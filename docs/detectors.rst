@@ -138,10 +138,6 @@ These detectors take points with one or more features. A feature is one measured
      - Quantum measurement density estimation :cite:`gallego2022inqmad`
      - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``)
      - Fixed: a ``dim_x`` by ``dim_x`` matrix
-   * - :class:`~pysad.models.TEDA`
-     - Eccentricity from the recursive mean and variance :cite:`angelov2014anomaly`
-     - Nothing
-     - Fixed: the count, the mean and the variance
    * - :class:`~pysad.models.EXPoSE`
      - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
      - Nothing
@@ -232,12 +228,12 @@ These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod
 
    * - Wrapper
      - Behavior
-   * - :class:`~pysad.models.integrations.ReferenceWindowModel`
+   * - :class:`~pysad.integrations.ReferenceWindowModel`
      - Trains the detector on a window of recent points and trains it again every ``sliding_size`` points :cite:`xstream`.
-   * - :class:`~pysad.models.integrations.OneFitModel`
+   * - :class:`~pysad.integrations.OneFitModel`
      - Trains the detector once on initial points and then only scores.
 
-:class:`~pysad.models.integrations.PredictiveAnomalyDetector` scores each value of a univariate stream by its deviation from the one-step forecast of a `River <https://riverml.xyz/>`_ forecaster, the plug-in method of EGADS :cite:`laptev2015generic`. The forecaster learns each value after the model scores it.
+:class:`~pysad.integrations.PredictiveAnomalyDetector` scores each value of a univariate stream by its deviation from the one-step forecast of a `River <https://riverml.xyz/>`_ forecaster, the plug-in method of EGADS :cite:`laptev2015generic`. The forecaster learns each value after the model scores it.
 
 Baselines for testing
 ---------------------

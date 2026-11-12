@@ -23,7 +23,9 @@
 
 from __future__ import annotations
 
+import math
 from collections import deque
+from typing import Any
 
 import numpy as np
 from sklearn.utils import check_random_state
@@ -31,10 +33,10 @@ from sklearn.utils import check_random_state
 from pysad.core.base_model import BaseModel
 
 
-def _path_length(num_samples: float, max_leaf_samples: int, branching_factor: int) -> float:
+def _path_length(num_samples: float, max_leaf_samples: int, inv_log: float) -> float:
     if num_samples <= max_leaf_samples:
         return 0.0
-    return float(np.log(num_samples / max_leaf_samples) / np.log(2 * branching_factor))
+    return math.log(num_samples / max_leaf_samples) * inv_log
 
 
 class _OnlineIsolationNode:
@@ -45,22 +47,27 @@ class _OnlineIsolationNode:
         "dim",
         "max_values",
         "min_values",
+        "slot",
+        "split_val",
         "split_values",
+        "threshold",
     )
 
-    def __init__(self, data: np.ndarray, depth: int) -> None:
+    def __init__(self, data: np.ndarray, depth: int, threshold: int) -> None:
         self.data_size = len(data)
         self.depth = depth
+        self.threshold = threshold
         self.min_values = data.min(axis=0, initial=np.inf)
         self.max_values = data.max(axis=0, initial=-np.inf)
         self.children: list[_OnlineIsolationNode] | None = None
         self.dim = 0
+        self.split_val = 0.0
         self.split_values: np.ndarray | None = None
+        self.slot = 0
 
     def child_index(self, X: np.ndarray) -> int:
-        assert self.split_values is not None
-        if len(self.split_values) == 1:
-            return int(X[self.dim] >= self.split_values[0])
+        if self.split_values is None or len(self.split_values) == 1:
+            return 1 if X[self.dim] >= self.split_val else 0
         return int(np.searchsorted(self.split_values, X[self.dim], side="right"))
 
 
@@ -70,106 +77,206 @@ class _OnlineIsolationTree:
     ) -> None:
         self.max_leaf_samples = max_leaf_samples
         self.growth_criterion = growth_criterion
+        self._adaptive = growth_criterion == "adaptive"
         self.subsample = subsample
         self.branching_factor = branching_factor
+        self._inv_log = 1.0 / math.log(2 * branching_factor)
         self.data_size = 0
         self.depth_limit = 0.0
+        self._settled_limit = 0
         self.root: _OnlineIsolationNode | None = None
+        self.max_depth = 0
+        self.node_count = 0
 
     def _threshold(self, depth: int) -> int:
-        return self.max_leaf_samples * (2**depth if self.growth_criterion == "adaptive" else 1)
+        return self.max_leaf_samples << depth if self._adaptive else self.max_leaf_samples
 
-    def learn_one(self, X: np.ndarray, rng: np.random.RandomState) -> bool:
+    def learn_one(
+        self, X: np.ndarray, rng: np.random.RandomState
+    ) -> tuple[bool, bool, _OnlineIsolationNode | None]:
+        """Returns (selected, structure_changed, touched_leaf)."""
         if rng.random_sample() >= self.subsample:
-            return False
+            return False, False, None
         self.data_size += 1
         self.depth_limit = _path_length(
             num_samples=self.data_size,
             max_leaf_samples=self.max_leaf_samples,
-            branching_factor=self.branching_factor,
+            inv_log=self._inv_log,
         )
         if self.root is None:
             self.root = self._build(X[None, :], depth=0, rng=rng)
-            return True
-        self.root = self._learn(self.root, X, rng)
-        return True
+            self._settled_limit = math.ceil(self.depth_limit)
+            return True, True, None
 
-    def _learn(
+        ceil_limit = math.ceil(self.depth_limit)
+        if ceil_limit > self._settled_limit:
+            self.root, changed = self._learn_all(self.root, X, rng)
+            self._settled_limit = ceil_limit
+            if changed:
+                return True, True, None
+            # Find the leaf that X reached so its packed leaf_pl updates cleanly.
+            curr = self.root
+            while curr.children is not None:
+                curr = curr.children[curr.child_index(X)]
+            return True, False, curr
+
+        return self._learn_path(X, rng)
+
+    def _learn_path(
+        self, X: np.ndarray, rng: np.random.RandomState
+    ) -> tuple[bool, bool, _OnlineIsolationNode | None]:
+        assert self.root is not None
+        curr = self.root
+        parent: _OnlineIsolationNode | None = None
+        child_idx = 0
+        binary = self.branching_factor == 2
+        while curr.children is not None:
+            curr.data_size += 1
+            np.minimum(curr.min_values, X, out=curr.min_values)
+            np.maximum(curr.max_values, X, out=curr.max_values)
+            parent = curr
+            if binary:
+                child_idx = 1 if X[curr.dim] >= curr.split_val else 0
+            else:
+                assert curr.split_values is not None
+                child_idx = int(np.searchsorted(curr.split_values, X[curr.dim], side="right"))
+            curr = curr.children[child_idx]
+
+        curr.data_size += 1
+        np.minimum(curr.min_values, X, out=curr.min_values)
+        np.maximum(curr.max_values, X, out=curr.max_values)
+        if curr.data_size >= curr.threshold and curr.depth < self.depth_limit:
+            samples = rng.uniform(
+                low=curr.min_values,
+                high=curr.max_values,
+                size=(curr.data_size, len(curr.min_values)),
+            )
+            rebuilt = self._build(samples, curr.depth, rng)
+            if parent is None:
+                self.root = rebuilt
+            else:
+                assert parent.children is not None
+                parent.children[child_idx] = rebuilt
+            return True, True, None
+        return True, False, curr
+
+    def _learn_all(
         self, node: _OnlineIsolationNode, X: np.ndarray | None, rng: np.random.RandomState
-    ) -> _OnlineIsolationNode:
+    ) -> tuple[_OnlineIsolationNode, bool]:
         if X is not None:
             node.data_size += 1
             np.minimum(node.min_values, X, out=node.min_values)
             np.maximum(node.max_values, X, out=node.max_values)
         if node.children is None:
-            if node.data_size >= self._threshold(node.depth) and node.depth < self.depth_limit:
+            if node.data_size >= node.threshold and node.depth < self.depth_limit:
                 samples = rng.uniform(
                     low=node.min_values,
                     high=node.max_values,
                     size=(node.data_size, len(node.min_values)),
                 )
-                return self._build(samples, node.depth, rng)
-            return node
+                return self._build(samples, node.depth, rng), True
+            return node, False
 
-        index = node.child_index(X) if X is not None else None
+        index = node.child_index(X) if X is not None else -1
         # The reference revisits empty branches too: a growing depth limit can
         # allow an existing leaf to split even without receiving this point.
+        changed = False
         for i, child in enumerate(node.children):
-            node.children[i] = self._learn(child, X if i == index else None, rng)
-        return node
+            new_child, child_changed = self._learn_all(child, X if i == index else None, rng)
+            node.children[i] = new_child
+            if child_changed:
+                changed = True
+        return node, changed
 
     def _build(
         self, samples: np.ndarray, depth: int, rng: np.random.RandomState
     ) -> _OnlineIsolationNode:
-        node = _OnlineIsolationNode(samples, depth)
-        if node.data_size < self._threshold(depth) or depth >= self.depth_limit:
+        threshold = self._threshold(depth)
+        node = _OnlineIsolationNode(samples, depth, threshold)
+        if node.data_size < threshold or depth >= self.depth_limit:
             return node
         node.dim = int(rng.choice(samples.shape[1]))
-        node.split_values = np.sort(
-            rng.uniform(
-                low=node.min_values[node.dim],
-                high=node.max_values[node.dim],
-                size=self.branching_factor - 1,
+        if self.branching_factor == 2:
+            val = float(
+                rng.uniform(
+                    low=node.min_values[node.dim],
+                    high=node.max_values[node.dim],
+                    size=1,
+                )[0]
             )
-        )
-        indices = np.searchsorted(node.split_values, samples[:, node.dim], side="right")
-        node.children = [
-            self._build(samples[indices == i], depth=depth + 1, rng=rng)
-            for i in range(self.branching_factor)
-        ]
+            node.split_val = val
+            col = samples[:, node.dim]
+            right_mask = col >= val
+            node.children = [
+                self._build(samples[~right_mask], depth=depth + 1, rng=rng),
+                self._build(samples[right_mask], depth=depth + 1, rng=rng),
+            ]
+        else:
+            splits = np.sort(
+                rng.uniform(
+                    low=node.min_values[node.dim],
+                    high=node.max_values[node.dim],
+                    size=self.branching_factor - 1,
+                )
+            )
+            node.split_values = splits
+            node.split_val = float(splits[0])
+            indices = np.searchsorted(splits, samples[:, node.dim], side="right")
+            node.children = [
+                self._build(samples[indices == i], depth=depth + 1, rng=rng)
+                for i in range(self.branching_factor)
+            ]
         return node
 
-    def unlearn_one(self, X: np.ndarray, rng: np.random.RandomState, selected: bool) -> None:
+    def unlearn_one(
+        self, X: np.ndarray, rng: np.random.RandomState, selected: bool
+    ) -> tuple[bool, _OnlineIsolationNode | None]:
+        """Returns (structure_changed, touched_leaf)."""
         # Keep the reference's draw order, but expire the original selection.
         rng.random_sample()
         if not selected:
-            return
+            return False, None
         self.data_size -= 1
         self.depth_limit = _path_length(
             num_samples=self.data_size,
             max_leaf_samples=self.max_leaf_samples,
-            branching_factor=self.branching_factor,
+            inv_log=self._inv_log,
         )
+        self._settled_limit = min(self._settled_limit, math.ceil(self.depth_limit))
         assert self.root is not None
-        self._unlearn(self.root, X)
+        return self._unlearn(self.root, X)
 
-    def _unlearn(self, node: _OnlineIsolationNode, X: np.ndarray | None) -> None:
+    def _unlearn(
+        self, node: _OnlineIsolationNode, X: np.ndarray | None
+    ) -> tuple[bool, _OnlineIsolationNode | None]:
         if X is not None:
             node.data_size -= 1
         if node.children is None:
-            return
-        if node.data_size < self._threshold(node.depth):
+            return False, node if X is not None else None
+        if node.data_size < node.threshold:
             self._unbuild(node)
-            return
-        index = node.child_index(X) if X is not None else None
+            return True, None
+        index = node.child_index(X) if X is not None else -1
+        changed = False
+        touched: _OnlineIsolationNode | None = None
         for i, child in enumerate(node.children):
-            self._unlearn(child, X if i == index else None)
+            c_changed, c_leaf = self._unlearn(child, X if i == index else None)
+            if c_changed:
+                changed = True
+            if c_leaf is not None:
+                touched = c_leaf
         self._refresh_bounds(node)
+        return changed, touched
 
     def _refresh_bounds(self, node: _OnlineIsolationNode) -> None:
         assert node.children is not None
-        np.minimum.reduce([c.min_values for c in node.children], out=node.min_values)
-        np.maximum.reduce([c.max_values for c in node.children], out=node.max_values)
+        if len(node.children) == 2:
+            c0, c1 = node.children[0], node.children[1]
+            np.minimum(c0.min_values, c1.min_values, out=node.min_values)
+            np.maximum(c0.max_values, c1.max_values, out=node.max_values)
+        else:
+            np.minimum.reduce([c.min_values for c in node.children], out=node.min_values)
+            np.maximum.reduce([c.max_values for c in node.children], out=node.max_values)
 
     def _unbuild(self, node: _OnlineIsolationNode) -> None:
         if node.children is None:
@@ -183,12 +290,18 @@ class _OnlineIsolationTree:
         node = self.root
         if node is None:
             return 0.0
-        while node.children is not None:
-            node = node.children[node.child_index(X)]
+        binary = self.branching_factor == 2
+        while (children := node.children) is not None:
+            if binary:
+                node = children[1 if X[node.dim] >= node.split_val else 0]
+            else:
+                assert node.split_values is not None
+                idx = int(np.searchsorted(node.split_values, X[node.dim], side="right"))
+                node = children[idx]
         return node.depth + _path_length(
             num_samples=node.data_size,
             max_leaf_samples=self.max_leaf_samples,
-            branching_factor=self.branching_factor,
+            inv_log=self._inv_log,
         )
 
 
@@ -319,6 +432,7 @@ class OnlineIsolationForest(BaseModel):
         self.split = split
         self.random_state = random_state
         self.rng_ = check_random_state(random_state)
+        self._inv_log = 1.0 / math.log(2 * branching_factor)
         self.normalization_ = 0.0
         self.trees_ = [
             _OnlineIsolationTree(
@@ -331,15 +445,102 @@ class OnlineIsolationForest(BaseModel):
         ]
         self.window_: deque[tuple[np.ndarray, np.ndarray | None]] = deque()
 
-    def __getstate__(self) -> dict:
+        # Packed 2D arrays across trees for fast vectorized binary-tree scoring.
+        cap = 16
+        self._tree_idx = np.arange(num_trees, dtype=np.intp)
+        self._p_cap = cap
+        self._p_dim = np.zeros((num_trees, cap), dtype=np.intp)
+        self._p_split = np.zeros((num_trees, cap), dtype=np.float64)
+        self._p_left = np.zeros((num_trees, cap), dtype=np.intp)
+        self._p_right = np.zeros((num_trees, cap), dtype=np.intp)
+        self._p_leaf_pl = np.zeros((num_trees, cap), dtype=np.float64)
+        self._p_max_depth = 0
+
+    def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()
         if self.rng_ is np.random.mtrand._rand:
             state["rng_"] = None
         return state
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         self.__dict__.update(state)
         self.rng_ = check_random_state(self.rng_)
+
+    def _ensure_packed_cap(self, needed: int) -> None:
+        if needed <= self._p_cap:
+            return
+        new_cap = self._p_cap
+        while new_cap < needed:
+            new_cap *= 2
+        n_trees = self.num_trees
+        old_cap = self._p_cap
+        for attr in ("_p_dim", "_p_left", "_p_right"):
+            old = getattr(self, attr)
+            arr = np.zeros((n_trees, new_cap), dtype=np.intp)
+            arr[:, :old_cap] = old
+            setattr(self, attr, arr)
+        for attr in ("_p_split", "_p_leaf_pl"):
+            old = getattr(self, attr)
+            arr = np.zeros((n_trees, new_cap), dtype=np.float64)
+            arr[:, :old_cap] = old
+            setattr(self, attr, arr)
+        self._p_cap = new_cap
+
+    def _pack_tree(self, t_idx: int) -> None:
+        tree = self.trees_[t_idx]
+        root = tree.root
+        if root is None:
+            tree.max_depth = 0
+            tree.node_count = 0
+            self._p_dim[t_idx, 0] = 0
+            self._p_split[t_idx, 0] = 0.0
+            self._p_left[t_idx, 0] = 0
+            self._p_right[t_idx, 0] = 0
+            self._p_leaf_pl[t_idx, 0] = 0.0
+            return
+
+        # Collect nodes in BFS/DFS order to assign slots.
+        nodes: list[_OnlineIsolationNode] = []
+        stack = [root]
+        max_d = 0
+        while stack:
+            u = stack.pop()
+            u.slot = len(nodes)
+            nodes.append(u)
+            if u.depth > max_d:
+                max_d = u.depth
+            if u.children is not None:
+                stack.append(u.children[1])
+                stack.append(u.children[0])
+
+        nc = len(nodes)
+        tree.max_depth = max_d
+        tree.node_count = nc
+        self._ensure_packed_cap(nc)
+
+        p_dim = self._p_dim[t_idx]
+        p_split = self._p_split[t_idx]
+        p_left = self._p_left[t_idx]
+        p_right = self._p_right[t_idx]
+        p_leaf_pl = self._p_leaf_pl[t_idx]
+        mls = self.max_leaf_samples
+        inv_log = self._inv_log
+
+        for u in nodes:
+            s = u.slot
+            if u.children is None:
+                p_dim[s] = 0
+                p_split[s] = 0.0
+                p_left[s] = s
+                p_right[s] = s
+                ns = u.data_size
+                p_leaf_pl[s] = u.depth + (0.0 if ns <= mls else math.log(ns / mls) * inv_log)
+            else:
+                p_dim[s] = u.dim
+                p_split[s] = u.split_val
+                p_left[s] = u.children[0].slot
+                p_right[s] = u.children[1].slot
+                p_leaf_pl[s] = 0.0
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> OnlineIsolationForest:
         """Learns one instance, then forgets the oldest if the window is full.
@@ -353,23 +554,52 @@ class OnlineIsolationForest(BaseModel):
         """
         x = np.array(X, dtype=np.float64, copy=True)
         selected = np.empty(self.num_trees, dtype=bool) if self.subsample < 1.0 else None
+        binary = self.branching_factor == 2
+        mls = self.max_leaf_samples
+        inv_log = self._inv_log
+        any_repacked = False
+
         for i, tree in enumerate(self.trees_):
-            learned = tree.learn_one(x, self.rng_)
+            learned, changed, leaf = tree.learn_one(x, self.rng_)
             if selected is not None:
                 selected[i] = learned
+            if binary and learned:
+                if changed:
+                    self._pack_tree(i)
+                    any_repacked = True
+                elif leaf is not None:
+                    ns = leaf.data_size
+                    self._p_leaf_pl[i, leaf.slot] = leaf.depth + (
+                        0.0 if ns <= mls else math.log(ns / mls) * inv_log
+                    )
+
         self.window_.append((x, selected))
         if len(self.window_) > self.window_size:
             old_x, old_selected = self.window_.popleft()
             for i, tree in enumerate(self.trees_):
-                tree.unlearn_one(
+                was_sel = bool(old_selected[i]) if old_selected is not None else True
+                changed, leaf = tree.unlearn_one(
                     X=old_x,
                     rng=self.rng_,
-                    selected=bool(old_selected[i]) if old_selected is not None else True,
+                    selected=was_sel,
                 )
+                if binary and was_sel:
+                    if changed:
+                        self._pack_tree(i)
+                        any_repacked = True
+                    elif leaf is not None:
+                        ns = leaf.data_size
+                        self._p_leaf_pl[i, leaf.slot] = leaf.depth + (
+                            0.0 if ns <= mls else math.log(ns / mls) * inv_log
+                        )
+
+        if any_repacked:
+            self._p_max_depth = max(t.max_depth for t in self.trees_)
+
         self.normalization_ = _path_length(
             num_samples=len(self.window_) * self.subsample,
-            max_leaf_samples=self.max_leaf_samples,
-            branching_factor=self.branching_factor,
+            max_leaf_samples=mls,
+            inv_log=inv_log,
         )
         return self
 
@@ -384,5 +614,30 @@ class OnlineIsolationForest(BaseModel):
         """
         if not self.window_:
             return 0.0
+        if self.branching_factor == 2:
+            x = np.asarray(X, dtype=np.float64)
+            max_d = self._p_max_depth
+            if max_d == 0:
+                depth = float(self._p_leaf_pl[:, 0].sum()) / self.num_trees
+            else:
+                nodes = np.where(
+                    x[self._p_dim[:, 0]] >= self._p_split[:, 0],
+                    self._p_right[:, 0],
+                    self._p_left[:, 0],
+                )
+                t_idx = self._tree_idx
+                p_dim = self._p_dim
+                p_split = self._p_split
+                p_left = self._p_left
+                p_right = self._p_right
+                for _ in range(max_d - 1):
+                    nodes = np.where(
+                        x[p_dim[t_idx, nodes]] >= p_split[t_idx, nodes],
+                        p_right[t_idx, nodes],
+                        p_left[t_idx, nodes],
+                    )
+                depth = float(self._p_leaf_pl[t_idx, nodes].sum()) / self.num_trees
+            return float(2.0 ** (-depth / (self.normalization_ + np.finfo(float).eps)))
+
         depth = sum(tree.predict_one(X) for tree in self.trees_) / self.num_trees
         return float(2.0 ** (-depth / (self.normalization_ + np.finfo(float).eps)))

@@ -3,15 +3,27 @@
 
 import os
 import sys
+from pathlib import Path
 
 from docutils import nodes
 from sphinx.application import Sphinx
+from sphinx.ext.autosummary import generate as autosummary_generate_mod
 from sphinx.util.docutils import SphinxRole
 
-sys.path.insert(0, os.path.abspath(".."))
+DOCS_DIR = Path(__file__).resolve().parent
+ROOT_DIR = DOCS_DIR.parent
+sys.path.insert(0, str(DOCS_DIR))
+sys.path.insert(0, str(ROOT_DIR))
 
-from pysad.utils import Data
-from pysad.version import __version__
+from _autodiscover import (  # noqa: E402
+    collect_bibtex,
+    doc_counts,
+    expand_api_autosummary,
+    expand_detectors_tables,
+    expand_examples_gallery,
+)
+
+from pysad.version import __version__  # noqa: E402
 
 
 class StrongEmphasis(SphinxRole):
@@ -21,12 +33,45 @@ class StrongEmphasis(SphinxRole):
         return [nodes.strong("", "", nodes.emphasis("", self.text))], []
 
 
+def _find_autosummary_in_files(
+    filenames: list[str],
+) -> list[autosummary_generate_mod.AutosummaryEntry]:
+    documented: list[autosummary_generate_mod.AutosummaryEntry] = []
+    for filename in filenames:
+        raw = Path(filename).read_text(encoding="utf-8", errors="ignore")
+        if "/api/" in Path(filename).as_posix():
+            raw = expand_api_autosummary(raw)
+        documented.extend(
+            autosummary_generate_mod.find_autosummary_in_lines(raw.splitlines(), filename=filename)
+        )
+    return documented
+
+
+def _on_source_read(app: Sphinx, docname: str, source: list[str]) -> None:
+    if docname.startswith("api/"):
+        source[0] = expand_api_autosummary(source[0])
+    elif docname == "detectors":
+        source[0] = expand_detectors_tables(source[0])
+    elif docname == "examples":
+        source[0] = expand_examples_gallery(source[0], ROOT_DIR)
+
+
 def setup(app: Sphinx) -> None:
+    autosummary_generate_mod.find_autosummary_in_files = _find_autosummary_in_files
     app.add_role("strong-emphasis", StrongEmphasis())
+    app.connect("source-read", _on_source_read)
 
 
-# The docs write the number of datasets as |num_datasets|, so that it follows Data.datasets().
-rst_epilog = f"\n.. |num_datasets| replace:: {len(Data.datasets())}\n"
+# Live substitutions computed from Data.datasets(), pysad.models.__all__, and benchmark.py.
+rst_epilog = (
+    "\n"
+    + "\n".join(f".. |{name}| replace:: {value}" for name, value in doc_counts(ROOT_DIR).items())
+    + "\n"
+)
+
+_COLLECTED_BIB = DOCS_DIR / "_build" / "collected.bib"
+_COLLECTED_BIB.parent.mkdir(parents=True, exist_ok=True)
+_COLLECTED_BIB.write_text(collect_bibtex(ROOT_DIR)[0], encoding="utf-8")
 
 # -- Project information -----------------------------------------------------
 
@@ -66,7 +111,7 @@ intersphinx_mapping = {
     "sklearn": ("https://scikit-learn.org/stable/", None),
 }
 
-bibtex_bibfiles = ["refs.bib"]
+bibtex_bibfiles = ["_build/collected.bib"]
 
 # These services block automated clients.
 linkcheck_ignore = [

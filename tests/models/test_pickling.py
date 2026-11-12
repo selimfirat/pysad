@@ -5,37 +5,21 @@ import numpy as np
 import pytest
 
 import pysad.models
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
+from tests.models.conftest import (
+    EDGE_MODELS,
+    TIMESTAMPED_MODELS,
+    UNIVARIATE_MODELS,
+    active_model_names,
+    short_stream_params,
+)
 
 SEED = 61
 NUM_FIT = 60
 NUM_NEXT = 20
-
-UNIVARIATE_MODELS = {
-    "ChangeFinder",
-    "DAMP",
-    "HoltWinters",
-    "KNNCAD",
-    "MatrixProfile",
-    "MedianAbsoluteDeviation",
-    "OeSNNUAD",
-    "PEWMA",
-    "RelativeEntropy",
-    "SAND",
-    "SeasonalESD",
-    "SeasonalHybridESD",
-    "SpectralResidual",
-    "StandardAbsoluteDeviation",
-}
-
-# These models take each instance as [timestamp, value].
-TIMESTAMPED_MODELS = {"HTM"}
-
-# These models take each instance as an edge [source, destination].
-EDGE_MODELS = {"MIDAS"}
 
 MODEL_PARAMS = {
     # The tree splits, merges and discards entries before and after the round trip.
@@ -146,12 +130,14 @@ def _make_model(model_name, X):
             model=pysad.models.LODA(),
             preprocessors=[ShingleTransformer(shingle_size=2)],
             postprocessors=[
-                RunningZScorePostprocessor(window_size=20),
+                ZScorePostprocessor(window_size=20),
                 ConformalProbabilityCalibrator(window_size=20),
             ],
         )
 
-    return model_cls(**MODEL_PARAMS.get(model_name, {}))
+    return model_cls(
+        **(MODEL_PARAMS.get(model_name) or short_stream_params(model_name, X.shape[1]))
+    )
 
 
 def _fitted_model(model_name, X, y):
@@ -182,7 +168,7 @@ def _assert_same_scores(original, restored, X, y):
 
 def _model_params(xfail_models):
     params = []
-    for model_name in pysad.models.__all__:
+    for model_name in active_model_names():
         marks = []
         if model_name in xfail_models:
             marks.append(pytest.mark.xfail(reason=xfail_models[model_name], strict=True))
@@ -202,7 +188,7 @@ def test_pickle_round_trip(model_name):
     _assert_same_scores(model, restored, X, y)
 
 
-@pytest.mark.parametrize("model_name", pysad.models.__all__)
+@pytest.mark.parametrize("model_name", active_model_names())
 def test_deepcopy(model_name):
     X, y = _data(model_name)
     model = _fitted_model(model_name, X, y)
@@ -230,9 +216,8 @@ def test_rrcf_pickle_round_trip():
     restored = pickle.loads(pickle.dumps(model))
 
     assert restored.index == model.index == NUM_FIT
-    assert len(restored.forest) == model.num_trees
-    for original_tree, restored_tree in zip(model.forest, restored.forest, strict=True):
-        assert sorted(restored_tree.leaves) == sorted(original_tree.leaves)
+    assert len(restored._slot_leaves) == model.num_trees
+    assert restored._slot_leaves == model._slot_leaves
 
     # tree_size < NUM_FIT, so the next instances also exercise forgetting old points after restoring.
     _assert_same_scores(model, restored, X, y)

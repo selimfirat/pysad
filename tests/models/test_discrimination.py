@@ -11,10 +11,16 @@ import pytest
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 import pysad.models
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
+from tests.models.conftest import (
+    EDGE_MODELS,
+    TIMESTAMPED_MODELS,
+    UNIVARIATE_MODELS,
+    active_model_names,
+)
 
 SEED = 0
 NUM_INSTANCES = 600
@@ -22,30 +28,6 @@ NUM_FEATURES = 3
 # The anomalies start after the warmup, and only the scores after it count.
 WARMUP = 200
 ANOMALY_RATE = 0.05
-
-UNIVARIATE_MODELS = {
-    "ChangeFinder",
-    "DAMP",
-    "HoltWinters",
-    "KNNCAD",
-    "MatrixProfile",
-    "MedianAbsoluteDeviation",
-    "OeSNNUAD",
-    "PEWMA",
-    "RelativeEntropy",
-    "SAND",
-    "SeasonalESD",
-    "SeasonalHybridESD",
-    "SpectralResidual",
-    "StandardAbsoluteDeviation",
-}
-
-# These models take each instance as [timestamp, value], and get the univariate stream with hourly
-# timestamps, so that a period of the stream is one day.
-TIMESTAMPED_MODELS = {"HTM"}
-
-# These models take each instance as an edge [source, destination].
-EDGE_MODELS = {"MIDAS"}
 
 # Subspace detectors score the distance of the direction of an instance from a low-rank subspace,
 # so they need normal instances near such a subspace.
@@ -143,11 +125,17 @@ def _model_params(model_name, X):
         # The spikes go in both directions.
         "SeasonalESD": {"period": 24, "window_size": 96, "direction": "both"},
         "SeasonalHybridESD": {"period": 24, "window_size": 96, "direction": "both"},
+        "ModelEnsemble": {
+            "models": [
+                pysad.models.LODA(random_state=0) | ZScorePostprocessor(window_size=WARMUP),
+                pysad.models.xStream(random_state=1) | ZScorePostprocessor(window_size=WARMUP),
+            ],
+        },
         "StreamPipeline": {
             "model": pysad.models.LODA(),
             "preprocessors": [ShingleTransformer(shingle_size=2)],
             "postprocessors": [
-                RunningZScorePostprocessor(window_size=WARMUP),
+                ZScorePostprocessor(window_size=WARMUP),
                 ConformalProbabilityCalibrator(window_size=WARMUP),
             ],
         },
@@ -166,7 +154,7 @@ def _scores(model_name, X):
 
 def _models():
     params = []
-    for name in pysad.models.__all__:
+    for name in active_model_names():
         if name in REFERENCE_MODELS:
             continue
         marks = []

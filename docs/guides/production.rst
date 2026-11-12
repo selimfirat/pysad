@@ -32,7 +32,7 @@ A new detector has no model of normal behavior, so its first scores are not reli
 
 ``fit_score`` processes the rows in order, as a stream. After this step, the first live points get reliable scores. You do not need a warm-up period, a first part of the stream with unreliable scores.
 
-Some detectors take initial data in the constructor instead, for example ``initial_window_X`` for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.integrations.ReferenceWindowModel`, or ``initial_X`` for :class:`~pysad.models.LocalOutlierProbability`.
+Some detectors take initial data in the constructor instead, for example ``initial_window_X`` for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.integrations.ReferenceWindowModel`, or ``initial_X`` for :class:`~pysad.models.LocalOutlierProbability`.
 
 Save and restore the state
 --------------------------
@@ -105,7 +105,7 @@ Measure the time per point on your own data before you go live:
        model.fit_score_partial(x)
    print(f"{(time.perf_counter() - start) / len(X_sample) * 1e6:.0f} µs per point")
 
-Most detectors take about the same time for every point. :class:`~pysad.models.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` train a new batch model at a fixed interval, so a few points take much longer than the others.
+Most detectors take about the same time for every point. :class:`~pysad.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` train a new batch model at a fixed interval, so a few points take much longer than the others.
 
 If a detector is too slow, use fewer ensemble members: ``num_trees`` for the tree-based detectors, ``num_random_cuts`` for LODA, ``n_chains`` for xStream or ``num_components`` for RSHash. You can also project the points to fewer features, as :doc:`pipelines` shows.
 

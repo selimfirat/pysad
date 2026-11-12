@@ -127,8 +127,9 @@ def test_delta_outside_unit_interval_is_rejected(delta):
 
 
 def test_remove_is_not_supported():
-    meter = ADWINMeter()
-    meter.update(1.0)
+    from pysad.statistics import RunningStatistic
 
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+    meter = ADWINMeter()
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(ADWINMeter, window_size=10)

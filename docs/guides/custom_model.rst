@@ -96,8 +96,11 @@ The other component types follow the same pattern. Subclass the base class from 
    * - Preprocessor or projector
      - :class:`~pysad.core.BaseTransformer`
      - ``fit_partial``, ``transform_partial``
-   * - Postprocessor, ensembler or calibrator
+   * - Postprocessor or calibrator
      - :class:`~pysad.core.BasePostprocessor`
+     - ``fit_partial``, ``transform_partial``
+   * - Score ensembler
+     - :class:`~pysad.core.BaseScoreEnsembler`
      - ``fit_partial``, ``transform_partial``
    * - Metric
      - :class:`~pysad.core.BaseMetric`
@@ -106,16 +109,15 @@ The other component types follow the same pattern. Subclass the base class from 
 Add your detector to PySAD
 --------------------------
 
-PySAD accepts published detectors whose paper has 20 or more citations, appeared at an A* venue, or has an official GitHub repository with 50 or more stars. It also accepts a streaming detector with a top-three score on a public streaming benchmark such as NAB. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, do these steps:
+PySAD accepts published detectors whose paper has 20 or more citations, appeared at an A* venue, or has an official GitHub repository with 50 or more stars. It also accepts a streaming detector with a top-three score on a public streaming benchmark such as NAB. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, create a single module in ``pysad/models``:
 
 #. Implement the detector as its paper describes, in a new module in ``pysad/models``.
-#. Cite the paper in the class docstring with ``:cite:`` and add the BibTeX entry to ``docs/refs.bib``.
+#. Cite the paper in the class docstring with ``:cite:`` and define ``__bibtex__`` at module scope (or add the BibTeX entry to ``docs/refs.bib``).
 #. Document each difference from the paper in the docstring.
 
    A detector from the benchmark route cites the benchmark and its reference implementation instead of a paper, and documents each difference from that implementation.
-#. Add the class to ``pysad/models/__init__.py``, to ``__all__`` and to ``docs/api/models.rst``.
-#. Add the class to the shared tests in ``tests/models``: ``test_models.py``, ``test_score_types.py``, ``test_random_state.py`` and ``test_properties.py``. To find the correct place, search these files for an existing detector, such as ``LODA``.
-#. If your detector has required arguments, add them to ``MODEL_PARAMS`` in ``test_pickling.py``. This file tests every class in ``pysad.models.__all__``. Together, the shared tests cover the score type, pickling, ``random_state`` and general properties of every detector.
+#. Run ``python scripts/sync_exports.py`` to regenerate ``pysad/models/__init__.py`` and ``__all__``. The API reference (``docs/api/models.rst``), detector table (``docs/detectors.rst``), bibliography, benchmark registry (``benchmarks/benchmark.py``), and shared test suites in ``tests/models`` discover the new class automatically.
+#. Add an entry to ``short_stream_params`` in ``tests/models/conftest.py`` only if your detector requires constructor arguments without defaults or smaller window sizes for short test streams.
 #. Run the tests for your detector:
 
    .. code-block:: console

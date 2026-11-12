@@ -42,3 +42,23 @@ def test_nonfinite_vectors_keep_nan_outputs(values):
         scaled_X = InstanceStandardScaler().transform_partial(np.array(values))
 
     np.testing.assert_array_equal(scaled_X, np.full(len(values), np.nan))
+
+
+def test_batch_mixed_constant_and_extreme_rows_under_errstate_raise():
+    import numpy as np
+
+    from pysad.transform.preprocessing import InstanceStandardScaler
+
+    X = np.array(
+        [
+            [1e308, 1e308, 1e308],
+            [0.1, 0.1, 0.1],
+            [1.0, 2.0, 3.0],
+        ]
+    )
+    with np.errstate(all="raise"):
+        out = InstanceStandardScaler().fit_transform(X)
+
+    np.testing.assert_array_equal(out[0], [0.0, 0.0, 0.0])
+    np.testing.assert_array_equal(out[1], [0.0, 0.0, 0.0])
+    np.testing.assert_allclose(out[2], [-np.sqrt(1.5), 0.0, np.sqrt(1.5)])

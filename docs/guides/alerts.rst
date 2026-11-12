@@ -157,10 +157,10 @@ If single noisy points raise alerts, average the scores over a short window befo
 
 .. code-block:: python
 
-   from pysad.transform.postprocessing import RunningAveragePostprocessor
+   from pysad.transform.postprocessing import AveragePostprocessor
 
    model = LODA()
-   smoother = RunningAveragePostprocessor(window_size=5)
+   smoother = AveragePostprocessor(window_size=5)
    calibrator = ConformalProbabilityCalibrator(window_size=1000)
 
    for x in streamer.iter(X):

@@ -26,7 +26,7 @@ FORECASTERS = ["SNARIMAX", "SNARIMAX-HoeffdingTree", "HoltWinters"]
 @pytest.mark.parametrize("name", FORECASTERS)
 def test_scores_are_the_errors_of_the_one_step_forecasts(name):
     """Each score is the absolute error of the forecast that the forecaster makes before it learns the value."""
-    from pysad.models.integrations import PredictiveAnomalyDetector
+    from pysad.integrations import PredictiveAnomalyDetector
 
     values = np.sin(np.arange(60) / 3) + np.random.default_rng(0).normal(scale=0.1, size=60)
     forecaster = _forecasters()[name]()
@@ -49,7 +49,7 @@ def test_relative_scores_divide_the_errors_by_the_forecasts():
     """With relative=True, each score is the absolute relative error of Eq. (1) of EGADS."""
     from river import time_series
 
-    from pysad.models.integrations import PredictiveAnomalyDetector
+    from pysad.integrations import PredictiveAnomalyDetector
 
     values = 5.0 + np.random.default_rng(0).normal(size=40)
     forecaster = time_series.HoltWinters(alpha=0.3, beta=0.1)
@@ -74,7 +74,7 @@ def test_relative_scores_divide_the_errors_by_the_forecasts():
 def test_score_partial_does_not_change_the_scores():
     from river import time_series
 
-    from pysad.models.integrations import PredictiveAnomalyDetector
+    from pysad.integrations import PredictiveAnomalyDetector
 
     values = np.random.default_rng(0).normal(size=(80, 1))
     scored = PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=1))
@@ -92,7 +92,7 @@ def test_pickle_round_trip():
 
     from river import time_series
 
-    from pysad.models.integrations import PredictiveAnomalyDetector
+    from pysad.integrations import PredictiveAnomalyDetector
 
     values = np.random.default_rng(0).normal(size=(80, 1))
     model = PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=1))
@@ -107,7 +107,7 @@ def test_ranks_spikes_in_a_seasonal_series():
     from river import time_series
     from sklearn.metrics import roc_auc_score
 
-    from pysad.models.integrations import PredictiveAnomalyDetector
+    from pysad.integrations import PredictiveAnomalyDetector
 
     rng = np.random.default_rng(0)
     t = np.arange(1500)
@@ -126,7 +126,7 @@ def test_ranks_spikes_in_a_seasonal_series():
 def test_rejects_multivariate_instances():
     from river import time_series
 
-    from pysad.models.integrations import PredictiveAnomalyDetector
+    from pysad.integrations import PredictiveAnomalyDetector
 
     model = PredictiveAnomalyDetector(time_series.SNARIMAX(p=1, d=0, q=0))
 

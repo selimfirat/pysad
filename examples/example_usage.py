@@ -2,7 +2,7 @@
 
 from pysad.evaluation import AUROCMetric
 from pysad.models import xStream
-from pysad.transform.postprocessing import RunningAveragePostprocessor
+from pysad.transform.postprocessing import AveragePostprocessor
 from pysad.transform.preprocessing import InstanceUnitNormScaler
 from pysad.utils import ArrayStreamer, Data
 
@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     scaler = InstanceUnitNormScaler()
     model = xStream(random_state=0)
-    smoother = RunningAveragePostprocessor(window_size=5)
+    smoother = AveragePostprocessor(window_size=5)
     metric = AUROCMetric()
 
     for x, label in ArrayStreamer().iter(X, y):

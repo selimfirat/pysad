@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pytest
 
@@ -126,3 +128,40 @@ def test_fixed_random_state_is_reproducible():
 
     np.testing.assert_allclose(first.fit_score(X), second.fit_score(X))
     np.testing.assert_allclose(first.score(probes), second.score(probes))
+
+
+def test_repeated_points_score_finite_after_the_merge():
+    from pysad.models import MiLOF
+
+    model = MiLOF(num_neighbors=5, window_size=20, num_summaries=3, random_state=0)
+    scores = model.fit_score(np.zeros((60, 2)))
+
+    # The window fills twice, so the merge runs. Repeated points are duplicates, so their LOF is 1.
+    assert np.isfinite(scores).all()
+    np.testing.assert_allclose(scores[30:], 1.0)
+
+
+def test_merge_with_repeated_points_keeps_the_centers_with_points():
+    from pysad.models import MiLOF
+
+    # Repeated points leave empty clusters, so the merge must skip the centers with no points.
+    X = np.array(([[0.0, 0.0]] * 3 + [[1.0, 0.0]] * 3 + [[50.0, 0.0]] + [[1.0, 0.0]] * 3) * 4)
+    model = MiLOF(num_neighbors=5, window_size=20, num_summaries=4, random_state=0)
+
+    with warnings.catch_warnings():
+        # A division by a total weight of 0 must not raise a warning.
+        warnings.simplefilter("error", RuntimeWarning)
+        model.fit(X)
+
+    assert np.isfinite(model.centers_).all()
+    assert np.isfinite(model.center_weights_).all()
+    assert np.isfinite(model.center_k_dists_).all()
+    assert np.isfinite(model.center_reach_dists_).all()
+
+    # The three centers that hold points keep their own position.
+    weighted = model.centers_[model.center_weights_ > 0]
+    assert weighted.shape == (3, 2)
+    np.testing.assert_allclose(
+        np.sort(weighted, axis=0), [[0.0, 0.0], [1.0, 0.0], [50.0, 0.0]], atol=1e-9
+    )
+    assert np.isfinite(model.score(X)).all()

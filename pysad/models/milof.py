@@ -16,7 +16,7 @@ class MiLOF(IncrementalLOF):
 
     MiLOF keeps `window_size` recent raw points and `num_summaries` cluster centers that summarize older points, so the memory stays bounded at `window_size + num_summaries` points instead of growing with the stream. Every time the window fills, the algorithm clusters the oldest half of the window into `num_summaries` centers with c-means, keeps the newest half intact, and deletes the oldest half. If a previous summary exists, the new centers are merged with it by weighted c-means, where the weight of a center is the number of raw points it represents. `score_partial` returns the LOF of the instance against the current raw points and cluster centers, without inserting it, so scoring does not change the model state. Until the memory holds more than `num_neighbors` points, the score is 0.
 
-    Deviations from the paper: the paper stops the nearest-neighbor search as soon as a cluster center is among the first `num_neighbors - 1` neighbors, because the remaining neighbors lie in the same cluster. This model treats cluster centers as ordinary neighbors and does not implement that early stop. The paper stores the LOF of each cluster center, but this model only keeps its k-distance and reachability distance, which are all that scoring needs; the center LOF is not stored. Summarizing the oldest half of the window whenever it fills is the paper's own rule (Algorithm 2 and Section 4.1), and the default `window_size` of 1000 and `num_summaries` of 10 are choices of this implementation.
+    Deviations from the paper: the paper stops the nearest-neighbor search as soon as a cluster center is among the first `num_neighbors - 1` neighbors, because the remaining neighbors lie in the same cluster. This model treats cluster centers as ordinary neighbors and does not implement that early stop. The paper stores the LOF of each cluster center, but this model only keeps its k-distance and reachability distance, which are all that scoring needs; the center LOF is not stored. The paper does not describe empty clusters, which c-means leaves when the stream holds repeated points. This model keeps an empty cluster in place during the merge. It uses the mean k-distance and reachability distance over the summarized points for the statistics of an empty cluster. Summarizing the oldest half of the window whenever it fills is the paper's own rule (Algorithm 2 and Section 4.1), and the default `window_size` of 1000 and `num_summaries` of 10 are choices of this implementation.
 
     Args:
         num_neighbors (int): The number of nearest neighbors, k in the paper (Default=10).
@@ -251,7 +251,8 @@ class MiLOF(IncrementalLOF):
             dists = cdist(points, merged)  # (2c, c)
             assign = dists.argmin(axis=1)
             for j in range(num):
-                mask = assign == j
+                # A center with no points has a weight of 0, so it does not move the merged center.
+                mask = (assign == j) & (w > 0.0)
                 if mask.any():
                     merged[j] = (points[mask] * w[mask, None]).sum(axis=0) / w[mask].sum()
         dists = cdist(points, merged)
@@ -260,15 +261,19 @@ class MiLOF(IncrementalLOF):
         new_k_dists = np.empty(num)
         new_reach_dists = np.empty(num)
         for j in range(num):
-            mask = assign == j
+            # A center with no points has a weight of 0, so it does not change the statistics of the
+            # merged center.
+            mask = (assign == j) & (w > 0.0)
             wj = w[mask]
             if mask.any():
                 new_weights[j] = wj.sum()
                 new_k_dists[j] = (wj * k_all[mask]).sum() / wj.sum()
+                # The weighted harmonic mean of the reachability distances. A reachability distance
+                # of 0 has an infinite reciprocal, so the harmonic mean is 0.
                 with np.errstate(divide="ignore", invalid="ignore"):
-                    new_reach_dists[j] = 1.0 / np.average(1.0 / r_all[mask], weights=wj)
+                    new_reach_dists[j] = wj.sum() / (wj / r_all[mask]).sum()
             else:
-                # Keep the current center if the merge assigns no point to it.
+                # Keep the current center if the merge assigns no weighted point to it.
                 new_weights[j] = weights[j]
                 new_k_dists[j] = k_dists[j]
                 new_reach_dists[j] = reach_dists[j]

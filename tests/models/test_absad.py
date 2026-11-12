@@ -165,3 +165,64 @@ def test_score_partial_preserves_state() -> None:
     assert score_1 == score_2
     assert len(model._window) == 20
     assert np.array_equal(window_before, model._window.to_array())
+
+
+from pysad.models.absad import _calculate_control_limit
+
+
+def test_calculate_control_limit() -> None:
+    rng = np.random.RandomState(42)
+    # Simulated exponential or chi-squared like LOS scores
+    los_history = rng.exponential(scale=2.0, size=100)
+
+    cl_95 = _calculate_control_limit(los_history, confidence=0.95)
+    cl_99 = _calculate_control_limit(los_history, confidence=0.99)
+
+    assert np.isfinite(cl_95)
+    assert np.isfinite(cl_99)
+    assert cl_99 > cl_95
+    # The control limit should be higher than most historical LOS values
+    assert np.mean(los_history <= cl_99) >= 0.90
+
+
+def test_calculate_control_limit_degenerate() -> None:
+    # All LOS values constant
+    los_history = np.full(50, 2.5)
+    cl = _calculate_control_limit(los_history, confidence=0.99)
+    assert np.isfinite(cl)
+    assert cl >= 2.5
+
+
+def test_selective_window_update_and_rejection() -> None:
+    rng = np.random.RandomState(42)
+    window_size = 20
+    model = ABSAD(window_size=window_size, num_neighbors=10, num_references=8, confidence=0.95)
+
+    # 1. Warm-up
+    normal_samples = rng.randn(window_size, 3) * 0.2
+    for s in normal_samples:
+        model.fit_partial(s)
+
+    assert len(model._window) == window_size
+    assert model.control_limit_ is not None
+
+    # 2. Feeding a normal point within control limit should be accepted
+    normal_candidate = rng.randn(3) * 0.1
+    score_normal = model.score_partial(normal_candidate)
+    assert score_normal <= model.control_limit_
+
+    model.fit_partial(normal_candidate)
+    assert len(model._window) == window_size
+    assert np.allclose(model._window.to_array()[-1], normal_candidate)
+
+    # 3. Feeding an extreme anomaly should be rejected
+    anom_candidate = np.array([50.0, -50.0, 50.0])
+    score_anom = model.score_partial(anom_candidate)
+    assert score_anom > model.control_limit_
+
+    window_before_anom = model._window.to_array()
+    model.fit_partial(anom_candidate)
+
+    # Window must not have accepted the anomaly!
+    assert len(model._window) == window_size
+    assert np.array_equal(window_before_anom, model._window.to_array())

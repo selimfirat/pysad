@@ -10,9 +10,7 @@ from pysad.core.base_model import BaseModel
 from pysad.utils.window import RingBuffer
 
 
-def _normalize_window_and_point(
-    W: np.ndarray, x: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
+def _normalize_window_and_point(W: np.ndarray, x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Normalizes the sliding window and query point by feature-wise mean and std.
 
     Args:
@@ -232,14 +230,29 @@ class ABSAD(BaseModel):
     """Angle-Based Subspace Anomaly Detection (ABSAD) :cite:`zhang2017sliding`.
 
     ABSAD is an online anomaly detection algorithm designed for high-dimensional
-    data streams. It addresses the curse of dimensionality and concept drift by:
+    data streams. It addresses the curse of dimensionality and concept drift through:
 
-    1. Maintaining a bounded sliding window of normal observations.
-    2. Identifying shared nearest neighbor (SNN) reference sets to capture local manifold structure.
-    3. Evaluating angle-based feature relevance to select low-dimensional anomaly-relevant subspaces.
-    4. Calculating the Local Outlier Score (LOS) via normalized squared Mahalanobis distance in the selected subspace.
-    5. Dynamically estimating a control limit using Gaussian Kernel Density Estimation (KDE).
-    6. Selectively updating the sliding window to accept only normal observations and reject faults.
+    1. **Sliding Window Normalization (Stage A)**: Normalizes incoming points against
+       the feature-wise mean and standard deviation of the current sliding window,
+       handling zero-variance features safely without numerical instability.
+    2. **Shared Nearest Neighbor (SNN) Reference Set (Stage B)**: Computes the SNN
+       similarity between the incoming point's k-nearest neighbors and candidate window
+       points to select a robust reference set of size ``num_references`` (s).
+    3. **Angle-Based Feature Relevance (Stage C)**: Identifies the anomaly-relevant
+       subspace by measuring the absolute cosine of the angle between the directional
+       displacement vector (point to reference center) and coordinate axes. Features with
+       relevance > (1 + theta) * mean_relevance are retained. If no features meet the threshold,
+       all features are retained.
+    4. **Local Outlier Score (LOS) (Stage D)**: Projects the observation and reference set
+       into the selected subspace and computes the normalized squared Mahalanobis distance.
+       Singular or ill-conditioned covariance matrices are stabilized with Tikhonov
+       regularization and solved via Cholesky decomposition with pseudoinverse fallback.
+    5. **KDE Control Limit (Stage E)**: Estimates the probability distribution of the
+       window's LOS values using Gaussian Kernel Density Estimation (KDE) with Scott's
+       bandwidth rule, and derives a dynamic control limit at the (1 - gamma) quantile
+       via root-finding on the continuous mixture CDF.
+    6. **Selective Window Update (Stage F)**: Only points with LOS <= control_limit are
+       accepted into the window, preventing concept pollution from anomalous observations.
 
     Warm-up Behavior:
         The original paper initializes the first window offline from fault-free historical data.
@@ -249,24 +262,49 @@ class ABSAD(BaseModel):
         ``max(2, num_references)`` observations have arrived, ``score_partial`` returns 0.0.
         The first statistical control limit becomes available once the window is full.
 
+    Deviations from Original Paper:
+        - Window Initialization: In PySAD, the window is initialized online from the first
+          ``window_size`` streaming instances rather than requiring an offline fault-free dataset.
+        - Bandwidth Selection: The paper omits the specific KDE bandwidth selection rule;
+          this implementation employs Scott's rule and bounded Brent root-finding.
+        - Nearest Neighbor Updates: Rather than incremental rank maintenance from Equations 12-15,
+          neighbor structures are evaluated bounded by the sliding window size, ensuring deterministic
+          behavior and avoiding cumulative precision drift across long streams.
+
+    Computational Complexity:
+        The per-instance scoring complexity is O(L * d + k * L + s * d_sub^2 + d_sub^3), where
+        L is window_size, d is dimensionality, k is num_neighbors, s is num_references, and
+        d_sub <= d is the selected subspace dimension. Memory usage is strictly bounded at
+        O(L * d).
+
     Args:
         window_size (int): Size of the sliding window, L in the paper (Default=750).
         num_neighbors (int): Number of nearest neighbors for SNN search, k in the paper (Default=100).
         num_references (int): Size of the reference set, s in the paper. Must be <= num_neighbors (Default=100).
         theta (float): Feature relevance threshold multiplier, θ in the paper (Default=0.4).
         confidence (float): Statistical confidence level for the KDE control limit, 1 - γ in the paper (Default=0.99).
+
+    Example:
+        >>> from pysad.models import ABSAD
+        >>> import numpy as np
+        >>> model = ABSAD(window_size=100, num_neighbors=30, num_references=20)
+        >>> X = np.random.RandomState(42).randn(120, 10)
+        >>> scores = model.fit_score(X)
+        >>> scores.shape
+        (120,)
     """
 
     __bibtex__ = """
 @article{zhang2017sliding,
-  title={Sliding window-based fault detection from high-dimensional data streams},
+  title={Sliding Window-Based Fault Detection From High-Dimensional Data Streams},
   author={Zhang, Liangwei and Lin, Jing and Karim, Ramin},
   journal={IEEE Transactions on Systems, Man, and Cybernetics: Systems},
   volume={47},
   number={2},
   pages={289--303},
   year={2017},
-  publisher={IEEE}
+  publisher={IEEE},
+  doi={10.1109/TSMC.2016.2625078}
 }
 """
 
@@ -319,7 +357,9 @@ class ABSAD(BaseModel):
         """
         x = np.asarray(X, dtype=np.float64)
         if len(self._window) < self.window_size:
-            score = self.score_partial(x) if len(self._window) >= max(2, self.num_references) else 0.0
+            score = (
+                self.score_partial(x) if len(self._window) >= max(2, self.num_references) else 0.0
+            )
             self._window.append(x)
             self._window_los.append(score)
             if len(self._window) == self.window_size:
@@ -334,7 +374,9 @@ class ABSAD(BaseModel):
         if self.control_limit_ is not None and score <= self.control_limit_:
             self._window.append(x)
             self._window_los.append(score)
-            self.control_limit_ = _calculate_control_limit(self._window_los.to_array(), self.confidence)
+            self.control_limit_ = _calculate_control_limit(
+                self._window_los.to_array(), self.confidence
+            )
 
         return self
 

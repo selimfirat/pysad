@@ -18,6 +18,10 @@ These detectors take points with one or more features. A feature is one measured
      - Method
      - Needs before the stream
      - Memory
+   * - :class:`~pysad.models.ABSAD`
+     - Angle-based subspace anomaly detection with shared nearest neighbor reference sets :cite:`zhang2017sliding`
+     - Nothing
+     - Fixed: a sliding window of ``window_size`` points and their outlier scores
    * - :class:`~pysad.models.xStream`
      - Half-space chains on streamhash projections :cite:`xstream`
      - Nothing

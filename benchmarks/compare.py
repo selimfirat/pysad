@@ -3,7 +3,7 @@
 Every detector runs on the shuffled ODDS datasets of benchmark.py, with its protocol: the same
 points, seed 0, each point scored before the detector learns from it, and AUROC and AUPR after the
 warm-up. River, CapyMOA, StreamAD and Alibi Detect run their streaming detectors. PyOD runs its
-batch detectors through pysad.models.integrations.ReferenceWindowModel.
+batch detectors through pysad.integrations.ReferenceWindowModel.
 
 StreamAD and Alibi Detect need NumPy 1, and CapyMOA needs NumPy 2, so no environment holds all the
 libraries. The script runs the libraries that are installed. Run it from the repository root, once
@@ -34,7 +34,7 @@ from scipy.stats import rankdata
 from sklearn.metrics import average_precision_score, roc_auc_score
 from threadpoolctl import threadpool_limits
 
-from pysad.models.integrations import ReferenceWindowModel
+from pysad.integrations import ReferenceWindowModel
 from pysad.utils import fix_seed
 
 SEED = 0

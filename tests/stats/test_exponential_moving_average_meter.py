@@ -61,8 +61,12 @@ def test_update_returns_self():
 
 
 def test_remove_is_not_supported():
-    with pytest.raises(NotImplementedError, match="cannot remove observations"):
-        ExponentialMovingAverageMeter(alpha=0.5).remove(3.0)
+    from pysad.statistics import RunningStatistic
+
+    meter = ExponentialMovingAverageMeter(alpha=0.5)
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(ExponentialMovingAverageMeter, window_size=10, alpha=0.5)
 
 
 @pytest.mark.parametrize("kwargs", [{"alpha": 0.0}, {"alpha": 1.5}, {"half_life": 0.0}])

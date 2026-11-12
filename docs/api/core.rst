@@ -9,10 +9,3 @@ This module holds the abstract base classes. Subclass them to write your own com
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   BaseModel
-   BaseTransformer
-   BasePostprocessor
-   BaseMetric
-   BaseStatistic
-   BaseStreamer

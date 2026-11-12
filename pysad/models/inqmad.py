@@ -55,9 +55,20 @@ def _adapt_features(
     py = np.empty_like(zx)
     dzx = np.empty_like(zx)
     dzy = np.empty_like(zx)
+    diff = np.empty((batch_size, X32.shape[1]), dtype=np.float32)
+    target = np.empty((batch_size, 1), dtype=np.float32)
+    nx = np.empty((batch_size, 1), dtype=np.float32)
+    ny = np.empty((batch_size, 1), dtype=np.float32)
+    approx = np.empty((batch_size, 1), dtype=np.float32)
+    error = np.empty((batch_size, 1), dtype=np.float32)
+    scale_err = np.float32(2.0 / batch_size)
     for step in range(1, num_steps + 1):
         x, y = X32[rng.randint(len(X32), size=(2, batch_size))]
-        target = np.exp(-gamma32 * ((x - y) ** 2).sum(axis=1, keepdims=True))
+        np.subtract(x, y, out=diff)
+        np.square(diff, out=diff)
+        diff.sum(axis=1, out=target[:, 0])
+        target *= -gamma32
+        np.exp(target, out=target)
         np.copyto(w32, params[0])
         np.copyto(b32, params[1])
         np.matmul(x, w32, out=zx)
@@ -66,14 +77,19 @@ def _adapt_features(
         zy += b32
         np.cos(zx, out=px)
         np.cos(zy, out=py)
-        nx = np.linalg.norm(px, axis=1, keepdims=True)
-        ny = np.linalg.norm(py, axis=1, keepdims=True)
+        np.square(px, out=dzx)
+        dzx.sum(axis=1, out=nx[:, 0])
+        np.sqrt(nx, out=nx)
+        np.square(py, out=dzx)
+        dzx.sum(axis=1, out=ny[:, 0])
+        np.sqrt(ny, out=ny)
         px /= nx
         py /= ny
         np.multiply(px, py, out=dzx)
-        approx = dzx.sum(axis=1, keepdims=True)
+        dzx.sum(axis=1, out=approx[:, 0])
         # Gradient of the mean squared error through the normalization and the cosine.
-        error = np.float32(2.0 / batch_size) * (approx - target)
+        np.subtract(approx, target, out=error)
+        error *= scale_err
         # -error * (py - approx * px) / nx * sin(zx) in the same order, in the buffers.
         np.sin(zx, out=dzx)
         np.sin(zy, out=dzy)
@@ -151,16 +167,51 @@ class Inqmad(BaseModel):
         self.weights = sampler.random_weights_
         self.offset = sampler.random_offset_
         # The initial sample, until it is complete; then the scaling, rho and tau replace it.
-        self.initial: np.ndarray | None = np.empty((0, input_shape))
+        self._initial_buf: np.ndarray | None = np.empty(
+            (self.initial_size, input_shape), dtype=np.float64
+        )
+        self._initial_len = 0
+        self._warmup_min: np.ndarray | None = None
+        self._warmup_max: np.ndarray | None = None
         self.feature_min: np.ndarray | None = None
         self.feature_range: np.ndarray | None = None
         self._states_buf: np.ndarray | None = None
         self._weights_buf: np.ndarray | None = None
         self._num_states = 0
+        self._max_states = dim_x
+        self._psi_buf = np.empty(dim_x, dtype=np.float64)
+        self._proj_buf = np.empty(0, dtype=np.float64)
         self._rho: np.ndarray | None = None
         self._rho_scale = 1.0
         self._rho_dirty = False
         self.tau: float | None = None
+
+    @property
+    def initial(self) -> np.ndarray | None:
+        if self._initial_buf is None:
+            return None
+        return self._initial_buf[: self._initial_len]
+
+    @initial.setter
+    def initial(self, value: np.ndarray | None) -> None:
+        if value is None:
+            self._initial_buf = None
+            self._initial_len = 0
+            self._warmup_min = None
+            self._warmup_max = None
+            return
+        arr = np.asarray(value, dtype=np.float64)
+        cap = max(self.initial_size, len(arr))
+        buf = np.empty((cap, arr.shape[1]), dtype=np.float64)
+        buf[: len(arr)] = arr
+        self._initial_buf = buf
+        self._initial_len = len(arr)
+        if len(arr) > 0:
+            self._warmup_min = arr.min(axis=0)
+            self._warmup_max = arr.max(axis=0)
+        else:
+            self._warmup_min = None
+            self._warmup_max = None
 
     def _materialize_rho(self) -> None:
         """Materializes the symmetric ``(dim_x, dim_x)`` density matrix ``_rho`` from any buffered states or pending triangular updates."""
@@ -197,15 +248,15 @@ class Inqmad(BaseModel):
         self._rho_dirty = False
 
     def _instance(self, X: np.ndarray) -> np.ndarray:
-        """``X`` as a (1, num_features) row, or raises if it is not one instance of the fitted feature count."""
+        """``X`` as a 1-D ``(num_features,)`` float64 vector, or raises if it is not one instance of the fitted feature count."""
         num_features = self.weights.shape[0]
-        X = np.asarray(X)
-        if X.shape not in ((num_features,), (1, num_features)):
+        arr = np.asarray(X)
+        if arr.shape not in ((num_features,), (1, num_features)):
             raise ValueError(
-                f"Inqmad expects one instance of shape ({num_features},) or (1, {num_features}), got an array of shape {X.shape}."
+                f"Inqmad expects one instance of shape ({num_features},) or (1, {num_features}), got an array of shape {arr.shape}."
             )
 
-        return X.reshape(1, num_features)
+        return np.asarray(arr, dtype=np.float64).reshape(num_features)
 
     @staticmethod
     def _min_range(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -214,39 +265,72 @@ class Inqmad(BaseModel):
         return X.min(axis=0), np.where(feature_range == 0, 1.0, feature_range)
 
     def _measure(self, X: np.ndarray) -> tuple[np.ndarray | None, float]:
-        """The state of the row ``X`` (None before rho exists) and its density."""
+        """The state of the 1-D instance ``X`` (None before rho exists) and its density."""
         if self._rho is None and self._states_buf is None:
-            assert self.initial is not None
-            if len(self.initial) == 0:
+            if self._initial_len == 0:
                 return None, 0.0
-            _, feature_range = self._min_range(self.initial)
-            sq_dists = (((self.initial - X) / feature_range) ** 2).sum(axis=1)
-            return None, np.exp(-2 * self.gamma * sq_dists).mean()
+            assert self._initial_buf is not None
+            assert self._warmup_min is not None
+            assert self._warmup_max is not None
+            span = self._warmup_max - self._warmup_min
+            feature_range = np.where(span == 0, 1.0, span)
+            diff = (self._initial_buf[: self._initial_len] - X) / feature_range
+            sq_dists = np.einsum("ij,ij->i", diff, diff)
+            return None, float(np.exp(-2 * self.gamma * sq_dists).mean())
 
         assert self.feature_min is not None
         assert self.feature_range is not None
-        psi = _states((X - self.feature_min) / self.feature_range, self.weights, self.offset)[0]
+        scaled = (X - self.feature_min) / self.feature_range
+        dim_x = self.weights.shape[1]
+        psi = self._psi_buf
+        if psi.shape[0] != dim_x:
+            psi = np.empty(dim_x, dtype=np.float64)
+            self._psi_buf = psi
+        np.matmul(scaled, self.weights, out=psi)
+        psi += self.offset
+        np.cos(psi, out=psi)
+        psi /= float(np.sqrt(ddot(psi, psi)))
+
         if self._states_buf is not None:
             assert self._weights_buf is not None
-            proj = self._states_buf[: self._num_states] @ psi
-            return psi, self._rho_scale * float(
-                ddot(self._weights_buf[: self._num_states], proj * proj)
-            )
+            k = self._num_states
+            if self._proj_buf.shape[0] < k:
+                self._proj_buf = np.empty(len(self._states_buf), dtype=np.float64)
+            proj = self._proj_buf[:k]
+            np.matmul(self._states_buf[:k], psi, out=proj)
+            np.square(proj, out=proj)
+            return psi, self._rho_scale * float(ddot(self._weights_buf[:k], proj))
 
         assert self._rho is not None
         return psi, float(ddot(psi, dsymv(self._rho_scale, self._rho.T, psi)))
 
     def _fit(self, X: np.ndarray, psi: np.ndarray | None, density: float) -> None:
         if self._rho is None and self._states_buf is None:
-            assert self.initial is not None
-            self.initial = np.vstack([self.initial, X])
-            if len(self.initial) == self.initial_size:
-                self.feature_min, self.feature_range = self._min_range(self.initial)
-                initial = (self.initial - self.feature_min) / self.feature_range
+            assert self._initial_buf is not None
+            idx = self._initial_len
+            self._initial_buf[idx] = X
+            if idx == 0:
+                self._warmup_min = X.copy()
+                self._warmup_max = X.copy()
+            else:
+                assert self._warmup_min is not None and self._warmup_max is not None
+                np.minimum(self._warmup_min, X, out=self._warmup_min)
+                np.maximum(self._warmup_max, X, out=self._warmup_max)
+            self._initial_len = idx + 1
+            if self._initial_len == self.initial_size:
+                raw_initial = self._initial_buf[: self._initial_len]
+                assert self._warmup_min is not None and self._warmup_max is not None
+                span = self._warmup_max - self._warmup_min
+                self.feature_min = self._warmup_min
+                self.feature_range = np.where(span == 0, 1.0, span)
+                initial = (raw_initial - self.feature_min) / self.feature_range
                 n, d = initial.shape
-                uniform = self.rng.uniform(-0.5, 1.5, size=(10_000 - n if n < 1000 else 2 * n, d))
+                num_uniform = 10_000 - n if n < 1000 else 2 * n
+                adapt_data = np.empty((n + num_uniform, d), dtype=np.float64)
+                adapt_data[:n] = initial
+                adapt_data[n:] = self.rng.uniform(-0.5, 1.5, size=(num_uniform, d))
                 self.weights, self.offset = _adapt_features(
-                    np.vstack([initial, uniform]),
+                    adapt_data,
                     self.weights,
                     self.offset,
                     self.gamma,
@@ -254,12 +338,17 @@ class Inqmad(BaseModel):
                     self.rng,
                 )
                 states = _states(initial, self.weights, self.offset)
-                densities = ((states @ states.T) ** 2).mean(axis=1)
-                self.tau = np.quantile(densities, self.beta)
+                gram = states @ states.T
+                np.square(gram, out=gram)
+                densities = gram.mean(axis=1)
+                self.tau = float(np.quantile(densities, self.beta))
                 dim_x = self.weights.shape[1]
+                self._max_states = dim_x
                 if n <= dim_x:
-                    self._states_buf = np.empty((dim_x, dim_x))
-                    self._weights_buf = np.empty(dim_x)
+                    cap = min(dim_x, max(n * 2, 512))
+                    self._states_buf = np.empty((cap, dim_x), dtype=np.float64)
+                    self._weights_buf = np.empty(cap, dtype=np.float64)
+                    self._proj_buf = np.empty(cap, dtype=np.float64)
                     self._states_buf[:n] = states
                     self._weights_buf[:n] = 1.0 / n
                     self._num_states = n
@@ -273,8 +362,17 @@ class Inqmad(BaseModel):
             assert psi is not None
             if self.alpha == 1.0:
                 self.rho = np.outer(psi, psi)
-            elif self._states_buf is not None and self._num_states < len(self._states_buf):
+            elif self._states_buf is not None and self._num_states < self._max_states:
                 assert self._weights_buf is not None
+                if self._num_states == len(self._states_buf):
+                    new_cap = min(self._max_states, len(self._states_buf) * 2)
+                    new_states = np.empty((new_cap, self._states_buf.shape[1]), dtype=np.float64)
+                    new_states[: self._num_states] = self._states_buf
+                    self._states_buf = new_states
+                    new_weights = np.empty(new_cap, dtype=np.float64)
+                    new_weights[: self._num_states] = self._weights_buf
+                    self._weights_buf = new_weights
+                    self._proj_buf = np.empty(new_cap, dtype=np.float64)
                 self._rho_scale *= 1.0 - self.alpha
                 if self._rho_scale < 1e-100:
                     self._weights_buf[: self._num_states] *= self._rho_scale

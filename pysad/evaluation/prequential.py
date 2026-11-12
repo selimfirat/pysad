@@ -34,6 +34,15 @@ def evaluate_stream(
     Raises:
         ValueError: If the inputs have unequal lengths. The model and metrics keep updates from earlier pairs.
     """
+    if isinstance(X, np.ndarray) and isinstance(y, np.ndarray):
+        if len(X) != len(y):
+            raise ValueError("X and y must have the same length.")
+        if X.ndim == 2 and X.dtype != object and y.ndim == 1:
+            scores = model.fit_score(X)
+            for metric in metrics.values():
+                metric.update_batch(y, scores)
+            return {name: metric.get() for name, metric in metrics.items()}
+
     for x, label in zip(X, y, strict=True):
         score = model.fit_score_partial(x)
         for metric in metrics.values():

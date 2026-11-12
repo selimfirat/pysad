@@ -86,8 +86,9 @@ def test_kept_points_use_centers_as_neighbors_after_merge():
     cand = np.vstack([raw, centers])
     k = model.num_neighbors
 
-    # k-distances are independent, so compute them all first; lrd values then use the finalized
-    # k-distances of the neighbors (a center's k-distance comes from center_k_dists_).
+    # k-distances are independent, so compute them all first; the reachability distances then use
+    # the finalized k-distances of the neighbors (a center's k-distance comes from
+    # center_k_dists_).
     expected_k_dists = np.empty(half)
     for i in range(half):
         d = cdist(raw[i : i + 1], cand)[0]
@@ -95,7 +96,7 @@ def test_kept_points_use_centers_as_neighbors_after_merge():
         nb = np.argpartition(d, k - 1)[:k]
         expected_k_dists[i] = d[nb].max()
 
-    expected_lrds = np.empty(half)
+    expected_reach_dists = np.empty(half)
     for i in range(half):
         d = cdist(raw[i : i + 1], cand)[0]
         d[i] = np.inf
@@ -108,10 +109,10 @@ def test_kept_points_use_centers_as_neighbors_after_merge():
             expected_k_dists[np.clip(nb, 0, half - 1)],
         )
         reach = np.maximum(k_dist_nb, nd)
-        expected_lrds[i] = 1.0 / (reach.mean() + 1e-10)
+        expected_reach_dists[i] = reach.mean()
 
     np.testing.assert_allclose(model.k_dists_[:half], expected_k_dists)
-    np.testing.assert_allclose(model.lrds_[:half], expected_lrds)
+    np.testing.assert_allclose(model.reach_dists_[:half], expected_reach_dists)
 
 
 def test_fixed_random_state_is_reproducible():

@@ -114,6 +114,32 @@ class AnomalyLikelihoodProbabilityCalibrator(BasePostprocessor):
         self.fit_partial(score)
         return likelihood
 
+    def transform(self, scores: np.ndarray) -> np.ndarray:
+        """Transforms a 1-D batch of scores against the current frozen state."""
+        arr = np.asarray(scores, dtype=np.float64)
+        if arr.ndim != 1:
+            return super().transform(scores)
+        n = len(arr)
+        if n == 0:
+            return np.empty(0, dtype=np.float64)
+        if self.num_scores_ < self.learning_period + self.num_estimation_samples:
+            return np.full(n, 0.5, dtype=np.float64)
+        total = sum(self.short_window_)
+        prev_tail = self._tail(total / len(self.short_window_))
+        if len(self.short_window_) == self.short_window_size:
+            base_total = total - self.short_window_[0]
+            denom = self.short_window_size
+        else:
+            base_total = total
+            denom = len(self.short_window_) + 1
+        avgs = (base_total + arr) / denom
+        zs = np.abs(avgs - self.mean_) / (self.std_ * math.sqrt(2))
+        _erfc = math.erfc
+        tails = 0.5 * np.fromiter((_erfc(z) for z in zs.tolist()), dtype=np.float64, count=n)
+        if prev_tail <= 1e-5:
+            tails = np.where(tails <= 1e-5, 1e-3, tails)
+        return 1.0 - tails
+
     def _fit_gaussian(self) -> None:
         start = self.num_scores_ % self.window_size
         if self.num_scores_ < self.window_size:

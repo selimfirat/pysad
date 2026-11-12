@@ -10,6 +10,7 @@ from sklearn.utils import check_random_state
 # periodic scalar encoder of the hour of the day with 21 active bits and a radius of 9.49 hours.
 TIME_OF_DAY_WIDTH = 21
 TIME_OF_DAY_SIZE = math.ceil(TIME_OF_DAY_WIDTH * (24.0 / 9.49))  # 54 bits
+_TIME_OF_DAY_OFFSETS = np.arange(TIME_OF_DAY_WIDTH) - TIME_OF_DAY_WIDTH // 2
 
 
 def encode_time_of_day(timestamp: float) -> np.ndarray:
@@ -24,7 +25,7 @@ def encode_time_of_day(timestamp: float) -> np.ndarray:
     # NuPIC uses the hour and the minute, and drops the seconds.
     hours = (timestamp % 86400.0) // 60.0 / 60.0
     center = int(hours * TIME_OF_DAY_SIZE / 24.0)
-    return (center - TIME_OF_DAY_WIDTH // 2 + np.arange(TIME_OF_DAY_WIDTH)) % TIME_OF_DAY_SIZE
+    return (center + _TIME_OF_DAY_OFFSETS) % TIME_OF_DAY_SIZE
 
 
 class RandomDistributedScalarEncoder:

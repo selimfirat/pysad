@@ -3,12 +3,9 @@ import warnings
 from pysad.transform.postprocessing import (
     AveragePostprocessor,
     MaxPostprocessor,
+    MedianPostprocessor,
     NonparametricDynamicThresholdPostprocessor,
     QuantileFilter,
-    RunningAveragePostprocessor,
-    RunningMaxPostprocessor,
-    RunningMedianPostprocessor,
-    RunningZScorePostprocessor,
     ThresholdFilter,
     ZScorePostprocessor,
 )
@@ -17,9 +14,7 @@ from pysad.transform.postprocessing import (
 def helper_get_scores():
     import numpy as np
 
-    # Use a fixed seed for reproducible results and avoid edge cases
     np.random.seed(42)
-    # Create more diverse scores to avoid variance issues
     scores = np.random.rand(100) * 10 + np.arange(100) * 0.1
 
     return scores
@@ -28,23 +23,22 @@ def helper_get_scores():
 def test_postprocessors_shape():
     scores = helper_get_scores()
 
-    postprocessors = {
-        AveragePostprocessor: {},
-        MaxPostprocessor: {},
-        ZScorePostprocessor: {},
-        NonparametricDynamicThresholdPostprocessor: {"window_size": 30},
-        QuantileFilter: {},
-        RunningAveragePostprocessor: {"window_size": 30},
-        RunningMaxPostprocessor: {"window_size": 30},
-        RunningMedianPostprocessor: {"window_size": 30},
-        RunningZScorePostprocessor: {"window_size": 30},
-        ThresholdFilter: {"threshold": 5},
-    }
+    cases = [
+        (AveragePostprocessor, {}),
+        (AveragePostprocessor, {"window_size": 30}),
+        (MaxPostprocessor, {}),
+        (MaxPostprocessor, {"window_size": 30}),
+        (MedianPostprocessor, {}),
+        (MedianPostprocessor, {"window_size": 30}),
+        (ZScorePostprocessor, {}),
+        (ZScorePostprocessor, {"window_size": 30}),
+        (NonparametricDynamicThresholdPostprocessor, {"window_size": 30}),
+        (QuantileFilter, {}),
+        (ThresholdFilter, {"threshold": 5}),
+    ]
 
-    for postprocessor_cls, params_dict in postprocessors.items():
+    for postprocessor_cls, params_dict in cases:
         postprocessor = postprocessor_cls(**params_dict)
-        # Suppress RuntimeWarning for division by zero in z-score calculations
-        # This can happen with small variance values or edge cases
         with warnings.catch_warnings():
             warnings.filterwarnings(
                 "ignore",
@@ -55,9 +49,9 @@ def test_postprocessors_shape():
         assert scores.shape == postprocessed_scores.shape
 
 
-# Fixed scores. The last two values make every running postprocessor differ from its
-# cumulative counterpart; without them RunningMaxPostprocessor(window_size=3) would
-# match MaxPostprocessor exactly and a broken window would go unnoticed.
+# Fixed scores. The last two values make every windowed postprocessor differ from its
+# cumulative counterpart; without them MaxPostprocessor(window_size=3) would
+# match MaxPostprocessor() exactly and a broken window would go unnoticed.
 SCORES = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]
 WINDOW_SIZE = 3
 
@@ -70,6 +64,7 @@ def test_cumulative_postprocessors_output_values():
     for postprocessor_cls, reference in [
         (AveragePostprocessor, np.mean),
         (MaxPostprocessor, np.max),
+        (MedianPostprocessor, np.median),
     ]:
         expected = [reference(scores[: i + 1]) for i in range(len(scores))]
 
@@ -78,15 +73,15 @@ def test_cumulative_postprocessors_output_values():
         )
 
 
-def test_running_postprocessors_output_values():
+def test_windowed_postprocessors_output_values():
     import numpy as np
 
     scores = np.array(SCORES, dtype=float)
 
     for postprocessor_cls, reference in [
-        (RunningAveragePostprocessor, np.mean),
-        (RunningMaxPostprocessor, np.max),
-        (RunningMedianPostprocessor, np.median),
+        (AveragePostprocessor, np.mean),
+        (MaxPostprocessor, np.max),
+        (MedianPostprocessor, np.median),
     ]:
         expected = [
             reference(scores[max(0, i - WINDOW_SIZE + 1) : i + 1]) for i in range(len(scores))
@@ -106,7 +101,7 @@ def test_zscore_postprocessors_output_values():
 
     for postprocessor, window_size in [
         (ZScorePostprocessor(), None),
-        (RunningZScorePostprocessor(window_size=WINDOW_SIZE), WINDOW_SIZE),
+        (ZScorePostprocessor(window_size=WINDOW_SIZE), WINDOW_SIZE),
     ]:
         postprocessed_scores = postprocessor.fit_transform(scores)
 
@@ -128,14 +123,15 @@ def test_postprocessors_return_zero_before_the_first_fit():
     # StreamPipeline.score_partial transforms a score before any postprocessor or calibrator learns (#625).
     for postprocessor in [
         AveragePostprocessor(),
+        AveragePostprocessor(window_size=WINDOW_SIZE),
         MaxPostprocessor(),
+        MaxPostprocessor(window_size=WINDOW_SIZE),
+        MedianPostprocessor(),
+        MedianPostprocessor(window_size=WINDOW_SIZE),
         NonparametricDynamicThresholdPostprocessor(),
         QuantileFilter(),
-        RunningAveragePostprocessor(window_size=WINDOW_SIZE),
-        RunningMaxPostprocessor(window_size=WINDOW_SIZE),
-        RunningMedianPostprocessor(window_size=WINDOW_SIZE),
-        RunningZScorePostprocessor(window_size=WINDOW_SIZE),
         ZScorePostprocessor(),
+        ZScorePostprocessor(window_size=WINDOW_SIZE),
     ]:
         assert postprocessor.transform_partial(0.7) == 0.0, type(postprocessor).__name__
 
@@ -149,7 +145,7 @@ def test_zscore_postprocessors_return_zero_for_constant_stream():
 
         for postprocessor in [
             ZScorePostprocessor(),
-            RunningZScorePostprocessor(window_size=WINDOW_SIZE),
+            ZScorePostprocessor(window_size=WINDOW_SIZE),
         ]:
             np.testing.assert_array_equal(
                 postprocessor.fit_transform(scores),
@@ -163,27 +159,26 @@ def test_postprocessors_partial_matches_batch():
 
     scores = np.array(SCORES, dtype=float)
 
-    postprocessors = {
-        AveragePostprocessor: {},
-        MaxPostprocessor: {},
-        ZScorePostprocessor: {},
-        NonparametricDynamicThresholdPostprocessor: {"window_size": WINDOW_SIZE},
-        QuantileFilter: {"q": 0.5},
-        RunningAveragePostprocessor: {"window_size": WINDOW_SIZE},
-        RunningMaxPostprocessor: {"window_size": WINDOW_SIZE},
-        RunningMedianPostprocessor: {"window_size": WINDOW_SIZE},
-        RunningZScorePostprocessor: {"window_size": WINDOW_SIZE},
-        ThresholdFilter: {"threshold": 4},
-    }
+    cases = [
+        (AveragePostprocessor, {}),
+        (AveragePostprocessor, {"window_size": WINDOW_SIZE}),
+        (MaxPostprocessor, {}),
+        (MaxPostprocessor, {"window_size": WINDOW_SIZE}),
+        (MedianPostprocessor, {}),
+        (MedianPostprocessor, {"window_size": WINDOW_SIZE}),
+        (ZScorePostprocessor, {}),
+        (ZScorePostprocessor, {"window_size": WINDOW_SIZE}),
+        (NonparametricDynamicThresholdPostprocessor, {"window_size": WINDOW_SIZE}),
+        (QuantileFilter, {"q": 0.5}),
+        (ThresholdFilter, {"threshold": 4}),
+    ]
 
-    for postprocessor_cls, params_dict in postprocessors.items():
-        # The postprocessors are stateful, so each path gets its own fresh instance.
+    for postprocessor_cls, params_dict in cases:
         batch_scores = postprocessor_cls(**params_dict).fit_transform(scores)
 
         postprocessor = postprocessor_cls(**params_dict)
         partial_scores = [postprocessor.fit_transform_partial(score) for score in scores]
 
-        # All postprocessors should produce the same values through either API.
         np.testing.assert_allclose(partial_scores, batch_scores, err_msg=postprocessor_cls.__name__)
 
 
@@ -295,3 +290,37 @@ def test_threshold_filter_labels_scores_at_or_above_the_threshold():
     out = ThresholdFilter(threshold=4).fit_transform(np.array(SCORES, dtype=float))
 
     np.testing.assert_array_equal(out, [0, 0, 1, 0, 1, 1, 0, 1, 1, 0])
+
+
+def test_postprocessors_batch_transform_matches_partial():
+    import numpy as np
+    import pytest
+
+    with pytest.raises(ValueError, match=r"window_size must be a positive integer\."):
+        NonparametricDynamicThresholdPostprocessor(window_size=0)
+
+    train = np.array(SCORES, dtype=float)
+    test = np.array([0.5, 2.5, 4.0, 7.5, 12.0])
+    for cls, kwargs in [
+        (AveragePostprocessor, {}),
+        (AveragePostprocessor, {"window_size": WINDOW_SIZE}),
+        (MaxPostprocessor, {}),
+        (MaxPostprocessor, {"window_size": WINDOW_SIZE}),
+        (MedianPostprocessor, {}),
+        (MedianPostprocessor, {"window_size": WINDOW_SIZE}),
+        (ZScorePostprocessor, {}),
+        (ZScorePostprocessor, {"window_size": WINDOW_SIZE}),
+        (NonparametricDynamicThresholdPostprocessor, {"window_size": 5, "span": 1}),
+        (QuantileFilter, {"q": 0.5}),
+        (ThresholdFilter, {"threshold": 4.0}),
+    ]:
+        unfitted = cls(**kwargs)
+        np.testing.assert_allclose(
+            unfitted.transform(test),
+            [unfitted.transform_partial(float(s)) for s in test],
+        )
+        fitted = cls(**kwargs).fit(train)
+        np.testing.assert_allclose(
+            fitted.transform(test),
+            [fitted.transform_partial(float(s)) for s in test],
+        )

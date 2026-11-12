@@ -107,8 +107,9 @@ def test_delta_out_of_range_is_rejected(delta):
 
 
 def test_remove_is_not_supported():
-    meter = FHDDMMeter()
-    meter.update(1.0)
+    from pysad.statistics import RunningStatistic
 
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+    meter = FHDDMMeter()
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(FHDDMMeter, window_size=10)

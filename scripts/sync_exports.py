@@ -26,7 +26,6 @@ PURE_REEXPORT_PACKAGES: tuple[str, ...] = (
 EXCLUDED_SYMBOLS: dict[str, frozenset[str]] = {
     "pysad/core": frozenset({"RemovableStatistic"}),
     "pysad/transform/ensemble": frozenset({"PYODScoreEnsembler"}),
-    "pysad/utils": frozenset({"UnlimitedWindow"}),
 }
 
 # Nested single-detector modules exported by a parent package.

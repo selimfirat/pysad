@@ -200,7 +200,7 @@ class TestWindow:
         window.update(2.0)
         assert window.get() == [2.0]
 
-    def test_window_get_returns_items_in_order(self):
+    def test_window_get_returns_same_list_each_call(self):
         """Test that Window.get() returns the window items, oldest first."""
         from pysad.utils import Window
 
@@ -214,43 +214,6 @@ class TestWindow:
         assert result1 == result2 == [1.0, 2.0]
         assert len(window) == 2
         assert list(window) == [1.0, 2.0]
-
-    def test_unlimited_window_initialization(self):
-        """Test UnlimitedWindow initialization."""
-        from pysad.utils.window import UnlimitedWindow
-
-        window = UnlimitedWindow()
-        assert window.window_size is None
-        assert window.get() == []
-
-    def test_unlimited_window_growth(self):
-        """Test UnlimitedWindow unlimited growth."""
-        from pysad.utils.window import UnlimitedWindow
-
-        window = UnlimitedWindow()
-
-        # Add many items
-        for i in range(100):
-            window.update(float(i))
-
-        result = window.get()
-        assert len(result) == 100
-        assert result[0] == 0.0
-        assert result[-1] == 99.0
-
-    def test_unlimited_window_no_size_limit(self):
-        """Test that UnlimitedWindow doesn't remove old items."""
-        from pysad.utils.window import UnlimitedWindow
-
-        window = UnlimitedWindow()
-
-        for i in range(10):
-            window.update(float(i))
-
-        # All items should be present
-        result = window.get()
-        expected = [float(i) for i in range(10)]
-        assert result == expected
 
     def test_ring_buffer_scalar_and_vector_wraparound(self):
         """Test RingBuffer chronological order and active slices for scalars and vectors."""

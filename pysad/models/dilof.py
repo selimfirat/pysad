@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from pysad.models.incremental_lof import _EPS, IncrementalLOF
+from pysad.models.incremental_lof import _EPS, IncrementalLOF, _lof
 
 # The step size, its decay per iteration and the weight of the size constraint of the
 # summarization come from the paper. The number of iterations comes from its reference code.
@@ -28,7 +28,7 @@ class DILOF(IncrementalLOF):
 
     `score_partial` returns the LOF of the instance against the current window, without inserting it, as :class:`IncrementalLOF` does. If the skipping scheme would skip the instance, the score is at least the LOF of the last inserted outlier, which is above `threshold`. Until the window holds `num_neighbors + 1` instances, the score is 0.
 
-    Deviations from the paper: the paper returns the LOF of an inserted instance and -1 for a skipped instance (Algorithm 4, lines 1 to 5). This model returns at least the LOF of the last inserted outlier for a skipped instance, as above, so that a higher score stays more anomalous. The model keeps no set of outliers, so `threshold` only controls the skipping. The paper measures accuracy with AUC and gives no default for `threshold`; the default of 1.5 is a choice of this implementation. The paper gives the initial value of 0.5, the step size of 0.3 multiplied by 0.95 before each iteration, and the quadratic penalties outside [0, 1]. The paper does not give the number of iterations, and this model uses the 20 iterations of the reference code of the authors. The approximation of the k-distance of an old instance in the summary follows the paper. The k-distance of the instance itself moves towards its largest distance by the share of exp(sigmoid(LOF)) that its neighbors hold (Eqs. 11 to 13). For each instance whose neighbors hold more than the mean share, the instances that have it as their k-th neighbor use the first instance farther than their k-distance and nearer than 2 exp(sigmoid(LOF)) times it (Algorithm 3, line 10), while the reference code uses 2 sigmoid(LOF). If no instance lies in that range, the model keeps the exact k-th neighbor, a case that the paper does not cover. For each old instance x_n, the gradient sums y_i d(x_i, x_n) / ν_k(x_i) over the instances x_i that have x_n as their approximated k-th neighbor, where y_i is the variable of x_i and ν_k(x_i) its k-distance. This term deviates from both forms in the paper: Algorithm 2, line 8 sums only y_i over the same instances, and Eq. 10 sums ρ_k(x_i) / ν_k(x_i). This model uses the term of the reference code because it is the exact derivative of the loss in Eq. 8 with the k-distance approximation of Eq. 9. The k-distances of NDS are taken among the old instances, as in the loss of the paper, while the reference code takes them in the whole window. The divisions by a k-distance add 1e-10 to it, and the shape term caps the LOF at 50 in exp(LOF), so that duplicate instances do not give infinite values. In the reference code, the skipping scheme does not move the last outlier to a skipped instance, the k-th neighbor bound is 2 sigmoid(LOF) times the k-distance, and an insertion does not update the neighbors of the window instances. This model follows the paper on all three.
+    Deviations from the paper: the paper returns the LOF of an inserted instance and -1 for a skipped instance (Algorithm 4, lines 1 to 5). This model returns at least the LOF of the last inserted outlier for a skipped instance, as above, so that a higher score stays more anomalous. The model keeps no set of outliers, so `threshold` only controls the skipping. The paper measures accuracy with AUC and gives no default for `threshold`; the default of 1.5 is a choice of this implementation. The paper gives the initial value of 0.5, the step size of 0.3 multiplied by 0.95 before each iteration, and the quadratic penalties outside [0, 1]. The paper does not give the number of iterations, and this model uses the 20 iterations of the reference code of the authors. The approximation of the k-distance of an old instance in the summary follows the paper. The k-distance of the instance itself moves towards its largest distance by the share of exp(sigmoid(LOF)) that its neighbors hold (Eqs. 11 to 13). For each instance whose neighbors hold more than the mean share, the instances that have it as their k-th neighbor use the first instance farther than their k-distance and nearer than 2 exp(sigmoid(LOF)) times it (Algorithm 3, line 10), while the reference code uses 2 sigmoid(LOF). If no instance lies in that range, the model keeps the exact k-th neighbor, a case that the paper does not cover. For each old instance x_n, the gradient sums y_i d(x_i, x_n) / ν_k(x_i) over the instances x_i that have x_n as their approximated k-th neighbor, where y_i is the variable of x_i and ν_k(x_i) its k-distance. This term deviates from both forms in the paper: Algorithm 2, line 8 sums only y_i over the same instances, and Eq. 10 sums ρ_k(x_i) / ν_k(x_i). This model uses the term of the reference code because it is the exact derivative of the loss in Eq. 8 with the k-distance approximation of Eq. 9. The k-distances of NDS are taken among the old instances, as in the loss of the paper, while the reference code takes them in the whole window. The divisions by a k-distance add 1e-10 times the largest distance of the instance to the other old instances to it, so that the ratios do not depend on the unit of the values, and the shape term caps the LOF at 50 in exp(LOF), so that duplicate instances do not give infinite values. In the reference code, the skipping scheme does not move the last outlier to a skipped instance, the k-th neighbor bound is 2 sigmoid(LOF) times the k-distance, and an insertion does not update the neighbors of the window instances. This model follows the paper on all three.
 
     As in :class:`IncrementalLOF`, each instance has exactly `num_neighbors` neighbors, including under distance ties; the paper's k-distance neighborhood can contain more. The C++ reference initializes on half a window, while this model starts scoring once it has `num_neighbors + 1` instances. The reference code used for comparison is preserved at https://github.com/LiDan456/DILOF (commit 5ea0d019a1fefc10f2568572bc898ca73ab9d3bd). That mirror has no license; no code is copied from it.
 
@@ -72,7 +72,7 @@ class DILOF(IncrementalLOF):
         super().fit_partial(X)
         n = self.num_instances_
         if self.threshold is not None and n > self.num_neighbors:
-            lof = self.lrds_[self.neighbors_[p]].mean() / self.lrds_[p]
+            lof = _lof(self.reach_dists_[p : p + 1], self.reach_dists_[self.neighbors_[p]][None])[0]
             if lof > self.threshold:
                 self._last_outlier = self.X_[p].copy()
                 self._last_outlier_lof = float(lof)
@@ -111,7 +111,7 @@ class DILOF(IncrementalLOF):
         k = self.num_neighbors
         half = self.window_size // 2
         size = half // 2
-        lofs = self.lrds_[self.neighbors_[:half]].mean(axis=1) / self.lrds_[:half]  # (half,)
+        lofs = _lof(self.reach_dists_[:half], self.reach_dists_[self.neighbors_[:half]])  # (half,)
 
         dists = cdist(self.X_[:half], self.X_[:half])  # (half, half)
         max_dists = dists.max(axis=1)
@@ -120,18 +120,20 @@ class DILOF(IncrementalLOF):
         neighbor_dists = np.take_along_axis(dists, neighbors, axis=1)
         kth = neighbors[np.arange(half), neighbor_dists.argmax(axis=1)]
         k_dists = neighbor_dists.max(axis=1)
+        # The k-distances with a floor relative to the largest distance, so that the ratios do not depend on the unit.
+        floored_k_dists = k_dists + np.where(max_dists > 0.0, _EPS * max_dists, 1.0)
 
         # The k-distance of each instance in the summary over its k-distance now, approximated.
         shares = np.exp(_sigmoid(lofs))
         neighbor_shares = shares[neighbors].sum(axis=1)
-        self_ratios = (k_dists + neighbor_shares / shares.sum() * (max_dists - k_dists)) / (
-            k_dists + _EPS
-        )
+        self_ratios = (
+            k_dists + neighbor_shares / shares.sum() * (max_dists - k_dists)
+        ) / floored_k_dists
         # The k-th neighbor in the summary of the instances whose neighbors are likely removed.
         band = (dists > k_dists[:, None]) & (dists < 2.0 * (shares * k_dists)[:, None])
         moved = (neighbor_shares > neighbor_shares.mean()) & band.any(axis=1)
         kth[moved] = band[moved].argmax(axis=1)
-        kth_ratios = dists[np.arange(half), kth] / (k_dists + _EPS)
+        kth_ratios = dists[np.arange(half), kth] / floored_k_dists
         shape = np.exp(np.minimum(lofs, _MAX_EXP_LOF))
 
         y = np.full(half, 0.5)
@@ -150,4 +152,4 @@ class DILOF(IncrementalLOF):
         self.num_instances_ = n
         self._next = n
         self._update_neighbors(np.arange(n), exclude=None)
-        self._update_lrds(np.arange(n))
+        self._update_reach_dists(np.arange(n))

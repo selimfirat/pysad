@@ -25,6 +25,7 @@ _EXAMPLE_ACRONYMS = {
     "aupr": "AUPR",
     "auroc": "AUROC",
     "cpod": "CPOD",
+    "csv": "CSV",
     "d3": "D3",
     "damp": "DAMP",
     "ddm": "DDM",

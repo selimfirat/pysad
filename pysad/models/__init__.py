@@ -40,6 +40,7 @@ from .robust_random_cut_forest import RobustRandomCutForest
 from .rs_forest import RSForest
 from .rs_hash import RSHash
 from .sand import SAND
+from .sdostream import SDOstream
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .spectral_residual import SpectralResidual
@@ -90,6 +91,7 @@ __all__ = [
     "RSForest",
     "RSHash",
     "SAND",
+    "SDOstream",
     "SeasonalESD",
     "SeasonalHybridESD",
     "SmartSifter",

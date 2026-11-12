@@ -8,8 +8,10 @@ from typing import Any
 import numpy as np
 
 from .array_streamer import ArrayStreamer, _iterate
+from .csv_streamer import CSVStreamer
 from .data import Data
 from .pandas_streamer import PandasStreamer
+from .plotting import plot_stream
 from .polars_streamer import PolarsStreamer
 from .synthetic import generate_stream
 from .validation import check_feature_bounds, check_univariate
@@ -20,12 +22,14 @@ __all__ = [
     "ArrayStreamer",
     "check_feature_bounds",
     "check_univariate",
+    "CSVStreamer",
     "Data",
     "fix_seed",
     "generate_stream",
     "get_minmax_array",
     "get_minmax_scalar",
     "PandasStreamer",
+    "plot_stream",
     "PolarsStreamer",
     "RingBuffer",
     "Window",

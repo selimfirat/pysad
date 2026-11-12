@@ -342,6 +342,21 @@ It prints:
 
    AUROC: 0.817
 
+Explain an anomaly
+------------------
+
+This script shifts two features of a point and asks :class:`~pysad.models.LODA` which features make the point anomalous. For each feature, :meth:`~pysad.models.LODA.explain_partial` compares the projections that use the feature with the projections that do not.
+
+.. literalinclude:: ../examples/example_loda_explanation.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Score: 3.46
+   Features by contribution: [2, 5, 0, 1, 4, 3, 7, 6]
+
 Run a PyOD model
 ----------------
 

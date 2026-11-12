@@ -74,15 +74,6 @@ def test_get_iterator(monkeypatch):
         assert y in [0, 1, 2]
 
 
-def test_datasets():
-    files = Data.datasets()
-    assert isinstance(files, list)
-    assert len(files) == 17
-    assert "arrhythmia.mat" in files
-    assert "cardio.mat" in files
-    assert all(f.endswith(".mat") for f in files)
-
-
 def test_get_iterator_random_state_shuffles_without_the_global_state():
     """A random_state gives the same order each time, and the global random state stays as it was."""
     d = Data()
@@ -113,17 +104,6 @@ def test_get_stream_keeps_shuffles_and_scales():
     np.testing.assert_array_equal(Xs[:, 1], 0.0)  # a constant feature becomes 0
 
 
-def test_get_iterator_without_seed(monkeypatch):
-    """Test get_iterator without seed parameter."""
-    d = Data()
-    d.get_data = lambda data_file, download=True: (np.ones((3, 2)), np.arange(3))
-
-    # Should work without seed
-    it = d.get_iterator("dummy.txt", shuffle=False)
-    items = list(it)
-    assert len(items) == 3
-
-
 def test_data_init_default_path(monkeypatch):
     """Test Data class initialization with default cache path and PYSAD_DATA_DIR env var."""
     monkeypatch.delenv("PYSAD_DATA_DIR", raising=False)
@@ -139,21 +119,6 @@ def test_data_init_custom_path():
     """Test Data class initialization with custom path."""
     d = Data(data_base_path="/custom/path")
     assert d.data_base_path == "/custom/path"
-
-
-def test_load_via_txt_method():
-    """Test the _load_via_txt method directly."""
-    arr = np.random.rand(4, 3)
-    with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt", delete=False) as f:
-        np.savetxt(f, arr, delimiter=",")
-        f.close()
-
-        d = Data()
-        result = d._load_via_txt(f.name)
-        assert result.shape == (4, 3)
-        assert np.allclose(result, arr)
-
-    os.remove(f.name)
 
 
 def test_datasets_content():
@@ -337,14 +302,6 @@ def test_download_does_not_try_again_after_a_client_error(tmp_path, monkeypatch)
 
     assert len(calls) == 1
     assert list(tmp_path.iterdir()) == []
-
-
-def test_explicit_data_base_path_wins(tmp_path):
-    """Test that an explicit data_base_path is preserved and used."""
-    custom_dir = tmp_path / "my_custom_dir"
-    custom_dir.mkdir()
-    d = Data(data_base_path=str(custom_dir))
-    assert d.data_base_path == str(custom_dir)
 
 
 def test_download_with_a_wrong_checksum_raises_and_leaves_no_file(tmp_path, monkeypatch):

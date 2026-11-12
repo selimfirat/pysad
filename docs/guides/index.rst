@@ -9,13 +9,7 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
       :doc:`stream_data`
 
-      Feed CSV files, DataFrames, message queues and benchmark datasets to a detector.
-
-   .. container:: card
-
-      :doc:`one_dimensional_integration`
-
-      Connect one-dimensional inputs, score before each update, set bounds, and calibrate scores.
+      Stream CSV files, DataFrames, sensor values, messages and benchmark datasets.
 
    .. container:: card
 

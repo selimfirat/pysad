@@ -1,7 +1,7 @@
 Turn scores into alerts
 =======================
 
-A detector gives a raw score with no fixed scale. To decide when to raise an alert, first calibrate the score. Calibration maps the score to a value between 0 and 1. Then compare the calibrated value with a threshold.
+Calibrate raw scores to a 0-to-1 scale, then compare them with an alert threshold.
 
 The examples on this page use a synthetic stream. Replace ``X`` with your own data:
 
@@ -33,9 +33,9 @@ Calibrate the scores and raise alerts
        if t >= 200 and calibrated >= 0.99:
            print(f"alert at t={t}")
 
-The condition ``t >= 200`` skips a warm-up period of 200 points. During the warm-up, the model and the calibrator have too little data, and their output is not stable.
+``t >= 200`` suppresses alerts during the first 200 points while the model and calibrator initialize.
 
-To get the alerts as 0/1 labels, for example for :class:`~pysad.evaluation.PrecisionMetric`, use :class:`~pysad.transform.postprocessing.ThresholdFilter`. It gives 1 for a value at or above its threshold, and 0 otherwise:
+:class:`~pysad.transform.postprocessing.ThresholdFilter` produces 0/1 labels for metrics such as :class:`~pysad.evaluation.PrecisionMetric`: 1 at or above the threshold, 0 otherwise:
 
 .. code-block:: python
 
@@ -47,7 +47,7 @@ To get the alerts as 0/1 labels, for example for :class:`~pysad.evaluation.Preci
 Choose the threshold
 --------------------
 
-Use these thresholds as starting points when normal scores have a stable distribution and few ties. The rates are approximate: drift, dependent scores and anomalies in the calibration window can change them. Validate the threshold on labeled data with :doc:`evaluate`.
+These approximate rates assume stable normal scores with few ties. Drift, dependence and anomalies in the window affect the rates; validate your threshold on labeled data using :doc:`evaluate`.
 
 .. list-table::
    :header-rows: 1
@@ -61,14 +61,14 @@ Use these thresholds as starting points when normal scores have a stable distrib
    * - 0.999
      - About 1 in 1,000
 
-To get fewer false alerts (alerts for normal points), increase the threshold. The window of the calibrator must hold enough scores for the threshold. With 1,000 scores, only the highest score in the window reaches 0.999. If the threshold is 0.999, use a ``window_size`` of 5,000 or more.
+Raise the threshold to reduce false alerts on normal points. With 1,000 scores, only the highest reaches 0.999. For a 0.999 threshold, use ``window_size`` of 5,000 or more.
 
-The ``window_size`` of the calibrator also sets what "recent" means. A small window follows changes in the data faster. A large window gives a more stable threshold.
+``window_size`` sets the calibration history: smaller windows adapt faster; larger windows give more stable ranks.
 
 Calibrate with a Gaussian fit
 -----------------------------
 
-:class:`~pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator` keeps the mean and the variance of the scores in a window, and updates them with each score:
+:class:`~pysad.transform.probability_calibration.GaussianTailProbabilityCalibrator` updates a windowed mean and variance:
 
 .. code-block:: python
 
@@ -76,7 +76,7 @@ Calibrate with a Gaussian fit
 
    calibrator = GaussianTailProbabilityCalibrator(window_size=1000)
 
-This calibrator assumes that the scores are approximately Gaussian (bell-shaped). Many detectors give skewed scores, with a long tail of high values. For skewed scores, this calibrator raises more alerts than the threshold suggests. If you are not sure that your scores are Gaussian, use the conformal calibrator.
+The Gaussian fit assumes approximately bell-shaped scores. Skewed scores with a long upper tail can raise more alerts than expected. Use conformal calibration if this assumption is uncertain.
 
 Calibrate with extreme value theory
 -----------------------------------
@@ -94,9 +94,9 @@ Calibrate with extreme value theory
        if calibrator.fit_transform_partial(model.fit_score_partial(x)) > 1 - 1e-3:
            alerts.append(t)
 
-A score gets a calibrated value above ``1 - q`` when the score is above ``calibrator.threshold_``. The calibrator does not learn from these scores. Unlike the conformal calibrator, this calibrator does not need a large window for a small ``q``, because the fitted distribution extends beyond the highest score seen so far. It returns 0 for the first ``num_init`` scores.
+Scores above ``calibrator.threshold_`` map above ``1 - q`` and are excluded from fitting. The fitted tail extends beyond observed scores, so small ``q`` values do not require large windows. The first ``num_init`` scores return 0.
 
-If the scores drift, set ``depth``, for example ``depth=10``. The calibrator then fits the distribution to the difference between each score and the mean of the last ``depth`` scores.
+For drifting scores, set ``depth``, for example ``depth=10``, to fit differences from the mean of the last ``depth`` scores.
 
 Calibrate with the anomaly likelihood of HTM
 --------------------------------------------
@@ -148,7 +148,7 @@ Label the scores with a running quantile
        if quantile_filter.fit_transform_partial(model.fit_score_partial(x)):
            alerts.append(t)
 
-With a stable score distribution and few ties, about 1 in 100 scores gets the label 1, even when the stream has no anomalies. Unlike the conformal calibrator, the filter does not forget old scores. Thus it follows a change in the scores slowly.
+For stable scores with few ties, about 1 in 100 gets label 1 even without anomalies. The filter retains old information, so it adapts slowly to score changes.
 
 Smooth noisy scores
 -------------------
@@ -168,12 +168,12 @@ If single noisy points raise alerts, average the scores over a short window befo
        smoothed = smoother.fit_transform_partial(score)
        calibrated = calibrator.fit_transform_partial(smoothed)
 
-Smoothing delays the alerts and hides anomalies that last for only one point. Use smoothing for anomalies that last for several points, for example a level shift (a lasting jump in the value).
+Smoothing can delay alerts and hide isolated anomalies. Use it for sustained anomalies, such as level shifts.
 
 Keep anomalies out of the model
 -------------------------------
 
-With ``fit_score_partial``, the model learns from every point, and also from anomalies. As a result, a long anomaly can become normal for the model. To prevent this, score each point first. Then learn from the point only if it does not raise an alert:
+``fit_score_partial`` learns from anomalies too, so sustained anomalies can become normal to the model. To exclude flagged points, score first and learn only when no alert is raised:
 
 .. code-block:: python
 
@@ -192,12 +192,12 @@ With ``fit_score_partial``, the model learns from every point, and also from ano
        else:
            model.fit_partial(x)
 
-If the data changes permanently, for example after a deployment, the model in this loop never learns the new normal behavior. If you find such a change, reset the model, or let it learn from all points again.
+This filter can prevent learning a permanent change, such as a deployment. If that happens, reset the model or resume learning from all points.
 
 Plot the alerts
 ---------------
 
-To see where the alerts fall, plot the calibrated scores with the threshold. The script ``examples/example_plot_stream.py`` in :doc:`../examples` draws three panels with matplotlib: the features, the scores with the threshold, and the alerts against the labels. PySAD does not install matplotlib, so install it with ``pip install matplotlib``.
+``examples/example_plot_stream.py`` in :doc:`../examples` plots features, calibrated scores with the threshold, and alerts against labels. Install matplotlib separately with ``pip install matplotlib``.
 
 Next steps
 ----------

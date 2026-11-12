@@ -1,7 +1,7 @@
 Choose a detector
 =================
 
-No detector is the best for all data. Use the table to find two or three candidates. Then compare the candidates on your own data.
+Choose two or three candidates from the table, then compare them on your data.
 
 Find candidates
 ---------------
@@ -37,12 +37,12 @@ In the table, a window is the set of the most recent points that a detector keep
      - :class:`~pysad.integrations.ReferenceWindowModel`
      - Fits the model again on a sliding window. See :doc:`pyod`
 
-The table follows the design of each method. It is not a benchmark ranking. :doc:`/detectors` lists every detector with its input, its memory and its paper. The :doc:`benchmark </benchmark>` gives the results of each multivariate detector on |num_datasets| datasets.
+These suggestions follow method design, not benchmark rank. See :doc:`/detectors` for inputs, memory and papers, and :doc:`benchmark </benchmark>` for multivariate results on |num_datasets| datasets.
 
 Compare the candidates
 ----------------------
 
-Run each candidate on a labeled part of your data. Then compare the candidates with a metric, for example AUROC. AUROC measures how well the scores rank anomalies above normal points. This example compares four detectors on the ``cardio`` benchmark dataset:
+Compare candidates on labeled data using a metric such as AUROC, which measures ranking quality. This example compares four detectors on ``cardio``:
 
 .. code-block:: python
 
@@ -73,9 +73,9 @@ Run each candidate on a labeled part of your data. Then compare the candidates w
     HalfSpaceTrees: AUROC 0.928
             RSHash: AUROC 0.700
 
-The streamer keeps the order of the file. In ``cardio``, all anomalies are at the end. ``fit_score_partial`` scores each point before the detector learns from it. The results on your data can be very different, so run the comparison on your own stream.
+This example preserves file order, with all ``cardio`` anomalies at the end, and scores before learning. Results depend on the data; repeat the comparison on your stream.
 
-:class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` need the range of each feature. :func:`~pysad.utils.get_minmax_array` computes the range from an array. In production, compute the range from historical data, or use known physical limits.
+:class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` require feature ranges. Compute them with :func:`~pysad.utils.get_minmax_array`; in production, use historical data or known physical limits.
 
 Follow these rules to make the comparison fair:
 
@@ -88,13 +88,13 @@ Follow these rules to make the comparison fair:
 Tune the parameters
 -------------------
 
-Most detectors work with their default parameters. If you tune a detector, start with these parameters, because they have the largest effect:
+Start with the defaults. If tuning is needed, focus on these parameters:
 
 ``window_size``
    The number of recent points that the detector uses. A larger window gives more stable scores. A smaller window follows changes in the data faster.
 
 ``num_trees``, ``num_random_cuts``, ``n_chains``, ``num_components``
-   The size of an ensemble. An ensemble is a group of random parts whose scores the detector combines. A larger ensemble gives more stable scores and takes more time per point. In RSHash, ``num_components`` sets the size of the ensemble. In xStream, ``num_components`` sets the number of projected features, and ``n_chains`` sets the size of the ensemble.
+   Ensemble size: larger ensembles generally stabilize scores but cost more time. RSHash uses ``num_components``. xStream uses ``n_chains`` for ensemble size and ``num_components`` for projected features.
 
 ``period``
    For seasonal detectors, the number of points in one cycle. For example, use 24 for hourly data with a daily cycle.

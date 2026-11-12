@@ -1,7 +1,7 @@
 Getting started
 ===============
 
-In this tutorial, we will score a synthetic stream with LODA, measure how well the scores separate anomalies from normal points, and raise alerts. The tutorial takes about ten minutes. Run the code blocks in order in one Python session.
+We will use LODA to score a synthetic stream, evaluate the scores, and raise alerts. Allow ten minutes and run the code blocks in order in one Python session.
 
 You need Python 3.10 or newer. You do not need to know about anomaly detection.
 
@@ -19,7 +19,7 @@ For conda and other installation options, see :doc:`installation`.
 Make a stream
 -------------
 
-We will generate a stream with known anomalies. Each row is one point, represented by a NumPy array of features. We will feed the rows to the detector in order.
+Generate a stream with known anomalies. Each row is a NumPy feature array; we will process the rows in order.
 
 The stream has 2,000 points with 4 features. Every 50th point is an anomaly: the code adds 3 to its first two features.
 
@@ -33,12 +33,12 @@ The stream has 2,000 points with 4 features. Every 50th point is an anomaly: the
    y[::50] = 1
    X[y == 1, :2] += 3
 
-``X`` holds the points and ``y`` holds the labels: 1 for an anomaly and 0 for a normal point. The detector never sees ``y``. You use ``y`` only to measure the detector.
+``X`` holds the points; ``y`` holds labels: 1 for an anomaly, 0 for normal. Only the evaluation uses ``y``.
 
 Score each point
 ----------------
 
-Make a detector. Then give it the stream one point at a time. This tutorial uses :class:`~pysad.models.LODA`, a fast detector for data with several features.
+Create a :class:`~pysad.models.LODA` detector and feed it one point at a time.
 
 .. code-block:: python
 
@@ -53,7 +53,7 @@ Make a detector. Then give it the stream one point at a time. This tutorial uses
        score = model.fit_score_partial(x)
        scores.append(score)
 
-:class:`~pysad.utils.ArrayStreamer` replays an array as a stream, one row at a time. For each point, :meth:`~pysad.core.BaseModel.fit_score_partial` gives the point an anomaly score, and then the detector learns from the point. The score is a Python ``float``. A higher score means a more anomalous point.
+:class:`~pysad.utils.ArrayStreamer` yields one row at a time. :meth:`~pysad.core.BaseModel.fit_score_partial` scores each point before learning from it. Scores are Python ``float`` values; higher means more anomalous.
 
 Compare the average score of the normal points and of the anomalies:
 
@@ -68,14 +68,14 @@ Compare the average score of the normal points and of the anomalies:
    normal: 1.50
    anomalies: 2.63
 
-The anomalies get higher scores. The detector learned what normal data looks like from the stream itself, without labels.
+The anomalies have a higher average score, although the detector learned without labels.
 
 Measure the detector
 --------------------
 
 We will measure the ranking with AUROC (the area under the ROC curve). A perfect ranking gets 1.0; random scores get 0.5 on average. See :doc:`guides/evaluate` for metric definitions and choices.
 
-PySAD metrics update one point at a time, so you can measure the detector while the stream runs:
+Update the metric after each score:
 
 .. code-block:: python
 
@@ -94,12 +94,12 @@ PySAD metrics update one point at a time, so you can measure the detector while 
 
    AUROC: 0.960
 
-The metric uses the labels; the detector does not. We score each point before learning from it, so the score measures performance on an unseen point. This is prequential evaluation; see :doc:`concepts`.
+Scoring before learning measures performance on unseen points. This is prequential evaluation; see :doc:`concepts`.
 
 Raise alerts
 ------------
 
-Raw scores have no fixed scale. A score of 2.5 can be high for one detector and low for another. A calibrator converts each score into the fraction of recent scores that it exceeds. Use this calibrated value to decide when to raise an alert.
+Raw score scales differ: 2.5 can be high for one detector and low for another. Conformal calibration ranks each score against recent scores so we can set an alert threshold.
 
 .. code-block:: python
 
@@ -121,14 +121,14 @@ Raw scores have no fixed scale. A score of 2.5 can be high for one detector and 
 
    20 alerts, 15 of them true anomalies
 
-A calibrated value of 0.99 means that 99% of the scores currently in the window are lower. The window holds up to 500 scores, including the current score. This is a relative rank, not the probability that the point is an anomaly. We skip alerts for the first 200 points as a short warm-up; this is an example choice, not a guarantee of stable scores. See :doc:`guides/alerts` to choose a threshold and window for your data.
+A value of 0.99 means that 99% of the window’s scores are lower. The window holds up to 500 scores, including the current score. This rank is not an anomaly probability. We skip alerts for a 200-point warm-up; choose a suitable warm-up, threshold and window for your data using :doc:`guides/alerts`.
 
-After the warm-up, the stream has 36 anomalies, so at this threshold the detector finds 15 of them. To find more anomalies, lower the threshold, and expect more false alerts. :doc:`guides/evaluate` shows how to measure this trade-off with precision and recall.
+After warm-up, the detector finds 15 of 36 anomalies. Lowering the threshold can find more anomalies but also raises more false alerts. Measure this trade-off with precision and recall; see :doc:`guides/evaluate`.
 
 Try real data
 -------------
 
-:class:`~pysad.utils.Data` gives you |num_datasets| labeled benchmark datasets (standard datasets for comparing detectors). It downloads each dataset the first time that you use it. Then it keeps a copy in ``~/.cache/pysad``.
+:class:`~pysad.utils.Data` provides |num_datasets| labeled benchmark datasets. It downloads each on first use and caches it in ``~/.cache/pysad``.
 
 .. code-block:: python
 
@@ -147,7 +147,7 @@ Try real data
 
    AUROC on cardio: 0.946
 
-You built the full workflow: stream the data, score each point, measure the detector and raise alerts. The same loop works with every detector in PySAD.
+The same stream, score, evaluate and alert workflow works with every PySAD detector.
 
 Next steps
 ----------

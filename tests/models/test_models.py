@@ -30,6 +30,8 @@ MODEL_CASES = {
     "MedianAbsoluteDeviation": [{}, {"absolute": False}],
     "MemStream": [{"window_size": 8, "num_epochs": 20}],
     "MIDAS": [{"tick_size": 10}],
+    "OeSNNUAD": [{}, {"window_size": 10, "num_output_neurons": 5}],
+    "PCBIsolationForest": [{"num_trees": 10, "window_size": 40, "stat_size": 10}],
     "PEWMA": [{}, {"beta": 0.0}],
     "RelativeEntropy": [{"min_val": 0.0, "max_val": 1.0}],
     "RSForest": [{"window_size": 50}],

@@ -39,6 +39,8 @@ MODEL_PARAMS = {
     "LODA": {"num_random_cuts": 20},
     "MIDAS": {"num_buckets": 4, "tick_size": 5},
     "MemStream": {"window_size": 8, "num_epochs": 20},
+    "OeSNNUAD": {"window_size": 10},
+    "PCBIsolationForest": {"num_trees": 10, "window_size": 32, "stat_size": 10},
     "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
     "RobustRandomCutForest": {"tree_size": 32},
     "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},

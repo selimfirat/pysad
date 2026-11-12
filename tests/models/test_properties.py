@@ -113,6 +113,8 @@ def _model_params(model_name, num_features, data):
         "MemStream": {"window_size": 8, "num_epochs": 20},
         "MStream": {"log_transform": False},
         "NETS": {"window_size": 20, "max_radius": 0.1},
+        "OeSNNUAD": {"window_size": 5, "num_output_neurons": 5},
+        "PCBIsolationForest": {"num_trees": 5, "window_size": 10, "stat_size": 3},
         "OnlineOneClassSVM": {"window_size": 10},
         "RSForest": {"window_size": 10, "num_trees": 5, "max_depth": 5},
         "SAND": {

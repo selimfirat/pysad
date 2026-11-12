@@ -70,9 +70,16 @@ MODEL_PARAMS = {
     "MIDAS": {"tick_size": 7},
     # Cells empty out and fill again within the first instances.
     "NETS": {"window_size": 30, "max_radius": 0.6},
+    # Output neurons merge and replace the oldest one before and after the round trip.
+    "OeSNNUAD": {"window_size": 20, "num_output_neurons": 4},
     "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
     # A window that wraps before and after the round trip.
     "OnlineOneClassSVM": {"window_size": 32},
+    "PCBIsolationForest": {
+        "num_trees": 10,
+        "window_size": 32,
+        "stat_size": 10,
+    },
     # Non-overlapping windows of 5 close 4 times among the NUM_NEXT compared values, and 80 buckets
     # split the noise so that some of them score 1.0 (see test_relative_entropy_compared_scores_use_learned_state).
     "RelativeEntropy": {

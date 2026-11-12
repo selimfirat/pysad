@@ -62,6 +62,10 @@ These detectors take points with one or more features. A feature is one measured
      - Online Isolation Forest :cite:`leveni2024online`
      - Nothing
      - Fixed: ``num_trees`` trees and a sliding window of ``window_size`` points
+   * - :class:`~pysad.models.PCBIsolationForest`
+     - Performance Counter-Based isolation forest with an NDKSWIN drift test :cite:`heigl2021improvement`
+     - Nothing
+     - Fixed: ``num_trees`` trees and a sliding window of ``window_size`` points
    * - :class:`~pysad.models.SmartSifter`
      - Gaussian mixture learned by sequentially discounting EM :cite:`yamanishi2000smartsifter`
      - Nothing
@@ -172,6 +176,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from an exponentially weighted moving average in standard deviations. Each value's weight depends on its probability under a normal distribution :cite:`carter2012probabilistic`.
      - Nothing
      - Fixed: two moving averages
+   * - :class:`~pysad.models.OeSNNUAD`
+     - Prediction error of an online evolving spiking neural network, in standard deviations of the recent errors of values that were not anomalies. Gaussian receptive fields encode each value, and output neurons learn the recent values :cite:`maciag2021unsupervised`.
+     - Nothing
+     - Fixed: a window of ``window_size`` values and errors, and ``num_output_neurons`` output neurons
    * - :class:`~pysad.models.HoltWinters`
      - Violations of a confidence band of seasonal deviations around a Holt-Winters forecast, counted in a moving window :cite:`brutlag2000aberrant`
      - The period

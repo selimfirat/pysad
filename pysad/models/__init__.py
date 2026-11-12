@@ -32,8 +32,10 @@ from .midas import MIDAS
 from .model_ensemble import ModelEnsemble
 from .mstream import MStream
 from .nets import NETS
+from .oesnn_uad import OeSNNUAD
 from .online_isolation_forest import OnlineIsolationForest
 from .online_one_class_svm import OnlineOneClassSVM
+from .pcb_isolation_forest import PCBIsolationForest
 from .pewma import PEWMA
 from .relative_entropy import RelativeEntropy
 from .robust_random_cut_forest import RobustRandomCutForest
@@ -81,8 +83,10 @@ __all__ = [
     "MStream",
     "NETS",
     "NullModel",
+    "OeSNNUAD",
     "OnlineIsolationForest",
     "OnlineOneClassSVM",
+    "PCBIsolationForest",
     "PerfectModel",
     "PEWMA",
     "RandomModel",

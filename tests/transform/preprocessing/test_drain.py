@@ -12,21 +12,6 @@ def _ids(parser, lines):
     return out
 
 
-def _tree_stats(node):
-    """Returns (max depth, max children, nodes, clusters) of the tree below ``node``."""
-    max_depth = node.depth
-    max_children = len(node.children)
-    nodes = 1
-    clusters = len(node.clusters)
-    for child in node.children.values():
-        child_depth, child_children, child_nodes, child_clusters = _tree_stats(child)
-        max_depth = max(max_depth, child_depth)
-        max_children = max(max_children, child_children)
-        nodes += child_nodes
-        clusters += child_clusters
-    return max_depth, max_children, nodes, clusters
-
-
 def test_same_line_keeps_the_same_event_id():
     parser = DrainLogParser()
     ids = _ids(parser, ["Error: failed to connect", "Error: failed to connect", "Info: started"])
@@ -59,6 +44,21 @@ def test_a_line_below_the_threshold_gets_a_new_event_id():
     # Same leaf, but 3 / 4 = 0.75 < 0.9, so the second line gets a new template.
     ids = _ids(parser, ["Error failed connect host1", "Error failed connect host2"])
     assert ids == [1, 2]
+
+
+def test_a_line_at_the_threshold_matches_the_template():
+    parser = DrainLogParser(st=1.0)
+    # The second line is identical to the first one, so its similarity is exactly 1.0.
+    ids = _ids(parser, ["Error failed connect host1", "Error failed connect host1"])
+    assert ids == [1, 1]
+
+
+def test_the_first_template_wins_a_tie():
+    parser = DrainLogParser(depth=1, st=0.4)
+    # The first two lines agree in one of four tokens, so the second line gets its own template.
+    # The third line agrees with both templates in two of four tokens, so both templates match it.
+    ids = _ids(parser, ["a b c d", "a x y z", "a b y q"])
+    assert ids == [1, 2, 1]
 
 
 def test_transform_partial_returns_a_float_array_and_does_not_learn():
@@ -118,35 +118,39 @@ def test_non_string_input_raises():
         parser.fit_transform_partial(np.array([["a", "b"]]))
 
 
-def test_tree_depth_is_bounded_by_depth():
-    parser = DrainLogParser(depth=3)
-    _ids(
-        parser,
-        [f"token{i} some message here {i}" for i in range(200)],
-    )
-    max_depth, _, _, _ = _tree_stats(parser.root_node)
-    assert max_depth == 3
+def test_the_depth_bounds_the_path_to_a_leaf():
+    parser = DrainLogParser(depth=3, st=0.7)
+    # The path uses the first three tokens, so both lines reach the same leaf.
+    ids = _ids(parser, ["a b c d", "a b c e"])
+    # Three of four tokens agree, so the second line matches the template of the first line.
+    assert ids == [1, 1]
 
 
-def test_children_per_node_are_bounded_by_max_child():
-    parser = DrainLogParser(depth=4, max_child=2)
-    _ids(parser, [f"distinct{i} message" for i in range(10)])
-    _, max_children, _, _ = _tree_stats(parser.root_node)
-    assert max_children <= 2
+def test_lines_that_differ_within_the_depth_are_never_compared():
+    parser = DrainLogParser(depth=3, st=0.7)
+    # The third token differs, so the lines reach different leaves.
+    ids = _ids(parser, ["a b c d", "a b x d"])
+    # Three of four tokens agree, but the parser never compares lines of different leaves.
+    assert ids == [1, 2]
 
 
-def test_parsing_a_fresh_leaf_touches_no_other_template():
-    parser = DrainLogParser(depth=2, st=1.0)
-    # 50 distinct templates share the leaf reached by ("common", "fixed").
-    _ids(parser, [f"common fixed extra{i}" for i in range(50)])
-    leaf = parser.root_node.children["common"].children["fixed"]
-    assert len(leaf.clusters) == 50
-    # A line reaching a fresh leaf gets a new ID and does not change the other leaf.
-    before = len(leaf.clusters)
-    assert _ids(parser, ["other only"])[0] == 51
-    assert len(leaf.clusters) == before
-    fresh = parser.root_node.children["other"].children["only"]
-    assert len(fresh.clusters) == 1
+def test_max_child_stops_a_node_from_growing():
+    parser = DrainLogParser(depth=2, max_child=1, st=0.4)
+    # The root holds one child, so the template of the second line is stored at the root.
+    # The third line agrees with that template in one of two tokens, so it matches it.
+    ids = _ids(parser, ["a x", "b y", "b z"])
+    assert ids == [1, 2, 2]
+
+
+def test_parsing_a_fresh_leaf_keeps_the_event_ids_of_other_templates():
+    parser = DrainLogParser(depth=2, st=0.9)
+    # The 50 lines reach the same leaf, and two of three tokens agree, so each one gets a template.
+    ids = _ids(parser, [f"common fixed extra{i}" for i in range(50)])
+    assert ids == list(range(1, 51))
+    # A line that reaches a fresh leaf gets a new event ID.
+    assert _ids(parser, ["other only"]) == [51]
+    # The templates of the other leaf keep their event IDs.
+    assert _ids(parser, ["common fixed extra0"]) == [1]
 
 
 def test_batch_fit_and_transform_return_ids_in_order():

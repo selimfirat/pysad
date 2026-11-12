@@ -44,8 +44,9 @@ class DrainLogParser(BaseTransformer):
     Drain splits a log line into whitespace-separated tokens and walks one path down a tree whose
     depth is fixed. At depth ``k`` the path follows the ``k``-th token. A leaf holds the templates
     whose lines share that path. The new line is compared only with the templates in the leaf it
-    reaches, so parsing one line costs the tree depth plus the templates of one leaf and stays
-    constant as the total number of templates grows.
+    reaches. The depth of the tree and the number of children of a node are bounded by ``depth``
+    and ``max_child``, but a leaf can hold many templates, so the cost of one line grows with the
+    number of templates in its leaf.
 
     A line matches a template when the share of agreeing tokens is at least ``st``. A ``"*"`` in a
     template matches any token. On a match, the line takes the template's event ID and the template
@@ -107,11 +108,11 @@ class DrainLogParser(BaseTransformer):
         self.root_node = _Node(0)
         self._next_id = 1
 
-    def _line(self, X: np.ndarray) -> str:
+    def _line(self, X: np.ndarray | str) -> str:
         """Returns the single log line held by ``X``.
 
         Args:
-            X (np.ndarray): A log line as a string, or a 0-D or 1-D object array holding one
+            X (np.ndarray | str): A log line as a string, or a 0-D or 1-D object array holding one
                 string.
 
         Returns:
@@ -199,12 +200,12 @@ class DrainLogParser(BaseTransformer):
             cluster.template = _merge(cluster.template, tokens)
         return cluster
 
-    def fit_partial(self, X: np.ndarray) -> DrainLogParser:
+    def fit_partial(self, X: np.ndarray | str) -> DrainLogParser:
         """Parses the next log line and remembers its template.
 
         Args:
-            X (np.ndarray): The next log line as a string, or a 0-D or 1-D object array holding one
-                string.
+            X (np.ndarray | str): The next log line as a string, or a 0-D or 1-D object array
+                holding one string.
 
         Returns:
             object: The parser.
@@ -212,12 +213,12 @@ class DrainLogParser(BaseTransformer):
         self._find_or_create(self._line(X).split())
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: np.ndarray | str) -> np.ndarray:
         """Returns the event ID of the next log line without changing the parser.
 
         Args:
-            X (np.ndarray): The next log line as a string, or a 0-D or 1-D object array holding one
-                string.
+            X (np.ndarray | str): The next log line as a string, or a 0-D or 1-D object array
+                holding one string.
 
         Returns:
             np.float64 array of shape (1,): The event ID of the matched template, or ``-1.0`` when
@@ -228,12 +229,12 @@ class DrainLogParser(BaseTransformer):
             return np.array([-1.0], dtype=np.float64)
         return np.array([float(cluster.event_id)], dtype=np.float64)
 
-    def fit_transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform_partial(self, X: np.ndarray | str) -> np.ndarray:
         """Parses the next log line, remembers its template, and returns its event ID.
 
         Args:
-            X (np.ndarray): The next log line as a string, or a 0-D or 1-D object array holding one
-                string.
+            X (np.ndarray | str): The next log line as a string, or a 0-D or 1-D object array
+                holding one string.
 
         Returns:
             np.float64 array of shape (1,): The event ID of the line.
@@ -241,7 +242,7 @@ class DrainLogParser(BaseTransformer):
         cluster = self._find_or_create(self._line(X).split())
         return np.array([float(cluster.event_id)], dtype=np.float64)
 
-    def _lines(self, X: np.ndarray) -> Iterator[str]:
+    def _lines(self, X: np.ndarray | str) -> Iterator[str]:
         """Yields each log line held by ``X`` as a string."""
         if isinstance(X, str):
             yield X
@@ -250,11 +251,12 @@ class DrainLogParser(BaseTransformer):
         for element in arr.ravel():
             yield str(element)
 
-    def fit(self, X: np.ndarray) -> DrainLogParser:
+    def fit(self, X: np.ndarray | str) -> DrainLogParser:
         """Parses every log line of ``X`` in order and remembers its templates.
 
         Args:
-            X (np.ndarray): Log lines as a 1-D object array of strings.
+            X (np.ndarray | str): Log lines as a 1-D object array of strings, or a single log line
+                as a string.
 
         Returns:
             object: The parser.
@@ -263,11 +265,12 @@ class DrainLogParser(BaseTransformer):
             self.fit_partial(np.array(line, dtype=object))
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: np.ndarray | str) -> np.ndarray:
         """Returns the event ID of every log line of ``X`` without changing the parser.
 
         Args:
-            X (np.ndarray): Log lines as a 1-D object array of strings.
+            X (np.ndarray | str): Log lines as a 1-D object array of strings, or a single log line
+                as a string.
 
         Returns:
             np.float64 array of shape (num_instances, 1): The event ID of each line, or ``-1.0``
@@ -278,11 +281,12 @@ class DrainLogParser(BaseTransformer):
             return np.empty((0, 1), dtype=np.float64)
         return np.array(values, dtype=np.float64)
 
-    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform(self, X: np.ndarray | str) -> np.ndarray:
         """Parses every log line of ``X`` in order and returns its event IDs.
 
         Args:
-            X (np.ndarray): Log lines as a 1-D object array of strings.
+            X (np.ndarray | str): Log lines as a 1-D object array of strings, or a single log line
+                as a string.
 
         Returns:
             np.float64 array of shape (num_instances, 1): The event ID of each line.
@@ -312,7 +316,9 @@ def _best_match(clusters: list[_LogCluster], tokens: list[str], st: float) -> _L
     best_sim = st
     for cluster in clusters:
         sim = _similarity(cluster.template, tokens)
-        if sim >= st and sim > best_sim:
+        if sim < st:
+            continue
+        if best is None or sim > best_sim:
             best = cluster
             best_sim = sim
     return best

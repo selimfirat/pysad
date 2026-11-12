@@ -1,6 +1,6 @@
 """Regenerate the JSON data behind the README performance badges.
 
-The badges show throughput and detector count. Their values come from
+The badges show median throughput and separate univariate and multivariate detector counts. Their values come from
 the benchmark data in docs/benchmark/ and from the detector catalog, so they
 stay in sync with the measured performance of the library.
 
@@ -11,23 +11,29 @@ Run it from the repository root:
 
 import csv
 import json
+import sys
 from pathlib import Path
 
 from pysad import models
-
-# These names are in pysad.models.__all__ but are not anomaly detectors.
-# NullModel, RandomModel and PerfectModel are test doubles, and StreamPipeline
-# composes models instead of detecting anomalies.
-_NOT_DETECTORS = {"NullModel", "RandomModel", "PerfectModel", "StreamPipeline"}
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "docs" / "benchmark" / "results.csv"
 OUT_DIR = ROOT / "docs" / "_static"
 
 
-def _detector_count() -> int:
-    """Return the number of anomaly detectors exported by pysad.models."""
-    return len([name for name in models.__all__ if name not in _NOT_DETECTORS])
+def _detector_counts() -> dict[str, int]:
+    """Count detectors by input type, including timestamped series as univariate."""
+    counts = {"univariate": 0, "multivariate": 0}
+    for name in models.__all__:
+        cls = getattr(models, name)
+        if not cls._is_detector:
+            continue
+        kind = cls._input_kind
+        if kind == "multivariate" and hasattr(sys.modules[cls.__module__], "check_univariate"):
+            kind = "univariate"
+        group = "univariate" if kind in ("univariate", "timestamped") else "multivariate"
+        counts[group] += 1
+    return counts
 
 
 def _median_points_per_second() -> float:
@@ -75,13 +81,18 @@ def _badge(label: str, message: str, color: str) -> dict:
 
 
 def main() -> None:
-    """Write the two badge JSON files to docs/_static/."""
-    count = _detector_count()
+    """Write the performance and detector-count badges to docs/_static/."""
+    counts = _detector_counts()
     rate = _format_rate(_median_points_per_second())
 
     badges = {
-        "throughput.json": _badge("throughput", rate, "green"),
-        "detectors.json": _badge("detectors", str(count), "blue"),
+        "throughput.json": _badge("median throughput", rate, "green"),
+        "univariate_detectors.json": _badge(
+            "univariate detectors", str(counts["univariate"]), "blue"
+        ),
+        "multivariate_detectors.json": _badge(
+            "multivariate detectors", str(counts["multivariate"]), "blue"
+        ),
     }
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)

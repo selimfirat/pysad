@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "label": "throughput",
-  "message": "4.9k points/s",
+  "label": "median throughput",
+  "message": "5.1k points/s",
   "color": "green"
 }

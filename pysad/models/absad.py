@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.optimize import brentq
 from scipy.spatial.distance import cdist
+from scipy.special import ndtr
+from scipy.stats import gaussian_kde
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.window import RingBuffer
@@ -175,6 +178,56 @@ def _calculate_local_outlier_score(
     return max(0.0, d_m_sq / d_sub)
 
 
+def _calculate_control_limit(los_history: np.ndarray, confidence: float) -> float:
+    """Estimates the control limit using Gaussian Kernel Density Estimation (KDE).
+
+    Finds the (1 - gamma) quantile of the fitted Gaussian KDE distribution on the
+    window's Local Outlier Scores using Scott's bandwidth rule.
+
+    Args:
+        los_history (np.ndarray): 1D array of historical Local Outlier Scores in the window.
+        confidence (float): Statistical confidence level 1 - gamma.
+
+    Returns:
+        float: Control limit threshold.
+    """
+    n_samples = len(los_history)
+    if n_samples < 2:
+        return float(np.max(los_history)) if n_samples == 1 else 0.0
+
+    std_los = float(np.std(los_history))
+    if std_los < 1e-12:
+        # Constant or degenerate LOS distribution
+        return float(np.max(los_history))
+
+    try:
+        kde = gaussian_kde(los_history, bw_method="scott")
+        h = float(kde.factor * std_los)
+        if h < 1e-12:
+            return float(np.quantile(los_history, confidence))
+
+        def _cdf(t: float) -> float:
+            z = (t - los_history) / h
+            return float(np.mean(ndtr(z)))
+
+        low = float(np.min(los_history) - 5.0 * h)
+        high = float(np.max(los_history) + 10.0 * h)
+
+        cdf_low = _cdf(low)
+        cdf_high = _cdf(high)
+
+        while cdf_high < confidence and high < 1e6:
+            high += 10.0 * h
+            cdf_high = _cdf(high)
+
+        if cdf_low <= confidence <= cdf_high:
+            control_limit = float(brentq(lambda t: _cdf(t) - confidence, low, high, xtol=1e-5))
+            return max(0.0, control_limit)
+        return float(np.quantile(los_history, confidence))
+    except Exception:
+        return float(np.quantile(los_history, confidence))
+
+
 class ABSAD(BaseModel):
     """Angle-Based Subspace Anomaly Detection (ABSAD) :cite:`zhang2017sliding`.
 
@@ -266,14 +319,22 @@ class ABSAD(BaseModel):
         """
         x = np.asarray(X, dtype=np.float64)
         if len(self._window) < self.window_size:
+            score = self.score_partial(x) if len(self._window) >= max(2, self.num_references) else 0.0
             self._window.append(x)
-            self._window_los.append(0.0)
+            self._window_los.append(score)
+            if len(self._window) == self.window_size:
+                los_arr = self._window_los.to_array()
+                valid_los = los_arr[max(2, self.num_references) :]
+                self.control_limit_ = _calculate_control_limit(
+                    valid_los if len(valid_los) >= 2 else los_arr, self.confidence
+                )
             return self
 
         score = self.score_partial(x)
         if self.control_limit_ is not None and score <= self.control_limit_:
             self._window.append(x)
             self._window_los.append(score)
+            self.control_limit_ = _calculate_control_limit(self._window_los.to_array(), self.confidence)
 
         return self
 

@@ -243,13 +243,24 @@ class DrainLogParser(BaseTransformer):
         return np.array([float(cluster.event_id)], dtype=np.float64)
 
     def _lines(self, X: np.ndarray | str) -> Iterator[str]:
-        """Yields each log line held by ``X`` as a string."""
+        """Yields each log line held by ``X`` as a string.
+
+        Args:
+            X (np.ndarray | str): Log lines as a 1-D array of any dtype, or a single log line as a
+                string.
+
+        Returns:
+            Iterator[str]: The log lines in order.
+
+        Raises:
+            TypeError: If an element of ``X`` is not a string. The message and the error type match
+                the ones of the single-instance path, so both paths reject the same inputs.
+        """
         if isinstance(X, str):
             yield X
             return
-        arr = np.asarray(X, dtype=object)
-        for element in arr.ravel():
-            yield str(element)
+        for element in np.asarray(X, dtype=object).ravel():
+            yield self._line(element)
 
     def fit(self, X: np.ndarray | str) -> DrainLogParser:
         """Parses every log line of ``X`` in order and remembers its templates.

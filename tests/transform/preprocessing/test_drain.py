@@ -118,6 +118,20 @@ def test_non_string_input_raises():
         parser.fit_transform_partial(np.array([["a", "b"]]))
 
 
+def test_batch_methods_reject_non_string_lines():
+    parser = DrainLogParser()
+    with pytest.raises(TypeError):
+        parser.fit(np.array([1.5, 2.5]))
+    # The failed fit did not turn 1.5 into the template "1.5".
+    np.testing.assert_array_equal(parser.transform("1.5"), [[-1.0]])
+    with pytest.raises(TypeError):
+        parser.transform(np.array([1.5]))
+    with pytest.raises(TypeError):
+        parser.transform(np.array(["a b", 1.5], dtype=object))
+    with pytest.raises(TypeError):
+        parser.fit_transform(np.array([1.5, 2.5]))
+
+
 def test_the_depth_bounds_the_path_to_a_leaf():
     parser = DrainLogParser(depth=3, st=0.7)
     # The path uses the first three tokens, so both lines reach the same leaf.

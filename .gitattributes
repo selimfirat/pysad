@@ -1,4 +1,8 @@
 docs/* linguist-documentation
+docs/api/*.rst merge=union
+docs/examples.rst merge=union
+docs/refs.bib merge=union
 examples/*.ipynb linguist-documentation=false
+pysad/**/__init__.py merge=union
 
 .github/workflows/*.lock.yml linguist-generated=true merge=ours

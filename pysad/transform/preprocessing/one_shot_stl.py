@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from pysad.core.base_transformer import BaseTransformer
-from pysad.statistics.variance_meter import VarianceMeter
+from pysad.statistics.basic import VarianceMeter
 from pysad.transform.preprocessing.modified_stl_residual import _periodic_stl_seasonal
 from pysad.utils.validation import check_univariate
 

@@ -52,7 +52,7 @@ Yes. Stream the dataset with :class:`~pysad.utils.ArrayStreamer`, or call ``fit_
 Can I use batch detectors on a stream?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Yes. :class:`~pysad.models.integrations.ReferenceWindowModel` trains a PyOD detector on a sliding window, and :class:`~pysad.models.integrations.OneFitModel` trains it once on initial data. See :doc:`guides/pyod`.
+Yes. :class:`~pysad.integrations.ReferenceWindowModel` trains a PyOD detector on a sliding window, and :class:`~pysad.integrations.OneFitModel` trains it once on initial data. See :doc:`guides/pyod`.
 
 Does PySAD work with scikit-learn or River?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -62,7 +62,7 @@ Its ``fit`` method does not train the model. It supports fitted inference, not `
 ``score_samples`` returns negative PySAD scores, so lower values mean more anomalous instances.
 Set ``threshold`` in PySAD score units for ``decision_function`` and ``predict``.
 ``predict`` returns -1 above the threshold and 1 at or below it.
-See :doc:`api/sklearn` and :doc:`examples`.
+See :doc:`api/integrations` and :doc:`examples`.
 
 To use a scikit-learn transformer, fit it to historical data. Then transform each point before the detector scores it:
 
@@ -85,7 +85,7 @@ To use a scikit-learn transformer, fit it to historical data. Then transform eac
        score = model.fit_score_partial(x)
 
 Use :class:`~pysad.integrations.RiverAnomalyDetector` to run a PySAD detector in a River pipeline.
-It maps feature dictionaries to arrays in a fixed feature order. For the stages that PySAD has for each point, see :doc:`guides/pipelines`. To score a univariate stream by the forecast errors of a River forecaster, wrap the forecaster in :class:`~pysad.models.integrations.PredictiveAnomalyDetector`.
+It maps feature dictionaries to arrays in a fixed feature order. For the stages that PySAD has for each point, see :doc:`guides/pipelines`. To score a univariate stream by the forecast errors of a River forecaster, wrap the forecaster in :class:`~pysad.integrations.PredictiveAnomalyDetector`.
 
 .. _faq-input:
 
@@ -245,14 +245,14 @@ How fast is a detector, and how much memory does it use?
 Most detectors take between 0.005 and 1 millisecond per point. We measured this on the 21 features of ``cardio`` on an Apple silicon laptop. Some detectors take longer:
 
 - :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` take about 1.5 milliseconds with a window of one week of hourly values, because they decompose the full window for each point.
-- :class:`~pysad.models.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` retrain at a fixed interval, so a few points take much longer than the others.
+- :class:`~pysad.integrations.ReferenceWindowModel` and :class:`~pysad.models.IForestASD` retrain at a fixed interval, so a few points take much longer than the others.
 
 Most detectors keep a fixed amount of memory, and :doc:`detectors` gives the memory of each one. To measure the time per point on your own data, see :doc:`guides/production`.
 
 Why is ReferenceWindowModel slow at the start?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Without ``initial_window_X``, :class:`~pysad.models.integrations.ReferenceWindowModel` trains a new batch model for each of the first ``window_size`` points. Pass initial points to train once instead. See :doc:`guides/pyod`.
+Without ``initial_window_X``, :class:`~pysad.integrations.ReferenceWindowModel` trains a new batch model for each of the first ``window_size`` points. Pass initial points to train once instead. See :doc:`guides/pyod`.
 
 Can I save a detector and load it later?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

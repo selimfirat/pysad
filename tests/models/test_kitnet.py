@@ -15,7 +15,7 @@ def test_one_feature_stream_maps_to_one_autoencoder():
 
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit(X)
 
-    assert model.model.v == [[0]]
+    assert model.feature_map_ == [[0]]
     assert np.isfinite(model.score(X)).all()
 
 
@@ -71,13 +71,13 @@ def test_grace_periods_last_the_given_numbers_of_instances():
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=7, random_state=0)
 
     model.fit(X[:5])
-    assert model.model.FM.N == 5
+    assert model.model.fm.n_updates == 5
     assert model.model.temporary
 
     model.fit(X[5:])
-    assert model.model.FM.N == 5
+    assert model.model.fm.n_updates == 5
     assert not model.model.temporary
-    assert model.model.outputLayer.n == 7
+    assert model.model.output_layer.n_trained == 7
 
 
 def _break_recursively(dendro, max_size):
@@ -94,14 +94,14 @@ def _break_recursively(dendro, max_size):
 def test_feature_mapping_matches_the_recursive_split(seed, max_size):
     from scipy.cluster.hierarchy import linkage, to_tree
 
-    from pysad.models.kitnet_model.corClust import corClust
+    from pysad.models.kitnet import _CorClust
 
     rng = np.random.RandomState(seed)
     X = rng.rand(30, 60) @ rng.rand(60, 60)
-    clusterer = corClust(X.shape[1])
+    clusterer = _CorClust(X.shape[1])
     for x in X:
         clusterer.update(x)
-    D = clusterer.corrDist()
+    D = clusterer.corr_dist()
     dendro = to_tree(linkage(D[np.triu_indices(X.shape[1], 1)]))
 
     assert clusterer.cluster(max_size) == _break_recursively(dendro, max_size)
@@ -115,8 +115,8 @@ def test_feature_mapping_of_a_wide_stream_does_not_recurse():
 
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit(X)
 
-    assert sorted(i for cluster in model.model.v for i in cluster) == list(range(2000))
-    assert all(len(cluster) <= 10 for cluster in model.model.v)
+    assert sorted(i for cluster in model.feature_map_ for i in cluster) == list(range(2000))
+    assert all(len(cluster) <= 10 for cluster in model.feature_map_)
 
 
 def test_default_grace_periods_score_a_short_stream():
@@ -128,27 +128,27 @@ def test_default_grace_periods_score_a_short_stream():
     # Only the first instance has no autoencoders to score it.
     assert scores[0] == 0.0
     assert (scores[1:] > 0.0).all()
-    assert not model.model.inGrace()
+    assert not model.model.in_grace()
 
 
 def test_temporary_autoencoders_do_not_change_the_final_model():
     """During the feature mapping, temporary autoencoders are built at 1, 2, 4, ... instances.
     After it, the autoencoders are built again on the final mapping and train on the same
     instances as a KitNET that is given that mapping, so the two score the same."""
-    from pysad.models.kitnet_model.KitNET import KitNET
+    from pysad.models.kitnet import _KitNET
 
     X = _stream(num_instances=30)
-    model = KitNET(3, 2, FM_grace_period=8, AD_grace_period=8, random_state=0)
+    model = _KitNET(3, 2, fm_grace_period=8, ad_grace_period=8, random_state=0)
     built = []
-    create = model.__createAD__
-    model.__createAD__ = lambda m, temporary: (
+    create = model._create_autoencoders
+    model._create_autoencoders = lambda m, temporary: (
         built.append(model.n_trained + 1),
         create(m, temporary),
     )
     for x in X[:16]:
         model.train(x)
-    given_map = KitNET(
-        3, 2, FM_grace_period=0, AD_grace_period=8, feature_map=model.v, random_state=0
+    given_map = _KitNET(
+        3, 2, fm_grace_period=0, ad_grace_period=8, feature_map=model.feature_map, random_state=0
     )
     for x in X[8:16]:
         given_map.train(x)

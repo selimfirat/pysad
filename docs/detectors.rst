@@ -138,10 +138,6 @@ These detectors take points with one or more features. A feature is one measured
      - Quantum measurement density estimation :cite:`gallego2022inqmad`
      - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``)
      - Fixed: a ``dim_x`` by ``dim_x`` matrix
-   * - :class:`~pysad.models.TEDA`
-     - Eccentricity from the recursive mean and variance :cite:`angelov2014anomaly`
-     - Nothing
-     - Fixed: the count, the mean and the variance
    * - :class:`~pysad.models.EXPoSE`
      - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
      - Nothing
@@ -180,6 +176,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Distance from an exponentially weighted moving average in standard deviations. Each value's weight depends on its probability under a normal distribution :cite:`carter2012probabilistic`.
      - Nothing
      - Fixed: two moving averages
+   * - :class:`~pysad.models.OeSNNUAD`
+     - Prediction error of an online evolving spiking neural network, in standard deviations of the recent errors of values that were not anomalies. Gaussian receptive fields encode each value, and output neurons learn the recent values :cite:`maciag2021unsupervised`.
+     - Nothing
+     - Fixed: a window of ``window_size`` values and errors, and ``num_output_neurons`` output neurons
    * - :class:`~pysad.models.HoltWinters`
      - Violations of a confidence band of seasonal deviations around a Holt-Winters forecast, counted in a moving window :cite:`brutlag2000aberrant`
      - The period
@@ -228,12 +228,12 @@ These wrappers run a batch detector from `PyOD <https://github.com/yzhao062/pyod
 
    * - Wrapper
      - Behavior
-   * - :class:`~pysad.models.integrations.ReferenceWindowModel`
+   * - :class:`~pysad.integrations.ReferenceWindowModel`
      - Trains the detector on a window of recent points and trains it again every ``sliding_size`` points :cite:`xstream`.
-   * - :class:`~pysad.models.integrations.OneFitModel`
+   * - :class:`~pysad.integrations.OneFitModel`
      - Trains the detector once on initial points and then only scores.
 
-:class:`~pysad.models.integrations.PredictiveAnomalyDetector` scores each value of a univariate stream by its deviation from the one-step forecast of a `River <https://riverml.xyz/>`_ forecaster, the plug-in method of EGADS :cite:`laptev2015generic`. The forecaster learns each value after the model scores it.
+:class:`~pysad.integrations.PredictiveAnomalyDetector` scores each value of a univariate stream by its deviation from the one-step forecast of a `River <https://riverml.xyz/>`_ forecaster, the plug-in method of EGADS :cite:`laptev2015generic`. The forecaster learns each value after the model scores it.
 
 Baselines for testing
 ---------------------

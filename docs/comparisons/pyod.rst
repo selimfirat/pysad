@@ -3,7 +3,7 @@ PySAD vs PyOD
 
 `PyOD <https://github.com/yzhao062/pyod>`_ does anomaly detection on batch data. A PyOD detector trains on a whole dataset, then scores new points with what it learned. It does not learn from one point at a time. This page compares PySAD with PyOD 3.6.7.
 
-PySAD does not compete with PyOD. It runs PyOD detectors on streams: :class:`~pysad.models.integrations.ReferenceWindowModel` trains a PyOD detector on a sliding window of recent points, and :class:`~pysad.models.integrations.OneFitModel` trains it once on the first points. :doc:`../guides/pyod` shows how.
+PySAD does not compete with PyOD. It runs PyOD detectors on streams: :class:`~pysad.integrations.ReferenceWindowModel` trains a PyOD detector on a sliding window of recent points, and :class:`~pysad.integrations.OneFitModel` trains it once on the first points. :doc:`../guides/pyod` shows how.
 
 Functions
 ---------
@@ -53,7 +53,7 @@ Results
 
 The table compares the multivariate detectors of PySAD with batch detectors of PyOD. Each detector runs once on each of the |num_datasets| ODDS datasets of the :doc:`benchmark <../benchmark>`, with the same points and seed 0.
 
-Each detector scores each point before it learns from the point, as :doc:`../benchmarks/methodology` describes. The metrics leave out the scores of the warm-up points, the first 256 points of a stream. The PySAD detectors use the settings of the benchmark. The PyOD detectors run in :class:`~pysad.models.integrations.ReferenceWindowModel` with their default parameters. Each detector first trains on the warm-up points. Then, after each 100 points, it trains a new detector on the last 1,000 points.
+Each detector scores each point before it learns from the point, as :doc:`../benchmarks/methodology` describes. The metrics leave out the scores of the warm-up points, the first 256 points of a stream. The PySAD detectors use the settings of the benchmark. The PyOD detectors run in :class:`~pysad.integrations.ReferenceWindowModel` with their default parameters. Each detector first trains on the warm-up points. Then, after each 100 points, it trains a new detector on the last 1,000 points.
 
 The table has one row for each detector, from the best mean rank to the worst. The ranks compare only the detectors in this table. The columns are the same as in the summary of :doc:`../benchmarks/multivariate`, and the best value of each column is in bold. The names of the PySAD detectors link to their documentation, and the names of the other detectors start with their module. The last column gives the version of the library that gave the results. For PySAD, the version also gives the commit of the run, because the run uses the code of the repository.
 

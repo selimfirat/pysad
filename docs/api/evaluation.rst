@@ -9,17 +9,8 @@ This module holds streaming metrics. Each metric updates its value one point at 
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   AUROCMetric
-   AUPRMetric
-   BalancedAccuracyMetric
-   F1Metric
-   MatthewsCorrelationMetric
-   PrecisionMetric
-   RecallMetric
-   RollingMetric
-   WindowedMetric
-   BaseSKLearnMetric
+   :kind: classes
+   :tail: BaseSKLearnMetric
 
 Functions
 ---------
@@ -27,5 +18,4 @@ Functions
 .. autosummary::
    :nosignatures:
    :toctree: ../generated
-
-   evaluate_stream
+   :kind: functions

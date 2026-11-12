@@ -4,13 +4,13 @@ from typing import Any
 
 import numpy as np
 
-from .pyod_model import PYODModel
+from ._batch_model import _BatchModel
 
 
-class OneFitModel(PYODModel):
+class OneFitModel(_BatchModel):
     """Runs a batch model on a stream by fitting it once on initial instances.
 
-    The wrapper fits ``model_cls`` to the initial instances. Then it scores all incoming instances with this fitted model and does not learn from them.
+    The wrapper fits ``model_cls`` (such as a PyOD detector or scikit-learn outlier estimator) to the initial instances. Then it scores all incoming instances with this fitted model and does not learn from them. For scikit-learn :class:`~sklearn.base.OutlierMixin` estimators, ``decision_function`` is negated so higher scores mean more anomalous.
 
     Args:
         model_cls (class): The model class to be instantiated.
@@ -45,7 +45,6 @@ class OneFitModel(PYODModel):
         return self
 
     def _fit_model(self) -> None:
-
         self.reset_model()
 
         if self.initial_y is None:
@@ -62,9 +61,7 @@ class OneFitModel(PYODModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        score = self.model.decision_function([X])[0]
-
-        return score
+        return self._score_one(X)
 
     def score(self, X: np.ndarray) -> np.ndarray:
         """Scores all instances in order.
@@ -78,7 +75,7 @@ class OneFitModel(PYODModel):
         if len(X) == 0:
             return np.empty(0, dtype=np.float64)
 
-        return np.asarray(self.model.decision_function(X), dtype=np.float64).reshape(-1)
+        return self._score_batch(X)
 
     def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
         """Scores all instances in order without updating the model.

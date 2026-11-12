@@ -481,11 +481,12 @@ def test_summary_has_no_mean_aupr(tmp_path, monkeypatch):
     datasets = ["ds1", "ds2"]
     results = {}
     for ds in datasets:
-        # A: best AUROC, C: worst AUROC but best AUPR. AUPR must not drive the order.
+        # LODA and RSHash have the same AUROC on both datasets, so they have the same mean rank and
+        # the same mean AUROC. RSHash has the higher AUPR, but LODA is faster, so LODA comes first.
         for detector, auroc, aupr, ms in [
             ("LODA", 0.9, 0.4, 1.0),
-            ("RSHash", 0.8, 0.5, 2.0),
-            ("xStream", 0.7, 0.9, 1.5),
+            ("RSHash", 0.9, 0.9, 2.0),
+            ("xStream", 0.5, 0.2, 1.5),
         ]:
             results[(ds, detector, 0)] = {
                 "dataset": ds,
@@ -510,8 +511,13 @@ def test_summary_has_no_mean_aupr(tmp_path, monkeypatch):
     assert [row["Detector"] for row in rows] == [
         f":class:`~pysad.models.{d}`" for d in ["LODA", "RSHash", "xStream"]
     ]
+    # LODA and RSHash tie on the mean rank and the mean AUROC, so the faster one comes first.
+    assert rows[0]["Mean rank"] == rows[1]["Mean rank"] == "1.5"
+    assert rows[0]["Mean AUROC"] == rows[1]["Mean AUROC"] == "0.900"
+    assert rows[0]["Time per point (ms)"] == "1.00"
+    assert rows[1]["Time per point (ms)"] == "2.00"
     # The per-dataset AUPR table still exists, with one value per dataset and detector.
     with open(tmp_path / "aupr.csv", newline="") as f:
         aupr_rows = list(csv.DictReader(f))
     assert [row["Dataset"] for row in aupr_rows] == datasets
-    assert float(aupr_rows[0]["xStream"].replace("*", "")) == 0.9  # the best cell is bolded
+    assert float(aupr_rows[0]["RSHash"].replace("*", "")) == 0.9  # the best cell is bolded

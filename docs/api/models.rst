@@ -38,6 +38,7 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    MIDAS
    MStream
    NETS
+   OeSNNUAD
    OnlineIsolationForest
     OnlineOneClassSVM
     PCBIsolationForest

@@ -31,6 +31,7 @@ from .midas import MIDAS
 from .mstream import MStream
 from .nets import NETS
 from .null_model import NullModel
+from .oesnn_uad import OeSNNUAD
 from .online_isolation_forest import OnlineIsolationForest
 from .online_one_class_svm import OnlineOneClassSVM
 from .pcb_isolation_forest import PCBIsolationForest
@@ -82,6 +83,7 @@ __all__ = [
     "MStream",
     "NETS",
     "NullModel",
+    "OeSNNUAD",
     "OnlineIsolationForest",
     "OnlineOneClassSVM",
     "PCBIsolationForest",

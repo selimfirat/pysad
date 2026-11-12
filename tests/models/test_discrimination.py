@@ -30,6 +30,7 @@ UNIVARIATE_MODELS = {
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
+    "OeSNNUAD",
     "PEWMA",
     "RelativeEntropy",
     "SAND",

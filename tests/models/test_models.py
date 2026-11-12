@@ -34,6 +34,7 @@ def test_unsupervised_models():
         MemStream,
         MStream,
         NullModel,
+        OeSNNUAD,
         OnlineIsolationForest,
         OnlineOneClassSVM,
         PCBIsolationForest,
@@ -83,6 +84,7 @@ def test_unsupervised_models():
         MStream: {},
         NETS: {},
         NullModel: {},
+        OeSNNUAD: [{}, {"window_size": 10, "num_output_neurons": 5}],
         OnlineIsolationForest: {},
         OnlineOneClassSVM: {},
         PCBIsolationForest: {

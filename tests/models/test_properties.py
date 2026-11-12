@@ -42,6 +42,7 @@ UNIVARIATE_MODELS = {
     "KNNCAD",
     "MatrixProfile",
     "MedianAbsoluteDeviation",
+    "OeSNNUAD",
     "PEWMA",
     "RelativeEntropy",
     "SAND",
@@ -141,6 +142,7 @@ def _model_params(model_name, num_features, data):
         "MemStream": {"window_size": 8, "num_epochs": 20},
         "MStream": {"log_transform": False},
         "NETS": {"window_size": 20, "max_radius": 0.1},
+        "OeSNNUAD": {"window_size": 5, "num_output_neurons": 5},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
         "OnlineOneClassSVM": {"window_size": 10},
         "PCBIsolationForest": {

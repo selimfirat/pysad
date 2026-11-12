@@ -212,8 +212,8 @@ class KitNet(BaseModel):
     method returns zeros of shape ``(num_features,)``. This is the case on the first instance,
     before it has been fitted.
     This attribution scheme is an addition of pysad. It is not part of the cited paper.
-    :meth:`explain_partial` raises a ``ValueError`` for an instance with NaN, while
-    :meth:`score_partial` accepts it.
+    Both :meth:`explain_partial` and :meth:`score_partial` raise a ``ValueError`` for an
+    instance with NaN.
 
     Args:
         max_size_ae (int): The maximum size of any autoencoder in the ensemble layer (Default=10).

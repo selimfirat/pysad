@@ -17,16 +17,17 @@ class HalfSpaceTrees(BaseModel):
 
     :meth:`explain_partial` returns the per-feature attribution weights of one instance.
     Each tree routes the instance down one path from its root to a leaf. The tree blames the
-    feature of its rarest node on that path, which is the node that holds the fewest reference
-    instances. A rare node marks an anomalous region. The tree gives that feature a weight of
-    two raised to the node's depth, divided by one more than the mass of the node. When several
-    nodes hold the same mass, the shallowest one is used. The weights of all trees are normalized
-    to sum to one. A larger weight means that more of the blame falls on that feature. The weights
-    have shape ``(num_features,)``. Before the first instance is fitted all masses are zero, so the
-    method returns zeros of shape ``(num_features,)``.
+    feature of the rarest node on that path that has a split. This is the internal node that
+    holds the fewest reference instances. A leaf has no split feature, so it is never blamed. A
+    rare node marks an anomalous region. The tree gives that feature a weight of two raised to
+    the node's depth, divided by one more than the mass of the node. When several nodes hold the
+    same mass, the shallowest one is used. The weights of all trees are normalized to sum to one.
+    A larger weight means that more of the blame falls on that feature. The weights have shape
+    ``(num_features,)``. Before the first instance is fitted all masses are zero, so the method
+    returns zeros of shape ``(num_features,)``.
     This attribution scheme is an addition of pysad. It is not part of the cited paper.
-    :meth:`explain_partial` raises a ``ValueError`` for an instance with NaN, while
-    :meth:`score_partial` accepts it.
+    Both :meth:`explain_partial` and :meth:`score_partial` raise a ``ValueError`` for an
+    instance with NaN.
 
     Args:
         feature_mins (np.float64 array of shape (num_features,)): Minimum boundary of the features. Integer arrays are converted to float.
@@ -238,11 +239,12 @@ class HalfSpaceTrees(BaseModel):
         """Returns per-feature attribution weights for the anomaly score of the next instance.
 
         Each tree routes the instance down one path from its root to a leaf. The tree blames the
-        feature of its rarest node on that path, which is the node that holds the fewest reference
-        instances. The tree gives that feature a weight of two raised to the node's depth, divided
-        by one more than the mass of the node. When several nodes hold the same mass, the
-        shallowest one is used. The weights of all trees are normalized to sum to one, so a larger
-        weight means that more of the blame falls on that feature.
+        feature of the rarest node on that path that has a split. This is the internal node that
+        holds the fewest reference instances. A leaf has no split feature, so it is never blamed.
+        The tree gives that feature a weight of two raised to the node's depth, divided by one
+        more than the mass of the node. When several nodes hold the same mass, the shallowest one
+        is used. The weights of all trees are normalized to sum to one, so a larger weight means
+        that more of the blame falls on that feature.
 
         Like ``score_partial``, it does not update the model or record the instance. Before the
         first instance is fitted all masses are zero, so it returns zeros of shape
@@ -276,8 +278,9 @@ class HalfSpaceTrees(BaseModel):
             .astype(np.float64)
         )
 
-        # Each tree blames the feature it splits on at its rarest node (fewest reference instances),
-        # weighted by two raised to that node's depth. A rare node indicates an anomalous region.
+        # Each tree blames the feature it splits on at its rarest internal node (fewest reference
+        # instances), weighted by two raised to that node's depth. A rare node indicates an
+        # anomalous region. A leaf has no split, so it is never blamed.
         depth_weight = self._depth_weights[: self.max_depth, None]
         rarity = depth_weight / (mass + 1.0)  # (max_depth, num_trees)
         best_depth = np.argmin(mass, axis=0)  # (num_trees,) depth of the rarest node per tree

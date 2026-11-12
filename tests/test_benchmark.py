@@ -21,6 +21,34 @@ def test_last_bit_differences_give_the_same_auroc():
     )
 
 
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "labels",
+    [
+        [1, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 1, 1, 1, 1, 1],
+        [0, 0, 0, 1, 0, 1, 0, 0],
+    ],
+)
+def test_drift_metrics_check_labels_after_warmup(monkeypatch, labels):
+    benchmark = load_benchmark()
+    dataset = next(iter(benchmark.DRIFT))
+    X = np.arange(len(labels), dtype=float).reshape(-1, 1)
+    y = np.array(labels)
+    monkeypatch.setattr(benchmark, "load", lambda *args: (X, y))
+
+    row = benchmark.run((dataset, "TEDA", 0, len(X)))
+    cutoff = benchmark.warmup(len(X))
+    evaluated = y[cutoff:]
+    if evaluated.min() == evaluated.max():
+        assert np.isnan(row["auroc"])
+        assert np.isnan(row["aupr"])
+    else:
+        scores = benchmark.significant(benchmark.DETECTORS["TEDA"](X, 0).fit_score(X))[cutoff:]
+        assert row["auroc"] == round(roc_auc_score(evaluated, scores), 4)
+        assert row["aupr"] == round(average_precision_score(evaluated, scores), 4)
+
+
 def test_sand_registration_and_fixed_configuration():
     from pysad.models import SAND
 

@@ -204,6 +204,17 @@ class KitNet(BaseModel):
 
     As in the paper, the model learns only during two grace periods at the start of the stream and then only scores. The first ``grace_feature_mapping`` instances learn which features go to which autoencoder. KitNET-py scores them 0. This model scores them with temporary autoencoders on the feature mapping so far, which it builds again each time the number of instances doubles (1, 2, 4, 8 and so on). After the feature mapping, it builds the autoencoders again on the final mapping, so the model after the grace periods is the same as without the temporary autoencoders. The next ``grace_anomaly_detector`` instances train the autoencoders, and their scores come from autoencoders that are still training. Choose both so that their sum is a small part of the stream and still covers its normal behavior. The defaults, 100 and 1,000 instances, keep the 1:10 ratio of the KitNET-py example (5,000 and 50,000 on a capture of 100,000 packets), scaled down so that a stream of a few hundred instances gets real scores. For a long stream whose start is free of anomalies, such as the paper's network captures (it trains on the first million packets), longer grace periods give the autoencoders more normal behavior to learn.
 
+    :meth:`explain_partial` returns the per-feature attribution weights of one instance.
+    Each ensemble autoencoder reconstructs the features it maps, and its squared reconstruction
+    error is attributed to those features. The weights are these per-feature errors, normalized
+    to sum to one, so a larger weight means the autoencoders that use that feature reconstruct it
+    poorly. The weights have shape ``(num_features,)``. Before the first autoencoders exist, the
+    method returns zeros of shape ``(num_features,)``. This is the case on the first instance,
+    before it has been fitted.
+    This attribution scheme is an addition of pysad. It is not part of the cited paper.
+    Both :meth:`explain_partial` and :meth:`score_partial` raise a ``ValueError`` for an
+    instance with NaN.
+
     Args:
         max_size_ae (int): The maximum size of any autoencoder in the ensemble layer (Default=10).
         grace_feature_mapping (int): The number of instances used to learn the feature mapping. If ``None``, the feature mapping and anomaly detector grace periods are equal (Default=100).
@@ -278,6 +289,54 @@ class KitNet(BaseModel):
         if self.model is None or self.model.output_layer is None:
             return 0.0
         return self.model.execute(X)
+
+    def explain_partial(self, X: np.ndarray) -> np.ndarray:
+        """Returns per-feature attribution weights for the anomaly score of the next instance.
+
+        Each ensemble autoencoder reconstructs the features it maps, and its squared reconstruction
+        error is attributed to those features. The weights are these per-feature errors, normalized
+        to sum to one, so a larger weight means the autoencoders that use that feature reconstruct
+        it poorly.
+
+        Like ``score_partial``, it does not update the model or record the instance. Before the
+        first autoencoders exist, the method returns zeros of shape ``(num_features,)``. This is
+        the case on the first instance, before it has been fitted.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to explain.
+
+        Returns:
+            np.float64 array of shape (num_features,): Non-negative attribution weights, one per
+            feature, summing to one (zeros before the first autoencoders exist).
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        model = self.model
+        if model is None or model.active_map is None or not model.ensemble_layer:
+            return np.zeros(x.shape[0], dtype=np.float64)
+
+        attribution: np.ndarray = np.zeros(x.shape[0], dtype=np.float64)
+        for autoencoder, features in zip(model.ensemble_layer, model.active_map, strict=True):
+            subset = np.asarray(list(features), dtype=np.intp)
+            normalized = autoencoder.normalize(x[subset])
+            hidden = np.asarray(
+                expit(normalized @ autoencoder.W + autoencoder.hbias), dtype=np.float64
+            )
+            reconstructed = np.asarray(
+                expit(hidden @ autoencoder.W.T + autoencoder.vbias), dtype=np.float64
+            )
+            np.add.at(attribution, subset, (normalized - reconstructed) ** 2)
+
+        total = float(attribution.sum())
+        if total > 0.0:
+            attribution = attribution / total
+
+        return attribution
 
 
 # _CorClust, _DenoisingAutoencoder, and _KitNET are adapted from KitNET-py

@@ -34,7 +34,7 @@ In the table, a window is the set of the most recent points that a detector keep
      - :class:`~pysad.models.KitNet`
      - Its authors made it for live detection of network intrusions. With the defaults, it gives 0 for the first 100 points and stops learning after 1,100. Set ``grace_feature_mapping`` and ``grace_anomaly_detector`` for the length of the stream
    * - A PyOD model that you already use
-     - :class:`~pysad.models.integrations.ReferenceWindowModel`
+     - :class:`~pysad.integrations.ReferenceWindowModel`
      - Fits the model again on a sliding window. See :doc:`pyod`
 
 The table follows the design of each method. It is not a benchmark ranking. :doc:`/detectors` lists every detector with its input, its memory and its paper. The :doc:`benchmark </benchmark>` gives the results of each multivariate detector on |num_datasets| datasets.

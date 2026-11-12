@@ -32,6 +32,8 @@ class xStream(BaseModel):
         window_size: int = 256,
         random_state: int | np.random.RandomState | None = None,
     ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
         self.streamhash = StreamhashProjector(num_components=num_components)
         self.window_size = window_size
         self.random_state = random_state

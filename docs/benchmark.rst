@@ -7,7 +7,7 @@ A multivariate detector takes a vector of features for each point. A univariate 
 
 The results are on these pages:
 
-- :doc:`benchmarks/multivariate`: the multivariate detectors on |num_datasets| ODDS datasets and on 8 real streams with drift.
+- :doc:`benchmarks/multivariate`: the multivariate detectors on |num_datasets| ODDS datasets and on |num_drift_streams| real streams with drift.
 - :doc:`benchmarks/univariate`: the univariate detectors on the NAB and UCR series, and the multivariate detectors on the NAB series.
 - :doc:`benchmarks/calibration`: the alerts of the two probability calibrators.
 

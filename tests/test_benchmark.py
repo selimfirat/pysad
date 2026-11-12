@@ -1,5 +1,7 @@
 """The metrics of benchmarks/benchmark.py."""
 
+import csv
+
 import numpy as np
 import pytest
 from sklearn.metrics import average_precision_score, roc_auc_score
@@ -77,6 +79,66 @@ def test_sand_benchmark_scores_before_update_and_reproduces_metrics(monkeypatch,
     assert row["seed"] == 0
     assert row["auroc"] == round(roc_auc_score(y[cutoff:], expected), 4)
     assert row["aupr"] == round(average_precision_score(y[cutoff:], expected), 4)
+
+
+@pytest.mark.parametrize(
+    ("scores", "expected"),
+    [
+        ([0.95, 0.995, 0.99, 0.2], [1 / np.sqrt(3), 0, -1 / np.sqrt(3), 1 / np.sqrt(3)]),
+        ([0.1, 0.1, 0.1, 0.1], [0, 0, 0, 0]),
+        ([1.0, 1.0, 1.0, 1.0], [0, 0, 0, 0]),
+    ],
+)
+def test_alert_mcc_uses_each_threshold(scores, expected):
+    benchmark = load_benchmark()
+    row = benchmark.alerts("conformal", np.array(scores), np.array([1, 0, 1, 0]), True)
+    for threshold, value in zip([0.95, 0.99, 0.995, "rate"], expected, strict=True):
+        assert row[f"conformal_{threshold}_mcc"] == round(value, 4)
+
+
+def test_alert_mcc_excludes_invalid_runs():
+    benchmark = load_benchmark()
+    row = benchmark.alerts("conformal", np.array([0.1, np.nan]), np.array([0, 1]), False)
+    assert np.isnan(row["conformal_0.95_mcc"])
+
+
+def test_alert_mcc_survives_csv_and_averages_runs(tmp_path, monkeypatch):
+    benchmark = load_benchmark()
+    monkeypatch.setattr(benchmark, "OUT", tmp_path)
+    labels = np.array([1, 0, 1, 0])
+    rows = []
+    for seed, scores in enumerate([[0.95, 0.995, 0.99, 0.2], [0.1, 0.1, 0.1, 0.1]]):
+        row = {
+            "dataset": "synthetic",
+            "detector": "LODA",
+            "seed": seed,
+            "auroc": 0.5,
+            "aupr": 0.5,
+            "ms_per_point": 0.1,
+        }
+        for name in benchmark.CALIBRATORS:
+            row.update(benchmark.alerts(name, np.array(scores), labels, True))
+        rows.append(row)
+    benchmark.write_csv(
+        "results.csv",
+        benchmark.FIELDS,
+        [[row.get(f, "") for f in benchmark.FIELDS] for row in rows],
+    )
+    results = benchmark.read_results(tmp_path / "results.csv")
+    monkeypatch.setattr(benchmark, "DATASETS", ["synthetic"])
+    monkeypatch.setattr(benchmark, "DRIFT", {})
+    monkeypatch.setattr(
+        benchmark, "load", lambda dataset, seed=0, points=None: (np.zeros((4, 1)), labels)
+    )
+    monkeypatch.setattr(
+        benchmark.Data,
+        "describe",
+        lambda self, name: {"points": 4, "features": 1, "anomaly_rate": 0.5},
+    )
+    benchmark.write_tables(results)
+    with (tmp_path / "alerts.csv").open() as stream:
+        table = list(csv.DictReader(stream))
+    assert [row["MCC"] for row in table] == ["0.289", "0.000", "-0.289", "0.289"] * 2
 
 
 @pytest.fixture
@@ -198,8 +260,6 @@ def test_best_values_at_chance_render_in_bold_and_italics(ranking_tables):
 @pytest.mark.parametrize("aupr, marked", [("0.0434", True), ("0.0435", True), ("0.0436", False)])
 def test_write_ranking_compares_chance_at_stored_precision(tmp_path, monkeypatch, aupr, marked):
     """Stored AUPR values compare against the rounded anomaly fraction."""
-    import csv
-
     benchmark = load_benchmark()
     # The last 23 labels contain one anomaly. The first seven labels are warmup.
     y = np.zeros(30, dtype=int)
@@ -218,3 +278,170 @@ def test_write_ranking_compares_chance_at_stored_precision(tmp_path, monkeypatch
     with (tmp_path / "aupr.csv").open() as stream:
         row = next(csv.DictReader(stream))
     assert row["RSForest"] == ("*0.043*" if marked else "0.044")
+
+
+def test_changed_benchmark_detectors_isolates_table_edits():
+    """Editing a detector entry in benchmark.py only flags that detector, not the whole suite."""
+    from pathlib import Path
+
+    benchmark = load_benchmark()
+    source = (Path(__file__).resolve().parents[1] / "benchmarks" / "benchmark.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert benchmark._changed_benchmark_detectors(source, source) == set()
+
+    added = source.replace(
+        "DETECTOR_OVERRIDES = {}",
+        'DETECTOR_OVERRIDES = {"NewModel": lambda X, seed: models.LODA(random_state=seed)}',
+    )
+    assert benchmark._changed_benchmark_detectors(source, added) == {"NewModel"}
+
+    modified = source.replace(
+        "batch_size=WARMUP_POINTS, random_state=0",
+        "batch_size=128, random_state=0",
+    )
+    assert benchmark._changed_benchmark_detectors(source, modified) == {"SAND"}
+
+    shared_change = source.replace("WARMUP_POINTS = 256", "WARMUP_POINTS = 128")
+    assert benchmark._changed_benchmark_detectors(source, shared_change) is None
+
+
+def test_benchmark_auto_discovers_detectors_and_sub_registries(monkeypatch):
+    """Detectors added to pysad.models.__all__ populate DETECTORS/UNIVARIATE/SEASONAL/TIMESTAMPED."""
+    from pysad import models
+    from pysad.core import BaseModel
+
+    class DummyMultivariate(BaseModel):
+        def __init__(self, feature_mins, feature_maxes, random_state=None):
+            self.feature_mins = feature_mins
+            self.feature_maxes = feature_maxes
+            self.random_state = random_state
+
+        def fit_partial(self, X, y=None):
+            return self
+
+        def score_partial(self, X):
+            return 0.0
+
+    class DummySeasonal(BaseModel):
+        _input_kind = "univariate"
+
+        def __init__(self, period, window_size):
+            self.period = period
+            self.window_size = window_size
+
+        def fit_partial(self, X, y=None):
+            return self
+
+        def score_partial(self, X):
+            return 0.0
+
+    class DummyTimestamped(BaseModel):
+        _input_kind = "timestamped"
+
+        def __init__(self, min_val, max_val, random_state=None):
+            self.min_val = min_val
+            self.max_val = max_val
+            self.random_state = random_state
+
+        def fit_partial(self, X, y=None):
+            return self
+
+        def score_partial(self, X):
+            return 0.0
+
+    monkeypatch.setattr(models, "DummyMultivariate", DummyMultivariate, raising=False)
+    monkeypatch.setattr(models, "DummySeasonal", DummySeasonal, raising=False)
+    monkeypatch.setattr(models, "DummyTimestamped", DummyTimestamped, raising=False)
+    monkeypatch.setattr(
+        models,
+        "__all__",
+        [*models.__all__, "DummyMultivariate", "DummySeasonal", "DummyTimestamped"],
+    )
+
+    benchmark = load_benchmark()
+    assert "DummyMultivariate" in benchmark.DETECTORS
+    mv = benchmark.DETECTORS["DummyMultivariate"](np.zeros((10, 4)), 42)
+    assert mv.feature_mins.shape == (4,) and mv.random_state == 42
+
+    assert "DummySeasonal" in benchmark.UNIVARIATE
+    assert "DummySeasonal" in benchmark.SEASONAL
+    seas = benchmark.UNIVARIATE["DummySeasonal"](1000, 24)
+    assert seas.period == 24 and seas.window_size == 73
+
+    assert "DummyTimestamped" in benchmark.UNIVARIATE
+    assert "DummyTimestamped" in benchmark.TIMESTAMPED
+    ts = benchmark.UNIVARIATE["DummyTimestamped"](1000, None)
+    assert ts.min_val == 0.0 and ts.max_val == 1.0 and ts.random_state == 0
+
+
+def test_pysad_files_excludes_unrelated_package_reexports():
+    """Detector dependency sets do not pull in unrelated modules through package __init__.py files."""
+    benchmark = load_benchmark()
+    loda_files = benchmark.pysad_files([benchmark.models.LODA])
+    assert "pysad/models/loda.py" in loda_files
+    assert "pysad/core/base_model.py" in loda_files
+    assert "pysad/utils/polars_streamer.py" not in loda_files
+    assert "pysad/utils/pandas_streamer.py" not in loda_files
+    assert "pysad/utils/synthetic.py" not in loda_files
+    assert "pysad/utils/validation.py" not in loda_files
+
+
+def test_runtime_toml_ignores_tool_and_dev_sections():
+    """Tool and test configuration edits in pyproject.toml do not trigger a full benchmark run."""
+    from pathlib import Path
+
+    benchmark = load_benchmark()
+    source = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+
+    tool_edited = source.replace("disallow_untyped_defs = true", "disallow_untyped_defs = false")
+    assert benchmark._runtime_toml(source) == benchmark._runtime_toml(tool_edited)
+
+    runtime_edited = source.replace('"scipy>=1.13.0",', '"scipy>=1.14.0",')
+    assert benchmark._runtime_toml(source) != benchmark._runtime_toml(runtime_edited)
+
+
+def test_example_pysad_files_isolates_example_imports():
+    """Example dependency tracing only includes the pysad modules imported by that example."""
+    from pathlib import Path
+
+    from tests.test_examples import _example_pysad_files
+
+    code = (Path(__file__).resolve().parents[1] / "examples" / "example_usage_short.py").read_text(
+        encoding="utf-8"
+    )
+    files = _example_pysad_files(code)
+    assert "pysad/models/loda.py" in files
+    assert "pysad/evaluation/metrics.py" in files
+    assert "pysad/utils/data.py" in files
+    assert "pysad/utils/_datasets.py" in files
+    assert "pysad/models/rshash.py" not in files
+    assert "pysad/models/sand.py" not in files
+
+
+def test_union_merged_files_have_no_duplicates():
+    """Files configured with merge=union keep unique entries and sorted bibliography keys."""
+    import ast
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+
+    for path in sorted((root / "pysad").rglob("__init__.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
+            ):
+                exports = ast.literal_eval(node.value)
+                assert len(exports) == len(set(exports)), f"Duplicate in {path}: {exports}"
+
+    bib = (root / "docs" / "refs.bib").read_text(encoding="utf-8")
+    keys = re.findall(r"^@\w+\{([^,\s]+),", bib, flags=re.M)
+    assert len(keys) == len(set(keys))
+    assert keys == sorted(keys, key=str.lower)
+
+    examples_rst = (root / "docs" / "examples.rst").read_text(encoding="utf-8")
+    includes = re.findall(r"^\.\. literalinclude::\s+(\S+)", examples_rst, flags=re.M)
+    assert len(includes) == len(set(includes))

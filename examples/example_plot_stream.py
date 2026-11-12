@@ -5,7 +5,7 @@ import numpy as np
 
 from pysad.models import LODA
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
-from pysad.utils import ArrayStreamer, generate_stream
+from pysad.utils import ArrayStreamer, generate_stream, plot_stream
 
 if __name__ == "__main__":
     X, y = generate_stream(random_state=0)
@@ -20,23 +20,13 @@ if __name__ == "__main__":
         ]
     )
     threshold = 0.99
-    steps = np.arange(len(calibrated))
-    alerts = steps[calibrated > threshold]
+    alerts = np.arange(len(calibrated))[calibrated > threshold]
 
-    fig, (features_ax, scores_ax, alerts_ax) = plt.subplots(3, 1, figsize=(10, 7), sharex=True)
-    features_ax.plot(steps, X, linewidth=0.5)
-    features_ax.set_ylabel("features")
-    scores_ax.plot(steps, calibrated, linewidth=0.8, label="calibrated score")
-    scores_ax.axhline(threshold, color="tab:red", linestyle="--", label="threshold")
-    scores_ax.set_ylabel("score")
-    scores_ax.legend()
-    alerts_ax.eventplot(
-        [alerts, steps[y == 1]],
-        lineoffsets=[0, 1],
-        linelengths=0.8,
-        colors=["tab:orange", "tab:red"],
+    fig, _ = plot_stream(
+        X,
+        calibrated,
+        threshold=threshold,
+        alerts=alerts,
+        labels=y,
     )
-    alerts_ax.set_yticks([0, 1], ["alert", "anomaly"])
-    alerts_ax.set_xlabel("position in the stream")
-    fig.tight_layout()
     plt.show()

@@ -36,24 +36,39 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
         self.season_length = season_length
         self.trend_window = trend_window
-        self.window: deque[np.ndarray] = deque(maxlen=trend_window)
+        self.window: deque[np.ndarray] = deque()
+        self._window_sum: np.ndarray | None = None
         self.seasonal_sums: np.ndarray | None = None
         self.seasonal_counts: np.ndarray | None = None
         self.num_seen = 0
 
     def _as_array(self, X: ArrayLike) -> np.ndarray:
-
-        return np.asarray(X)
+        return np.asarray(X, dtype=np.float64)
 
     def _init_seasonal_state(self, X: np.ndarray) -> None:
-        self.seasonal_sums = np.zeros((self.season_length, X.shape[0]))
-        self.seasonal_counts = np.zeros(self.season_length)
+        self.seasonal_sums = np.zeros((self.season_length, X.shape[0]), dtype=np.float64)
+        self.seasonal_counts = np.zeros(self.season_length, dtype=np.float64)
+        self._window_sum = np.zeros(X.shape[0], dtype=np.float64)
+
+    def _push_window(self, X: np.ndarray) -> np.ndarray:
+        assert self._window_sum is not None
+        if len(self.window) == self.trend_window:
+            evicted = self.window.popleft()
+            self.window.append(X)
+            if (self.num_seen & 4095) == 4095:
+                self._window_sum = np.sum(np.asarray(self.window), axis=0)
+            else:
+                self._window_sum = self._window_sum - evicted + X
+        else:
+            self.window.append(X)
+            self._window_sum = self._window_sum + X
+        return self._window_sum / len(self.window)
 
     def _trend(self) -> float | np.ndarray:
-        if len(self.window) == 0:
+        if not self.window or self._window_sum is None:
             return 0.0
 
-        return np.mean(np.asarray(self.window), axis=0)
+        return self._window_sum / len(self.window)
 
     def _seasonal(self, phase: int) -> float | np.ndarray:
         if (
@@ -82,8 +97,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
         assert self.seasonal_counts is not None
 
         phase = self.num_seen % self.season_length
-        self.window.append(X)
-        trend = self._trend()
+        trend = self._push_window(X)
 
         if len(self.window) == self.trend_window:
             self.seasonal_sums[phase] += X - trend
@@ -127,8 +141,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
         assert self.seasonal_counts is not None
 
         phase = self.num_seen % self.season_length
-        self.window.append(X)
-        trend = self._trend()
+        trend = self._push_window(X)
 
         if len(self.window) == self.trend_window:
             self.seasonal_sums[phase] += X - trend
@@ -138,3 +151,48 @@ class SeasonalTrendDecomposer(BaseTransformer):
         self.num_seen += 1
 
         return X - trend - seasonal
+
+    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+        """Fits and transforms all instances in order."""
+        if self.num_seen > 0 or not isinstance(X, np.ndarray) or X.ndim != 2 or len(X) == 0:
+            return super().fit_transform(X)
+
+        Xf = np.asarray(X, dtype=np.float64)
+        n, d = Xf.shape
+        w = self.trend_window
+        s = self.season_length
+
+        self.seasonal_sums = np.zeros((s, d), dtype=np.float64)
+        self.seasonal_counts = np.zeros(s, dtype=np.float64)
+
+        csum = np.empty((n + 1, d), dtype=np.float64)
+        csum[0] = 0.0
+        np.cumsum(Xf, axis=0, out=csum[1:])
+
+        trend = np.empty((n, d), dtype=np.float64)
+        warmup = min(n, w - 1)
+        if warmup > 0:
+            trend[:warmup] = (
+                csum[1 : warmup + 1] / np.arange(1, warmup + 1, dtype=np.float64)[:, None]
+            )
+        if n >= w:
+            trend[w - 1 :] = (csum[w:] - csum[: n - w + 1]) / w
+
+        seasonal = np.zeros((n, d), dtype=np.float64)
+        if n >= w:
+            detrended = Xf[w - 1 :] - trend[w - 1 :]
+            m = len(detrended)
+            for r in range(min(s, m)):
+                phase = (w - 1 + r) % s
+                phase_csum = np.cumsum(detrended[r::s], axis=0)
+                counts = np.arange(1, len(phase_csum) + 1, dtype=np.float64)
+                seasonal[w - 1 + r :: s] = phase_csum / counts[:, None]
+                self.seasonal_sums[phase] = phase_csum[-1]
+                self.seasonal_counts[phase] = float(len(phase_csum))
+
+        tail = Xf[max(0, n - w) :]
+        self.window = deque(tail[i].copy() for i in range(len(tail)))
+        self._window_sum = tail.sum(axis=0)
+        self.num_seen = n
+
+        return Xf - trend - seasonal

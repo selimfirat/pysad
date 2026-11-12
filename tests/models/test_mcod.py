@@ -52,3 +52,16 @@ def test_mcod_neighbor_counting():
     assert model.score_partial(np.array([0.0])) == pytest.approx(1 / 5)
     assert model.score_partial(np.array([5.5])) == pytest.approx(4 / 5)
     assert model.score_partial(np.array([20.0])) == 1.0
+
+
+@pytest.mark.parametrize(
+    "model_name",
+    ["CPOD", "D3", "KELOS", "MCOD", "NETS", "OnlineOneClassSVM", "xStream"],
+)
+@pytest.mark.parametrize("window_size", [0, -1])
+def test_non_positive_window_size_raises(model_name, window_size):
+    from pysad import models
+
+    cls = getattr(models, model_name)
+    with pytest.raises(ValueError, match="window_size"):
+        cls(window_size=window_size)

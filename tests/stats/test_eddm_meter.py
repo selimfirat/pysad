@@ -135,8 +135,9 @@ def test_thresholds_out_of_order_are_rejected(warning_threshold, drift_threshold
 
 
 def test_remove_is_not_supported():
-    meter = EDDMMeter()
-    meter.update(1.0)
+    from pysad.statistics import RunningStatistic
 
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+    meter = EDDMMeter()
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(EDDMMeter, window_size=10)

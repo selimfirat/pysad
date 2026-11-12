@@ -1,30 +1,20 @@
-"""Average the scores of two detectors with an ensembler."""
-
-import numpy as np
+"""Average the normalized scores of two detectors with an ensemble."""
 
 from pysad.evaluation import AUROCMetric
 from pysad.models import LODA, xStream
-from pysad.transform.ensemble import AverageScoreEnsembler
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.utils import ArrayStreamer, Data
 
 if __name__ == "__main__":
     X, y = Data().get_data("arrhythmia.mat")
 
-    models = [xStream(random_state=0), LODA(random_state=0)]
     # Raw scores of different detectors have different scales, so normalize each one first.
-    normalizers = [RunningZScorePostprocessor(window_size=200) for _ in models]
-    ensembler = AverageScoreEnsembler()
+    ensemble = (xStream(random_state=0) | ZScorePostprocessor(window_size=200)) & (
+        LODA(random_state=0) | ZScorePostprocessor(window_size=200)
+    )
     metric = AUROCMetric()
 
     for x, label in ArrayStreamer().iter(X, y):
-        scores = np.array(
-            [
-                normalizer.fit_transform_partial(model.fit_score_partial(x))
-                for model, normalizer in zip(models, normalizers, strict=True)
-            ]
-        )
-        score = ensembler.fit_transform_partial(scores)
-        metric.update(label, score)
+        metric.update(label, ensemble.fit_score_partial(x))
 
     print(f"AUROC: {metric.get():.3f}")

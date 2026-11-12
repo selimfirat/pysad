@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from pysad.core.base_statistic import UnivariateStatistic
+from pysad.core.base_statistic import BaseStatistic
 
 
-class OnlinePeriodicityMeter(UnivariateStatistic):
+class OnlinePeriodicityMeter(BaseStatistic):
     """Estimate a stream period with the original OnlineSLE algorithm.
 
     This meter follows Section 4.1, Algorithms 1 and 2, and Equation (3) of
@@ -82,17 +82,6 @@ class OnlinePeriodicityMeter(UnivariateStatistic):
         peak = int(self.power_.argmax())
         self.period_ = self.window_size / peak if peak else 0.0
         return self
-
-    def remove(self, num: float) -> OnlinePeriodicityMeter:
-        """Reject removal of an arbitrary sample.
-
-        Args:
-            num (float): Sample to remove.
-
-        Raises:
-            NotImplementedError: The meter replaces only the oldest sample during updates.
-        """
-        raise NotImplementedError("Use update to replace the oldest sample in the window.")
 
     def get(self) -> float:
         """Return the period in samples.

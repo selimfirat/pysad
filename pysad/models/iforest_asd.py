@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import math
 import numbers
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 from numpy.typing import ArrayLike
 from sklearn.ensemble import IsolationForest
 
-from pysad.models.integrations.reference_window_model import ReferenceWindowModel
+from pysad.integrations.reference_window_model import ReferenceWindowModel
+from pysad.utils import _iterate
 
 
 def _check_drift_threshold(drift_threshold: float | None) -> None:
@@ -25,10 +27,135 @@ def _check_drift_threshold(drift_threshold: float | None) -> None:
         )
 
 
+def _average_path_length(n_samples_leaf: np.ndarray) -> np.ndarray:
+    """Average path length of an unsuccessful BST search, matching scikit-learn."""
+    n = np.asarray(n_samples_leaf, dtype=np.float64)
+    out = np.zeros_like(n)
+    out[n == 2] = 1.0
+    mask = n > 2
+    nm = n[mask]
+    out[mask] = 2.0 * (np.log(nm - 1.0) + np.euler_gamma) - 2.0 * (nm - 1.0) / nm
+    return out
+
+
 class _IsolationForest(IsolationForest):
+    _higher_is_anomalous = True
+
+    def fit(
+        self,
+        X: ArrayLike,
+        y: Any = None,
+        sample_weight: ArrayLike | None = None,
+    ) -> _IsolationForest:
+        super().fit(X, y=y, sample_weight=sample_weight)
+        n_trees = len(self.estimators_)
+        max_nodes = max(est.tree_.node_count for est in self.estimators_)
+        self._max_depth = max(est.tree_.max_depth for est in self.estimators_)
+
+        feat = np.zeros((n_trees, max_nodes), dtype=np.intp)
+        left = np.zeros((n_trees, max_nodes), dtype=np.intp)
+        right = np.zeros((n_trees, max_nodes), dtype=np.intp)
+        thresh = np.zeros((n_trees, max_nodes), dtype=np.float64)
+        leaf_depth = np.zeros((n_trees, max_nodes), dtype=np.float64)
+
+        for i, (est, est_feats) in enumerate(
+            zip(self.estimators_, self.estimators_features_, strict=True)
+        ):
+            tr = est.tree_
+            nc = tr.node_count
+            cl = tr.children_left
+            cr = tr.children_right
+            is_leaf = cl < 0
+            f = tr.feature
+            feat[i, :nc] = np.where(is_leaf, 0, est_feats[np.maximum(f, 0)])
+            idx = np.arange(nc, dtype=np.intp)
+            left[i, :nc] = np.where(is_leaf, idx, cl)
+            right[i, :nc] = np.where(is_leaf, idx, cr)
+            thresh[i, :nc] = tr.threshold
+            depths = tr.compute_node_depths()
+            leaf_depth[i, :nc] = depths + _average_path_length(tr.n_node_samples) - 1.0
+
+        self._feat = feat
+        self._left = left
+        self._right = right
+        self._thresh = thresh
+        self._leaf_depth = leaf_depth
+        self._root_feat = feat[:, 0].copy()
+        self._root_left = left[:, 0].copy()
+        self._root_right = right[:, 0].copy()
+        self._root_thresh = thresh[:, 0].copy()
+        self._root_depth_sum = math.fsum(leaf_depth[:, 0].tolist())
+        self._tree_idx = np.arange(n_trees, dtype=np.intp)
+        self._denom = n_trees * float(_average_path_length(np.array([self.max_samples_]))[0])
+        return self
+
+    def score_one(self, X: ArrayLike) -> float:
+        x32 = np.asarray(X, dtype=np.float32).reshape(-1)
+        if self._denom == 0.0:
+            raw = 0.5
+        elif self._max_depth == 0:
+            raw = 2.0 ** (-self._root_depth_sum / self._denom)
+        else:
+            nodes = np.where(
+                x32[self._root_feat] <= self._root_thresh,
+                self._root_left,
+                self._root_right,
+            )
+            tree_idx = self._tree_idx
+            feat = self._feat
+            thresh = self._thresh
+            left = self._left
+            right = self._right
+            for _ in range(self._max_depth - 1):
+                nodes = np.where(
+                    x32[feat[tree_idx, nodes]] <= thresh[tree_idx, nodes],
+                    left[tree_idx, nodes],
+                    right[tree_idx, nodes],
+                )
+            d_sum = math.fsum(self._leaf_depth[tree_idx, nodes].tolist())
+            raw = 2.0 ** (-d_sum / self._denom)
+        return float(-((-raw) - self.offset_))
+
     def decision_function(self, X: ArrayLike) -> np.ndarray:
-        # scikit-learn gives lower scores to anomalies.
-        return -super().decision_function(X)
+        X32 = np.asarray(X, dtype=np.float32)
+        if X32.ndim == 1:
+            X32 = X32.reshape(1, -1)
+        n_samples = len(X32)
+        if n_samples == 0:
+            return np.empty(0, dtype=np.float64)
+        if n_samples == 1:
+            return np.array([self.score_one(X32[0])], dtype=np.float64)
+        if self._denom == 0.0:
+            return np.full(n_samples, -((-0.5) - self.offset_), dtype=np.float64)
+        if self._max_depth == 0:
+            raw_val = 2.0 ** (-self._root_depth_sum / self._denom)
+            return np.full(n_samples, -((-raw_val) - self.offset_), dtype=np.float64)
+
+        nodes = np.where(
+            X32[:, self._root_feat] <= self._root_thresh,
+            self._root_left,
+            self._root_right,
+        )
+        tree_row = self._tree_idx[None, :]
+        row_col = np.arange(n_samples, dtype=np.intp)[:, None]
+        feat = self._feat
+        thresh = self._thresh
+        left = self._left
+        right = self._right
+        for _ in range(self._max_depth - 1):
+            nodes = np.where(
+                X32[row_col, feat[tree_row, nodes]] <= thresh[tree_row, nodes],
+                left[tree_row, nodes],
+                right[tree_row, nodes],
+            )
+        denom = self._denom
+        leaf_rows = self._leaf_depth[tree_row, nodes].tolist()
+        raw = np.fromiter(
+            (2.0 ** (-math.fsum(row) / denom) for row in leaf_rows),
+            dtype=np.float64,
+            count=n_samples,
+        )
+        return -((-raw) - self.offset_)
 
     def predict(self, X: ArrayLike) -> np.ndarray:
         # 1 for anomalies, 0 for inliers.
@@ -48,6 +175,8 @@ class IForestASD(ReferenceWindowModel):
         drift_threshold (float or None): Algorithm 2's anomaly-rate threshold :math:`u`, in ``[0, 1]``. The forest is rebuilt only when the fraction of instances labeled as anomalies in a full window is greater than or equal to this value. In their empirical evaluation on real-world benchmark datasets, the authors set :math:`u` to match each dataset's expected anomaly (contamination) rate. ``None`` retrains on every window (Default=None).
         **kwargs: Keyword arguments passed to scikit-learn's ``IsolationForest``, for example ``n_estimators``. ``contamination`` defaults to 0.1.
     """
+
+    _is_detector: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -90,6 +219,48 @@ class IForestASD(ReferenceWindowModel):
             self._complete_window()
 
         return self
+
+    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
+        """Applies ``fit_score_partial`` to each instance in order and returns the scores.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
+            y (np.int32 array of shape (num_instances,)): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
+        """
+        if y is not None and len(X) != len(y):
+            raise ValueError("X and y must have the same length.")
+        if self.drift_threshold is None:
+            return super().fit_score(X, None)
+
+        y_pred = np.empty(len(X), dtype=np.float64)
+        start = 0
+        for i, (xi, _) in enumerate(_iterate(X)):
+            next_len = len(self.cur_window_X) + 1
+            if (
+                not self.initial_ref_window
+                and next_len < self.window_size
+                and (
+                    self.reference_window_X is None
+                    or len(self.reference_window_X) < self.window_size
+                )
+            ):
+                refit = (next_len & (next_len - 1)) == 0
+            else:
+                refit = next_len % self.sliding_size == 0
+
+            if refit:
+                y_pred[start : i + 1] = self.score(X[start : i + 1])
+                start = i + 1
+
+            self.fit_partial(xi, None)
+
+        if start < len(X):
+            y_pred[start:] = self.score(X[start:])
+
+        return y_pred
 
     def _complete_window(self) -> None:
         """Applies Algorithm 2 to a completed window."""

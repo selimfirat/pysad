@@ -96,7 +96,15 @@ jobs:
         run: |
           uv pip install --system --group runtime --group test -e .
       - name: Test
-        run: pytest -n auto
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            export PYSAD_TESTS_SINCE="origin/$BASE_REF"
+          fi
+          pytest -n auto
 
   unpinned-314:
     runs-on: ubuntu-latest
@@ -117,7 +125,14 @@ jobs:
         run: |
           uv pip install --system -e . --group test
       - name: Test
-        run: pytest -n auto
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            export PYSAD_TESTS_SINCE="origin/$BASE_REF"
+          fi
+          pytest -n auto
 
   lowest-versions:
     runs-on: ubuntu-latest
@@ -140,4 +155,11 @@ jobs:
         run: |
           uv pip install --system --resolution lowest-direct -e . --group test
       - name: Test
-        run: pytest -n auto
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            export PYSAD_TESTS_SINCE="origin/$BASE_REF"
+          fi
+          pytest -n auto

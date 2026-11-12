@@ -1,7 +1,30 @@
-References
-==========
+Citing PySAD and references
+===========================
 
-This page lists the papers that the PySAD components implement or use.
+.. _citing-pysad:
+
+Citing PySAD
+------------
+
+If you use PySAD in a scientific publication, cite the paper:
+
+.. code-block:: bibtex
+
+   @article{pysad,
+     title={PySAD: A Streaming Anomaly Detection Framework in Python},
+     author={Yilmaz, Selim F and Kozat, Suleyman S},
+     journal={arXiv preprint arXiv:2009.02572},
+     year={2020}
+   }
+
+To cite a specific version of the software, use its Zenodo DOI. The DOI `10.5281/zenodo.22983312 <https://doi.org/10.5281/zenodo.22983312>`_ always points to the latest release. That page also lists a separate DOI for each release.
+
+Also cite the paper of each detector that you use. :doc:`detectors` lists these papers. The bibliography below gives the full entries.
+
+Bibliography
+------------
+
+This bibliography lists the papers that PySAD components implement or use.
 
 .. bibliography::
    :all:

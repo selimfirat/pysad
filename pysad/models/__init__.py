@@ -2,6 +2,7 @@
 The :mod:`pysad.models` module includes anomaly detection models to score the anomalousness of instances.
 """
 
+from .absad import ABSAD
 from .adems import ADeMS
 from .anyout import AnyOut
 from .approx_storm import ApproxStorm
@@ -53,6 +54,7 @@ from .thresh_leap import ThreshLEAP
 from .xstream import xStream
 
 __all__ = [
+    "ABSAD",
     "ADeMS",
     "AnyOut",
     "ApproxStorm",

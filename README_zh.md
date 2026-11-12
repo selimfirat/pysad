@@ -234,6 +234,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `MIDAS` | MIDAS 图数据流的边计数 (Bhatia et al., AAAI 2020) |
 | `IForestASD` | 滑动窗口上的孤立森林 (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | 在线孤立森林 (Leveni et al., ICML 2024) |
+| `PCBIsolationForest` | 带性能计数器并在检测到漂移后替换树的 PCB-iForest 孤立森林 (Heigl et al., *Electronics* 2021) |
 | `KitNet` | KitNET 自编码器集成 (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM 基于距离的离群点检测 (Angiulli & Fassetti, CIKM 2007) |
 | `ApproxStorm` | 基于窗口采样的 Approx-STORM 距离离群点检测 (Angiulli & Fassetti, CIKM 2007) |
@@ -272,6 +273,8 @@ for x in ArrayStreamer().iter(X[100:]):
 | `SAND` | 基于 k-Shape 聚类的流式子序列异常检测 (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | 滑动窗口上的中位数绝对偏差 (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | 在线 3-sigma 规则 (Hochenbaum et al., 2017) |
+| `OeSNNUAD` | 用于无监督异常检测的在线演化脉冲神经网络 (Maciąg et al., *Neural Networks* 2021) |
+| `PEWMA` | 概率指数加权移动平均 (Carter & Streilein, SSP 2012) |
 
 `ReferenceWindowModel` 和 `OneFitModel` 可以在数据流上运行任意 [PyOD](https://github.com/yzhao062/pyod) 检测器。[检测器目录](https://pysad.readthedocs.io/en/stable/detectors.html) 列出了每个检测器的输入、配置和内存占用，[API 参考](https://pysad.readthedocs.io/en/stable/api.html) 列出了所有参数。
 

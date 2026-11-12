@@ -110,7 +110,7 @@ Streaming detectors update as points arrive. They can process an ongoing stream 
 
       :doc:`Benchmarks <benchmark>`
 
-      AUROC, AUPR and time per point for all multivariate detectors across |num_datasets| labeled datasets.
+      Mean AUROC and time per point for all multivariate detectors across |num_datasets| labeled datasets.
 
    .. container:: card
 

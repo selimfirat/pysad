@@ -18,10 +18,12 @@ from pysad.models import (
     MStream,
     OeSNNUAD,
     OnlineIsolationForest,
+    PCBIsolationForest,
     RandomModel,
     RobustRandomCutForest,
     RSForest,
     RSHash,
+    SDOstream,
     SmartSifter,
     xStream,
 )
@@ -57,11 +59,15 @@ MODELS = {
     "OnlineIsolationForest": lambda **kw: OnlineIsolationForest(
         num_trees=10, max_leaf_samples=8, window_size=32, **kw
     ),
+    "PCBIsolationForest": lambda **kw: PCBIsolationForest(
+        num_trees=10, window_size=32, stat_size=10, **kw
+    ),
     "RandomModel": lambda **kw: RandomModel(**kw),
     "RobustRandomCutForest": lambda **kw: RobustRandomCutForest(tree_size=32, **kw),
     "RSForest": lambda **kw: RSForest(window_size=20, num_trees=5, max_depth=8, **kw),
     "RSHash": lambda **kw: RSHash([0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES, **kw),
     "SAND": lambda **kw: SAND(subsequence_length=4, batch_size=24, **kw),
+    "SDOstream": lambda **kw: SDOstream(**kw),
     "SmartSifter": lambda **kw: SmartSifter(**kw),
     "xStream": lambda **kw: xStream(n_chains=10, depth=10, window_size=20, **kw),
 }

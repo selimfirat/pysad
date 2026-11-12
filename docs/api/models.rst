@@ -40,13 +40,15 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
    NETS
    OeSNNUAD
    OnlineIsolationForest
-   OnlineOneClassSVM
-   PEWMA
-   RelativeEntropy
+    OnlineOneClassSVM
+    PCBIsolationForest
+    PEWMA
+    RelativeEntropy
    RobustRandomCutForest
    RSForest
    RSHash
    SAND
+   SDOstream
    SeasonalESD
    SeasonalHybridESD
    SmartSifter

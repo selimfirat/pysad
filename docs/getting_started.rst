@@ -1,7 +1,7 @@
 Getting started
 ===============
 
-In this tutorial, you build a small anomaly detector for a data stream. An anomaly detector gives each data point a score that shows how unusual the point is. You score each point when it arrives, measure how well the detector works, and raise alerts. The tutorial takes about ten minutes.
+In this tutorial, we will score a synthetic stream with LODA, measure how well the scores separate anomalies from normal points, and raise alerts. The tutorial takes about ten minutes. Run the code blocks in order in one Python session.
 
 You need Python 3.10 or newer. You do not need to know about anomaly detection.
 
@@ -14,16 +14,12 @@ Install PySAD with pip:
 
    $ pip install pysad
 
-Or with conda:
-
-.. code-block:: console
-
-   $ conda install -c conda-forge pysad
+For conda and other installation options, see :doc:`installation`.
 
 Make a stream
 -------------
 
-A stream is a sequence of data points that arrive one at a time. Each point is a NumPy array of features (measured values). In a real system, the points come from sensors, logs or a message queue. In this tutorial, you generate the stream with code so that you know which points are anomalies.
+We will generate a stream with known anomalies. Each row is one point, represented by a NumPy array of features. We will feed the rows to the detector in order.
 
 The stream has 2,000 points with 4 features. Every 50th point is an anomaly: the code adds 3 to its first two features.
 
@@ -77,7 +73,7 @@ The anomalies get higher scores. The detector learned what normal data looks lik
 Measure the detector
 --------------------
 
-A metric is a number that shows how well the scores separate anomalies from normal points. AUROC (the area under the ROC curve) is the probability that a random anomaly gets a higher score than a random normal point. It is 1.0 for a perfect detector and 0.5 for random scores.
+We will measure the ranking with AUROC (the area under the ROC curve). A perfect ranking gets 1.0; random scores get 0.5 on average. See :doc:`guides/evaluate` for metric definitions and choices.
 
 PySAD metrics update one point at a time, so you can measure the detector while the stream runs:
 
@@ -98,7 +94,7 @@ PySAD metrics update one point at a time, so you can measure the detector while 
 
    AUROC: 0.960
 
-The metric gets each score while the stream runs. The detector never sees a label. As a result, the detector works under the same conditions as in a live system. This score-then-learn order is called prequential evaluation. :doc:`concepts` explains it.
+The metric uses the labels; the detector does not. We score each point before learning from it, so the score measures performance on an unseen point. This is prequential evaluation; see :doc:`concepts`.
 
 Raise alerts
 ------------
@@ -125,7 +121,7 @@ Raw scores have no fixed scale. A score of 2.5 can be high for one detector and 
 
    20 alerts, 15 of them true anomalies
 
-A calibrated value of 0.99 means that the score is higher than 99% of the last 500 scores. This alert threshold has the same meaning for every detector. The loop raises no alerts for the first 200 points (a short warm-up). The detector and the calibrator need some data before their output is stable.
+A calibrated value of 0.99 means that 99% of the scores currently in the window are lower. The window holds up to 500 scores, including the current score. This is a relative rank, not the probability that the point is an anomaly. We skip alerts for the first 200 points as a short warm-up; this is an example choice, not a guarantee of stable scores. See :doc:`guides/alerts` to choose a threshold and window for your data.
 
 After the warm-up, the stream has 36 anomalies, so at this threshold the detector finds 15 of them. To find more anomalies, lower the threshold, and expect more false alerts. :doc:`guides/evaluate` shows how to measure this trade-off with precision and recall.
 

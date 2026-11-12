@@ -6,13 +6,13 @@ This page explains the ideas behind PySAD. It shows how a streaming detector dif
 Streaming anomaly detection
 ---------------------------
 
-A stream is data that arrives one point at a time and does not end. A point is one record of the data, for example one sensor reading. An anomaly is a point that does not fit the pattern of the other points. Examples are a spike in a sensor reading, a fraudulent payment or a failing server.
+A stream is a sequence of points processed in arrival order. It can continue indefinitely. A point is one record of the data, for example one sensor reading. An anomaly is a point that does not fit the pattern of the other points. Examples are a spike in a sensor reading, a fraudulent payment or a failing server.
 
-A batch detector, such as the detectors in `PyOD <https://github.com/yzhao062/pyod>`_, trains on a complete dataset and then scores it. A stream has no complete dataset. A stream sets three constraints:
+A batch detector, such as those in `PyOD <https://github.com/yzhao062/pyod>`_, trains on a fixed dataset and can then score new points. Updating that model generally requires retraining. An ongoing stream introduces three concerns:
 
-- Points arrive one at a time, and the detector must score each point before the next one arrives.
-- The stream does not end, so the detector cannot keep every point in memory.
-- The data drifts: normal behavior changes over time. The detector must follow the change.
+- Points arrive one at a time, so scoring and learning must keep up with the arrival rate.
+- Keeping every point would make memory grow without bound.
+- Normal behavior can change over time (drift), making earlier data less representative.
 
 A streaming detector learns from each point once and keeps a summary of the stream instead of the full stream. The summary is often a window: the most recent points or scores, up to a fixed number. The detector updates its model of normal behavior with each new point. It gives each point an anomaly score: a number that is higher for a more anomalous point.
 
@@ -63,7 +63,7 @@ Only the stream and the detector are necessary. Each stage is an object with its
      - Combines the scores of several detectors into one score.
    * - Calibrate
      - :mod:`pysad.transform.probability_calibration`
-     - Converts a score into a value between 0 and 1 with the same meaning for every detector.
+     - Maps a score to a value between 0 and 1 using a reference distribution of scores.
    * - Evaluate
      - :mod:`pysad.evaluation`
      - Measures the scores against labels (anomaly or normal), one point at a time.
@@ -92,7 +92,7 @@ Because ``score_partial`` does not change the model, you can score a point witho
 Higher means more anomalous
 ---------------------------
 
-Every output in PySAD has the same direction: a higher value means a more anomalous point. This rule applies to detectors, postprocessors, ensemblers and calibrators. A threshold is the value at or above which you raise an alert. You can replace one component with another, and the same threshold logic still works.
+Anomaly scores in PySAD have the same direction: a higher value means a more anomalous point. This rule applies to detectors, postprocessors, ensemblers and calibrators. A threshold is the value at or above which you raise an alert. You can replace one component with another, and the same threshold logic still works.
 
 The scale of the raw scores is different for each detector. Some detectors give a negative log density, which is high where points are rare. Some give a count and some give 0 or 1. Do not compare raw scores of two different detectors. Calibrate the scores first.
 
@@ -113,7 +113,7 @@ A calibrator converts a raw score into a value between 0 and 1. PySAD has four c
 :class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator`
    Fits a Generalized Pareto distribution to the highest scores with extreme value theory. It gives one minus the probability that a score is higher than the new score. It makes no assumption about the distribution of the scores, and it estimates the probability of scores that are higher than all scores seen so far.
 
-With the conformal calibrator, a threshold such as 0.99 has the same meaning for every detector. If most recent scores come from normal points, about 1% of normal points raise an alert. A false alert is an alert for a normal point. To get fewer false alerts, increase the threshold.
+With the conformal calibrator, a threshold such as 0.99 refers to the rank in the recent score window, regardless of the raw score scale. If normal scores have a stable distribution and few ties, about 1% may exceed this threshold. Drift, dependent scores, ties and anomalies in the window can change the observed alert rate. The calibrated value is not the probability that a point is an anomaly. A false alert is an alert for a normal point; increasing the threshold reduces alerts for a given score sequence.
 
 Prequential evaluation
 ----------------------
@@ -124,8 +124,8 @@ Prequential evaluation (predict, then train) is the standard way to measure a de
 
    for x, label in streamer.iter(X, y):
        score = model.score_partial(x)
-       model.fit_partial(x)
        metric.update(label, score)
+       model.fit_partial(x)
 
 Most examples in this documentation call ``fit_score_partial`` instead. It scores each point before the detector learns from it, as :ref:`the model interface <model-interface>` explains. It also matches a live system, where the detector learns from every point that it scores. :func:`~pysad.evaluation.evaluate_stream` runs this loop for a labeled stream and returns the value of each metric.
 

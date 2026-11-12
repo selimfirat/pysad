@@ -51,7 +51,7 @@ To change the code, see :doc:`contributing`.
 Dependencies
 ------------
 
-pip and conda install these packages with PySAD. PySAD has no optional extras, so you do not install other packages. Every detector works after installation. To run a PyOD detector through :mod:`pysad.integrations`, install PyOD with ``pip install pyod`` or ``conda install -c conda-forge pyod``. To run a River forecaster through :class:`~pysad.integrations.PredictiveAnomalyDetector`, install River with ``pip install river``. River needs Python 3.11 or newer.
+pip and conda install the runtime dependencies listed below. PySAD has no optional extras. Integrations with external libraries require those libraries separately; see `Install integration libraries`_ below.
 
 .. list-table::
    :header-rows: 1
@@ -69,6 +69,13 @@ pip and conda install these packages with PySAD. PySAD has no optional extras, s
    * - SciPy
      - 1.13.0
      - Statistical tests, distances, the error function and loading the benchmark datasets
+
+Install integration libraries
+-----------------------------
+
+To run a PyOD detector through :mod:`pysad.integrations`, install PyOD with ``pip install pyod`` or ``conda install -c conda-forge pyod``. See :doc:`guides/pyod` for usage.
+
+To run a River forecaster through :class:`~pysad.integrations.PredictiveAnomalyDetector`, install River with ``pip install river``. River needs Python 3.11 or newer.
 
 Test the installation
 ---------------------

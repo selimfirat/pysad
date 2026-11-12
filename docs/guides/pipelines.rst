@@ -112,7 +112,7 @@ See ``examples/example_river_pipeline.py`` for a complete evaluation loop.
 Combine several detectors
 -------------------------
 
-An ensemble combines the scores of several detectors into one score. It is usually more stable than each of its detectors.
+An ensemble combines the scores of several detectors into one score. Compare its performance with the individual detectors on your data, as :doc:`evaluate` shows.
 
 The raw scores of different detectors have different scales. Before you combine the scores, normalize the scores of each detector with :class:`~pysad.transform.postprocessing.ZScorePostprocessor` over a sliding window, then combine the pipelines with ``&`` (or :class:`~pysad.models.ModelEnsemble` for a custom ensembler):
 

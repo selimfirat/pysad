@@ -47,13 +47,13 @@ To get the alerts as 0/1 labels, for example for :class:`~pysad.evaluation.Preci
 Choose the threshold
 --------------------
 
-The threshold sets how often a normal point raises an alert:
+Use these thresholds as starting points when normal scores have a stable distribution and few ties. The rates are approximate: drift, dependent scores and anomalies in the calibration window can change them. Validate the threshold on labeled data with :doc:`evaluate`.
 
 .. list-table::
    :header-rows: 1
 
    * - Threshold
-     - Normal points that raise an alert
+     - Approximate normal-point alert rate
    * - 0.95
      - About 1 in 20
    * - 0.99
@@ -148,7 +148,7 @@ Label the scores with a running quantile
        if quantile_filter.fit_transform_partial(model.fit_score_partial(x)):
            alerts.append(t)
 
-About 1 in 100 scores gets the label 1, also when the stream has no anomalies. Unlike the conformal calibrator, the filter does not forget old scores. Thus it follows a change in the scores slowly.
+With a stable score distribution and few ties, about 1 in 100 scores gets the label 1, even when the stream has no anomalies. Unlike the conformal calibrator, the filter does not forget old scores. Thus it follows a change in the scores slowly.
 
 Smooth noisy scores
 -------------------

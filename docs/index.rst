@@ -21,7 +21,7 @@ PySAD
 
    .. rst-class:: lead
 
-      PySAD is a Python library that finds anomalies (unusual data points) in data streams. It scores each point when the point arrives. It has streaming detectors, calibrated alerts and streaming evaluation.
+      PySAD is a Python library for anomaly detection on data streams. Score and learn from each point as it arrives, calibrate scores for alerts, and evaluate results against labels.
 
    .. container:: actions
 
@@ -78,7 +78,7 @@ PySAD
 
       A Robust Random Cut Forest scores three synthetic sensors one point at a time. Conformal calibration converts each score into the fraction of recent scores that it exceeds. It raises an alert when this calibrated value reaches 0.995.
 
-A batch detector needs the whole dataset before it can score a point. A stream does not give you the whole dataset. Points arrive one at a time, and the data drifts (its distribution changes over time). You must decide about each point before the next point arrives. Every PySAD detector takes one point at a time, and most detectors keep a fixed amount of memory.
+Streaming detectors update as points arrive. They can process an ongoing stream without waiting for a complete dataset. Every PySAD detector takes one point at a time, and most keep a fixed amount of memory. See :doc:`concepts` for scoring order, drift and memory limits.
 
 .. container:: cards
 
@@ -162,7 +162,7 @@ What PySAD contains
       `publications that cite PySAD <https://scholar.google.com/scholar?cites=3884618599898298487>`_
 
 - The detectors use robust statistics, random forests, random projections and other methods. :doc:`detectors` lists each detector with its method, input and memory, and the :doc:`benchmark <benchmark>` compares the multivariate detectors on |num_datasets| datasets.
-- The conformal calibrator converts each raw score into the fraction of recent scores that it exceeds. As a result, one alert threshold works for every detector.
+- The conformal calibrator converts each raw score into the fraction of recent scores that it exceeds. The threshold therefore refers to a rank in the recent window rather than a detector-specific raw score. It does not specify the probability that a point is an anomaly.
 - Streamers replay arrays and DataFrames as streams.
 - Metrics update after every point. :doc:`guides/evaluate` explains each metric.
 - Preprocessors, random projections, score postprocessors and ensemblers work with every detector. Preprocessors change each point before the detector scores it. Postprocessors change the scores, for example to smooth them. Ensemblers combine the scores of several detectors.
@@ -184,8 +184,13 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
 
    getting_started
    installation
-   concepts
    examples
+
+.. toctree::
+   :hidden:
+   :caption: Explanation
+
+   concepts
 
 .. toctree::
    :hidden:

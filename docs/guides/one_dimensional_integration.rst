@@ -93,19 +93,3 @@ The model learns from every point, including points that raise alerts.
 Replace the generated values with your stream.
 For a benchmark dataset, load it with :class:`~pysad.utils.Data` and select one column with ``X[:, :1]``.
 Keep the two-dimensional batch shape before you pass it to ``ArrayStreamer``.
-
-Understand the py-outlier wrapper mismatch
-------------------------------------------
-
-The `py-outlier wrapper at revision 9a15aba <https://github.com/askmy-stack/py-outlier/blob/9a15aba1b259d1982f65a8f12742cf5f4ae2a4c1/src/anomaly_detection/models/streaming/pysad_wrapper.py>`_
-exposes ``score_one`` and ``fit_partial`` through its own interface.
-Its calls to the underlying PySAD model differ from the API in this recipe:
-
-* It calls ``HalfSpaceTrees(**params)``. The default empty parameters omit the required feature bounds.
-* It reshapes each point to ``(1, -1)``. PySAD single-instance methods need a feature vector with shape ``(num_features,)``.
-* It calls ``self._model.score_one(...)``. PySAD models expose ``score_partial``, not ``score_one``.
-
-A wrapper can expose its own ``score_one`` method.
-That method must call PySAD's ``score_partial`` with a feature vector.
-It must supply the bounds and keep scoring separate from updates.
-For River's ``score_one`` and ``learn_one`` interface, use :class:`~pysad.integrations.RiverAnomalyDetector` as :doc:`pipelines` explains.

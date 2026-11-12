@@ -1,9 +1,128 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.spatial.distance import cdist
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.window import RingBuffer
+
+
+def _normalize_window_and_point(
+    W: np.ndarray, x: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Normalizes the sliding window and query point by feature-wise mean and std.
+
+    Args:
+        W (np.ndarray): Sliding window observations of shape (N, d).
+        x (np.ndarray): Query observation of shape (d,).
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]: Normalized window of shape (N, d) and
+            normalized query point of shape (d,).
+    """
+    mu = np.mean(W, axis=0)
+    sigma = np.std(W, axis=0)
+    zero_std = sigma < 1e-12
+    scale = np.where(zero_std, 1.0, sigma)
+
+    W_norm = (W - mu) / scale
+    x_norm = (x - mu) / scale
+    # Ensure constant dimensions are exactly 0.0 when query equals the window mean
+    if np.any(zero_std):
+        exact_zero = np.isclose(x - mu, 0.0, atol=1e-12)
+        x_norm[zero_std & exact_zero] = 0.0
+        W_norm[:, zero_std] = 0.0
+
+    return W_norm, x_norm
+
+
+def _select_reference_set(
+    W_norm: np.ndarray, x_norm: np.ndarray, k: int, s: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Selects the reference set using Shared Nearest Neighbor (SNN) similarity.
+
+    1. Identifies the k nearest neighbors of x_norm in W_norm.
+    2. Computes the shared nearest neighbor similarity between x_norm and each candidate.
+    3. Ranks candidates deterministically (higher SNN similarity, smaller distance, smaller index).
+    4. Selects the top s candidates to form the reference set S.
+
+    Args:
+        W_norm (np.ndarray): Normalized window observations of shape (N, d).
+        x_norm (np.ndarray): Normalized query point of shape (d,).
+        k (int): Number of nearest neighbors.
+        s (int): Size of the reference set.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]: Reference set S of shape (s_eff, d) and
+            their corresponding indices in W_norm.
+    """
+    n_samples = len(W_norm)
+    k_eff = min(k, n_samples)
+    s_eff = min(s, k_eff)
+
+    dists_to_x = np.linalg.norm(W_norm - x_norm, axis=1)
+    cand_indices = np.argsort(dists_to_x, kind="stable")[:k_eff]
+    cand_set = set(cand_indices)
+
+    # Compute pairwise distances between candidate points and all window points
+    cand_points = W_norm[cand_indices]
+    pair_dists = cdist(cand_points, W_norm)
+
+    # Calculate SNN similarity for each candidate
+    candidate_ranking = []
+    for idx_in_cands, cand_idx in enumerate(cand_indices):
+        q_nn = np.argsort(pair_dists[idx_in_cands], kind="stable")[:k_eff]
+        snn_sim = len(cand_set.intersection(q_nn))
+        # Deterministic sorting key: (-snn_sim, distance to x, original index)
+        candidate_ranking.append((-snn_sim, dists_to_x[cand_idx], cand_idx))
+
+    candidate_ranking.sort()
+    selected_indices = np.array([item[2] for item in candidate_ranking[:s_eff]], dtype=int)
+    ref_set = W_norm[selected_indices]
+
+    return ref_set, selected_indices
+
+
+def _calculate_feature_relevance(
+    ref_set: np.ndarray, x_norm: np.ndarray, theta: float
+) -> tuple[np.ndarray, np.ndarray]:
+    """Calculates angle-based feature relevance and selects the relevant subspace.
+
+    For each dimension j, the relevance is defined by the absolute cosine of the angle
+    between the directional displacement vector (x_norm - center(ref_set)) and the
+    coordinate axis j. Dimensions with relevance exceeding (1 + theta) * mean_relevance
+    are selected. If no dimensions meet this threshold, all dimensions are retained.
+
+    Args:
+        ref_set (np.ndarray): Reference set observations of shape (s, d).
+        x_norm (np.ndarray): Normalized query point of shape (d,).
+        theta (float): Relevance threshold multiplier.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]: Feature relevance array of shape (d,) and
+            the 1D array of selected feature indices.
+    """
+    d = len(x_norm)
+    c_s = np.mean(ref_set, axis=0)
+    v = x_norm - c_s
+    v_norm = float(np.linalg.norm(v))
+
+    if v_norm < 1e-12:
+        relevance = np.full(d, 1.0 / d, dtype=np.float64)
+        selected_subspace = np.arange(d, dtype=int)
+        return relevance, selected_subspace
+
+    # Angle between v and standard basis vector e_j has cos(alpha_j) = v_j / ||v||
+    relevance = np.abs(v) / v_norm
+    mean_relevance = float(np.mean(relevance))
+    threshold = (1.0 + theta) * mean_relevance
+
+    selected_subspace = np.where(relevance > threshold)[0]
+    if len(selected_subspace) == 0:
+        # Fall back to full space if no feature dominates by the threshold
+        selected_subspace = np.arange(d, dtype=int)
+
+    return relevance, selected_subspace
 
 
 class ABSAD(BaseModel):
@@ -119,5 +238,12 @@ class ABSAD(BaseModel):
         """
         if len(self._window) < max(2, self.num_references):
             return 0.0
+
+        x = np.asarray(X, dtype=np.float64)
+        W = np.asarray(self._window, dtype=np.float64)
+
+        W_norm, x_norm = _normalize_window_and_point(W, x)
+        ref_set, _ = _select_reference_set(W_norm, x_norm, self.num_neighbors, self.num_references)
+        _, _ = _calculate_feature_relevance(ref_set, x_norm, self.theta)
 
         return 0.0

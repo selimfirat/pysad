@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar, Literal
+
 import numpy as np
 from sklearn.utils import check_random_state
 
@@ -70,6 +72,10 @@ class HTM(BaseModel):
     Raises:
         ValueError: If ``min_val`` is greater than ``max_val``.
     """
+
+    _input_kind: ClassVar[Literal["multivariate", "univariate", "timestamped", "edge"]] = (
+        "timestamped"
+    )
 
     def __init__(
         self,
@@ -179,3 +185,44 @@ class HTM(BaseModel):
                 return 1.0
         raw_score = self.temporal_memory_.score(self._active_columns(timestamp, value, learn=False))
         return self.calibrator_.transform_partial(raw_score) if self.likelihood else raw_score
+
+    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+        """Scores the next instance against earlier predictions and then learns it in one pass.
+
+        Args:
+            X (np.float64 array of shape (2,)): The timestamp in seconds since the Unix epoch and the value.
+            y (int): Ignored since the model is unsupervised (Default=None).
+
+        Returns:
+            float: The anomaly likelihood of the instance, its raw anomaly score if ``likelihood`` is False, or 1.0 for a spatial anomaly.
+        """
+        if self.spatial_pooler_.boost_strength != 0.0:
+            score = self.score_partial(X)
+            self.fit_partial(X, y)
+            return score
+
+        timestamp, value = X
+        spatial_anomaly = False
+        if self.value_min_ is not None and self.value_max_ is not None:
+            tolerance = (self.value_max_ - self.value_min_) * _SPATIAL_TOLERANCE
+            spatial_anomaly = tolerance > 0.0 and not (
+                self.value_min_ - tolerance <= value <= self.value_max_ + tolerance
+            )
+
+        columns = self._active_columns(timestamp, value, learn=True)
+        raw_score = self.temporal_memory_.score(columns)
+        if spatial_anomaly:
+            score = 1.0
+            self.calibrator_.fit_partial(raw_score)
+        elif self.likelihood:
+            score = self.calibrator_.fit_transform_partial(raw_score)
+        else:
+            score = raw_score
+            self.calibrator_.fit_partial(raw_score)
+
+        self.temporal_memory_.fit(columns)
+        if self.value_min_ is None or value < self.value_min_:
+            self.value_min_ = float(value)
+        if self.value_max_ is None or value > self.value_max_:
+            self.value_max_ = float(value)
+        return float(score)

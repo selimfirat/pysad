@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pysad.core.base_statistic import UnivariateStatistic
+from pysad.core.base_statistic import BaseStatistic
 
 
-class ExponentialMovingAverageMeter(UnivariateStatistic):
+class ExponentialMovingAverageMeter(BaseStatistic):
     """The statistic that tracks an exponentially weighted moving average of the stream.
 
     Each update moves the tracked value a fraction ``alpha`` of the way toward the new
@@ -70,22 +70,6 @@ class ExponentialMovingAverageMeter(UnivariateStatistic):
         self.num_items += 1
 
         return self
-
-    def remove(self, num: float) -> ExponentialMovingAverageMeter:
-        """Raises ``NotImplementedError``, because the meter cannot remove observations.
-
-        The meter keeps only its current value, so a past observation cannot be taken
-        back. Use a windowed batch average for windows.
-
-        Args:
-            num (float): The value to be removed.
-
-        Returns:
-            object: self.
-        """
-        raise NotImplementedError(
-            "The meter keeps only its current value, so it cannot remove observations."
-        )
 
     def get(self) -> float:
         """Method to obtain the tracked statistic.

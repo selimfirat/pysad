@@ -24,8 +24,10 @@ def _iter_rows(data: pd.DataFrame | pd.Series) -> Iterator[Any]:
             # Missing integers use floats. Missing booleans use objects.
             dtype = np.dtype(object if dtype.kind == "b" else np.float64)
 
-    for i in range(len(data)):
-        yield data.iloc[i : i + 1].to_numpy(dtype=dtype)[0]
+    for start in range(0, len(data), 128):
+        chunk = data.iloc[start : start + 128].to_numpy(dtype=dtype)
+        for i in range(len(chunk)):
+            yield chunk[i]
 
 
 class PandasStreamer(BaseStreamer):

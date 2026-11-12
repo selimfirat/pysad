@@ -2,12 +2,12 @@
 
 from pysad.evaluation import AUROCMetric
 from pysad.models import xStream
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.utils import Data
 
 if __name__ == "__main__":
     model = xStream(random_state=0)
-    postprocessor = RunningZScorePostprocessor(window_size=100)
+    postprocessor = ZScorePostprocessor(window_size=100)
     metric = AUROCMetric()
 
     for x, label in Data().get_iterator("arrhythmia.mat", shuffle=False):

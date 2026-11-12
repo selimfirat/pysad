@@ -20,14 +20,14 @@ This pipeline scales each point to length 1, projects it to 20 features, scores 
 .. code-block:: python
 
    from pysad.models import LODA
-   from pysad.transform.postprocessing import RunningAveragePostprocessor
+   from pysad.transform.postprocessing import AveragePostprocessor
    from pysad.transform.preprocessing import InstanceUnitNormScaler
    from pysad.transform.projection import GaussianRandomProjector
 
    scaler = InstanceUnitNormScaler()
    projector = GaussianRandomProjector(num_components=20, random_state=0)
    model = LODA(random_state=0)
-   smoother = RunningAveragePostprocessor(window_size=5)
+   smoother = AveragePostprocessor(window_size=5)
 
    for x in streamer.iter(X):
        x = scaler.fit_transform_partial(x)
@@ -64,16 +64,15 @@ Choose ``shingle_size`` so that a shingle holds a typical pattern, for example o
 Chain the stages into one model
 -------------------------------
 
-:class:`~pysad.models.StreamPipeline` runs the same loop in one model. It has the methods of a detector, so it goes where a detector goes, for example into an evaluation loop or an ensemble:
+:class:`~pysad.models.StreamPipeline` runs the same loop in one model, and the ``|`` operator builds one directly. It has the methods of a detector, so it goes where a detector goes, for example into an evaluation loop or an ensemble:
 
 .. code-block:: python
 
-   from pysad.models import LODA, StreamPipeline
-
-   pipeline = StreamPipeline(
-       model=LODA(random_state=0),
-       preprocessors=[InstanceUnitNormScaler(), GaussianRandomProjector(num_components=20, random_state=0)],
-       postprocessors=[RunningAveragePostprocessor(window_size=5)],
+   pipeline = (
+       InstanceUnitNormScaler()
+       | GaussianRandomProjector(num_components=20, random_state=0)
+       | LODA(random_state=0)
+       | AveragePostprocessor(window_size=5)
    )
 
    for x in streamer.iter(X):
@@ -115,32 +114,29 @@ Combine several detectors
 
 An ensemble combines the scores of several detectors into one score. It is usually more stable than each of its detectors.
 
-The raw scores of different detectors have different scales. Before you combine the scores, normalize the scores of each detector. This example uses a running z-score, the distance from the recent mean in standard deviations:
+The raw scores of different detectors have different scales. Before you combine the scores, normalize the scores of each detector with :class:`~pysad.transform.postprocessing.ZScorePostprocessor` over a sliding window, then combine the pipelines with ``&`` (or :class:`~pysad.models.ModelEnsemble` for a custom ensembler):
 
 .. code-block:: python
 
-   import numpy as np
-
-   from pysad.models import LODA, RSHash, xStream
-   from pysad.transform.ensemble import AverageScoreEnsembler
-   from pysad.transform.postprocessing import RunningZScorePostprocessor
+   from pysad.models import LODA, ModelEnsemble, RSHash, xStream
+   from pysad.transform.ensemble import MaximumScoreEnsembler
+   from pysad.transform.postprocessing import ZScorePostprocessor
    from pysad.utils import get_minmax_array
 
    mins, maxes = get_minmax_array(X)
-   models = [
-       LODA(random_state=0),
-       xStream(random_state=0),
-       RSHash(feature_mins=mins, feature_maxes=maxes, random_state=0),
-   ]
-   normalizers = [RunningZScorePostprocessor(window_size=500) for _ in models]
-   ensembler = AverageScoreEnsembler()
+   ensemble = (
+       (LODA(random_state=0) | ZScorePostprocessor(window_size=500))
+       & (xStream(random_state=0) | ZScorePostprocessor(window_size=500))
+       & (
+           RSHash(feature_mins=mins, feature_maxes=maxes, random_state=0)
+           | ZScorePostprocessor(window_size=500)
+       )
+   )
 
    for x in streamer.iter(X):
-       scores = np.array([
-           normalizer.fit_transform_partial(model.fit_score_partial(x))
-           for model, normalizer in zip(models, normalizers)
-       ])
-       score = ensembler.fit_transform_partial(scores)
+       score = ensemble.fit_score_partial(x)
+
+   max_ensemble = ModelEnsemble(ensemble.models, ensembler=MaximumScoreEnsembler())
 
 PySAD has five ensemblers in :mod:`pysad.transform.ensemble`:
 

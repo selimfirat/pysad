@@ -18,6 +18,7 @@ from .validation import check_feature_bounds, check_univariate
 from .window import RingBuffer, Window
 
 __all__ = [
+    "_iterate",
     "ArrayStreamer",
     "check_feature_bounds",
     "check_univariate",

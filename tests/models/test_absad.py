@@ -113,3 +113,55 @@ def test_calculate_feature_relevance_fallback() -> None:
     relevance, selected = _calculate_feature_relevance(ref_set, x, theta=0.4)
     assert len(selected) == 3
     assert np.array_equal(selected, np.arange(3))
+
+
+from pysad.models.absad import _calculate_local_outlier_score
+
+
+def test_calculate_local_outlier_score_singular_covariance() -> None:
+    # All reference points identical -> zero covariance
+    ref_set = np.ones((5, 3))
+    x = np.array([2.0, 2.0, 2.0])
+    subspace = np.array([0, 1, 2])
+
+    score = _calculate_local_outlier_score(ref_set, x, subspace)
+    assert np.isfinite(score)
+    assert score > 0.0
+
+
+def test_score_partial_discrimination() -> None:
+    rng = np.random.RandomState(42)
+    model = ABSAD(window_size=30, num_neighbors=15, num_references=10)
+
+    # Fit 30 normal samples centered at 0
+    normal_data = rng.randn(30, 4) * 0.5
+    for sample in normal_data:
+        model.fit_partial(sample)
+
+    normal_query = rng.randn(4) * 0.5
+    anomalous_query = np.array([10.0, 10.0, -10.0, 8.0])
+
+    normal_score = model.score_partial(normal_query)
+    anom_score = model.score_partial(anomalous_query)
+
+    assert anom_score > normal_score
+    assert np.isfinite(normal_score)
+    assert np.isfinite(anom_score)
+
+
+def test_score_partial_preserves_state() -> None:
+    rng = np.random.RandomState(42)
+    model = ABSAD(window_size=20, num_neighbors=10, num_references=8)
+
+    for sample in rng.randn(20, 3):
+        model.fit_partial(sample)
+
+    window_before = model._window.to_array()
+    query = rng.randn(3)
+
+    score_1 = model.score_partial(query)
+    score_2 = model.score_partial(query)
+
+    assert score_1 == score_2
+    assert len(model._window) == 20
+    assert np.array_equal(window_before, model._window.to_array())

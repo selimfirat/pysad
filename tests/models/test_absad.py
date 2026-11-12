@@ -226,3 +226,98 @@ def test_selective_window_update_and_rejection() -> None:
     # Window must not have accepted the anomaly!
     assert len(model._window) == window_size
     assert np.array_equal(window_before_anom, model._window.to_array())
+
+
+
+def test_absad_high_dimensional_subspace_anomaly() -> None:
+    """Validates that ABSAD detects subtle subspace anomalies in high-dimensional streams.
+
+    Scenario:
+    - 50-dimensional feature space.
+    - Anomaly deviates significantly in only 2 features (features 0 and 1).
+    - Its full-space Euclidean distance to normal data is ~sqrt(50) ~= 7.07, identical to
+      an average normal observation, so full-space distance-based detectors cannot distinguish it.
+    - In the relevant 2D subspace, it exhibits an extreme anomaly signal.
+    - ABSAD must select the anomalous subspace and assign it a significantly higher LOS.
+    """
+    rng = np.random.RandomState(42)
+    n_dim = 50
+    window_size = 80
+    model = ABSAD(
+        window_size=window_size,
+        num_neighbors=30,
+        num_references=20,
+        theta=0.4,
+        confidence=0.99,
+    )
+
+    # Fit normal observations
+    normal_window = rng.randn(window_size, n_dim)
+    for sample in normal_window:
+        model.fit_partial(sample)
+
+    normal_test = rng.randn(n_dim)
+
+    # Subspace anomaly: deviates in features 0 and 1, normal in remaining 48 features
+    anom_subspace = np.zeros(n_dim)
+    anom_subspace[0] = 5.0
+    anom_subspace[1] = 5.0
+
+    # Ensure full-space Euclidean norm of anom is comparable to normal test point
+    full_space_dist_normal = np.linalg.norm(normal_test)
+    full_space_dist_anom = np.linalg.norm(anom_subspace)
+    assert abs(full_space_dist_anom - full_space_dist_normal) < 2.0
+
+    score_normal = model.score_partial(normal_test)
+    score_anom = model.score_partial(anom_subspace)
+
+    assert score_anom > score_normal
+
+
+def test_absad_window_eviction_bounded_memory() -> None:
+    window_size = 15
+    model = ABSAD(window_size=window_size, num_neighbors=8, num_references=5)
+    rng = np.random.RandomState(42)
+
+    # Feed 60 streaming instances
+    for _ in range(60):
+        model.fit_partial(rng.randn(4))
+
+    # Memory must stay bounded at window_size
+    assert len(model._window) == window_size
+    assert len(model._window_los) == window_size
+
+
+def test_absad_duplicate_observations() -> None:
+    model = ABSAD(window_size=20, num_neighbors=10, num_references=8)
+    # Stream identical duplicate observations
+    identical_point = np.array([3.0, -1.0, 2.0])
+    for _ in range(20):
+        model.fit_partial(identical_point)
+
+    score = model.score_partial(identical_point)
+    assert np.isfinite(score)
+    assert score >= 0.0
+
+
+def test_absad_warm_up_score_partial_is_zero() -> None:
+    model = ABSAD(window_size=50, num_neighbors=20, num_references=10)
+    rng = np.random.RandomState(42)
+
+    # Only 5 samples arrived (less than num_references = 10)
+    for _ in range(5):
+        model.fit_partial(rng.randn(3))
+
+    assert model.score_partial(rng.randn(3)) == 0.0
+
+
+def test_absad_fit_score_batch() -> None:
+    rng = np.random.RandomState(42)
+    model = ABSAD(window_size=30, num_neighbors=15, num_references=10)
+    X = rng.randn(40, 3)
+
+    scores = model.fit_score(X)
+    assert isinstance(scores, np.ndarray)
+    assert scores.shape == (40,)
+    assert np.all(np.isfinite(scores))
+    assert np.all(scores >= 0.0)

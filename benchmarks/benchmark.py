@@ -601,10 +601,11 @@ def _run(dataset, detector, seed, points):
             calibrated = calibrator().fit_transform(scores)
         row.update(alerts(name, calibrated[warmup(len(X)) :], y[warmup(len(X)) :], valid))
     scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
+    both = valid and 0 < y.sum() < len(y)  # AUROC and AUPR need both kinds of points
     return {
         **row,
-        "auroc": round(roc_auc_score(y, scores), 4) if valid else np.nan,
-        "aupr": round(average_precision_score(y, scores), 4) if valid else np.nan,
+        "auroc": round(roc_auc_score(y, scores), 4) if both else np.nan,
+        "aupr": round(average_precision_score(y, scores), 4) if both else np.nan,
         "ms_per_point": ms_per_point,
     }
 

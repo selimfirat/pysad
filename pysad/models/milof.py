@@ -16,7 +16,7 @@ class MiLOF(IncrementalLOF):
 
     MiLOF keeps `window_size` recent raw points and `num_summaries` cluster centers that summarize older points, so the memory stays bounded at `window_size + num_summaries` points instead of growing with the stream. Every time the window fills, the algorithm clusters the oldest half of the window into `num_summaries` centers with c-means, keeps the newest half intact, and deletes the oldest half. If a previous summary exists, the new centers are merged with it by weighted c-means, where the weight of a center is the number of raw points it represents. `score_partial` returns the LOF of the instance against the current raw points and cluster centers, without inserting it, so scoring does not change the model state. Until the memory holds more than `num_neighbors` points, the score is 0.
 
-    Deviations from the paper: the paper stops the nearest-neighbor search as soon as a cluster center is among the first `num_neighbors - 1` neighbors, because the remaining neighbors lie in the same cluster. This model treats cluster centers as ordinary neighbors and does not implement that early stop. The paper stores the LOF of each cluster center, but this model only keeps its k-distance and mean reachability distance, which are all that scoring needs; the center LOF is not stored. The paper deletes blocks of obsolete records, while this model summarizes the oldest half of the window whenever the window fills, and the default `window_size` of 1000 and `num_summaries` of 10 are choices of this implementation.
+    Deviations from the paper: the paper stops the nearest-neighbor search as soon as a cluster center is among the first `num_neighbors - 1` neighbors, because the remaining neighbors lie in the same cluster. This model treats cluster centers as ordinary neighbors and does not implement that early stop. The paper stores the LOF of each cluster center, but this model only keeps its k-distance and reachability distance, which are all that scoring needs; the center LOF is not stored. Summarizing the oldest half of the window whenever it fills is the paper's own rule (Algorithm 2 and Section 4.1), and the default `window_size` of 1000 and `num_summaries` of 10 are choices of this implementation.
 
     Args:
         num_neighbors (int): The number of nearest neighbors, k in the paper (Default=10).
@@ -77,9 +77,93 @@ class MiLOF(IncrementalLOF):
             self._summarize_and_merge()
         return self
 
+    def _candidate_matrix(self) -> np.ndarray:
+        """The candidate neighbor set: the cluster centers followed by the raw points in the window.
+
+        Centers occupy the combined indices ``[0, num_centers)`` and are stable across insertions,
+        while raw point ``s`` occupies combined index ``num_centers + s``.
+        """
+        n = self.num_instances_
+        if self.centers_ is None:
+            return self.X_[:n]
+        return np.vstack([self.centers_, self.X_[:n]])
+
+    def _num_centers(self) -> int:
+        return 0 if self.centers_ is None else self.centers_.shape[0]
+
+    def _k_dist_of(self, combined: np.ndarray) -> np.ndarray:
+        """The k-distance of each combined neighbor index: a center's k-distance, or a raw point's."""
+        c = self._num_centers()
+        out = np.empty(combined.shape, dtype=np.float64)
+        is_center = combined < c
+        if np.any(is_center):
+            assert self.center_k_dists_ is not None
+            out[is_center] = self.center_k_dists_[combined[is_center]]
+        if np.any(~is_center):
+            out[~is_center] = self.k_dists_[combined[~is_center] - c]
+        return out
+
+    def _update_neighbors(self, idx: np.ndarray, exclude: int | None = None) -> None:
+        # Recomputes the k nearest neighbors of the raw points in slots idx against the cluster
+        # centers and the raw points, so centers stay candidate neighbors of the kept points.
+        c = self._num_centers()
+        cand = self._candidate_matrix()  # (num_centers + num_instances_, D)
+        dists = cdist(self.X_[idx], cand)  # (len(idx), num_centers + num_instances_)
+        dists[np.arange(len(idx)), c + idx] = np.inf  # a point is not its own neighbor
+        if exclude is not None:
+            dists[:, c + exclude] = np.inf
+        neighbors = np.argpartition(dists, self.num_neighbors - 1, axis=1)[:, : self.num_neighbors]
+        self.neighbors_[idx] = neighbors
+        self.neighbor_dists_[idx] = np.take_along_axis(dists, neighbors, axis=1)
+        self.k_dists_[idx] = self.neighbor_dists_[idx].max(axis=1)
+
+    def _update_reach_dists(self, idx: np.ndarray) -> None:
+        # reach-dist(q, o) = max(k-distance(o), d(q, o)) for each neighbor o of q; a center's
+        # k-distance is its stored center k-distance.
+        reach = np.maximum(self._k_dist_of(self.neighbors_[idx]), self.neighbor_dists_[idx])
+        self.reach_dists_[idx] = reach.mean(axis=1)
+
+    def _reverse_neighbors(self, updated: np.ndarray) -> np.ndarray:
+        # The raw points whose lrd changes when the k-distances of `updated` change: `updated`,
+        # and each raw neighbor q of an updated point o that has o as a neighbor too. Cluster
+        # centers have no neighbor list of their own and are never updated, so they are not
+        # propagated through here.
+        c = self._num_centers()
+        candidates = self.neighbors_[updated]  # (len(updated), k), combined indices
+        is_raw = candidates >= c
+        raw_slots = np.where(is_raw, candidates - c, 0)
+        neighbor_of = self.neighbors_[raw_slots]  # (len(updated), k, k), combined indices
+        target = c + updated[:, None, None]  # combined index of each updated raw point
+        has_o = (neighbor_of == target).any(axis=2) & is_raw
+        return np.union1d(updated, raw_slots[has_o])
+
+    def _insert(self, p: int) -> None:
+        # Insertion of the instance in slot p. Cluster centers remain candidate neighbors of the
+        # existing points, and only the centers' own statistics are postponed (they keep the values
+        # computed at the last summarization).
+        n = self.num_instances_
+        c = self._num_centers()
+        dists = cdist(self.X_[p : p + 1], self._candidate_matrix())[0]  # (c + n,)
+        dists[c + p] = np.inf  # a point is not its own neighbor
+        neighbors = np.argpartition(dists, self.num_neighbors - 1)[: self.num_neighbors]
+        self.neighbors_[p] = neighbors
+        self.neighbor_dists_[p] = dists[neighbors]
+        self.k_dists_[p] = dists[neighbors].max()
+
+        dists_to_raw = dists[c : c + n]  # distance from the new point to each raw point
+        updated = np.flatnonzero(dists_to_raw < self.k_dists_[:n])
+        if updated.size:
+            farthest = self.neighbor_dists_[updated].argmax(axis=1)
+            self.neighbors_[updated, farthest] = c + p
+            self.neighbor_dists_[updated, farthest] = dists_to_raw[updated]
+            self.k_dists_[updated] = self.neighbor_dists_[updated].max(axis=1)
+
+        self._update_reach_dists(np.concatenate([self._reverse_neighbors(updated), np.array([p])]))
+
     def _summarize_and_merge(self) -> None:
         # Cluster the oldest half of the window into `num_summaries` centers, keep the newest half,
-        # merge with the previous summary if there is one, then rebuild the neighbors of the kept points.
+        # merge with the previous summary if there is one, then rebuild the neighbors of the kept
+        # points against the kept raw points and the cluster centers (Algorithm 2, lines 7-8).
         half = self.window_size // 2
         old = self.X_[:half]  # the oldest half, in arrival order
         new = self.X_[half : self.window_size]  # the newest half, kept intact
@@ -100,8 +184,13 @@ class MiLOF(IncrementalLOF):
         for j in range(self.num_summaries):
             members = labels == j
             if members.any():
+                # A center's k-distance is the mean of its members' k-distances. A center's lrd is
+                # the mean of its members' lrds, i.e. the harmonic mean of their mean reachability
+                # distances (Def. 3 and Eq. 6 of the paper).
                 k_dists[j] = self.k_dists_[:half][members].mean()
-                reach_dists[j] = self.reach_dists_[:half][members].mean()
+                member_reach = self.reach_dists_[:half][members]
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    reach_dists[j] = 1.0 / np.mean(1.0 / member_reach)
             else:
                 # An empty cluster has no members; fall back to the mean over the oldest half.
                 k_dists[j] = fallback_k
@@ -115,12 +204,6 @@ class MiLOF(IncrementalLOF):
         self.X_[:half] = new
         self.num_instances_ = half
         self._next = half
-        self._update_neighbors(np.arange(half), exclude=None)
-        self._update_reach_dists(np.arange(half))
-        # Recompute the k-nearest neighbors of the kept raw points against the kept raw points
-        # and the cluster centers, so that a center can set the k-distance and reachability
-        # distance of a kept point (Section 4.2.3 and Algorithm 2, line 23 of the paper).
-        self._update_kept_points_with_centers(centers, k_dists)
 
         self.centers_ = centers
         self.center_weights_ = weights
@@ -132,32 +215,11 @@ class MiLOF(IncrementalLOF):
         self._prev_reach_dists = reach_dists
         self._merge_step += 1
 
-    def _update_kept_points_with_centers(
-        self,
-        centers: np.ndarray,
-        center_k_dists: np.ndarray,
-    ) -> None:
-        # Recomputes the k nearest neighbors of the kept raw points against the kept raw points
-        # and the cluster centers, so that a center can be the k-th neighbor and set the
-        # k-distance and reachability distance of a kept point. The neighbor lists keep referring
-        # to raw slots; only the k-distances and reachability distances are updated to reflect
-        # centers as candidates.
-        n = self.num_instances_
-        raw = self.X_[:n]
-        cand = np.vstack([raw, centers])  # (n + c, D)
-        dists = cdist(raw, cand)  # (n, n + c)
-        dists[np.arange(n), np.arange(n)] = np.inf  # a point is not its own neighbor
-        neighbors = np.argpartition(dists, self.num_neighbors - 1, axis=1)[:, : self.num_neighbors]
-        nd = np.take_along_axis(dists, neighbors, axis=1)  # (n, k)
-        self.k_dists_[:n] = nd.max(axis=1)
-        is_center = neighbors >= n
-        k_dist_nb = np.where(
-            is_center,
-            center_k_dists[np.clip(neighbors - n, 0, centers.shape[0] - 1)],
-            self.k_dists_[np.clip(neighbors, 0, n - 1)],
-        )
-        reach = np.maximum(k_dist_nb, nd)
-        self.reach_dists_[:n] = reach.mean(axis=1)
+        # Rebuild the kept points' neighbors against the kept raw points and the cluster centers,
+        # so that a center can set the k-distance and reachability distance of a kept point and
+        # remains a candidate neighbor of the kept points (Section 4.2.3 and Algorithm 2, line 23).
+        self._update_neighbors(np.arange(half), exclude=None)
+        self._update_reach_dists(np.arange(half))
 
     def _merge(
         self,
@@ -168,7 +230,9 @@ class MiLOF(IncrementalLOF):
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         # Merges the current and previous summaries with weighted c-means, minimizing the weighted
         # squared distance to the merged centers. The weight of a center is the number of raw points
-        # it represents (Equation 10 and 11 of the paper).
+        # it represents (Equation 10 and 11 of the paper). A merged center's lrd is the weighted
+        # mean of its members' lrds, so its reachability distance is the weighted harmonic mean of
+        # their reachability distances.
         num = self.num_summaries
         prev_centers = self._prev_centers
         prev_weights = self._prev_weights
@@ -201,7 +265,8 @@ class MiLOF(IncrementalLOF):
             if mask.any():
                 new_weights[j] = wj.sum()
                 new_k_dists[j] = (wj * k_all[mask]).sum() / wj.sum()
-                new_reach_dists[j] = (wj * r_all[mask]).sum() / wj.sum()
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    new_reach_dists[j] = 1.0 / np.average(1.0 / r_all[mask], weights=wj)
             else:
                 # Keep the current center if the merge assigns no point to it.
                 new_weights[j] = weights[j]

@@ -3,7 +3,7 @@
 from pyod.models.iforest import IForest
 
 from pysad.evaluation import AUROCMetric
-from pysad.models.integrations import ReferenceWindowModel
+from pysad.integrations import ReferenceWindowModel
 from pysad.utils import ArrayStreamer, Data
 
 if __name__ == "__main__":

@@ -1,9 +1,200 @@
 from __future__ import annotations
 
+import copy
+import math
+
 import numpy as np
+from scipy.cluster.hierarchy import ClusterNode, linkage, to_tree
+from scipy.special import expit
+from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
-from pysad.models.kitnet_model import KitNET as kit
+
+
+class _CorClust:
+    """Incremental correlation-based feature clusterer for KitNET."""
+
+    def __init__(self, num_features: int) -> None:
+        self.n = num_features
+        self.c = np.zeros(num_features, dtype=np.float64)
+        self.c_r = np.zeros(num_features, dtype=np.float64)
+        self.c_rs = np.zeros(num_features, dtype=np.float64)
+        self.C = np.zeros((num_features, num_features), dtype=np.float64)
+        self.n_updates = 0
+
+    def update(self, x: np.ndarray) -> None:
+        self.n_updates += 1
+        self.c += x
+        c_rt = x - self.c / self.n_updates
+        self.c_r += c_rt
+        self.c_rs += c_rt**2
+        self.C += np.outer(c_rt, c_rt)
+
+    def corr_dist(self) -> np.ndarray:
+        c_rs_sqrt = np.sqrt(self.c_rs)
+        denom = np.outer(c_rs_sqrt, c_rs_sqrt)
+        denom[denom == 0.0] = 1e-100
+        dist: np.ndarray = 1.0 - self.C / denom
+        dist[dist < 0.0] = 0.0
+        return dist
+
+    def cluster(self, max_clust: int) -> list[list[int]]:
+        if self.n == 1:
+            return [[0]]
+        dist = self.corr_dist()
+        z_mat = linkage(dist[np.triu_indices(self.n, 1)])
+        bound = min(max(max_clust, 1), self.n)
+        root = to_tree(z_mat)
+        assert isinstance(root, ClusterNode)
+        return self._break_clusters(root, bound)
+
+    @staticmethod
+    def _break_clusters(dendro: ClusterNode, max_clust: int) -> list[list[int]]:
+        # Iterative stack avoids Python recursion-limit failures on chained single-linkage trees.
+        clusters: list[list[int]] = []
+        stack: list[ClusterNode] = [dendro]
+        while stack:
+            node = stack.pop()
+            if node.count <= max_clust:
+                clusters.append([int(idx) for idx in node.pre_order()])
+            else:
+                right = node.get_right()
+                left = node.get_left()
+                if right is not None:
+                    stack.append(right)
+                if left is not None:
+                    stack.append(left)
+        return clusters
+
+
+class _DenoisingAutoencoder:
+    """Single online tied-weight autoencoder used in KitNET's ensemble and output layers."""
+
+    def __init__(
+        self,
+        n_visible: int,
+        lr: float,
+        hidden_ratio: float,
+        rng: np.random.RandomState,
+    ) -> None:
+        n_hidden = int(math.ceil(n_visible * hidden_ratio))
+        self.n_visible = n_visible
+        self.n_hidden = n_hidden
+        self.lr = lr
+        self.n_trained = 0
+
+        self.norm_max = np.full(n_visible, -np.inf, dtype=np.float64)
+        self.norm_min = np.full(n_visible, np.inf, dtype=np.float64)
+
+        bound = 1.0 / n_visible
+        self.W: np.ndarray = np.asarray(
+            rng.uniform(low=-bound, high=bound, size=(n_visible, n_hidden)),
+            dtype=np.float64,
+        )
+        self.hbias = np.zeros(n_hidden, dtype=np.float64)
+        self.vbias = np.zeros(n_visible, dtype=np.float64)
+
+    def normalize(self, x: np.ndarray) -> np.ndarray:
+        # Constant training features are shifted without dividing by the 1e-16 guard.
+        scale = self.norm_max - self.norm_min + 1e-16
+        scale[self.norm_max == self.norm_min] = 1.0
+        return (x - self.norm_min) / scale
+
+    def train(self, x: np.ndarray) -> float:
+        self.n_trained += 1
+        np.maximum(self.norm_max, x, out=self.norm_max)
+        np.minimum(self.norm_min, x, out=self.norm_min)
+
+        x_norm = self.normalize(x)
+        y = np.asarray(expit(x_norm @ self.W + self.hbias), dtype=np.float64)
+        z = np.asarray(expit(y @ self.W.T + self.vbias), dtype=np.float64)
+
+        err_v = x_norm - z
+        err_h = (err_v @ self.W) * y * (1.0 - y)
+
+        self.W += self.lr * (np.outer(x_norm, err_h) + np.outer(err_v, y))
+        # Upstream KitNET-py uses np.mean(..., axis=0) on 1-D error vectors (scalar mean).
+        self.hbias += self.lr * float(err_h.mean())
+        self.vbias += self.lr * float(err_v.mean())
+        return float(np.sqrt(np.mean(err_v**2)))
+
+    def execute(self, x: np.ndarray) -> float:
+        x_norm = self.normalize(x)
+        y = np.asarray(expit(x_norm @ self.W + self.hbias), dtype=np.float64)
+        z = np.asarray(expit(y @ self.W.T + self.vbias), dtype=np.float64)
+        return float(np.sqrt(((x_norm - z) ** 2).mean()))
+
+
+class _KitNET:
+    """Two-layer online autoencoder ensemble from KitNET-py."""
+
+    def __init__(
+        self,
+        num_features: int,
+        max_autoencoder_size: int = 10,
+        fm_grace_period: int | None = None,
+        ad_grace_period: int = 10000,
+        learning_rate: float = 0.1,
+        hidden_ratio: float = 0.75,
+        feature_map: list[list[int]] | None = None,
+        random_state: int | np.random.RandomState | None = None,
+    ) -> None:
+        self.ad_grace_period = ad_grace_period
+        self.fm_grace_period = ad_grace_period if fm_grace_period is None else fm_grace_period
+        self.m = 1 if max_autoencoder_size <= 0 else max_autoencoder_size
+        self.lr = learning_rate
+        self.hr = hidden_ratio
+        self.n = num_features
+        self.random_state = random_state
+
+        self.n_trained = 0
+        self.n_executed = 0
+        self.feature_map = feature_map
+        self.fm = _CorClust(self.n)
+        self.active_map: list[list[int]] | None = None
+        self.temporary = False
+        self.ensemble_layer: list[_DenoisingAutoencoder] = []
+        self.output_layer: _DenoisingAutoencoder | None = None
+
+    def in_grace(self) -> bool:
+        return self.n_trained < self.fm_grace_period + self.ad_grace_period
+
+    def train(self, x: np.ndarray) -> None:
+        if self.n_trained < self.fm_grace_period and self.feature_map is None:
+            self.fm.update(x)
+            if (self.n_trained + 1) & self.n_trained == 0:
+                self._create_autoencoders(self.fm.cluster(self.m), temporary=True)
+        elif self.output_layer is None or self.temporary:
+            if self.feature_map is None:
+                self.feature_map = self.fm.cluster(self.m)
+            self._create_autoencoders(self.feature_map, temporary=False)
+
+        assert self.active_map is not None and self.output_layer is not None
+        scores_l1 = np.empty(len(self.ensemble_layer), dtype=np.float64)
+        for idx, ae in enumerate(self.ensemble_layer):
+            scores_l1[idx] = ae.train(x[self.active_map[idx]])
+        self.output_layer.train(scores_l1)
+        self.n_trained += 1
+
+    def execute(self, x: np.ndarray) -> float:
+        if self.output_layer is None or self.active_map is None:
+            raise RuntimeError("KitNET autoencoders have not trained on an instance yet.")
+        self.n_executed += 1
+        scores_l1 = np.empty(len(self.ensemble_layer), dtype=np.float64)
+        for idx, ae in enumerate(self.ensemble_layer):
+            scores_l1[idx] = ae.execute(x[self.active_map[idx]])
+        return self.output_layer.execute(scores_l1)
+
+    def _create_autoencoders(self, feature_map: list[list[int]], temporary: bool) -> None:
+        rng = check_random_state(self.random_state)
+        if temporary:
+            rng = copy.deepcopy(rng)
+        self.active_map = feature_map
+        self.temporary = temporary
+        self.ensemble_layer = [
+            _DenoisingAutoencoder(len(cluster), self.lr, self.hr, rng) for cluster in feature_map
+        ]
+        self.output_layer = _DenoisingAutoencoder(len(feature_map), self.lr, self.hr, rng)
 
 
 class KitNet(BaseModel):
@@ -31,14 +222,14 @@ class KitNet(BaseModel):
         hidden_ratio: float = 0.75,
         random_state: int | np.random.RandomState | None = None,
     ) -> None:
-
         self.grace_feature_mapping = grace_feature_mapping
         self.hidden_ratio = hidden_ratio
         self.learning_rate = learning_rate
         self.max_size_ae = max_size_ae
         self.grace_anomaly_detector = grace_anomaly_detector
         self.random_state = random_state
-        self.to_init = True
+        self.model: _KitNET | None = None
+        self.feature_map_: list[list[int]] | None = None
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> KitNet:
         """Fits the model to the next instance.
@@ -57,9 +248,9 @@ class KitNet(BaseModel):
         Returns:
             object: The model itself.
         """
-        if self.to_init:
+        if self.model is None:
             self.num_features = X.shape[0]
-            self.model = kit.KitNET(
+            self.model = _KitNET(
                 self.num_features,
                 self.max_size_ae,
                 self.grace_feature_mapping,
@@ -68,10 +259,10 @@ class KitNet(BaseModel):
                 self.hidden_ratio,
                 random_state=self.random_state,
             )
-            self.to_init = False
         # After both grace periods KitNET only scores, which is score_partial's job.
-        if self.model.inGrace():
+        if self.model.in_grace():
             self.model.train(X)
+            self.feature_map_ = self.model.feature_map
 
         return self
 
@@ -84,9 +275,32 @@ class KitNet(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        if self.to_init or self.model.outputLayer is None:
-            # KitNET builds its first autoencoders on the first instance, and there is nothing to
-            # score with before that.
+        if self.model is None or self.model.output_layer is None:
             return 0.0
-        else:
-            return self.model.execute(X)
+        return self.model.execute(X)
+
+
+# _CorClust, _DenoisingAutoencoder, and _KitNET are adapted from KitNET-py
+# (https://github.com/ymirsky/KitNET-py) and Yusuke Sugomori's DeepLearning
+# (https://github.com/yusugomori/DeepLearning), distributed under the MIT License:
+#
+# Copyright (c) 2017 Yisroel Mirsky
+# Copyright (c) 2017 Yusuke Sugomori
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.

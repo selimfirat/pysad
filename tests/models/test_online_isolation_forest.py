@@ -257,3 +257,20 @@ def test_subsampling_expires_the_originally_selected_points():
     # Both selected points expired. Rejecting the forgetting draws must not
     # leave those old points in the tree.
     assert model.score_partial(np.array([0.0])) == 1.0
+
+
+def test_packed_capacity_growth_across_trees_and_eviction():
+    """Growing packed node capacity in one tree updates _p_leaf_pl for later trees in the same step."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    rng = np.random.default_rng(0)
+    X = rng.uniform(size=(260, 4))
+    model = OnlineIsolationForest(
+        num_trees=16, max_leaf_samples=2, window_size=64, subsample=1.0, random_state=0
+    )
+    scores = model.fit_score(X)
+    assert scores.shape == (260,)
+    assert np.all(np.isfinite(scores))
+    assert np.all((scores >= 0.0) & (scores <= 1.0))

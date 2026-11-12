@@ -21,8 +21,10 @@ synthetic uniform streams.
 """
 
 import argparse
+import ast
 import csv
 import functools
+import inspect
 import os
 import subprocess
 import sys
@@ -40,11 +42,9 @@ from threadpoolctl import threadpool_limits
 import pysad
 from pysad import models
 from pysad.core.base_model import BaseModel
+from pysad.transform import probability_calibration
 from pysad.transform.preprocessing import ShingleTransformer
-from pysad.transform.probability_calibration import (
-    ConformalProbabilityCalibrator,
-    GaussianTailProbabilityCalibrator,
-)
+from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import Data, fix_seed
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -83,47 +83,129 @@ DRIFT = {
 DRIFT_POINTS = 10_000
 
 
-def _ranges(X):
-    return {"feature_mins": np.zeros(X.shape[1]), "feature_maxes": np.ones(X.shape[1])}
+# Fallback attributes keep this script compatible with base checkouts before _is_detector / _input_kind existed.
+_FALLBACK_NON_DETECTORS = frozenset(
+    {"ModelEnsemble", "NullModel", "PerfectModel", "RandomModel", "StreamPipeline"}
+)
+_FALLBACK_INPUT_KINDS = {"HTM": "timestamped", "MIDAS": "edge"}
 
+
+def _is_detector_model(name):
+    cls = getattr(models, name)
+    flag = getattr(cls, "_is_detector", None)
+    if flag is not None:
+        return bool(flag)
+    return name not in _FALLBACK_NON_DETECTORS
+
+
+def _model_input_kind(name):
+    cls = getattr(models, name)
+    kind = getattr(cls, "_input_kind", None)
+    if kind is not None and kind != "multivariate":
+        return kind
+    if name in _FALLBACK_INPUT_KINDS:
+        return _FALLBACK_INPUT_KINDS[name]
+    if hasattr(sys.modules[cls.__module__], "check_univariate"):
+        return "univariate"
+    return kind or "multivariate"
+
+
+def _accepts_random_state(sig):
+    return "random_state" in sig.parameters or any(
+        p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+    )
+
+
+def _required_param_names(sig):
+    return [
+        p.name
+        for p in sig.parameters.values()
+        if p.name != "self"
+        and p.default is inspect.Parameter.empty
+        and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+    ]
+
+
+def _make_multivariate_factory(cls):
+    sig = inspect.signature(cls.__init__)
+    required = _required_param_names(sig)
+    seeded = _accepts_random_state(sig)
+
+    def factory(X, seed):
+        kwargs = {}
+        for param in required:
+            if param == "feature_mins":
+                kwargs["feature_mins"] = np.zeros(X.shape[1])
+            elif param == "feature_maxes":
+                kwargs["feature_maxes"] = np.ones(X.shape[1])
+            elif param == "input_shape":
+                kwargs["input_shape"] = X.shape[1]
+            elif param == "initial_X":
+                kwargs["initial_X"] = X[: warmup(len(X))]
+            else:
+                raise TypeError(
+                    f"{cls.__name__} requires {param!r}; add an entry to DETECTOR_OVERRIDES."
+                )
+        if seeded:
+            kwargs["random_state"] = seed
+        return cls(**kwargs)
+
+    return factory
+
+
+def _make_univariate_factory(cls):
+    sig = inspect.signature(cls.__init__)
+    required = _required_param_names(sig)
+    has_period = "period" in sig.parameters
+    seeded = _accepts_random_state(sig)
+
+    def factory(n, period):
+        kwargs = {}
+        for param in required:
+            if param == "min_val":
+                kwargs["min_val"] = 0.0
+            elif param == "max_val":
+                kwargs["max_val"] = 1.0
+            elif param == "period":
+                kwargs["period"] = period
+            elif param in ("window_length", "subsequence_length"):
+                kwargs[param] = SHINGLE_SIZE
+            elif param == "window_size":
+                # A window of 3 periods and one point, because R's stl() needs more than 2 periods,
+                # and an odd window makes the robust STL match R.
+                kwargs["window_size"] = 3 * period + 1 if has_period else WARMUP_POINTS
+            elif param == "probationary_period":
+                kwargs["probationary_period"] = nab_probation(n)
+            else:
+                raise TypeError(
+                    f"{cls.__name__} requires {param!r}; add an entry to UNIVARIATE_OVERRIDES."
+                )
+        if seeded:
+            kwargs["random_state"] = 0
+        return cls(**kwargs)
+
+    return factory
+
+
+# Non-default benchmark arguments; every other detector in pysad.models.__all__ is auto-discovered.
+DETECTOR_OVERRIDES = {}
+UNIVARIATE_OVERRIDES = {
+    # HTM learns during NAB's probationary period, as in NAB.
+    "HTM": lambda n, period: models.HTM(
+        min_val=0.0, max_val=1.0, probationary_period=nab_probation(n), random_state=0
+    ),
+    # Fix the length without labels, as for shingles, and initialize in the standard warm-up.
+    "SAND": lambda n, period: models.SAND(
+        subsequence_length=SHINGLE_SIZE, batch_size=WARMUP_POINTS, random_state=0
+    ),
+}
 
 # Each detector gets its defaults, plus the arguments that it requires. X is scaled to [0, 1].
 DETECTORS = {
-    "ADeMS": lambda X, seed: models.ADeMS(),
-    "AnyOut": lambda X, seed: models.AnyOut(),
-    "ApproxStorm": lambda X, seed: models.ApproxStorm(random_state=seed),
-    "CPOD": lambda X, seed: models.CPOD(),
-    "D3": lambda X, seed: models.D3(random_state=seed),
-    "DILOF": lambda X, seed: models.DILOF(),
-    "ExactStorm": lambda X, seed: models.ExactStorm(),
-    "EXPoSE": lambda X, seed: models.EXPoSE(random_state=seed),
-    "HalfSpaceTrees": lambda X, seed: models.HalfSpaceTrees(**_ranges(X), random_state=seed),
-    "IForestASD": lambda X, seed: models.IForestASD(random_state=seed),
-    "IncrementalLOF": lambda X, seed: models.IncrementalLOF(),
-    "Inqmad": lambda X, seed: models.Inqmad(X.shape[1], random_state=seed),
-    "KELOS": lambda X, seed: models.KELOS(),
-    "KitNet": lambda X, seed: models.KitNet(random_state=seed),
-    "LODA": lambda X, seed: models.LODA(random_state=seed),
-    "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(X[: warmup(len(X))]),
-    "MCOD": lambda X, seed: models.MCOD(),
-    "MemStream": lambda X, seed: models.MemStream(random_state=seed),
-    "MStream": lambda X, seed: models.MStream(random_state=seed),
-    "NETS": lambda X, seed: models.NETS(),
-    "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
-    "OnlineOneClassSVM": lambda X, seed: models.OnlineOneClassSVM(),
-    "PCBIsolationForest": lambda X, seed: models.PCBIsolationForest(random_state=seed),
-    "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
-    "RSForest": lambda X, seed: models.RSForest(random_state=seed),
-    "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
-    "SDOstream": lambda X, seed: models.SDOstream(random_state=seed),
-    "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
-    "TEDA": lambda X, seed: models.TEDA(),
-    "ThreshLEAP": lambda X, seed: models.ThreshLEAP(),
-    "xStream": lambda X, seed: models.xStream(random_state=seed),
+    name: DETECTOR_OVERRIDES.get(name) or _make_multivariate_factory(getattr(models, name))
+    for name in models.__all__
+    if _is_detector_model(name) and _model_input_kind(name) == "multivariate"
 }
-# CI runs this script against the base checkout too, where a newly added model
-# is not exported yet. Only benchmark the models present in that checkout.
-DETECTORS = {name: factory for name, factory in DETECTORS.items() if name in models.__all__}
 # The per-dataset tables use these names, which are common in the papers, to fit the page.
 SHORT_NAMES = {
     "HalfSpaceTrees": "HST",
@@ -136,32 +218,10 @@ SHORT_NAMES = {
 # stochastic detectors. Each detector gets its defaults, plus the arguments that it requires.
 # The values of a series are scaled to [0, 1].
 UNIVARIATE = {
-    "ChangeFinder": lambda n, period: models.ChangeFinder(),
-    "DAMP": lambda n, period: models.DAMP(window_length=SHINGLE_SIZE),
-    "HoltWinters": lambda n, period: models.HoltWinters(period),
-    # HTM learns during NAB's probationary period, as in NAB.
-    "HTM": lambda n, period: models.HTM(
-        min_val=0.0, max_val=1.0, probationary_period=nab_probation(n), random_state=0
-    ),
-    # KNNCAD learns during NAB's probationary period, as in NAB.
-    "KNNCAD": lambda n, period: models.KNNCAD(probationary_period=nab_probation(n)),
-    "MatrixProfile": lambda n, period: models.MatrixProfile(window_length=SHINGLE_SIZE),
-    "MedianAbsoluteDeviation": lambda n, period: models.MedianAbsoluteDeviation(),
-    "PEWMA": lambda n, period: models.PEWMA(),
-    "RelativeEntropy": lambda n, period: models.RelativeEntropy(min_val=0.0, max_val=1.0),
-    # Fix the length without labels, as for shingles, and initialize in the standard warm-up.
-    "SAND": lambda n, period: models.SAND(
-        subsequence_length=SHINGLE_SIZE, batch_size=WARMUP_POINTS, random_state=0
-    ),
-    "StandardAbsoluteDeviation": lambda n, period: models.StandardAbsoluteDeviation(),
-    # A window of 3 periods and one point, because R's stl() needs more than 2 periods, and an odd
-    # window makes the robust STL match R.
-    "SeasonalESD": lambda n, period: models.SeasonalESD(period, 3 * period + 1),
-    "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(period, 3 * period + 1),
-    "SpectralResidual": lambda n, period: models.SpectralResidual(),
+    name: UNIVARIATE_OVERRIDES.get(name) or _make_univariate_factory(getattr(models, name))
+    for name in models.__all__
+    if _is_detector_model(name) and _model_input_kind(name) in ("univariate", "timestamped")
 }
-# As for DETECTORS, only benchmark the models present in the checkout.
-UNIVARIATE = {name: factory for name, factory in UNIVARIATE.items() if name in models.__all__}
 # The seasonal detectors need the period of a series, so they run only on these series. Each period is a
 # day, in points, where the autocorrelation at a lag of one day is at least 0.5.
 PERIODS = {
@@ -180,10 +240,14 @@ PERIODS = {
     "nab/realKnownCause/cpu_utilization_asg_misconfiguration.csv": 288,
     "nab/realKnownCause/nyc_taxi.csv": 48,
 }
-SEASONAL = ["HoltWinters", "SeasonalESD", "SeasonalHybridESD"]
+SEASONAL = [
+    name
+    for name in UNIVARIATE
+    if "period" in inspect.signature(getattr(models, name).__init__).parameters
+]
 # These detectors take each point as [timestamp, value]. The UCR series have no timestamps, so these
 # detectors do not run on them.
-TIMESTAMPED = ["HTM"]
+TIMESTAMPED = [name for name in UNIVARIATE if _model_input_kind(name) == "timestamped"]
 
 
 @functools.cache
@@ -230,13 +294,27 @@ def ucr_series():
     ]
 
 
-# Each calibrator, with its defaults, turns the scores of every run into alerts at each threshold,
+# Each general zero-argument calibrator turns the scores of every run into alerts at each threshold,
 # as the alerts guide does: an alert when the calibrated score is at least the threshold.
+# AnomalyLikelihood calibrates HTM's raw scores; SPOT needs 1,000 initial scores (longer than 7 ODDS datasets).
+_EXCLUDED_CALIBRATORS = frozenset(
+    {"AnomalyLikelihoodProbabilityCalibrator", "SPOTProbabilityCalibrator"}
+)
+_CALIBRATOR_KEYS = {"GaussianTailProbabilityCalibrator": "gaussian"}
+_CALIBRATOR_LABELS = {"gaussian": "Gaussian tail"}  # short, to fit the page
 CALIBRATORS = {
-    "conformal": ConformalProbabilityCalibrator,
-    "gaussian": GaussianTailProbabilityCalibrator,
+    _CALIBRATOR_KEYS.get(name, name.removesuffix("ProbabilityCalibrator").lower()): getattr(
+        probability_calibration, name
+    )
+    for name in probability_calibration.__all__
+    if name not in _EXCLUDED_CALIBRATORS
+    and not _required_param_names(
+        inspect.signature(getattr(probability_calibration, name).__init__)
+    )
 }
-CALIBRATOR_NAMES = {"conformal": "Conformal", "gaussian": "Gaussian tail"}  # short, to fit the page
+CALIBRATOR_NAMES = {
+    key: _CALIBRATOR_LABELS.get(key, key.replace("_", " ").capitalize()) for key in CALIBRATORS
+}
 # "rate" is 1 minus the anomaly rate of the stream, so the alerts match the number of anomalies.
 # It uses the labels, which a live stream does not have, so it shows the best case of a threshold.
 THRESHOLDS = [0.95, 0.99, 0.995, "rate"]
@@ -460,9 +538,8 @@ def run_univariate(series, detector, points=None):
     if detector in NAB_UNIT_SCORES:
         nab = (scores, y)
     else:
-        transform = ConformalProbabilityCalibrator(window_size=len(X)).fit_transform_partial
         with np.errstate(all="ignore"):
-            nab = (np.array([transform(s) for s in scores]), y)
+            nab = (ConformalProbabilityCalibrator(window_size=len(X)).fit_transform(scores), y)
     scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
     both = valid and 0 < y.sum() < len(y)  # AUROC and AUPR need both kinds of points
     return {
@@ -520,9 +597,8 @@ def _run(dataset, detector, seed, points):
     valid = np.isfinite(scores).all()
     row = {"dataset": dataset, "detector": detector, "seed": seed}
     for name, calibrator in CALIBRATORS.items() if dataset not in DRIFT else []:
-        transform = calibrator().fit_transform_partial
         with np.errstate(all="ignore"):
-            calibrated = np.array([transform(s) for s in scores])
+            calibrated = calibrator().fit_transform(scores)
         row.update(alerts(name, calibrated[warmup(len(X)) :], y[warmup(len(X)) :], valid))
     scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
     return {
@@ -858,6 +934,65 @@ def commit():
     return git("rev-parse", "--short", "HEAD").strip() + ("-dirty" if dirty else "")
 
 
+_DETECTOR_TABLES = {
+    "DETECTORS",
+    "DETECTOR_OVERRIDES",
+    "UNIVARIATE",
+    "UNIVARIATE_OVERRIDES",
+    "SHORT_NAMES",
+    "SEASONAL",
+    "TIMESTAMPED",
+    "NAB_UNIT_SCORES",
+}
+
+
+def _parse_detector_tables(source):
+    """The detector registration tables in a benchmark.py source string, and the rest of its AST."""
+    tree = ast.parse(source)
+    tables, body = {}, []
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id in _DETECTOR_TABLES
+            and isinstance(node.value, (ast.Dict, ast.List))
+        ):
+            name = node.targets[0].id
+            if isinstance(node.value, ast.Dict):
+                tables[name] = {
+                    ast.literal_eval(k): ast.dump(v)
+                    for k, v in zip(node.value.keys, node.value.values, strict=True)
+                }
+            else:
+                tables[name] = {ast.literal_eval(elt) for elt in node.value.elts}
+        else:
+            body.append(node)
+    tree.body = body
+    return tables, ast.dump(tree)
+
+
+def _changed_benchmark_detectors(base_source, head_source):
+    """Detectors changed between two benchmark.py sources, or None if shared benchmark code changed."""
+    base_tables, base_rest = _parse_detector_tables(base_source)
+    head_tables, head_rest = _parse_detector_tables(head_source)
+    if base_rest != head_rest:
+        return None
+    changed = set()
+    for name in _DETECTOR_TABLES:
+        before, after = base_tables.get(name, {}), head_tables.get(name, {})
+        if isinstance(before, dict) and isinstance(after, dict):
+            changed |= {k for k in before.keys() | after.keys() if before.get(k) != after.get(k)}
+        else:
+            changed |= set(before) ^ set(after)
+    return changed
+
+
+def _runtime_toml(source):
+    """The build, project, and runtime dependency sections of pyproject.toml."""
+    return source.split("\ntest = [", 1)[0]
+
+
 def changed_detectors(base, path=None):
     """The detectors whose results a change since ``base`` can move.
 
@@ -865,15 +1000,27 @@ def changed_detectors(base, path=None):
     """
     files = git("diff", "--name-only", base).split()
     common = pysad_files([Data, fix_seed, ShingleTransformer, *CALIBRATORS.values()])
-    if common & set(files) or "benchmarks/benchmark.py" in files or "pyproject.toml" in files:
+    if common & set(files):
         return [*DETECTORS, *UNIVARIATE]
-    edited = set()  # detectors whose committed results changed, so that every row comes from a run
+    if "pyproject.toml" in files and _runtime_toml(
+        git("show", f"{base}:pyproject.toml")
+    ) != _runtime_toml((ROOT / "pyproject.toml").read_text(encoding="utf-8")):
+        return [*DETECTORS, *UNIVARIATE]
+    edited = set()  # detectors whose committed results or registration changed
+    if "benchmarks/benchmark.py" in files:
+        bench_changed = _changed_benchmark_detectors(
+            git("show", f"{base}:benchmarks/benchmark.py"),
+            Path(__file__).read_text(encoding="utf-8"),
+        )
+        if bench_changed is None:
+            return [*DETECTORS, *UNIVARIATE]
+        edited |= bench_changed
     name = path and path.relative_to(ROOT).as_posix()
     if name in files:
         before = {
             key(row): row for row in csv.DictReader(git("show", f"{base}:{name}").splitlines())
         }
-        edited = {
+        edited |= {
             k[1].removesuffix(SHINGLED)
             for k, row in read_results(path).items()
             if before.get(k) != row
@@ -938,6 +1085,8 @@ def pysad_files(objects):
         if path in files:
             continue
         files.add(path)
+        if path.endswith("/__init__.py"):
+            continue
         for value in vars(module).values():
             name = (
                 value.__name__
@@ -946,6 +1095,15 @@ def pysad_files(objects):
             )
             if isinstance(name, str) and name.split(".")[0] == "pysad":
                 todo.append(name)
+        for node in ast.walk(ast.parse(Path(module.__file__).read_text(encoding="utf-8"))):
+            target = sys.modules.get(node.module) if isinstance(node, ast.ImportFrom) else None
+            if (
+                target is not None
+                and target.__name__.split(".")[0] == "pysad"
+                and target.__file__ is not None
+                and not target.__file__.endswith("__init__.py")
+            ):
+                todo.append(target.__name__)
     return files
 
 

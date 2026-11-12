@@ -4,7 +4,7 @@ import numpy as np
 from river import time_series
 from sklearn.metrics import roc_auc_score
 
-from pysad.models.integrations import PredictiveAnomalyDetector
+from pysad.integrations import PredictiveAnomalyDetector
 
 if __name__ == "__main__":
     t = np.arange(2000)

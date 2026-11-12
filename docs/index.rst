@@ -133,7 +133,7 @@ What PySAD contains
 
       .. rst-class:: number
 
-         16
+         |num_detectors|
 
       streaming detectors from published papers
 
@@ -166,7 +166,7 @@ What PySAD contains
 - Streamers replay arrays and DataFrames as streams.
 - Metrics update after every point. :doc:`guides/evaluate` explains each metric.
 - Preprocessors, random projections, score postprocessors and ensemblers work with every detector. Preprocessors change each point before the detector scores it. Postprocessors change the scores, for example to smooth them. Ensemblers combine the scores of several detectors.
-- :class:`~pysad.models.integrations.ReferenceWindowModel` runs any `PyOD <https://github.com/yzhao062/pyod>`_ detector on a sliding window (the most recent points).
+- :class:`~pysad.integrations.ReferenceWindowModel` runs any `PyOD <https://github.com/yzhao062/pyod>`_ detector on a sliding window (the most recent points).
 
 PySAD is free software under the BSD 3-Clause License. If you use it in research, see :doc:`citing`.
 

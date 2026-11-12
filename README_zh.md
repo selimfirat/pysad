@@ -191,7 +191,7 @@ for message in consumer:  # 例如一个 Kafka 消费者
 
 ```python
 from pyod.models.iforest import IForest
-from pysad.models.integrations import ReferenceWindowModel
+from pysad.integrations import ReferenceWindowModel
 
 # 在最近 200 个点上训练批处理孤立森林，每 50 个点重新训练一次。
 model = ReferenceWindowModel(IForest, window_size=200, sliding_size=50, initial_window_X=X[:100])

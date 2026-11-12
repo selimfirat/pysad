@@ -4,9 +4,7 @@ from heapq import heappush
 import numpy as np
 import pytest
 
-from pysad.statistics import MaxMeter, MinMeter
-from pysad.statistics.abs_statistic import AbsStatistic
-from pysad.statistics.running_statistic import RunningStatistic
+from pysad.statistics import AbsStatistic, MaxMeter, MinMeter, RunningStatistic
 
 
 def test_all_zero_stats():
@@ -41,8 +39,9 @@ def test_all_zero_stats():
     }
 
     for stat_cls, val in stat_classes.items():
-        stat = stat_cls()
-        abs_stat = AbsStatistic(stat_cls)
+        rm_kwargs = {"keep_values": True} if stat_cls in (MaxMeter, MinMeter) else {}
+        stat = stat_cls(**rm_kwargs)
+        abs_stat = AbsStatistic(stat_cls, **rm_kwargs)
         window_size = 25
         running_stat = RunningStatistic(stat_cls, window_size=window_size)
         arr = np.zeros(num_items, dtype=np.float64)
@@ -100,8 +99,9 @@ def test_stats_with_batch_numpy():
     }
 
     for stat_cls, val in stat_classes.items():
-        stat = stat_cls()
-        abs_stat = AbsStatistic(stat_cls)
+        rm_kwargs = {"keep_values": True} if stat_cls in (MaxMeter, MinMeter) else {}
+        stat = stat_cls(**rm_kwargs)
+        abs_stat = AbsStatistic(stat_cls, **rm_kwargs)
         window_size = 25
         running_stat = RunningStatistic(stat_cls, window_size=window_size)
 
@@ -292,9 +292,10 @@ def test_running_median_matches_numpy_on_streams(window_size):
 def test_max_meter_without_values_keeps_only_the_maximum():
     import pytest
 
-    from pysad.statistics import MaxMeter
+    from pysad.statistics import MaxMeter, RunningStatistic
 
-    meter = MaxMeter(keep_values=False)
+    meter = MaxMeter()
+    assert not meter.keep_values
     for num in [3.0, -1.0, 7.5, 2.0]:
         meter.update(num)
 
@@ -303,14 +304,17 @@ def test_max_meter_without_values_keeps_only_the_maximum():
     assert len(meter.candidates) == 0
     with pytest.raises(ValueError, match="keeps no values"):
         meter.remove(7.5)
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(MaxMeter, window_size=5, keep_values=False)
 
 
 def test_min_meter_without_values_keeps_only_the_minimum():
     import pytest
 
-    from pysad.statistics import MinMeter
+    from pysad.statistics import MinMeter, RunningStatistic
 
-    meter = MinMeter(keep_values=False)
+    meter = MinMeter()
+    assert not meter.keep_values
     for num in [3.0, -1.0, 7.5, 2.0]:
         meter.update(num)
 
@@ -319,6 +323,8 @@ def test_min_meter_without_values_keeps_only_the_minimum():
     assert len(meter.candidates) == 0
     with pytest.raises(ValueError, match="keeps no values"):
         meter.remove(-1.0)
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(MinMeter, window_size=5, keep_values=False)
 
 
 class _PreviousMaxMeter:
@@ -410,7 +416,7 @@ def test_max_and_min_meters_remove_any_value_like_the_previous_implementation(
     meter_cls, previous_cls
 ):
     rng = np.random.default_rng(385)
-    meter = meter_cls()
+    meter = meter_cls(keep_values=True)
     previous = previous_cls()
     values = []
     for _ in range(2_000):

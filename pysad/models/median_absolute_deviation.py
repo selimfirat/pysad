@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from bisect import bisect_left, insort
 from collections import deque
 
 import numpy as np
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import check_univariate
+from pysad.utils.window import _median_and_mad_sorted
 
 
 class MedianAbsoluteDeviation(BaseModel):
@@ -31,7 +33,8 @@ class MedianAbsoluteDeviation(BaseModel):
         self.window_size = window_size
         self.b = b
         self.absolute = absolute
-        self.window: deque[float] = deque(maxlen=window_size)
+        self.window: deque[float] = deque()
+        self._sorted: list[float] = []
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> MedianAbsoluteDeviation:
         """Updates the model with the next instance.
@@ -44,7 +47,11 @@ class MedianAbsoluteDeviation(BaseModel):
             object: The model itself.
         """
         val = check_univariate(X, "MedianAbsoluteDeviation")
+        if len(self.window) == self.window_size:
+            old = self.window.popleft()
+            del self._sorted[bisect_left(self._sorted, old)]
         self.window.append(val)
+        insort(self._sorted, val)
 
         return self
 
@@ -56,17 +63,13 @@ class MedianAbsoluteDeviation(BaseModel):
 
         Returns:
             float: The anomalousness score of the input instance.
-
-        Raises:
-            ValueError: If the model has not been fitted on any value yet.
         """
-        if not self.window:  # there is no median before the first value
+        if not self._sorted:  # there is no median before the first value
             return 0.0
 
         val = check_univariate(X, "MedianAbsoluteDeviation")
-        window = np.asarray(self.window)
-        median = np.median(window)
-        scale = self.b * np.median(np.abs(window - median))
+        median, mad = _median_and_mad_sorted(self._sorted)
+        scale = self.b * mad
         # A window of equal values has a MAD of 0. The other values then score (x - median) / 1e-10.
         score = (val - median) / (scale if scale > 0 else 1e-10)
 

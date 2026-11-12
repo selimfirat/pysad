@@ -9,9 +9,3 @@ This module holds ensemblers that combine the scores of several detectors into o
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   AverageScoreEnsembler
-   MaximumScoreEnsembler
-   MedianScoreEnsembler
-   AverageOfMaximumScoreEnsembler
-   MaximumOfAverageScoreEnsembler

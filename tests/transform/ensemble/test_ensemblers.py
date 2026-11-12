@@ -1,5 +1,22 @@
 import pytest
 
+# Fixed score matrix: 4 instances scored by 3 detectors.
+SCORES = [
+    [0.1, 0.5, 0.9],
+    [0.8, 0.2, 0.4],
+    [0.3, 0.3, 0.6],
+    [1.0, 0.0, 0.5],
+]
+
+# Fixed score matrix with 6 detectors so that 3 static buckets of 2 detectors
+# each make the bucket shuffling affect the result.
+BUCKET_SCORES = [
+    [0.1, 0.5, 0.9, 0.2, 0.7, 0.4],
+    [0.8, 0.2, 0.4, 0.6, 0.1, 0.3],
+    [0.3, 0.3, 0.6, 0.9, 0.0, 0.5],
+    [1.0, 0.0, 0.5, 0.2, 0.4, 0.8],
+]
+
 
 def test_ensemblers():
     import numpy as np
@@ -34,24 +51,6 @@ def test_ensemblers():
         assert ensembled_scores.shape == (scores.shape[0],)
 
 
-# Fixed score matrix: 4 instances scored by 3 detectors.
-SCORES = [
-    [0.1, 0.5, 0.9],
-    [0.8, 0.2, 0.4],
-    [0.3, 0.3, 0.6],
-    [1.0, 0.0, 0.5],
-]
-
-# Fixed score matrix with 6 detectors so that 3 static buckets of 2 detectors
-# each make the bucket shuffling affect the result.
-BUCKET_SCORES = [
-    [0.1, 0.5, 0.9, 0.2, 0.7, 0.4],
-    [0.8, 0.2, 0.4, 0.6, 0.1, 0.3],
-    [0.3, 0.3, 0.6, 0.9, 0.0, 0.5],
-    [1.0, 0.0, 0.5, 0.2, 0.4, 0.8],
-]
-
-
 def test_simple_ensemblers_output_values():
     import numpy as np
 
@@ -80,8 +79,6 @@ def test_weighted_average_ensembler_output_values():
     from pysad.transform.ensemble import AverageScoreEnsembler
 
     scores = np.array(SCORES)
-    weights = np.array([[1, 2, 3]])
-
     expected = np.array(
         [
             (1 * 0.1 + 2 * 0.5 + 3 * 0.9) / 6,
@@ -91,35 +88,71 @@ def test_weighted_average_ensembler_output_values():
         ]
     )
 
-    ensembled_scores = AverageScoreEnsembler(estimator_weights=weights).fit_transform(scores)
+    for weights in (np.array([1.0, 2.0, 3.0]), np.array([[1.0, 2.0, 3.0]])):
+        ensembled_scores = AverageScoreEnsembler(estimator_weights=weights).fit_transform(scores)
+        np.testing.assert_allclose(ensembled_scores, expected)
 
-    np.testing.assert_allclose(ensembled_scores, expected)
+    with pytest.raises(ValueError, match="Bad input shape of estimator_weights"):
+        AverageScoreEnsembler(estimator_weights=np.ones(2)).fit_transform(scores)
 
 
-def test_bucket_ensemblers_output_values():
+@pytest.mark.parametrize(
+    "ensembler_cls,kwargs",
+    [
+        ("AverageOfMaximumScoreEnsembler", {"n_buckets": 3, "random_state": 0}),
+        (
+            "AverageOfMaximumScoreEnsembler",
+            {"n_buckets": 2, "bootstrap_estimators": True, "random_state": 0},
+        ),
+        (
+            "AverageOfMaximumScoreEnsembler",
+            {"n_buckets": 3, "method": "dynamic", "random_state": 0},
+        ),
+        ("MaximumOfAverageScoreEnsembler", {"n_buckets": 3, "random_state": 0}),
+        (
+            "MaximumOfAverageScoreEnsembler",
+            {"n_buckets": 2, "bootstrap_estimators": True, "random_state": 0},
+        ),
+        (
+            "MaximumOfAverageScoreEnsembler",
+            {"n_buckets": 3, "method": "dynamic", "random_state": 0},
+        ),
+    ],
+)
+def test_bucket_ensemblers_stay_within_row_score_bounds(ensembler_cls, kwargs):
     import numpy as np
 
-    from pysad.transform.ensemble import (
-        AverageOfMaximumScoreEnsembler,
-        MaximumOfAverageScoreEnsembler,
-    )
-    from pysad.transform.ensemble._combination import aom, moa
+    from pysad.transform import ensemble as ensemble_module
 
     scores = np.array(BUCKET_SCORES)
-    n_buckets = 3
+    cls = getattr(ensemble_module, ensembler_cls)
+    combined = cls(**kwargs).fit_transform(scores)
+    assert combined.shape == (len(scores),)
+    assert np.all(combined >= scores.min(axis=1) - 1e-12)
+    assert np.all(combined <= scores.max(axis=1) + 1e-12)
 
-    for ensembler_cls, combine in [
-        (AverageOfMaximumScoreEnsembler, aom),
-        (MaximumOfAverageScoreEnsembler, moa),
-    ]:
-        np.random.seed(0)
-        ensembled_scores = ensembler_cls(n_buckets=n_buckets).fit_transform(scores)
 
-        # The ensembler combines one row at a time, so each row gets its own bucket shuffle.
-        np.random.seed(0)
-        expected = np.array([combine(row.reshape(1, -1), n_buckets=n_buckets)[0] for row in scores])
+@pytest.mark.parametrize(
+    "ensembler_cls,kwargs,error",
+    [
+        ("AverageOfMaximumScoreEnsembler", {"n_buckets": 1}, ValueError),
+        ("MaximumOfAverageScoreEnsembler", {"n_buckets": 7}, ValueError),
+        ("AverageOfMaximumScoreEnsembler", {"n_buckets": 4}, ValueError),
+        (
+            "MaximumOfAverageScoreEnsembler",
+            {"n_buckets": 3, "method": "other"},
+            NotImplementedError,
+        ),
+    ],
+)
+def test_bucket_ensemblers_reject_invalid_buckets(ensembler_cls, kwargs, error):
+    import numpy as np
 
-        np.testing.assert_allclose(ensembled_scores, expected)
+    from pysad.transform import ensemble as ensemble_module
+
+    cls = getattr(ensemble_module, ensembler_cls)
+    with pytest.raises(error):
+        cls(**kwargs).fit_transform(np.array(BUCKET_SCORES))
 
 
 def test_ensemblers_partial_matches_batch():

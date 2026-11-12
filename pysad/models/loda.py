@@ -17,6 +17,8 @@ class LODA(BaseModel):
 
     The score of an instance is the mean over the projections of the negative log of the estimated density ``(count + 1) / ((num_seen + num_bins) * bin_width)`` of its bin, so higher scores are more anomalous. Values outside the current range are treated as falling into an empty bin. Instances with non-finite values are not fitted.
 
+    ``explain_partial`` ranks the features of an instance by the one-tailed two-sample t statistic of Section 3.3 of the paper. The variances in the statistic are sample variances, as in Welch's t-test. The paper does not say which variance it uses.     The `anlearn <https://github.com/gaussalgo/anlearn>`_ implementation of the statistic uses population variances instead, which gives larger absolute values, largest for features that few projections use.
+
     As in the paper, ``fit_score_partial`` scores an instance before it updates the histograms with it.
 
     Args:
@@ -101,7 +103,7 @@ class LODA(BaseModel):
 
         self.num_seen_ += 1
 
-    def _score_projected(self, inds: np.ndarray) -> float:
+    def _neg_log_densities(self, inds: np.ndarray) -> np.ndarray:
         ready = self.bin_widths_ > 0.0
         in_range = ready & (inds >= 0) & (inds < self.n_bins)
 
@@ -113,7 +115,7 @@ class LODA(BaseModel):
             (counts[ready] + 1.0) / ((self.num_seen_ + self.n_bins) * self.bin_widths_[ready])
         )
 
-        return float(neg_log_densities.mean())
+        return neg_log_densities
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> LODA:
         """Updates the model with the next instance.
@@ -149,7 +151,35 @@ class LODA(BaseModel):
             self._init_model(X.shape[0])
 
         projected = self.projections_.dot(X.reshape(-1))
-        return self._score_projected(self._bin_indices(projected))
+        return float(self._neg_log_densities(self._bin_indices(projected)).mean())
+
+    def explain_partial(self, X: np.ndarray) -> np.ndarray:
+        """Ranks the features of the next instance by their contribution to its score, with Eq. (4) of the paper.
+
+        For each feature, the one-tailed two-sample t statistic compares the negative log densities of the projections that use the feature with those of the projections that do not. A higher value means that the feature contributes more to the anomalousness of the instance. Like ``score_partial``, it does not update the model.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to explain.
+
+        Returns:
+            np.float64 array of shape (num_features,): The t statistic of each feature. It is NaN for a feature that fewer than two projections use, or that fewer than two projections leave out, for example when the instance has a single feature.
+        """
+        if self.to_init:
+            self._init_model(X.shape[0])
+
+        projected = self.projections_.dot(X.reshape(-1))
+        # (num_random_cuts, 1)
+        neg_log = self._neg_log_densities(self._bin_indices(projected))[:, None]
+        uses = self.projections_ != 0.0  # (num_random_cuts, num_features)
+        n_with = uses.sum(axis=0)
+        n_without = self.n_random_cuts - n_with
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            mean_with = (neg_log * uses).sum(axis=0) / n_with
+            mean_without = (neg_log * ~uses).sum(axis=0) / n_without
+            var_with = ((neg_log - mean_with) ** 2 * uses).sum(axis=0) / (n_with - 1)
+            var_without = ((neg_log - mean_without) ** 2 * ~uses).sum(axis=0) / (n_without - 1)
+            return (mean_with - mean_without) / np.sqrt(var_with / n_with + var_without / n_without)
 
     def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Scores the next instance, and then updates the model with it.
@@ -166,7 +196,7 @@ class LODA(BaseModel):
 
         projected = self.projections_.dot(X.reshape(-1))
         inds = self._bin_indices(projected)
-        score = self._score_projected(inds)
+        score = float(self._neg_log_densities(inds).mean())
         if np.all(np.isfinite(X)):  # Non-finite values would stretch the bins without bound.
             self._fit_projected(projected, inds)
 

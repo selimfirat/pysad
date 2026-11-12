@@ -67,6 +67,12 @@ class BasePostprocessor(ABC):
         Returns:
             object: self.
         """
+        if isinstance(scores, np.ndarray) and scores.ndim == 1:
+            fit_fn = self.fit_partial
+            for i in range(len(scores)):
+                fit_fn(float(scores[i]))
+            return self
+
         for score, _ in _iterate(scores):
             # _iterate yields NumPy scalars for 1-D score arrays, which are floats.
             self.fit_partial(cast(float, score))
@@ -84,13 +90,68 @@ class BasePostprocessor(ABC):
         """
         return self._process_all(scores, self.fit_transform_partial)
 
+    def __or__(self, other: BasePostprocessor) -> _PostprocessorChain:
+        """Chains this postprocessor with another postprocessor."""
+        if isinstance(other, BasePostprocessor):
+            left = self.steps if isinstance(self, _PostprocessorChain) else (self,)
+            right = other.steps if isinstance(other, _PostprocessorChain) else (other,)
+            return _PostprocessorChain((*left, *right))
+        return NotImplemented
+
     @staticmethod
     def _process_all(scores: np.ndarray, process_partial: Callable[[float], float]) -> np.ndarray:
         processed_scores = np.empty(scores.shape[0], dtype=np.float64)
+        if isinstance(scores, np.ndarray) and scores.ndim == 1:
+            for i in range(len(scores)):
+                res = process_partial(float(scores[i]))
+                processed_scores[i] = res if type(res) is float else float(np.asarray(res).item())
+            return processed_scores
+
         for i, (score, _) in enumerate(_iterate(scores)):
             result = process_partial(cast(float, score))
             processed_scores[i] = (
-                np.asarray(result).item() if np.asarray(result).ndim > 0 else result
+                result if type(result) is float else float(np.asarray(result).item())
             )
 
         return processed_scores
+
+
+class _PostprocessorChain(BasePostprocessor):
+    """Lightweight sequential chain of postprocessors created by ``|``."""
+
+    def __init__(self, steps: tuple[BasePostprocessor, ...]) -> None:
+        self.steps = steps
+
+    def fit_partial(self, score: float) -> _PostprocessorChain:
+        for step in self.steps[:-1]:
+            score = step.fit_transform_partial(score)
+        if self.steps:
+            self.steps[-1].fit_partial(score)
+        return self
+
+    def transform_partial(self, score: float) -> float:
+        for step in self.steps:
+            score = step.transform_partial(score)
+        return score
+
+    def fit_transform_partial(self, score: float) -> float:
+        for step in self.steps:
+            score = step.fit_transform_partial(score)
+        return score
+
+    def fit(self, scores: np.ndarray) -> _PostprocessorChain:
+        for step in self.steps[:-1]:
+            scores = step.fit_transform(scores)
+        if self.steps:
+            self.steps[-1].fit(scores)
+        return self
+
+    def transform(self, scores: np.ndarray) -> np.ndarray:
+        for step in self.steps:
+            scores = step.transform(scores)
+        return scores
+
+    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+        for step in self.steps:
+            scores = step.fit_transform(scores)
+        return scores

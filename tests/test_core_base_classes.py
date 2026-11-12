@@ -384,10 +384,9 @@ class TestAbstractClassInstantiation:
             BasePostprocessor()
 
     def test_base_statistic_abstract(self):
-        """Test that BaseStatistic can be instantiated but has no abstract methods."""
-        # BaseStatistic is abstract but has no abstract methods, so it can be instantiated
-        stat = BaseStatistic()
-        assert isinstance(stat, BaseStatistic)
+        """Test that BaseStatistic cannot be instantiated directly."""
+        with pytest.raises(TypeError):
+            BaseStatistic()
 
     def test_base_streamer_abstract(self):
         """Test that BaseStreamer cannot be instantiated directly."""
@@ -418,3 +417,55 @@ def test_base_model_fit_score_partial_scores_before_it_fits():
     scores = LastValueModel().fit_score(np.array([[1.0], [3.0], [6.0]]))
 
     np.testing.assert_array_equal(scores, [1.0, 2.0, 3.0])
+
+
+def test_base_model_metadata_class_attributes_defaults():
+    assert BaseModel.__bibtex__ is None
+    assert BaseModel._input_kind == "multivariate"
+    assert BaseModel._detector_doc is None
+    assert ConcreteModel.__bibtex__ is None
+    assert ConcreteModel._input_kind == "multivariate"
+    assert ConcreteModel._detector_doc is None
+
+
+def test_pipe_operator_works_without_preimporting_models():
+    """Concrete core subclasses support | even when pysad.models was not imported first."""
+    t1 = ConcreteTransformer()
+    t2 = ConcreteTransformer()
+    m = ConcreteModel()
+    p1 = ConcretePostprocessor(multiplier=2.0)
+    p2 = ConcretePostprocessor(multiplier=3.0)
+
+    chain_t = t1 | t2
+    X = np.array([[1.0, 2.0], [3.0, 4.0]])
+    np.testing.assert_array_equal(chain_t.fit_transform(X), X + 2.0)
+
+    chain_p = p1 | p2
+    scores = np.array([1.0, 2.5, 4.0])
+    np.testing.assert_array_equal(chain_p.fit_transform(scores), scores * 6.0)
+
+    pipeline = ConcreteTransformer() | ConcreteModel() | ConcretePostprocessor(multiplier=2.0)
+    out = pipeline.fit_score(X)
+    expected = np.linalg.norm(X + 1.0, axis=1) * 2.0
+    np.testing.assert_allclose(out, expected)
+
+    with pytest.raises(TypeError):
+        _ = m | ConcreteModel()
+    with pytest.raises(TypeError):
+        _ = m | t1
+    with pytest.raises(TypeError):
+        _ = p1 | m
+    with pytest.raises(TypeError):
+        _ = t1 | p1
+    with pytest.raises(TypeError):
+        _ = m | 42
+    with pytest.raises(TypeError):
+        _ = 42 | m
+
+
+def test_base_metric_update_batch_default():
+    metric = ConcreteMetric()
+    assert metric.update_batch([1, 0, 1], [0.8, 0.2, 0.3]) is metric
+    assert metric.get() == pytest.approx(2.0 / 3.0)
+    with pytest.raises(ValueError):
+        metric.update_batch([1, 0], [0.5])

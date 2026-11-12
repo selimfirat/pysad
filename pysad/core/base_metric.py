@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 
 
 class BaseMetric(ABC):
@@ -18,6 +19,23 @@ class BaseMetric(ABC):
             y_pred (float): Predicted class or anomaly score. Higher values correspond to more anomalousness and lower values correspond to more normalness.
         """
         pass
+
+    def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> BaseMetric:
+        """Updates the metric with batches of true labels and predicted values in stream order.
+
+        Args:
+            y_true (Iterable[int]): Ground truth classes in stream order.
+            y_pred (Iterable[float]): Predicted classes or anomaly scores in stream order.
+
+        Raises:
+            ValueError: If `y_true` and `y_pred` have different lengths.
+
+        Returns:
+            BaseMetric: The metric itself.
+        """
+        for yt, yp in zip(y_true, y_pred, strict=True):
+            self.update(yt, yp)
+        return self
 
     @abstractmethod
     def get(self) -> float | None:

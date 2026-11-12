@@ -258,6 +258,7 @@ module = [
     "pysad.models.null_model",
     "pysad.models.online_isolation_forest",
     "pysad.models.online_one_class_svm",
+    "pysad.models.pcb_isolation_forest",
     "pysad.models.perfect_model",
     "pysad.models.random_model",
     "pysad.models.relative_entropy",

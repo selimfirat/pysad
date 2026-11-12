@@ -125,6 +125,56 @@ def _calculate_feature_relevance(
     return relevance, selected_subspace
 
 
+def _calculate_local_outlier_score(
+    ref_set: np.ndarray, x_norm: np.ndarray, subspace: np.ndarray
+) -> float:
+    """Calculates the Local Outlier Score (LOS) via normalized squared Mahalanobis distance.
+
+    Projects the query point and reference set into the selected subspace and computes:
+        LOS = (x_sub - c_sub)^T Sigma_{sub}^{-1} (x_sub - c_sub) / d_{sub}
+
+    Uses Tikhonov regularization on the covariance matrix and solves via Cholesky
+    decomposition with pseudoinverse fallback for singular or ill-conditioned matrices.
+
+    Args:
+        ref_set (np.ndarray): Reference set observations of shape (s, d).
+        x_norm (np.ndarray): Normalized query point of shape (d,).
+        subspace (np.ndarray): Selected subspace feature indices.
+
+    Returns:
+        float: Normalized squared Mahalanobis distance in the selected subspace.
+    """
+    d_sub = len(subspace)
+    s_samples = len(ref_set)
+    S_sub = ref_set[:, subspace]
+    x_sub = x_norm[subspace]
+
+    c_sub = np.mean(S_sub, axis=0)
+    delta = x_sub - c_sub
+
+    if s_samples > 1:
+        cov = np.cov(S_sub, rowvar=False, ddof=1)
+        if d_sub == 1:
+            cov = np.array([[float(cov)]], dtype=np.float64)
+    else:
+        cov = np.eye(d_sub, dtype=np.float64)
+
+    # Regularize covariance to guarantee positive-definiteness
+    tr = float(np.trace(cov))
+    eps = 1e-6 * max(1.0, tr / d_sub)
+    cov_reg = cov + eps * np.eye(d_sub, dtype=np.float64)
+
+    try:
+        L = np.linalg.cholesky(cov_reg)
+        y = np.linalg.solve(L, delta)
+        d_m_sq = float(np.dot(y, y))
+    except np.linalg.LinAlgError:
+        inv_cov = np.linalg.pinv(cov_reg)
+        d_m_sq = float(delta @ inv_cov @ delta)
+
+    return max(0.0, d_m_sq / d_sub)
+
+
 class ABSAD(BaseModel):
     """Angle-Based Subspace Anomaly Detection (ABSAD) :cite:`zhang2017sliding`.
 
@@ -234,16 +284,16 @@ class ABSAD(BaseModel):
             X (np.ndarray): The instance to score of shape (num_features,).
 
         Returns:
-            float: Local Outlier Score (LOS).
+            float: Local Outlier Score (LOS). Higher scores indicate greater anomalousness.
         """
         if len(self._window) < max(2, self.num_references):
             return 0.0
 
         x = np.asarray(X, dtype=np.float64)
-        W = np.asarray(self._window, dtype=np.float64)
+        W = self._window.to_array()
 
         W_norm, x_norm = _normalize_window_and_point(W, x)
         ref_set, _ = _select_reference_set(W_norm, x_norm, self.num_neighbors, self.num_references)
-        _, _ = _calculate_feature_relevance(ref_set, x_norm, self.theta)
+        _, subspace = _calculate_feature_relevance(ref_set, x_norm, self.theta)
 
-        return 0.0
+        return _calculate_local_outlier_score(ref_set, x_norm, subspace)

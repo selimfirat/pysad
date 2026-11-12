@@ -13,6 +13,17 @@ class KitNet(BaseModel):
 
     As in the paper, the model learns only during two grace periods at the start of the stream and then only scores. The first ``grace_feature_mapping`` instances learn which features go to which autoencoder. KitNET-py scores them 0. This model scores them with temporary autoencoders on the feature mapping so far, which it builds again each time the number of instances doubles (1, 2, 4, 8 and so on). After the feature mapping, it builds the autoencoders again on the final mapping, so the model after the grace periods is the same as without the temporary autoencoders. The next ``grace_anomaly_detector`` instances train the autoencoders, and their scores come from autoencoders that are still training. Choose both so that their sum is a small part of the stream and still covers its normal behavior. The defaults, 100 and 1,000 instances, keep the 1:10 ratio of the KitNET-py example (5,000 and 50,000 on a capture of 100,000 packets), scaled down so that a stream of a few hundred instances gets real scores. For a long stream whose start is free of anomalies, such as the paper's network captures (it trains on the first million packets), longer grace periods give the autoencoders more normal behavior to learn.
 
+    :meth:`explain_partial` returns the per-feature attribution weights of one instance.
+    Each ensemble autoencoder reconstructs the features it maps, and its squared reconstruction
+    error is attributed to those features. The weights are these per-feature errors, normalized
+    to sum to one, so a larger weight means the autoencoders that use that feature reconstruct it
+    poorly. The weights have shape ``(num_features,)``. Before the first autoencoders exist, the
+    method returns zeros of shape ``(num_features,)``. This is the case on the first instance,
+    before it has been fitted.
+    This attribution scheme is an addition of pysad. It is not part of the cited paper.
+    :meth:`explain_partial` raises a ``ValueError`` for an instance with NaN, while
+    :meth:`score_partial` accepts it.
+
     Args:
         max_size_ae (int): The maximum size of any autoencoder in the ensemble layer (Default=10).
         grace_feature_mapping (int): The number of instances used to learn the feature mapping. If ``None``, the feature mapping and anomaly detector grace periods are equal (Default=100).
@@ -20,14 +31,6 @@ class KitNet(BaseModel):
         learning_rate (float): The default stochastic gradient descent learning rate for all autoencoders in the KitNET instance (Default=0.1).
         hidden_ratio (float): The default ratio of hidden to visible neurons. E.g., 0.75 will cause roughly a 25% compression in the hidden layer (Default=0.75).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the initial weights of the autoencoders, which all share it. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
-
-    :meth:`score_explain_partial` returns the per-feature attribution weights of one instance.
-    Each ensemble autoencoder reconstructs the features it maps, and its squared reconstruction
-    error is attributed to those features. The weights are these per-feature errors, normalized
-    to sum to one, so a larger weight means the autoencoders that use that feature reconstruct it
-    poorly. The weights have shape ``(num_features,)``. Before the first autoencoders exist---on
-    the first instance before it has been fitted---the method returns zeros of shape
-    ``(num_features,)``.
     """
 
     def __init__(
@@ -99,7 +102,7 @@ class KitNet(BaseModel):
         else:
             return self.model.execute(X)
 
-    def score_explain_partial(self, X: np.ndarray) -> np.ndarray:
+    def explain_partial(self, X: np.ndarray) -> np.ndarray:
         """Returns per-feature attribution weights for the anomaly score of the next instance.
 
         Each ensemble autoencoder reconstructs the features it maps, and its squared reconstruction
@@ -107,8 +110,9 @@ class KitNet(BaseModel):
         to sum to one, so a larger weight means the autoencoders that use that feature reconstruct
         it poorly.
 
-        This method neither changes nor keeps ``X``. Before the first autoencoders exist---on the
-        first instance before it has been fitted---it returns zeros of shape ``(num_features,)``.
+        Like ``score_partial``, it does not update the model or record the instance. Before the
+        first autoencoders exist, the method returns zeros of shape ``(num_features,)``. This is
+        the case on the first instance, before it has been fitted.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to explain.

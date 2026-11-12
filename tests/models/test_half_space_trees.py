@@ -532,7 +532,7 @@ def test_half_space_trees_explain_returns_per_feature_weights():
     )
     model.fit(X[:80])
 
-    weights = model.score_explain_partial(X[81])
+    weights = model.explain_partial(X[81])
 
     assert weights.shape == (5,)
     assert np.all(weights >= 0.0)
@@ -559,7 +559,7 @@ def test_half_space_trees_explain_does_not_change_state():
     model.fit(X[:80])
 
     before = model.score_partial(X[81])
-    model.score_explain_partial(X[81])
+    model.explain_partial(X[81])
     after = model.score_partial(X[81])
 
     assert before == after
@@ -583,7 +583,7 @@ def test_half_space_trees_explain_is_reproducible():
         random_state=0,
     )
     model_a.fit(X[:80])
-    weights_a = model_a.score_explain_partial(X[81])
+    weights_a = model_a.explain_partial(X[81])
 
     model_b = HalfSpaceTrees(
         feature_mins=[0.0] * 5,
@@ -594,9 +594,33 @@ def test_half_space_trees_explain_is_reproducible():
         random_state=0,
     )
     model_b.fit(X[:80])
-    weights_b = model_b.score_explain_partial(X[81])
+    weights_b = model_b.explain_partial(X[81])
 
     np.testing.assert_array_equal(weights_a, weights_b)
+
+
+def test_half_space_trees_explain_weights_depend_on_the_instance():
+    import numpy as np
+
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(120, 5)
+    model = HalfSpaceTrees(
+        feature_mins=[0.0] * 5,
+        feature_maxes=[1.0] * 5,
+        window_size=40,
+        num_trees=10,
+        max_depth=6,
+        random_state=0,
+    )
+    model.fit(X[:80])
+
+    normal = model.explain_partial(X[81])
+    outside = model.explain_partial(np.array([100.0, -50.0, 25.0, -75.0, 200.0]))
+
+    assert not np.allclose(normal, outside)
 
 
 def test_half_space_trees_explain_returns_zeros_before_any_fit():
@@ -608,7 +632,7 @@ def test_half_space_trees_explain_returns_zeros_before_any_fit():
         feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0], window_size=10, num_trees=3, max_depth=4
     )
 
-    weights = model.score_explain_partial(np.array([0.3, 0.6]))
+    weights = model.explain_partial(np.array([0.3, 0.6]))
 
     assert weights.shape == (2,)
     assert np.all(weights == 0.0)
@@ -627,4 +651,4 @@ def test_half_space_trees_explain_rejects_nan():
     anomalous = np.array([0.3, 0.6])
     anomalous[1] = np.nan
     with pytest.raises(ValueError, match="HalfSpaceTrees does not accept NaN values"):
-        model.score_explain_partial(anomalous)
+        model.explain_partial(anomalous)

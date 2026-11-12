@@ -167,7 +167,7 @@ def test_kitnet_explain_returns_per_feature_weights():
     X = np.random.RandomState(0).rand(200, 4)
     model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
 
-    weights = model.score_explain_partial(X[101])
+    weights = model.explain_partial(X[101])
 
     assert weights.shape == (4,)
     assert np.all(weights >= 0.0)
@@ -184,7 +184,7 @@ def test_kitnet_explain_does_not_change_state():
     model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
 
     before = model.score_partial(X[101])
-    model.score_explain_partial(X[101])
+    model.explain_partial(X[101])
     after = model.score_partial(X[101])
 
     assert before == after
@@ -199,13 +199,27 @@ def test_kitnet_explain_is_reproducible():
 
     model_a = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0)
     model_a.fit(X[:100])
-    weights_a = model_a.score_explain_partial(X[101])
+    weights_a = model_a.explain_partial(X[101])
 
     model_b = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0)
     model_b.fit(X[:100])
-    weights_b = model_b.score_explain_partial(X[101])
+    weights_b = model_b.explain_partial(X[101])
 
     np.testing.assert_array_equal(weights_a, weights_b)
+
+
+def test_kitnet_explain_weights_depend_on_the_instance():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+    model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
+
+    normal = model.explain_partial(X[101])
+    outside = model.explain_partial(np.array([100.0, -50.0, 25.0, -200.0]))
+
+    assert not np.allclose(normal, outside)
 
 
 def test_kitnet_explain_returns_zeros_before_any_fit():
@@ -215,7 +229,7 @@ def test_kitnet_explain_returns_zeros_before_any_fit():
 
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0)
 
-    weights = model.score_explain_partial(np.array([0.3, 0.6, 0.1]))
+    weights = model.explain_partial(np.array([0.3, 0.6, 0.1]))
 
     assert weights.shape == (3,)
     assert np.all(weights == 0.0)
@@ -232,4 +246,4 @@ def test_kitnet_explain_rejects_nan():
     anomalous = X[101].copy()
     anomalous[1] = np.nan
     with pytest.raises(ValueError, match="KitNet does not accept NaN values"):
-        model.score_explain_partial(anomalous)
+        model.explain_partial(anomalous)

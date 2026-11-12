@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
-from pysad.models.absad import ABSAD
+from pysad.models.absad import (
+    ABSAD,
+    _calculate_control_limit,
+    _calculate_feature_relevance,
+    _calculate_local_outlier_score,
+    _normalize_window_and_point,
+    _select_reference_set,
+)
 
 
 def test_absad_default_initialization() -> None:
@@ -36,10 +44,22 @@ def test_absad_custom_initialization() -> None:
     [
         ({"window_size": 0}, "window_size must be positive"),
         ({"window_size": -10}, "window_size must be positive"),
-        ({"window_size": 100, "num_neighbors": 0}, "num_neighbors must be between 1 and window_size"),
-        ({"window_size": 100, "num_neighbors": 101}, "num_neighbors must be between 1 and window_size"),
-        ({"window_size": 100, "num_neighbors": 50, "num_references": 0}, "num_references must be between 1 and num_neighbors"),
-        ({"window_size": 100, "num_neighbors": 50, "num_references": 51}, "num_references must be between 1 and num_neighbors"),
+        (
+            {"window_size": 100, "num_neighbors": 0},
+            "num_neighbors must be between 1 and window_size",
+        ),
+        (
+            {"window_size": 100, "num_neighbors": 101},
+            "num_neighbors must be between 1 and window_size",
+        ),
+        (
+            {"window_size": 100, "num_neighbors": 50, "num_references": 0},
+            "num_references must be between 1 and num_neighbors",
+        ),
+        (
+            {"window_size": 100, "num_neighbors": 50, "num_references": 51},
+            "num_references must be between 1 and num_neighbors",
+        ),
         ({"theta": -0.1}, "theta must be non-negative"),
         ({"confidence": 0.0}, r"confidence must be in \(0, 1\)"),
         ({"confidence": 1.0}, r"confidence must be in \(0, 1\)"),
@@ -49,15 +69,6 @@ def test_absad_custom_initialization() -> None:
 def test_absad_invalid_parameters(kwargs: dict[str, float | int], expected_msg: str) -> None:
     with pytest.raises(ValueError, match=expected_msg):
         ABSAD(**kwargs)
-
-
-import numpy as np
-
-from pysad.models.absad import (
-    _calculate_feature_relevance,
-    _normalize_window_and_point,
-    _select_reference_set,
-)
 
 
 def test_normalization_constant_features() -> None:
@@ -115,9 +126,6 @@ def test_calculate_feature_relevance_fallback() -> None:
     assert np.array_equal(selected, np.arange(3))
 
 
-from pysad.models.absad import _calculate_local_outlier_score
-
-
 def test_calculate_local_outlier_score_singular_covariance() -> None:
     # All reference points identical -> zero covariance
     ref_set = np.ones((5, 3))
@@ -165,9 +173,6 @@ def test_score_partial_preserves_state() -> None:
     assert score_1 == score_2
     assert len(model._window) == 20
     assert np.array_equal(window_before, model._window.to_array())
-
-
-from pysad.models.absad import _calculate_control_limit
 
 
 def test_calculate_control_limit() -> None:
@@ -226,7 +231,6 @@ def test_selective_window_update_and_rejection() -> None:
     # Window must not have accepted the anomaly!
     assert len(model._window) == window_size
     assert np.array_equal(window_before_anom, model._window.to_array())
-
 
 
 def test_absad_high_dimensional_subspace_anomaly() -> None:

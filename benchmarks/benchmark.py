@@ -34,7 +34,7 @@ from types import ModuleType
 
 import numpy as np
 from scipy.stats import rankdata
-from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.metrics import average_precision_score, matthews_corrcoef, roc_auc_score
 from threadpoolctl import threadpool_limits
 
 import pysad
@@ -111,9 +111,11 @@ DETECTORS = {
     "NETS": lambda X, seed: models.NETS(),
     "OnlineIsolationForest": lambda X, seed: models.OnlineIsolationForest(random_state=seed),
     "OnlineOneClassSVM": lambda X, seed: models.OnlineOneClassSVM(),
+    "PCBIsolationForest": lambda X, seed: models.PCBIsolationForest(random_state=seed),
     "RobustRandomCutForest": lambda X, seed: models.RobustRandomCutForest(random_state=seed),
     "RSForest": lambda X, seed: models.RSForest(random_state=seed),
     "RSHash": lambda X, seed: models.RSHash(**_ranges(X), random_state=seed),
+    "SDOstream": lambda X, seed: models.SDOstream(random_state=seed),
     "SmartSifter": lambda X, seed: models.SmartSifter(random_state=seed),
     "TEDA": lambda X, seed: models.TEDA(),
     "ThreshLEAP": lambda X, seed: models.ThreshLEAP(),
@@ -238,7 +240,7 @@ CALIBRATOR_NAMES = {"conformal": "Conformal", "gaussian": "Gaussian tail"}  # sh
 # "rate" is 1 minus the anomaly rate of the stream, so the alerts match the number of anomalies.
 # It uses the labels, which a live stream does not have, so it shows the best case of a threshold.
 THRESHOLDS = [0.95, 0.99, 0.995, "rate"]
-ALERT_METRICS = ["false_alerts", "precision", "recall"]
+ALERT_METRICS = ["false_alerts", "precision", "recall", "mcc"]
 ALERT_FIELDS = [f"{c}_{t}_{m}" for c in CALIBRATORS for t in THRESHOLDS for m in ALERT_METRICS]
 FIELDS = [
     "dataset",
@@ -532,7 +534,7 @@ def _run(dataset, detector, seed, points):
 
 
 def alerts(calibrator, calibrated, y, valid):
-    """The false alert rate, the precision and the recall of the alerts at each threshold."""
+    """Return alert rates, precision, recall, and MCC at each threshold."""
     row = {}
     for t in THRESHOLDS:
         alert = calibrated >= (1 - y.mean() if t == "rate" else t)
@@ -540,6 +542,7 @@ def alerts(calibrator, calibrated, y, valid):
             alert[y == 0].mean(),
             (alert & (y == 1)).sum() / alert.sum() if alert.any() else np.nan,
             alert[y == 1].mean(),
+            matthews_corrcoef(y, alert) if valid else np.nan,
         ]
         for metric, value in zip(ALERT_METRICS, values, strict=True):
             row[f"{calibrator}_{t}_{metric}"] = round(value, 4) if valid else np.nan
@@ -592,6 +595,7 @@ def write_tables(results, nab=None):
             "Precision",
             "Recall",
             "F1",
+            "MCC",
         ],
         alert_rows(results, detectors),
     )
@@ -836,6 +840,7 @@ def alert_rows(results, detectors):
                     f"{np.nanmean(p):.3f}" if np.isfinite(p).any() else "",  # no run had alerts
                     f"{np.nanmean(r):.3f}",
                     f"{np.nanmean(f1):.3f}",
+                    f"{np.nanmean(values['mcc']):.3f}" if np.isfinite(values["mcc"]).any() else "",
                 ]
             )
     return rows

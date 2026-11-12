@@ -11,6 +11,7 @@ This module holds streamers, benchmark datasets and helper functions. A streamer
    :toctree: ../generated
 
    ArrayStreamer
+   CSVStreamer
    PandasStreamer
    PolarsStreamer
    Data
@@ -29,3 +30,4 @@ Functions
    generate_stream
    get_minmax_array
    get_minmax_scalar
+   plot_stream

@@ -33,6 +33,7 @@ from .nets import NETS
 from .null_model import NullModel
 from .online_isolation_forest import OnlineIsolationForest
 from .online_one_class_svm import OnlineOneClassSVM
+from .pcb_isolation_forest import PCBIsolationForest
 from .perfect_model import PerfectModel
 from .pewma import PEWMA
 from .random_model import RandomModel
@@ -41,6 +42,7 @@ from .robust_random_cut_forest import RobustRandomCutForest
 from .rs_forest import RSForest
 from .rs_hash import RSHash
 from .sand import SAND
+from .sdostream import SDOstream
 from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .spectral_residual import SpectralResidual
@@ -82,6 +84,7 @@ __all__ = [
     "NullModel",
     "OnlineIsolationForest",
     "OnlineOneClassSVM",
+    "PCBIsolationForest",
     "PerfectModel",
     "PEWMA",
     "RandomModel",
@@ -90,6 +93,7 @@ __all__ = [
     "RSForest",
     "RSHash",
     "SAND",
+    "SDOstream",
     "SeasonalESD",
     "SeasonalHybridESD",
     "SmartSifter",

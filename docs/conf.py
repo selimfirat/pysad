@@ -3,14 +3,75 @@
 
 import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.abspath(".."))
+from docutils import nodes
+from sphinx.application import Sphinx
+from sphinx.ext.autosummary import generate as autosummary_generate_mod
+from sphinx.util.docutils import SphinxRole
 
-from pysad.utils import Data
-from pysad.version import __version__
+DOCS_DIR = Path(__file__).resolve().parent
+ROOT_DIR = DOCS_DIR.parent
+sys.path.insert(0, str(DOCS_DIR))
+sys.path.insert(0, str(ROOT_DIR))
 
-# The docs write the number of datasets as |num_datasets|, so that it follows Data.datasets().
-rst_epilog = f"\n.. |num_datasets| replace:: {len(Data.datasets())}\n"
+from _autodiscover import (  # noqa: E402
+    collect_bibtex,
+    doc_counts,
+    expand_api_autosummary,
+    expand_detectors_tables,
+    expand_examples_gallery,
+)
+
+from pysad.version import __version__  # noqa: E402
+
+
+class StrongEmphasis(SphinxRole):
+    """Render text in bold and italics."""
+
+    def run(self) -> tuple[list[nodes.Node], list[nodes.system_message]]:
+        return [nodes.strong("", "", nodes.emphasis("", self.text))], []
+
+
+def _find_autosummary_in_files(
+    filenames: list[str],
+) -> list[autosummary_generate_mod.AutosummaryEntry]:
+    documented: list[autosummary_generate_mod.AutosummaryEntry] = []
+    for filename in filenames:
+        raw = Path(filename).read_text(encoding="utf-8", errors="ignore")
+        if "/api/" in Path(filename).as_posix():
+            raw = expand_api_autosummary(raw)
+        documented.extend(
+            autosummary_generate_mod.find_autosummary_in_lines(raw.splitlines(), filename=filename)
+        )
+    return documented
+
+
+def _on_source_read(app: Sphinx, docname: str, source: list[str]) -> None:
+    if docname.startswith("api/"):
+        source[0] = expand_api_autosummary(source[0])
+    elif docname == "detectors":
+        source[0] = expand_detectors_tables(source[0])
+    elif docname == "examples":
+        source[0] = expand_examples_gallery(source[0], ROOT_DIR)
+
+
+def setup(app: Sphinx) -> None:
+    autosummary_generate_mod.find_autosummary_in_files = _find_autosummary_in_files
+    app.add_role("strong-emphasis", StrongEmphasis())
+    app.connect("source-read", _on_source_read)
+
+
+# Live substitutions computed from Data.datasets(), pysad.models.__all__, and benchmark.py.
+rst_epilog = (
+    "\n"
+    + "\n".join(f".. |{name}| replace:: {value}" for name, value in doc_counts(ROOT_DIR).items())
+    + "\n"
+)
+
+_COLLECTED_BIB = DOCS_DIR / "_build" / "collected.bib"
+_COLLECTED_BIB.parent.mkdir(parents=True, exist_ok=True)
+_COLLECTED_BIB.write_text(collect_bibtex(ROOT_DIR)[0], encoding="utf-8")
 
 # -- Project information -----------------------------------------------------
 
@@ -50,10 +111,19 @@ intersphinx_mapping = {
     "sklearn": ("https://scikit-learn.org/stable/", None),
 }
 
-bibtex_bibfiles = ["refs.bib"]
+bibtex_bibfiles = ["_build/collected.bib"]
 
-# The ODDS site blocks automated clients by IP address through Cloudflare.
-linkcheck_ignore = [r"https?://odds\.cs\.stonybrook\.edu/?"]
+# These services block automated clients.
+linkcheck_ignore = [
+    r"https?://odds\.cs\.stonybrook\.edu/?",
+    r"https://scholar\.google\.com/",
+    # DOI links redirect to bot challenges at these publishers.
+    r"https://doi\.org/10\.1080/",  # Taylor & Francis
+    r"https://doi\.org/10\.1093/",  # Oxford University Press
+    r"https://doi\.org/10\.1137/",  # SIAM
+    r"https://doi\.org/10\.1145/",  # ACM
+    r"https://doi\.org/10\.14778/",  # VLDB papers on ACM
+]
 
 # llms.txt lists the rendered pages, because the API pages get their text from docstrings.
 llms_txt_summary = (

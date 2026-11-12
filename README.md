@@ -23,6 +23,10 @@
   <a href="https://coveralls.io/github/selimfirat/pysad?branch=master"><img src="https://img.shields.io/coverallsCoverage/github/selimfirat/pysad?branch=master&style=flat-square&logo=coveralls&label=coverage" alt="Coverage"></a>
   <a href="https://pysad.readthedocs.io/en/stable/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs" alt="Documentation"></a>
   <a href="https://github.com/selimfirat/pysad/commits/master"><img src="https://img.shields.io/github/last-commit/selimfirat/pysad?style=flat-square&label=last%20commit" alt="Last commit"></a>
+  <br>
+  <a href="https://pysad.readthedocs.io/en/stable/benchmark.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fthroughput.json&style=flat-square" alt="Median throughput"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Funivariate_detectors.json&style=flat-square" alt="Univariate detectors"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmultivariate_detectors.json&style=flat-square" alt="Multivariate detectors"></a>
 </p>
 
 <p align="center">
@@ -191,7 +195,7 @@ Install PyOD first with `pip install pyod`.
 
 ```python
 from pyod.models.iforest import IForest
-from pysad.models.integrations import ReferenceWindowModel
+from pysad.integrations import ReferenceWindowModel
 
 # Train a batch Isolation Forest on the last 200 points, again every 50 points.
 model = ReferenceWindowModel(IForest, window_size=200, sliding_size=50, initial_window_X=X[:100])
@@ -230,6 +234,7 @@ These starting points come from the design of each method. They are not benchmar
 | `RSForest` | RS-Forest random space tree density (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) |
 | `MStream` | MStream multi-aspect stream counts (Bhatia et al., WWW 2021) |
+| `MemStream` | MemStream denoising autoencoder with FIFO memory (Bhatia et al., WWW 2022) |
 | `MIDAS` | MIDAS edge counts of a graph stream (Bhatia et al., AAAI 2020) |
 | `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
@@ -246,6 +251,7 @@ These starting points come from the design of each method. They are not benchmar
 | `DILOF` | Density summarizing incremental LOF (Na et al., KDD 2018) |
 | `KELOS` | Kernel density local outliers over micro-clusters of a window (Qin et al., EDBT 2019) |
 | `AnyOut` | Anytime outliers by distance to the closest cluster of a ClusTree (Assent et al., DASFAA 2012) |
+| `SDOstream` | Sparse data observers with exponential fading, a low-density stream model (Hartl et al., ESANN 2020) |
 | `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
@@ -276,7 +282,7 @@ These starting points come from the design of each method. They are not benchmar
 
 ## Benchmarks
 
-PySAD benchmarks its detectors on labeled data. The 10 multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
+PySAD benchmarks its detectors on labeled data. The multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
 
 The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) page shows all the results. The [evaluation methodology](https://pysad.readthedocs.io/en/stable/benchmarks/methodology.html) explains the steps, the metrics and the limits of the results, and the [datasets](https://pysad.readthedocs.io/en/stable/benchmarks/datasets.html) page describes the data. To run the benchmark, use `python benchmarks/benchmark.py`, as [Run the benchmark](https://pysad.readthedocs.io/en/stable/benchmarks/run.html) shows. On each pull request that changes a detector, CI runs a short form of the benchmark and lists the results that moved.
 

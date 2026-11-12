@@ -23,9 +23,16 @@ from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
 import pysad.models
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
+from tests.models.conftest import (
+    EDGE_MODELS,
+    TIMESTAMPED_MODELS,
+    UNIVARIATE_MODELS,
+    active_model_names,
+    short_stream_params,
+)
 
 SEED = 61
 MAX_FEATURES = 4
@@ -34,27 +41,6 @@ MAX_STREAM_LENGTH = 70
 # Examples per model and property. CI runs the suite on one core in places, so keep it small;
 # raise it locally to search further.
 MAX_EXAMPLES = 10
-
-UNIVARIATE_MODELS = {
-    "ChangeFinder",
-    "DAMP",
-    "HoltWinters",
-    "KNNCAD",
-    "MatrixProfile",
-    "MedianAbsoluteDeviation",
-    "RelativeEntropy",
-    "SAND",
-    "SeasonalESD",
-    "SeasonalHybridESD",
-    "SpectralResidual",
-    "StandardAbsoluteDeviation",
-}
-
-# These models take each instance as [timestamp, value].
-TIMESTAMPED_MODELS = {"HTM"}
-
-# These models take each instance as an edge [source, destination].
-EDGE_MODELS = {"MIDAS"}
 
 # Values the streams are drawn from. Small pools make constant features and duplicate instances
 # likely; the float range covers values far from 0 and from each other.
@@ -87,7 +73,6 @@ def _model_params(model_name, num_features, data):
         )
         return {"initial_X": initial_X, "num_neighbors": 10}
 
-    ones, zeros = [1.0] * num_features, [0.0] * num_features
     params = {
         "ApproxStorm": {
             "window_size": 20,
@@ -106,13 +91,6 @@ def _model_params(model_name, num_features, data):
         "DILOF": {"num_neighbors": 3, "window_size": 12},
         "ExactStorm": {"window_size": 20, "max_radius": 0.1},
         "EXPoSE": {"num_random_features": 50},
-        "HalfSpaceTrees": {
-            "feature_mins": np.array(zeros),
-            "feature_maxes": np.array(ones),
-            "window_size": 10,
-            "num_trees": 5,
-            "max_depth": 5,
-        },
         # A short probationary period, so that the streams reach the anomaly likelihood.
         "HTM": {
             "min_val": 0.0,
@@ -123,15 +101,10 @@ def _model_params(model_name, num_features, data):
         },
         # A short period and a threshold of 1, so that the streams reach the failure rule.
         "HoltWinters": {"period": 2, "window_size": 3, "threshold": 1},
-        "IForestASD": {"window_size": 20, "n_estimators": 10},
         "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
-        "Inqmad": {"input_shape": num_features, "dim_x": 16},
         "KELOS": {"window_size": 20, "radius": 0.1, "num_neighbors": 3},
-        "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
-        "KNNCAD": {"probationary_period": 48},
         "MatrixProfile": {"window_length": 4, "history_size": 20},
         "DAMP": {"window_length": 4, "history_size": 20},
-        "SpectralResidual": {"window_size": 8, "num_average_points": 3},
         "ThreshLEAP": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         "LODA": {"num_bins": 5, "num_random_cuts": 10},
         "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
@@ -140,34 +113,25 @@ def _model_params(model_name, num_features, data):
         "MemStream": {"window_size": 8, "num_epochs": 20},
         "MStream": {"log_transform": False},
         "NETS": {"window_size": 20, "max_radius": 0.1},
-        "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
+        "OeSNNUAD": {"window_size": 5, "num_output_neurons": 5},
+        "PCBIsolationForest": {"num_trees": 5, "window_size": 10, "stat_size": 3},
         "OnlineKMeans": {"num_clusters": 2},
         "OnlineOneClassSVM": {"window_size": 10},
-        "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 5, "num_bins": 5},
-        "RobustRandomCutForest": {"num_trees": 3, "shingle_size": 2, "tree_size": 16},
         "RSForest": {"window_size": 10, "num_trees": 5, "max_depth": 5},
-        "RSHash": {
-            "feature_mins": np.array(zeros),
-            "feature_maxes": np.array(ones),
-            "num_components": 10,
-        },
         "SAND": {
             "subsequence_length": 2,
             "centroid_length": 4,
             "num_clusters": 2,
             "batch_size": 10,
         },
-        "SeasonalESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
-        "SeasonalHybridESD": {"period": 2, "window_size": 8, "max_anomalies": 0.25},
         "StreamPipeline": {
             "model": pysad.models.LODA(num_bins=5, num_random_cuts=10),
             "preprocessors": [ShingleTransformer(shingle_size=2)],
-            "postprocessors": [RunningZScorePostprocessor(window_size=10)],
+            "postprocessors": [ZScorePostprocessor(window_size=10)],
         },
-        "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
     }
 
-    return params.get(model_name, {})
+    return params.get(model_name) or short_stream_params(model_name, num_features)
 
 
 @st.composite
@@ -218,7 +182,7 @@ def _models(test_name):
     known_failures = KNOWN_FAILURES.get(test_name, {})
     skipped = SKIPPED.get(test_name, {})
     params = []
-    for name in pysad.models.__all__:
+    for name in active_model_names():
         marks = []
         if name in known_failures:
             marks.append(pytest.mark.xfail(reason=known_failures[name], strict=True))

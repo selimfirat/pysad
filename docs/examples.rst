@@ -17,7 +17,63 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.758
+   AUROC: 0.768
+
+Score a stream with LODA
+------------------------
+
+This script scores each point of cardio with LODA. LODA estimates the density of a point from sparse random projections. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_loda.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.946
+
+Score a stream with HalfSpaceTrees
+----------------------------------
+
+This script scores each point of cardio with HalfSpaceTrees. It compares each point to the density of the previous window, using the min and max of each feature. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_half_space_trees.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.935
+
+Score a stream with xStream
+---------------------------
+
+This script scores each point of cardio with xStream. xStream bins StreamHash projections into half-space chains. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_xstream.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.845
+
+Score a stream with KitNet
+--------------------------
+
+This script scores each point of cardio with KitNet. KitNet is an ensemble of small autoencoders made for network traffic. It prints the AUROC of the scores against the labels.
+
+.. literalinclude:: ../examples/example_kitnet.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.878
 
 Score a synthetic stream
 ------------------------
@@ -32,6 +88,15 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.867
+
+Integrate a one-dimensional stream
+----------------------------------
+
+This script uses one feature per point. It scores each point before the update and calibrates the raw score.
+See :doc:`guides/one_dimensional_integration` for input shapes, feature bounds, and the py-outlier wrapper mismatch.
+
+.. literalinclude:: ../examples/example_one_dimensional_integration.py
+   :language: python
 
 Scale features online
 ---------------------
@@ -73,7 +138,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.543
+   AUROC: 0.545
 
 Chain the stages into one model
 -------------------------------
@@ -95,6 +160,17 @@ Use a River pipeline
 This script puts a PySAD detector after a River scaler. It scores each dictionary before learning from it. See :doc:`guides/pipelines` for the fixed feature mapping.
 
 .. literalinclude:: ../examples/example_river_pipeline.py
+   :language: python
+
+Use a scikit-learn pipeline
+----------------------------------------
+
+Fit the scaler and PySAD model on historical data before wrapping them.
+Batch scoring leaves the model unchanged.
+Lower ``score_samples`` values mean more anomalous instances.
+The threshold uses PySAD score units. ``predict`` returns -1 above the threshold and 1 at or below it.
+
+.. literalinclude:: ../examples/example_sklearn_pipeline.py
    :language: python
 
 Project high-dimensional data
@@ -129,7 +205,7 @@ It prints:
 Evaluate with several metrics
 -----------------------------
 
-This script runs :func:`~pysad.evaluation.evaluate_stream` once and gets three metrics. The function scores each point before the detector learns from it.
+This script runs :func:`~pysad.evaluation.evaluate_stream` once and gets four metrics. The function scores each point before the detector learns from it.
 
 .. literalinclude:: ../examples/example_evaluate_stream.py
    :language: python
@@ -140,6 +216,7 @@ It prints:
 
    AUROC: 0.768
    AUPR: 0.489
+   F1: 0.252
    Windowed AUROC: 0.756
 
 Raise alerts with a calibrator
@@ -263,7 +340,22 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.811
+   AUROC: 0.817
+
+Explain an anomaly
+------------------
+
+This script shifts two features of a point and asks :class:`~pysad.models.LODA` which features make the point anomalous. For each feature, :meth:`~pysad.models.LODA.explain_partial` compares the projections that use the feature with the projections that do not.
+
+.. literalinclude:: ../examples/example_loda_explanation.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Score: 3.46
+   Features by contribution: [2, 5, 0, 1, 4, 3, 7, 6]
 
 Run a PyOD model
 ----------------
@@ -277,12 +369,26 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.807
+   AUROC: 0.813
+
+Fit a PyOD model once
+---------------------
+
+This script fits a batch KNN on the first 100 points, then only scores the rest of the stream. The model does not learn from the stream. See :doc:`guides/pyod`.
+
+.. literalinclude:: ../examples/example_one_fit_model.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.857
 
 Score forecast errors of a River forecaster
 -------------------------------------------
 
-This script scores a seasonal series with spikes with :class:`~pysad.models.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast. River needs Python 3.11 or newer.
+This script scores a seasonal series with spikes with :class:`~pysad.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast. River needs Python 3.11 or newer.
 
 .. literalinclude:: ../examples/example_predictive_anomaly_detector.py
    :language: python
@@ -409,11 +515,11 @@ It prints:
 .. code-block:: text
 
    Highest-scoring anomaly alerts:
-   2025-01-01T11:10:00 score=5.6249
-   2025-01-01T12:00:00 score=5.5371
-   2025-01-01T10:20:00 score=5.0840
-   2025-01-01T11:58:00 score=4.1992
-   2025-01-01T11:05:00 score=4.1908
+   2025-01-01T11:10:00 score=5.8440
+   2025-01-01T12:00:00 score=5.8106
+   2025-01-01T10:20:00 score=4.8580
+   2025-01-01T11:58:00 score=4.2457
+   2025-01-01T11:05:00 score=4.2420
 
 Stream a Polars DataFrame
 -------------------------
@@ -519,6 +625,20 @@ It prints:
 
    AUROC: 0.651
 
+Use an online isolation forest
+------------------------------
+
+This script scores each point with OnlineIsolationForest. The forest keeps a bounded window of recent points. It scores each point before it learns it. When the window is full, it forgets the oldest point. A point is anomalous when the trees isolate it on a short path.
+
+.. literalinclude:: ../examples/example_online_isolation_forest.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.676
+
 Load credit-card fraud transactions
 -----------------------------------
 
@@ -588,6 +708,20 @@ It prints:
 
    AUROC: 0.727
 
+Use an expected similarity detector
+-----------------------------------
+
+This script scores each point with EXPoSE. EXPoSE maps each point to random Fourier features and keeps a running kernel mean embedding of the fitted points. The score is the negative expected similarity divided by the squared norm of the embedding. A higher score means more anomalous.
+
+.. literalinclude:: ../examples/example_expose.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.496
+
 Summarize old points with DILOF
 -------------------------------
 
@@ -600,7 +734,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.726
+   AUROC: 0.727
 
 Use kernel density local outliers with KELOS
 --------------------------------------------
@@ -661,7 +795,7 @@ It prints:
 Track running statistics
 ------------------------
 
-This script tracks the mean and the variance of a stream. Running statistics update with each new value.
+This script tracks the mean, the variance and the 99th percentile of a stream. Running statistics update with each new value.
 
 .. literalinclude:: ../examples/example_statistics.py
    :language: python
@@ -671,6 +805,31 @@ It prints:
 .. code-block:: text
 
    mean: -0.048, standard deviation: 0.977
+   99th percentile: 2.248 (exact: 2.227)
+
+Track the mean with an adaptive window
+--------------------------------------
+
+This script streams 1,000 values with mean 0.25 followed by 1,000 values with mean 0.75.
+It updates :class:`~pysad.statistics.ADWINMeter` directly.
+ADWIN assumes values in [0, 1], so this example uses uniform samples within that range.
+For values in a known range ``[a, b]``, use ``(value - a) / (b - a)`` before each update.
+
+.. literalinclude:: ../examples/example_adwin.py
+   :language: python
+
+The mean changes at index 1000.
+The first drift occurs at index 1020, when the window shrinks to 381 values.
+Later updates can shrink the window again as ADWIN removes older values.
+The script ends with:
+
+.. code-block:: text
+
+   Final window size 992, mean 0.740
+
+``drift_detected`` reports whether the last update shrank the window.
+``width`` gives the number of values in the current window, and ``get()`` returns their mean.
+ADWIN selects its own window, so call ``update`` directly without ``remove`` or :class:`~pysad.statistics.RunningStatistic`.
 
 Detect a change in the mean
 ---------------------------
@@ -777,3 +936,5 @@ MemStream trains a denoising autoencoder on a small normal calibration block, th
 
 .. literalinclude:: ../examples/example_memstream.py
    :language: python
+
+.. auto-examples::

@@ -22,15 +22,17 @@ class SpectralResidual(BaseModel):
 
     Only the SR part of the paper is implemented. SR-CNN, which trains a convolutional network on the saliency map, is not.
 
+    Section 4.1 explicitly describes the online sliding window and the estimated points in Eqs. (8) and (9). Each score uses only fitted values and the candidate value, with no future observations. Memory is bounded by the window and extension sizes, and scoring costs ``O(N log N)`` for ``N = window_size + num_estimated_points``, independent of stream length.
+
     The implementation differs from the paper as follows. The authors' code at https://github.com/microsoft/anomalydetector settles the details that the paper leaves open:
 
     - The paper writes the average filter ``h_q`` as a ``q x q`` matrix for images. As in the authors' code, ``AL(f)`` is the trailing average of the last ``filter_size`` log amplitudes, over fewer amplitudes for the first frequencies.
     - The paper does not say what happens at a zero amplitude, where the log is undefined. As in the authors' code, a frequency with an amplitude of at most ``1e-8`` gets the log amplitude 0 and does not contribute to the saliency map.
     - The model divides by ``max(S_bar, 1e-8)``, so that the score stays finite on a constant series.
 
-    On the same extended window, the saliency map of this model matches the authors' code to within 1e-14. The model differs from the authors' code where the code differs from the paper:
+    The reference comparison uses revision ``a3260ea0ddfb868986b924a245e003a97143f9df`` of the authors' repository. Its source files carry a restrictive Microsoft license header despite the repository's MIT license; they were used only for comparison. Applying Eq. (7) to the reference saliency on the same paper-extended windows matches this model to within 1e-14 in the regression fixture. The model differs from the authors' code where the code differs from the paper:
 
-    - The code computes the estimated value from the 6 values before ``x_n``, so that ``x_n`` does not enter the gradient. The model follows Eqs. (8) and (9), whose gradient ends at ``x_n``. A spike at ``x_n`` then also raises the estimated values, which lowers its saliency. On a seasonal series with spikes, the estimate of the code gives an AUROC of about 0.97 and the estimate of the paper about 0.67.
+    - The code computes the estimated value from the 6 values before ``x_n``, so that ``x_n`` does not enter the gradient. The model follows Eqs. (8) and (9), whose gradient ends at ``x_n``. A spike at ``x_n`` then also raises the estimated values, which can lower its saliency.
     - The code scores ``|S(x_n) - S_avg| / S_avg / 10``, clipped to ``[0, 1]``, where ``S_avg`` is the average saliency of the last 40 values including ``x_n``. The model uses the score of Eq. (7) with ``z = 21``, as in the paper.
     - The code splits a series into batches and scores each batch in one window. The model scores each value in the window that ends with it, as in the streaming setting of the paper.
 

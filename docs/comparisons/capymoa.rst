@@ -26,7 +26,7 @@ Functions
      - See :doc:`../detectors`
      - 10: ``AdaptiveIsolationForest``, ``Autoencoder``, ``HalfSpaceTrees``, ``IForestASD``, ``Loda``, ``OnlineIsolationForest``, ``RSHash``, ``RobustRandomCutForest``, ``StreamRHF`` and ``StreamingIsolationForest``
    * - Batch detectors
-     - Every PyOD detector, through :class:`~pysad.models.integrations.ReferenceWindowModel` and :class:`~pysad.models.integrations.OneFitModel`
+     - Every PyOD detector, through :class:`~pysad.integrations.ReferenceWindowModel` and :class:`~pysad.integrations.OneFitModel`
      - None
    * - Transformers
      - Scalers, shingles and seasonal decomposition

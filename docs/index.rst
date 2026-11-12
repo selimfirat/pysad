@@ -110,7 +110,7 @@ A batch detector needs the whole dataset before it can score a point. A stream d
 
       :doc:`Benchmarks <benchmark>`
 
-      AUROC, AUPR and time per point for all 10 multivariate detectors across |num_datasets| labeled datasets.
+      AUROC, AUPR and time per point for all multivariate detectors across |num_datasets| labeled datasets.
 
    .. container:: card
 
@@ -133,7 +133,7 @@ What PySAD contains
 
       .. rst-class:: number
 
-         16
+         |num_detectors|
 
       streaming detectors from published papers
 
@@ -166,7 +166,7 @@ What PySAD contains
 - Streamers replay arrays and DataFrames as streams.
 - Metrics update after every point. :doc:`guides/evaluate` explains each metric.
 - Preprocessors, random projections, score postprocessors and ensemblers work with every detector. Preprocessors change each point before the detector scores it. Postprocessors change the scores, for example to smooth them. Ensemblers combine the scores of several detectors.
-- :class:`~pysad.models.integrations.ReferenceWindowModel` runs any `PyOD <https://github.com/yzhao062/pyod>`_ detector on a sliding window (the most recent points).
+- :class:`~pysad.integrations.ReferenceWindowModel` runs any `PyOD <https://github.com/yzhao062/pyod>`_ detector on a sliding window (the most recent points).
 
 PySAD is free software under the BSD 3-Clause License. If you use it in research, see :doc:`citing`.
 
@@ -193,6 +193,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
 
    guides/index
    guides/stream_data
+   guides/one_dimensional_integration
    guides/choose_detector
    guides/alerts
    guides/evaluate

@@ -39,3 +39,20 @@ class InstanceUnitNormScaler(BaseTransformer):
         X_norm = np.linalg.norm(X, ord=self.pow)
 
         return X / X_norm
+
+    def fit(self, X: np.ndarray) -> InstanceUnitNormScaler:
+        """Returns the scaler unchanged without iterating the batch."""
+        return self
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        """Scales each row of a 2-D feature batch to unit norm."""
+        if isinstance(X, np.ndarray) and X.ndim == 2:
+            if X.shape[0] == 0 or X.shape[1] == 0:
+                return np.empty(X.shape, dtype=np.float64)
+            norms = np.linalg.norm(X, ord=self.pow, axis=1, keepdims=True)
+            return np.asarray(X / norms, dtype=np.float64)
+        return super().transform(X)
+
+    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+        """Scales each row of a 2-D feature batch to unit norm."""
+        return self.transform(X)

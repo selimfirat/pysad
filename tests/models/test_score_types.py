@@ -17,170 +17,107 @@ def _model_specs():
     from pyod.models.iforest import IForest
 
     from pysad import models
-    from pysad.models import (
-        CPOD,
-        D3,
-        DAMP,
-        DILOF,
-        HTM,
-        KELOS,
-        KNNCAD,
-        LODA,
-        MCOD,
-        MIDAS,
-        NETS,
-        SAND,
-        TEDA,
-        ADeMS,
-        AnyOut,
-        ApproxStorm,
-        ChangeFinder,
-        ExactStorm,
-        EXPoSE,
-        HalfSpaceTrees,
-        HoltWinters,
-        IForestASD,
-        IncrementalLOF,
-        KitNet,
-        LocalOutlierProbability,
-        MatrixProfile,
-        MedianAbsoluteDeviation,
-        MemStream,
-        MStream,
-        NullModel,
-        OnlineIsolationForest,
-        OnlineKMeans,
-        OnlineOneClassSVM,
-        PerfectModel,
-        RandomModel,
-        RelativeEntropy,
-        RobustRandomCutForest,
-        RSForest,
-        RSHash,
-        SeasonalESD,
-        SeasonalHybridESD,
-        SmartSifter,
-        SpectralResidual,
-        StandardAbsoluteDeviation,
-        StreamPipeline,
-        ThreshLEAP,
-        xStream,
-    )
-    from pysad.models.integrations import OneFitModel, ReferenceWindowModel
-    from pysad.transform.postprocessing import RunningZScorePostprocessor
+    from pysad.integrations import OneFitModel, ReferenceWindowModel
+    from pysad.transform.postprocessing import ZScorePostprocessor
     from pysad.transform.preprocessing import ShingleTransformer
+    from tests.models.conftest import active_model_names, num_features_for, short_stream_params
 
     mins, maxes = [0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES
+    params = {
+        "AnyOut": {"max_height": 2, "outlier_score": "density"},
+        "ApproxStorm": {
+            "window_size": 20,
+            "max_radius": 0.3,
+            "num_neighbors": 3,
+            "sample_fraction": 0.25,
+        },
+        "CPOD": {"window_size": 20, "max_radius": 0.3},
+        "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.3},
+        "DAMP": {"window_length": 8, "history_size": 40},
+        "DILOF": {"num_neighbors": 5, "window_size": 40},
+        "ExactStorm": {"window_size": 20},
+        "EXPoSE": {"num_random_features": 50},
+        "HalfSpaceTrees": {
+            "feature_mins": mins,
+            "feature_maxes": maxes,
+            "window_size": 20,
+            "num_trees": 5,
+            "max_depth": 5,
+        },
+        "HoltWinters": {"period": 4, "threshold": 1},
+        "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 256},
+        "IForestASD": {"window_size": 32},
+        "IncrementalLOF": {"window_size": 20},
+        "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32},
+        "KELOS": {"window_size": 20, "radius": 0.3, "num_neighbors": 3},
+        "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
+        "KNNCAD": {"probationary_period": 50},
+        "LocalOutlierProbability": {"initial_X": _initial_X(NUM_FEATURES)},
+        "MatrixProfile": {"window_length": 8, "history_size": 40},
+        "MCOD": {"window_size": 20, "max_radius": 0.3, "num_neighbors": 2},
+        "MemStream": {"window_size": 8, "num_epochs": 20},
+        "MIDAS": {"tick_size": 5},
+        "NETS": {"window_size": 20, "max_radius": 0.3},
+        # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses
+        "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 10, "step": 1},
+        "RobustRandomCutForest": {"num_trees": 4, "tree_size": 32},
+        "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
+        "RSHash": {"feature_mins": mins, "feature_maxes": maxes},
+        "SAND": {"subsequence_length": 4, "batch_size": 40},
+        "SeasonalESD": {"period": 4, "window_size": 12, "max_anomalies": 0.17},
+        "SeasonalHybridESD": {"period": 4, "window_size": 12, "max_anomalies": 0.17},
+        "SpectralResidual": {"window_size": 30},
+        "StreamPipeline": {
+            "model": models.LODA(),
+            "preprocessors": [ShingleTransformer(shingle_size=2)],
+            "postprocessors": [ZScorePostprocessor(window_size=20)],
+        },
+        "ThreshLEAP": {"window_size": 20, "max_radius": 0.3, "num_neighbors": 3},
+    }
 
+    active = set(active_model_names())
     # (name, factory, number of features)
     specs = [
-        ("ADeMS", lambda: ADeMS(), NUM_FEATURES),
-        ("AnyOut", lambda: AnyOut(max_height=2, outlier_score="density"), NUM_FEATURES),
         (
-            "ApproxStorm",
-            lambda: ApproxStorm(
-                window_size=20, max_radius=0.3, num_neighbors=3, sample_fraction=0.25
+            name,
+            lambda name=name: getattr(models, name)(
+                **(
+                    params.get(name)
+                    or short_stream_params(name, num_features_for(name, NUM_FEATURES))
+                )
             ),
-            NUM_FEATURES,
-        ),
-        ("ChangeFinder", lambda: ChangeFinder(), 1),
-        ("ChangeFinder-outlier", lambda: ChangeFinder(change_point=False), 1),
-        ("CPOD", lambda: CPOD(window_size=20, max_radius=0.3), NUM_FEATURES),
-        ("D3", lambda: D3(window_size=20, sample_fraction=0.5, max_radius=0.3), NUM_FEATURES),
-        ("DILOF", lambda: DILOF(num_neighbors=5, window_size=40), NUM_FEATURES),
-        ("ExactStorm", lambda: ExactStorm(window_size=20), NUM_FEATURES),
-        ("EXPoSE", lambda: EXPoSE(num_random_features=50), NUM_FEATURES),
+            num_features_for(name, NUM_FEATURES),
+        )
+        for name in active_model_names()
+    ]
+    variants = [
         (
-            "HalfSpaceTrees",
-            lambda: HalfSpaceTrees(
-                feature_mins=mins, feature_maxes=maxes, window_size=20, num_trees=5, max_depth=5
-            ),
-            NUM_FEATURES,
+            "ChangeFinder",
+            "ChangeFinder-outlier",
+            lambda: models.ChangeFinder(change_point=False),
+            1,
         ),
-        ("HoltWinters", lambda: HoltWinters(period=4, threshold=1), 1),
-        # HTM takes each instance as [timestamp, value].
-        ("HTM", lambda: HTM(min_val=0.0, max_val=1.0, probationary_period=20, num_columns=256), 2),
         (
+            "HTM",
             "HTM-raw",
-            lambda: HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=256),
+            lambda: models.HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=256),
             2,
         ),
-        ("IForestASD", lambda: IForestASD(window_size=32), NUM_FEATURES),
-        ("IncrementalLOF", lambda: IncrementalLOF(window_size=20), NUM_FEATURES),
-        ("KELOS", lambda: KELOS(window_size=20, radius=0.3, num_neighbors=3), NUM_FEATURES),
         (
-            "KitNet",
-            lambda: KitNet(grace_feature_mapping=10, grace_anomaly_detector=10),
-            NUM_FEATURES,
-        ),
-        ("KNNCAD", lambda: KNNCAD(probationary_period=50), 1),
-        ("LODA", lambda: LODA(), NUM_FEATURES),
-        (
-            "LocalOutlierProbability",
-            lambda: LocalOutlierProbability(_initial_X(NUM_FEATURES)),
-            NUM_FEATURES,
-        ),
-        ("MatrixProfile", lambda: MatrixProfile(window_length=8, history_size=40), 1),
-        ("DAMP", lambda: DAMP(window_length=8, history_size=40), 1),
-        ("MCOD", lambda: MCOD(window_size=20, max_radius=0.3, num_neighbors=2), NUM_FEATURES),
-        ("MedianAbsoluteDeviation", lambda: MedianAbsoluteDeviation(), 1),
-        ("MedianAbsoluteDeviation-signed", lambda: MedianAbsoluteDeviation(absolute=False), 1),
-        # MIDAS takes each instance as an edge [source, destination].
-        ("MIDAS", lambda: MIDAS(tick_size=5), 2),
-        ("MemStream", lambda: MemStream(window_size=8, num_epochs=20), NUM_FEATURES),
-        ("MStream", lambda: MStream(), NUM_FEATURES),
-        ("NETS", lambda: NETS(window_size=20, max_radius=0.3), NUM_FEATURES),
-        ("NullModel", lambda: NullModel(), NUM_FEATURES),
-        ("OnlineIsolationForest", lambda: OnlineIsolationForest(), NUM_FEATURES),
-        ("OnlineKMeans", lambda: OnlineKMeans(), NUM_FEATURES),
-        ("OnlineOneClassSVM", lambda: OnlineOneClassSVM(), NUM_FEATURES),
-        ("PerfectModel", lambda: PerfectModel(), NUM_FEATURES),
-        ("RandomModel", lambda: RandomModel(), NUM_FEATURES),
-        # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses
-        (
-            "RelativeEntropy",
-            lambda: RelativeEntropy(min_val=0.0, max_val=1.0, window_size=10, step=1),
+            "MedianAbsoluteDeviation",
+            "MedianAbsoluteDeviation-signed",
+            lambda: models.MedianAbsoluteDeviation(absolute=False),
             1,
         ),
         (
-            "RobustRandomCutForest",
-            lambda: RobustRandomCutForest(num_trees=4, tree_size=32),
-            NUM_FEATURES,
-        ),
-        (
-            "Inqmad",
-            lambda: models.Inqmad(input_shape=NUM_FEATURES, dim_x=32),
-            NUM_FEATURES,
-        ),
-        ("RSForest", lambda: RSForest(window_size=20, num_trees=5, max_depth=8), NUM_FEATURES),
-        ("RSHash", lambda: RSHash(feature_mins=mins, feature_maxes=maxes), NUM_FEATURES),
-        ("SAND", lambda: SAND(subsequence_length=4, batch_size=40), 1),
-        ("SeasonalESD", lambda: SeasonalESD(period=4, window_size=12, max_anomalies=0.17), 1),
-        (
-            "SeasonalHybridESD",
-            lambda: SeasonalHybridESD(period=4, window_size=12, max_anomalies=0.17),
+            "StandardAbsoluteDeviation",
+            "StandardAbsoluteDeviation-signed",
+            lambda: models.StandardAbsoluteDeviation(absolute=False),
             1,
         ),
-        ("SmartSifter", lambda: SmartSifter(), NUM_FEATURES),
-        ("SpectralResidual", lambda: SpectralResidual(window_size=30), 1),
-        ("StandardAbsoluteDeviation", lambda: StandardAbsoluteDeviation(), 1),
-        ("StandardAbsoluteDeviation-signed", lambda: StandardAbsoluteDeviation(absolute=False), 1),
-        (
-            "StreamPipeline",
-            lambda: StreamPipeline(
-                model=LODA(),
-                preprocessors=[ShingleTransformer(shingle_size=2)],
-                postprocessors=[RunningZScorePostprocessor(window_size=20)],
-            ),
-            NUM_FEATURES,
-        ),
-        ("TEDA", lambda: TEDA(), NUM_FEATURES),
-        (
-            "ThreshLEAP",
-            lambda: ThreshLEAP(window_size=20, max_radius=0.3, num_neighbors=3),
-            NUM_FEATURES,
-        ),
-        ("xStream", lambda: xStream(), NUM_FEATURES),
+    ]
+    specs += [(vid, fn, nf) for base_name, vid, fn, nf in variants if base_name in active]
+    specs += [
         ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
         (
             "ReferenceWindowModel",
@@ -195,7 +132,7 @@ def _model_specs():
     if importlib.util.find_spec("river") is not None:
         from river import time_series
 
-        from pysad.models.integrations import PredictiveAnomalyDetector
+        from pysad.integrations import PredictiveAnomalyDetector
 
         specs.append(
             (
@@ -262,17 +199,9 @@ def test_batch_methods_return_1d_arrays(name, factory, num_features):
 @pytest.mark.parametrize(
     "name,factory,num_features", MODEL_SPECS, ids=[spec[0] for spec in MODEL_SPECS]
 )
-def test_score_partial_before_the_first_fit_returns_a_score(name, factory, num_features, request):
+def test_score_partial_before_the_first_fit_returns_a_score(name, factory, num_features):
     """Regression test for #266: fit_score_partial scores each instance before it fits it, so
     every detector must score the first instance without an error."""
-    if name == "StreamPipeline":
-        request.applymarker(
-            pytest.mark.xfail(
-                reason="RunningZScorePostprocessor.transform_partial divides by zero before its first fit",
-                raises=ZeroDivisionError,
-                strict=True,
-            )
-        )
     if name == "PerfectModel":  # returns the labels that it was fitted with
         pytest.skip("PerfectModel needs a label before it can score")
     X, _ = _data(name, num_features)
@@ -326,8 +255,7 @@ def test_float_scores_work_downstream():
         MedianScoreEnsembler,
     )
     from pysad.transform.postprocessing import (
-        RunningAveragePostprocessor,
-        RunningZScorePostprocessor,
+        AveragePostprocessor,
         ZScorePostprocessor,
     )
     from pysad.transform.probability_calibration import (
@@ -348,8 +276,8 @@ def test_float_scores_work_downstream():
         ConformalProbabilityCalibrator(window_size=50),
         GaussianTailProbabilityCalibrator(window_size=50),
         SPOTProbabilityCalibrator(num_init=50, level=0.9),
-        RunningAveragePostprocessor(window_size=10),
-        RunningZScorePostprocessor(window_size=10),
+        AveragePostprocessor(window_size=10),
+        ZScorePostprocessor(window_size=10),
         ZScorePostprocessor(),
     ]
     ensemblers = [AverageScoreEnsembler(), MaximumScoreEnsembler(), MedianScoreEnsembler()]

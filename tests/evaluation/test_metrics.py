@@ -1,3 +1,6 @@
+import pytest
+
+
 def helper_test_all_metrics(metric_classes, y_true, y_pred):
     import numpy as np
 
@@ -85,7 +88,7 @@ def test_metric_error_handling():
 
     # AUROC should work with both classes
     score = metric.get()
-    assert isinstance(score, (int, float))
+    assert isinstance(score, int | float)
     assert 0.0 <= score <= 1.0
 
 
@@ -289,17 +292,18 @@ def test_precision_recall_without_threshold_on_binary_predictions():
 
 
 def test_precision_recall_without_threshold_reject_scores():
-    """Test PrecisionMetric and RecallMetric do not pick a threshold for scores on their own."""
+    """Test PrecisionMetric and RecallMetric reject continuous scores immediately when threshold is None."""
     import pytest
 
     from pysad.evaluation import PrecisionMetric, RecallMetric
 
     for metric_cls in [PrecisionMetric, RecallMetric]:
         metric = metric_cls()
-        metric.update(1, 0.9)
-        metric.update(0, 0.2)
-        with pytest.raises(ValueError):
-            metric.get()
+        metric.update(1, 1)
+        assert not hasattr(metric, "y_true")
+        with pytest.raises(ValueError, match="y_pred must be 0 or 1"):
+            metric.update(1, 0.9)
+        assert metric.get() == 1.0
 
 
 def test_empty_metric_contract():
@@ -320,3 +324,168 @@ def test_empty_metric_contract():
 
     with pytest.raises(ValueError, match="No samples recorded"):
         AUPRMetric().get()
+
+
+def test_precision_recall_prefixes_match_sklearn():
+    """Every prefix agrees, including undefined ratios and threshold ties."""
+    import pytest
+    from sklearn.metrics import precision_score, recall_score
+
+    from pysad.evaluation import PrecisionMetric, RecallMetric
+
+    labels = [0, 0, 1, 1, 0, 1, 0, 1]
+    for threshold, predictions in [
+        (None, [0, 1, 0, 1, 1, 1, 0, 0]),
+        (0.5, [0.1, 0.5, 0.4, 0.8, 0.7, 0.5, 0.2, 0.3]),
+        (-2.0, [-3.0, -2.0, -2.1, 0.0, 1.0, -2.0, -4.0, -3.0]),
+    ]:
+        classes = predictions if threshold is None else [int(p >= threshold) for p in predictions]
+        for metric_cls, reference in [
+            (PrecisionMetric, precision_score),
+            (RecallMetric, recall_score),
+        ]:
+            metric = metric_cls(threshold=threshold)
+            assert metric.get() == 0.0
+            for end, (label, prediction) in enumerate(zip(labels, predictions, strict=True), 1):
+                assert metric.update(label, prediction) is None
+                expected = reference(labels[:end], classes[:end], zero_division=0)
+                assert metric.get() == pytest.approx(expected)
+                assert metric.get() == pytest.approx(expected)
+
+
+def test_precision_recall_retained_state_is_bounded():
+    """Serialization stays small after a long stream instead of retaining samples."""
+    import pickle
+
+    from pysad.evaluation import PrecisionMetric, RecallMetric
+
+    for metric_cls in [PrecisionMetric, RecallMetric]:
+        metric = metric_cls(threshold=0.5)
+        for _ in range(250):
+            for label, score in [(1, 0.8), (0, 0.7), (1, 0.2), (0, 0.1)]:
+                metric.update(label, score)
+        initial_size = len(pickle.dumps(metric))
+        for _ in range(24750):
+            for label, score in [(1, 0.8), (0, 0.7), (1, 0.2), (0, 0.1)]:
+                metric.update(label, score)
+        # Allow integer counters to grow, but no storage proportional to the stream.
+        assert len(pickle.dumps(metric)) <= initial_size + 64
+        assert metric.get() == 0.5
+
+
+@pytest.mark.parametrize("threshold", [None, 0.5])
+def test_matthews_correlation_stream(threshold):
+    from pysad.evaluation import MatthewsCorrelationMetric
+
+    metric = MatthewsCorrelationMetric(threshold=threshold)
+    labels = [1, 0, 0, 1, 1, 0, 0]
+    predictions = [1, 0, 1, 0, 1, 0, 0]
+    scores = [0.9, 0.1, 0.5, 0.4, 0.8, 0.2, 0.3]
+    expected = [0.0, 1.0, 0.5, 0.0, 1 / 6, 1 / 3, 5 / 12]
+    assert metric.get() == 0.0
+    for label, prediction, score, value in zip(labels, predictions, scores, expected, strict=True):
+        metric.update(label, prediction if threshold is None else score)
+        assert metric.get() == pytest.approx(value)
+        assert metric.get() == pytest.approx(value)
+
+
+@pytest.mark.parametrize(
+    "labels,predictions,expected",
+    [
+        ([0, 1], [1, 0], -1.0),
+        ([0, 1, 0, 1], [0, 0, 1, 1], 0.0),
+        ([0, 0], [0, 1], 0.0),
+        ([1, 1], [0, 1], 0.0),
+        ([0, 1], [0, 0], 0.0),
+        ([0, 1], [1, 1], 0.0),
+        ([0] * 99 + [1], [0] * 100, 0.0),
+    ],
+)
+def test_matthews_correlation_edge_cases(labels, predictions, expected):
+    from pysad.evaluation import MatthewsCorrelationMetric
+
+    metric = MatthewsCorrelationMetric()
+    for label, prediction in zip(labels, predictions, strict=True):
+        metric.update(label, prediction)
+    assert metric.get() == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "threshold,label,prediction", [(None, 2, 1), (None, 1, 0.9), (0.5, -1, 0.8)]
+)
+def test_matthews_correlation_rejects_nonbinary_inputs(threshold, label, prediction):
+    from pysad.evaluation import MatthewsCorrelationMetric
+
+    metric = MatthewsCorrelationMetric(threshold=threshold)
+    metric.update(1, 1)
+    metric.update(0, 0)
+    with pytest.raises(ValueError):
+        metric.update(label, prediction)
+    assert metric.get() == 1.0
+
+
+def test_update_batch_matches_sequential_updates_across_all_metrics():
+    import numpy as np
+
+    from pysad.evaluation import (
+        AUPRMetric,
+        AUROCMetric,
+        BalancedAccuracyMetric,
+        F1Metric,
+        MatthewsCorrelationMetric,
+        PrecisionMetric,
+        RecallMetric,
+        RollingMetric,
+        WindowedMetric,
+    )
+
+    rng = np.random.default_rng(7)
+    y_true = rng.integers(0, 2, size=85)
+    scores = rng.random(size=85)
+    preds = (scores >= 0.5).astype(int)
+
+    specs = [
+        (lambda: AUROCMetric(), scores),
+        (lambda: AUPRMetric(), scores),
+        (lambda: PrecisionMetric(threshold=0.5), scores),
+        (lambda: RecallMetric(threshold=0.5), scores),
+        (lambda: F1Metric(threshold=0.5), scores),
+        (lambda: BalancedAccuracyMetric(threshold=0.5), scores),
+        (lambda: MatthewsCorrelationMetric(threshold=0.5), scores),
+        (lambda: F1Metric(), preds),
+        (lambda: BalancedAccuracyMetric(), preds),
+        (lambda: MatthewsCorrelationMetric(), preds),
+        (lambda: WindowedMetric(AUROCMetric, window_size=20, ignore_nonempty_last=False), scores),
+        (lambda: WindowedMetric(F1Metric, window_size=20, threshold=0.5), scores),
+        (lambda: RollingMetric(AUROCMetric, window_size=25), scores),
+        (lambda: RollingMetric(F1Metric, window_size=25, threshold=0.5), scores),
+    ]
+
+    for make_metric, yp in specs:
+        seq = make_metric()
+        for yt_i, yp_i in zip(y_true, yp, strict=True):
+            seq.update(int(yt_i), float(yp_i))
+
+        batched = make_metric()
+        assert batched.update_batch(y_true[:30], yp[:30]) is batched
+        batched.update_batch(y_true[30:], yp[30:])
+        assert batched.get() == pytest.approx(seq.get())
+
+    # Invalid batch leaves confusion-count metrics unmutated and raises ValueError.
+    for cls in (
+        PrecisionMetric,
+        RecallMetric,
+        F1Metric,
+        BalancedAccuracyMetric,
+        MatthewsCorrelationMetric,
+    ):
+        m = cls()
+        m.update(1, 1)
+        m.update(0, 0)
+        with pytest.raises(ValueError, match="y_true must be 0 or 1"):
+            m.update_batch([1, 2], [1, 0])
+        with pytest.raises(ValueError, match="y_pred must be 0 or 1"):
+            m.update_batch([1, 0], [1, 0.3])
+        with pytest.raises(ValueError, match="same length"):
+            m.update_batch([1, 0], [1])
+        assert m.get() == 1.0

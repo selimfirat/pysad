@@ -112,6 +112,92 @@ class ShingleTransformer(BaseTransformer):
         self.fit_partial(X)
         return shingle
 
+    def _validate_batch(self, X: np.ndarray) -> np.ndarray | None:
+        if not isinstance(X, np.ndarray) or X.dtype == object or X.ndim == 0:
+            return None
+        if X.ndim > 2:
+            raise ValueError(
+                f"ShingleTransformer expected a 1-D point, got an input of shape {X.shape[1:]}."
+            )
+        arr = np.asarray(X, dtype=np.float64)
+        if arr.ndim == 1:
+            arr = arr.reshape(-1, 1)
+        n, d = arr.shape
+        if n > 0 and d == 0:
+            raise ValueError("ShingleTransformer expected a 1-D point, got an input of shape (0,).")
+        if n > 0:
+            if not np.isfinite(arr).all():
+                raise ValueError("ShingleTransformer got a point with non-finite values.")
+            if self.recent and d != self.recent[0].shape[0]:
+                raise ValueError(
+                    f"ShingleTransformer got a point with {d} features after points with "
+                    f"{self.recent[0].shape[0]}."
+                )
+        return arr
+
+    def fit(self, X: np.ndarray) -> ShingleTransformer:
+        """Adds all points in the batch to the history, keeping the last ``shingle_size - 1``."""
+        arr = self._validate_batch(X)
+        if arr is None:
+            return super().fit(X)  # type: ignore[return-value]
+        k = self.shingle_size
+        if k > 1 and len(arr) > 0:
+            for row in arr[-(k - 1) :]:
+                self.recent.append(row.copy())
+        return self
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        """Returns the shingles for all points in the batch without changing the history."""
+        arr = self._validate_batch(X)
+        if arr is None:
+            return super().transform(X)
+        n, d = arr.shape
+        k = self.shingle_size
+        self.output_dims = k * d
+        if n == 0:
+            return np.empty((0, k * d), dtype=np.float64)
+        if k == 1:
+            return arr.copy()
+        earlier = list(self.recent)
+        m = len(earlier)
+        if m == 0:
+            return np.tile(arr, (1, k))
+        missing = k - 1 - m
+        prefix = np.concatenate([*[earlier[0]] * missing, *earlier])
+        out = np.empty((n, k * d), dtype=np.float64)
+        out[:, : (k - 1) * d] = prefix
+        out[:, (k - 1) * d :] = arr
+        return out
+
+    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+        """Builds shingles for all points in stream order and updates the history."""
+        arr = self._validate_batch(X)
+        if arr is None:
+            return super().fit_transform(X)
+        n, d = arr.shape
+        k = self.shingle_size
+        self.output_dims = k * d
+        if n == 0:
+            return np.empty((0, k * d), dtype=np.float64)
+        if k == 1:
+            return arr.copy()
+        earlier = list(self.recent)
+        m = len(earlier)
+        missing = k - 1 - m
+        padded = np.empty((n + k - 1, d), dtype=np.float64)
+        if missing > 0:
+            padded[:missing] = earlier[0] if m > 0 else arr[0]
+        if m > 0:
+            padded[missing : k - 1] = earlier
+        padded[k - 1 :] = arr
+        windows = np.lib.stride_tricks.sliding_window_view(padded, k, axis=0)  # (n, d, k)
+        out = np.swapaxes(windows, 1, 2).reshape(n, k * d)
+        if not out.flags.owndata:
+            out = out.copy()
+        for row in arr[-(k - 1) :]:
+            self.recent.append(row.copy())
+        return out
+
     def _transform_all(
         self, X: np.ndarray, transform_partial: Callable[[np.ndarray], np.ndarray]
     ) -> np.ndarray:

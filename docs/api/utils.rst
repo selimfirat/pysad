@@ -9,12 +9,8 @@ This module holds streamers, benchmark datasets and helper functions. A streamer
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   ArrayStreamer
-   PandasStreamer
-   PolarsStreamer
-   Data
-   Window
+   :kind: classes
+   :tail: Data, RingBuffer, Window
 
 Functions
 ---------
@@ -22,10 +18,4 @@ Functions
 .. autosummary::
    :nosignatures:
    :toctree: ../generated
-
-   check_feature_bounds
-   check_univariate
-   fix_seed
-   generate_stream
-   get_minmax_array
-   get_minmax_scalar
+   :kind: functions

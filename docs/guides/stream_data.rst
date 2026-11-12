@@ -6,27 +6,24 @@ A PySAD detector takes one point at a time. A point is one observation of the st
 Read a CSV file
 ---------------
 
-Read the file row by row, so that the file can be larger than memory:
+:class:`~pysad.utils.CSVStreamer` reads the file row by row, so that the file can be larger than memory. Select numeric features by zero-based column index. For a file with columns ``timestamp,cpu,memory,latency,label``:
 
 .. code-block:: python
 
-   import csv
-
-   import numpy as np
-
    from pysad.models import LODA
+   from pysad.utils import CSVStreamer
 
    model = LODA()
+   streamer = CSVStreamer(feature_columns=[1, 2, 3], label_column=4)
+   for x, label in streamer.iter("metrics.csv"):
+       score = model.fit_score_partial(x)
 
-   with open("metrics.csv", newline="") as file:
-       for row in csv.DictReader(file):
-           x = np.array([float(row["cpu"]), float(row["memory"]), float(row["latency"])])
-           score = model.fit_score_partial(x)
+The first record is treated as a header by default; use ``has_header=False`` for a headerless file. Omit ``label_column`` to yield feature arrays alone. Omit ``feature_columns`` to use every column except the label. Selected features and labels must be numeric; other columns can contain text. Set ``delimiter`` and ``encoding`` for other CSV formats. Close the iterator if you stop before exhausting it.
 
 Stream a pandas DataFrame
 -------------------------
 
-:class:`~pysad.utils.PandasStreamer` gives the rows of a DataFrame as NumPy arrays. It does not give the index. If you need the timestamps, read them from the index of the DataFrame in the same loop:
+:class:`~pysad.utils.PandasStreamer` gives the rows of a DataFrame as NumPy arrays. With ``shuffle=False``, it converts one row at a time. This avoids a NumPy copy of the full frame. It does not give the index. If you need the timestamps, read them from the index of the DataFrame in the same loop:
 
 .. code-block:: python
 
@@ -44,7 +41,7 @@ Stream a pandas DataFrame
 Stream a Polars DataFrame
 -------------------------
 
-:class:`~pysad.utils.PolarsStreamer` gives the rows of a Polars DataFrame as NumPy arrays. A Polars DataFrame has no index, so drop the timestamp column from the features and read it in the same loop:
+:class:`~pysad.utils.PolarsStreamer` gives the rows of a Polars DataFrame as NumPy arrays. With ``shuffle=False``, it converts fixed-size row buffers. This avoids a NumPy copy of the full frame and keeps NumPy dtypes and timestamp precision. A Polars DataFrame has no index, so drop the timestamp column from the features and read it in the same loop:
 
 .. code-block:: python
 

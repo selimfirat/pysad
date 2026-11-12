@@ -20,10 +20,10 @@ Functions
      - ``fit_partial``, ``score_partial`` and ``fit_score_partial``
      - ``learn_one`` and ``score_one``
    * - Streaming detectors
-     - 20, see :doc:`../detectors`
+     - See :doc:`../detectors`
      - 7: ``HalfSpaceTrees``, ``LODA``, ``LocalOutlierFactor``, ``OneClassSVM``, ``GaussianScorer``, ``StandardAbsoluteDeviation`` and ``PredictiveAnomalyDetection``
    * - Batch detectors
-     - Every PyOD detector, through :class:`~pysad.models.integrations.ReferenceWindowModel` and :class:`~pysad.models.integrations.OneFitModel`
+     - Every PyOD detector, through :class:`~pysad.integrations.ReferenceWindowModel` and :class:`~pysad.integrations.OneFitModel`
      - None
    * - Transformers
      - Scalers, shingles and seasonal decomposition

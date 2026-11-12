@@ -20,17 +20,27 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
      - Measure the ranking when anomalies are rare. AUPR is the area under the precision-recall curve. A random detector gets the fraction of anomalies in the stream, so compare AUPR only on the same data.
    * - :class:`~pysad.evaluation.PrecisionMetric`
      - Measure the fraction of alerts that are true anomalies, for a given threshold.
+   * - :class:`~pysad.evaluation.F1Metric`
+     - Measure the harmonic mean of precision and recall for a given threshold. Returns 0.0 for an empty stream or when there are no true or predicted anomalies.
+   * - :class:`~pysad.evaluation.MatthewsCorrelationMetric`
+     - Measure binary predictions when class sizes differ. It uses all four confusion counts and supports a score threshold.
    * - :class:`~pysad.evaluation.RecallMetric`
      - Measure the fraction of anomalies that raise an alert, for a given threshold.
+   * - :class:`~pysad.evaluation.BalancedAccuracyMetric`
+     - Give normal points and anomalies equal weight through their mean recall. Set a threshold for scores, or pass 0/1 predictions.
 
 Measure several metrics at once
 -------------------------------
 
-If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.evaluate_stream`. It scores each point, updates every metric with the score, and then lets the detector learn from the point. It returns the value of each metric at the end of the stream:
+If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.evaluate_stream`. It scores each point before the detector learns from it. Then it updates every metric with the label and score. It returns the value of each metric at the end of the stream.
+
+``X`` and ``y`` accept arrays, lists, and single-use generators. The function consumes both inputs once, in the same order. Each instance must have shape ``(num_features,)``. Each label must be 1 for an anomaly or 0 for a normal point. The inputs must have equal lengths. If one input ends first, the function raises ``ValueError``. The model and metrics keep updates from earlier pairs.
+
+This example passes generators without copying the input arrays. The evaluation loop does not store the full stream. The metrics can still keep all labels and scores:
 
 .. code-block:: python
 
-   from pysad.evaluation import AUPRMetric, AUROCMetric, evaluate_stream
+   from pysad.evaluation import AUPRMetric, AUROCMetric, F1Metric, evaluate_stream
    from pysad.models import LODA
    from pysad.utils import Data
 
@@ -38,10 +48,16 @@ If the metrics get the raw scores of a detector, use :func:`~pysad.evaluation.ev
 
    results = evaluate_stream(
        model=LODA(random_state=0),
-       X=X,
-       y=y,
-       metrics={"AUROC": AUROCMetric(), "AUPR": AUPRMetric()},
+       X=(x for x in X),
+       y=(int(label) for label in y),
+       metrics={
+           "AUROC": AUROCMetric(),
+           "AUPR": AUPRMetric(),
+           "F1": F1Metric(threshold=3.0),
+       },
    )
+
+The F1 threshold of 3.0 above is illustrative; choose a raw-score threshold on prior validation data for your detector. Scores equal to the threshold count as anomalies. With ``threshold=None``, pass binary predictions instead of raw scores.
 
 If the metrics get transformed scores, write the loop yourself and update every metric with the same score. Precision and recall need a threshold. In this example, the metrics get the calibrated score, a value between 0 and 1 (see :doc:`alerts`). As a result, the threshold 0.95 has the same meaning for every detector:
 
@@ -80,7 +96,7 @@ If the metrics get transformed scores, write the loop yourself and update every 
 
 The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores. During this final run of anomalies, most of the recent scores are from anomalies too.
 
-A metric keeps every label and score that it gets, and ``get`` computes the metric over all of them. As a result, each ``get`` call takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals, not for every point.
+``PrecisionMetric``, ``RecallMetric``, ``F1Metric``, ``BalancedAccuracyMetric``, and :class:`~pysad.evaluation.MatthewsCorrelationMetric` keep only four confusion counts instead of the stream history, so updating and reading them take constant time and memory. Ranking metrics (``AUROCMetric`` and ``AUPRMetric``) keep every label and score that they get, and ``get`` computes the metric over all of them. As a result, each of their ``get`` calls takes longer as the stream grows; call ``get`` at the end of the stream or at intervals, not for every point.
 
 Follow the performance over time
 --------------------------------
@@ -109,6 +125,32 @@ A metric over the full stream hides changes over time. For example, it hides a d
 The first window has the lowest AUROC, because the detector starts with no data and learns during this window. This example shuffles ``cardio`` because all its anomalies are at the end. Each window must contain at least one anomaly and one normal point. If a window does not, AUROC is not defined and ``get`` raises an error.
 
 :class:`~pysad.evaluation.WindowedMetric` computes the same values and gives only their average, here 0.923. Use it to report one number that gives the same weight to each window of the stream. With AUPR, a window without anomalies gives 0 and lowers this average.
+
+Track recent performance
+------------------------
+
+:class:`~pysad.evaluation.RollingMetric` evaluates only the most recent label-score pairs.
+Each update drops the oldest pair when the window is full.
+It differs from ``WindowedMetric``, which averages results from consecutive windows that do not overlap.
+
+.. code-block:: python
+
+   from pysad.evaluation import RecallMetric, RollingMetric
+
+   metric = RollingMetric(RecallMetric, window_size=100, threshold=0.5)
+   print(metric.get())  # None, because the window is empty.
+   metric.update(1, 0.8)
+   metric.update(1, 0.2)
+   print(metric.get())  # 0.5, from the two available pairs.
+
+An empty window returns ``None`` for every metric class.
+A nonempty window follows the selected metric's behavior, including errors for undefined results.
+For example, ``AUROCMetric`` needs both label classes in the recent window.
+Updates take O(1) time, and storage holds at most ``window_size`` pairs.
+Each ``get()`` creates a fresh metric, replays the window, and reads its result.
+AUROC and AUPR reads take O(window_size * log(window_size)) time because they sort scores.
+Read less often to reduce this cost.
+See ``examples/example_rolling_metric.py`` for a complete stream example.
 
 Report a stable result
 ----------------------

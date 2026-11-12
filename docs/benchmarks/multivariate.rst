@@ -1,7 +1,7 @@
 Multivariate detectors
 ======================
 
-This page compares the 10 multivariate detectors on |num_datasets| ODDS datasets and on 8 real streams with drift. The best value of each column of a summary table is in bold. :doc:`methodology` explains the steps of a run and the metrics.
+This page compares the multivariate detectors on |num_datasets| ODDS datasets and on |num_drift_streams| real streams with drift. The best value of each column of a summary table is in bold. :doc:`methodology` explains the steps of a run and the metrics.
 
 ODDS datasets
 -------------
@@ -14,6 +14,9 @@ Mean rank
 Mean AUROC and Mean AUPR
    The averages over the |num_datasets| datasets.
 
+Mean AUPR / fraction
+   The mean of each AUPR divided by the fraction of anomalies of its dataset.
+
 Time per point
    The median time of one ``fit_score_partial`` call, in milliseconds. All the runs used one computer, so compare these times only with each other.
 
@@ -25,7 +28,7 @@ Commit
    :header-rows: 1
    :class: benchmark-table best-columns
 
-The next table gives the AUROC on each dataset. The highest value on each dataset is in bold, and the columns are in the order of the summary. HST is :class:`~pysad.models.HalfSpaceTrees`, LoOP is :class:`~pysad.models.LocalOutlierProbability`, and RRCF is :class:`~pysad.models.RobustRandomCutForest`.
+The next table gives the AUROC on each dataset. The highest value on each dataset is in bold. Values at or below 0.5 are in italics: they are no better than chance. The columns are in the order of the summary. HST is :class:`~pysad.models.HalfSpaceTrees`, LoOP is :class:`~pysad.models.LocalOutlierProbability`, and RRCF is :class:`~pysad.models.RobustRandomCutForest`.
 
 .. csv-table::
    :file: ../benchmark/auroc.csv
@@ -33,7 +36,7 @@ The next table gives the AUROC on each dataset. The highest value on each datase
    :stub-columns: 1
    :class: benchmark-table
 
-The next table gives the AUPR on each dataset. The AUPR of a random detector is the fraction of anomalies, which is different on each dataset. Thus, compare the values only in the same row.
+The next table gives the AUPR on each dataset. Its first column is the fraction of anomalies of the dataset. The AUPR of a random detector is that fraction, which is different on each dataset. AUPR values at or below it are in italics: they are no better than chance. Thus, compare the values only in the same row.
 
 .. csv-table::
    :file: ../benchmark/aupr.csv
@@ -44,7 +47,7 @@ The next table gives the AUPR on each dataset. The AUPR of a random detector is 
 Streams with drift
 ------------------
 
-In a real stream, the normal points change over time, and an old pattern can come back. This change is called drift. Many detectors forget old points to follow drift, for example with a sliding window. These tables compare the 10 multivariate detectors on 8 real streams in their time order:
+In a real stream, the normal points change over time, and an old pattern can come back. This change is called drift. Many detectors forget old points to follow drift, for example with a sliding window. These tables compare the multivariate detectors on |num_drift_streams| real streams in their time order:
 
 - KDD http: network connections, with attacks in 10 bursts.
 - INSECTS A, I, IG and IR: optical sensor values of flying insects, with abrupt, incremental, incremental and gradual, and incremental and reoccurring drift.

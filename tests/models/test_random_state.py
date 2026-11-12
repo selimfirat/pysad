@@ -17,6 +17,7 @@ from pysad.models import (
     MemStream,
     MStream,
     OnlineIsolationForest,
+    PCBIsolationForest,
     RandomModel,
     RobustRandomCutForest,
     RSForest,
@@ -55,6 +56,9 @@ MODELS = {
     "MStream": lambda **kw: MStream(**kw),
     "OnlineIsolationForest": lambda **kw: OnlineIsolationForest(
         num_trees=10, max_leaf_samples=8, window_size=32, **kw
+    ),
+    "PCBIsolationForest": lambda **kw: PCBIsolationForest(
+        num_trees=10, window_size=32, stat_size=10, **kw
     ),
     "RandomModel": lambda **kw: RandomModel(**kw),
     "RobustRandomCutForest": lambda **kw: RobustRandomCutForest(tree_size=32, **kw),

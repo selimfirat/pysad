@@ -41,7 +41,7 @@ Stream a pandas DataFrame
 Stream a Polars DataFrame
 -------------------------
 
-:class:`~pysad.utils.PolarsStreamer` yields NumPy rows. With ``shuffle=False``, fixed-size buffers avoid copying the full frame and preserve dtypes and timestamp precision. Polars has no index; read timestamps separately from the features:
+:class:`~pysad.utils.PolarsStreamer` yields NumPy rows. With ``shuffle=False``, fixed-size buffers avoid copying the full frame and preserve dtypes and timestamp precision. Polars has no index. Read timestamps separately from the features:
 
 .. code-block:: python
 
@@ -133,7 +133,8 @@ Shape and scoring
 ~~~~~~~~~~~~~~~~~
 
 Pass a feature vector, not a scalar or a row matrix of shape ``(1, 1)``.
-Batch input has shape ``(num_instances, num_features)``; ``score(X)`` returns a ``np.float64`` array of shape ``(num_instances,)``.
+Batch input has shape ``(num_instances, num_features)``.
+The batch method ``score(X)`` returns a ``np.float64`` array of shape ``(num_instances,)``.
 Keep feature count and order fixed.
 
 ``score_partial`` returns a Python ``float`` without learning, even on repeated calls.
@@ -162,12 +163,12 @@ Score and calibrate a sensor stream
 This example uses known bounds of 0 and 40, generates sensor values with one spike, and scores, calibrates and fits each point.
 The calibrator takes a scalar raw score, not the feature vector.
 Its ``fit_transform_partial`` includes the current score in the window before computing its rank.
-Calibrated values lie between 0 and 1; they are not anomaly probabilities.
+Calibrated values lie between 0 and 1. They are not anomaly probabilities.
 With 64 distinct scores, the largest value is ``63 / 64``.
 Choose the window and threshold together using :doc:`alerts`.
 
 The example skips alerts for 128 points, covering one model window and one calibration window.
-This warm-up is an example choice; the model learns from all points, including alerts.
+This warm-up is an example choice. The model learns from all points, including alerts.
 
 .. literalinclude:: ../../examples/example_one_dimensional_integration.py
    :language: python

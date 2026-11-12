@@ -11,7 +11,7 @@ A stream is a sequence of records processed in arrival order, potentially indefi
 A batch detector, such as those in `PyOD <https://github.com/yzhao062/pyod>`_, trains on a fixed dataset and can then score new points. Updating that model generally requires retraining. An ongoing stream introduces three concerns:
 
 - Points arrive one at a time, so scoring and learning must keep up with the arrival rate.
-- Keeping every point would make memory grow without bound.
+- Keeping every point makes memory grow without bound.
 - Normal behavior can change over time (drift), making earlier data less representative.
 
 A streaming detector updates its model of normal behavior with each point and assigns an anomaly score. Higher scores mean more anomalous points. It stores a summary, often a fixed-size window of recent points or scores.
@@ -94,7 +94,7 @@ Higher means more anomalous
 
 Higher values mean more anomalous points across detectors, postprocessors, ensemblers and calibrators. The alert rule stays the same when components change: raise an alert at or above the threshold.
 
-Raw score scales differ: detectors may return negative log densities, counts or 0 or 1. Calibrate scores before comparing different detectors.
+Raw score scales differ: detectors return negative log densities, counts or 0 or 1. Calibrate scores before comparing different detectors.
 
 Calibration
 -----------
@@ -113,7 +113,7 @@ A calibrator converts a raw score into a value between 0 and 1. PySAD has four c
 :class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator`
    Fits a Generalized Pareto distribution to the highest scores with extreme value theory. It gives one minus the probability that a score is higher than the new score. It makes no assumption about the distribution of the scores, and it estimates the probability of scores that are higher than all scores seen so far.
 
-A conformal threshold of 0.99 refers to rank within the recent window, not anomaly probability. About 1% of normal scores may exceed it under a stable distribution with few ties. Drift, dependence, ties and anomalies in the window affect the observed rate. Raising the threshold reduces alerts, including false alerts on normal points.
+A conformal threshold of 0.99 refers to rank within the recent window, not anomaly probability. About 1% of normal scores exceed it under a stable distribution with few ties. Drift, dependence, ties and anomalies in the window affect the observed rate. Raising the threshold reduces alerts, including false alerts on normal points.
 
 Prequential evaluation
 ----------------------
@@ -127,9 +127,9 @@ Prequential evaluation measures performance on unseen points: score each point, 
        metric.update(label, score)
        model.fit_partial(x)
 
-Most examples use ``fit_score_partial`` to combine scoring and learning; see :ref:`the model interface <model-interface>`. :func:`~pysad.evaluation.evaluate_stream` runs this loop on labeled data and returns each metric’s final value.
+Most examples use ``fit_score_partial`` to combine scoring and learning. See :ref:`the model interface <model-interface>`. :func:`~pysad.evaluation.evaluate_stream` runs this loop on labeled data and returns each metric’s final value.
 
-The initial learning period is called warm-up. Full-stream metrics include it. To reveal changes over time, evaluate consecutive windows separately; see :doc:`guides/evaluate`.
+The initial learning period is called warm-up. Full-stream metrics include it. To reveal changes over time, evaluate consecutive windows separately. See :doc:`guides/evaluate`.
 
 Memory and time
 ---------------
@@ -141,7 +141,7 @@ Most PySAD detectors keep a summary of the stream, not the stream itself. The su
 - A set of trees, for example in :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`.
 - Running statistics, for example in :class:`~pysad.models.StandardAbsoluteDeviation`.
 
-These summaries bound memory and processing time independently of stream length. Some detectors retain growing state; :doc:`detectors` lists each detector’s memory requirements.
+These summaries bound memory and processing time independently of stream length. Some detectors retain growing state. :doc:`detectors` lists each detector’s memory requirements.
 
 Drift and forgetting
 --------------------
@@ -174,11 +174,11 @@ A detector that does not forget can still follow a large, permanent change if yo
 Reproducible results
 --------------------
 
-Randomized detectors, such as those using random projections or tree splits, accept ``random_state``. An ``int`` reproduces results; ``None`` (the default) uses NumPy’s global random state.
+Randomized detectors, such as those using random projections or tree splits, accept ``random_state``. An ``int`` reproduces results. ``None`` (the default) uses NumPy’s global random state.
 
 To make a complete script reproducible, pass ``random_state`` to each component, or call :func:`pysad.utils.fix_seed` once at the start. ``fix_seed`` seeds the global state that ``random_state=None`` uses.
 
 Labels
 ------
 
-Labels identify anomalous and normal points. Most detectors are unsupervised and ignore ``fit_partial``’s ``y`` parameter, which provides a common interface. Evaluation metrics use labels; unsupervised detectors do not.
+Labels identify anomalous and normal points. Most detectors are unsupervised and ignore ``fit_partial``’s ``y`` parameter, which provides a common interface. Evaluation metrics use labels. Unsupervised detectors do not.

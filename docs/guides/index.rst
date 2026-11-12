@@ -1,7 +1,7 @@
 How-to guides
 =============
 
-Choose a guide for the task you need to complete. These guides assume familiarity with the score-then-learn loop in :doc:`/getting_started`. For background, see :doc:`/concepts`; for parameters and method signatures, see :doc:`/api`.
+Choose a guide for the task you need to complete. These guides assume familiarity with the score-then-learn loop in :doc:`/getting_started`. For background, see :doc:`/concepts`. For parameters and method signatures, see :doc:`/api`.
 
 .. container:: cards
 

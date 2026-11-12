@@ -73,9 +73,9 @@ Compare candidates on labeled data using a metric such as AUROC, which measures 
     HalfSpaceTrees: AUROC 0.928
             RSHash: AUROC 0.700
 
-This example preserves file order, with all ``cardio`` anomalies at the end, and scores before learning. Results depend on the data; repeat the comparison on your stream.
+This example preserves file order, with all ``cardio`` anomalies at the end, and scores before learning. Results depend on the data. Repeat the comparison on your stream.
 
-:class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` require feature ranges. Compute them with :func:`~pysad.utils.get_minmax_array`; in production, use historical data or known physical limits.
+:class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RSHash` require feature ranges. Compute them with :func:`~pysad.utils.get_minmax_array`. In production, use historical data or known physical limits.
 
 Follow these rules to make the comparison fair:
 

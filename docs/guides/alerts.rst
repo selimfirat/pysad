@@ -47,7 +47,7 @@ Calibrate the scores and raise alerts
 Choose the threshold
 --------------------
 
-These approximate rates assume stable normal scores with few ties. Drift, dependence and anomalies in the window affect the rates; validate your threshold on labeled data using :doc:`evaluate`.
+These approximate rates assume stable normal scores with few ties. Drift, dependence and anomalies in the window affect the rates. Validate your threshold on labeled data using :doc:`evaluate`.
 
 .. list-table::
    :header-rows: 1
@@ -63,7 +63,7 @@ These approximate rates assume stable normal scores with few ties. Drift, depend
 
 Raise the threshold to reduce false alerts on normal points. With 1,000 scores, only the highest reaches 0.999. For a 0.999 threshold, use ``window_size`` of 5,000 or more.
 
-``window_size`` sets the calibration history: smaller windows adapt faster; larger windows give more stable ranks.
+``window_size`` sets the calibration history. Smaller windows adapt faster. Larger windows give more stable ranks.
 
 Calibrate with a Gaussian fit
 -----------------------------

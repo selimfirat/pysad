@@ -1,7 +1,7 @@
 Evaluate a detector
 ===================
 
-Evaluate scores against labels: 1 for an anomaly, 0 for normal. Only the metrics use labels; the detector learns without them.
+Evaluate scores against labels: 1 for an anomaly, 0 for normal. Only the metrics use labels. The detector learns without them.
 
 Choose a metric
 ---------------
@@ -34,9 +34,9 @@ Measure several metrics at once
 
 :func:`~pysad.evaluation.evaluate_stream` evaluates raw detector scores. It scores before learning, updates each metric, and returns their final values.
 
-``X`` and ``y`` accept arrays, lists or single-use generators and are consumed once in order. Instances have shape ``(num_features,)``; labels are 1 for anomalies or 0 for normal points. Unequal lengths raise ``ValueError`` after retaining earlier model and metric updates.
+``X`` and ``y`` accept arrays, lists or single-use generators and are consumed once in order. Instances have shape ``(num_features,)``. Labels are 1 for anomalies or 0 for normal points. Unequal lengths raise ``ValueError`` after retaining earlier model and metric updates.
 
-These generators avoid copying the arrays. The evaluation loop does not retain the stream, though metrics may retain labels and scores:
+These generators avoid copying the arrays. The evaluation loop does not retain the stream. Metrics retain labels and scores:
 
 .. code-block:: python
 
@@ -57,9 +57,9 @@ These generators avoid copying the arrays. The evaluation loop does not retain t
        },
    )
 
-The F1 threshold 3.0 is illustrative; choose yours on prior validation data. Equality counts as anomalous. With ``threshold=None``, pass binary predictions.
+The F1 threshold 3.0 is illustrative. Choose yours on prior validation data. Equality counts as anomalous. With ``threshold=None``, pass binary predictions.
 
-For transformed scores, update all metrics in your own loop. Here conformal scores range from 0 to 1, and precision and recall use a 0.95 rank threshold; see :doc:`alerts`:
+For transformed scores, update all metrics in your own loop. Here conformal scores range from 0 to 1, and precision and recall use a 0.95 rank threshold. See :doc:`alerts`:
 
 .. code-block:: python
 
@@ -96,7 +96,7 @@ For transformed scores, update all metrics in your own loop. Here conformal scor
 
 The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores. During this final run of anomalies, most of the recent scores are from anomalies too.
 
-``PrecisionMetric``, ``RecallMetric``, ``F1Metric``, ``BalancedAccuracyMetric`` and :class:`~pysad.evaluation.MatthewsCorrelationMetric` retain four confusion counts, giving constant update and read costs. ``AUROCMetric`` and ``AUPRMetric`` retain all labels and scores; their ``get`` cost grows with the stream. Read them periodically or at the end.
+``PrecisionMetric``, ``RecallMetric``, ``F1Metric``, ``BalancedAccuracyMetric`` and :class:`~pysad.evaluation.MatthewsCorrelationMetric` retain four confusion counts, giving constant update and read costs. ``AUROCMetric`` and ``AUPRMetric`` retain all labels and scores. Their ``get`` cost grows with the stream. Read them periodically or at the end.
 
 Follow the performance over time
 --------------------------------
@@ -122,7 +122,7 @@ Full-stream metrics can hide performance changes after drift. Evaluate consecuti
 
    [0.89, 0.93, 0.92, 0.93, 0.92, 0.94]
 
-The first window includes the detector’s warm-up and has the lowest AUROC. We shuffle ``cardio`` because its anomalies are all at the end. AUROC requires both classes in each window; otherwise ``get`` raises an error.
+The first window includes the detector’s warm-up and has the lowest AUROC. We shuffle ``cardio`` because its anomalies are all at the end. AUROC requires both classes in each window. Otherwise ``get`` raises an error.
 
 :class:`~pysad.evaluation.WindowedMetric` returns their equally weighted average, here 0.923. For AUPR, a window without anomalies contributes 0.
 
@@ -173,7 +173,7 @@ For randomized detectors, report the mean and standard deviation over several ``
 
    AUROC: 0.956 ± 0.008
 
-Compare detectors on identical points in identical order. ``evaluate_stream`` scores before learning; see :doc:`/concepts`.
+Compare detectors on identical points in identical order. ``evaluate_stream`` scores before learning. See :doc:`/concepts`.
 
 Next steps
 ----------

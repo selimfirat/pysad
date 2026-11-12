@@ -35,7 +35,7 @@ This pipeline scales each point to length 1, projects it to 20 features, scores 
        score = model.fit_score_partial(x)
        score = smoother.fit_transform_partial(score)
 
-Preprocessors and projectors return NumPy arrays; postprocessors return ``float`` values. ``fit_transform_partial`` fits before transforming, except for :class:`~pysad.transform.preprocessing.ShingleTransformer`, described below.
+Preprocessors and projectors return NumPy arrays. Postprocessors return ``float`` values. ``fit_transform_partial`` fits before transforming, except for :class:`~pysad.transform.preprocessing.ShingleTransformer`, described below.
 
 Projecting to fewer features reduces detection cost. Random projections approximately preserve distances.
 
@@ -101,9 +101,9 @@ Use a PySAD model in River
        score = pipeline.score_one(features)
        pipeline.learn_one(features)
 
-Call ``score_one`` before ``learn_one``. The wrapper preserves PySAD’s score range and warm-up behavior; River controls learning in the other stages.
+Call ``score_one`` before ``learn_one``. The wrapper preserves PySAD’s score range and warm-up behavior. River controls learning in the other stages.
 
-The first dictionary fixes feature order and mapping size. Later keys may be reordered, but missing or new keys raise ``ValueError``. Set the order explicitly with ``feature_names``, for example ``feature_names=("cpu", "latency")``.
+The first dictionary fixes feature order and mapping size. Later dictionaries can list the keys in any order, but missing or new keys raise ``ValueError``. Set the order explicitly with ``feature_names``, for example ``feature_names=("cpu", "latency")``.
 
 Pass a model class, such as ``RiverAnomalyDetector(LODA)``, or a zero-argument factory as above. Access the model as ``model_``. River’s ``clone()`` resets training and inferred feature names, retaining explicit names. ``clone(include_attributes=True)`` copies learned state and feature mapping, including in pipelines.
 

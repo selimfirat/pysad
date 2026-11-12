@@ -51,7 +51,7 @@ To change the code, see :doc:`contributing`.
 Dependencies
 ------------
 
-pip and conda install the runtime dependencies listed below. PySAD has no optional extras. Integrations with external libraries require those libraries separately; see `Install integration libraries`_ below.
+pip and conda install the runtime dependencies listed below. PySAD has no optional extras. Integrations with external libraries require those libraries separately. See `Install integration libraries`_ below.
 
 .. list-table::
    :header-rows: 1

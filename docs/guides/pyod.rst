@@ -43,7 +43,7 @@ Refit on a sliding window
    Points between training runs. Smaller values adapt faster but retrain more often.
 
 ``initial_window_X``
-   Initial training points. If omitted, the wrapper retrains at every point until the window is full.
+   Initial training points. If omitted, the wrapper trains each time the number of stored points doubles, so the first window costs about log2(window_size) fits.
 
 The wrapper passes other keyword arguments, such as ``random_state`` above, to the PyOD detector.
 

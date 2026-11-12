@@ -30,7 +30,7 @@ Fit the detector and calibrator on historical data before processing live points
    history_scores = model.fit_score(X_history)  # X_history has shape (num_points, num_features)
    calibrator.fit(history_scores)
 
-``fit_score`` processes rows in order. Representative history can reduce the live warm-up period; check that it reflects current conditions.
+``fit_score`` processes rows in order. Representative history reduces the live warm-up period. Make sure that the history reflects current conditions.
 
 Some detectors take initial data in the constructor instead, for example ``initial_window_X`` for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.integrations.ReferenceWindowModel`, or ``initial_X`` for :class:`~pysad.models.LocalOutlierProbability`.
 
@@ -112,7 +112,7 @@ If a detector is too slow, use fewer ensemble members: ``num_trees`` for the tre
 Monitor the scores
 ------------------
 
-Score distribution changes may indicate data problems, such as a broken sensor. Track the recent mean:
+Score distribution changes indicate data problems, such as a broken sensor. Track the recent mean:
 
 .. code-block:: python
 

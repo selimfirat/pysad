@@ -84,7 +84,7 @@ test = [
   "polars==2.1.0; python_version >= '3.11'",
   # The reference that LocalOutlierProbability is tested against.
   "PyNomaly==0.4.0",
-  # The batch detectors that the tests and examples run through pysad.models.integrations.
+  # The batch detectors that the tests and examples run through pysad.integrations.
   "pyod>=3.6.2",
   # Security floor for pillow, a transitive dependency of pyod via matplotlib.
   "pillow>=12.3.0",
@@ -167,15 +167,11 @@ markers = [
 
 [tool.coverage.run]
 source = ["pysad"]
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-omit = ["pysad/models/kitnet_model/*"]
 
 # Ruff reads the target Python version from requires-python above.
 [tool.ruff]
 # Most of the existing code already fits in 100 columns.
 line-length = 100
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-extend-exclude = ["pysad/models/kitnet_model"]
 
 [tool.ruff.lint]
 select = [
@@ -208,73 +204,8 @@ ignore = [
 [tool.mypy]
 python_version = "3.10"
 files = ["pysad"]
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-exclude = ["^pysad/models/kitnet_model/"]
 warn_unused_ignores = true
 warn_redundant_casts = true
-
-# These packages are fully annotated; keep them that way. Add packages here as their
-# type hints are completed.
-[[tool.mypy.overrides]]
-module = [
-    "pysad.core.*",
-    "pysad.evaluation.*",
-    "pysad.integrations.*",
-    "pysad.statistics.*",
-    "pysad.transform.ensemble.*",
-    "pysad.transform.postprocessing.*",
-    "pysad.transform.preprocessing.*",
-    "pysad.transform.probability_calibration.*",
-    "pysad.transform.projection.*",
-    "pysad.utils.*",
-    "pysad.models.adems",
-    "pysad.models.anyout",
-    "pysad.models.approx_storm",
-    "pysad.models.change_finder",
-    "pysad.models.cpod",
-    "pysad.models.d3",
-    "pysad.models.dilof",
-    "pysad.models.half_space_trees",
-    "pysad.models.holt_winters",
-    "pysad.models.idks",
-    "pysad.models.exact_storm",
-    "pysad.models.expose",
-    "pysad.models.htm.encoders",
-    "pysad.models.htm.htm",
-    "pysad.models.htm.spatial_pooler",
-    "pysad.models.iforest_asd",
-    "pysad.models.incremental_lof",
-    "pysad.models.inqmad",
-    "pysad.models.kelos",
-    "pysad.models.kitnet",
-    "pysad.models.knn_cad",
-    "pysad.models.loda",
-    "pysad.models.loop",
-    "pysad.models.mcod",
-    "pysad.models.median_absolute_deviation",
-    "pysad.models.midas",
-    "pysad.models.mstream",
-    "pysad.models.nets",
-    "pysad.models.null_model",
-    "pysad.models.online_isolation_forest",
-    "pysad.models.online_one_class_svm",
-    "pysad.models.pcb_isolation_forest",
-    "pysad.models.perfect_model",
-    "pysad.models.random_model",
-    "pysad.models.relative_entropy",
-    "pysad.models.robust_random_cut_forest",
-    "pysad.models.rs_forest",
-    "pysad.models.rs_hash",
-    "pysad.models.sand",
-    "pysad.models.sdostream",
-    "pysad.models.seasonal_esd",
-    "pysad.models.smart_sifter",
-    "pysad.models.spectral_residual",
-    "pysad.models.standard_absolute_deviation",
-    "pysad.models.thresh_leap",
-    "pysad.models.xstream",
-    "pysad.models.integrations.*",
-]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true

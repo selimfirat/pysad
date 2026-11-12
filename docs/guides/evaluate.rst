@@ -96,11 +96,7 @@ If the metrics get transformed scores, write the loop yourself and update every 
 
 The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores. During this final run of anomalies, most of the recent scores are from anomalies too.
 
-``F1Metric`` keeps only TP, FP and FN counts, so updating and reading it take constant time and memory. The sklearn wrapper metrics keep every label and score that they get, and ``get`` computes the metric over all of them. As a result, each of their ``get`` calls takes longer as the stream grows. Call ``get`` at the end of the stream or at intervals, not for every point.
-
-:class:`~pysad.evaluation.MatthewsCorrelationMetric` keeps four confusion counts instead of the stream history. It uses constant memory and constant work for each update and result. A zero denominator returns 0.0, including before the first update. See ``examples/example_matthews_correlation.py``.
-
-``BalancedAccuracyMetric`` stores only four confusion counts. Its memory use and update and query costs stay constant as the stream grows. For an empty stream, it returns 0.0. For a stream with one true class, it returns that class's recall. Nonempty binary results match scikit-learn. See ``examples/example_balanced_accuracy.py``.
+``PrecisionMetric``, ``RecallMetric``, ``F1Metric``, ``BalancedAccuracyMetric``, and :class:`~pysad.evaluation.MatthewsCorrelationMetric` keep only four confusion counts instead of the stream history, so updating and reading them take constant time and memory. Ranking metrics (``AUROCMetric`` and ``AUPRMetric``) keep every label and score that they get, and ``get`` computes the metric over all of them. As a result, each of their ``get`` calls takes longer as the stream grows; call ``get`` at the end of the stream or at intervals, not for every point.
 
 Follow the performance over time
 --------------------------------

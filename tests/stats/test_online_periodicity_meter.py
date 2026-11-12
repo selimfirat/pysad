@@ -87,7 +87,9 @@ def test_rejects_windows_without_a_supported_frequency(window_size):
 
 
 def test_remove_raises():
+    from pysad.statistics import RunningStatistic
+
     meter = OnlinePeriodicityMeter()
-    meter.update(1.0)
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(OnlinePeriodicityMeter, window_size=10)

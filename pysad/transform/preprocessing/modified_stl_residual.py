@@ -35,6 +35,8 @@ def _loess(
     rng: float | None,
     rw: np.ndarray | None = None,
     base: np.ndarray | None = None,
+    *,
+    finite_j: bool = False,
 ) -> np.ndarray:
     # One LOESS estimate per row, as stlest: Y and J (num_points, width) hold the values and the
     # 1-based positions of each window, xs and h (num_points,) the estimation position and the
@@ -48,14 +50,15 @@ def _loess(
         w /= total[:, None]
         if degree > 0:
             assert rng is not None
-            J = np.where(np.isfinite(J), J, 0.0)
+            if not finite_j:
+                J = np.where(np.isfinite(J), J, 0.0)
             center = (w * J).sum(axis=1)
             d = J - center[:, None]
             c = (w * d**2).sum(axis=1)
             linear = (h > 0) & (np.sqrt(c) > 0.001 * rng)
             slope = (xs - center) / c
             w = np.where(linear[:, None], w * (slope[:, None] * d + 1.0), w)
-        ys = (w * Y).sum(axis=1)
+        ys = np.einsum("ij,ij->i", w, Y)
     ys[total <= 0] = np.nan
     return ys
 
@@ -63,8 +66,19 @@ def _loess(
 @lru_cache(maxsize=64)
 def _smooth_geometry(
     n: int, length: int, jump: int
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    # The fitted points, windows, positions, half widths and tricube weights of _smooth for n
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+]:
+    # The fitted points, windows, positions, half widths and LOESS weights of _smooth for n
     # points. As stless, it fits every `jump`-th point and the last point.
     width = min(length, n)
     fit = np.arange(0, n, min(jump, n - 1))
@@ -75,9 +89,23 @@ def _smooth_geometry(
     xs = fit + 1.0
     h = np.maximum(xs - (nleft + 1), nleft + width - xs) + max(length - n, 0) // 2
     J = idx + 1.0
-    for array in (fit, idx, xs, h, J):
+    base = _tricube(J, xs, h)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        total = base.sum(axis=1)
+        w0 = base / total[:, None]
+        w0[total <= 0] = np.nan
+        center = (w0 * J).sum(axis=1)
+        d = J - center[:, None]
+        c = (w0 * d**2).sum(axis=1)
+        linear = (h > 0) & (np.sqrt(c) > 0.001 * (n - 1.0))
+        slope = (xs - center) / c
+        w1 = np.where(linear[:, None], w0 * (slope[:, None] * d + 1.0), w0)
+        w1[total <= 0] = np.nan
+    pos_f64 = np.arange(n, dtype=np.float64)
+    fit_f64 = fit.astype(np.float64)
+    for array in (fit, idx, xs, h, J, w0, w1, pos_f64, fit_f64):
         array.flags.writeable = False
-    return fit, idx, J, xs, h, _tricube(J, xs, h)
+    return fit, idx, J, xs, h, base, w0, w1, pos_f64, fit_f64
 
 
 def _smooth(
@@ -90,14 +118,24 @@ def _smooth(
     # LOESS of the whole series over windows of `length` points, as stless: it fits every
     # `jump`-th point and the last point, and interpolates linearly between them.
     n = y.shape[0]
-    fit, idx, J, xs, h, base = _smooth_geometry(n, length, jump)
-    ys = _loess(y[idx], J, xs, h, degree, n - 1.0, None if rw is None else rw[idx], base)
-    ys = np.where(np.isnan(ys), y[fit], ys)
-    return np.interp(np.arange(n), fit, ys)
+    fit, idx, J, xs, h, base, w0, w1, pos_f64, fit_f64 = _smooth_geometry(n, length, jump)
+    if rw is None:
+        ys = np.einsum("ij,ij->i", w1 if degree > 0 else w0, y[idx])
+    else:
+        ys = _loess(y[idx], J, xs, h, degree, n - 1.0, rw[idx], base, finite_j=True)
+    if np.isnan(ys).any():
+        ys = np.where(np.isnan(ys), y[fit], ys)
+    if fit.shape[0] == n:
+        return ys
+    return np.interp(pos_f64, fit_f64, ys)
 
 
 def _moving_average(x: np.ndarray, length: int) -> np.ndarray:
-    return np.convolve(x, np.full(length, 1.0 / length), mode="valid")
+    x0 = float(x[0])
+    cs = np.empty(x.shape[0] + 1, dtype=np.float64)
+    cs[0] = 0.0
+    np.cumsum(x - x0, out=cs[1:])
+    return x0 + (cs[length:] - cs[:-length]) / length
 
 
 @lru_cache(maxsize=64)
@@ -124,10 +162,16 @@ def _cycle_geometry(n: int, period: int) -> tuple[Any, ...]:
     out_idx = (np.arange(period)[:, None] + period * np.arange(num_cycles + 2))[out_valid]
     rows = np.arange(period)
     steps = np.arange(num_cycles)
-    arrays = (k, valid, cycle_idx, J, xs, h, out_valid, out_idx, rows, steps)
+    pos_mod = np.arange(n) % period
+    base4 = _tricube(J, xs, h).reshape(shape)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        total0 = base4.sum(axis=2)
+        base_norm = base4 / total0[:, :, None]
+        base_norm[total0 <= 0] = np.nan
+    arrays = (k, valid, cycle_idx, out_valid, out_idx, rows, steps, pos_mod, base4, base_norm)
     for array in arrays:
         array.flags.writeable = False
-    return (*arrays, shape, _tricube(J, xs, h))
+    return arrays
 
 
 def _periodic_stl_seasonal(y: np.ndarray, period: int, robust: bool) -> np.ndarray:
@@ -138,38 +182,36 @@ def _periodic_stl_seasonal(y: np.ndarray, period: int, robust: bool) -> np.ndarr
     trend_length += trend_length % 2 == 0
     low_pass_length = period + (period % 2 == 0)
     num_inner, num_outer = (1, 15) if robust else (2, 0)
-    k, valid, cycle_idx, J, xs, h, out_valid, out_idx, rows, steps, shape, base = _cycle_geometry(
-        n, period
+    k, valid, cycle_idx, out_valid, out_idx, rows, steps, pos_mod, base4, base_norm = (
+        _cycle_geometry(n, period)
     )
     num_cycles = steps.shape[0]
 
     trend = np.zeros(n)
+    cycle = np.empty((period, num_cycles + 2))
+    extended = np.empty(n + 2 * period)
     rw = None
     for outer in range(num_outer + 1):
         for _ in range(num_inner):
             Y = np.where(valid, (y - trend)[cycle_idx], 0.0)
-            cycle_rw = None if rw is None else np.broadcast_to(rw[cycle_idx][:, None], shape)
-            fits = _loess(
-                Y=np.broadcast_to(Y[:, None], shape).reshape(-1, num_cycles),
-                J=J,
-                xs=xs,
-                h=h,
-                degree=0,
-                rng=None,
-                rw=None if cycle_rw is None else cycle_rw.reshape(-1, num_cycles),
-                base=base,
-            ).reshape(period, 4)
+            if rw is None:
+                fits = np.einsum("pfc,pc->pf", base_norm, Y)
+            else:
+                rw_c = np.where(valid, rw[cycle_idx], 0.0)
+                numer = np.einsum("pfc,pc->pf", base4, rw_c * Y)
+                total = np.einsum("pfc,pc->pf", base4, rw_c)
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    fits = numer / total
+                fits[total <= 0] = np.nan
             # Without weight, a subseries end keeps its own value and an extension copies its
             # neighbor.
             first = np.where(np.isnan(fits[:, 1]), Y[:, 0], fits[:, 1])
             last = np.where(np.isnan(fits[:, 2]), Y[rows, k - 1], fits[:, 2])
-            cycle = np.empty((period, num_cycles + 2))
             cycle[:, 0] = np.where(np.isnan(fits[:, 0]), first, fits[:, 0])
             delta = (last - first) / (k - 1)
             cycle[:, 1:-1] = first[:, None] + delta[:, None] * steps
             cycle[rows, k] = last
             cycle[rows, k + 1] = np.where(np.isnan(fits[:, 3]), last, fits[:, 3])
-            extended = np.empty(n + 2 * period)
             extended[out_idx] = cycle[out_valid]
 
             low_pass = _moving_average(extended, period)
@@ -187,7 +229,7 @@ def _periodic_stl_seasonal(y: np.ndarray, period: int, robust: bool) -> np.ndarr
             rw = np.where(residual <= 0.999 * cmad, (1.0 - (residual / cmad) ** 2) ** 2, 0.0)
         rw[residual <= 0.001 * cmad] = 1.0
     # R's stl makes the seasonal component exactly periodic with the mean of each position.
-    return np.resize(np.bincount(np.arange(n) % period, weights=season) / k, n)
+    return np.resize(np.bincount(pos_mod, weights=season) / k, n)
 
 
 class ModifiedSTLResidualTransformer(BaseTransformer):

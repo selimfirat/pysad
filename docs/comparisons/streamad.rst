@@ -23,7 +23,7 @@ Functions
      - See :doc:`../detectors`
      - 6 multivariate: ``HSTreeDetector``, ``LodaDetector``, ``OCSVMDetector``, ``RShashDetector``, ``RrcfDetector`` and ``xStreamDetector``. 7 univariate: ``KNNDetector``, ``MadDetector``, ``SArimaDetector``, ``SRDetector``, ``SpotDetector``, ``ZScoreDetector`` and ``ZSpotDetector``
    * - Batch detectors
-     - Every PyOD detector, through :class:`~pysad.models.integrations.ReferenceWindowModel` and :class:`~pysad.models.integrations.OneFitModel`
+     - Every PyOD detector, through :class:`~pysad.integrations.ReferenceWindowModel` and :class:`~pysad.integrations.OneFitModel`
      - None
    * - Transformers
      - Scalers, shingles and seasonal decomposition

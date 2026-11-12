@@ -3,12 +3,11 @@ The :mod:`pysad.utils` module includes utility functions used in the `PySAD` fra
 """
 
 import random
-from collections.abc import Iterator
 from typing import Any
 
 import numpy as np
 
-from .array_streamer import ArrayStreamer
+from .array_streamer import ArrayStreamer, _iterate
 from .csv_streamer import CSVStreamer
 from .data import Data
 from .pandas_streamer import PandasStreamer
@@ -16,23 +15,24 @@ from .plotting import plot_stream
 from .polars_streamer import PolarsStreamer
 from .synthetic import generate_stream
 from .validation import check_feature_bounds, check_univariate
-from .window import Window
+from .window import RingBuffer, Window
 
 __all__ = [
-    "ArrayStreamer",
-    "CSVStreamer",
-    "Data",
-    "PandasStreamer",
-    "PolarsStreamer",
-    "Window",
     "_iterate",
+    "ArrayStreamer",
     "check_feature_bounds",
     "check_univariate",
+    "CSVStreamer",
+    "Data",
     "fix_seed",
     "generate_stream",
     "get_minmax_array",
     "get_minmax_scalar",
+    "PandasStreamer",
     "plot_stream",
+    "PolarsStreamer",
+    "RingBuffer",
+    "Window",
 ]
 
 
@@ -74,21 +74,3 @@ def get_minmax_scalar(x: np.ndarray) -> tuple[Any, Any]:
     max = np.max(x)
 
     return min, max
-
-
-def _iterate(X: np.ndarray, y: np.ndarray | None = None) -> Iterator[tuple[np.ndarray, Any | None]]:
-    """Iterates array of features and possibly labels.
-
-    Args:
-        X (np.array of shape (num_instances, num_features)): The features array.
-        y (np.array of shape (num_instances,)): The array containing labels (Default=None).
-    """
-
-    iterator = ArrayStreamer(shuffle=False)
-
-    if y is None:
-        for xi in iterator.iter(X):
-            yield xi, None
-    else:
-        for xi, yi in iterator.iter(X, y):
-            yield xi, yi

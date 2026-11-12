@@ -130,8 +130,9 @@ def test_alpha_outside_unit_interval_is_rejected(alpha):
 
 
 def test_remove_is_not_supported():
-    meter = HDDMWMeter()
-    meter.update(1.0)
+    from pysad.statistics import RunningStatistic
 
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+    meter = HDDMWMeter()
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(HDDMWMeter, window_size=10)

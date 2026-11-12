@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from itertools import chain
-
 import numpy as np
 from sklearn.utils import check_random_state
 
@@ -88,10 +86,15 @@ class TemporalMemory:
         self._num_segments = np.zeros(num_cells, dtype=np.int64)
         # Flat synapse ids s * max_synapses_per_segment + k, grouped by presynaptic cell, so that one
         # step reads only the synapses of the active cells.
-        self._outgoing: list[set[int]] = [set() for _ in range(num_cells)]
+        self._outgoing: list[list[int]] = [[] for _ in range(num_cells)]
+        self._prev_active = np.zeros(num_cells, dtype=bool)
+        self._cell_offsets = np.arange(num_cells_per_column, dtype=np.int64)
         self._iteration = 0
 
         self._active_cells = np.empty(0, dtype=np.int64)
+        self._dirty_segments = np.empty(0, dtype=np.int64)
+        self._active_segments = np.empty(0, dtype=np.int64)
+        self._matching_segments = np.empty(0, dtype=np.int64)
         self._num_active_connected = np.zeros(capacity, dtype=np.int64)
         self._num_active_potential = np.zeros(capacity, dtype=np.int64)
         self._predicted_columns = np.empty(0, dtype=np.int64)
@@ -123,42 +126,44 @@ class TemporalMemory:
         M = self.num_cells_per_column
         active_columns = np.unique(active_columns)
         prev_active_cells = self._active_cells
-        prev_active = np.zeros(self.num_columns * M, dtype=bool)
+        prev_active = self._prev_active
         prev_active[prev_active_cells] = True
+        try:
+            active_segments = self._active_segments
+            segment_cells = self._segment_cells[active_segments]
+            segment_columns = segment_cells // M
+            correct = np.isin(segment_columns, active_columns)
+            predicted_cells = np.unique(segment_cells[correct])
+            bursting = np.setdiff1d(active_columns, segment_columns[correct], assume_unique=True)
+            # (num_bursting, M) cells of the bursting columns.
+            bursting_cells = bursting[:, None] * M + self._cell_offsets
+            self._active_cells = np.concatenate([predicted_cells, bursting_cells.ravel()])
 
-        alive = self._segment_cells >= 0
-        active_segments = np.flatnonzero(
-            alive & (self._num_active_connected > self.activation_threshold)
-        )
-        segment_cells = self._segment_cells[active_segments]
-        segment_columns = segment_cells // M
-        correct = np.isin(segment_columns, active_columns)
-        predicted_cells = np.unique(segment_cells[correct])
-        bursting = np.setdiff1d(active_columns, segment_columns[correct], assume_unique=True)
-        # (num_bursting, M) cells of the bursting columns.
-        bursting_cells = bursting[:, None] * M + np.arange(M)
-        self._active_cells = np.concatenate([predicted_cells, bursting_cells.ravel()])
+            # Eq. 4: punish the segments that predicted a cell of an inactive column.
+            decrement = self.predicted_segment_decrement
+            self._adapt(active_segments[~correct], prev_active, -decrement, decrement)
 
-        # Eq. 4: punish the segments that predicted a cell of an inactive column.
-        decrement = self.predicted_segment_decrement
-        self._adapt(active_segments[~correct], prev_active, -decrement, decrement)
+            learning = [active_segments[correct]]
+            if bursting.size and prev_active_cells.size:
+                matched, unmatched = self._best_matching(bursting)
+                learning.append(matched)
+                new_segments = self._create_segments(bursting_cells[unmatched])
+                learning.append(new_segments)
+            learning_segments = learning[0] if len(learning) == 1 else np.concatenate(learning)
+            self._last_learned[learning_segments] = self._iteration
 
-        learning = [active_segments[correct]]
-        if bursting.size and prev_active_cells.size:
-            matched, unmatched = self._best_matching(bursting)
-            learning.append(matched)
-            new_segments = self._create_segments(bursting_cells[unmatched])
-            learning.append(new_segments)
-        learning_segments = np.concatenate(learning)
-        self._last_learned[learning_segments] = self._iteration
-
-        # Eq. 3: reinforce the segments that predicted or best matched an active column.
-        self._adapt(
-            learning_segments, prev_active, self.permanence_increment, self.permanence_decrement
-        )
-        if prev_active_cells.size:
-            for segment in learning_segments:
-                self._grow_synapses(segment, prev_active_cells, prev_active)
+            # Eq. 3: reinforce the segments that predicted or best matched an active column.
+            self._adapt(
+                learning_segments,
+                prev_active,
+                self.permanence_increment,
+                self.permanence_decrement,
+            )
+            if prev_active_cells.size:
+                for segment in learning_segments.tolist():
+                    self._grow_synapses(segment, prev_active_cells, prev_active)
+        finally:
+            prev_active[prev_active_cells] = False
 
         self._update_activity()
         self._iteration += 1
@@ -167,12 +172,14 @@ class TemporalMemory:
     def _best_matching(self, bursting: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Finds the segment with the most synapses to cells active at t - 1 in each bursting column."""
         M = self.num_cells_per_column
-        candidates = np.flatnonzero(
-            (self._segment_cells >= 0) & (self._num_active_potential >= self.learning_threshold)
-        )
+        candidates = self._matching_segments
+        if candidates.size == 0:
+            return np.empty(0, dtype=np.int64), np.ones(bursting.size, dtype=bool)
         columns = self._segment_cells[candidates] // M
         in_bursting = np.isin(columns, bursting)
         candidates, columns = candidates[in_bursting], columns[in_bursting]
+        if candidates.size == 0:
+            return np.empty(0, dtype=np.int64), np.ones(bursting.size, dtype=bool)
         # Sort by column, then by the number of active synapses (descending), then by segment id.
         order = np.lexsort((candidates, -self._num_active_potential[candidates], columns))
         candidates, columns = candidates[order], columns[order]
@@ -193,10 +200,10 @@ class TemporalMemory:
             (counts + self._rng.random_sample(cells.shape)).argmin(axis=1),
         ]
         segments = np.empty(owners.size, dtype=np.int64)
-        for i, cell in enumerate(owners):
+        for i, cell in enumerate(owners.tolist()):
             if self._num_segments[cell] >= self.max_segments_per_cell:
                 own = np.flatnonzero(self._segment_cells == cell)
-                self._destroy_segment(own[self._last_learned[own].argmin()])
+                self._destroy_segment(int(own[self._last_learned[own].argmin()]))
             if not self._free_segments:
                 self._grow_capacity()
             segment = self._free_segments.pop()
@@ -244,21 +251,36 @@ class TemporalMemory:
         delta = np.where(prev_active[presynaptic], increment, -decrement)
         permanences = np.where(exists, (self._permanences[segments] + delta).clip(0.0, 1.0), 0.0)
         self._permanences[segments] = permanences
-        for row, slot in zip(*np.nonzero(exists & (permanences <= 0.0)), strict=True):
-            self._remove_synapses(segments[row], np.array([slot]))
+        dead_rows, dead_slots = np.nonzero(exists & (permanences <= 0.0))
+        if dead_rows.size:
+            max_syn = self.max_synapses_per_segment
+            for seg, slot in zip(segments[dead_rows].tolist(), dead_slots.tolist(), strict=True):
+                cell = int(self._presynaptic[seg, slot])
+                self._outgoing[cell].remove(seg * max_syn + slot)
+                self._presynaptic[seg, slot] = -1
+                self._permanences[seg, slot] = 0.0
 
     def _grow_synapses(
         self, segment: int, prev_active_cells: np.ndarray, prev_active: np.ndarray
     ) -> None:
         presynaptic = self._presynaptic[segment]
         exists = presynaptic >= 0
-        num_new = self.max_new_synapses - prev_active[presynaptic[exists]].sum()
+        existing = presynaptic[exists]
+        active_existing = existing[prev_active[existing]]
+        num_new = self.max_new_synapses - active_existing.size
         if num_new <= 0:
             return
-        candidates = np.setdiff1d(prev_active_cells, presynaptic[exists], assume_unique=True)
+        if active_existing.size == 0:
+            candidates = prev_active_cells
+        else:
+            prev_active[active_existing] = False
+            try:
+                candidates = prev_active_cells[prev_active[prev_active_cells]]
+            finally:
+                prev_active[active_existing] = True
         if candidates.size > num_new:
             candidates = self._rng.choice(candidates, size=num_new, replace=False)
-        excess = exists.sum() + candidates.size - self.max_synapses_per_segment
+        excess = int(exists.sum()) + candidates.size - self.max_synapses_per_segment
         if excess > 0:
             weakest = np.flatnonzero(exists)[
                 self._permanences[segment, exists].argsort(kind="stable")[:excess]
@@ -270,29 +292,70 @@ class TemporalMemory:
         self._permanences[segment, slots] = self.initial_permanence
         base = segment * self.max_synapses_per_segment
         for cell, slot in zip(candidates.tolist(), slots.tolist(), strict=True):
-            self._outgoing[cell].add(base + slot)
+            self._outgoing[cell].append(base + slot)
 
     def _remove_synapses(self, segment: int, slots: np.ndarray) -> None:
         base = segment * self.max_synapses_per_segment
         for cell, slot in zip(
             self._presynaptic[segment, slots].tolist(), slots.tolist(), strict=True
         ):
-            self._outgoing[cell].discard(base + slot)
+            self._outgoing[cell].remove(base + slot)
         self._presynaptic[segment, slots] = -1
         self._permanences[segment, slots] = 0.0
 
     def _update_activity(self) -> None:
         """Counts the synapses of each segment to the active cells and predicts the next columns (Eq. 1)."""
-        capacity = self._segment_cells.size
-        ids = np.fromiter(
-            chain.from_iterable(self._outgoing[cell] for cell in self._active_cells.tolist()),
-            dtype=np.int64,
-        )
-        segments = ids // self.max_synapses_per_segment
-        connected = self._permanences.ravel()[ids] > self.connected_permanence
-        self._num_active_potential = np.bincount(segments, minlength=capacity)
-        self._num_active_connected = np.bincount(segments[connected], minlength=capacity)
-        active_segments = self._num_active_connected > self.activation_threshold
+        if self._dirty_segments.size:
+            self._num_active_potential[self._dirty_segments] = 0
+            self._num_active_connected[self._dirty_segments] = 0
+
+        outgoing = self._outgoing
+        flat: list[int] = []
+        for cell in self._active_cells.tolist():
+            if outgoing[cell]:
+                flat.extend(outgoing[cell])
+
+        if not flat and self.activation_threshold >= 0 and self.learning_threshold > 0:
+            self._dirty_segments = np.empty(0, dtype=np.int64)
+            self._active_segments = np.empty(0, dtype=np.int64)
+            self._matching_segments = np.empty(0, dtype=np.int64)
+            self._predicted_columns = np.empty(0, dtype=np.int64)
+            return
+
+        if flat:
+            ids = np.asarray(flat, dtype=np.int64)
+            segments = ids // self.max_synapses_per_segment
+            pot_all = np.bincount(segments)
+            unique_segs = np.flatnonzero(pot_all)
+            pot_counts = pot_all[unique_segs]
+            self._num_active_potential[unique_segs] = pot_counts
+            self._dirty_segments = unique_segs
+
+            connected = self._permanences.ravel()[ids] > self.connected_permanence
+            conn_counts = np.bincount(segments[connected], minlength=pot_all.size)[unique_segs]
+            self._num_active_connected[unique_segs] = conn_counts
+        else:
+            unique_segs = np.empty(0, dtype=np.int64)
+            pot_counts = np.empty(0, dtype=np.int64)
+            conn_counts = np.empty(0, dtype=np.int64)
+            self._dirty_segments = unique_segs
+
+        if self.activation_threshold >= 0:
+            active_segs = unique_segs[conn_counts > self.activation_threshold]
+        else:
+            active_segs = np.flatnonzero(
+                (self._segment_cells >= 0)
+                & (self._num_active_connected > self.activation_threshold)
+            )
+        self._active_segments = active_segs
+
+        if self.learning_threshold > 0:
+            self._matching_segments = unique_segs[pot_counts >= self.learning_threshold]
+        else:
+            self._matching_segments = np.flatnonzero(
+                (self._segment_cells >= 0) & (self._num_active_potential >= self.learning_threshold)
+            )
+
         self._predicted_columns = np.unique(
-            self._segment_cells[active_segments] // self.num_cells_per_column
+            self._segment_cells[active_segs] // self.num_cells_per_column
         )

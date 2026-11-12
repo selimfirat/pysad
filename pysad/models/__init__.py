@@ -5,6 +5,7 @@ The :mod:`pysad.models` module includes anomaly detection models to score the an
 from .adems import ADeMS
 from .anyout import AnyOut
 from .approx_storm import ApproxStorm
+from .baselines import NullModel, PerfectModel, RandomModel
 from .change_finder import ChangeFinder
 from .cpod import CPOD
 from .d3 import D3
@@ -29,15 +30,14 @@ from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
 from .memstream import MemStream
 from .midas import MIDAS
+from .model_ensemble import ModelEnsemble
 from .mstream import MStream
 from .nets import NETS
-from .null_model import NullModel
+from .oesnn_uad import OeSNNUAD
 from .online_isolation_forest import OnlineIsolationForest
 from .online_one_class_svm import OnlineOneClassSVM
 from .pcb_isolation_forest import PCBIsolationForest
-from .perfect_model import PerfectModel
 from .pewma import PEWMA
-from .random_model import RandomModel
 from .relative_entropy import RelativeEntropy
 from .robust_random_cut_forest import RobustRandomCutForest
 from .rs_forest import RSForest
@@ -74,16 +74,18 @@ __all__ = [
     "KELOS",
     "KitNet",
     "KNNCAD",
-    "LODA",
     "LocalOutlierProbability",
+    "LODA",
     "MatrixProfile",
     "MCOD",
-    "MIDAS",
     "MedianAbsoluteDeviation",
     "MemStream",
+    "MIDAS",
+    "ModelEnsemble",
     "MStream",
     "NETS",
     "NullModel",
+    "OeSNNUAD",
     "OnlineIsolationForest",
     "OnlineOneClassSVM",
     "PCBIsolationForest",

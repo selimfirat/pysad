@@ -238,6 +238,7 @@ These starting points come from the design of each method. They are not benchmar
 | `MIDAS` | MIDAS edge counts of a graph stream (Bhatia et al., AAAI 2020) |
 | `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
+| `PCBIsolationForest` | PCB-iForest isolation forest with performance counters and drift-triggered tree replacement (Heigl et al., *Electronics* 2021) |
 | `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM distance-based outliers (Angiulli & Fassetti, CIKM 2007) |
 | `ApproxStorm` | Approx-STORM distance-based outliers from a sample of the window (Angiulli & Fassetti, CIKM 2007) |
@@ -276,6 +277,8 @@ These starting points come from the design of each method. They are not benchmar
 | `SAND` | Streaming subsequence anomaly detection with k-Shape clusters (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
+| `OeSNNUAD` | Online evolving spiking neural network for unsupervised anomaly detection (Maciąg et al., *Neural Networks* 2021) |
+| `PEWMA` | Probabilistic exponentially weighted moving average (Carter & Streilein, SSP 2012) |
 
 `ReferenceWindowModel` and `OneFitModel` run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. The [detector catalog](https://pysad.readthedocs.io/en/stable/detectors.html) lists the input, setup and memory of each detector, and the [API reference](https://pysad.readthedocs.io/en/stable/api.html) lists every parameter.
 

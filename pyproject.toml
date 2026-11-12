@@ -141,6 +141,10 @@ version = {attr = "pysad.version.__version__"}
 # PEP 561 marker: type checkers use pysad's inline type hints.
 pysad = ["py.typed"]
 
+[tool.setuptools.packages.find]
+# The loop outbox lives at the repo root but is not part of the pysad package.
+exclude = ["outbox*"]
+
 [tool.uv]
 # `uv sync` would otherwise add the dev group to whatever --group asks for; Read the Docs
 # and CI name the groups they need explicitly.

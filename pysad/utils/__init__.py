@@ -3,7 +3,6 @@ The :mod:`pysad.utils` module includes utility functions used in the `PySAD` fra
 """
 
 import random
-from typing import Any
 
 import numpy as np
 
@@ -37,17 +36,22 @@ __all__ = [
 
 
 def fix_seed(seed: int) -> None:
-    """Utility method to fix the seed for randomness.
+    """Seed Python's ``random`` module and NumPy's global random state.
+
+    Components with ``random_state=None`` draw from NumPy's global state.
 
     Args:
-        seed (int): The seed.
+        seed (int): Seed used to reproduce random draws.
     """
     random.seed(seed)
     np.random.seed(seed)  # noqa: NPY002 - seeding the global state is the point of this function.
 
 
 def get_minmax_array(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Utility method that returns the boundaries for each feature of the input array.
+    """Return the minimum and maximum of each feature across input instances.
+
+    The returned arrays can be passed as ``feature_mins`` and ``feature_maxes``
+    to ``HalfSpaceTrees`` and ``RSHash``.
 
     Args:
         X (np.float64 array of shape (num_instances, num_features)): The input array.
@@ -61,8 +65,8 @@ def get_minmax_array(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return min, max
 
 
-def get_minmax_scalar(x: np.ndarray) -> tuple[Any, Any]:
-    """Utility method that returns the boundaries of the input array.
+def get_minmax_scalar(x: np.ndarray) -> tuple[float, float]:
+    """Return the minimum and maximum across all elements as Python floats.
 
     Args:
         x (np.float64 array of any shape): Input array.
@@ -70,7 +74,4 @@ def get_minmax_scalar(x: np.ndarray) -> tuple[Any, Any]:
     Returns:
         tuple[float, float]: The minimum and the maximum value in the array.
     """
-    min = np.min(x)
-    max = np.max(x)
-
-    return min, max
+    return float(x.min()), float(x.max())

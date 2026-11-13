@@ -111,5 +111,6 @@ class ADeMS(BaseModel):
             float: The Euclidean reconstruction error of the instance. Higher scores represent more anomalous instances.
         """
         if self.to_init:
-            return float(norm(X))
+            # BLAS can round strided and contiguous vectors differently.
+            return float(norm(np.ascontiguousarray(X)))
         return self._residual(X)

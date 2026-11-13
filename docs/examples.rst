@@ -790,7 +790,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.770
+   AUROC: 0.751
 
 Track running statistics
 ------------------------

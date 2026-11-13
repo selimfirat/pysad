@@ -45,7 +45,7 @@ MODEL_PARAMS = {
     # The anomaly likelihood leaves its probationary period before the round trip.
     "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 40, "num_columns": 256},
     "IForestASD": {"window_size": 32},
-    "IDK": {"input_shape": 3, "window_size": 30, "num_samples": 4},
+    "IDKS": {"input_shape": 3, "window_size": 30, "num_samples": 4},
     # Violations count toward failures before and after the round trip.
     "HoltWinters": {"period": 4, "threshold": 1},
     # The window is summarized before and after the round trip.

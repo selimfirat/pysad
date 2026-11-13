@@ -16,7 +16,7 @@ from .expose import EXPoSE
 from .half_space_trees import HalfSpaceTrees
 from .holt_winters import HoltWinters
 from .htm.htm import HTM
-from .idks import IDK
+from .idks import IDKS
 from .iforest_asd import IForestASD
 from .incremental_lof import IncrementalLOF
 from .inqmad import Inqmad
@@ -67,7 +67,7 @@ __all__ = [
     "HalfSpaceTrees",
     "HoltWinters",
     "HTM",
-    "IDK",
+    "IDKS",
     "IForestASD",
     "IncrementalLOF",
     "Inqmad",

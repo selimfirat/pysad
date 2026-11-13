@@ -101,7 +101,7 @@ def _model_params(model_name, num_features, data):
         },
         # A short period and a threshold of 1, so that the streams reach the failure rule.
         "HoltWinters": {"period": 2, "window_size": 3, "threshold": 1},
-        "IDK": {"input_shape": num_features},
+        "IDKS": {"input_shape": num_features},
         "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
         "KELOS": {"window_size": 20, "radius": 0.1, "num_neighbors": 3},
         "MatrixProfile": {"window_length": 4, "history_size": 20},

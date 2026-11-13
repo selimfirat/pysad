@@ -23,7 +23,7 @@ MODEL_CASES = {
         {"min_val": 0.0, "max_val": 1.0, "probationary_period": 50, "likelihood": False},
     ],
     "IncrementalLOF": [{"window_size": 20}],
-    "IDK": [{"input_shape": 1, "window_size": 64, "num_samples": 4}],
+    "IDKS": [{"input_shape": 1, "window_size": 64, "num_samples": 4}],
     "Inqmad": [{"input_shape": 1, "dim_x": 128}],
     "KNNCAD": [{"probationary_period": 50}],
     "LocalOutlierProbability": [{"initial_X": True}],

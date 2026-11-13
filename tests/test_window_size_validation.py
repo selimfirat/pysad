@@ -34,7 +34,7 @@ REQUIRED_ARGS: dict[str, dict[str, Any]] = {
     "ApproxStorm": {"sample_fraction": 0.5},
     "HalfSpaceTrees": {"feature_mins": [0.0], "feature_maxes": [1.0]},
     "HoltWinters": {"period": 2},
-    "IDK": {"input_shape": 1},
+    "IDKS": {"input_shape": 1},
     "ModifiedSTLResidualTransformer": {"period": 2},
     "ReferenceWindowModel": {"model_cls": IForest, "sliding_size": 5},
     "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0},

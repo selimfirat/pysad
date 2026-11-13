@@ -105,7 +105,7 @@ def _model_params(model_name, X):
         # The anomalies are single spikes, so one violation in the window is a failure.
         "HoltWinters": {"period": 24, "threshold": 1},
         "IForestASD": {"window_size": WARMUP},
-        "IDK": {
+        "IDKS": {
             "input_shape": NUM_FEATURES,
             "window_size": 100,
             "num_samples": 4,

@@ -7,7 +7,7 @@ from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _int_at_least
 
 
-class IDK(BaseModel):
+class IDKS(BaseModel):
     r"""Scores each instance by its similarity to the data distribution of a sliding window (IDK-S) :cite:`xu2026idks`.
 
     IDK-S is the streaming form of the Isolation Distributional Kernel (IDK). It represents a window
@@ -93,7 +93,7 @@ class IDK(BaseModel):
         X = np.asarray(X, dtype=np.float64)
         if X.shape not in ((num_features,), (1, num_features)):
             raise ValueError(
-                f"IDK expects one instance of shape ({num_features},) or (1, {num_features}), "
+                f"IDKS expects one instance of shape ({num_features},) or (1, {num_features}), "
                 f"got an array of shape {X.shape}."
             )
 
@@ -144,7 +144,7 @@ class IDK(BaseModel):
         self.initialized_ = True
         self.window_index_ = 0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> IDK:
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> IDKS:
         """Updates the model with the next instance: buffers it until the first window is full, then slides the window by one.
 
         Args:

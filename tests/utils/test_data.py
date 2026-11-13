@@ -122,8 +122,10 @@ def test_data_init_custom_path():
 
 
 def test_datasets_content():
-    """Test that datasets returns the expected ODDS dataset names."""
+    """Test that datasets returns a list with the expected ODDS dataset names."""
     files = Data.datasets()
+
+    assert isinstance(files, list)
 
     expected_files = [
         "arrhythmia.mat",

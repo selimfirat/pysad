@@ -214,23 +214,21 @@ def ranking_tables(tmp_path, monkeypatch):
 
 
 def test_write_ranking_marks_chance_level_and_fraction_column(ranking_tables):
-    """Mark values at or below chance and show Mean AUPR / fraction."""
+    """Mark values at or below chance and show the fraction of anomalies."""
     tmp_path = ranking_tables
 
     summary = (tmp_path / "summary.csv").read_text().splitlines()
-    assert summary[0] == (
-        "Detector,Mean rank,Mean AUROC,Mean AUPR,Mean AUPR / fraction,Time per point (ms),Commit"
-    )
+    assert summary[0] == "Detector,Mean rank,Mean AUROC,Time per point (ms),Commit"
     assert summary[1] == (
-        ":class:`~pysad.models.RSHash`,1.3,0.667,0.533,1.333,1.00,"
+        ":class:`~pysad.models.RSHash`,1.3,0.667,1.00,"
         "`abc123 <https://github.com/selimfirat/pysad/commit/abc123>`__"
     )
     assert summary[2] == (
-        ":class:`~pysad.models.LODA`,2.3,0.567,0.367,0.800,1.00,"
+        ":class:`~pysad.models.LODA`,2.3,0.567,1.00,"
         "`abc123 <https://github.com/selimfirat/pysad/commit/abc123>`__"
     )
     assert summary[3] == (
-        ":class:`~pysad.models.TEDA`,2.3,0.500,0.333,0.833,1.00,"
+        ":class:`~pysad.models.TEDA`,2.3,0.500,1.00,"
         "`abc123 <https://github.com/selimfirat/pysad/commit/abc123>`__"
     )
 
@@ -473,3 +471,53 @@ def test_union_merged_files_have_no_duplicates():
     examples_rst = (root / "docs" / "examples.rst").read_text(encoding="utf-8")
     includes = re.findall(r"^\.\. literalinclude::\s+(\S+)", examples_rst, flags=re.M)
     assert len(includes) == len(set(includes))
+
+
+def test_summary_has_no_mean_aupr(tmp_path, monkeypatch):
+    benchmark = load_benchmark()
+    monkeypatch.setattr(
+        benchmark, "load", lambda *args: (np.zeros((10, 1)), np.zeros(10, dtype=int))
+    )
+    datasets = ["ds1", "ds2"]
+    results = {}
+    for ds in datasets:
+        # LODA and RSHash have the same AUROC on both datasets, so they have the same mean rank and
+        # the same mean AUROC. RSHash has the higher AUPR, but LODA is faster, so LODA comes first.
+        for detector, auroc, aupr, ms in [
+            ("LODA", 0.9, 0.4, 1.0),
+            ("RSHash", 0.9, 0.9, 2.0),
+            ("xStream", 0.5, 0.2, 1.5),
+        ]:
+            results[(ds, detector, 0)] = {
+                "dataset": ds,
+                "detector": detector,
+                "seed": 0,
+                "auroc": auroc,
+                "aupr": aupr,
+                "ms_per_point": ms,
+                "commit": "abc",
+            }
+    benchmark.OUT = tmp_path
+    benchmark.write_ranking(results, {ds: ds for ds in datasets}, "")
+    with open(tmp_path / "summary.csv", newline="") as f:
+        rows = list(csv.DictReader(f))
+    assert list(rows[0].keys()) == [
+        "Detector",
+        "Mean rank",
+        "Mean AUROC",
+        "Time per point (ms)",
+        "Commit",
+    ]
+    assert [row["Detector"] for row in rows] == [
+        f":class:`~pysad.models.{d}`" for d in ["LODA", "RSHash", "xStream"]
+    ]
+    # LODA and RSHash tie on the mean rank and the mean AUROC, so the faster one comes first.
+    assert rows[0]["Mean rank"] == rows[1]["Mean rank"] == "1.5"
+    assert rows[0]["Mean AUROC"] == rows[1]["Mean AUROC"] == "0.900"
+    assert rows[0]["Time per point (ms)"] == "1.00"
+    assert rows[1]["Time per point (ms)"] == "2.00"
+    # The per-dataset AUPR table still exists, with one value per dataset and detector.
+    with open(tmp_path / "aupr.csv", newline="") as f:
+        aupr_rows = list(csv.DictReader(f))
+    assert [row["Dataset"] for row in aupr_rows] == datasets
+    assert float(aupr_rows[0]["RSHash"].replace("*", "")) == 0.9  # the best cell is bolded

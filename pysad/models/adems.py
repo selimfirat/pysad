@@ -79,6 +79,12 @@ class ADeMS(BaseModel):
         # A copy, since pickle stores a view as a contiguous array, which changes the rounding of _residual.
         self.components_ = U[:, :k].copy()
 
+    @staticmethod
+    def _instance(X: np.ndarray) -> np.ndarray:
+        # A fresh contiguous copy, so that every BLAS call sees the same memory layout and
+        # alignment whatever array the caller passes, including a reused buffer.
+        return np.array(X, dtype=np.float64, order="C", copy=True)
+
     def _residual(self, y: np.ndarray) -> float:
         U = self.components_
         return float(norm(y - U @ (U.T @ y)))
@@ -95,9 +101,10 @@ class ADeMS(BaseModel):
         """
         if self.to_init:
             self._init_model(X.shape[0])
+        X = self._instance(X)
         if not np.any(X) or (self.threshold is not None and self._residual(X) > self.threshold):
             return self
-        self._update(np.asarray(X, dtype=np.float64)[:, None])
+        self._update(X[:, None])
 
         return self
 
@@ -111,6 +118,6 @@ class ADeMS(BaseModel):
             float: The Euclidean reconstruction error of the instance. Higher scores represent more anomalous instances.
         """
         if self.to_init:
-            # BLAS can round strided and contiguous vectors differently.
-            return float(norm(np.ascontiguousarray(X)))
-        return self._residual(X)
+            # BLAS can round differently for different memory layouts of the input.
+            return float(norm(self._instance(X)))
+        return self._residual(self._instance(X))

@@ -20,7 +20,7 @@ Detector,Mean rank,Mean AUROC,Time per point (ms),Commit
 :class:`~pysad.models.xStream`,15.5,0.646,0.64,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
 :class:`~pysad.models.RSForest`,15.5,0.631,0.18,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
 :class:`~pysad.models.LocalOutlierProbability`,15.6,0.684,0.47,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
-:class:`~pysad.models.DILOF`,17.2,0.606,0.13,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
+:class:`~pysad.models.DILOF`,17.2,0.606,0.07,`78cb2e4 <https://github.com/selimfirat/pysad/commit/78cb2e4>`__
 :class:`~pysad.models.EXPoSE`,17.8,0.679,0.18,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
 :class:`~pysad.models.IncrementalLOF`,18.8,0.581,1.09,`83d69bd <https://github.com/selimfirat/pysad/commit/83d69bd>`__
 :class:`~pysad.models.MemStream`,18.9,0.669,0.16,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__

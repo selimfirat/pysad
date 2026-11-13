@@ -22,7 +22,7 @@ Detector,Mean rank,Mean AUROC,Time per point (ms),Commit
 :class:`~pysad.models.SmartSifter`,16.2,0.764,0.65,`83d69bd <https://github.com/selimfirat/pysad/commit/83d69bd>`__
 :class:`~pysad.models.AnyOut`,18.7,0.683,0.22,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
 :class:`~pysad.models.IncrementalLOF`,18.8,0.675,0.70,`83d69bd <https://github.com/selimfirat/pysad/commit/83d69bd>`__
-:class:`~pysad.models.DILOF`,19.0,0.686,0.13,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
+:class:`~pysad.models.DILOF`,19.0,0.686,0.07,`78cb2e4 <https://github.com/selimfirat/pysad/commit/78cb2e4>`__
 :class:`~pysad.models.OnlineIsolationForest`,19.6,0.704,4.04,`83d69bd <https://github.com/selimfirat/pysad/commit/83d69bd>`__
 :class:`~pysad.models.KitNet`,20.2,0.706,0.36,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
 :class:`~pysad.models.OnlineOneClassSVM`,20.6,0.702,0.06,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__

@@ -8,16 +8,16 @@ MatrixProfile,58,3.62,1.75,6.44,3.89
 MedianAbsoluteDeviation,58,33.83,20.65,40.66,8.16
 RelativeEntropy,58,58.87,53.23,62.52,55.73
 SAND,58,5.57,1.83,8.14,18.5
-StandardAbsoluteDeviation,58,42.04,31.88,48.85,50.05
 SeasonalESD,14,23.02,10.29,34.01,23.02
 SeasonalHybridESD,14,7.21,3.25,18.07,7.21
 SpectralResidual,58,21.15,9.08,30.08,18.23
+StandardAbsoluteDeviation,58,42.04,31.88,48.85,50.05
 ADeMS,58,0.0,0.0,0.0,0.0
 AnyOut,58,57.27,48.55,65.08,62.58
 ApproxStorm,58,0.0,0.0,0.04,4.0
 CPOD,58,4.79,1.2,8.94,17.72
 D3,58,46.07,26.67,55.71,53.08
-DILOF,58,14.93,10.16,21.23,27.75
+DILOF,58,16.97,10.89,23.1,33.37
 ExactStorm,58,4.79,1.2,8.94,17.72
 EXPoSE,58,50.86,37.65,57.47,52.23
 HalfSpaceTrees,58,43.74,31.0,51.24,31.99
@@ -26,8 +26,8 @@ IncrementalLOF,58,18.68,8.96,27.61,35.41
 Inqmad,58,41.97,27.51,48.67,21.37
 KELOS,58,17.39,1.89,24.53,3.99
 KitNet,58,24.13,8.93,33.52,27.19
-LODA,58,55.13,44.46,61.18,54.68
 LocalOutlierProbability,58,8.49,6.49,10.78,24.32
+LODA,58,55.13,44.46,61.18,54.68
 MCOD,58,4.79,1.2,8.94,17.72
 MemStream,58,10.78,3.54,16.77,6.23
 MStream,58,7.93,2.7,12.19,3.94
@@ -46,7 +46,7 @@ AnyOut+shingles,58,36.18,26.72,44.88,31.52
 ApproxStorm+shingles,58,0.0,0.0,0.0,1.73
 CPOD+shingles,58,0.8,0.8,2.04,4.64
 D3+shingles,58,10.55,6.57,12.21,33.38
-DILOF+shingles,58,12.9,8.82,18.73,13.53
+DILOF+shingles,58,12.98,9.11,18.75,13.53
 ExactStorm+shingles,58,0.8,0.8,2.04,4.64
 EXPoSE+shingles,58,38.88,28.14,45.41,26.67
 HalfSpaceTrees+shingles,58,29.18,18.69,36.04,21.4
@@ -55,8 +55,8 @@ IncrementalLOF+shingles,58,16.16,10.73,21.44,17.81
 Inqmad+shingles,58,8.81,7.45,16.11,23.21
 KELOS+shingles,58,0.0,0.0,0.13,2.08
 KitNet+shingles,58,10.9,3.53,16.75,15.49
-LODA+shingles,58,43.12,32.25,50.42,42.27
 LocalOutlierProbability+shingles,58,16.12,11.24,23.12,23.04
+LODA+shingles,58,43.12,32.25,50.42,42.27
 MCOD+shingles,58,0.8,0.8,2.04,4.64
 MemStream+shingles,58,42.89,33.72,48.57,35.98
 MStream+shingles,58,23.83,8.02,33.19,22.03

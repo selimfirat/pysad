@@ -1,6 +1,6 @@
 Detector,Standard,AUROC
 :class:`~pysad.models.HTM`,64.6,0.587
-:class:`~pysad.models.AnyOut`,62.6,0.525
+:class:`~pysad.models.AnyOut`,63.4,0.520
 :class:`~pysad.models.RelativeEntropy`,55.7,0.505
 :class:`~pysad.models.LODA`,54.7,0.591
 :class:`~pysad.models.D3`,53.1,0.527

@@ -6,7 +6,7 @@ Detector,Mean rank,Mean AUROC,Time per point (ms),Commit
 :class:`~pysad.models.RSHash`,11.2,0.687,0.21,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
 :class:`~pysad.models.IForestASD`,11.9,0.726,3.31,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
 :class:`~pysad.models.Inqmad`,12.0,0.714,4.96,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
-:class:`~pysad.models.AnyOut`,13.5,0.617,0.18,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
+:class:`~pysad.models.AnyOut`,13.5,0.616,0.27,`e1d981c <https://github.com/selimfirat/pysad/commit/e1d981c>`__
 :class:`~pysad.models.KitNet`,13.7,0.698,0.28,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
 :class:`~pysad.models.HalfSpaceTrees`,13.8,0.666,0.10,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__
 :class:`~pysad.models.LODA`,13.9,0.704,0.06,`05ec5c3 <https://github.com/selimfirat/pysad/commit/05ec5c3>`__

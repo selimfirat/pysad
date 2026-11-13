@@ -62,6 +62,10 @@ def test_score_partial_does_not_change_the_model():
     assert first == second
     # The window and the partitions are unchanged by scoring.
     np.testing.assert_array_equal(model.window_, window_before)
+    np.testing.assert_array_equal(model.samples_, samples_before)
+    np.testing.assert_array_equal(model.radius_sq_, radius_sq_before)
+    np.testing.assert_array_equal(model.feature_maps_, feature_maps_before)
+    np.testing.assert_array_equal(model.sigma_phi_, sigma_phi_before)
 
 
 def test_anomalies_score_higher_than_normals():

@@ -2,6 +2,7 @@
 The :mod:`pysad.transform.preprocessing` module provides transformers that change each point before the detector gets it.
 """
 
+from .drain import DrainLogParser
 from .identity_scaler import IdentityScaler
 from .instance_standard_scaler import InstanceStandardScaler
 from .instance_unit_norm_scaler import InstanceUnitNormScaler
@@ -13,6 +14,7 @@ from .shingle_transformer import ShingleTransformer
 from .standard_scaler import StandardScaler
 
 __all__ = [
+    "DrainLogParser",
     "IdentityScaler",
     "InstanceStandardScaler",
     "InstanceUnitNormScaler",

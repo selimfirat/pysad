@@ -3,10 +3,21 @@ Tests for pysad.utils module functions and classes.
 """
 
 import numpy as np
+import pytest
 
 
 class TestUtilsFunctions:
     """Tests for utility functions in pysad.utils."""
+
+    @pytest.mark.parametrize("dtype", [np.int64, np.float32, np.float64])
+    def test_scalar_bounds_are_python_floats(self, dtype):
+        from pysad.utils import get_minmax_scalar
+
+        low, high = get_minmax_scalar(np.array([[2, -3], [7, 1]], dtype=dtype))
+
+        assert type(low) is float
+        assert type(high) is float
+        assert (low, high) == (-3.0, 7.0)
 
     def test_fix_seed(self):
         """Test fix_seed function for reproducible randomness."""

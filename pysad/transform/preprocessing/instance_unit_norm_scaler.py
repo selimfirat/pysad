@@ -8,6 +8,8 @@ from pysad.core.base_transformer import BaseTransformer
 class InstanceUnitNormScaler(BaseTransformer):
     """Scales each feature vector to unit norm.
 
+    A vector with zero norm is returned unchanged.
+
     Args:
         pow (float): The order of the norm. ``pow=2`` gives the Euclidean norm (Default=2).
     """
@@ -37,6 +39,8 @@ class InstanceUnitNormScaler(BaseTransformer):
             np.float64 array of shape (num_features,): Scaled feature vector.
         """
         X_norm = np.linalg.norm(X, ord=self.pow)
+        if X_norm == 0:
+            return X.astype(np.float64)
 
         return X / X_norm
 
@@ -50,6 +54,7 @@ class InstanceUnitNormScaler(BaseTransformer):
             if X.shape[0] == 0 or X.shape[1] == 0:
                 return np.empty(X.shape, dtype=np.float64)
             norms = np.linalg.norm(X, ord=self.pow, axis=1, keepdims=True)
+            norms[norms == 0] = 1.0
             return np.asarray(X / norms, dtype=np.float64)
         return super().transform(X)
 

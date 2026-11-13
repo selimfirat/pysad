@@ -172,8 +172,11 @@ class IDK(BaseModel):
         fmap_old = self.feature_maps_[write_pos].copy()
         x_fmap = self._single_feature_map(x)
         self.window_[write_pos] = x
-        affected = np.flatnonzero(np.any(self.sample_window_index_ == write_pos, axis=1))
-        affected_set = set(int(part) for part in affected)
+        affected = [
+            int(part)
+            for part in np.flatnonzero(np.any(self.sample_window_index_ == write_pos, axis=1))
+        ]
+        affected_set = set(affected)
         for part in affected:
             sample_idxs = np.flatnonzero(self.sample_window_index_[part] == write_pos)
             for s in sample_idxs:

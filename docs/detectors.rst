@@ -138,14 +138,14 @@ These detectors take points with one or more features. A feature is one measured
      - Quantum measurement density estimation :cite:`gallego2022inqmad`
      - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``)
      - Fixed: a ``dim_x`` by ``dim_x`` matrix
-   * - :class:`~pysad.models.IDKS`
-     - Similarity to the data distribution of a sliding window, from hypersphere partitions of the Isolation Distributional Kernel :cite:`xu2026idks`
-     - The number of features, the window size, the number of partitions and the number of samples per partition
-     - Fixed: a window of ``window_size`` points and ``num_partitions * num_samples`` hypersphere samples
    * - :class:`~pysad.models.EXPoSE`
      - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
      - Nothing
      - Fixed: ``num_random_features`` frequencies per feature and the mean of the features
+   * - :class:`~pysad.models.IDKS`
+     - Similarity to the data distribution of a sliding window, from hypersphere partitions of the Isolation Distributional Kernel :cite:`xu2026idks`
+     - The number of features, the window size, the number of partitions and the number of samples per partition
+     - Fixed: a window of ``window_size`` points and ``num_partitions * num_samples`` hypersphere samples
 
 Univariate detectors
 --------------------

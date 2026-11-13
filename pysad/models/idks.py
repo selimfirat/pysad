@@ -31,6 +31,10 @@ class IDKS(BaseModel):
       own state never contributes to its score.
     - The paper slides the window by an update step size larger than one. This model slides by one
       instance per call, which matches the one-instance PySAD interface.
+    - Equation 5 marks every sample at the minimum distance. This model marks one sample when
+      several samples share the minimum distance.
+    - Equation 5 accepts a sample only when the distance is less than its radius. This model keeps
+      that strict comparison. The reference code accepts a distance equal to the radius.
 
     Args:
         input_shape (int): Number of features. Must be an int >= 1 (a NumPy integer is accepted, but
@@ -38,10 +42,13 @@ class IDKS(BaseModel):
             Every instance must be an array of shape (input_shape,) or (1, input_shape), or
             `ValueError` is raised before the model changes.
         window_size (int): Number of recent instances in the sliding window, the paper's :math:`\omega`.
-            Must be an int > num_samples (a NumPy integer is accepted, but not a bool)
-            (Default=100).
+            Must be an int > num_samples (a NumPy integer is accepted, but not a bool).
+            The default of 100 is a choice of this implementation. The paper uses
+            :math:`\omega = 2048` (Default=100).
         num_partitions (int): Number of partitions, the paper's :math:`t`. Must be an int >= 1
-            (a NumPy integer is accepted, but not a bool) (Default=50).
+            (a NumPy integer is accepted, but not a bool).
+            The default of 50 is a choice of this implementation. The paper uses :math:`t = 100`
+            and calls it the default (Default=50).
         num_samples (int): Number of samples per partition, the paper's :math:`\psi`. Must be an int
             between 2 and window_size - 1 (a NumPy integer is accepted, but not a bool)
             (Default=4).

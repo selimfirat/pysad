@@ -29,6 +29,7 @@ from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
 from .memstream import MemStream
 from .midas import MIDAS
+from .milof import MiLOF
 from .model_ensemble import ModelEnsemble
 from .mstream import MStream
 from .nets import NETS
@@ -79,6 +80,7 @@ __all__ = [
     "MedianAbsoluteDeviation",
     "MemStream",
     "MIDAS",
+    "MiLOF",
     "ModelEnsemble",
     "MStream",
     "NETS",

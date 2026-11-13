@@ -44,6 +44,37 @@ def test_nonfinite_vectors_keep_nan_outputs(values):
     np.testing.assert_array_equal(scaled_X, np.full(len(values), np.nan))
 
 
+@pytest.mark.parametrize("scale", [1e-200, 1e-320, 1e200, 1e307])
+def test_extreme_magnitude_vectors_standardize(scale):
+    import numpy as np
+
+    from pysad.transform.preprocessing import InstanceStandardScaler
+
+    X = np.array([1.0, 2.0, 3.0]) * scale
+    with np.errstate(all="raise"):
+        scaled_X = InstanceStandardScaler().transform_partial(X)
+
+    # Rescaling a huge or tiny row costs a rounding step, so the centred middle feature is only
+    # near zero.
+    np.testing.assert_allclose(scaled_X, [-np.sqrt(1.5), 0.0, np.sqrt(1.5)], atol=1e-12)
+    np.testing.assert_array_equal(X, np.array([1.0, 2.0, 3.0]) * scale)
+
+
+@pytest.mark.parametrize("scale", [1e-200, 1e200])
+def test_extreme_magnitude_batch_rows_standardize(scale):
+    import numpy as np
+
+    from pysad.transform.preprocessing import InstanceStandardScaler
+
+    X = np.array([[1.0 * scale, 2.0 * scale, 3.0 * scale], [5.0, 5.0, 5.0], [1.0, 2.0, 3.0]])
+    with np.errstate(all="raise"):
+        out = InstanceStandardScaler().fit_transform(X)
+
+    np.testing.assert_allclose(out[0], [-np.sqrt(1.5), 0.0, np.sqrt(1.5)], atol=1e-12)
+    np.testing.assert_array_equal(out[1], [0.0, 0.0, 0.0])
+    np.testing.assert_allclose(out[2], [-np.sqrt(1.5), 0.0, np.sqrt(1.5)])
+
+
 def test_batch_mixed_constant_and_extreme_rows_under_errstate_raise():
     import numpy as np
 

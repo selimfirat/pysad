@@ -5,12 +5,40 @@ import numpy as np
 from pysad.core.base_transformer import BaseTransformer
 
 
+def _standardize_rows(X: np.ndarray) -> np.ndarray:
+    """Centre each row of a 2-D batch and divide it by its standard deviation.
+
+    Args:
+        X (np.float64 array of shape (num_instances, num_features)): Input feature batch, holding
+            no constant finite row.
+
+    Returns:
+        np.float64 array of shape (num_instances, num_features): Standardized rows.
+    """
+    with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+        # An over- or underflow here is detected below rather than reported to the caller.
+        stds = X.std(axis=1, keepdims=True)  # (num_instances, 1)
+    degenerate = (stds == 0.0) | np.isinf(stds)
+    if degenerate.any():
+        # Squaring the deviations underflows a tiny row's standard deviation to zero and overflows
+        # a huge row's to infinity. Dividing such a row by its largest feature first keeps the
+        # deviations in range, and standardizing is invariant to that scaling.
+        rescale = degenerate & np.isfinite(X).all(axis=1, keepdims=True)
+        if rescale.any():
+            X = X / np.where(rescale, np.abs(X).max(axis=1, keepdims=True), 1.0)
+            stds = X.std(axis=1, keepdims=True)
+
+    return np.asarray((X - X.mean(axis=1, keepdims=True)) / stds, dtype=np.float64)
+
+
 class InstanceStandardScaler(BaseTransformer):
     """Scale each feature vector to zero mean and unit standard deviation.
 
     Compute the mean and standard deviation across the features of each instance.
     Subtract the mean, then divide by the standard deviation.
     Constant finite vectors have zero variance and return zeros, including one-feature inputs.
+    Vectors whose features are large or small enough to over- or underflow the standard deviation
+    are rescaled before it is taken, so they standardize instead of returning zeros or infinities.
     The scaler learns nothing from previous instances.
     """
 
@@ -40,10 +68,7 @@ class InstanceStandardScaler(BaseTransformer):
         if X.size and np.isfinite(X[0]) and (X == X[0]).all():
             return np.zeros_like(X, dtype=np.float64)
 
-        X_mean = X.mean()
-        X_std = X.std()
-
-        return (X - X_mean) / X_std
+        return _standardize_rows(X[None, :])[0]
 
     def fit(self, X: np.ndarray) -> InstanceStandardScaler:
         """Return the scaler without learning from the input."""
@@ -58,14 +83,9 @@ class InstanceStandardScaler(BaseTransformer):
             if const_finite.all():
                 return np.zeros(X.shape, dtype=np.float64)
             if not const_finite.any():
-                means = X.mean(axis=1, keepdims=True)
-                stds = X.std(axis=1, keepdims=True)
-                return np.asarray((X - means) / stds, dtype=np.float64)
+                return _standardize_rows(X)
             out = np.zeros(X.shape, dtype=np.float64)
-            sub = X[~const_finite]
-            means = sub.mean(axis=1, keepdims=True)
-            stds = sub.std(axis=1, keepdims=True)
-            out[~const_finite] = (sub - means) / stds
+            out[~const_finite] = _standardize_rows(X[~const_finite])
             return out
         return super().transform(X)
 

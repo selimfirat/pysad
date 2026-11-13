@@ -258,6 +258,7 @@ These starting points come from the design of each method. They are not benchmar
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | Finite mixtures with discounting learning (Yamanishi et al., KDD 2000) |
 | `TEDA` | Typicality and eccentricity data analytics (Angelov, EALS 2014) |
+| `IDKS` | IDK-S incremental distributional kernel over a sliding window (Xu et al., AAAI 2026) |
 | `EXPoSE` | Expected similarity to the kernel mean embedding (Schneider et al., Machine Learning 2016) |
 
 **Univariate**

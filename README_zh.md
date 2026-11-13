@@ -254,6 +254,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `Inqmad` | InQMAD 量子测量密度估计 (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | 基于带折扣学习的有限混合模型 (Yamanishi et al., KDD 2000) |
 | `TEDA` | 典型性与离心率数据分析 (Angelov, EALS 2014) |
+| `IDKS` | IDK-S 滑动窗口上的增量分布核 (Xu et al., AAAI 2026) |
 | `EXPoSE` | 与核均值嵌入的期望相似度 (Schneider et al., Machine Learning 2016) |
 
 **单变量**

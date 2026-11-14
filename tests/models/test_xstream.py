@@ -1,6 +1,9 @@
 from collections import Counter, defaultdict
 
 import numpy as np
+import pytest
+
+from pysad.models import xStream
 
 
 class _ReferenceChains:
@@ -99,3 +102,73 @@ def test_xstream_fit_score_partial_matches_score_then_fit():
 
     assert model.hs_chains.counts == reference.hs_chains.counts
     assert model.hs_chains.counts_cur == reference.hs_chains.counts_cur
+
+
+def test_xstream_explain_returns_per_feature_weights():
+    rng = np.random.RandomState(0)
+    X = rng.randn(120, 6)
+    model = xStream(num_components=8, n_chains=6, depth=10, window_size=40, random_state=0)
+    model.fit(X[:80])
+
+    weights = model.score_explain_partial(X[81])
+
+    assert weights.shape == (6,)
+    assert np.all(weights >= 0.0)
+    assert abs(weights.sum() - 1.0) < 1e-12
+
+
+def test_xstream_explain_does_not_change_state():
+    rng = np.random.RandomState(0)
+    X = rng.randn(120, 6)
+    model = xStream(num_components=8, n_chains=6, depth=10, window_size=40, random_state=0)
+    model.fit(X[:80])
+
+    before = model.score_partial(X[81])
+    model.score_explain_partial(X[81])
+    after = model.score_partial(X[81])
+
+    assert before == after
+
+
+def test_xstream_explain_is_reproducible():
+    rng = np.random.RandomState(0)
+    X = rng.randn(120, 6)
+
+    model_a = xStream(num_components=8, n_chains=6, depth=10, window_size=40, random_state=0)
+    model_a.fit(X[:80])
+    weights_a = model_a.score_explain_partial(X[81])
+
+    model_b = xStream(num_components=8, n_chains=6, depth=10, window_size=40, random_state=0)
+    model_b.fit(X[:80])
+    weights_b = model_b.score_explain_partial(X[81])
+
+    np.testing.assert_array_equal(weights_a, weights_b)
+
+
+def test_xstream_explain_blames_the_out_of_range_feature():
+    rng = np.random.RandomState(0)
+    X = rng.randn(200, 5)
+    model = xStream(num_components=10, n_chains=50, depth=10, window_size=100, random_state=0)
+    model.fit(X)
+
+    reference = X[150]
+    normal_weight = model.score_explain_partial(reference)[3]
+
+    anomalous = reference.copy()
+    anomalous[3] = 9.0
+    weights = model.score_explain_partial(anomalous)
+
+    assert weights[3] > normal_weight
+    assert int(np.argmax(weights)) == 3
+
+
+def test_xstream_explain_rejects_nan():
+    rng = np.random.RandomState(0)
+    X = rng.randn(60, 6)
+    model = xStream(num_components=8, n_chains=6, depth=10, window_size=30, random_state=0)
+    model.fit(X[:30])
+
+    anomalous = X[31].copy()
+    anomalous[2] = np.nan
+    with pytest.raises(ValueError, match="xStream does not accept NaN values"):
+        model.score_explain_partial(anomalous)

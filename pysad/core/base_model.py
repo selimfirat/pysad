@@ -124,6 +124,7 @@ class BaseModel(ABC):
             "fit_partial",
             "score_partial",
             "fit_score_partial",
+            "score_explain_partial",
         ):
             method = cls.__dict__.get(name)
             if callable(method) and not getattr(method, "_rejects_nan_input", False):

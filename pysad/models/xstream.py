@@ -14,7 +14,7 @@ from pysad.utils import get_minmax_array
 class xStream(BaseModel):
     """Scores each instance by its density in half-space chains over StreamHash projections (xStream) :cite:`xstream`.
 
-    It projects each instance with StreamHash and bins it in half-space chains. The chains count the instances of the current window and score each instance with the counts of the previous (reference) window, and the two windows swap when the instance after a full window arrives, before it is counted (Algorithm 1 of the paper). As in the paper and the authors' code, the initial bin widths (half the range of each projected feature) and the shifts are estimated once from the first window and kept for the rest of the stream, so every window is binned the same way. Until the first window is full, the instances are binned with width 0.5 and scored with the counts of the first window so far. When it is full, the first window is counted again with the estimated widths. The defaults are 100 projections, 100 chains, depth 15 and a window of 256, as in the code of the authors. The paper uses a window of 25 in its experiments on evolving streams. For a short stream of a few thousand instances or fewer, a window of 25 can give better scores.
+    It projects each instance with StreamHash and bins it in half-space chains. The chains count the instances of the current window and score each instance with the counts of the previous (reference) window, and the two windows swap when the instance after a full window arrives, before it is counted (Algorithm 1 of the paper). As in the paper and the authors' code, the initial bin widths (half the range of each projected feature) and the shifts are estimated once from the first window and kept for the rest of the stream, so every window is binned the same way. Until the first window is full, the instances are binned with width 0.5 and scored with the counts of the first window so far. When it is full, the first window is counted again with the estimated widths. The defaults are 100 projections, 100 chains, depth 15 and a window of 256, as in the code of the authors. The paper uses a window of 25 in its experiments on evolving streams. For a short stream of a few thousand instances or fewer, a window of 25 can give better scores. The attribution rule of `score_explain_partial` is an addition of this class. The paper does not describe it.
 
     Args:
         num_components (int): The number of components for streamhash projection (Default=100).
@@ -109,6 +109,68 @@ class xStream(BaseModel):
         self._fit_projected(X, keys)
 
         return float(score[0])
+
+    def score_explain_partial(self, X: np.ndarray) -> np.ndarray:
+        """Returns per-feature attribution weights for the anomaly score of the next instance.
+
+        The score of an instance is the negated average, over the chains, of the per-chain surprise
+        ``best = min_d [ log2(1 + count_d) + d ]``. A chain's surprise is small when the instance
+        falls into a bin shared with few reference instances (more anomalous) and large when it falls
+        into a common bin (more normal).
+
+        Each chain's surprise is attributed to the projected feature the chain splits on at the depth
+        that achieves the minimum. The attribution is propagated from the projected features back to
+        the original features through the absolute StreamHash projection weights, so every original
+        feature receives a non-negative weight. The weights sum to one.
+
+        This method neither changes nor keeps ``X``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to explain.
+
+        Returns:
+            np.float64 array of shape (num_features,): Non-negative attribution weights, one per
+            feature, summing to one. A larger weight marks the feature that the chains blame for
+            the anomalous score. A smaller weight marks a feature that supports a normal score.
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        num_features = x.shape[0]
+        projected = self.streamhash.transform_partial(x).reshape(1, -1)
+        num_components = projected.shape[1]
+
+        chains = self.hs_chains
+        keys = chains._bin_keys(projected)
+        counts = np.fromiter(
+            map(chains.counts.get, keys, repeat(0)),
+            dtype=np.float64,
+            count=len(keys),
+        ).reshape(1, chains.nchains, chains.depth)
+
+        # Per-chain surprise: min over depths of log2(1 + count) + depth.
+        depth_vals = np.log2(1.0 + counts) + chains._depths
+        best = np.min(depth_vals, axis=2)  # (1, nchains)
+        d_star = np.argmin(depth_vals, axis=2)[0]  # (nchains,)
+
+        # The projected feature each chain splits on at its winning depth.
+        winning_feature = chains.fs[np.arange(chains.nchains), d_star]
+
+        # Attribute each chain's surprise to its winning projected feature.
+        projected_attr = np.bincount(
+            winning_feature, weights=best[0], minlength=num_components
+        ).astype(np.float64)
+
+        # Propagate from projected features to the original features through the projection magnitudes.
+        projection = self.streamhash._get_projection_matrix(num_features)
+        attribution = projected_attr @ np.abs(projection)  # (num_features,)
+
+        total = float(attribution.sum())
+        if total > 0.0:
+            attribution = attribution / total
+
+        return attribution
 
     def _set_bin_widths(self, window: np.ndarray) -> None:
         # Sets the bin widths to half the range of the first window and counts the first window again with them.

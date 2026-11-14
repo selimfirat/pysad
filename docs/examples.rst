@@ -154,6 +154,27 @@ It prints:
 
    AUROC: 0.742
 
+Explain an anomaly score
+------------------------
+
+This script scores a synthetic stream with xStream and explains the highest-scoring point with
+:meth:`~pysad.models.xStream.score_explain_partial`, which returns one non-negative weight per
+feature that sum to one.
+
+.. literalinclude:: ../examples/example_xstream_explain.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Explaining point 1553 with score -2.452
+     feature 0: weight 0.266
+     feature 2: weight 0.235
+     feature 3: weight 0.185
+     feature 1: weight 0.178
+     feature 4: weight 0.136
+
 Use a River pipeline
 --------------------
 

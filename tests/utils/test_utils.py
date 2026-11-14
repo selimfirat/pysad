@@ -248,6 +248,20 @@ class TestWindow:
         active = first if second is None else np.vstack([a for a in (first, second) if len(a) > 0])
         assert {tuple(row) for row in active} == {(3.0, 30.0), (4.0, 40.0)}
 
+    @pytest.mark.parametrize(
+        ("first", "mismatched"),
+        [(1.0, np.array([2.0])), (np.array([1.0, 2.0]), 3.0)],
+    )
+    def test_ring_buffer_rejects_a_different_item_shape(self, first, mismatched):
+        """The first item fixes the shape accepted by later appends."""
+        from pysad.utils import RingBuffer
+
+        buffer = RingBuffer(window_size=2)
+        buffer.append(first)
+
+        with pytest.raises(ValueError, match="item must have shape"):
+            buffer.append(mismatched)
+
     def test_ring_buffer_to_array_returns_a_copy(self):
         """Changing the returned array does not change buffered items."""
         from pysad.utils import RingBuffer

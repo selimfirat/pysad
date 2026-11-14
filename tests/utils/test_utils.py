@@ -161,6 +161,19 @@ class TestUtilsFunctions:
 
         assert len(results) == 0
 
+    def test_array_streamer_empty_array(self):
+        from pysad.utils import ArrayStreamer
+
+        X = np.empty((0, 2))
+
+        results = list(ArrayStreamer().iter(X))
+        assert results == []
+        y = np.empty((0,), dtype=int)
+
+        labeled_results = list(ArrayStreamer().iter(X, y))
+
+        assert labeled_results == []
+
 
 class TestWindow:
     """Tests for Window class."""

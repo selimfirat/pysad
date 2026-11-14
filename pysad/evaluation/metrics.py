@@ -285,3 +285,71 @@ class AUPRMetric(BaseSKLearnMetric):
         if not y_true:
             raise ValueError("No samples recorded. PR AUC score is not defined in that case.")
         return average_precision_score(y_true, y_pred)
+
+
+class LogLossMetric(BaseMetric):
+    r"""Prequential logarithmic loss metric for probability evaluation :cite:`cesabianchi2005learning`.
+
+    Computes the running logarithmic loss (binary cross-entropy) of predicted anomaly
+    probabilities with respect to observed binary ground truth classes. For each instance
+    :math:`(y_t, p_t)` where :math:`y_t \in \{0, 1\}` and :math:`p_t \in [0, 1]`,
+    the loss is:
+
+    .. math::
+
+        \ell(y_t, p_t) = -\left[ y_t \ln(p_t) + (1 - y_t) \ln(1 - p_t) \right]
+
+    Lower loss indicates better calibration and prediction quality, with 0.0
+    representing perfect prediction.
+
+    Probabilities are clipped to :math:`[\epsilon, 1 - \epsilon]` to ensure numerical
+    stability and finite loss when :math:`p_t \in \{0, 1\}`. Updates execute in
+    :math:`\mathcal{O}(1)` time and memory.
+
+    Args:
+        eps (float): Epsilon clipping factor to bound probabilities away from 0 and 1.
+            Defaults to 1e-15.
+    """
+
+    def __init__(self, eps: float = 1e-15) -> None:
+        if eps <= 0.0 or eps >= 0.5:
+            raise ValueError("eps must be strictly between 0 and 0.5.")
+        super().__init__()
+        self.eps = float(eps)
+        self.total_loss: float = 0.0
+        self.count: int = 0
+
+    def update(self, y_true: int, y_pred: float) -> LogLossMetric:
+        """Updates the metric with given true class and predicted anomaly probability.
+
+        Args:
+            y_true (int): Ground truth class. Either 1 or 0.
+            y_pred (float): Predicted anomaly probability in [0, 1].
+
+        Raises:
+            ValueError: If `y_true` is not 0 or 1, or `y_pred` is outside [0, 1] or NaN.
+
+        Returns:
+            LogLossMetric: The metric itself.
+        """
+        if y_true not in (0, 1):
+            raise ValueError("y_true must be 0 or 1.")
+        yp = float(y_pred)
+        if not (0.0 <= yp <= 1.0) or np.isnan(yp):
+            raise ValueError("y_pred must be a probability between 0 and 1.")
+
+        p = min(max(yp, self.eps), 1.0 - self.eps)
+        loss = -np.log(p) if y_true == 1 else -np.log(1.0 - p)
+
+        self.total_loss += float(loss)
+        self.count += 1
+        self.score = self.total_loss / self.count
+        return self
+
+    def get(self) -> float | None:
+        """Gets the running average logarithmic loss.
+
+        Returns:
+            float | None: The current running log loss, or None if no instances have been evaluated.
+        """
+        return self.score

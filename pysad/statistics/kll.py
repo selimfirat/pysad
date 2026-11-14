@@ -30,7 +30,7 @@ class KLLMeter(BaseStatistic):
            k_h = \max\left(8, \left\lfloor k \cdot \left(\frac{2}{3}\right)^{H - 1 - h}\right\rfloor\right)
 
        When a level fills, its items are sorted and compacted in pairs using a fair coin flip
-       (parity offset chosen via :paramref:`random_state`), promoting half its items to level
+       (parity offset chosen via ``random_state``), promoting half its items to level
        :math:`h + 1` with doubled weight. If the buffer has an odd length, the remainder item is
        retained at the current level, strictly preserving the compactor's total rank mass.
 

@@ -281,10 +281,14 @@ def test_median_meter_custom_thresholds():
     inputs = [12.0, 5.0, 7.0, 3.0, 19.0, 8.0, 2.0, 15.0, 1.0, 10.0, 14.0, 6.0, 9.0, 4.0, 11.0]
 
     # Cross high_threshold (10) going up
-    for val in inputs:
+    for index, val in enumerate(inputs, start=1):
         meter.update(val)
         active.append(val)
         assert np.isclose(meter.get(), np.median(active))
+        if index == 10:
+            assert not meter.is_heap
+        elif index == 11:
+            assert meter.is_heap
 
     assert meter.is_heap
 
@@ -294,6 +298,10 @@ def test_median_meter_custom_thresholds():
         meter.remove(val)
         active.remove(val)
         assert np.isclose(meter.get(), np.median(active))
+        if len(active) == 5:
+            assert meter.is_heap
+        elif len(active) == 4:
+            assert not meter.is_heap
 
     assert not meter.is_heap
     assert len(active) == 3

@@ -88,12 +88,20 @@ def _discover_module_exports(pkg: str) -> dict[str, list[str]]:
 
 
 def _format_import(mod_name: str, names: list[str]) -> str:
-    joined = ", ".join(names)
-    single = f"from .{mod_name} import {joined}"
-    if len(single) <= 100:
-        return single
-    items = "\n".join(f"    {name}," for name in names)
-    return f"from .{mod_name} import (\n{items}\n)"
+    public_names = [n for n in names if not n.startswith("_")]
+    private_names = [n for n in names if n.startswith("_")]
+    lines: list[str] = []
+    if public_names:
+        joined = ", ".join(public_names)
+        single = f"from .{mod_name} import {joined}"
+        if len(single) <= 100:
+            lines.append(single)
+        else:
+            items = "\n".join(f"    {name}," for name in public_names)
+            lines.append(f"from .{mod_name} import (\n{items}\n)")
+    for name in private_names:
+        lines.append(f"from .{mod_name} import {name} as {name}")
+    return "\n".join(lines)
 
 
 def _format_all(names: list[str]) -> str:

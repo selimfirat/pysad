@@ -6,7 +6,8 @@ import random
 
 import numpy as np
 
-from .array_streamer import ArrayStreamer, _iterate
+from .array_streamer import ArrayStreamer
+from .array_streamer import _iterate as _iterate
 from .csv_streamer import CSVStreamer
 from .data import Data
 from .pandas_streamer import PandasStreamer

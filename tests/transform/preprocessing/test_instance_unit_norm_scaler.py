@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_instance_unit_norm_scaler():
     import numpy as np
 
@@ -12,6 +15,24 @@ def test_instance_unit_norm_scaler():
     scaler = scaler.fit(X)
     scaled_X = scaler.transform(X)
     assert np.all(np.isclose(np.linalg.norm(scaled_X, axis=1), 1.0))
+
+
+@pytest.mark.parametrize("pow", [1, 2, 3])
+def test_instance_unit_norm_scaler_pow(pow):
+    import numpy as np
+
+    from pysad.transform.preprocessing import InstanceUnitNormScaler
+
+    X = np.random.rand(100, 25)
+    scaler = InstanceUnitNormScaler(pow=pow)
+
+    scaled_X = scaler.fit_transform(X)
+    assert np.all(np.isclose(np.linalg.norm(scaled_X, ord=pow, axis=1), 1.0))
+
+    scaler = scaler.fit(X)
+    transformed_X = scaler.transform(X)
+    assert np.all(np.isclose(np.linalg.norm(transformed_X, ord=pow, axis=1), 1.0))
+    np.testing.assert_allclose(transformed_X, scaled_X)
 
 
 def test_zero_vector_returns_zeros():

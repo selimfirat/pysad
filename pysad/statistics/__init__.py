@@ -23,6 +23,7 @@ from .drift import (
     PageHinkleyMeter,
 )
 from .exponential_moving_average_meter import ExponentialMovingAverageMeter
+from .kll import KLLMeter
 from .online_periodicity_meter import OnlinePeriodicityMeter
 from .quantiles import DDSketchMeter, MedianMeter, QuantileMeter
 from .running_statistic import RunningStatistic
@@ -39,6 +40,7 @@ __all__ = [
     "FHDDMMeter",
     "HDDMAMeter",
     "HDDMWMeter",
+    "KLLMeter",
     "KSWINMeter",
     "MaxMeter",
     "MedianMeter",

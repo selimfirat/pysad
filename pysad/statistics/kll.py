@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from typing import Any
 
 import numpy as np
 from sklearn.utils import check_random_state
@@ -111,9 +110,7 @@ class KLLMeter(BaseStatistic):
 
         # Section 2 & 3 hierarchy parameters
         self._c = 2.0 / 3.0
-        self._H_max = max(
-            2, int(math.ceil(math.log(self.k / 8.0) / math.log(1.0 / self._c))) + 1
-        )
+        self._H_max = max(2, int(math.ceil(math.log(self.k / 8.0) / math.log(1.0 / self._c))) + 1)
         self._sampler_height = 0
         self._sampler_item: float | None = None
         self._sampler_weight = 0
@@ -122,9 +119,7 @@ class KLLMeter(BaseStatistic):
     @property
     def num_retained_items(self) -> int:
         """The total number of items currently stored in memory across all compactors and sampler."""
-        return sum(len(lvl) for lvl in self._levels) + (
-            1 if self._sampler_weight > 0 else 0
-        )
+        return sum(len(lvl) for lvl in self._levels) + (1 if self._sampler_weight > 0 else 0)
 
     @property
     def total_weight(self) -> int:

@@ -193,6 +193,8 @@ Load a benchmark dataset
 
 ``get_iterator`` shuffles by default. Set ``random_state=0`` for reproducible order or ``shuffle=False`` to preserve file order, for example ``get_iterator("arrhythmia.mat", shuffle=False)``. ``Data.datasets()`` lists available datasets.
 
+For ``vertebral.mat``, ``Data`` flips the labels of the ODDS file: ODDS marks the 30 healthy patients as the anomalies, and the returned labels make the 210 unhealthy patients the anomaly class.
+
 ``Data`` downloads each dataset once to ``~/.cache/pysad``. Override the folder with ``PYSAD_DATA_DIR`` or ``Data("path/to/folder")``.
 
 Credit-card fraud transactions

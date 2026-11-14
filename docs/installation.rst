@@ -60,9 +60,9 @@ pip and conda install the runtime dependencies listed below. PySAD has no option
    * - Package
      - Minimum version
      - Used for
-   * - NumPy
-     - 1.22.4
-     - Arrays in every component
+    * - NumPy
+      - 1.23
+      - Arrays in every component
    * - scikit-learn
      - 1.4.2
      - Random state handling, random projections, random Fourier features, metrics and the Isolation Forest in :class:`~pysad.models.IForestASD`

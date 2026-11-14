@@ -159,7 +159,10 @@ def _render_utils_package() -> str:
     prefix = "\n".join(lines[:first_rel_idx]).rstrip()
     suffix = "\n".join(lines[all_end_lineno:]).lstrip("\n")
     imports = "\n".join(_format_import(mod, names) for mod, names in by_module.items())
-    all_names = [*(name for names in by_module.values() for name in names), *inline_names]
+    all_names = [
+        *(name for names in by_module.values() for name in names if not name.startswith("_")),
+        *inline_names,
+    ]
     all_block = _format_all(all_names)
     return f"{prefix}\n\n{imports}\n\n{all_block}\n\n\n{suffix}\n"
 

@@ -43,6 +43,7 @@ MODEL_PARAMS = {
     "OeSNNUAD": {"window_size": 10},
     "PCBIsolationForest": {"num_trees": 10, "window_size": 32, "stat_size": 10},
     "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
+    "OnlineKMeans": {"num_clusters": 2},
     "RobustRandomCutForest": {"tree_size": 32},
     "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
     "RSHash": {"feature_mins": [0.0] * NUM_FEATURES, "feature_maxes": [1.0] * NUM_FEATURES},

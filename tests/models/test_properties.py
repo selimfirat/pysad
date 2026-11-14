@@ -116,6 +116,7 @@ def _model_params(model_name, num_features, data):
         "NETS": {"window_size": 20, "max_radius": 0.1},
         "OeSNNUAD": {"window_size": 5, "num_output_neurons": 5},
         "PCBIsolationForest": {"num_trees": 5, "window_size": 10, "stat_size": 3},
+        "OnlineKMeans": {"num_clusters": 2},
         "OnlineOneClassSVM": {"window_size": 10},
         "RSForest": {"window_size": 10, "num_trees": 5, "max_depth": 5},
         "SAND": {

@@ -259,6 +259,7 @@ These starting points come from the design of each method. They are not benchmar
 | `SmartSifter` | Finite mixtures with discounting learning (Yamanishi et al., KDD 2000) |
 | `TEDA` | Typicality and eccentricity data analytics (Angelov, EALS 2014) |
 | `EXPoSE` | Expected similarity to the kernel mean embedding (Schneider et al., Machine Learning 2016) |
+| `OnlineKMeans` | Squared distance to the nearest center of online k-means (Liberty et al., ALENEX 2016) |
 
 **Univariate**
 

@@ -8,7 +8,7 @@ from pysad.core.base_streamer import BaseStreamer
 
 
 class ArrayStreamer(BaseStreamer):
-    """Simulator class to iterate array(s).
+    """Provide a stream iterator over feature arrays and optional labels.
 
     Args:
         shuffle (bool): Whether to shuffle the data initially (Default=False).
@@ -30,11 +30,20 @@ class ArrayStreamer(BaseStreamer):
     def iter(
         self, X: np.ndarray, y: np.ndarray | None = None
     ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
-        """Iterates array of features and possibly labels.
+        """Iterate over feature rows, optionally paired with labels.
 
         Args:
-            X (np.array of shape (num_instances, num_features)): The features array.
-            y (np.array of shape (num_instances,)): The array containing labels (Default=None).
+            X (np.ndarray): Feature array of shape
+                (num_instances, num_features).
+            y (np.ndarray or None): Optional labels with shape
+                (num_instances, ...). Defaults to None.
+
+        Yields:
+            np.ndarray: If y is None, a feature row of shape
+                (num_features,).
+            tuple[np.ndarray, Any]: If y is provided, a pair
+                (X[i], y[i]), where X[i] has shape (num_features,)
+                and y[i] retains its original per-instance shape.
         """
         indices: range | list[int] = range(len(X))
         if self.shuffle:

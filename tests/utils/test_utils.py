@@ -161,19 +161,6 @@ class TestUtilsFunctions:
 
         assert len(results) == 0
 
-    def test_array_streamer_empty_array(self):
-        from pysad.utils import ArrayStreamer
-
-        X = np.empty((0, 2))
-
-        results = list(ArrayStreamer().iter(X))
-        assert results == []
-        y = np.empty((0,), dtype=int)
-
-        labeled_results = list(ArrayStreamer().iter(X, y))
-
-        assert labeled_results == []
-
 
 class TestWindow:
     """Tests for Window class."""
@@ -301,6 +288,19 @@ class TestArrayStreamer:
         for i, (xi, yi) in enumerate(results):
             np.testing.assert_array_equal(xi, X[i])
             assert yi == y[i]
+
+    def test_array_streamer_empty_array(self):
+        """Test ArrayStreamer iteration with an empty array."""
+        from pysad.utils import ArrayStreamer
+
+        X = np.empty((0, 2))
+        y = np.empty((0,), dtype=int)
+
+        results = list(ArrayStreamer().iter(X))
+        assert results == []
+
+        labeled_results = list(ArrayStreamer().iter(X, y))
+        assert labeled_results == []
 
     def test_array_streamer_first_row_memory(self):
         """Unshuffled streams yield the first row with bounded extra memory."""

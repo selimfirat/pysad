@@ -22,7 +22,9 @@ def test_instance_unit_norm_scaler_pow(pow):
     import numpy as np
 
     from pysad.transform.preprocessing import InstanceUnitNormScaler
+    from pysad.utils import fix_seed
 
+    fix_seed(61)
     X = np.random.rand(100, 25)
     scaler = InstanceUnitNormScaler(pow=pow)
 

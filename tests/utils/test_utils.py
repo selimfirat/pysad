@@ -262,6 +262,19 @@ class TestWindow:
         with pytest.raises(ValueError, match="item must have shape"):
             buffer.append(mismatched)
 
+    def test_ring_buffer_to_array_returns_a_copy(self):
+        """Changing the returned array does not change buffered items."""
+        from pysad.utils import RingBuffer
+
+        buffer = RingBuffer(window_size=3)
+        for value in (1.0, 2.0, 3.0, 4.0):
+            buffer.append(value)
+
+        result = buffer.to_array()
+        result[0] = -1.0
+
+        np.testing.assert_array_equal(buffer.to_array(), [2.0, 3.0, 4.0])
+
 
 class TestArrayStreamer:
     """Tests for ArrayStreamer class."""

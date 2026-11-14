@@ -1,0 +1,3 @@
+# This file applies the branch ruleset rule that requires a review from a code owner.
+# Every path has @selimfirat as its code owner.
+* @selimfirat

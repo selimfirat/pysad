@@ -73,7 +73,9 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         self.y_true.append(y_true)
         self.y_pred.append(y_pred)
 
-    def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> BaseSKLearnMetric:
+    def update_batch(
+        self, y_true: Iterable[int], y_pred: Iterable[float]
+    ) -> BaseSKLearnMetric:
         """Appends batches of true labels and predicted values in stream order."""
         yt_list = y_true.tolist() if isinstance(y_true, np.ndarray) else list(y_true)
         yp_list = y_pred.tolist() if isinstance(y_pred, np.ndarray) else list(y_pred)
@@ -283,7 +285,9 @@ class AUPRMetric(BaseSKLearnMetric):
 
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
         if not y_true:
-            raise ValueError("No samples recorded. PR AUC score is not defined in that case.")
+            raise ValueError(
+                "No samples recorded. PR AUC score is not defined in that case."
+            )
         return average_precision_score(y_true, y_pred)
 
 
@@ -307,17 +311,18 @@ class LogLossMetric(BaseMetric):
     :math:`\mathcal{O}(1)` time and memory.
 
     Args:
-        eps (float): Epsilon clipping factor to bound probabilities away from 0 and 1.
-            Defaults to 1e-15.
+        eps (float): Epsilon clipping factor to bound probabilities away from 0 and 1. (Default=1e-15).
     """
 
     def __init__(self, eps: float = 1e-15) -> None:
-        if eps <= 0.0 or eps >= 0.5:
-            raise ValueError("eps must be strictly between 0 and 0.5.")
+        if np.isnan(eps) or eps <= 0.0 or eps >= 0.5 or (1.0 - float(eps) >= 1.0):
+            raise ValueError(
+                "eps must be strictly between 0 and 0.5, and 1.0 - eps must be strictly less than 1.0."
+            )
         super().__init__()
         self.eps = float(eps)
-        self.total_loss: float = 0.0
-        self.count: int = 0
+        self.total_loss_: float = 0.0
+        self.count_: int = 0
 
     def update(self, y_true: int, y_pred: float) -> LogLossMetric:
         """Updates the metric with given true class and predicted anomaly probability.
@@ -341,9 +346,9 @@ class LogLossMetric(BaseMetric):
         p = min(max(yp, self.eps), 1.0 - self.eps)
         loss = -np.log(p) if y_true == 1 else -np.log(1.0 - p)
 
-        self.total_loss += float(loss)
-        self.count += 1
-        self.score = self.total_loss / self.count
+        self.total_loss_ += float(loss)
+        self.count_ += 1
+        self.score = self.total_loss_ / self.count_
         return self
 
     def get(self) -> float | None:

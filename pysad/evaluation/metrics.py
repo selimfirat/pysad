@@ -73,9 +73,7 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         self.y_true.append(y_true)
         self.y_pred.append(y_pred)
 
-    def update_batch(
-        self, y_true: Iterable[int], y_pred: Iterable[float]
-    ) -> BaseSKLearnMetric:
+    def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> BaseSKLearnMetric:
         """Appends batches of true labels and predicted values in stream order."""
         yt_list = y_true.tolist() if isinstance(y_true, np.ndarray) else list(y_true)
         yp_list = y_pred.tolist() if isinstance(y_pred, np.ndarray) else list(y_pred)
@@ -285,9 +283,7 @@ class AUPRMetric(BaseSKLearnMetric):
 
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
         if not y_true:
-            raise ValueError(
-                "No samples recorded. PR AUC score is not defined in that case."
-            )
+            raise ValueError("No samples recorded. PR AUC score is not defined in that case.")
         return average_precision_score(y_true, y_pred)
 
 

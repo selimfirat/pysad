@@ -108,9 +108,7 @@ def test_precision_metric_edge_cases():
     # Precision should handle division by zero gracefully
     # Suppress the sklearn warning since we're testing edge cases
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", message="Precision is ill-defined and being set to 0.0"
-        )
+        warnings.filterwarnings("ignore", message="Precision is ill-defined and being set to 0.0")
         precision = metric.get()
         assert precision == 0.0
 
@@ -147,9 +145,7 @@ def test_recall_metric_edge_cases():
     # Recall should handle division by zero gracefully
     # Suppress the sklearn warning since we're testing edge cases
     with warnings.catch_warnings():
-        warnings.filterwarnings(
-            "ignore", message="Recall is ill-defined and being set to 0.0"
-        )
+        warnings.filterwarnings("ignore", message="Recall is ill-defined and being set to 0.0")
         recall = metric.get()
         assert recall == 0.0
 
@@ -343,20 +339,14 @@ def test_precision_recall_prefixes_match_sklearn():
         (0.5, [0.1, 0.5, 0.4, 0.8, 0.7, 0.5, 0.2, 0.3]),
         (-2.0, [-3.0, -2.0, -2.1, 0.0, 1.0, -2.0, -4.0, -3.0]),
     ]:
-        classes = (
-            predictions
-            if threshold is None
-            else [int(p >= threshold) for p in predictions]
-        )
+        classes = predictions if threshold is None else [int(p >= threshold) for p in predictions]
         for metric_cls, reference in [
             (PrecisionMetric, precision_score),
             (RecallMetric, recall_score),
         ]:
             metric = metric_cls(threshold=threshold)
             assert metric.get() == 0.0
-            for end, (label, prediction) in enumerate(
-                zip(labels, predictions, strict=True), 1
-            ):
+            for end, (label, prediction) in enumerate(zip(labels, predictions, strict=True), 1):
                 assert metric.update(label, prediction) is None
                 expected = reference(labels[:end], classes[:end], zero_division=0)
                 assert metric.get() == pytest.approx(expected)
@@ -393,9 +383,7 @@ def test_matthews_correlation_stream(threshold):
     scores = [0.9, 0.1, 0.5, 0.4, 0.8, 0.2, 0.3]
     expected = [0.0, 1.0, 0.5, 0.0, 1 / 6, 1 / 3, 5 / 12]
     assert metric.get() == 0.0
-    for label, prediction, score, value in zip(
-        labels, predictions, scores, expected, strict=True
-    ):
+    for label, prediction, score, value in zip(labels, predictions, scores, expected, strict=True):
         metric.update(label, prediction if threshold is None else score)
         assert metric.get() == pytest.approx(value)
         assert metric.get() == pytest.approx(value)
@@ -468,9 +456,7 @@ def test_update_batch_matches_sequential_updates_across_all_metrics():
         (lambda: BalancedAccuracyMetric(), preds),
         (lambda: MatthewsCorrelationMetric(), preds),
         (
-            lambda: WindowedMetric(
-                AUROCMetric, window_size=20, ignore_nonempty_last=False
-            ),
+            lambda: WindowedMetric(AUROCMetric, window_size=20, ignore_nonempty_last=False),
             scores,
         ),
         (lambda: WindowedMetric(F1Metric, window_size=20, threshold=0.5), scores),
@@ -592,17 +578,11 @@ def test_log_loss_metric_invalid_inputs():
     with pytest.raises(ValueError, match="y_true must be 0 or 1"):
         m.update(-1, 0.5)
 
-    with pytest.raises(
-        ValueError, match="y_pred must be a probability between 0 and 1"
-    ):
+    with pytest.raises(ValueError, match="y_pred must be a probability between 0 and 1"):
         m.update(1, 1.5)
-    with pytest.raises(
-        ValueError, match="y_pred must be a probability between 0 and 1"
-    ):
+    with pytest.raises(ValueError, match="y_pred must be a probability between 0 and 1"):
         m.update(1, -0.1)
-    with pytest.raises(
-        ValueError, match="y_pred must be a probability between 0 and 1"
-    ):
+    with pytest.raises(ValueError, match="y_pred must be a probability between 0 and 1"):
         m.update(1, float("nan"))
 
 

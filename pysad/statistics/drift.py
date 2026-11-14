@@ -24,6 +24,57 @@ def _rises(before: _Sample, after: _Sample, confidence: float) -> bool:
     return after[0] - before[0] > eps
 
 
+def _hoeffding_bound(window_size: int, delta: float) -> float:
+    """Returns the Hoeffding bound for a window of binary values.
+
+    Args:
+        window_size (int): The number of values in the window.
+        delta (float): The probability bound of the test, in (0, 1).
+
+    Returns:
+        float: The bound on the difference between two window means.
+    """
+    return math.sqrt(-math.log(delta) / (2.0 * window_size))
+
+
+class _SlidingErrorWindow:
+    """Keeps a bounded window of error indicators and their sum.
+
+    Args:
+        window_size (int): The number of values in the window.
+
+    Attributes:
+        window_size (int): The number of values in the window.
+        num_errors (float): The sum of the values in the window.
+    """
+
+    def __init__(self, window_size: int) -> None:
+        self.window_size = window_size
+        self.values: deque[float] = deque(maxlen=window_size)
+        self.num_errors = 0.0
+
+    @property
+    def is_full(self) -> bool:
+        """Returns whether the window contains all expected values."""
+        return len(self.values) == self.window_size
+
+    @property
+    def error_rate(self) -> float:
+        """Returns the error rate of the values in the window."""
+        return self.num_errors / len(self.values)
+
+    def update(self, num: float) -> None:
+        """Adds a value and removes the oldest value when the window is full.
+
+        Args:
+            num (float): The incoming error indicator.
+        """
+        if self.is_full:
+            self.num_errors -= self.values[0]
+        self.values.append(num)
+        self.num_errors += num
+
+
 class ADWINMeter(BaseStatistic):
     """The mean of an adaptive window that shrinks when the stream changes.
 
@@ -464,14 +515,13 @@ class FHDDMMeter(BaseStatistic):
 
         self.window_size = window_size
         self.delta = delta
-        self.epsilon = math.sqrt(math.log(1.0 / delta) / (2.0 * window_size))
+        self.epsilon = _hoeffding_bound(window_size, delta)
         self.drift_detected = False
         self._reset()
 
     def _reset(self) -> None:
         self.num_items = 0
-        self._window: deque[float] = deque(maxlen=self.window_size)
-        self._num_errors = 0.0
+        self._window = _SlidingErrorWindow(self.window_size)
         # The fewest errors in a full window, which gives the largest accuracy mu_m.
         self._min_errors = math.inf
 
@@ -489,17 +539,14 @@ class FHDDMMeter(BaseStatistic):
             self._reset()
 
         self.num_items += 1
-        if len(self._window) == self.window_size:
-            self._num_errors -= self._window[0]
-        self._window.append(num)
-        self._num_errors += num
-        if self.num_items < self.window_size:
+        self._window.update(num)
+        if not self._window.is_full:
             return self
 
-        self._min_errors = min(self._min_errors, self._num_errors)
+        self._min_errors = min(self._min_errors, self._window.num_errors)
         # mu_m - mu_t, with mu = 1 - errors / window_size.
         self.drift_detected = (
-            self._num_errors - self._min_errors
+            self._window.num_errors - self._min_errors
         ) / self.window_size >= self.epsilon
 
         return self
@@ -510,7 +557,131 @@ class FHDDMMeter(BaseStatistic):
         Returns:
             float: The error rate of the values in the window.
         """
-        return self._num_errors / len(self._window)
+        return self._window.error_rate
+
+
+class FHDDMSMeter(BaseStatistic):
+    """The FHDDMS drift detector, which stacks short and long accuracy windows.
+
+    Follows the Stacking Fast Hoeffding Drift Detection Method of Pesaranghader,
+    Viktor, and Paquet :cite:`pesaranghader2018reservoir` (Section 5.3). Each value
+    is 1 for an error and 0 for a correct prediction. The meter keeps a short sliding
+    window and a long sliding window. It reports a drift when the accuracy of either
+    window falls by at least its Hoeffding bound::
+
+        accuracy_drop >= sqrt(ln(1 / delta) / (2 * window_size))
+
+    The short window detects abrupt drifts faster. The long window detects gradual
+    drifts with fewer false negatives. ``get`` returns the error rate of the long
+    window.
+
+    The paper inserts 1 for a correct prediction. The meter reads 1 for an error, as
+    :class:`FHDDMMeter` does, and uses ``1 - value`` as the paper's value. The paper
+    has no warning level, so the meter reports only drifts. The paper resets its
+    windows before it returns a drift. The meter resets before the next update, as
+    the other PySAD drift meters do. The update empties both windows and forgets
+    their best accuracies. Each update takes O(1) time and
+    O(``short_window_size + long_window_size``) memory.
+
+    The authors' Tornado and MOA implementations use ``>`` in the drift tests. The
+    meter uses ``>=``, as Equation 5.4 of the paper does. The two differ only when
+    the accuracy drop equals the bound. Their implementations also read correct
+    predictions as 1. The meter uses the error convention of the existing drift
+    meters in PySAD.
+
+    The paper's experiments use ``delta=1e-7``. The meter follows the paper. The
+    authors' Tornado and MOA implementations default to ``1e-6``. Both reference
+    implementations start the tests after the long window fills.
+
+    ``remove`` is not supported, because the detector decides when it forgets values.
+
+    Args:
+        short_window_size (int): The number of values in the short window, ``|Ws|`` in
+            the paper. It must be less than ``long_window_size`` (Default=25).
+        long_window_size (int): The number of values in the long window, ``|Wl|`` in
+            the paper (Default=100).
+        delta (float): The probability bound of the Hoeffding test, in (0, 1). Smaller
+            values give fewer false drifts and later detections (Default=1e-7).
+
+    Raises:
+        ValueError: If ``short_window_size`` is less than 1, if ``long_window_size``
+            is not larger than ``short_window_size``, or if ``delta`` is not in (0, 1).
+
+    Attributes:
+        short_window_size (int): The number of values in the short window.
+        long_window_size (int): The number of values in the long window.
+        delta (float): The probability bound of the Hoeffding test.
+        epsilon_short (float): The Hoeffding bound of the short-window test.
+        epsilon_long (float): The Hoeffding bound of the long-window test.
+        num_items (int): The number of values since the last drift.
+        drift_detected (bool): Whether the last update detected a drift.
+    """
+
+    def __init__(
+        self,
+        short_window_size: int = 25,
+        long_window_size: int = 100,
+        delta: float = 1e-7,
+    ) -> None:
+        if short_window_size < 1:
+            raise ValueError("short_window_size must be a positive integer.")
+        if long_window_size <= short_window_size:
+            raise ValueError("long_window_size must be larger than short_window_size.")
+        if not 0.0 < delta < 1.0:
+            raise ValueError("delta must be in (0, 1).")
+
+        self.short_window_size = short_window_size
+        self.long_window_size = long_window_size
+        self.delta = delta
+        self.epsilon_short = _hoeffding_bound(short_window_size, delta)
+        self.epsilon_long = _hoeffding_bound(long_window_size, delta)
+        self.drift_detected = False
+        self._reset()
+
+    def _reset(self) -> None:
+        self.num_items = 0
+        self._short_window = _SlidingErrorWindow(self.short_window_size)
+        self._long_window = _SlidingErrorWindow(self.long_window_size)
+        # The fewest errors in a full window, which give the largest accuracies.
+        self._min_short_errors = math.inf
+        self._min_long_errors = math.inf
+
+    def update(self, num: float) -> FHDDMSMeter:
+        """Updates the statistic with the value for a timestep.
+
+        Args:
+            num (float): The incoming value, 1 for an error and 0 for a correct prediction.
+
+        Returns:
+            object: self.
+        """
+        if self.drift_detected:
+            self.drift_detected = False
+            self._reset()
+
+        self.num_items += 1
+        self._short_window.update(num)
+        self._long_window.update(num)
+        if not self._long_window.is_full:
+            return self
+
+        self._min_short_errors = min(self._min_short_errors, self._short_window.num_errors)
+        self._min_long_errors = min(self._min_long_errors, self._long_window.num_errors)
+        short_drop = (
+            self._short_window.num_errors - self._min_short_errors
+        ) / self.short_window_size
+        long_drop = (self._long_window.num_errors - self._min_long_errors) / self.long_window_size
+        self.drift_detected = short_drop >= self.epsilon_short or long_drop >= self.epsilon_long
+
+        return self
+
+    def get(self) -> float:
+        """Method to obtain the tracked statistic.
+
+        Returns:
+            float: The error rate of the values in the long window.
+        """
+        return self._long_window.error_rate
 
 
 class HDDMAMeter(BaseStatistic):

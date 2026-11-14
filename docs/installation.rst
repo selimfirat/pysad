@@ -61,7 +61,7 @@ pip and conda install the runtime dependencies listed below. PySAD has no option
      - Minimum version
      - Used for
    * - NumPy
-     - 1.22.4
+     - 1.23
      - Arrays in every component
    * - scikit-learn
      - 1.4.2

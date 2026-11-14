@@ -14,6 +14,7 @@ def _series(n, period, seed=0):
 def _dense_residuals(y, v, period, lam, num_iterations):
     # Solves Eq. 7 of the paper on all points since the initialization at every step, with the
     # IRLS weights of Eq. 4 and 5, and returns the residual of the newest point of each step.
+    # The SVD solve stays stable when the normal equations become ill-conditioned.
     v = v.copy()
     u, residuals = [], []
     p = [[] for _ in range(num_iterations)]
@@ -38,7 +39,7 @@ def _dense_residuals(y, v, period, lam, num_iterations):
                 d = np.zeros(2 * m)
                 d[[2 * j - 4, 2 * j - 2, 2 * j]] = 1.0, -2.0, 1.0
                 A_i += lam * q[i][j] * np.outer(d, d)
-            x = np.linalg.solve(A_i, rhs)
+            x = np.linalg.lstsq(A_i, rhs, rcond=None)[0]
             tau = x[::2]
             if m >= 2:
                 p_new = 0.5 / (abs(tau[-1] - tau[-2]) + 1e-5)

@@ -5,11 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pysad"
 dynamic = ["version"]
-# The floors are the first releases of scipy and scikit-learn built
-# for NumPy 2, so no allowed combination pairs NumPy 2 with an older build compiled for
-# NumPy 1. The lowest-versions job in .github/workflows/coverage.yml tests them.
+# The lowest-versions job in .github/workflows/coverage.yml installs these floors. The
+# NumPy floor is 1.23, which the job pins to 1.23.0. The scipy and scikit-learn floors are
+# the first releases built for NumPy 2, so no allowed combination pairs NumPy 2 with an
+# older build compiled for NumPy 1.
 dependencies = [
-  "numpy>=1.22.4",
+  "numpy>=1.23",
   "scikit-learn>=1.4.2",
   "scipy>=1.13.0",
 ]

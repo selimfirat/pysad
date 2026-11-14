@@ -1,116 +1,233 @@
 from __future__ import annotations
 
 import math
+from typing import Any
+
+import numpy as np
+from sklearn.utils import check_random_state
 
 from pysad.core.base_statistic import BaseStatistic
 
+# Constant C = c^2 * (2c - 1) from Section 2 of Karnin et al. (2016) with c = 2/3
+_C_KLL = 4.0 / 27.0
+
 
 class KLLMeter(BaseStatistic):
-    """The statistic that tracks a quantile of the stream using the KLL sketch.
+    r"""The statistic that tracks an arbitrary quantile of the stream using the KLL sketch.
 
-    Implements the KLL quantile sketch algorithm by Karnin, Lang, and Liberty
-    :cite:`karnin2016optimal`. The sketch maintains a hierarchy of compactors
-    arranged in levels :math:`h = 0, 1, \\dots, H - 1`. Each level :math:`h`
-    stores items with weight :math:`2^h`. New items arrive at level 0 with weight 1.
+    Implements the optimal streaming quantile sketch algorithm by Karnin, Lang, and Liberty
+    :cite:`karnin2016optimal`. The algorithm guarantees an :math:`\epsilon`-approximate
+    rank estimate :math:`|\tilde{R}(x) - R(x)| \le \epsilon n` with probability at least
+    :math:`1 - \delta`.
 
-    When the number of items at level :math:`h` reaches its capacity :math:`k_h`,
-    the level is compacted: its items are sorted and every second item is promoted
-    to level :math:`h + 1`, alternating even and odd offsets across compactions
-    as in Section 3 of the paper.
+    The sketch combines two complementary mechanisms from the paper:
 
-    The compactor capacities follow the exponential decay schedule:
+    1. **Hierarchical Compactors (Section 2)**:
+       Maintains compactors across levels :math:`h`. Compactor capacities decay at rate
+       :math:`c = 2/3`:
 
-    .. math::
+       .. math::
 
-        k_h = \\max\\left(8, \\left\\lfloor k \\cdot \\left(\\frac{2}{3}\\right)^{H - 1 - h}\\right\\rfloor\\right)
+           k_h = \max\left(8, \left\lfloor k \cdot \left(\frac{2}{3}\right)^{H - 1 - h}\right\rfloor\right)
 
-    This ensures that the total number of stored items across all levels is bounded
-    by :math:`O(k)`, keeping memory strictly bounded while providing an
-    :math:`\\epsilon`-approximate quantile estimate where :math:`\\epsilon \\approx 1 / k`.
+       When a level fills, its items are sorted and compacted in pairs using a fair coin flip
+       (parity offset chosen via :paramref:`random_state`), promoting half its items to level
+       :math:`h + 1` with doubled weight. If the buffer has an odd length, the remainder item is
+       retained at the current level, strictly preserving the compactor's total rank mass.
 
-    ``merge`` combines the summaries of another :class:`KLLMeter` into this meter,
-    updating the compactor levels and item counts, and re-compacting if capacities
-    are exceeded. The source meter remains unchanged.
+    2. **Reservoir Sampler (Section 3)**:
+       Maintains a sampler at height :math:`h_{\text{sampler}}` that downsamples incoming
+       stream items before they enter the compactor hierarchy. When the compactor levels reach
+       capacity, the lowest compactor level is retired into the sampler and
+       :math:`h_{\text{sampler}}` advances, keeping the total retained items across all compactors
+       and sampler strictly bounded by :math:`\mathcal{O}(k)` independent of stream length :math:`n`.
+
+    Merging combines another :class:`KLLMeter` with compatible capacity :math:`k`, preserving
+    summary accuracy and total rank weight.
 
     Args:
-        q (float): The quantile to track, in [0, 1] (Default=0.5, the median).
-        k (int): The capacity parameter bounding sketch size, :math:`k \\ge 8`
-            (Default=200).
-        epsilon (float | None): The target approximation error in (0, 1). If provided,
-            used to set or validate accuracy; defaults to :math:`1 / k` when None.
+        q (float): The default quantile to track, in [0, 1] (Default=0.5, the median).
+        k (int | None): The capacity parameter bounding sketch size, :math:`k \ge 8`.
+            If None and ``epsilon`` is provided, computed from ``epsilon`` and ``delta``
+            (Default=200 when ``epsilon`` is None).
+        epsilon (float | None): The target rank-error approximation bound in (0, 1).
+            If provided, determines or validates the required capacity :math:`k` using
+            the Hoeffding failure bound :math:`\delta = 2\exp(-C \epsilon^2 k^2)`.
+        delta (float): The failure probability bound in (0, 1) (Default=0.01).
+        random_state (int, np.random.RandomState, or None): Controls the random coin flips
+            for compactor parity and sampler reservoir decisions. Pass an int for reproducible
+            results across runs (Default=None).
 
     Raises:
-        ValueError: If ``q`` is not in [0, 1], ``k < 8``, or ``epsilon`` is not in (0, 1).
+        ValueError: If ``q`` is not in [0, 1], ``k < 8``, ``epsilon`` is not in (0, 1),
+            or ``delta`` is not in (0, 1).
 
     Attributes:
-        q (float): The quantile tracked by default.
+        q (float): The default quantile tracked.
         k (int): The capacity parameter.
-        epsilon (float): The error bound approximation parameter.
-        num_items (int): The number of items observed by the meter.
+        epsilon (float): The effective rank-error bound.
+        delta (float): The failure probability bound.
+        num_items (int): The number of items observed in the stream.
+        random_state (int, np.random.RandomState, or None): The random seed or state passed.
     """
 
     def __init__(
         self,
         q: float = 0.5,
-        k: int = 200,
+        k: int | None = None,
         epsilon: float | None = None,
+        delta: float = 0.01,
+        random_state: int | np.random.RandomState | None = None,
     ) -> None:
         if not 0.0 <= q <= 1.0:
             raise ValueError("q must be in [0, 1].")
-        if k < 8:
-            raise ValueError("k must be at least 8.")
-        if epsilon is not None and not (0.0 < epsilon < 1.0):
-            raise ValueError("epsilon must be in (0, 1).")
+        if not (0.0 < delta < 1.0):
+            raise ValueError("delta must be in (0, 1).")
+
+        if epsilon is not None:
+            if not (0.0 < epsilon < 1.0):
+                raise ValueError("epsilon must be in (0, 1).")
+            min_k = int(math.ceil(math.sqrt(math.log(2.0 / delta) / _C_KLL) / epsilon))
+            min_k = max(8, min_k)
+            if k is None:
+                resolved_k = min_k
+            else:
+                if k < 8:
+                    raise ValueError("k must be at least 8.")
+                resolved_k = int(k)
+            self.epsilon = float(epsilon)
+        else:
+            resolved_k = 200 if k is None else int(k)
+            if resolved_k < 8:
+                raise ValueError("k must be at least 8.")
+            self.epsilon = math.sqrt(math.log(2.0 / delta) / _C_KLL) / resolved_k
 
         self.q = float(q)
-        self.k = int(k)
-        self.epsilon = float(epsilon) if epsilon is not None else 1.0 / self.k
+        self.k = resolved_k
+        self.delta = float(delta)
+        self.random_state = random_state
+        self._rng = check_random_state(random_state)
         self.num_items = 0
 
+        # Section 2 & 3 hierarchy parameters
+        self._c = 2.0 / 3.0
+        self._H_max = max(
+            2, int(math.ceil(math.log(self.k / 8.0) / math.log(1.0 / self._c))) + 1
+        )
+        self._sampler_height = 0
+        self._sampler_item: float | None = None
+        self._sampler_weight = 0
         self._levels: list[list[float]] = [[]]
-        self._flips: list[int] = [0]
 
-    def _capacity(self, h: int, H: int) -> int:
-        """Computes the capacity for level ``h`` given total levels ``H``."""
-        decay = (2.0 / 3.0) ** (H - 1 - h)
-        return max(8, int(math.floor(self.k * decay)))
+    @property
+    def num_retained_items(self) -> int:
+        """The total number of items currently stored in memory across all compactors and sampler."""
+        return sum(len(lvl) for lvl in self._levels) + (
+            1 if self._sampler_weight > 0 else 0
+        )
+
+    @property
+    def total_weight(self) -> int:
+        """The total rank mass / weight preserved across all stored items."""
+        tot = self._sampler_weight
+        for i, lvl in enumerate(self._levels):
+            h = self._sampler_height + i
+            tot += len(lvl) * (1 << h)
+        return tot
+
+    @property
+    def num_levels(self) -> int:
+        """The number of active compactor levels currently in the sketch."""
+        return len(self._levels)
+
+    @property
+    def sampler_height(self) -> int:
+        """The current height h of the Section 3 reservoir sampler."""
+        return self._sampler_height
+
+    def _capacity(self, level_idx: int) -> int:
+        """Computes the compactor capacity k_h for level_idx using Section 2 schedule."""
+        depth = len(self._levels) - 1 - level_idx
+        return max(8, int(math.floor(self.k * (self._c**depth))))
 
     def update(self, num: float) -> KLLMeter:
         """Updates the statistic with the value for a timestep.
 
         Args:
-            num (float): The incoming value.
+            num (float): The incoming stream value.
 
         Returns:
             KLLMeter: self.
         """
-        self._levels[0].append(float(num))
         self.num_items += 1
-        self._compress()
+        self._feed_sampler(float(num), 1)
         return self
 
+    def _feed_sampler(self, item: float, weight: int) -> None:
+        """Feeds an item of given weight into the Section 3 sampler."""
+        if self._sampler_height == 0:
+            self._levels[0].append(item)
+            self._compress()
+            return
+
+        w = weight
+        v = self._sampler_weight
+        while w > 0:
+            target = 1 << self._sampler_height
+            if v + w <= target:
+                if self._rng.uniform() < (w / (v + w)):
+                    self._sampler_item = item
+                self._sampler_weight = v + w
+                if self._sampler_weight == target:
+                    self._levels[0].append(self._sampler_item)  # type: ignore[arg-type]
+                    self._sampler_item = None
+                    self._sampler_weight = 0
+                    self._compress()
+                break
+            else:
+                chunk = target - v
+                if self._rng.uniform() < (chunk / (v + chunk)):
+                    self._sampler_item = item
+                self._levels[0].append(self._sampler_item)  # type: ignore[arg-type]
+                self._sampler_item = None
+                self._sampler_weight = 0
+                self._compress()
+                w -= chunk
+                v = self._sampler_weight
+
     def _compress(self) -> None:
-        """Performs compaction across levels whose size exceeds their capacity."""
+        """Performs compactions across levels exceeding capacity with fair coin flips."""
         while True:
-            H = len(self._levels)
-            exceeded = False
-            for h in range(H):
-                cap = self._capacity(h, H)
-                if len(self._levels[h]) >= cap:
-                    exceeded = True
-                    self._levels[h].sort()
-                    offset = self._flips[h] % 2
-                    self._flips[h] += 1
-                    promoted = self._levels[h][offset::2]
-                    self._levels[h] = []
+            compacted = False
+            for i in range(len(self._levels)):
+                cap = self._capacity(i)
+                if len(self._levels[i]) >= cap:
+                    compacted = True
+                    buf = self._levels[i]
+                    buf.sort()
+                    # Preserve odd buffer remainder to maintain exact rank weight (Point 2)
+                    remainder = buf.pop(-1) if len(buf) % 2 == 1 else None
+                    # Fair independent coin flip (Point 1)
+                    offset = int(self._rng.randint(0, 2))
+                    promoted = buf[offset::2]
+                    buf.clear()
+                    if remainder is not None:
+                        buf.append(remainder)
 
-                    if h + 1 == H:
-                        self._levels.append([])
-                        self._flips.append(0)
-
-                    self._levels[h + 1].extend(promoted)
+                    if i + 1 < len(self._levels):
+                        self._levels[i + 1].extend(promoted)
+                    else:
+                        if len(self._levels) < self._H_max:
+                            self._levels.append(promoted)
+                        else:
+                            # Advance sampler height to bound total levels to H_max (Section 3)
+                            self._sampler_height += 1
+                            old_lowest = self._levels.pop(0)
+                            self._levels.append(promoted)
+                            for val in old_lowest:
+                                self._feed_sampler(val, 1 << (self._sampler_height - 1))
                     break
-            if not exceeded:
+            if not compacted:
                 break
 
     def get(self) -> float:
@@ -122,7 +239,7 @@ class KLLMeter(BaseStatistic):
         return self.quantile(self.q)
 
     def quantile(self, q: float) -> float:
-        """Estimates the arbitrary quantile ``q`` from the sketch.
+        """Estimates an arbitrary quantile ``q`` from the sketch.
 
         Args:
             q (float): The quantile to estimate, in [0, 1].
@@ -140,9 +257,13 @@ class KLLMeter(BaseStatistic):
             return 0.0
 
         pairs: list[tuple[float, int]] = []
-        for h, buf in enumerate(self._levels):
+        if self._sampler_weight > 0 and self._sampler_item is not None:
+            pairs.append((self._sampler_item, self._sampler_weight))
+
+        for i, lvl in enumerate(self._levels):
+            h = self._sampler_height + i
             weight = 1 << h
-            for val in buf:
+            for val in lvl:
                 pairs.append((val, weight))
 
         pairs.sort(key=lambda item: item[0])
@@ -167,16 +288,42 @@ class KLLMeter(BaseStatistic):
 
         Raises:
             TypeError: If ``other`` is not an instance of KLLMeter.
+            ValueError: If ``other.k`` does not match ``self.k``.
         """
         if not isinstance(other, KLLMeter):
             raise TypeError(f"Cannot merge {type(other).__name__} into KLLMeter.")
 
-        while len(self._levels) < len(other._levels):
-            self._levels.append([])
-            self._flips.append(0)
+        if self.k != other.k:
+            raise ValueError(
+                f"Cannot merge KLLMeter with k={other.k} into KLLMeter with k={self.k}; capacities must match."
+            )
 
-        for h, buf in enumerate(other._levels):
-            self._levels[h].extend(buf)
+        # Align sampler heights
+        while self._sampler_height < other._sampler_height:
+            self._sampler_height += 1
+            if len(self._levels) > 0:
+                old_lowest = self._levels.pop(0)
+                for val in old_lowest:
+                    self._feed_sampler(val, 1 << (self._sampler_height - 1))
+            if len(self._levels) == 0:
+                self._levels.append([])
+
+        # Feed other's sampler into self
+        if other._sampler_weight > 0 and other._sampler_item is not None:
+            self._feed_sampler(other._sampler_item, other._sampler_weight)
+
+        # Feed other's compactors below self._sampler_height
+        for i, lvl in enumerate(other._levels):
+            h = other._sampler_height + i
+            if h < self._sampler_height:
+                w = 1 << h
+                for val in lvl:
+                    self._feed_sampler(val, w)
+            else:
+                target_idx = h - self._sampler_height
+                while target_idx >= len(self._levels):
+                    self._levels.append([])
+                self._levels[target_idx].extend(lvl)
 
         self.num_items += other.num_items
         self._compress()

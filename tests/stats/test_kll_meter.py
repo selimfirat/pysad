@@ -17,6 +17,8 @@ def test_empty_meter_returns_zero():
     assert meter.quantile(0.5) == 0.0
     assert meter.quantile(0.0) == 0.0
     assert meter.quantile(1.0) == 0.0
+    assert meter.num_retained_items == 0
+    assert meter.total_weight == 0
 
 
 @pytest.mark.parametrize("q", [-0.01, 1.01, -1.0, 2.0])
@@ -41,11 +43,46 @@ def test_invalid_epsilon_raises_value_error(epsilon):
         KLLMeter(epsilon=epsilon)
 
 
-def test_update_returns_self_and_increments_count():
-    meter = KLLMeter()
+@pytest.mark.parametrize("delta", [0.0, 1.0, -0.1, 1.5])
+def test_invalid_delta_raises_value_error(delta):
+    with pytest.raises(ValueError, match="delta must be in \\(0, 1\\)"):
+        KLLMeter(delta=delta)
+
+
+def test_epsilon_parameter_resolves_capacity():
+    # Target epsilon=0.05, delta=0.01 should compute a capacity k >= 100
+    meter = KLLMeter(epsilon=0.05, delta=0.01)
+    assert meter.epsilon == 0.05
+    assert meter.k >= 8
+    # When both k and epsilon are provided, k is respected
+    meter_both = KLLMeter(k=150, epsilon=0.05)
+    assert meter_both.k == 150
+    assert meter_both.epsilon == 0.05
+
+
+def test_random_state_reproducibility():
+    rng = np.random.RandomState(SEED)
+    data = rng.uniform(0.0, 100.0, size=5000)
+
+    meter1 = KLLMeter(k=100, random_state=123)
+    meter2 = KLLMeter(k=100, random_state=123)
+
+    for x in data:
+        meter1.update(float(x))
+        meter2.update(float(x))
+
+    for q in QUANTILES:
+        assert meter1.quantile(q) == meter2.quantile(q)
+    assert meter1.num_retained_items == meter2.num_retained_items
+    assert meter1.total_weight == meter2.total_weight
+
+
+def test_update_returns_self_and_preserves_weight():
+    meter = KLLMeter(random_state=42)
     ret = meter.update(42.0)
     assert ret is meter
     assert meter.num_items == 1
+    assert meter.total_weight == 1
     assert meter.get() == 42.0
 
 
@@ -54,22 +91,23 @@ def test_uniform_stream_quantile_accuracy(q):
     rng = np.random.RandomState(SEED)
     data = rng.uniform(0.0, 100.0, size=NUM_POINTS)
 
-    meter = KLLMeter(q=q, k=200)
+    meter = KLLMeter(q=q, k=200, random_state=SEED)
     for val in data:
         meter.update(float(val))
 
     estimate = meter.get()
     exact = np.quantile(data, q)
 
-    # With k=200, approximation error is well within 2% of the data range
+    # With k=200, approximation error is well within 2.5% of the data range
     assert abs(estimate - exact) <= 2.5
+    assert meter.total_weight == NUM_POINTS
 
 
 def test_normal_stream_quantiles():
     rng = np.random.RandomState(SEED)
     data = rng.randn(NUM_POINTS)
 
-    meter = KLLMeter(k=200)
+    meter = KLLMeter(k=200, random_state=SEED)
     for val in data:
         meter.update(float(val))
 
@@ -82,17 +120,18 @@ def test_normal_stream_quantiles():
 
 def test_compaction_keeps_stored_items_bounded():
     rng = np.random.RandomState(SEED)
-    data = rng.uniform(0.0, 1000.0, size=20_000)
+    data = rng.uniform(0.0, 1000.0, size=30_000)
 
     k = 100
-    meter = KLLMeter(k=k)
+    meter = KLLMeter(k=k, random_state=SEED)
     for val in data:
         meter.update(float(val))
 
-    total_stored = sum(len(level) for level in meter._levels)
-    assert total_stored <= 3 * k
-    assert len(meter._levels) > 1
-    assert meter.num_items == 20_000
+    # Test reads public observables rather than private state
+    assert meter.num_retained_items <= 3 * k + 1
+    assert meter.total_weight == 30_000
+    assert meter.num_items == 30_000
+    assert meter.num_levels > 1
 
 
 def test_merge_combines_partitioned_streams():
@@ -101,11 +140,11 @@ def test_merge_combines_partitioned_streams():
     s2 = rng.uniform(0.0, 100.0, size=5000)
     combined = np.concatenate([s1, s2])
 
-    m1 = KLLMeter(q=0.5, k=200)
+    m1 = KLLMeter(q=0.5, k=200, random_state=1)
     for x in s1:
         m1.update(float(x))
 
-    m2 = KLLMeter(q=0.5, k=200)
+    m2 = KLLMeter(q=0.5, k=200, random_state=2)
     for x in s2:
         m2.update(float(x))
 
@@ -115,11 +154,19 @@ def test_merge_combines_partitioned_streams():
     m1.merge(m2)
 
     assert m1.num_items == 10_000
+    assert m1.total_weight == 10_000
     assert abs(m1.get() - np.median(combined)) < 2.0
 
     # m2 must remain unchanged
     assert m2.num_items == m2_before_items
     assert m2.get() == m2_before_val
+
+
+def test_merge_incompatible_capacities_raises_value_error():
+    m1 = KLLMeter(k=100)
+    m2 = KLLMeter(k=200)
+    with pytest.raises(ValueError, match="capacities must match"):
+        m1.merge(m2)
 
 
 def test_merge_invalid_type_raises_type_error():
@@ -129,7 +176,7 @@ def test_merge_invalid_type_raises_type_error():
 
 
 def test_pickling_preserves_state_and_functionality():
-    meter = KLLMeter(q=0.75, k=150)
+    meter = KLLMeter(q=0.75, k=150, random_state=42)
     for i in range(500):
         meter.update(float(i))
 
@@ -138,7 +185,11 @@ def test_pickling_preserves_state_and_functionality():
 
     assert restored.q == meter.q
     assert restored.k == meter.k
+    assert restored.epsilon == meter.epsilon
+    assert restored.delta == meter.delta
     assert restored.num_items == meter.num_items
+    assert restored.total_weight == meter.total_weight
+    assert restored.num_retained_items == meter.num_retained_items
     assert restored.get() == meter.get()
 
     meter.update(500.0)

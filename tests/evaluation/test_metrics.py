@@ -489,3 +489,91 @@ def test_update_batch_matches_sequential_updates_across_all_metrics():
         with pytest.raises(ValueError, match="same length"):
             m.update_batch([1, 0], [1])
         assert m.get() == 1.0
+
+
+def test_log_loss_metric_sequential_and_batch():
+    """Verify LogLossMetric against independent expected values for sequential and batch updates."""
+    import numpy as np
+
+    from pysad.evaluation import LogLossMetric, RollingMetric
+
+    metric = LogLossMetric()
+    assert metric.get() is None
+
+    y_true = [1, 0, 1, 0]
+    y_pred = [0.8, 0.2, 0.6, 0.1]
+
+    expected_losses = [
+        -np.log(0.8),
+        -np.log(1.0 - 0.2),
+        -np.log(0.6),
+        -np.log(1.0 - 0.1),
+    ]
+    expected_means = np.cumsum(expected_losses) / np.arange(1, len(expected_losses) + 1)
+
+    for i, (yt, yp) in enumerate(zip(y_true, y_pred, strict=True)):
+        metric.update(yt, yp)
+        assert np.isclose(metric.get(), expected_means[i])
+
+    # Batch update
+    batch_metric = LogLossMetric()
+    batch_metric.update_batch(y_true, y_pred)
+    assert np.isclose(batch_metric.get(), expected_means[-1])
+    assert np.isclose(batch_metric.get(), metric.get())
+
+    # Rolling metric compatibility
+    rolling = RollingMetric(LogLossMetric, window_size=2)
+    rolling.update_batch(y_true, y_pred)
+    # Most recent 2 pairs are (1, 0.6) and (0, 0.1)
+    rolling_expected = (-np.log(0.6) - np.log(0.9)) / 2.0
+    assert np.isclose(rolling.get(), rolling_expected)
+
+
+def test_log_loss_metric_boundary_probabilities():
+    """Verify LogLossMetric clipping at boundary probabilities 0.0 and 1.0."""
+    import numpy as np
+
+    from pysad.evaluation import LogLossMetric
+
+    eps = 1e-12
+    metric = LogLossMetric(eps=eps)
+
+    # Perfect predictions: loss should be close to 0
+    metric.update(1, 1.0)
+    assert np.isclose(metric.get(), -np.log(1.0 - eps), atol=1e-10)
+
+    metric_zero = LogLossMetric(eps=eps)
+    metric_zero.update(0, 0.0)
+    assert np.isclose(metric_zero.get(), -np.log(1.0 - eps), atol=1e-10)
+
+    # Completely wrong predictions: loss is bounded by -log(eps)
+    metric_wrong = LogLossMetric(eps=eps)
+    metric_wrong.update(1, 0.0)
+    assert np.isclose(metric_wrong.get(), -np.log(eps))
+
+
+def test_log_loss_metric_invalid_inputs():
+    """Verify LogLossMetric input validation."""
+    import pytest
+
+    from pysad.evaluation import LogLossMetric
+
+    with pytest.raises(ValueError, match="eps must be strictly between 0 and 0.5"):
+        LogLossMetric(eps=0.0)
+    with pytest.raises(ValueError, match="eps must be strictly between 0 and 0.5"):
+        LogLossMetric(eps=-0.1)
+    with pytest.raises(ValueError, match="eps must be strictly between 0 and 0.5"):
+        LogLossMetric(eps=0.5)
+
+    m = LogLossMetric()
+    with pytest.raises(ValueError, match="y_true must be 0 or 1"):
+        m.update(2, 0.5)
+    with pytest.raises(ValueError, match="y_true must be 0 or 1"):
+        m.update(-1, 0.5)
+
+    with pytest.raises(ValueError, match="y_pred must be a probability between 0 and 1"):
+        m.update(1, 1.5)
+    with pytest.raises(ValueError, match="y_pred must be a probability between 0 and 1"):
+        m.update(1, -0.1)
+    with pytest.raises(ValueError, match="y_pred must be a probability between 0 and 1"):
+        m.update(1, float("nan"))

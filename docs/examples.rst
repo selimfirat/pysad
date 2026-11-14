@@ -554,6 +554,22 @@ It prints:
 
    AUROC: 0.739
 
+Use an incremental distributional kernel detector
+-------------------------------------------------
+
+This script scores each point with IDK-S. IDK-S keeps a sliding window of recent instances as
+hypersphere partitions and scores each point by how many window instances share its partition. It
+takes the raw points.
+
+.. literalinclude:: ../examples/example_usage_idks.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.728
+
 Use a Gaussian mixture detector
 -------------------------------
 

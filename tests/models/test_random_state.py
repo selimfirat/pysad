@@ -33,6 +33,7 @@ MODEL_PARAMS = {
         "max_depth": 8,
     },
     "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 256},
+    "IDKS": {"input_shape": NUM_FEATURES, "window_size": 30, "num_samples": 4},
     "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32, "initial_size": 20},
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 30},

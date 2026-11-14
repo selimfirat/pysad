@@ -248,6 +248,19 @@ class TestWindow:
         active = first if second is None else np.vstack([a for a in (first, second) if len(a) > 0])
         assert {tuple(row) for row in active} == {(3.0, 30.0), (4.0, 40.0)}
 
+    def test_ring_buffer_to_array_returns_a_copy(self):
+        """Changing the returned array does not change buffered items."""
+        from pysad.utils import RingBuffer
+
+        buffer = RingBuffer(window_size=3)
+        for value in (1.0, 2.0, 3.0, 4.0):
+            buffer.append(value)
+
+        result = buffer.to_array()
+        result[0] = -1.0
+
+        np.testing.assert_array_equal(buffer.to_array(), [2.0, 3.0, 4.0])
+
 
 class TestArrayStreamer:
     """Tests for ArrayStreamer class."""

@@ -601,18 +601,21 @@ def test_log_loss_metric_finite_boundary_loss(eps):
             assert metric.get() > 0.0
 
 
-def test_log_loss_metric_running_state_attributes():
-    """Verify running state attributes follow repository naming conventions."""
+def test_log_loss_metric_running_state():
+    """Verify LogLossMetric reports the mean loss of all updates so far."""
+    import numpy as np
+
     from pysad.evaluation import LogLossMetric
 
     metric = LogLossMetric()
-    assert hasattr(metric, "total_loss_")
-    assert hasattr(metric, "count_")
-    assert not hasattr(metric, "total_loss")
-    assert not hasattr(metric, "count")
-    assert metric.total_loss_ == 0.0
-    assert metric.count_ == 0
+    assert metric.get() is None
 
-    metric.update(1, 0.8)
-    assert metric.count_ == 1
-    assert metric.total_loss_ > 0.0
+    y_true = [1, 1, 0]
+    y_pred = [0.9, 0.5, 0.5]
+
+    losses = [-np.log(0.9), -np.log(0.5), -np.log(0.5)]
+    expected_means = np.cumsum(losses) / np.arange(1, 4)
+
+    for i, (yt, yp) in enumerate(zip(y_true, y_pred, strict=True)):
+        metric.update(yt, yp)
+        assert np.isclose(metric.get(), expected_means[i])

@@ -336,7 +336,7 @@ class LogLossMetric(BaseMetric):
         if y_true not in (0, 1):
             raise ValueError("y_true must be 0 or 1.")
         yp = float(y_pred)
-        if not (0.0 <= yp <= 1.0) or np.isnan(yp):
+        if not (0.0 <= yp <= 1.0):
             raise ValueError("y_pred must be a probability between 0 and 1.")
 
         p = min(max(yp, self.eps), 1.0 - self.eps)

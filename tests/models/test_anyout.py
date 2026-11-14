@@ -59,6 +59,24 @@ def test_anyout_scores_against_the_closest_cluster_of_a_one_level_tree(offset):
     np.testing.assert_allclose(density_model.score_partial(x), expected)
 
 
+def test_anyout_scores_do_not_change_when_a_feature_gets_a_constant_offset():
+    """A constant offset of a feature leaves the scores of the tree unchanged."""
+    import numpy as np
+
+    from pysad.models import AnyOut
+
+    X, _ = generate_stream()
+    shifted = X.copy()
+    shifted[:, 0] += 1e6
+
+    for params in [{}, {"outlier_score": "density", "depth": 2}]:
+        scores = AnyOut(**params).fit_score(X)
+        shifted_scores = AnyOut(**params).fit_score(shifted)
+        np.testing.assert_allclose(
+            shifted_scores, scores, rtol=1e-7, atol=1e-9, err_msg=str(params)
+        )
+
+
 def test_anyout_reads_finer_clusters_at_deeper_levels():
     from pysad.models import AnyOut
 

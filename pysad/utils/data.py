@@ -21,6 +21,7 @@ from pysad.utils._datasets import (
     _CREDITCARD_CHECKSUM,
     _INSECTS,
     _INSECTS_FILES,
+    _INVERTED_LABELS,
     _KDDCUP99,
     _KDDCUP99_ARCHIVE,
     _KDDCUP99_CHECKSUM,
@@ -101,7 +102,10 @@ class Data:
 
     Datasets are loaded from the local filesystem or downloaded on demand. The multivariate
     datasets come from the Outlier Detection DataSets (ODDS) repository mirror
-    (:cite:`rayana2016odds`, hosted in the PyOD repository at a fixed commit). The univariate
+    (:cite:`rayana2016odds`, hosted in the PyOD repository at a fixed commit). For
+    ``vertebral.mat``, the labels are flipped from the ODDS file, because ODDS marks the 30
+    healthy patients as the anomalies: the anomaly class of the returned labels is the 210
+    unhealthy patients. The univariate
     series come from the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly Archive.
     The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD),
     the NASA SMAP and MSL telemetry of Telemanom (:cite:`hundman2018detecting`), INSECTS and
@@ -129,7 +133,7 @@ class Data:
         Args:
             source (str): The collection of the datasets (Default="odds"). These are the collections:
 
-                - ``"odds"``: the 17 multivariate datasets of ODDS, for example ``"cardio.mat"``.
+                - ``"odds"``: the 17 multivariate datasets of ODDS, for example ``"cardio.mat"``. For ``"vertebral.mat"``, the labels are flipped from the ODDS file, so the anomaly class is the unhealthy patients, not the healthy patients that ODDS marks as anomalies.
                 - ``"nab"``: the 58 univariate series of the Numenta Anomaly Benchmark, for example ``"nab/realKnownCause/nyc_taxi.csv"``. The points in an anomaly window of NAB have the label 1.
                 - ``"ucr"``: the 250 univariate series of the UCR Time Series Anomaly Archive, for example ``"ucr/025_UCR_Anomaly_DISTORTEDInternalBleeding14_2800_5607_5634.txt"``. The last two numbers of a name are the first and the last point of the anomaly, counted from 1. These points have the label 1. The number before them is the length of the training part, which has no anomalies. The first series download the archive of 184 MB.
                 - ``"kddcup99"``: ``"kddcup99/http.csv"``, the 58,724 http connections of logged in users of the KDD Cup 99 10% file, in their original order. The 3 features are ``log(x + 0.1)`` of the duration, the bytes from the source and the bytes to the destination. The attacks have the label 1. The first use downloads the file of 74 MB, which the server compresses to 2 MB.
@@ -306,6 +310,8 @@ class Data:
 
             X = f["X"]
             y = f["y"].ravel()
+            if file_name in _INVERTED_LABELS:
+                y = 1 - y
         else:
             X = self._load_via_txt(data_path)
 

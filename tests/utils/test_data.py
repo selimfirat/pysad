@@ -48,6 +48,31 @@ def test_get_data_mat(monkeypatch, tmp_path):
     assert np.all(y == np.arange(5))
 
 
+def test_get_data_flips_the_vertebral_labels(monkeypatch, tmp_path):
+    """The ODDS file of vertebral marks the healthy patients as the anomalies. Data flips the
+    labels, so the anomaly class is the unhealthy patients."""
+    shipped_y = np.zeros((240, 1), dtype=np.uint8)
+    shipped_y[:30] = 1  # the 30 healthy patients that ODDS marks as anomalies
+
+    class DummyF:
+        def __getitem__(self, key):
+            if key == "X":
+                return np.ones((240, 6))
+            if key == "y":
+                return shipped_y
+
+    monkeypatch.setattr("scipy.io.loadmat", lambda path: DummyF())
+    (tmp_path / "vertebral.mat").write_bytes(b"dummy")
+    d = Data(data_base_path=str(tmp_path))
+
+    X, y = d.get_data("vertebral.mat", download=False)
+
+    assert X.shape == (240, 6)
+    assert y.dtype == shipped_y.dtype
+    assert int(y.sum()) == 210
+    np.testing.assert_array_equal(y, (shipped_y.ravel() == 0).astype(np.uint8))
+
+
 def test_get_data_txt():
     # Create a temporary .txt file
     arr = np.hstack([np.random.rand(5, 2), np.arange(5).reshape(-1, 1)])

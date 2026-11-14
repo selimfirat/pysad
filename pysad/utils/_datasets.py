@@ -26,6 +26,12 @@ _CHECKSUMS = {
     "wbc.mat": "afe6b26953cc196b9a480318c903e0edef22529c2f61bd02082438c6e70630a7",
 }
 
+# The ODDS files whose labels mark the healthy class as the anomaly class. The vertebral column
+# dataset of UCI has 210 Abnormal and 100 Normal patients, and the ODDS file samples 30 of the
+# Normal patients as its anomalies, so its 210 inliers are the Abnormal patients. Data flips the
+# labels of these files, so the anomaly class is the unhealthy patients.
+_INVERTED_LABELS = ("vertebral.mat",)
+
 
 # The Numenta Anomaly Benchmark (NAB) at the first commit under the MIT license. Its earlier
 # commits are under the AGPL-3.0. Each univariate series is "nab/<category>/<name>.csv".

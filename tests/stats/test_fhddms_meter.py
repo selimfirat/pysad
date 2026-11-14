@@ -35,7 +35,7 @@ def test_short_window_uses_the_paper_threshold_at_equality():
 
 
 def test_long_window_detects_a_change_that_the_short_window_misses():
-    # The long-window accuracy falls by 0.5, above its bound of about 0.318.
+    # The long-window accuracy falls by 0.5, above sqrt(ln(5) / 8), about 0.449.
     # The short-window accuracy falls by the same amount, below its bound of about 0.634.
     meter = FHDDMSMeter(
         short_window_size=2,

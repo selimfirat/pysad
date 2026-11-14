@@ -74,6 +74,31 @@ def test_each_iteration_reopens_file(tmp_path):
     np.testing.assert_array_equal(list(streamer.iter(path)), [[2]])
 
 
+@pytest.mark.parametrize("close_early", [True, False])
+def test_iteration_closes_the_file(tmp_path, monkeypatch, close_early):
+    path = tmp_path / "stream.csv"
+    path.write_text("a,b\n1,2\ninvalid,3\n", encoding="utf-8")
+    opened = []
+    original_open = open
+
+    def recording_open(*args, **kwargs):
+        file = original_open(*args, **kwargs)
+        opened.append(file)
+        return file
+
+    monkeypatch.setattr("builtins.open", recording_open)
+    rows = CSVStreamer().iter(path)
+    np.testing.assert_array_equal(next(rows), [1, 2])
+
+    if close_early:
+        rows.close()
+    else:
+        with pytest.raises(ValueError):
+            next(rows)
+
+    assert opened[-1].closed
+
+
 @pytest.mark.parametrize("columns", [{"feature_columns": [-1]}, {"label_column": -1}])
 def test_negative_columns_are_rejected(columns):
     with pytest.raises(ValueError, match="non-negative"):

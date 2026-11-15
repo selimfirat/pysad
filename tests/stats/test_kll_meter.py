@@ -60,6 +60,21 @@ def test_epsilon_parameter_resolves_capacity():
     assert meter_both.epsilon == 0.05
 
 
+def test_explicit_k_below_min_k_raises_value_error():
+    """Verify explicit k below minimum capacity required by epsilon and delta raises ValueError."""
+    # epsilon=0.01 and delta=0.01 requires min_k approx 599. Passing k=8 must raise.
+    with pytest.raises(ValueError, match="k must be at least"):
+        KLLMeter(k=8, epsilon=0.01)
+
+    with pytest.raises(ValueError, match="k must be at least"):
+        KLLMeter(k=50, epsilon=0.01, delta=0.01)
+
+    # Valid capacity at or above min_k should succeed
+    meter = KLLMeter(k=600, epsilon=0.01, delta=0.01)
+    assert meter.k == 600
+    assert meter.epsilon == 0.01
+
+
 def test_random_state_reproducibility():
     rng = np.random.RandomState(SEED)
     data = rng.uniform(0.0, 100.0, size=5000)
@@ -160,6 +175,51 @@ def test_merge_combines_partitioned_streams():
     # m2 must remain unchanged
     assert m2.num_items == m2_before_items
     assert m2.get() == m2_before_val
+
+
+def test_merge_sampler_overflow_rule():
+    """Verify Section 3 reservoir sampler overflow rule when merging streams."""
+    # k=8 sets H_max=2 so sampler height advances quickly
+    m1 = KLLMeter(k=8, random_state=42)
+    for x in range(201):
+        m1.update(float(x))
+
+    m2 = KLLMeter(k=8, random_state=123)
+    for x in range(200):
+        m2.update(float(x + 200))
+
+    # At this point, both meters have sampler_height == 4 (target weight 16)
+    # m1 has sampler weight 9 and m2 has sampler weight 8, so v + w = 17 > 16.
+    assert m1.sampler_height == 4
+    assert m2.sampler_height == 4
+    assert m1._sampler_weight == 9
+    assert m2._sampler_weight == 8
+
+    # Merging m2 exercises the v + w > 2**h overflow branch in _feed_sampler
+    m1.merge(m2)
+
+    assert m1.num_items == 401
+    assert m1.num_retained_items <= 3 * 8 + 1
+    # Median should approximate the combined stream center (approx 200)
+    assert abs(m1.get() - 200.0) < 50.0
+
+
+def test_sampler_overflow_rule_preserves_lighter_item():
+    """Directly verify Section 3 overflow keeps lighter item with min(v, w) weight."""
+    m = KLLMeter(k=8, random_state=42)
+    m._sampler_height = 3  # target = 8
+    m._sampler_item = 100.0
+    m._sampler_weight = 5
+
+    # Case 1: incoming w=6 >= v=5 (v + w = 11 > 8). Lighter item (100.0, weight 5) is kept.
+    m._feed_sampler(200.0, 6)
+    assert m._sampler_weight == 5
+    assert m._sampler_item == 100.0
+
+    # Case 2: incoming w=4 < v=5 (v + w = 9 > 8). Lighter item (300.0, weight 4) is kept.
+    m._feed_sampler(300.0, 4)
+    assert m._sampler_weight == 4
+    assert m._sampler_item == 300.0
 
 
 def test_merge_incompatible_capacities_raises_value_error():

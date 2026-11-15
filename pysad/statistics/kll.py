@@ -40,6 +40,9 @@ class KLLMeter(BaseStatistic):
        capacity, the lowest compactor level is retired into the sampler and
        :math:`h_{\text{sampler}}` advances, keeping the total retained items across all compactors
        and sampler strictly bounded by :math:`\mathcal{O}(k)` independent of stream length :math:`n`.
+       When items in the sampler overflow capacity (:math:`v + w > 2^h`), the lighter item is kept
+       with weight :math:`\min(v, w)` and the heavier item is output with weight :math:`2^h` with
+       probability :math:`\max(v, w) / 2^h`.
 
     Merging combines another :class:`KLLMeter` with compatible capacity :math:`k`, preserving
     summary accuracy and total rank weight.
@@ -59,7 +62,8 @@ class KLLMeter(BaseStatistic):
 
     Raises:
         ValueError: If ``q`` is not in [0, 1], ``k < 8``, ``epsilon`` is not in (0, 1),
-            or ``delta`` is not in (0, 1).
+            ``delta`` is not in (0, 1), or ``k`` is below the minimum capacity required
+            by ``epsilon`` and ``delta``.
 
     Attributes:
         q (float): The default quantile tracked.
@@ -88,12 +92,16 @@ class KLLMeter(BaseStatistic):
                 raise ValueError("epsilon must be in (0, 1).")
             min_k = int(math.ceil(math.sqrt(math.log(2.0 / delta) / _C_KLL) / epsilon))
             min_k = max(8, min_k)
-            if k is None:
-                resolved_k = min_k
-            else:
+            if k is not None:
                 if k < 8:
                     raise ValueError("k must be at least 8.")
+                if k < min_k:
+                    raise ValueError(
+                        f"k must be at least {min_k} to satisfy the requested epsilon={epsilon} and delta={delta}."
+                    )
                 resolved_k = int(k)
+            else:
+                resolved_k = min_k
             self.epsilon = float(epsilon)
         else:
             resolved_k = 200 if k is None else int(k)
@@ -110,7 +118,9 @@ class KLLMeter(BaseStatistic):
 
         # Section 2 & 3 hierarchy parameters
         self._c = 2.0 / 3.0
-        self._H_max = max(2, int(math.ceil(math.log(self.k / 8.0) / math.log(1.0 / self._c))) + 1)
+        self._H_max = max(
+            2, int(math.ceil(math.log(self.k / 8.0) / math.log(1.0 / self._c))) + 1
+        )
         self._sampler_height = 0
         self._sampler_item: float | None = None
         self._sampler_weight = 0
@@ -119,7 +129,9 @@ class KLLMeter(BaseStatistic):
     @property
     def num_retained_items(self) -> int:
         """The total number of items currently stored in memory across all compactors and sampler."""
-        return sum(len(lvl) for lvl in self._levels) + (1 if self._sampler_weight > 0 else 0)
+        return sum(len(lvl) for lvl in self._levels) + (
+            1 if self._sampler_weight > 0 else 0
+        )
 
     @property
     def total_weight(self) -> int:
@@ -159,36 +171,49 @@ class KLLMeter(BaseStatistic):
         return self
 
     def _feed_sampler(self, item: float, weight: int) -> None:
-        """Feeds an item of given weight into the Section 3 sampler."""
+        """Feeds an item of given weight into the Section 3 reservoir sampler."""
         if self._sampler_height == 0:
             self._levels[0].append(item)
             self._compress()
             return
 
-        w = weight
+        target = 1 << self._sampler_height
         v = self._sampler_weight
-        while w > 0:
-            target = 1 << self._sampler_height
-            if v + w <= target:
+        w = weight
+
+        if v + w < target:
+            if v == 0:
+                self._sampler_item = item
+                self._sampler_weight = w
+            else:
                 if self._rng.uniform() < (w / (v + w)):
                     self._sampler_item = item
                 self._sampler_weight = v + w
-                if self._sampler_weight == target:
-                    self._levels[0].append(self._sampler_item)  # type: ignore[arg-type]
-                    self._sampler_item = None
-                    self._sampler_weight = 0
-                    self._compress()
-                break
+        elif v + w == target:
+            if v == 0:
+                out_item = item
             else:
-                chunk = target - v
-                if self._rng.uniform() < (chunk / (v + chunk)):
-                    self._sampler_item = item
-                self._levels[0].append(self._sampler_item)  # type: ignore[arg-type]
-                self._sampler_item = None
-                self._sampler_weight = 0
+                out_item = (
+                    item if self._rng.uniform() < (w / (v + w)) else self._sampler_item
+                )
+            self._levels[0].append(out_item)  # type: ignore[arg-type]
+            self._sampler_item = None
+            self._sampler_weight = 0
+            self._compress()
+        else:  # v + w > target (Section 3 sampler overflow rule)
+            if w >= v:
+                heavy_item, light_item = item, self._sampler_item
+                heavy_w, light_w = w, v
+            else:
+                heavy_item, light_item = self._sampler_item, item
+                heavy_w, light_w = v, w
+
+            self._sampler_item = light_item
+            self._sampler_weight = light_w
+
+            if self._rng.uniform() < (heavy_w / target):
+                self._levels[0].append(heavy_item)  # type: ignore[arg-type]
                 self._compress()
-                w -= chunk
-                v = self._sampler_weight
 
     def _compress(self) -> None:
         """Performs compactions across levels exceeding capacity with fair coin flips."""

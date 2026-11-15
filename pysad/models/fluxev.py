@@ -18,7 +18,9 @@ class FluxEV(BaseModel):
     The score is the resulting nonnegative fluctuation S, before learning the value.
     Higher scores indicate larger unexpected fluctuations.
 
-    The first ``2 * window_size + drift + period * (num_periods - 1)`` values score zero.
+    With periodic smoothing, the first ``2 * window_size + drift + period * (num_periods - 1)`` values score zero.
+    If ``period=None``, the model skips periodic smoothing and returns the local fluctuation.
+    In this mode, the first ``2 * window_size`` values score zero.
     The next ``calibration_size`` fluctuations set the initial 98th percentile threshold.
     Equations (9)-(11) set ``threshold_`` from peak moments and ``risk``.
     After calibration, a score above ``threshold_`` indicates an anomaly.
@@ -38,17 +40,19 @@ class FluxEV(BaseModel):
     - This model accepts complete, equally spaced values. It does not perform the paper's offline missing-value filling.
     - If every past periodic fluctuation is an anomaly, the periodic baseline is zero.
     - The default period is 24 points. Callers must set it to match their stream.
+    - If ``period=None``, the model omits the periodic step in Equations (6)-(7). It ignores ``num_periods`` and ``drift``.
 
     The authors publish code at https://github.com/jlidw/FluxEV without a repository license.
     Its SPOT module declares GPLv3. This implementation follows the paper and does not copy that code.
-    Memory costs O(window_size + period * num_periods + calibration_size).
+    With periodic smoothing, memory costs O(window_size + period * num_periods + calibration_size).
     After calibration, each call costs O(window_size + num_periods * (2 * drift + 1)), independent of stream length.
+    Without periodic smoothing, memory costs O(window_size + calibration_size), and each call after calibration costs O(window_size).
 
     Args:
         window_size (int): Prediction and local smoothing window s (Default=10).
-        period (int): Number of points per period l. It must exceed ``drift`` (Default=24).
-        num_periods (int): Periodic window p, including the current period. It must be at least two (Default=7).
-        drift (int): Half-width d of each past period's neighborhood (Default=2).
+        period (int or None): Number of points per period l. It must exceed ``drift``. None skips periodic smoothing (Default=24).
+        num_periods (int): Periodic window p, including the current period. If ``period`` is an integer, it must be at least two. Otherwise, the model ignores it (Default=7).
+        drift (int): Half-width d of each past period's neighborhood. If ``period=None``, the model ignores it (Default=2).
         calibration_size (int): Number k of initial smoothed fluctuations for threshold calibration (Default=1000).
         alpha (float): EWMA weight in (0, 1] (Default=0.2).
         risk (float): Tail probability q in (0, 0.02) (Default=0.001).
@@ -57,7 +61,7 @@ class FluxEV(BaseModel):
     def __init__(
         self,
         window_size: int = 10,
-        period: int = 24,
+        period: int | None = 24,
         num_periods: int = 7,
         drift: int = 2,
         calibration_size: int = 1000,
@@ -66,7 +70,7 @@ class FluxEV(BaseModel):
     ) -> None:
         if window_size < 1:
             raise ValueError("window_size must be at least 1.")
-        if num_periods < 2 or not 0 <= drift < period:
+        if period is not None and (num_periods < 2 or not 0 <= drift < period):
             raise ValueError("num_periods must be at least 2 and 0 <= drift < period.")
         if not 0 < alpha <= 1 or not 0 < risk < 0.02:
             raise ValueError("alpha must be in (0, 1] and risk must be in (0, 0.02).")
@@ -81,14 +85,18 @@ class FluxEV(BaseModel):
         self._weights = weights / weights.sum()
         self._values: deque[float] = deque(maxlen=window_size)
         self._errors: deque[float] = deque(maxlen=window_size)
-        self._fluctuations = np.full(period * (num_periods - 1) + drift, np.nan)
-        # Each row selects one past period and its drift neighborhood.
-        self._lags = (
-            np.arange(1, num_periods)[:, None] * period + np.arange(-drift, drift + 1)
-        ).ravel()
+        self._fluctuations = np.empty(0)
+        self._lags = np.empty(0, dtype=int)
+        self._warmup = 2 * window_size
+        if period is not None:
+            self._fluctuations = np.full(period * (num_periods - 1) + drift, np.nan)
+            # Each row selects one past period and its drift neighborhood.
+            self._lags = (
+                np.arange(1, num_periods)[:, None] * period + np.arange(-drift, drift + 1)
+            ).ravel()
+            self._warmup += self._fluctuations.size
         self._calibration: list[float] = []
         self._count = 0
-        self._warmup = 2 * window_size + drift + period * (num_periods - 1)
         self._num_normal = 0
         self._num_peaks = 0
         self._peak_mean = 0.0
@@ -106,6 +114,8 @@ class FluxEV(BaseModel):
         fluctuation = max(float(np.append(errors, error).std() - errors.std()), 0.0)
         if self._count < self._warmup:
             return error, fluctuation, 0.0
+        if self.period is None:
+            return error, fluctuation, fluctuation
         slots = (self._count - self._lags) % self._fluctuations.size
         baseline = float(np.fmax.reduce(self._fluctuations[slots], initial=0.0))
         return error, fluctuation, max(fluctuation - baseline, 0.0)
@@ -168,7 +178,7 @@ class FluxEV(BaseModel):
         self._values.append(x)
         if self._count >= self.window_size:
             self._errors.append(error)
-        if self._count >= 2 * self.window_size:
+        if self.period is not None and self._count >= 2 * self.window_size:
             self._fluctuations[self._count % self._fluctuations.size] = (
                 math.nan if alarm else fluctuation
             )

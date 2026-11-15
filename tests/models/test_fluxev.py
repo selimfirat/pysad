@@ -8,6 +8,7 @@ import pytest
         (2, 2, 0, [0, 0, 0, 0, 0, 0, 3, 3]),
         (3, 2, 1, [0, 0, 0, 0, 0, 0, 2, 2]),
         (2, 3, 0, [0, 0, 0, 0, 0, 0, 3, 2]),
+        (None, 7, 2, [0, 0, 0, 1, 0, 0, 3, 3]),
     ],
 )
 def test_two_step_smoothing(period, num_periods, drift, expected):
@@ -21,21 +22,27 @@ def test_two_step_smoothing(period, num_periods, drift, expected):
     np.testing.assert_allclose(scores, expected)
 
 
-def test_weighted_prediction():
+@pytest.mark.parametrize("period,baseline", [(1, np.sqrt(2)), (None, 0)])
+def test_weighted_prediction(period, baseline):
     from pysad.models import FluxEV
 
-    model = FluxEV(window_size=2, period=1, num_periods=2, drift=0, calibration_size=100, alpha=0.5)
+    model = FluxEV(
+        window_size=2, period=period, num_periods=2, drift=0, calibration_size=100, alpha=0.5
+    )
     model.fit(np.array([0, 0, 0, 0, 0, 3])[:, None])
     # Equation (1) predicts 2. Errors [0, 3, 8] have variance 98/9.
-    expected = max(np.sqrt(98 / 9) - 1.5 - np.sqrt(2), 0)
+    expected = max(np.sqrt(98 / 9) - 1.5 - baseline, 0)
     assert model.score_partial(np.array([10])) == pytest.approx(expected)
 
 
-def test_constant_calibration_and_alarm():
+@pytest.mark.parametrize("period,warmup", [(2, 4), (None, 2)])
+def test_constant_calibration_and_alarm(period, warmup):
     from pysad.models import FluxEV
 
-    model = FluxEV(window_size=1, period=2, num_periods=2, drift=0, calibration_size=10)
-    model.fit(np.zeros((14, 1)))
+    model = FluxEV(window_size=1, period=period, num_periods=2, drift=0, calibration_size=10)
+    model.fit(np.zeros((warmup + 9, 1)))
+    assert model.threshold_ == np.inf
+    model.fit_partial(np.array([0]))
     assert model.threshold_ == 0
     assert model.score_partial(np.array([10])) == 5
     model.fit_partial(np.array([10]))

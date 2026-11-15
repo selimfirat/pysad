@@ -3,7 +3,7 @@ from abc import abstractmethod
 from collections.abc import Iterator
 from typing import Any, Generic, TypeVar, overload
 
-import numpy as np
+from numpy.typing import NDArray
 
 _Features = TypeVar("_Features")
 _Labels = TypeVar("_Labels")
@@ -20,15 +20,15 @@ class BaseStreamer(abc.ABC, Generic[_Features, _Labels]):
         self.shuffle = shuffle
 
     @overload
-    def iter(self, X: _Features, y: None = None) -> Iterator[np.ndarray]: ...
+    def iter(self, X: _Features, y: None = None) -> Iterator[NDArray[Any]]: ...
 
     @overload
-    def iter(self, X: _Features, y: _Labels) -> Iterator[tuple[np.ndarray, Any]]: ...
+    def iter(self, X: _Features, y: _Labels) -> Iterator[tuple[NDArray[Any], Any]]: ...
 
     @abstractmethod
     def iter(
         self, X: _Features, y: _Labels | None = None
-    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
+    ) -> Iterator[NDArray[Any] | tuple[NDArray[Any], Any]]:
         """Method that iterates array of data and (optionally) labels.
 
         Args:

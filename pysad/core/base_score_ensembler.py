@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -64,7 +64,7 @@ class BaseScoreEnsembler(ABC):
         res = self.transform_partial(scores)
         return res if type(res) is float else float(res)
 
-    def fit(self, scores: np.ndarray) -> BaseScoreEnsembler:
+    def fit(self, scores: NDArray[Any]) -> BaseScoreEnsembler:
         """Fits the ensembler to all rows of ``scores`` in order.
 
         Args:
@@ -78,7 +78,7 @@ class BaseScoreEnsembler(ABC):
             self.fit_partial(arr[i])
         return self
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Combines each row of ``scores`` in order using ``transform_partial``.
 
         Args:
@@ -94,7 +94,7 @@ class BaseScoreEnsembler(ABC):
             out[i] = res if type(res) is float else float(res)
         return out
 
-    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+    def fit_transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Applies ``fit_transform_partial`` to each row of ``scores`` in order.
 
         Args:

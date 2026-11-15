@@ -48,11 +48,10 @@ class MinMaxScaler(BaseTransformer):
         maximums = self.maximums_
         assert minimums is not None and maximums is not None
 
-        for minimum, x in zip(minimums, X, strict=True):
-            minimum.update(float(x))
-
-        for maximum, x in zip(maximums, X, strict=True):
-            maximum.update(float(x))
+        for minimum, maximum, x in zip(minimums, maximums, X, strict=True):
+            value = float(x)
+            minimum.update(value)
+            maximum.update(value)
 
         return self
 

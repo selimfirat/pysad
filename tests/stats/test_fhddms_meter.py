@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from pysad.statistics import FHDDMSMeter
+from pysad.statistics import FHDDMSAddMeter, FHDDMSMeter
 
 
 def _bits(probabilities, length, seed):
@@ -121,10 +121,105 @@ def test_smallest_positive_delta_keeps_the_bounds_finite():
     assert math.isfinite(meter.epsilon_long)
 
 
-def test_remove_is_not_supported():
+def test_additive_short_window_is_tested_after_a_complete_block():
+    meter = FHDDMSAddMeter(
+        short_window_size=2,
+        stack_size=4,
+        delta=math.exp(-1.0),
+    )
+
+    drifts = _run_meter(meter, [0.0, 0.0, 1.0, 1.0])
+
+    assert drifts == [False, False, False, True]
+
+
+def test_additive_short_window_requires_the_drop_to_exceed_the_bound():
+    # The first block has an accuracy of 0.5. The second block has an accuracy of 0.
+    # Their accuracy drop is 0.5, which equals the short-window Hoeffding bound.
+    meter = FHDDMSAddMeter(
+        short_window_size=2,
+        stack_size=4,
+        delta=math.exp(-1.0),
+    )
+
+    drifts = _run_meter(meter, [0.0, 1.0, 1.0, 1.0])
+
+    assert drifts == [False, False, False, False]
+
+
+def test_additive_meter_has_no_drift_on_a_stationary_stream():
+    values = _bits([0.3], length=2000, seed=0)
+    meter = FHDDMSAddMeter()
+
+    assert not any(_run_meter(meter, values))
+    assert meter.num_items == 2000
+    assert meter.get() == pytest.approx(values[-100:].mean())
+
+
+def test_additive_meter_detects_a_rise_of_the_error_rate():
+    values = _bits([0.2, 0.5], length=1000, seed=0)
+
+    drifts = _run_meter(FHDDMSAddMeter(), values)
+
+    first = drifts.index(True)
+    assert 1000 <= first < 1200
+
+
+def test_additive_meter_does_not_detect_a_fall_of_the_error_rate():
+    values = _bits([0.5, 0.1], length=1000, seed=0)
+
+    assert not any(_run_meter(FHDDMSAddMeter(), values))
+
+
+def test_additive_meter_forgets_earlier_values_after_a_drift():
+    meter = FHDDMSAddMeter(
+        short_window_size=2,
+        stack_size=4,
+        delta=math.exp(-1.0),
+    )
+    for value in [0.0, 0.0, 1.0, 1.0]:
+        meter.update(value)
+        if meter.drift_detected:
+            break
+    assert meter.drift_detected
+
+    meter.update(1.0)
+
+    assert not meter.drift_detected
+    assert meter.num_items == 1
+    assert meter.get() == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("stack_size", [0, -1])
+def test_additive_meter_rejects_a_nonpositive_stack_size(stack_size):
+    with pytest.raises(ValueError, match="stack_size"):
+        FHDDMSAddMeter(stack_size=stack_size)
+
+
+@pytest.mark.parametrize("short_window_size", [0, -1])
+def test_additive_meter_rejects_a_nonpositive_short_window(short_window_size):
+    with pytest.raises(ValueError, match="short_window_size"):
+        FHDDMSAddMeter(short_window_size=short_window_size)
+
+
+@pytest.mark.parametrize("delta", [0.0, 1.0])
+def test_additive_meter_rejects_a_delta_out_of_range(delta):
+    with pytest.raises(ValueError, match="delta"):
+        FHDDMSAddMeter(delta=delta)
+
+
+def test_additive_meter_keeps_its_bounds_finite_for_the_smallest_delta():
+    meter = FHDDMSAddMeter(delta=np.nextafter(0.0, 1.0))
+
+    assert math.isfinite(meter.epsilon_short)
+    assert math.isfinite(meter.epsilon_long)
+
+
+@pytest.mark.parametrize("meter_class", [FHDDMSMeter, FHDDMSAddMeter])
+def test_remove_is_not_supported(meter_class):
     from pysad.statistics import RunningStatistic
 
-    meter = FHDDMSMeter()
+    meter = meter_class()
     assert not hasattr(meter, "remove")
     with pytest.raises(TypeError, match="does not support remove"):
-        RunningStatistic(FHDDMSMeter, window_size=10)
+        RunningStatistic(meter_class, window_size=10)

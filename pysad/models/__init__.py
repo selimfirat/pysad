@@ -13,6 +13,7 @@ from .damp import DAMP
 from .dilof import DILOF
 from .exact_storm import ExactStorm
 from .expose import EXPoSE
+from .frahst import FRAHST
 from .half_space_trees import HalfSpaceTrees
 from .holt_winters import HoltWinters
 from .htm.htm import HTM
@@ -64,6 +65,7 @@ __all__ = [
     "DILOF",
     "ExactStorm",
     "EXPoSE",
+    "FRAHST",
     "HalfSpaceTrees",
     "HoltWinters",
     "HTM",

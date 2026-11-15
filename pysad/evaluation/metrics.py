@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from math import sqrt
+from typing import cast
 
 import numpy as np
 from sklearn.metrics import average_precision_score, roc_auc_score
@@ -272,7 +273,7 @@ class AUROCMetric(BaseSKLearnMetric):
             raise ValueError(
                 "Only one class present in y_true. ROC AUC score is not defined in that case."
             )
-        return roc_auc_score(y_true, y_pred)
+        return cast(float, roc_auc_score(y_true, y_pred))
 
 
 class AUPRMetric(BaseSKLearnMetric):
@@ -284,4 +285,4 @@ class AUPRMetric(BaseSKLearnMetric):
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
         if not y_true:
             raise ValueError("No samples recorded. PR AUC score is not defined in that case.")
-        return average_precision_score(y_true, y_pred)
+        return cast(float, average_precision_score(y_true, y_pred))

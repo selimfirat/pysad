@@ -289,7 +289,7 @@ class AUPRMetric(BaseSKLearnMetric):
 
 
 class LogLossMetric(BaseMetric):
-    r"""Prequential logarithmic loss metric for probability evaluation :cite:`cesabianchi2005learning`.
+    r"""Prequential logarithmic loss metric for probability evaluation :cite:`cesabianchi2001worst`.
 
     Computes the running logarithmic loss (binary cross-entropy) of predicted anomaly
     probabilities with respect to observed binary ground truth classes. For each instance

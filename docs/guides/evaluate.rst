@@ -29,7 +29,7 @@ Some metrics need a threshold. A point with a score at or above the threshold ra
    * - :class:`~pysad.evaluation.BalancedAccuracyMetric`
      - Give normal points and anomalies equal weight through their mean recall. Set a threshold for scores, or pass 0/1 predictions.
    * - :class:`~pysad.evaluation.LogLossMetric`
-     - Measure the logarithmic loss of predicted anomaly probabilities :cite:`cesabianchi2005learning`. Lower is better (0.0 represents perfect prediction).
+     - Measure the logarithmic loss of predicted anomaly probabilities :cite:`cesabianchi2001worst`. Lower is better (0.0 represents perfect prediction).
 
 Measure several metrics at once
 -------------------------------

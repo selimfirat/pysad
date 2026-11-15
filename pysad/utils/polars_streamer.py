@@ -27,7 +27,7 @@ def _iter_rows(data: pl.DataFrame | pl.Series) -> Iterator[Any]:
         yield from buffer.vstack(sample).to_numpy()[:-1]
 
 
-class PolarsStreamer(BaseStreamer):
+class PolarsStreamer(BaseStreamer["pl.DataFrame", "pl.DataFrame | pl.Series"]):
     """Stream Polars DataFrame rows as NumPy arrays.
 
     If shuffle is False, convert fixed-size row buffers.

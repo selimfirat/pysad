@@ -7,7 +7,7 @@ from sklearn.utils import check_random_state
 from pysad.core.base_streamer import BaseStreamer
 
 
-class ArrayStreamer(BaseStreamer):
+class ArrayStreamer(BaseStreamer[np.ndarray, np.ndarray]):
     """Provide a stream iterator over feature arrays and optional labels.
 
     Args:

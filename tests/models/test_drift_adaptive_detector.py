@@ -8,18 +8,18 @@ def _bounded_score(score):
     return float(score > 2.0)
 
 
-@pytest.mark.parametrize("meter", ["page_hinkley", "adwin"])
-def test_drift_resets_model_and_fits_alerting_instance(meter):
+@pytest.mark.parametrize("stationary_length", [200, 16_384])
+def test_drift_resets_model_and_fits_alerting_instance(stationary_length):
     from pysad.models import DriftAdaptiveDetector, StandardAbsoluteDeviation
-    from pysad.statistics import ADWINMeter, PageHinkleyMeter
+    from pysad.statistics import PageHinkleyMeter
 
     model = DriftAdaptiveDetector(
         model_factory=StandardAbsoluteDeviation,
-        drift_meter=ADWINMeter(delta=0.1) if meter == "adwin" else PageHinkleyMeter(),
+        drift_meter=PageHinkleyMeter(),
         threshold=0.5,
         score_transform=_bounded_score,
     )
-    for _ in range(200):
+    for _ in range(stationary_length):
         model.fit_partial(np.array([0.0]))
     assert model.num_resets_ == 0
     for _ in range(200):
@@ -38,14 +38,13 @@ def test_drift_resets_model_and_fits_alerting_instance(meter):
     assert not model.drift_detected_
 
 
-@pytest.mark.parametrize("meter", ["page_hinkley", "adwin"])
-def test_scoring_and_pickling_preserve_future_drift_behavior(meter):
+def test_scoring_and_pickling_preserve_future_drift_behavior():
     from pysad.models import DriftAdaptiveDetector, StandardAbsoluteDeviation
-    from pysad.statistics import ADWINMeter, PageHinkleyMeter
+    from pysad.statistics import PageHinkleyMeter
 
     model = DriftAdaptiveDetector(
         model_factory=StandardAbsoluteDeviation,
-        drift_meter=ADWINMeter(delta=0.1) if meter == "adwin" else PageHinkleyMeter(),
+        drift_meter=PageHinkleyMeter(),
         threshold=0.5,
         score_transform=_bounded_score,
     )
@@ -87,13 +86,9 @@ def test_alerting_instance_is_learned_once():
     assert model.score_partial(np.array([11.0])) == 0.0
 
 
-def test_adwin_rejects_unbounded_scores_before_learning():
+def test_wrapper_rejects_adwin_monitor():
     from pysad.models import DriftAdaptiveDetector, StandardAbsoluteDeviation
     from pysad.statistics import ADWINMeter
 
-    model = DriftAdaptiveDetector(StandardAbsoluteDeviation, drift_meter=ADWINMeter())
-    model.fit_partial(np.array([0.0]))
-    with pytest.raises(ValueError, match="\\[0, 1\\]"):
-        model.fit_partial(np.array([10.0]))
-    assert model.score_partial(np.array([10.0])) == pytest.approx(1e11)
-    assert model.num_resets_ == 0
+    with pytest.raises(TypeError):
+        DriftAdaptiveDetector(StandardAbsoluteDeviation, drift_meter=ADWINMeter())

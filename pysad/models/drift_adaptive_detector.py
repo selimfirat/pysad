@@ -8,14 +8,14 @@ from typing import ClassVar
 import numpy as np
 
 from pysad.core.base_model import BaseModel
-from pysad.statistics import ADWINMeter, PageHinkleyMeter
+from pysad.statistics import PageHinkleyMeter
 
 
 class DriftAdaptiveDetector(BaseModel):
     """Resets a detector when its scores trigger a drift alert.
 
     Uses the external change-monitoring approach of Bifet and Gavaldà
-    :cite:`bifet2007learning`, with ADWIN2 or Page's cumulative statistic
+    :cite:`bifet2007learning`, with Page's cumulative statistic
     :cite:`page1954continuous`. This class composes existing detectors and meters.
     It does not define a new anomaly detection algorithm.
 
@@ -26,31 +26,32 @@ class DriftAdaptiveDetector(BaseModel):
 
     Differences from the papers: the wrapper monitors anomaly scores rather than
     classification errors. ``score_transform`` can map scores to bounded indicators.
-    ADWIN requires transformed scores in [0, 1]. Its alerts detect shifts in either
-    direction. Page-Hinkley alerts when its two-sided statistic exceeds ``threshold``.
+    Page-Hinkley alerts when its two-sided statistic exceeds ``threshold``.
     Unlike the ADWIN paper's window-based retraining, resets retain no old instances.
     The meter also starts fresh because the new detector changes the score stream.
     Unlike River's default Page-Hinkley monitor, it adds no warmup or exponential decay.
     Non-finite transformed scores do not update the meter, but the detector still learns.
 
-    Memory and update cost follow the detector and meter. Page-Hinkley adds constant
-    cost. ADWIN adds logarithmic memory and split tests in its retained window length.
-    The wrapper stores no stream history. Factories must return fresh detectors.
+    Memory and update cost follow the detector. The Page-Hinkley monitor adds
+    constant memory and update cost. The wrapper stores no stream history.
+    Factories must return fresh detectors.
     For reproducible resets, use a factory with a fixed ``random_state``.
     For pickle support, use a top-level callable or ``functools.partial``.
 
     Args:
         model_factory (callable): A zero-argument callable that creates a fresh detector.
-        drift_meter (ADWINMeter, PageHinkleyMeter or None): An unfitted meter to copy.
+        drift_meter (PageHinkleyMeter or None): An unfitted Page-Hinkley meter to copy.
             None selects PageHinkleyMeter (Default=None).
-        threshold (float): Positive Page-Hinkley alarm threshold. ADWIN ignores this
-            value (Default=50.0).
+        threshold (float): Positive Page-Hinkley alarm threshold (Default=50.0).
         score_transform (callable or None): Maps a score to the drift-monitoring value.
             None uses the score directly. Output scores always stay unchanged (Default=None).
 
+    Raises:
+        TypeError: If ``drift_meter`` is not a PageHinkleyMeter or None.
+
     Attributes:
         model_ (BaseModel): The current detector.
-        drift_meter_ (ADWINMeter or PageHinkleyMeter): The current drift monitor.
+        drift_meter_ (PageHinkleyMeter): The current drift monitor.
         drift_detected_ (bool): Whether the last fit reset the detector.
         num_resets_ (int): The number of drift resets.
     """
@@ -60,10 +61,12 @@ class DriftAdaptiveDetector(BaseModel):
     def __init__(
         self,
         model_factory: Callable[[], BaseModel],
-        drift_meter: ADWINMeter | PageHinkleyMeter | None = None,
+        drift_meter: PageHinkleyMeter | None = None,
         threshold: float = 50.0,
         score_transform: Callable[[float], float] | None = None,
     ) -> None:
+        if drift_meter is not None and not isinstance(drift_meter, PageHinkleyMeter):
+            raise TypeError("drift_meter must be a PageHinkleyMeter or None.")
         if threshold <= 0.0:
             raise ValueError("threshold must be positive.")
         self.model_factory = model_factory
@@ -108,22 +111,13 @@ class DriftAdaptiveDetector(BaseModel):
 
         Returns:
             float: The score before learning or resetting.
-
-        Raises:
-            ValueError: If a finite ADWIN monitoring value falls outside [0, 1].
         """
         score = self.model_.score_partial(X)
         value = score if self.score_transform is None else self.score_transform(score)
         self.drift_detected_ = False
         if math.isfinite(value):
-            if isinstance(self.drift_meter_, ADWINMeter) and not 0.0 <= value <= 1.0:
-                raise ValueError("ADWIN monitoring values must be in [0, 1].")
             self.drift_meter_.update(value)
-            self.drift_detected_ = (
-                self.drift_meter_.drift_detected
-                if isinstance(self.drift_meter_, ADWINMeter)
-                else self.drift_meter_.get() > self.threshold
-            )
+            self.drift_detected_ = self.drift_meter_.get() > self.threshold
         if self.drift_detected_:
             self.model_ = self.model_factory()
             self.drift_meter_ = deepcopy(self.drift_meter)

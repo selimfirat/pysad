@@ -12,6 +12,7 @@ from .basic import (
     SumSquaresMeter,
     VarianceMeter,
 )
+from .cusum import CUSUMMeter
 from .drift import (
     ADWINMeter,
     DDMMeter,
@@ -34,6 +35,7 @@ __all__ = [
     "ADWINMeter",
     "AverageMeter",
     "CountMeter",
+    "CUSUMMeter",
     "DDMMeter",
     "DDSketchMeter",
     "EDDMMeter",

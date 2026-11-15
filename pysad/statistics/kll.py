@@ -118,9 +118,7 @@ class KLLMeter(BaseStatistic):
 
         # Section 2 & 3 hierarchy parameters
         self._c = 2.0 / 3.0
-        self._H_max = max(
-            2, int(math.ceil(math.log(self.k / 8.0) / math.log(1.0 / self._c))) + 1
-        )
+        self._H_max = max(2, int(math.ceil(math.log(self.k / 8.0) / math.log(1.0 / self._c))) + 1)
         self._sampler_height = 0
         self._sampler_item: float | None = None
         self._sampler_weight = 0
@@ -129,9 +127,7 @@ class KLLMeter(BaseStatistic):
     @property
     def num_retained_items(self) -> int:
         """The total number of items currently stored in memory across all compactors and sampler."""
-        return sum(len(lvl) for lvl in self._levels) + (
-            1 if self._sampler_weight > 0 else 0
-        )
+        return sum(len(lvl) for lvl in self._levels) + (1 if self._sampler_weight > 0 else 0)
 
     @property
     def total_weight(self) -> int:
@@ -193,9 +189,7 @@ class KLLMeter(BaseStatistic):
             if v == 0:
                 out_item = item
             else:
-                out_item = (
-                    item if self._rng.uniform() < (w / (v + w)) else self._sampler_item
-                )
+                out_item = item if self._rng.uniform() < (w / (v + w)) else self._sampler_item
             self._levels[0].append(out_item)  # type: ignore[arg-type]
             self._sampler_item = None
             self._sampler_weight = 0

@@ -103,6 +103,52 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         pass
 
 
+class BrierScoreMetric(BaseMetric):
+    """Mean squared error for binary anomaly probabilities.
+
+    Labels use 1 for anomalies and 0 for normal instances. Predictions give
+    the probability of an anomaly, from 0 to 1. Lower scores mean better
+    predictions. The score ranges from 0 for perfect predictions to 1 for
+    fully wrong predictions. An empty stream returns 0.0.
+
+    Each update takes constant time. A running squared-error sum and count
+    keep memory use constant as the stream grows.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.squared_error_sum_ = 0.0
+        self.count_ = 0
+
+    def update(self, y_true: int, y_pred: float) -> None:
+        """Record one binary label and anomaly probability.
+
+        Args:
+            y_true (int): True label, 1 for an anomaly or 0 for normal.
+            y_pred (float): Probability of an anomaly in [0, 1].
+
+        Raises:
+            ValueError: If the label is not 0 or 1, or the probability
+                is not finite or lies outside [0, 1]. Invalid pairs leave
+                the metric unchanged.
+        """
+        if y_true not in (0, 1):
+            raise ValueError("y_true must be 0 or 1.")
+        if not 0.0 <= y_pred <= 1.0:
+            raise ValueError("y_pred must be a finite probability in [0, 1].")
+        error = float(y_pred) - float(y_true)
+        self.squared_error_sum_ += error * error
+        self.count_ += 1
+
+    def get(self) -> float:
+        """Return the mean squared error, or 0.0 for an empty stream.
+
+        Returns:
+            float: The current Brier score.
+        """
+        return self.squared_error_sum_ / self.count_ if self.count_ else 0.0
+
+
 class _ConfusionMatrixMetric(BaseMetric, metaclass=ABCMeta):
     """Base class for binary classification metrics backed by O(1) confusion counts.
 

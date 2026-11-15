@@ -136,6 +136,10 @@ jobs:
 
   lowest-versions:
     runs-on: ubuntu-latest
+    env:
+      # NumPy 1.23 has faulty OpenBLAS kernels on newer Intel CPUs.
+      # https://github.com/numpy/numpy/issues/24903
+      OPENBLAS_CORETYPE: Haswell
     permissions:
       contents: read
     steps:

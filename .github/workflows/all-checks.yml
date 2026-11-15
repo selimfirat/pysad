@@ -1,11 +1,12 @@
 name: all checks
 
-# The single status check the branch rules require. The other workflows skip themselves on
-# pull requests that don't touch their paths, so requiring them directly would leave those
-# pull requests waiting forever. This job always runs: it waits for every check run on the
-# pull request's head commit and fails if any of them did not succeed. Skipped runs count as
-# passed. Commit statuses such as pre-commit.ci's are not check runs; the rules require those
-# separately.
+# The status check that the branch rules require, next to the `pre-commit.ci - pr` and
+# `qlty check` commit statuses. The other workflows skip themselves on pull requests that
+# don't touch their paths, so requiring them directly would leave those pull requests
+# waiting forever. This job always runs: it waits for every check run on the pull request's
+# head commit and fails if any of them did not succeed. Skipped runs count as passed.
+# Commit statuses such as `pre-commit.ci - pr` and `qlty check` are not check runs. The
+# rules require those separately.
 on:
   pull_request:
     # ready_for_review starts the gate again when a draft becomes ready.

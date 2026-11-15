@@ -128,6 +128,13 @@ compare-numpy1 = [
   "streamad==0.3.1",
   "alibi-detect==0.13.0",
 ]
+# The packages that .github/workflows/jupyterlite.yml deploys to GitHub Pages, so the deploy
+# job runs known versions and Dependabot bumps the pins with the one-week cooldown.
+jupyterlite = [
+  "jupyterlite-core==0.8.7",
+  "jupyterlite-pyodide-kernel==0.8.7",
+  "jupyter-server==2.21.1",
+]
 dev = [
   {include-group = "runtime"},
   {include-group = "test"},

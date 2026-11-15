@@ -5,11 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pysad"
 dynamic = ["version"]
-# The floors are the first releases of scipy and scikit-learn built
-# for NumPy 2, so no allowed combination pairs NumPy 2 with an older build compiled for
-# NumPy 1. The lowest-versions job in .github/workflows/coverage.yml tests them.
+# The lowest-versions job in .github/workflows/coverage.yml installs these floors. The
+# NumPy floor is 1.23, which the job pins to 1.23.0. The scipy and scikit-learn floors are
+# the first releases built for NumPy 2, so no allowed combination pairs NumPy 2 with an
+# older build compiled for NumPy 1.
 dependencies = [
-  "numpy>=1.22.4",
+  "numpy>=1.23",
   "scikit-learn>=1.4.2",
   "scipy>=1.13.0",
 ]
@@ -127,6 +128,13 @@ compare-numpy1 = [
   "streamad==0.3.1",
   "alibi-detect==0.13.0",
 ]
+# The packages that .github/workflows/jupyterlite.yml deploys to GitHub Pages, so the deploy
+# job runs known versions and Dependabot bumps the pins with the one-week cooldown.
+jupyterlite = [
+  "jupyterlite-core==0.8.7",
+  "jupyterlite-pyodide-kernel==0.8.7",
+  "jupyter-server==2.21.1",
+]
 dev = [
   {include-group = "runtime"},
   {include-group = "test"},
@@ -209,6 +217,17 @@ warn_redundant_casts = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "pysad.evaluation.metrics"
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+warn_return_any = true
+implicit_reexport = false
+strict_equality = true
+extra_checks = true
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]

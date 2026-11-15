@@ -31,7 +31,7 @@ ANOMALY_RATE = 0.05
 
 # Subspace detectors score the distance of the direction of an instance from a low-rank subspace,
 # so they need normal instances near such a subspace.
-SUBSPACE_MODELS = {"ADeMS"}
+SUBSPACE_MODELS = {"ADeMS", "FRAHST"}
 
 # NullModel and PerfectModel do not score the data, and RandomModel is the chance reference.
 REFERENCE_MODELS = {"NullModel", "PerfectModel", "RandomModel"}
@@ -94,6 +94,7 @@ def _model_params(model_name, X):
     """The constructor arguments of `model_name` for the stream `X`."""
     feature_mins, feature_maxes = X.min(axis=0), X.max(axis=0)
     params = {
+        "DriftAdaptiveDetector": {"model_factory": pysad.models.LODA},
         "HalfSpaceTrees": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
         "HTM": {
             "min_val": feature_mins[-1],

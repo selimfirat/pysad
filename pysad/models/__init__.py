@@ -16,6 +16,7 @@ from .exact_storm import ExactStorm
 from .expose import EXPoSE
 from .fluxev import FluxEV
 from .frahst import FRAHST
+from .gng_a import GNGA
 from .half_space_trees import HalfSpaceTrees
 from .holt_winters import HoltWinters
 from .htm.htm import HTM
@@ -70,6 +71,7 @@ __all__ = [
     "EXPoSE",
     "FluxEV",
     "FRAHST",
+    "GNGA",
     "HalfSpaceTrees",
     "HoltWinters",
     "HTM",

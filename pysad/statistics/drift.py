@@ -684,6 +684,156 @@ class FHDDMSMeter(BaseStatistic):
         return self._long_window.error_rate
 
 
+class FHDDMSAddMeter(BaseStatistic):
+    """The additive FHDDMS drift detector, which summarizes short accuracy blocks.
+
+    Follows the Additive Stacking Fast Hoeffding Drift Detection Method of
+    Pesaranghader, Viktor, and Paquet :cite:`pesaranghader2018reservoir`
+    (Section 5.4). Each value is 1 for an error and 0 for a correct prediction.
+    The meter groups values into blocks of ``short_window_size`` values.
+    It stores one error count per block.
+    The long window contains the ``stack_size`` most recent block counts.
+
+    The meter reports a drift when the accuracy of either window falls by more
+    than its Hoeffding bound::
+
+        accuracy_drop > sqrt(ln(1 / delta) / (2 * window_size))
+
+    The short window is tested after each complete block.
+    The long window is tested after the stack fills and after each later complete block.
+    ``get`` returns the error rate of the long window.
+
+    The paper uses 1 for a correct prediction.
+    The meter uses 1 for an error, as the other PySAD drift meters do.
+    The meter applies the paper's accuracy test to ``1 - value``.
+
+    The paper says that a drop must exceed the bound.
+    The meter therefore uses ``>``.
+    Both reference implementations also use ``>``.
+
+    The paper does not give reset pseudocode for this method.
+    The meter resets its summaries and best accuracies before the update after a drift.
+    The authors' MOA implementation resets at the same point.
+
+    The Tornado Python code starts its next summary before the first summary is full.
+    This can change drift flags during the first long window.
+    The meter follows the paper's complete summary blocks and the MOA implementation.
+
+    The paper's experiments use ``delta=1e-7``.
+    The meter follows the paper.
+    Both reference implementations default to ``1e-6``.
+
+    Each update takes O(1) time and O(``stack_size``) memory.
+    This removes the raw short and long window storage that FHDDMS uses.
+
+    ``remove`` is not supported because the detector decides when it forgets values.
+
+    Args:
+        short_window_size (int): The number of values in each summary, ``|Ws|`` in
+            the paper (Default=25).
+        stack_size (int): The number of summaries in the long window, ``m`` in the
+            paper (Default=4).
+        delta (float): The probability bound of the Hoeffding test, in (0, 1). Smaller
+            values give fewer false drifts and later detections (Default=1e-7).
+
+    Raises:
+        ValueError: If ``short_window_size`` or ``stack_size`` is less than 1, or if
+            ``delta`` is not in (0, 1).
+
+    Attributes:
+        short_window_size (int): The number of values in each summary.
+        stack_size (int): The number of summaries in the long window.
+        long_window_size (int): The number of values in the long window.
+        delta (float): The probability bound of the Hoeffding test.
+        epsilon_short (float): The Hoeffding bound of the short-window test.
+        epsilon_long (float): The Hoeffding bound of the long-window test.
+        num_items (int): The number of values since the last drift.
+        drift_detected (bool): Whether the last update detected a drift.
+    """
+
+    def __init__(
+        self,
+        short_window_size: int = 25,
+        stack_size: int = 4,
+        delta: float = 1e-7,
+    ) -> None:
+        if short_window_size < 1:
+            raise ValueError("short_window_size must be a positive integer.")
+        if stack_size < 1:
+            raise ValueError("stack_size must be a positive integer.")
+        if not 0.0 < delta < 1.0:
+            raise ValueError("delta must be in (0, 1).")
+
+        self.short_window_size = short_window_size
+        self.stack_size = stack_size
+        self.long_window_size = short_window_size * stack_size
+        self.delta = delta
+        self.epsilon_short = _hoeffding_bound(short_window_size, delta)
+        self.epsilon_long = _hoeffding_bound(self.long_window_size, delta)
+        self.drift_detected = False
+        self._reset()
+
+    def _reset(self) -> None:
+        self.num_items = 0
+        self._block_errors = 0.0
+        self._block_size = 0
+        self._blocks: deque[float] = deque(maxlen=self.stack_size)
+        self._long_errors = 0.0
+        # The fewest errors in the tested windows, which give the largest accuracies.
+        self._min_short_errors = math.inf
+        self._min_long_errors = math.inf
+
+    def update(self, num: float) -> FHDDMSAddMeter:
+        """Updates the statistic with the value for a timestep.
+
+        Args:
+            num (float): The incoming value, 1 for an error and 0 for a correct prediction.
+
+        Returns:
+            object: self.
+        """
+        if self.drift_detected:
+            self.drift_detected = False
+            self._reset()
+
+        self.num_items += 1
+        if self._block_size == 0 and len(self._blocks) == self.stack_size:
+            self._long_errors -= self._blocks.popleft()
+
+        self._block_errors += num
+        self._block_size += 1
+        self._long_errors += num
+
+        if self._block_size < self.short_window_size:
+            return self
+
+        self._min_short_errors = min(self._min_short_errors, self._block_errors)
+        short_drop = (self._block_errors - self._min_short_errors) / self.short_window_size
+        self._blocks.append(self._block_errors)
+        self._block_errors = 0.0
+        self._block_size = 0
+
+        long_drift = False
+        if len(self._blocks) == self.stack_size:
+            self._min_long_errors = min(self._min_long_errors, self._long_errors)
+            long_drop = (self._long_errors - self._min_long_errors) / self.long_window_size
+            long_drift = long_drop > self.epsilon_long
+
+        self.drift_detected = short_drop > self.epsilon_short or long_drift
+        return self
+
+    def get(self) -> float:
+        """Method to obtain the tracked statistic.
+
+        Returns:
+            float: The error rate of the values in the long window.
+        """
+        num_values = len(self._blocks) * self.short_window_size + self._block_size
+        if num_values == 0:
+            return 0.0
+        return self._long_errors / num_values
+
+
 class HDDMAMeter(BaseStatistic):
     """The HDDM_A drift detector, which compares moving averages with Hoeffding's bound.
 

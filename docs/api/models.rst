@@ -10,8 +10,10 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
 ``FluxEV`` scores unexpected fluctuations in one equally spaced series. Set ``period`` to match the stream. After calibration, scores above ``threshold_`` indicate anomalies.
 ``FRAHST`` tracks an orthonormal principal subspace and adapts its rank with energy thresholds. It returns binary rank-increase alarms. Its scores detect changes in correlation. See :class:`~pysad.models.FRAHST` for initialization and idle-input rules.
 
+``DriftAdaptiveDetector`` resets a detector after Page-Hinkley alerts on its scores. Pass a factory that creates fresh detectors. The monitor adds constant memory and update cost. Scoring alone does not update the drift monitor.
+
 .. autosummary::
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-   :tail: NullModel, PerfectModel, RandomModel, StreamPipeline
+   :tail: DriftAdaptiveDetector, NullModel, PerfectModel, RandomModel, StreamPipeline

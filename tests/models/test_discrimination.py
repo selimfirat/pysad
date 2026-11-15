@@ -94,6 +94,7 @@ def _model_params(model_name, X):
     """The constructor arguments of `model_name` for the stream `X`."""
     feature_mins, feature_maxes = X.min(axis=0), X.max(axis=0)
     params = {
+        "DriftAdaptiveDetector": {"model_factory": pysad.models.LODA},
         "HalfSpaceTrees": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
         "HTM": {
             "min_val": feature_mins[-1],

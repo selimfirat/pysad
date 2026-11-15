@@ -11,6 +11,7 @@ from .cpod import CPOD
 from .d3 import D3
 from .damp import DAMP
 from .dilof import DILOF
+from .drift_adaptive_detector import DriftAdaptiveDetector
 from .exact_storm import ExactStorm
 from .expose import EXPoSE
 from .fluxev import FluxEV
@@ -64,6 +65,7 @@ __all__ = [
     "D3",
     "DAMP",
     "DILOF",
+    "DriftAdaptiveDetector",
     "ExactStorm",
     "EXPoSE",
     "FluxEV",

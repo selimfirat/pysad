@@ -31,7 +31,7 @@ ANOMALY_RATE = 0.05
 
 # Subspace detectors score the distance of the direction of an instance from a low-rank subspace,
 # so they need normal instances near such a subspace.
-SUBSPACE_MODELS = {"ADeMS"}
+SUBSPACE_MODELS = {"ADeMS", "FRAHST"}
 
 # NullModel and PerfectModel do not score the data, and RandomModel is the chance reference.
 REFERENCE_MODELS = {"NullModel", "PerfectModel", "RandomModel"}

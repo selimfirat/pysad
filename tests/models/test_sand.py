@@ -99,16 +99,23 @@ def test_sand_min_weight_bounds_the_clusters_on_a_drifting_stream():
     from pysad.models import SAND
 
     batches = np.random.default_rng(0).normal(size=8000).cumsum().reshape(20, 400, 1)
-    default = SAND(subsequence_length=LENGTH, batch_size=400, random_state=0)
-    bounded = SAND(subsequence_length=LENGTH, batch_size=400, min_weight=0.01, random_state=0)
-    default_sizes = [len(default.fit(batch).weights_) for batch in batches]
-    bounded_sizes = [len(bounded.fit(batch).weights_) for batch in batches]
+    min_weight = 0.25
+    bounded = SAND(
+        subsequence_length=LENGTH,
+        batch_size=400,
+        min_weight=min_weight,
+        random_state=0,
+    )
+    max_clusters = int(1 / min_weight)
 
-    # Without min_weight, the walk keeps adding clusters. With it, old clusters leave.
-    assert default_sizes[-1] > default_sizes[9]
-    assert max(bounded_sizes[10:]) <= max(bounded_sizes[:10])
-    assert bounded_sizes[-1] < default_sizes[-1] / 4
-    np.testing.assert_allclose(bounded.weights_.sum(), 1.0)
+    for batch in batches:
+        bounded.fit(batch)
+
+        # The retained clusters must obey the weight threshold and the cluster bound.
+        assert len(bounded.weights_) <= max_clusters
+        assert np.all(bounded.weights_ >= min_weight)
+        np.testing.assert_allclose(bounded.weights_.sum(), 1.0)
+
     assert np.isfinite(bounded.score(batches[-1])).all()
 
 

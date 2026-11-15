@@ -46,9 +46,9 @@ def _median_and_mad_sorted(sub: Sequence[float] | np.ndarray) -> tuple[float, fl
 class RingBuffer:
     """Fixed-capacity contiguous ``np.float64`` circular buffer for 1-D scalars or 2-D vectors.
 
-    The underlying array is allocated lazily on the first :meth:`append` call so the buffer matches
-    either scalar values ``(window_size,)`` or feature vectors ``(window_size, num_features)``
-    without upfront shape metadata.
+    The first item fixes the item shape. A scalar creates a one-dimensional buffer with shape
+    ``(window_size,)``, and a vector creates a two-dimensional buffer with shape
+    ``(window_size, num_features)``. Later items must have the same shape as the first item.
 
     Args:
         window_size (int): Maximum number of items retained in the buffer. Must be at least 1.
@@ -69,17 +69,23 @@ class RingBuffer:
         """Writes ``item`` into the next slot, advances the ring, and returns the written slot index.
 
         Args:
-            item (float or np.ndarray): Scalar value or 1-D feature vector to store.
+            item (float or np.ndarray): Scalar value or 1-D feature vector to store. Its shape must
+                match the first item appended to the buffer.
 
         Returns:
             int: Slot index written in ``points``.
+
+        Raises:
+            ValueError: If the item shape differs from the first appended item.
         """
+        arr = np.asarray(item, dtype=np.float64)
         if self.count == 0 and self.points.size == 0:
-            arr = np.asarray(item, dtype=np.float64)
             shape = (self.window_size,) if arr.ndim == 0 else (self.window_size, arr.shape[0])
             self.points = np.empty(shape, dtype=np.float64)
+        elif arr.shape != self.points.shape[1:]:
+            raise ValueError(f"item must have shape {self.points.shape[1:]}, got {arr.shape}.")
         slot = self.next_slot
-        self.points[slot] = item
+        self.points[slot] = arr
         self.next_slot = (slot + 1) % self.window_size
         if self.count < self.window_size:
             self.count += 1
@@ -114,7 +120,7 @@ class RingBuffer:
 
 
 class Window:
-    """Window to limit the instances in a list and keep the size fixed when full.
+    """Keeps the last ``window_size`` items of a stream.
 
     The window holds at most ``window_size`` items, oldest first. Adding an item beyond the limit
     drops the oldest item in constant time, independent of the window size.
@@ -126,23 +132,22 @@ class Window:
         ValueError: If window_size is less than 1.
     """
 
-    def __init__(self, window_size: int | None) -> None:
-        # UnlimitedWindow uses None as its internal size sentinel.
-        if window_size is not None and window_size < 1:
+    def __init__(self, window_size: int) -> None:
+        if window_size < 1:
             raise ValueError("window_size must be a positive integer.")
 
         self.window_size = window_size
         self.window: deque[Any] = deque(maxlen=window_size)
 
-    def update(self, num: Any) -> None:
-        """Adds new item to the window. Removes the oldest item if size exceeds window_size.
+    def update(self, item: Any) -> None:
+        """Adds an item. If the window then holds more than ``window_size`` items, removes the oldest one.
 
         Adding an item takes constant time, independent of the window size.
 
         Args:
-            num (float): Item to be added to the window.
+            item (Any): Item to be added to the window.
         """
-        self.window.append(num)
+        self.window.append(item)
 
     def get(self) -> list[Any]:
         """Method to obtain the window items.
@@ -159,18 +164,3 @@ class Window:
     def __iter__(self) -> Iterator[Any]:
         """Iterates over the items in the window, oldest first."""
         return iter(self.window)
-
-
-class UnlimitedWindow(Window):
-    """Unlimited window implemented for convenience. This class only provides a list with unlimited size. Note that this does not fit to the memory for streaming data."""
-
-    def __init__(self) -> None:
-        super().__init__(None)
-
-    def update(self, num: Any) -> None:
-        """Adds new item to the window. The window never drops items.
-
-        Args:
-            num (float): Item to be added to the window.
-        """
-        self.window.append(num)

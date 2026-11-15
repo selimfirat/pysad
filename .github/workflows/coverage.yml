@@ -136,6 +136,10 @@ jobs:
 
   lowest-versions:
     runs-on: ubuntu-latest
+    env:
+      # NumPy 1.23 has faulty OpenBLAS kernels on newer Intel CPUs.
+      # https://github.com/numpy/numpy/issues/24903
+      OPENBLAS_CORETYPE: Haswell
     permissions:
       contents: read
     steps:
@@ -152,8 +156,10 @@ jobs:
       - name: Install the lowest allowed dependencies
         # lowest-direct installs the floor of every dependency pyproject.toml names, on the
         # oldest supported Python, and the newest versions of their own dependencies.
+        # NumPy is pinned to its floor, so a test dependency that needs a newer NumPy cannot
+        # stop the job from testing the floor.
         run: |
-          uv pip install --system --resolution lowest-direct -e . --group test
+          uv pip install --system --resolution lowest-direct -e . --group test numpy==1.23.0
       - name: Test
         env:
           BASE_REF: ${{ github.base_ref }}

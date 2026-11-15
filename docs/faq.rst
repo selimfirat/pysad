@@ -293,7 +293,7 @@ Cite the PySAD paper, and also the paper of each detector that you use:
      year={2020}
    }
 
-To cite a specific release, use its Zenodo DOI. See :doc:`citing`.
+To cite a specific release, use its Zenodo DOI. See :ref:`citing-pysad`.
 
 How do I report a bug or ask a question?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

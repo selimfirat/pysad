@@ -12,8 +12,11 @@ from .cpod import CPOD
 from .d3 import D3
 from .damp import DAMP
 from .dilof import DILOF
+from .drift_adaptive_detector import DriftAdaptiveDetector
 from .exact_storm import ExactStorm
 from .expose import EXPoSE
+from .fluxev import FluxEV
+from .frahst import FRAHST
 from .half_space_trees import HalfSpaceTrees
 from .holt_winters import HoltWinters
 from .htm.htm import HTM
@@ -30,6 +33,7 @@ from .mcod import MCOD
 from .median_absolute_deviation import MedianAbsoluteDeviation
 from .memstream import MemStream
 from .midas import MIDAS
+from .milof import MiLOF
 from .model_ensemble import ModelEnsemble
 from .mstream import MStream
 from .nets import NETS
@@ -63,8 +67,11 @@ __all__ = [
     "D3",
     "DAMP",
     "DILOF",
+    "DriftAdaptiveDetector",
     "ExactStorm",
     "EXPoSE",
+    "FluxEV",
+    "FRAHST",
     "HalfSpaceTrees",
     "HoltWinters",
     "HTM",
@@ -81,6 +88,7 @@ __all__ = [
     "MedianAbsoluteDeviation",
     "MemStream",
     "MIDAS",
+    "MiLOF",
     "ModelEnsemble",
     "MStream",
     "NETS",

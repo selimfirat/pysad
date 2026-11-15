@@ -93,7 +93,7 @@ Integrate a one-dimensional stream
 ----------------------------------
 
 This script uses one feature per point. It scores each point before the update and calibrates the raw score.
-See :doc:`guides/one_dimensional_integration` for input shapes, feature bounds, and the py-outlier wrapper mismatch.
+See :ref:`one-dimensional-stream` for input shapes and feature bounds.
 
 .. literalinclude:: ../examples/example_one_dimensional_integration.py
    :language: python
@@ -790,7 +790,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.770
+   AUROC: 0.751
 
 Track running statistics
 ------------------------

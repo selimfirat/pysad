@@ -9,13 +9,10 @@ ODDS datasets
 These tables use |num_datasets| datasets from the `ODDS <http://odds.cs.stonybrook.edu/>`_ repository. The points of each dataset are in a random order. The summary has one row for each detector, from the best mean rank to the worst. It has these columns:
 
 Mean rank
-   The rank of a detector on a dataset is its position by AUROC, where 1 is the highest AUROC. The mean rank is the average of these ranks over the |num_datasets| datasets. Detectors with the same mean rank are in the order of their mean AUROC, then their mean AUPR, then their time per point.
+   The rank of a detector on a dataset is its position by AUROC, where 1 is the highest AUROC. The mean rank is the average of these ranks over the |num_datasets| datasets. Detectors with the same mean rank are in the order of their mean AUROC, then their time per point.
 
-Mean AUROC and Mean AUPR
-   The averages over the |num_datasets| datasets.
-
-Mean AUPR / fraction
-   The mean of each AUPR divided by the fraction of anomalies of its dataset.
+Mean AUROC
+   The average of the AUROC over the |num_datasets| datasets.
 
 Time per point
    The median time of one ``fit_score_partial`` call, in milliseconds. All the runs used one computer, so compare these times only with each other.

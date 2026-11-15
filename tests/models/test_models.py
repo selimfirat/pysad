@@ -10,6 +10,7 @@ from pysad.utils import fix_seed
 from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, active_model_names
 
 MODEL_CASES = {
+    "DriftAdaptiveDetector": [{"model_factory": pysad.models.LODA}],
     "AnyOut": [{}, {"outlier_score": "density"}],
     "ChangeFinder": [{}, {"change_point": False}],
     "D3": [{"window_size": 50}],
@@ -30,6 +31,7 @@ MODEL_CASES = {
     "MedianAbsoluteDeviation": [{}, {"absolute": False}],
     "MemStream": [{"window_size": 8, "num_epochs": 20}],
     "MIDAS": [{"tick_size": 10}],
+    "MiLOF": [{"window_size": 30, "num_summaries": 5}],
     "OeSNNUAD": [{}, {"window_size": 10, "num_output_neurons": 5}],
     "PCBIsolationForest": [{"num_trees": 10, "window_size": 40, "stat_size": 10}],
     "PEWMA": [{}, {"beta": 0.0}],

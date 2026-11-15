@@ -46,6 +46,7 @@ METRIC_CLASSES = _concrete_exports(pysad.evaluation)
 UNIVARIATE_PREPROCESSORS = frozenset(
     {"ModifiedSTLResidualTransformer", "OneShotSTL", "SeasonalTrendDecomposer"}
 )
+TEXT_PREPROCESSORS = frozenset({"DrainLogParser"})
 PREPROCESSOR_PARAMS: dict[str, dict[str, Any]] = {
     "ModifiedSTLResidualTransformer": {"period": 4, "window_size": 12},
     "OneShotSTL": {"period": 4, "num_init_periods": 3},
@@ -88,6 +89,11 @@ def _make_preprocessor(name: str, cls: type) -> Any:
 
 
 def _preprocessor_stream(name: str) -> np.ndarray:
+    if name in TEXT_PREPROCESSORS:
+        return np.array(
+            [f"2026-11-12 10:00:{i % 60:02d} INFO user={i} action=login" for i in range(24)],
+            dtype=object,
+        )
     rng = np.random.default_rng(7)
     if name in UNIVARIATE_PREPROCESSORS:
         return rng.normal(loc=2.0, scale=0.5, size=(24, 1))

@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from typing import Any, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_metric import BaseMetric
 from pysad.statistics.basic import AverageMeter
@@ -73,8 +74,8 @@ class WindowedMetric(BaseMetric):
 
     def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> WindowedMetric:
         """Updates the windowed metric with batches of true labels and predictions."""
-        yt: np.ndarray | list[int] = y_true if isinstance(y_true, np.ndarray) else list(y_true)
-        yp: np.ndarray | list[float] = y_pred if isinstance(y_pred, np.ndarray) else list(y_pred)
+        yt: NDArray[Any] | list[int] = y_true if isinstance(y_true, np.ndarray) else list(y_true)
+        yp: NDArray[Any] | list[float] = y_pred if isinstance(y_pred, np.ndarray) else list(y_pred)
         if len(yt) != len(yp):
             raise ValueError("y_true and y_pred must have the same length.")
         pos = 0

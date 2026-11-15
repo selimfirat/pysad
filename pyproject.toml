@@ -219,7 +219,12 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "pysad.evaluation.metrics"
+module = [
+    "pysad.evaluation.metrics",
+    "pysad.evaluation.prequential",
+    "pysad.evaluation.rolling_metric",
+    "pysad.evaluation.windowed_metric",
+]
 disallow_any_generics = true
 disallow_subclassing_any = true
 disallow_untyped_calls = true

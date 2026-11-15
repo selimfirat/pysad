@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_metric import BaseMetric
 from pysad.evaluation.metrics import _ConfusionMatrixMetric
@@ -138,7 +139,7 @@ class RollingMetric(BaseMetric):
             self.update(yt, yp)
         return self
 
-    def _ordered_window(self) -> tuple[np.ndarray, np.ndarray]:
+    def _ordered_window(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         if self._count < self.window_size or self._head == 0:
             return self._yt_buf[: self._count], self._yp_buf[: self._count]
         h = self._head

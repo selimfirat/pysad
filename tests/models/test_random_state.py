@@ -84,7 +84,14 @@ def test_same_seed_gives_same_scores(name):
 
 
 @pytest.mark.parametrize("name", ACTIVE_NAMES)
-def test_different_seeds_give_different_scores(name):
+def test_different_seeds_change_model(name):
+    if name == "FRAHST":
+        # Binary alarms can agree even when the learned bases differ.
+        models = [MODELS[name](random_state=seed) for seed in (5, 6)]
+        for model in models:
+            model.fit_partial(_data(model)[0])
+        assert not np.array_equal(models[0].basis_, models[1].basis_)
+        return
     assert not np.array_equal(
         _scores(MODELS[name](random_state=5)), _scores(MODELS[name](random_state=6))
     )

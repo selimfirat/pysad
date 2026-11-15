@@ -49,11 +49,10 @@ class StandardScaler(BaseTransformer):
         variances = self.variances_
         assert means is not None and variances is not None
 
-        for mean, x in zip(means, X, strict=True):
-            mean.update(float(x))
-
-        for variance, x in zip(variances, X, strict=True):
-            variance.update(float(x))
+        for mean, variance, x in zip(means, variances, X, strict=True):
+            value = float(x)
+            mean.update(value)
+            variance.update(value)
 
         return self
 

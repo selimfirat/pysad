@@ -8,13 +8,14 @@ from functools import wraps
 from typing import Any, ClassVar, Literal
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_postprocessor import BasePostprocessor, _PostprocessorChain
 from pysad.core.base_transformer import BaseTransformer, _TransformerChain
 from pysad.utils import _iterate
 
 
-def _to_float_score(score: float | np.number | np.ndarray | list[float]) -> float:
+def _to_float_score(score: float | np.number[Any] | NDArray[Any] | list[float]) -> float:
     """Converts a single-instance score to a Python float.
 
     Models may compute a score as a Python number, a NumPy scalar or a one-element array. This helper maps all of them to a plain ``float``.
@@ -101,8 +102,8 @@ class BaseModel(ABC):
     )
     _is_detector: ClassVar[bool] = True
     _detector_doc: ClassVar[tuple[str, str, str] | None] = None
-    _pipeline_cls: ClassVar[type[Any] | None] = None
-    _ensemble_cls: ClassVar[type[Any] | None] = None
+    _pipeline_cls: ClassVar[Callable[..., BaseModel] | None] = None
+    _ensemble_cls: ClassVar[Callable[..., BaseModel] | None] = None
     _raw_fit_partial: Callable[..., Any]
     _raw_score_partial: Callable[..., Any]
     _raw_fit_score_partial: Callable[..., Any] | None = None
@@ -137,7 +138,7 @@ class BaseModel(ABC):
         )
 
     @abstractmethod
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> BaseModel:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> BaseModel:
         """Updates the model with the next instance.
 
         The model keeps no reference to ``X``, so the caller can change ``X`` after the call returns.
@@ -155,7 +156,7 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores the anomalousness of the next instance. This method neither changes nor keeps ``X``.
 
         Args:
@@ -169,7 +170,7 @@ class BaseModel(ABC):
         """
         pass
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[Any], y: int | None = None) -> float:
         """Scores the next instance with the model from the earlier instances, and then updates the model with it.
 
         This order is prequential evaluation, also called test-then-train. The model never scores an instance that it learned from.
@@ -193,7 +194,7 @@ class BaseModel(ABC):
 
         return score
 
-    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> BaseModel:
+    def fit(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> BaseModel:
         """Fits the model to all instances in order.
 
         Args:
@@ -223,7 +224,7 @@ class BaseModel(ABC):
 
         return self
 
-    def score(self, X: np.ndarray) -> np.ndarray:
+    def score(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scores all instances in order with ``score_partial``.
 
         Args:
@@ -248,7 +249,7 @@ class BaseModel(ABC):
 
         return y_pred
 
-    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
+    def fit_score(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> NDArray[Any]:
         """Applies ``fit_score_partial`` to each instance in order and returns the scores.
 
         Args:

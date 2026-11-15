@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Any
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 from pysad.core.base_transformer import BaseTransformer
 from pysad.utils import Window
@@ -81,7 +81,7 @@ def _smooth_geometry(
     # The fitted points, windows, positions, half widths and LOESS weights of _smooth for n
     # points. As stless, it fits every `jump`-th point and the last point.
     width = min(length, n)
-    fit = np.arange(0, n, min(jump, n - 1))
+    fit: NDArray[np.intp] = np.arange(0, n, min(jump, n - 1))
     if fit[-1] != n - 1:
         fit = np.append(fit, n - 1)
     nleft = np.clip(fit + 1 - (length + 1) // 2, 0, n - width)

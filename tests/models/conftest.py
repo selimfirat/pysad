@@ -174,12 +174,22 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
     """Returns constructor arguments for `name` sized to `num_features` and short test streams."""
     ones, zeros = [1.0] * num_features, [0.0] * num_features
     params: dict[str, dict[str, Any]] = {
+        "DriftAdaptiveDetector": {
+            "model_factory": functools.partial(pysad.models.LODA, random_state=0)
+        },
         "HalfSpaceTrees": {
             "feature_mins": np.array(zeros),
             "feature_maxes": np.array(ones),
             "window_size": 10,
             "num_trees": 5,
             "max_depth": 5,
+        },
+        "FluxEV": {
+            "window_size": 3,
+            "period": 4,
+            "num_periods": 2,
+            "drift": 1,
+            "calibration_size": 20,
         },
         "HTM": {"min_val": 0.0, "max_val": 1.0, "num_columns": 256},
         "HoltWinters": {"period": 2},

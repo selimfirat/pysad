@@ -181,6 +181,13 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
             "num_trees": 5,
             "max_depth": 5,
         },
+        "FluxEV": {
+            "window_size": 3,
+            "period": 4,
+            "num_periods": 2,
+            "drift": 1,
+            "calibration_size": 20,
+        },
         "HTM": {"min_val": 0.0, "max_val": 1.0, "num_columns": 256},
         "HoltWinters": {"period": 2},
         "IForestASD": {"window_size": 20, "n_estimators": 10},

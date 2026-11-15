@@ -196,3 +196,20 @@ def test_merge_combines_compaction_schedules():
     receiver.merge(source)
     assert receiver.num_items == 48
     assert receiver.get() == 15.0
+
+
+def test_merge_compacts_adjacent_overflowing_levels_bottom_to_top():
+    from pysad.statistics import RelativeErrorQuantileMeter
+
+    receiver = _fill(RelativeErrorQuantileMeter(k=2, max_items=128, random_state=0), range(40))
+    source = _fill(RelativeErrorQuantileMeter(k=2, max_items=128, random_state=0), range(40, 80))
+    # Algorithm 3 gives capacity 24 and merged states 5 and 0.
+    # Seed 0 selects parity 1 for both merge compactions.
+    # Level 0 promotes [35, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 73, 75, 79].
+    # Level 1 then holds 30 values and promotes [66, 70, 75, 79] together.
+    # Below 66, 20 unit weights and 22 double weights give cumulative weight 64.
+    # The four promoted values raise that weight to 68, 72, 76, and 80.
+    receiver.merge(source)
+    for q, expected in [(0.8, 62.0), (0.85, 66.0), (0.9, 70.0), (0.95, 75.0)]:
+        receiver.q = q
+        assert receiver.get() == expected

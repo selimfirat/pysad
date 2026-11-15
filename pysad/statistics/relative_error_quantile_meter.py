@@ -168,9 +168,12 @@ class RelativeErrorQuantileMeter(BaseStatistic):
         self._max = max(self._max, other._max)
         level = 0
         while level < len(self._buffers):
-            while len(self._buffers[level]) > self._capacity:
-                for value in self._compact(level):
-                    self._insert(value, level + 1)
+            if len(self._buffers[level]) > self._capacity:
+                promoted = self._compact(level)
+                if level + 1 == len(self._buffers):
+                    self._buffers.append([])
+                    self._states.append(0)
+                self._buffers[level + 1].extend(promoted)
             level += 1
         return self
 

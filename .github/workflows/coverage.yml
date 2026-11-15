@@ -152,7 +152,7 @@ jobs:
         # These River and Matplotlib versions support NumPy 1.23.
         run: |
           printf '%s\n' 'river==0.21.2' 'matplotlib==3.10.8' > "$RUNNER_TEMP/numpy123-overrides.txt"
-          uv pip install --system --only-binary :all: --group test -e . "numpy==1.23.5" \
+          uv pip install --system --only-binary :all: --no-binary pysad --group test -e . "numpy==1.23.5" \
             --override "$RUNNER_TEMP/numpy123-overrides.txt"
       - name: Test with NumPy 1.23
         run: |

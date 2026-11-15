@@ -149,6 +149,73 @@ class BrierScoreMetric(BaseMetric):
         return self.squared_error_sum_ / self.count_ if self.count_ else 0.0
 
 
+class ExpectedCalibrationErrorMetric(BaseMetric):
+    """Expected calibration error for binary anomaly probabilities.
+
+    Labels use 1 for anomalies and 0 for normal instances. Predictions give
+    anomaly probabilities. Each fixed, equal-width bin compares its mean
+    probability with its fraction of anomalies. The score weights each
+    absolute difference by the bin's fraction of the stream.
+
+    Bin k covers [k / num_bins, (k + 1) / num_bins). The final bin includes
+    1.0. Empty bins contribute zero. An empty stream returns 0.0.
+    Lower scores mean better calibration. Scores range from 0 to 1.
+
+    Counts, label sums, and probability sums use O(num_bins) storage.
+    Updates take O(log(num_bins)) time. Reading the score takes O(num_bins)
+    time. These costs do not grow with the stream.
+
+    Args:
+        num_bins (int): Number of equal-width probability bins (Default=10).
+
+    Raises:
+        ValueError: If num_bins is less than 1.
+    """
+
+    def __init__(self, num_bins: int = 10) -> None:
+        if num_bins < 1:
+            raise ValueError("num_bins must be a positive integer.")
+        super().__init__()
+        self.num_bins = num_bins
+        self.counts_ = np.zeros(num_bins, dtype=np.int64)
+        self.label_sums_ = np.zeros(num_bins, dtype=np.float64)
+        self.probability_sums_ = np.zeros(num_bins, dtype=np.float64)
+        self._edges = np.arange(1, num_bins, dtype=np.float64) / num_bins
+        self.count_ = 0
+
+    def update(self, y_true: int, y_pred: float) -> None:
+        """Record one binary label and anomaly probability.
+
+        Args:
+            y_true (int): True label, 1 for an anomaly or 0 for normal.
+            y_pred (float): Probability of an anomaly in [0, 1].
+
+        Raises:
+            ValueError: If the label is not 0 or 1, or the probability
+                is not finite or lies outside [0, 1]. Invalid pairs leave
+                the metric unchanged.
+        """
+        if y_true not in (0, 1):
+            raise ValueError("y_true must be 0 or 1.")
+        if not 0.0 <= y_pred <= 1.0:
+            raise ValueError("y_pred must be a finite probability in [0, 1].")
+        index = int(np.searchsorted(self._edges, y_pred, side="right"))
+        self.counts_[index] += 1
+        self.label_sums_[index] += float(y_true)
+        self.probability_sums_[index] += float(y_pred)
+        self.count_ += 1
+
+    def get(self) -> float:
+        """Return the calibration error, or 0.0 for an empty stream.
+
+        Returns:
+            float: The weighted absolute calibration error across bins.
+        """
+        if not self.count_:
+            return 0.0
+        return float(np.abs(self.label_sums_ - self.probability_sums_).sum() / self.count_)
+
+
 class _ConfusionMatrixMetric(BaseMetric, metaclass=ABCMeta):
     """Base class for binary classification metrics backed by O(1) confusion counts.
 

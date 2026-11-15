@@ -4,8 +4,6 @@ from functools import partial
 import numpy as np
 import pytest
 
-pytest.importorskip("river")
-
 
 def test_scores_match_pysad_before_learning():
     from pysad.integrations import RiverAnomalyDetector

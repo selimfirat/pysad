@@ -18,8 +18,6 @@ Stream wrappers for external models
 River and scikit-learn pipeline adapters
 ----------------------------------------
 
-River adapters require Python 3.11 or newer.
-
 .. autoclass:: RiverAnomalyDetector
    :exclude-members: clone, mutate
 

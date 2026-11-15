@@ -55,7 +55,7 @@ repos:
         pass_filenames: false
         files: ^(pysad/|pyproject\.toml$)
         # NumPy 2.5's stubs use Python 3.12 syntax, which mypy rejects when it checks for
-        # Python 3.10; 2.4 is the newest release that also installs on pre-commit.ci's 3.14.
+        # Python 3.11. NumPy 2.4 also installs on pre-commit.ci's Python 3.14.
         additional_dependencies: [numpy==2.4.6]
 
   - repo: https://github.com/rhysd/actionlint

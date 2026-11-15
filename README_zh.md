@@ -111,7 +111,7 @@ pip install pysad
 conda install -c conda-forge pysad
 ```
 
-PySAD 支持 Linux、macOS 和 Windows 上的 Python 3.10 至 3.14。执行安装后，所有检测器即可使用，无需安装任何可选依赖。
+PySAD 支持 Linux、macOS 和 Windows 上的 Python 3.11 至 3.14。执行安装后，所有检测器即可使用，无需安装任何可选依赖。
 
 从 `master` 分支安装最新开发版本：
 

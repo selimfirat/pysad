@@ -235,7 +235,8 @@ class GNGA(BaseModel):
         self._ages[self._ages > self.max_age] = -1
         self._discard(active[~(self._ages[active] >= 0).any(axis=1)])
         counts = (self._wins > self._time - self.window_size_).sum(axis=1)
-        self._remove(X, float(sq[order[0]]), counts)
+        winner_diff = self._positions[winner] - X
+        self._remove(X, float(winner_diff @ winner_diff), counts)
         self._create(counts)
         occupied = np.concatenate((np.flatnonzero(self._active), list(self._buffer))).astype(int)
         self._errors[occupied] *= 0.9

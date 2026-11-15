@@ -37,6 +37,20 @@ def test_coincident_prototypes_keep_finite_distance_scores():
     assert np.isfinite(model.threshold_)
 
 
+def test_removal_compares_distance_after_movement():
+    """A closer active winner prevents a survival threshold increase."""
+    from pysad.models import GNGA
+
+    stream = np.random.RandomState(1).normal(size=(83, 2))
+    model = GNGA(random_state=0).fit(stream[:-1])
+    threshold = model.threshold_
+
+    # At point 83, movement makes the active winner closer than the buffered winner.
+    model.fit_partial(stream[-1])
+
+    assert model.threshold_ == threshold
+
+
 def test_graph_grows_within_capacity_and_follows_drift():
     """A bounded graph learns new regions and forgets stale prototypes."""
     from pysad.models import GNGA

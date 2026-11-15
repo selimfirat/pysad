@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 
@@ -78,10 +79,12 @@ class TemporalMemory:
         capacity = 1024
         # Segment s belongs to cell _segment_cells[s] (-1 if the slot is free). Its synapse k goes
         # from cell _presynaptic[s, k] (-1 if the slot is empty) with permanence _permanences[s, k].
-        self._segment_cells = np.full(capacity, -1, dtype=np.int64)
-        self._last_learned = np.zeros(capacity, dtype=np.int64)
-        self._presynaptic = np.full((capacity, max_synapses_per_segment), -1, dtype=np.int64)
-        self._permanences = np.zeros((capacity, max_synapses_per_segment))
+        self._segment_cells: NDArray[np.int64] = np.full(capacity, -1, dtype=np.int64)
+        self._last_learned: NDArray[np.int64] = np.zeros(capacity, dtype=np.int64)
+        self._presynaptic: NDArray[np.int64] = np.full(
+            shape=(capacity, max_synapses_per_segment), fill_value=-1, dtype=np.int64
+        )
+        self._permanences: NDArray[np.float64] = np.zeros((capacity, max_synapses_per_segment))
         self._free_segments = list(range(capacity - 1, -1, -1))
         self._num_segments = np.zeros(num_cells, dtype=np.int64)
         # Flat synapse ids s * max_synapses_per_segment + k, grouped by presynaptic cell, so that one
@@ -91,13 +94,13 @@ class TemporalMemory:
         self._cell_offsets = np.arange(num_cells_per_column, dtype=np.int64)
         self._iteration = 0
 
-        self._active_cells = np.empty(0, dtype=np.int64)
-        self._dirty_segments = np.empty(0, dtype=np.int64)
-        self._active_segments = np.empty(0, dtype=np.int64)
-        self._matching_segments = np.empty(0, dtype=np.int64)
-        self._num_active_connected = np.zeros(capacity, dtype=np.int64)
-        self._num_active_potential = np.zeros(capacity, dtype=np.int64)
-        self._predicted_columns = np.empty(0, dtype=np.int64)
+        self._active_cells: NDArray[np.int64] = np.empty(0, dtype=np.int64)
+        self._dirty_segments: NDArray[np.int64 | np.intp] = np.empty(0, dtype=np.int64)
+        self._active_segments: NDArray[np.int64 | np.intp] = np.empty(0, dtype=np.int64)
+        self._matching_segments: NDArray[np.int64 | np.intp] = np.empty(0, dtype=np.int64)
+        self._num_active_connected: NDArray[np.int64] = np.zeros(capacity, dtype=np.int64)
+        self._num_active_potential: NDArray[np.int64] = np.zeros(capacity, dtype=np.int64)
+        self._predicted_columns: NDArray[np.int64] = np.empty(0, dtype=np.int64)
 
     def score(self, active_columns: np.ndarray) -> float:
         """Gives the raw anomaly score of the active columns of the next step without learning.

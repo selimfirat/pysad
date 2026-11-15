@@ -30,7 +30,7 @@ def _iter_rows(data: pd.DataFrame | pd.Series) -> Iterator[Any]:
             yield chunk[i]
 
 
-class PandasStreamer(BaseStreamer):
+class PandasStreamer(BaseStreamer["pd.DataFrame", "pd.DataFrame | pd.Series"]):
     """Stream DataFrame rows as NumPy arrays.
 
     If shuffle is False, convert one row at a time.

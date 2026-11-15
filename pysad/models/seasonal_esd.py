@@ -87,7 +87,9 @@ class SeasonalESD(BaseModel):
     def _critical_value(self, n: int, i: int) -> float:
         return _critical_value(self.alpha, 2.0 if self.direction == "both" else 1.0, n, i)
 
-    def _esd_target(self, values: np.ndarray, min_scale: float, target_idx: int) -> float:
+    def _esd_target(
+        self, values: np.ndarray, min_scale: float | np.floating, target_idx: int
+    ) -> float:
         arr = np.asarray(values, dtype=np.float64)
         n = arr.shape[0]
         max_k = max(1, int(self.max_anomalies * n))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from abc import abstractmethod
 from collections import deque
 from typing import Any, cast
 
@@ -153,7 +154,45 @@ class CountMeter(RemovableStatistic):
         return self.count
 
 
-class MaxMeter(RemovableStatistic):
+class _ExtremumMeter(RemovableStatistic):
+    """Share value storage and removal for minimum and maximum meters."""
+
+    def __init__(self, keep_values: bool = False) -> None:
+        self.keep_values = keep_values
+        self._removable = keep_values
+        self.lst: deque[float] = deque()
+        self.candidates: deque[float] = deque()
+
+    def _store(self, num: float) -> None:
+        """Store a value when the meter supports removal."""
+        if self.keep_values:
+            self.lst.append(num)
+            self._push(num)
+
+    def _remove(self, num: float) -> None:
+        """Remove the first occurrence of a stored value."""
+        if not self.keep_values:
+            raise ValueError(
+                f"{type(self).__name__}(keep_values=False) keeps no values, so it cannot remove one."
+            )
+
+        if self.lst and self.lst[0] == num:
+            self.lst.popleft()
+            # A later, more extreme value can displace the oldest candidate.
+            if self.candidates[0] == num:
+                self.candidates.popleft()
+        else:
+            self.lst.remove(num)
+            self.candidates.clear()
+            for value in self.lst:
+                self._push(value)
+
+    @abstractmethod
+    def _push(self, num: float) -> None:
+        """Add a value to the candidates in extremum order."""
+
+
+class MaxMeter(_ExtremumMeter):
     """The statistic that keeps track of the maximum value.
 
     Removing the oldest value, which is what :class:`~pysad.statistics.RunningStatistic` does, takes amortized constant time. Removing any other value takes time linear in the number of values.
@@ -172,17 +211,13 @@ class MaxMeter(RemovableStatistic):
 
     def __init__(self, keep_values: bool = False) -> None:
         self.max = -math.inf
-        self.keep_values = keep_values
-        self._removable = keep_values
-
-        self.lst: deque[float] = deque()
-        self.candidates: deque[float] = deque()
+        super().__init__(keep_values=keep_values)
 
     def update(self, num: float) -> MaxMeter:
-        """Updates the statistic with the value for a timestep.
+        """Update the extremum with one value.
 
         Args:
-            num (float): The incoming value, for which the statistic is used.
+            num (float): The incoming value.
 
         Returns:
             object: self.
@@ -190,43 +225,25 @@ class MaxMeter(RemovableStatistic):
         if num > self.max:
             self.max = num
 
-        if self.keep_values:
-            self.lst.append(num)
-            self._push(num)
-
+        self._store(num)
         return self
 
     def remove(self, num: float) -> MaxMeter:
-        """Updates the statistic by removing a particular value.
+        """Remove the first occurrence of a value.
 
         Args:
-            num (float): The value to be removed.
+            num (float): The value to remove.
 
         Returns:
             object: self.
         """
-        if not self.keep_values:
-            raise ValueError(
-                "MaxMeter(keep_values=False) keeps no values, so it cannot remove one."
-            )
-
-        if self.lst and self.lst[0] == num:
-            self.lst.popleft()
-            # The oldest value is the first candidate unless a larger value came after it.
-            if self.candidates[0] == num:
-                self.candidates.popleft()
-        else:
-            self.lst.remove(num)
-            self.candidates.clear()
-            for value in self.lst:
-                self._push(value)
-
+        self._remove(num)
         self.max = self.candidates[0] if self.candidates else -math.inf
 
         return self
 
     def get(self) -> float:
-        """Method to obtain the tracked statistic.
+        """Return the current extremum.
 
         Returns:
             float: The statistic.
@@ -240,7 +257,7 @@ class MaxMeter(RemovableStatistic):
         self.candidates.append(num)
 
 
-class MinMeter(RemovableStatistic):
+class MinMeter(_ExtremumMeter):
     """The statistic that keeps track of the minimum value.
 
     Removing the oldest value, which is what :class:`~pysad.statistics.RunningStatistic` does, takes amortized constant time. Removing any other value takes time linear in the number of values.
@@ -259,17 +276,13 @@ class MinMeter(RemovableStatistic):
 
     def __init__(self, keep_values: bool = False) -> None:
         self.min = math.inf
-        self.keep_values = keep_values
-        self._removable = keep_values
-
-        self.lst: deque[float] = deque()
-        self.candidates: deque[float] = deque()
+        super().__init__(keep_values=keep_values)
 
     def update(self, num: float) -> MinMeter:
-        """Updates the statistic with the value for a timestep.
+        """Update the extremum with one value.
 
         Args:
-            num (float): The incoming value, for which the statistic is used.
+            num (float): The incoming value.
 
         Returns:
             object: self.
@@ -277,43 +290,25 @@ class MinMeter(RemovableStatistic):
         if num < self.min:
             self.min = num
 
-        if self.keep_values:
-            self.lst.append(num)
-            self._push(num)
-
+        self._store(num)
         return self
 
     def remove(self, num: float) -> MinMeter:
-        """Updates the statistic by removing a particular value.
+        """Remove the first occurrence of a value.
 
         Args:
-            num (float): The value to be removed.
+            num (float): The value to remove.
 
         Returns:
             object: self.
         """
-        if not self.keep_values:
-            raise ValueError(
-                "MinMeter(keep_values=False) keeps no values, so it cannot remove one."
-            )
-
-        if self.lst and self.lst[0] == num:
-            self.lst.popleft()
-            # The oldest value is the first candidate unless a smaller value came after it.
-            if self.candidates[0] == num:
-                self.candidates.popleft()
-        else:
-            self.lst.remove(num)
-            self.candidates.clear()
-            for value in self.lst:
-                self._push(value)
-
+        self._remove(num)
         self.min = self.candidates[0] if self.candidates else math.inf
 
         return self
 
     def get(self) -> float:
-        """Method to obtain the tracked statistic.
+        """Return the current extremum.
 
         Returns:
             float: The statistic.

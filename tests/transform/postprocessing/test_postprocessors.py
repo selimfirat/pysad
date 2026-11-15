@@ -252,6 +252,29 @@ def test_dynamic_threshold_rejects_negative_scores():
         NonparametricDynamicThresholdPostprocessor().fit_partial(-1.0)
 
 
+def test_dynamic_threshold_uses_custom_z_values():
+    import numpy as np
+
+    scores = np.array([1.0, 2.0] * 20 + [10.0])
+    # span=1 turns off the smoothing, so the window holds the raw scores.
+    low = NonparametricDynamicThresholdPostprocessor(window_size=41, span=1, z_values=(1.0,))
+    high = NonparametricDynamicThresholdPostprocessor(window_size=41, span=1, z_values=(10.0,))
+
+    low_out = []
+    high_out = []
+    for score in scores:
+        low_out.append(low.fit_transform_partial(score))
+        high_out.append(high.fit_transform_partial(score))
+
+    # The spike is above mean + 1 * std of the window and below mean + 10 * std.
+    mean = scores.mean()
+    std = scores.std()
+    low_threshold = mean + 1.0 * std
+    np.testing.assert_array_equal(low_out[:-1], 0.0)
+    np.testing.assert_array_equal(high_out, 0.0)
+    np.testing.assert_allclose(low_out[-1], (10.0 - low_threshold) / (mean + std))
+
+
 def test_quantile_filter_labels_scores_with_the_quantile_of_the_previous_scores():
     import numpy as np
 

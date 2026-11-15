@@ -53,7 +53,7 @@ class GNGA(BaseModel):
 
     Args:
         k (int): The paper's stability parameter for removal and creation (Default=10).
-        max_age (int): The maximum edge age, measured in wins of either endpoint (Default=100).
+        max_age (int): The maximum edge age, measured in wins of either endpoint (Default=10).
         max_neurons (int): The maximum number of active or buffered prototypes, at least two (Default=100).
         random_state (int, np.random.RandomState or None): The random seed or generator. None uses NumPy's global state (Default=None).
 
@@ -65,7 +65,7 @@ class GNGA(BaseModel):
     def __init__(
         self,
         k: int = 10,
-        max_age: int = 100,
+        max_age: int = 10,
         max_neurons: int = 100,
         random_state: int | np.random.RandomState | None = None,
     ) -> None:

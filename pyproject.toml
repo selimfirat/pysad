@@ -220,6 +220,7 @@ check_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = [
+    "pysad.core.*",
     "pysad.evaluation.metrics",
     "pysad.evaluation.prequential",
     "pysad.evaluation.rolling_metric",

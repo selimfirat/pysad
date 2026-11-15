@@ -28,6 +28,7 @@ from .drift import (
 from .exponential_moving_average_meter import ExponentialMovingAverageMeter
 from .online_periodicity_meter import OnlinePeriodicityMeter
 from .quantiles import DDSketchMeter, MedianMeter, QuantileMeter
+from .relative_error_quantile_meter import RelativeErrorQuantileMeter
 from .running_statistic import RunningStatistic
 
 __all__ = [
@@ -52,6 +53,7 @@ __all__ = [
     "OnlinePeriodicityMeter",
     "PageHinkleyMeter",
     "QuantileMeter",
+    "RelativeErrorQuantileMeter",
     "RunningStatistic",
     "SumMeter",
     "SumSquaresMeter",

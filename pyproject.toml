@@ -225,6 +225,7 @@ module = [
     "pysad.evaluation.prequential",
     "pysad.evaluation.rolling_metric",
     "pysad.evaluation.windowed_metric",
+    "pysad.statistics.drift",
     "pysad.statistics.quantiles",
 ]
 disallow_any_generics = true

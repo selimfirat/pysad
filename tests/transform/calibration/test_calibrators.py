@@ -468,3 +468,30 @@ def test_all_calibrators_batch_transform_matches_partial():
             cal_f.transform(probes),
             [cal_f.transform_partial(float(p)) for p in probes],
         )
+
+
+def test_spot_max_peaks_bounds_the_stored_peaks():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+    max_peaks = 5
+    calibrator = SPOTProbabilityCalibrator(q=1e-4, num_init=100, level=0.9, max_peaks=max_peaks)
+    scores = np.random.default_rng(0).exponential(size=600)
+
+    accepted_peaks = []
+    outputs = []
+    for score in scores:
+        threshold = calibrator.t_
+        num_peaks = calibrator.num_peaks_
+        outputs.append(calibrator.fit_transform_partial(float(score)))
+        if np.isfinite(threshold) and calibrator.num_peaks_ > num_peaks:
+            accepted_peaks.append(score - threshold)
+
+    assert len(accepted_peaks) > max_peaks
+    assert len(calibrator.peaks_) == max_peaks
+    np.testing.assert_allclose(list(calibrator.peaks_), accepted_peaks[-max_peaks:])
+
+    outputs = np.array(outputs)
+    assert np.isfinite(outputs).all()
+    assert ((outputs >= 0) & (outputs <= 1)).all()

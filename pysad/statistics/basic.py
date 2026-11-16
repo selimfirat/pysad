@@ -3,9 +3,11 @@ from __future__ import annotations
 import math
 from abc import abstractmethod
 from collections import deque
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 
 from pysad.core.base_statistic import BaseStatistic, RemovableStatistic
+
+_SumCountMeterT = TypeVar("_SumCountMeterT", bound="_SumCountMeter")
 
 
 class AbsStatistic(BaseStatistic):
@@ -64,23 +66,18 @@ class AbsStatistic(BaseStatistic):
         return abs(self.statistic.get())
 
 
-class AverageMeter(RemovableStatistic):
-    """The average of the values.
-
-    Attributes:
-        sum (float): The summation of values.
-        num_items (int): The number of items that are used to update the statistic.
-    """
+class _SumCountMeter(RemovableStatistic):
+    """Share the total and count for sum and average meters."""
 
     def __init__(self) -> None:
         self.sum = 0.0
         self.num_items = 0
 
-    def update(self, num: float) -> AverageMeter:
-        """Updates the statistic with the value for a timestep.
+    def update(self: _SumCountMeterT, num: float) -> _SumCountMeterT:
+        """Add one value to the total and count.
 
         Args:
-            num (float): The incoming value, for which the statistic is used.
+            num (float): The incoming value.
 
         Returns:
             object: self.
@@ -89,11 +86,11 @@ class AverageMeter(RemovableStatistic):
         self.num_items += 1
         return self
 
-    def remove(self, num: float) -> AverageMeter:
-        """Updates the statistic by removing a particular value.
+    def remove(self: _SumCountMeterT, num: float) -> _SumCountMeterT:
+        """Subtract one value from the total and count.
 
         Args:
-            num (float): The value to be removed.
+            num (float): The value to remove.
 
         Returns:
             object: self.
@@ -101,6 +98,15 @@ class AverageMeter(RemovableStatistic):
         self.sum -= num
         self.num_items -= 1
         return self
+
+
+class AverageMeter(_SumCountMeter):
+    """Track the average of the values.
+
+    Attributes:
+        sum (float): The sum of the values.
+        num_items (int): The number of values.
+    """
 
     def get(self) -> float:
         """Method to obtain the tracked statistic.
@@ -322,43 +328,13 @@ class MinMeter(_ExtremumMeter):
         self.candidates.append(num)
 
 
-class SumMeter(RemovableStatistic):
+class SumMeter(_SumCountMeter):
     """The statistic that keeps track of the sum of values.
 
     Attributes:
         sum (float): The summation of values.
         num_items (int): The number of items that are used to update the statistic.
     """
-
-    def __init__(self) -> None:
-        self.sum = 0.0
-        self.num_items = 0
-
-    def update(self, num: float) -> SumMeter:
-        """Updates the statistic with the value for a timestep.
-
-        Args:
-            num (float): The incoming value, for which the statistic is used.
-
-        Returns:
-            object: self.
-        """
-        self.sum += num
-        self.num_items += 1
-        return self
-
-    def remove(self, num: float) -> SumMeter:
-        """Updates the statistic by removing a particular value.
-
-        Args:
-            num (float): The value to be removed.
-
-        Returns:
-            object: self.
-        """
-        self.sum -= num
-        self.num_items -= 1
-        return self
 
     def get(self) -> float:
         """Method to obtain the tracked statistic.

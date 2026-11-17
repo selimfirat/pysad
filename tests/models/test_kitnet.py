@@ -247,3 +247,18 @@ def test_kitnet_explain_rejects_nan():
     anomalous[1] = np.nan
     with pytest.raises(ValueError, match="KitNet does not accept NaN values"):
         model.explain_partial(anomalous)
+
+
+def test_custom_hidden_ratio_changes_the_scores():
+    X = _stream(num_features=6)
+
+    scores = KitNet(
+        grace_feature_mapping=5, grace_anomaly_detector=5, hidden_ratio=0.5, random_state=0
+    ).fit_score(X)
+    other = KitNet(
+        grace_feature_mapping=5, grace_anomaly_detector=5, hidden_ratio=0.9, random_state=0
+    ).fit_score(X)
+
+    assert all(isinstance(score, float) for score in scores.tolist())
+    assert np.isfinite(scores).all()
+    assert not np.array_equal(scores, other)

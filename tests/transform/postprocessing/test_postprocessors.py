@@ -182,6 +182,38 @@ def test_postprocessors_partial_matches_batch():
         np.testing.assert_allclose(partial_scores, batch_scores, err_msg=postprocessor_cls.__name__)
 
 
+def test_dynamic_threshold_respects_custom_z_values():
+    import numpy as np
+
+    scores = np.array([1.0] * 9 + [6.0])
+
+    mean = scores.mean()
+    std = scores.std()
+
+    low_z = NonparametricDynamicThresholdPostprocessor(
+        window_size=10,
+        span=1,
+        z_values=(1.0,),
+    )
+    high_z = NonparametricDynamicThresholdPostprocessor(
+        window_size=10,
+        span=1,
+        z_values=(10.0,),
+    )
+
+    low_threshold = mean + 1.0 * std
+    high_threshold = mean + 10.0 * std
+
+    low_output = [low_z.fit_transform_partial(score) for score in scores]
+    high_output = [high_z.fit_transform_partial(score) for score in scores]
+
+    assert scores[-1] > low_threshold
+    assert scores[-1] < high_threshold
+    assert low_output[-1] == 1.0
+    assert high_output[-1] == 0.0
+    assert low_output[-1] != high_output[-1]
+
+
 def test_max_postprocessor_memory_does_not_grow_with_the_stream():
     import numpy as np
 

@@ -318,6 +318,20 @@ def test_spot_constant_scores():
     assert np.all(calibrated == 0.0)
 
 
+def test_spot_keeps_only_the_last_max_peaks():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
+
+    calibrator = SPOTProbabilityCalibrator(q=1e-4, num_init=10, level=0.5, max_peaks=5)
+    scores = np.r_[np.arange(10, dtype=np.float64), np.full(10, 5.0)]
+    calibrated = np.array([calibrator.fit_transform_partial(score) for score in scores])
+
+    assert list(calibrator.peaks_) == [0.5] * 5
+    assert np.isfinite(calibrated).all()
+    assert np.all((0.0 <= calibrated) & (calibrated <= 1.0))
+
+
 def test_spot_rejects_risk_above_initial_level():
     import pytest
 

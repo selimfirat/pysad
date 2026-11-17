@@ -11,6 +11,14 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from pysad.core.base_metric import BaseMetric
 
 
+def _validate_binary_probability(y_true: int, y_pred: float) -> None:
+    """Require a binary label and a finite anomaly probability in [0, 1]."""
+    if y_true not in (0, 1):
+        raise ValueError("y_true must be 0 or 1.")
+    if not 0.0 <= y_pred <= 1.0:
+        raise ValueError("y_pred must be a finite probability in [0, 1].")
+
+
 def _confusion_counts_batch(
     y_true: Iterable[int],
     y_pred: Iterable[float],
@@ -132,10 +140,7 @@ class BrierScoreMetric(BaseMetric):
                 is not finite or lies outside [0, 1]. Invalid pairs leave
                 the metric unchanged.
         """
-        if y_true not in (0, 1):
-            raise ValueError("y_true must be 0 or 1.")
-        if not 0.0 <= y_pred <= 1.0:
-            raise ValueError("y_pred must be a finite probability in [0, 1].")
+        _validate_binary_probability(y_true, y_pred)
         error = float(y_pred) - float(y_true)
         self.squared_error_sum_ += error * error
         self.count_ += 1
@@ -195,10 +200,7 @@ class ExpectedCalibrationErrorMetric(BaseMetric):
                 is not finite or lies outside [0, 1]. Invalid pairs leave
                 the metric unchanged.
         """
-        if y_true not in (0, 1):
-            raise ValueError("y_true must be 0 or 1.")
-        if not 0.0 <= y_pred <= 1.0:
-            raise ValueError("y_pred must be a finite probability in [0, 1].")
+        _validate_binary_probability(y_true, y_pred)
         index = int(np.searchsorted(self._edges, y_pred, side="right"))
         self.counts_[index] += 1
         self.label_sums_[index] += float(y_true)

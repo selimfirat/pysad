@@ -1,8 +1,7 @@
 """Accuracy and contract tests for :class:`pysad.utils.HyperLogLog`.
 
-A HyperLogLog sketch must stay within a few percent of the true distinct count
-while its memory stays ``2 ** precision`` bytes, treat repeats as one item, and
-merge into the estimate of the union.
+A HyperLogLog sketch must estimate distinct counts within a few percent.
+It must use ``2 ** precision`` bytes, count repeats once, and merge streams.
 """
 
 import pytest
@@ -12,8 +11,9 @@ from pysad.utils import HyperLogLog
 DISTINCT = 10_000
 
 
-def test_estimates_a_large_stream_within_a_few_percent():
-    sketch = HyperLogLog()
+@pytest.mark.parametrize("precision", [10, 14])
+def test_estimates_a_large_stream_within_a_few_percent(precision):
+    sketch = HyperLogLog(precision=precision)
     sketch.update_many(range(DISTINCT))
 
     relative_error = abs(len(sketch) - DISTINCT) / DISTINCT
@@ -77,6 +77,6 @@ def test_memory_follows_the_precision_and_not_the_stream():
 
 
 @pytest.mark.parametrize("precision", [3, 19])
-def test_rejects_a_precision_outside_the_paper(precision):
+def test_rejects_a_precision_outside_the_supported_range(precision):
     with pytest.raises(ValueError):
         HyperLogLog(precision=precision)

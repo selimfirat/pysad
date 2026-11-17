@@ -8,39 +8,47 @@ from collections.abc import Iterable
 from typing import Any
 
 _HASH_BITS = 64
-"""Width of the fingerprint that the registers are cut from."""
+"""Number of bits in each fingerprint."""
 
 _ALPHA_BY_PRECISION = {4: 0.673, 5: 0.697, 6: 0.709}
-"""Constants of Table 1 of the paper for the precisions where the closed form does not apply."""
+"""Table 1 constants for precisions without a closed form."""
 
 
 class HyperLogLog:
     """Estimate the cardinality of a stream of hashable items in bounded memory :cite:`flajolet2007hyperloglog`.
 
-    HyperLogLog keeps one small register per bucket and never stores the items
-    themselves, so the memory is ``2 ** precision`` bytes however long the
-    stream is. Each item is hashed to 64 bits: the first ``precision`` bits pick
-    the register and the run of leading zeros in the remaining bits gives the
-    rank that the register remembers, keeping the largest one it has seen. The
-    harmonic mean of the registers, scaled by the constants of the paper,
-    estimates the number of distinct items, with linear counting while most
-    registers are still zero and a correction for estimates near the hash range.
+    HyperLogLog keeps one byte per register and never stores the items.
+    The registers use ``2 ** precision`` bytes for any stream length.
+    The sketch hashes each item to 64 bits.
+    The first ``precision`` bits select a register.
+    The leading zeros in the remaining bits determine the rank.
+    Each register keeps the largest rank it sees.
+    The estimator combines these ranks with the constants from the paper.
+    For small counts, it uses linear counting.
+    Near the hash range, it applies the paper's large-range correction.
 
-    Two sketches built with the same ``precision`` merge by taking the larger
-    register of each bucket, which estimates the cardinality of the union
-    without revisiting the items.
+    Two sketches with the same ``precision`` merge by keeping each bucket's
+    larger rank. This estimates the union without revisiting the items.
 
-    Deviations from the paper: the fingerprint is ``blake2b`` over the ``repr``
-    of the item instead of a random universal hash, so the estimate is
-    reproducible between runs and machines. Items that are equal but print
-    differently, such as ``1`` and ``True``, count as two distinct values, and
-    a custom ``__repr__`` that omits a distinguishing field can undercount.
+    Deviations from the paper: the sketch uses ``blake2b`` over each item's
+    ``repr`` instead of a random universal hash.
+    Estimates reproduce across runs and machines only for items with stable
+    representations. Frozenset order can change across runs.
+    Default object representations include memory addresses.
+    Equal items with different representations, such as ``1`` and ``True``,
+    count as distinct values.
+    A custom ``__repr__`` that omits distinguishing fields can undercount.
 
     Args:
-        precision (int): Number of hash bits that select a register; the sketch holds ``2 ** precision`` registers and each rank needs one byte, so the memory is ``2 ** precision`` bytes. Higher values estimate closer, with a standard error near ``1.04 / sqrt(2 ** precision)`` (Default=14, which is 16 KiB and about 0.8% error).
+        precision (int): Number of hash bits that select a register (Default=14).
+            The supported range is 4 to 18, inclusive.
+            The registers use ``2 ** precision`` bytes.
+            Higher values reduce the standard error to about
+            ``1.04 / sqrt(2 ** precision)``.
+            The default uses 16 KiB with about 0.8% standard error.
 
     Raises:
-        ValueError: If ``precision`` is outside 4 to 18, where the paper's constants and the byte-sized ranks stop applying.
+        ValueError: If ``precision`` falls outside the supported range of 4 to 18.
     """
 
     def __init__(self, precision: int = 14) -> None:
@@ -76,7 +84,7 @@ class HyperLogLog:
         """Add every item of an iterable to the sketch.
 
         Args:
-            items (Iterable[Any]): Hashable items, consumed once.
+            items (Iterable[Any]): Hashable items. The sketch reads the iterable once.
         """
         for item in items:
             self.update(item)
@@ -87,10 +95,10 @@ class HyperLogLog:
         The result estimates the cardinality of the union of both streams.
 
         Args:
-            other (HyperLogLog): The sketch to fold in. It is left unchanged.
+            other (HyperLogLog): The sketch to fold in. This operation does not change it.
 
         Raises:
-            ValueError: If the other sketch has a different ``precision``, since the registers would not line up.
+            ValueError: If the other sketch uses a different ``precision``.
         """
         if other.precision != self.precision:
             raise ValueError(
@@ -102,7 +110,7 @@ class HyperLogLog:
                 registers[index] = rank
 
     def estimate(self) -> float:
-        """Estimate the number of distinct items seen so far.
+        """Estimate the number of distinct items in the stream.
 
         Returns:
             float: The estimate, with the small-range and large-range corrections of the paper.

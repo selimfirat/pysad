@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 import pytest
 
@@ -97,6 +99,30 @@ def test_iteration_closes_the_file(tmp_path, monkeypatch, close_early):
             next(rows)
 
     assert opened[-1].closed
+
+
+def test_configuration_survives_a_pickle_round_trip(tmp_path):
+    path = tmp_path / "stream.csv"
+    path.write_bytes("caf\u00e9;3;0;4\nsecond;1;1;2\n".encode("latin-1"))
+    streamer = CSVStreamer(
+        feature_columns=[3, 1],
+        label_column=2,
+        has_header=False,
+        delimiter=";",
+        encoding="latin-1",
+    )
+
+    restored = pickle.loads(pickle.dumps(streamer))
+    expected = list(streamer.iter(path))
+    actual = list(restored.iter(path))
+
+    np.testing.assert_array_equal([row for row, _ in actual], [[4, 3], [2, 1]])
+    assert [label for _, label in actual] == [0.0, 1.0]
+    for (actual_row, actual_label), (expected_row, expected_label) in zip(
+        actual, expected, strict=True
+    ):
+        np.testing.assert_array_equal(actual_row, expected_row)
+        assert actual_label == expected_label
 
 
 @pytest.mark.parametrize("columns", [{"feature_columns": [-1]}, {"label_column": -1}])

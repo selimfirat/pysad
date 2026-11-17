@@ -19,6 +19,7 @@ WINDOWED_METRICS = [
     "AUPRMetric",
     "BalancedAccuracyMetric",
     "F1Metric",
+    "LogLossMetric",
     "MatthewsCorrelationMetric",
     "PrecisionMetric",
     "RecallMetric",

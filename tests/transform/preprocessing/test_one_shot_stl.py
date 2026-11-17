@@ -103,6 +103,30 @@ def test_one_shot_stl_shift_window_follows_a_shifted_cycle():
     assert errors[10].mean() < 0.7 * errors[0].mean()
 
 
+def test_one_shot_stl_custom_shift_threshold():
+    from pysad.transform.preprocessing import OneShotSTL
+
+    period = 20
+    t = np.arange(200)
+    shift_start = 100
+
+    pattern = np.arange(period, dtype=float)
+    shifted = t + np.where(t >= shift_start, 5, 0)
+    y = pattern[shifted % period]
+
+    residuals = {}
+    for threshold in (1.0, 1e12):
+        transformer = OneShotSTL(
+            period=period,
+            shift_window=10,
+            shift_threshold=threshold,
+        )
+        residuals[threshold] = transformer.fit_transform(y[:, None]).ravel()
+
+    # The lower threshold detects the shift at its first observation.
+    assert abs(residuals[1.0][shift_start]) < abs(residuals[1e12][shift_start])
+
+
 def test_one_shot_stl_residual_statistics_use_the_unshifted_residual():
     import copy
 
@@ -156,3 +180,26 @@ def test_one_shot_stl_rejects_invalid_parameters(period, num_init_periods):
 
     with pytest.raises(ValueError):
         OneShotSTL(period=period, num_init_periods=num_init_periods)
+
+
+def test_one_shot_stl_shift_threshold_controls_when_shifts_are_tried():
+    from pysad.transform.preprocessing import OneShotSTL
+
+    t = np.arange(120)
+    period = 10
+
+    jump = np.where(t >= 80, 3, 0)
+    phase = t + jump
+
+    # A small second cycle keeps the residual standard deviation above 0 before the shift.
+    size = 0.05
+    wobble_period = 7.3
+    y = np.sin(2 * np.pi * phase / period) + size * np.sin(2 * np.pi * t / wobble_period)
+
+    transformer1 = OneShotSTL(period=period, shift_window=4, shift_threshold=1.0)
+    transformer2 = OneShotSTL(period=period, shift_window=4, shift_threshold=1e6)
+
+    low_threshold_residual = transformer1.fit_transform(y[:, None]).ravel()[80]
+    high_threshold_residual = transformer2.fit_transform(y[:, None]).ravel()[80]
+
+    assert abs(low_threshold_residual) < 0.1 * abs(high_threshold_residual)

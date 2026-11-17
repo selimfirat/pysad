@@ -123,6 +123,7 @@ linkcheck_ignore = [
     r"https://doi\.org/10\.1137/",  # SIAM
     r"https://doi\.org/10\.1145/",  # ACM
     r"https://doi\.org/10\.14778/",  # VLDB papers on ACM
+    r"https://doi\.org/10\.3390/",  # MDPI
 ]
 
 # llms.txt lists the rendered pages, because the API pages get their text from docstrings.

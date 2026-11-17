@@ -324,10 +324,10 @@ def test_spot_keeps_only_the_last_max_peaks():
     from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
 
     calibrator = SPOTProbabilityCalibrator(q=1e-4, num_init=10, level=0.5, max_peaks=5)
-    scores = np.r_[np.arange(10, dtype=np.float64), np.full(10, 5.0)]
+    scores = np.r_[np.arange(10, dtype=np.float64), np.arange(5.0, 7.5, 0.25)]
     calibrated = np.array([calibrator.fit_transform_partial(score) for score in scores])
 
-    assert list(calibrator.peaks_) == [0.5] * 5
+    assert list(calibrator.peaks_) == [1.75, 2.0, 2.25, 2.5, 2.75]
     assert np.isfinite(calibrated).all()
     assert np.all((0.0 <= calibrated) & (calibrated <= 1.0))
 

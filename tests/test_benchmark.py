@@ -66,6 +66,21 @@ def test_sand_registration_and_fixed_configuration():
         assert model.random_state == 0
 
 
+def test_sdostream_registration_and_seeding():
+    from pysad.models import SDOstream
+
+    benchmark = load_benchmark()
+    assert "SDOstream" in benchmark.DETECTORS
+    assert "SDOstream" not in benchmark.UNIVARIATE
+    X = np.random.default_rng(0).random((200, 3))
+    model = benchmark.DETECTORS["SDOstream"](X, 7)
+    assert isinstance(model, SDOstream)
+    assert model.random_state == 7
+    scores = benchmark.DETECTORS["SDOstream"](X, 7).fit_score(X)
+    assert np.isfinite(scores).all()
+    np.testing.assert_array_equal(scores, benchmark.DETECTORS["SDOstream"](X, 7).fit_score(X))
+
+
 @pytest.mark.parametrize("archive", ["nab", "ucr"])
 def test_sand_benchmark_scores_before_update_and_reproduces_metrics(monkeypatch, archive):
     benchmark = load_benchmark()

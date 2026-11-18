@@ -44,8 +44,9 @@ class ExponentialMovingVarianceMeter(BaseStatistic):
         Returns:
             ExponentialMovingVarianceMeter: This meter.
         """
-        if self.num_items == 0:
+        if self.num_items == 0 or self.alpha == 1.0:
             self._mean = num
+            self._value = 0.0
         else:
             delta = num - self._mean
             self._value = (1.0 - self.alpha) * (self._value + self.alpha * delta * delta)

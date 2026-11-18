@@ -32,3 +32,15 @@ def test_empty_and_constant_stream_have_zero_variance():
     assert meter.get() == 0.0
     for _ in range(100):
         assert meter.update(7.0).get() == 0.0
+
+
+def test_alpha_one_keeps_zero_variance_for_large_finite_inputs():
+    from pysad.statistics import ExponentialMovingVarianceMeter
+
+    meter = ExponentialMovingVarianceMeter(alpha=1.0)
+    values = [0.0, 1e200, -1e200, 1e308, -1e308, 3.0]
+
+    variances = [meter.update(value).get() for value in values]
+
+    assert variances == [0.0] * len(values)
+    assert meter.num_items == len(values)

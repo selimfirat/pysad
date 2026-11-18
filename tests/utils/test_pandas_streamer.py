@@ -1,3 +1,4 @@
+import multiprocessing
 import tracemalloc
 
 import numpy as np
@@ -157,6 +158,23 @@ def test_pandas_streamer_label_values_and_shapes(label_kind, shuffle):
 @pytest.mark.parametrize("data_kind", ["mixed", "integer", "nullable", "missing"])
 @pytest.mark.parametrize("label_kind", [None, "series", "frame"])
 def test_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind):
+    # tracemalloc counts all threads. Keep test runner allocations outside the measurement.
+    process = multiprocessing.get_context("spawn").Process(
+        target=_assert_pandas_streamer_unshuffled_memory,
+        args=(num_rows, data_kind, label_kind),
+    )
+    process.start()
+    try:
+        process.join(timeout=60)
+        assert process.exitcode == 0
+    finally:
+        if process.is_alive():
+            process.terminate()
+            process.join()
+        process.close()
+
+
+def _assert_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind):
     df = pd.DataFrame({"a": np.arange(num_rows)})
     if data_kind == "mixed":
         df["b"] = np.zeros(num_rows)

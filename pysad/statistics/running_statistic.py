@@ -35,16 +35,16 @@ class RunningStatistic(BaseStatistic):
         ):
             kwargs["keep_values"] = True
 
-        self.statistic_cls = statistic_cls
+        self.statistic_cls: type[BaseStatistic] = statistic_cls
         statistic = self.statistic_cls(**kwargs)
         removable = getattr(statistic, "_removable", callable(getattr(statistic, "remove", None)))
         if not removable:
             raise TypeError(
                 f"{statistic_cls.__name__} does not support remove() and cannot be wrapped in RunningStatistic."
             )
-        self.statistic = cast(RemovableStatistic, statistic)
+        self.statistic: RemovableStatistic = cast(RemovableStatistic, statistic)
 
-        self.window_size = window_size
+        self.window_size: int = window_size
         self.window: deque[float] = deque()
 
     def update(self, num: float) -> RunningStatistic:

@@ -19,8 +19,8 @@ class AbsStatistic(BaseStatistic):
     """
 
     def __init__(self, statistic_cls: type[BaseStatistic], **kwargs: Any) -> None:
-        self.statistic_cls = statistic_cls
-        self.statistic = self.statistic_cls(**kwargs)
+        self.statistic_cls: type[BaseStatistic] = statistic_cls
+        self.statistic: BaseStatistic = self.statistic_cls(**kwargs)
         self._removable = bool(
             getattr(
                 self.statistic,
@@ -70,8 +70,8 @@ class _SumCountMeter(RemovableStatistic):
     """Share the total and count for sum and average meters."""
 
     def __init__(self) -> None:
-        self.sum = 0.0
-        self.num_items = 0
+        self.sum: float = 0.0
+        self.num_items: int = 0
 
     def update(self: _SumCountMeterT, num: float) -> _SumCountMeterT:
         """Add one value to the total and count.
@@ -125,7 +125,7 @@ class CountMeter(RemovableStatistic):
     """
 
     def __init__(self) -> None:
-        self.count = 0
+        self.count: int = 0
 
     def update(self, num: float) -> CountMeter:
         """Updates the statistic with the value for a timestep.
@@ -164,7 +164,7 @@ class _ExtremumMeter(RemovableStatistic):
     """Share value storage and removal for minimum and maximum meters."""
 
     def __init__(self, keep_values: bool = False) -> None:
-        self.keep_values = keep_values
+        self.keep_values: bool = keep_values
         self._removable = keep_values
         self.lst: deque[float] = deque()
         self.candidates: deque[float] = deque()
@@ -216,7 +216,7 @@ class MaxMeter(_ExtremumMeter):
     """
 
     def __init__(self, keep_values: bool = False) -> None:
-        self.max = -math.inf
+        self.max: float = -math.inf
         super().__init__(keep_values=keep_values)
 
     def update(self, num: float) -> MaxMeter:
@@ -281,7 +281,7 @@ class MinMeter(_ExtremumMeter):
     """
 
     def __init__(self, keep_values: bool = False) -> None:
-        self.min = math.inf
+        self.min: float = math.inf
         super().__init__(keep_values=keep_values)
 
     def update(self, num: float) -> MinMeter:
@@ -354,8 +354,8 @@ class SumSquaresMeter(RemovableStatistic):
     """
 
     def __init__(self) -> None:
-        self.sum_squares = 0.0
-        self.num_items = 0
+        self.sum_squares: float = 0.0
+        self.num_items: int = 0
 
     def update(self, num: float) -> SumSquaresMeter:
         """Updates the statistic with the value for a timestep.
@@ -404,9 +404,9 @@ class VarianceMeter(RemovableStatistic):
     """
 
     def __init__(self) -> None:
-        self.count = 0
-        self.mean = 0.0
-        self.m2 = 0.0
+        self.count: int = 0
+        self.mean: float = 0.0
+        self.m2: float = 0.0
 
     def update(self, num: float) -> VarianceMeter:
         """Updates the statistic with the value for a timestep.

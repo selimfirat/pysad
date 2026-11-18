@@ -175,3 +175,30 @@ def test_windowed_metric_passes_kwargs_to_every_window():
     # First window predicts [1, 0, 1, 1] (precision 2/3), second predicts [1, 0, 0, 0] (precision 1).
     assert metric.metric.threshold == 0.5
     assert np.isclose(metric.get(), (2.0 / 3.0 + 1.0) / 2.0)
+
+
+def test_windowed_metric_log_loss():
+    """Test WindowedMetric with LogLossMetric across consecutive windows."""
+    import numpy as np
+
+    from pysad.evaluation import LogLossMetric, WindowedMetric
+
+    # 2 windows of size 2, ignore_nonempty_last=False
+    metric = WindowedMetric(LogLossMetric, window_size=2, ignore_nonempty_last=False)
+
+    y_true = [1, 0, 0, 1]
+    y_pred = [0.8, 0.2, 0.3, 0.7]
+
+    # Window 1: (1, 0.8), (0, 0.2) -> losses: -ln(0.8), -ln(0.8) -> mean = -ln(0.8)
+    # Window 2: (0, 0.3), (1, 0.7) -> losses: -ln(0.7), -ln(0.7) -> mean = -ln(0.7)
+    # Average across windows: (-ln(0.8) + -ln(0.7)) / 2
+    for yt, yp in zip(y_true, y_pred, strict=True):
+        metric.update(yt, yp)
+
+    expected = (-np.log(0.8) - np.log(0.7)) / 2.0
+    assert np.isclose(metric.get(), expected)
+
+    # Batch update
+    batch_metric = WindowedMetric(LogLossMetric, window_size=2, ignore_nonempty_last=False)
+    batch_metric.update_batch(y_true, y_pred)
+    assert np.isclose(batch_metric.get(), expected)

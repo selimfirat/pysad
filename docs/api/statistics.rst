@@ -8,6 +8,26 @@ This module holds running statistics. Call ``update`` to add a value, then call
 :class:`RunningStatistic` for windowed summaries. Each meter's class documentation
 describes its supported operations.
 
+:class:`ExponentialMovingAverageMeter` and
+:class:`ExponentialMovingVarianceMeter` use the same weights. Both accept
+``alpha`` in (0, 1] or a positive ``half_life`` in points. Pass only one option.
+If you omit both options, both use ``alpha=0.1``. A half-life sets
+``alpha = 1 - 0.5 ** (1 / half_life)``.
+
+The first observation seeds the mean and sets the variance to zero.
+Before any update, both meters return 0.0. For a prefix of length :math:`n`,
+let :math:`q = 1 - \alpha`. The first observation has weight
+:math:`w_1 = q^{n-1}`. Each later observation :math:`x_i` has weight
+:math:`w_i = \alpha q^{n-i}`. These weights sum to one.
+Use :math:`q^0 = 1`, including when ``alpha=1``.
+
+The mean is :math:`\mu = \sum_{i=1}^{n} w_i x_i`. The population variance is
+:math:`\sum_{i=1}^{n} w_i (x_i - \mu)^2`, without a sample bias correction.
+For one observation, the variance is zero. If ``alpha=1``, only the latest
+observation has weight and the variance stays zero.
+Both meters use constant time and memory per update. Neither supports removal
+or a :class:`RunningStatistic` window.
+
 :class:`DDSketchMeter` also supports ``merge(other)`` to combine summaries of
 partitioned streams without replaying the observations. The meters must have the
 same ``relative_accuracy``. The receiver retains its ``q`` and ``max_buckets``,

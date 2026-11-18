@@ -5,6 +5,7 @@ from collections import deque
 
 import numpy as np
 from numpy.random import RandomState
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_statistic import BaseStatistic
@@ -1180,9 +1181,9 @@ class KSWINMeter(BaseStatistic):
         self.stat_size = stat_size
         self.random_state = random_state
         self.drift_detected = False
-        self._rng = check_random_state(random_state)
+        self._rng: RandomState = check_random_state(random_state)
         self._threshold = math.sqrt(-math.log(alpha) / stat_size)
-        self._window = np.empty(window_size)  # Oldest value first.
+        self._window: NDArray[np.float64] = np.empty(window_size)  # Oldest value first.
         self._size = 0
         self._dist = 0.0
 

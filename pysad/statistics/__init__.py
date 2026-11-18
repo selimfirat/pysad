@@ -26,6 +26,7 @@ from .drift import (
 )
 from .exponential_moving_average_meter import ExponentialMovingAverageMeter
 from .kll import KLLMeter
+from .exponential_moving_variance_meter import ExponentialMovingVarianceMeter
 from .online_periodicity_meter import OnlinePeriodicityMeter
 from .quantiles import DDSketchMeter, MedianMeter, QuantileMeter
 from .relative_error_quantile_meter import RelativeErrorQuantileMeter
@@ -40,6 +41,7 @@ __all__ = [
     "DDSketchMeter",
     "EDDMMeter",
     "ExponentialMovingAverageMeter",
+    "ExponentialMovingVarianceMeter",
     "FHDDMMeter",
     "FHDDMSAddMeter",
     "FHDDMSMeter",

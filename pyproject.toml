@@ -227,6 +227,7 @@ module = [
     "pysad.evaluation.windowed_metric",
     "pysad.statistics.drift",
     "pysad.statistics.quantiles",
+    "pysad.statistics.running_statistic",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true

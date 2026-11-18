@@ -10,6 +10,7 @@ from .array_streamer import ArrayStreamer
 from .array_streamer import _iterate as _iterate
 from .csv_streamer import CSVStreamer
 from .data import Data
+from .hyperloglog import HyperLogLog
 from .pandas_streamer import PandasStreamer
 from .plotting import plot_stream
 from .polars_streamer import PolarsStreamer
@@ -27,6 +28,7 @@ __all__ = [
     "generate_stream",
     "get_minmax_array",
     "get_minmax_scalar",
+    "HyperLogLog",
     "PandasStreamer",
     "plot_stream",
     "PolarsStreamer",

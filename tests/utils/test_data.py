@@ -615,4 +615,3 @@ def test_data_pickle_round_trip(tmp_path):
     X_restored, y_restored = restored.get_data("sample.txt", download=False)
     np.testing.assert_array_equal(X_restored, X_orig)
     np.testing.assert_array_equal(y_restored, y_orig)
-

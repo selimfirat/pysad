@@ -8,9 +8,6 @@ from scipy.linalg import toeplitz
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _finite_float, _int_at_least, check_univariate
 
-# Added to the variance when the model computes a residual, so that the score stays finite on a constant series.
-VARIANCE_REGULARIZATION = 1e-6
-
 
 class _StreamingAR:
     """A univariate autoregressive model learned online with the SDAR algorithm :cite:`takeuchi2006unifying`.

@@ -1,7 +1,7 @@
-Overview
-========
+How-to guides
+=============
 
-Each guide shows how to do one task. Before you use a guide, learn the basic loop in :doc:`/getting_started`.
+Choose a guide for the task you need to complete. These guides assume familiarity with the score-then-learn loop in :doc:`/getting_started`. For background, see :doc:`/concepts`. For parameters and method signatures, see :doc:`/api`.
 
 .. container:: cards
 
@@ -9,7 +9,7 @@ Each guide shows how to do one task. Before you use a guide, learn the basic loo
 
       :doc:`stream_data`
 
-      Feed CSV files, DataFrames, message queues and benchmark datasets to a detector.
+      Stream CSV files, DataFrames, sensor values, messages and benchmark datasets.
 
    .. container:: card
 
@@ -57,7 +57,7 @@ Each guide shows how to do one task. Before you use a guide, learn the basic loo
 
       :doc:`custom_model`
 
-      Write a detector of your own and add it to PySAD.
+      Implement the model interface for a published streaming method and add it to PySAD.
 
    .. container:: card
 

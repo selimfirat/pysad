@@ -136,6 +136,31 @@ class SPOTProbabilityCalibrator(BasePostprocessor):
         self.fit_partial(score)
         return calibrated
 
+    def transform(self, scores: np.ndarray) -> np.ndarray:
+        """Transforms a 1-D batch of scores against the current frozen Pareto tail."""
+        arr = np.asarray(scores, dtype=np.float64)
+        if arr.ndim != 1:
+            return super().transform(scores)
+        n = len(arr)
+        out = np.zeros(n, dtype=np.float64)
+        if n == 0 or math.isinf(self.t_):
+            return out
+        excess = arr - self._baseline() - self.t_
+        pos = excess > 0
+        if not pos.any():
+            return out
+        if not self.num_peaks_:
+            out[pos] = 1.0
+            return out
+        exc_pos = excess[pos]
+        if self.gamma_ == 0:
+            tails = np.exp(-exc_pos / self.sigma_)
+        else:
+            base = 1.0 + self.gamma_ * exc_pos / self.sigma_
+            tails = np.where(base > 0, np.power(np.maximum(base, 1e-300), -1.0 / self.gamma_), 0.0)
+        out[pos] = 1.0 - (self.num_peaks_ / self.num_scores_) * tails
+        return out
+
     def _baseline(self) -> float:
         return sum(self.window_) / len(self.window_) if self.window_ else 0.0
 

@@ -102,9 +102,23 @@ def test_alpha_outside_unit_interval_is_rejected(alpha):
         KSWINMeter(alpha=alpha)
 
 
-def test_remove_is_not_supported():
-    meter = KSWINMeter()
-    meter.update(1.0)
+def test_window_smaller_than_two_samples_is_rejected():
+    with pytest.raises(ValueError, match="window_size must be at least 2 \\* stat_size"):
+        KSWINMeter(window_size=59, stat_size=30)
 
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+
+def test_window_of_exactly_two_samples_tests_when_full():
+    meter = KSWINMeter(window_size=60, stat_size=30, random_state=0)
+    for i in range(60):
+        meter.update(float(i % 7))
+
+    assert 0.0 <= meter.get() <= 1.0
+
+
+def test_remove_is_not_supported():
+    from pysad.statistics import RunningStatistic
+
+    meter = KSWINMeter()
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(KSWINMeter, window_size=100, stat_size=30)

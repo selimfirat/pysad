@@ -5,15 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pysad"
 dynamic = ["version"]
-# The floors are the first releases of scipy and scikit-learn built
-# for NumPy 2, so no allowed combination pairs NumPy 2 with an older build compiled for
-# NumPy 1. The lowest-versions job in .github/workflows/coverage.yml tests them.
+# The lowest-versions job resolves the lowest versions that the test dependencies allow.
+# The SciPy and scikit-learn floors support NumPy 2.
+# These floors prevent NumPy 2 from loading older builds compiled for NumPy 1.
 dependencies = [
-  "numpy>=1.22.4",
+  "numpy>=1.23",
   "scikit-learn>=1.4.2",
   "scipy>=1.13.0",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
   {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"},
 ]
@@ -47,7 +47,6 @@ classifiers = [
         'Operating System :: Unix',
         'Operating System :: MacOS',
         'Operating System :: Microsoft :: Windows',
-        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
@@ -69,28 +68,28 @@ Changelog = "https://github.com/selimfirat/pysad/releases"
 runtime = [
   "numpy==2.2.6",
   "scikit-learn==1.7.2",
-  "scipy==1.15.3; python_version < '3.11'",
-  "scipy>=1.15.4; python_version >= '3.11'",
+  "scipy>=1.15.4",
   "setuptools>=84.0.0,<85.0.0",
 ]
 test = [
   # PandasStreamer takes DataFrames.
   "pandas==2.3.3",
+  # examples/example_plot_stream.py draws with matplotlib.
+  "matplotlib==3.11.2",
   # PolarsStreamer takes Polars DataFrames.
-  "polars==2.0.0; python_version < '3.11'",
-  "polars==2.1.0; python_version >= '3.11'",
+  "polars==2.1.0",
   # The reference that LocalOutlierProbability is tested against.
   "PyNomaly==0.4.0",
-  # The batch detectors that the tests and examples run through pysad.models.integrations.
+  # The batch detectors that the tests and examples run through pysad.integrations.
   "pyod>=3.6.2",
   # Security floor for pillow, a transitive dependency of pyod via matplotlib.
   "pillow>=12.3.0",
-  # The forecasters that the tests and examples run through PredictiveAnomalyDetector. River needs Python 3.11 or newer.
-  "river==0.26.1; python_version >= '3.11'",
+  # Adapters for River pipelines in pysad.integrations.
+  "river==0.26.1",
   "hypothesis==6.168.5",
   # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
   "mmh3==5.3.1",
-  "pytest==9.1.1",
+  "pytest==9.2.0",
   "pytest-cov==7.1.0",
   "pytest-xdist==3.8.0",
 ]
@@ -124,6 +123,13 @@ compare-numpy1 = [
   "streamad==0.3.1",
   "alibi-detect==0.13.0",
 ]
+# The packages that .github/workflows/jupyterlite.yml deploys to GitHub Pages, so the deploy
+# job runs known versions and Dependabot bumps the pins with the one-week cooldown.
+jupyterlite = [
+  "jupyterlite-core==0.8.7",
+  "jupyterlite-pyodide-kernel==0.8.7",
+  "jupyter-server==2.21.1",
+]
 dev = [
   {include-group = "runtime"},
   {include-group = "test"},
@@ -153,7 +159,6 @@ conflicts = [
 ]
 
 [tool.uv.dependency-groups]
-compare = {requires-python = ">=3.11"}
 compare-numpy1 = {requires-python = "<3.12"}
 
 [tool.pytest.ini_options]
@@ -164,15 +169,11 @@ markers = [
 
 [tool.coverage.run]
 source = ["pysad"]
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-omit = ["pysad/models/kitnet_model/*"]
 
 # Ruff reads the target Python version from requires-python above.
 [tool.ruff]
 # Most of the existing code already fits in 100 columns.
 line-length = 100
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-extend-exclude = ["pysad/models/kitnet_model"]
 
 [tool.ruff.lint]
 select = [
@@ -203,76 +204,36 @@ ignore = [
 "tests/**" = ["NPY002"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 files = ["pysad"]
-# Vendored KitNET reference implementation, kept as upstream wrote it.
-exclude = ["^pysad/models/kitnet_model/"]
 warn_unused_ignores = true
 warn_redundant_casts = true
-
-# These packages are fully annotated; keep them that way. Add packages here as their
-# type hints are completed.
-[[tool.mypy.overrides]]
-module = [
-    "pysad.core.*",
-    "pysad.evaluation.*",
-    "pysad.statistics.*",
-    "pysad.transform.ensemble.*",
-    "pysad.transform.postprocessing.*",
-    "pysad.transform.preprocessing.*",
-    "pysad.transform.probability_calibration.*",
-    "pysad.transform.projection.*",
-    "pysad.utils.*",
-    "pysad.models.adems",
-    "pysad.models.anyout",
-    "pysad.models.approx_storm",
-    "pysad.models.change_finder",
-    "pysad.models.cpod",
-    "pysad.models.d3",
-    "pysad.models.dilof",
-    "pysad.models.half_space_trees",
-    "pysad.models.holt_winters",
-    "pysad.models.exact_storm",
-    "pysad.models.expose",
-    "pysad.models.htm.encoders",
-    "pysad.models.htm.htm",
-    "pysad.models.htm.spatial_pooler",
-    "pysad.models.iforest_asd",
-    "pysad.models.incremental_lof",
-    "pysad.models.inqmad",
-    "pysad.models.kelos",
-    "pysad.models.kitnet",
-    "pysad.models.knn_cad",
-    "pysad.models.loda",
-    "pysad.models.loop",
-    "pysad.models.mcod",
-    "pysad.models.median_absolute_deviation",
-    "pysad.models.midas",
-    "pysad.models.mstream",
-    "pysad.models.nets",
-    "pysad.models.null_model",
-    "pysad.models.online_isolation_forest",
-    "pysad.models.online_one_class_svm",
-    "pysad.models.perfect_model",
-    "pysad.models.random_model",
-    "pysad.models.relative_entropy",
-    "pysad.models.robust_random_cut_forest",
-    "pysad.models.rs_forest",
-    "pysad.models.rs_hash",
-    "pysad.models.sand",
-    "pysad.models.seasonal_esd",
-    "pysad.models.smart_sifter",
-    "pysad.models.spectral_residual",
-    "pysad.models.standard_absolute_deviation",
-    "pysad.models.thresh_leap",
-    "pysad.models.xstream",
-    "pysad.models.integrations.*",
-]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
 
+[[tool.mypy.overrides]]
+module = [
+    "pysad.core.*",
+    "pysad.evaluation.metrics",
+    "pysad.evaluation.prequential",
+    "pysad.evaluation.rolling_metric",
+    "pysad.evaluation.windowed_metric",
+    "pysad.statistics.basic",
+    "pysad.statistics.drift",
+    "pysad.statistics.quantiles",
+    "pysad.statistics.running_statistic",
+]
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+warn_return_any = true
+implicit_reexport = false
+strict_equality = true
+extra_checks = true
+
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]
-module = ["pandas.*", "polars.*", "scipy.*", "sklearn.*"]
+module = ["pandas.*", "polars.*", "river.*", "scipy.*", "sklearn.*"]
 ignore_missing_imports = true

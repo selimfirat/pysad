@@ -1,10 +1,10 @@
-"""Score spikes in a seasonal series by the forecast errors of a River forecaster. River needs Python 3.11 or newer."""
+"""Score spikes in a seasonal series by the forecast errors of a River forecaster."""
 
 import numpy as np
 from river import time_series
 from sklearn.metrics import roc_auc_score
 
-from pysad.models.integrations import PredictiveAnomalyDetector
+from pysad.integrations import PredictiveAnomalyDetector
 
 if __name__ == "__main__":
     t = np.arange(2000)

@@ -135,3 +135,29 @@ def test_approx_storm_rejects_an_empty_sample():
 
     with pytest.raises(ValueError, match="sample_fraction"):
         ApproxStorm(window_size=10, sample_fraction=0.05)
+
+
+def test_approx_storm_larger_outlier_fraction_gives_higher_scores():
+    import numpy as np
+
+    from pysad.models import ApproxStorm
+
+    X = np.random.RandomState(0).normal(size=(300, 2))
+    few = ApproxStorm(
+        window_size=100,
+        calibration_size=100,
+        num_neighbors=5,
+        outlier_fraction=0.05,
+        random_state=0,
+    ).fit(X)
+    many = ApproxStorm(
+        window_size=100,
+        calibration_size=100,
+        num_neighbors=5,
+        outlier_fraction=0.5,
+        random_state=0,
+    ).fit(X)
+
+    # The radius is the 1 - outlier_fraction quantile of the nearest-neighbor distances, so a larger outlier_fraction gives a smaller radius and fewer neighbors.
+    assert many.radius_ < few.radius_
+    assert many.score(X[-50:]).mean() > few.score(X[-50:]).mean()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -125,7 +126,7 @@ class SAND(BaseModel):
     - The paper starts ``mu`` and ``sigma`` at ``0`` (Algorithm 1), which divides the first scores by zero. The model takes the mean and the standard deviation of the first batch, as the reference implementation does. If ``sigma`` is ``0``, the score is ``d - mu``.
     - The paper normalizes the weights to sum to 1. The model also normalizes the current weights ``|C|^2 / sum_j SBD(C, C_j)`` to sum to 1 before it mixes them with the previous weights at the rate ``alpha``, as Eq. 2 does for the first batch, so that both terms have the same scale.
     - The paper writes the intra-cluster distance as a sum, but updates it as a mean. The model keeps the mean, as the reference implementation does.
-    - The reference implementation gives each value the mean distance of the subsequences that contain it, which needs the next ``subsequence_length - 1`` values. The paper scores subsequences, and the model scores the subsequence that ends with each value. :class:`~pysad.transform.postprocessing.RunningAveragePostprocessor` with ``window_size=subsequence_length`` gives the mean of the reference ``subsequence_length - 1`` values later.
+    - The reference implementation gives each value the mean distance of the subsequences that contain it, which needs the next ``subsequence_length - 1`` values. The paper scores subsequences, and the model scores the subsequence that ends with each value. :class:`~pysad.transform.postprocessing.AveragePostprocessor` with ``window_size=subsequence_length`` gives the mean of the reference ``subsequence_length - 1`` values later.
     - A new cluster that is close enough to several clusters of Θ merges into the closest one.
     - k-Shape starts from random labels and stops after 100 iterations, as in its paper. It drops the clusters that end empty, as the reference implementation does.
 
@@ -177,11 +178,15 @@ class SAND(BaseModel):
         self.count_ = 0  # values of the current batch in buffer_
         self.time_ = 0  # values seen
         self.centroids_: np.ndarray | None = None  # (num_centroids, centroid_length)
-        self.matrices_ = np.empty((0, self.centroid_length, self.centroid_length))
-        self.distances_ = np.empty(0)  # mean SBD of each cluster to its centroid
-        self.sizes_ = np.empty(0)  # subsequences in each cluster
-        self.last_ = np.empty(0)  # start of the latest subsequence of each cluster
-        self.weights_ = np.empty(0)
+        self.matrices_: NDArray[np.float64] = np.empty(
+            shape=(0, self.centroid_length, self.centroid_length)
+        )
+        # Mean SBD of each cluster to its centroid.
+        self.distances_: NDArray[np.float64] = np.empty(0)
+        self.sizes_: NDArray[np.float64] = np.empty(0)  # subsequences in each cluster
+        # Start of each cluster's latest subsequence.
+        self.last_: NDArray[np.float64] = np.empty(0)
+        self.weights_: NDArray[np.float64] = np.empty(0)
         # The z-normalized windows of subsequence_length values of each centroid, and their squared norms.
         self.windows_ = np.empty(
             (0, self.centroid_length - self.subsequence_length + 1, self.subsequence_length)

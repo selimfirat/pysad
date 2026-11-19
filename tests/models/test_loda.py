@@ -167,3 +167,34 @@ def test_loda_fit_score_partial_scores_before_fitting():
         assert model.fit_score_partial(x) == expected
 
     np.testing.assert_array_equal(model.histograms_, reference.histograms_)
+
+
+def test_loda_explanation_ranks_the_shifted_feature_first():
+    import numpy as np
+
+    from pysad.models import LODA
+
+    rng = np.random.RandomState(61)
+    model = LODA(random_state=61).fit(rng.randn(2000, 16))
+
+    for j in range(16):
+        x = rng.randn(16)
+        x[j] += 8.0
+        score = model.score_partial(x)
+
+        explanation = model.explain_partial(x)
+
+        assert explanation.shape == (16,)
+        assert explanation.argmax() == j
+        assert model.score_partial(x) == score
+
+
+def test_loda_explanation_is_nan_without_projections_to_compare():
+    import numpy as np
+
+    from pysad.models import LODA
+
+    rng = np.random.RandomState(61)
+    model = LODA(random_state=61).fit(rng.randn(100, 1))
+
+    assert np.isnan(model.explain_partial(np.array([5.0]))).all()

@@ -23,6 +23,10 @@
   <a href="https://coveralls.io/github/selimfirat/pysad?branch=master"><img src="https://img.shields.io/coverallsCoverage/github/selimfirat/pysad?branch=master&style=flat-square&logo=coveralls&label=coverage" alt="Coverage"></a>
   <a href="https://pysad.readthedocs.io/en/stable/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs" alt="Documentation"></a>
   <a href="https://github.com/selimfirat/pysad/commits/master"><img src="https://img.shields.io/github/last-commit/selimfirat/pysad?style=flat-square&label=last%20commit" alt="Last commit"></a>
+  <br>
+  <a href="https://pysad.readthedocs.io/en/stable/benchmark.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fthroughput.json&style=flat-square" alt="Median throughput"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Funivariate_detectors.json&style=flat-square" alt="Univariate detectors"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmultivariate_detectors.json&style=flat-square" alt="Multivariate detectors"></a>
 </p>
 
 <p align="center">
@@ -44,7 +48,7 @@
 
 ## Why PySAD
 
-A batch detector needs the whole dataset before it can score a point. A stream does not give you the whole dataset. Points arrive one at a time, the data drifts (its distribution changes over time), and you must decide about each point before the next point arrives. PySAD is built for this setting. More than 60 publications on [Google Scholar](https://scholar.google.com/scholar?cites=3884618599898298487) cite it, and [30+ public repositories](https://github.com/selimfirat/pysad/network/dependents) on GitHub use it.
+Batch detectors train on a fixed dataset. Streaming detectors update as points arrive, without waiting for a complete dataset. PySAD provides a common interface for scoring and learning from each point, including streams whose distribution changes over time (drift). More than 60 publications on [Google Scholar](https://scholar.google.com/scholar?cites=3884618599898298487) cite it, and [30+ public repositories](https://github.com/selimfirat/pysad/network/dependents) on GitHub use it.
 
 <table>
 <tr>
@@ -68,7 +72,7 @@ From robust statistics (MAD, Seasonal Hybrid ESD) to forests, sketches and proje
 
 #### From scores to alerts
 
-The conformal calibrator converts a raw score into the fraction of recent scores that it exceeds. A threshold such as `0.99` then has the same meaning for every detector.
+The conformal calibrator converts a raw score into the fraction of recent scores that it exceeds. A threshold such as `0.99` selects scores by their rank in the recent window, regardless of the detector’s raw score scale. It does not give the probability that a point is an anomaly.
 
 </td>
 <td valign="top">
@@ -97,7 +101,7 @@ Preprocessors, random projections, score postprocessors, ensemblers and running 
 </tr>
 </table>
 
-Batch outlier detectors such as [PyOD](https://github.com/yzhao062/pyod) train on a fixed dataset and must train again to use new data. PySAD detectors learn from every point, and PySAD can still run PyOD models on a stream with `ReferenceWindowModel`. General online learning frameworks such as [River](https://github.com/online-ml/river) treat anomaly detection as one module among many. PySAD is only about streaming anomaly detection: its detectors come with calibration, postprocessing, ensembling and evaluation.
+Batch outlier detectors such as [PyOD](https://github.com/yzhao062/pyod) can score new points after training, but need retraining to update what they have learned. PySAD detectors learn from every point, and PySAD can still run PyOD models on a stream with `ReferenceWindowModel`. General online learning frameworks such as [River](https://github.com/online-ml/river) treat anomaly detection as one module among many. PySAD is only about streaming anomaly detection: its detectors come with calibration, postprocessing, ensembling and evaluation.
 
 ## Installation
 
@@ -111,7 +115,7 @@ Or with Conda / Mamba / Pixi:
 conda install -c conda-forge pysad
 ```
 
-PySAD supports Python 3.10 to 3.14 on Linux, macOS and Windows. Every detector works after installation, with no optional extras.
+PySAD supports Python 3.11 to 3.14 on Linux, macOS and Windows. Every detector works after installation, with no optional extras.
 
 To install the latest development version from `master`:
 
@@ -191,7 +195,7 @@ Install PyOD first with `pip install pyod`.
 
 ```python
 from pyod.models.iforest import IForest
-from pysad.models.integrations import ReferenceWindowModel
+from pysad.integrations import ReferenceWindowModel
 
 # Train a batch Isolation Forest on the last 200 points, again every 50 points.
 model = ReferenceWindowModel(IForest, window_size=200, sliding_size=50, initial_window_X=X[:100])
@@ -199,7 +203,7 @@ for x in ArrayStreamer().iter(X[100:]):
     score = model.fit_score_partial(x)
 ```
 
-The [getting started tutorial](https://pysad.readthedocs.io/en/stable/getting_started.html) explains each step. The [how-to guides](https://pysad.readthedocs.io/en/stable/guides/index.html) cover alerts, evaluation, pipelines, seasonal series, production use and custom detectors.
+Follow the [getting started tutorial](https://pysad.readthedocs.io/en/stable/getting_started.html) for a complete first workflow. Read [concepts](https://pysad.readthedocs.io/en/stable/concepts.html) for the reasoning behind scoring, learning and calibration. Use the [how-to guides](https://pysad.readthedocs.io/en/stable/guides/index.html) for specific tasks and the [API reference](https://pysad.readthedocs.io/en/stable/api.html) for classes, methods and parameters.
 
 ## Detectors
 
@@ -230,9 +234,11 @@ These starting points come from the design of each method. They are not benchmar
 | `RSForest` | RS-Forest random space tree density (Wu et al., ICDM 2014) |
 | `RSHash` | RS-Hash subspace outlier detection (Sathe & Aggarwal, ICDM 2016) |
 | `MStream` | MStream multi-aspect stream counts (Bhatia et al., WWW 2021) |
+| `MemStream` | MemStream denoising autoencoder with FIFO memory (Bhatia et al., WWW 2022) |
 | `MIDAS` | MIDAS edge counts of a graph stream (Bhatia et al., AAAI 2020) |
 | `IForestASD` | Isolation Forest on sliding windows (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | Online Isolation Forest (Leveni et al., ICML 2024) |
+| `PCBIsolationForest` | PCB-iForest isolation forest with performance counters and drift-triggered tree replacement (Heigl et al., *Electronics* 2021) |
 | `KitNet` | KitNET ensemble of autoencoders (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM distance-based outliers (Angiulli & Fassetti, CIKM 2007) |
 | `ApproxStorm` | Approx-STORM distance-based outliers from a sample of the window (Angiulli & Fassetti, CIKM 2007) |
@@ -247,12 +253,14 @@ These starting points come from the design of each method. They are not benchmar
 | `KELOS` | Kernel density local outliers over micro-clusters of a window (Qin et al., EDBT 2019) |
 | `STARE` | Kernel density local outliers over grid cells, updated only where the window changed (Yoon et al., KDD 2020) |
 | `AnyOut` | Anytime outliers by distance to the closest cluster of a ClusTree (Assent et al., DASFAA 2012) |
+| `SDOstream` | Sparse data observers with exponential fading, a low-density stream model (Hartl et al., ESANN 2020) |
 | `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | Finite mixtures with discounting learning (Yamanishi et al., KDD 2000) |
 | `TEDA` | Typicality and eccentricity data analytics (Angelov, EALS 2014) |
 | `EXPoSE` | Expected similarity to the kernel mean embedding (Schneider et al., Machine Learning 2016) |
+| `IDKS` | IDK-S incremental distributional kernel over a sliding window (Xu et al., AAAI 2026) |
 
 **Univariate**
 
@@ -271,12 +279,14 @@ These starting points come from the design of each method. They are not benchmar
 | `SAND` | Streaming subsequence anomaly detection with k-Shape clusters (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
+| `OeSNNUAD` | Online evolving spiking neural network for unsupervised anomaly detection (Maciąg et al., *Neural Networks* 2021) |
+| `PEWMA` | Probabilistic exponentially weighted moving average (Carter & Streilein, SSP 2012) |
 
 `ReferenceWindowModel` and `OneFitModel` run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. The [detector catalog](https://pysad.readthedocs.io/en/stable/detectors.html) lists the input, setup and memory of each detector, and the [API reference](https://pysad.readthedocs.io/en/stable/api.html) lists every parameter.
 
 ## Benchmarks
 
-PySAD benchmarks its detectors on labeled data. The 10 multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
+PySAD benchmarks its detectors on labeled data. The multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
 
 The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) page shows all the results. The [evaluation methodology](https://pysad.readthedocs.io/en/stable/benchmarks/methodology.html) explains the steps, the metrics and the limits of the results, and the [datasets](https://pysad.readthedocs.io/en/stable/benchmarks/datasets.html) page describes the data. To run the benchmark, use `python benchmarks/benchmark.py`, as [Run the benchmark](https://pysad.readthedocs.io/en/stable/benchmarks/run.html) shows. On each pull request that changes a detector, CI runs a short form of the benchmark and lists the results that moved.
 

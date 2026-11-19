@@ -9,8 +9,3 @@ This module holds calibrators that convert scores into values between 0 and 1. A
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   AnomalyLikelihoodProbabilityCalibrator
-   ConformalProbabilityCalibrator
-   GaussianTailProbabilityCalibrator
-   SPOTProbabilityCalibrator

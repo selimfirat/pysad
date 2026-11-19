@@ -2,46 +2,60 @@
 The :mod:`pysad.statistics` module contains methods to keep track of statistics on streaming data.
 """
 
-from .abs_statistic import AbsStatistic
-from .adwin_meter import ADWINMeter
-from .average_meter import AverageMeter
-from .count_meter import CountMeter
-from .ddm_meter import DDMMeter
-from .ddsketch_meter import DDSketchMeter
-from .eddm_meter import EDDMMeter
+from .basic import (
+    AbsStatistic,
+    AverageMeter,
+    CountMeter,
+    MaxMeter,
+    MinMeter,
+    SumMeter,
+    SumSquaresMeter,
+    VarianceMeter,
+)
+from .cusum import CUSUMMeter
+from .drift import (
+    ADWINMeter,
+    DDMMeter,
+    EDDMMeter,
+    FHDDMMeter,
+    FHDDMSAddMeter,
+    FHDDMSMeter,
+    HDDMAMeter,
+    HDDMWMeter,
+    KSWINMeter,
+    PageHinkleyMeter,
+)
 from .exponential_moving_average_meter import ExponentialMovingAverageMeter
-from .fhddm_meter import FHDDMMeter
-from .hddm_a_meter import HDDMAMeter
-from .hddm_w_meter import HDDMWMeter
-from .kswin_meter import KSWINMeter
-from .max_meter import MaxMeter
-from .median_meter import MedianMeter
-from .min_meter import MinMeter
-from .page_hinkley_meter import PageHinkleyMeter
-from .quantile_meter import QuantileMeter
+from .exponential_moving_variance_meter import ExponentialMovingVarianceMeter
+from .online_periodicity_meter import OnlinePeriodicityMeter
+from .quantiles import DDSketchMeter, MedianMeter, QuantileMeter
+from .relative_error_quantile_meter import RelativeErrorQuantileMeter
 from .running_statistic import RunningStatistic
-from .sum_meter import SumMeter
-from .sum_squares_meter import SumSquaresMeter
-from .variance_meter import VarianceMeter
 
 __all__ = [
-    "ADWINMeter",
     "AbsStatistic",
+    "ADWINMeter",
     "AverageMeter",
     "CountMeter",
+    "CUSUMMeter",
     "DDMMeter",
     "DDSketchMeter",
     "EDDMMeter",
     "ExponentialMovingAverageMeter",
+    "ExponentialMovingVarianceMeter",
     "FHDDMMeter",
+    "FHDDMSAddMeter",
+    "FHDDMSMeter",
     "HDDMAMeter",
     "HDDMWMeter",
     "KSWINMeter",
     "MaxMeter",
     "MedianMeter",
     "MinMeter",
+    "OnlinePeriodicityMeter",
     "PageHinkleyMeter",
     "QuantileMeter",
+    "RelativeErrorQuantileMeter",
     "RunningStatistic",
     "SumMeter",
     "SumSquaresMeter",

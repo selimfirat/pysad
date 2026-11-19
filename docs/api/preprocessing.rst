@@ -9,11 +9,3 @@ This module holds transformers that change each point before the detector gets i
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   IdentityScaler
-   InstanceStandardScaler
-   InstanceUnitNormScaler
-   ModifiedSTLResidualTransformer
-   OneShotSTL
-   SeasonalTrendDecomposer
-   ShingleTransformer

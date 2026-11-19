@@ -111,3 +111,46 @@ def test_full_tells_when_a_shingle_needs_no_copies():
     transformer.fit_partial(np.array([2.0]))
     assert transformer.full
     assert ShingleTransformer(1).full
+
+
+@pytest.mark.parametrize("shingle_size", [1, 2, 4])
+@pytest.mark.parametrize("shape", [(12,), (12, 1), (12, 3), (1, 2)])
+@pytest.mark.parametrize("warm", [0, 1, 3])
+def test_shingle_batch_methods_match_partial_loops(shingle_size, shape, warm):
+    rng = np.random.default_rng(42)
+    X_warm = rng.normal(size=(warm,) if len(shape) == 1 else (warm, shape[1]))
+    X = rng.normal(size=shape)
+
+    # 1. fit_transform
+    t_batch = ShingleTransformer(shingle_size)
+    t_part = ShingleTransformer(shingle_size)
+    if warm > 0:
+        t_batch.fit(X_warm)
+        for x in X_warm:
+            t_part.fit_partial(x)
+    assert (
+        list(t_batch.recent) == []
+        if shingle_size == 1
+        else len(t_batch.recent) == len(t_part.recent)
+    )
+
+    out_batch = t_batch.fit_transform(X)
+    out_part = np.array([t_part.fit_transform_partial(x) for x in X])
+    np.testing.assert_array_equal(out_batch, out_part)
+    assert len(t_batch.recent) == len(t_part.recent)
+    for rb, rp in zip(t_batch.recent, t_part.recent, strict=True):
+        np.testing.assert_array_equal(rb, rp)
+
+    # 2. transform (frozen history)
+    X_test = rng.normal(size=shape)
+    t_unfitted_b = ShingleTransformer(shingle_size)
+    t_unfitted_p = ShingleTransformer(shingle_size)
+    if warm > 0:
+        t_unfitted_b.fit(X_warm)
+        for x in X_warm:
+            t_unfitted_p.fit_partial(x)
+    np.testing.assert_array_equal(
+        t_unfitted_b.transform(X_test),
+        np.array([t_unfitted_p.transform_partial(x) for x in X_test]),
+    )
+    assert len(t_unfitted_b.recent) == len(t_unfitted_p.recent)

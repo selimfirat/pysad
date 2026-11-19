@@ -1,3 +1,6 @@
+import pytest
+
+
 def generate_stream(seed=61):
     import numpy as np
 
@@ -35,7 +38,8 @@ def _three_clusters():
     return centers[labels] + rng.normal(0.0, [0.5, 2.0], size=(63, 2)), labels
 
 
-def test_anyout_scores_against_the_closest_cluster_of_a_one_level_tree():
+@pytest.mark.parametrize("offset", [0.0, 1e6])
+def test_anyout_scores_against_the_closest_cluster_of_a_one_level_tree(offset):
     """A one-level tree merges its closest entries, so it holds one entry per distant cluster."""
     import numpy as np
     from scipy.stats import norm
@@ -43,7 +47,8 @@ def test_anyout_scores_against_the_closest_cluster_of_a_one_level_tree():
     from pysad.models import AnyOut
 
     X, labels = _three_clusters()
-    x = np.array([9.0, 3.0])
+    X += offset
+    x = np.array([9.0, 3.0]) + offset
     cluster = X[labels == 1]
 
     mean_model = AnyOut(max_height=1, decay=0.0).fit(X)
@@ -52,6 +57,24 @@ def test_anyout_scores_against_the_closest_cluster_of_a_one_level_tree():
     np.testing.assert_allclose(mean_model.score_partial(x), np.linalg.norm(x - cluster.mean(0)))
     expected = -norm.logpdf(x, loc=cluster.mean(0), scale=cluster.std(0)).sum()
     np.testing.assert_allclose(density_model.score_partial(x), expected)
+
+
+def test_anyout_scores_do_not_change_when_a_feature_gets_a_constant_offset():
+    """A constant offset of a feature leaves the scores of the tree unchanged."""
+    import numpy as np
+
+    from pysad.models import AnyOut
+
+    X, _ = generate_stream()
+    shifted = X.copy()
+    shifted[:, 0] += 1e6
+
+    for params in [{}, {"outlier_score": "density", "depth": 2}]:
+        scores = AnyOut(**params).fit_score(X)
+        shifted_scores = AnyOut(**params).fit_score(shifted)
+        np.testing.assert_allclose(
+            shifted_scores, scores, rtol=1e-7, atol=1e-9, err_msg=str(params)
+        )
 
 
 def test_anyout_reads_finer_clusters_at_deeper_levels():

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar, Literal
+
 import numpy as np
 from sklearn.utils import check_random_state
 
@@ -31,6 +33,8 @@ class MIDAS(BaseModel):
         tick_size (int): The number of edges in each time tick (Default=1).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the hash functions. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
+
+    _input_kind: ClassVar[Literal["multivariate", "univariate", "timestamped", "edge"]] = "edge"
 
     def __init__(
         self,

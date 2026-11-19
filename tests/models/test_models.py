@@ -9,7 +9,6 @@ from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
 from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, active_model_names
 
-
 MODEL_CASES = {
     "ADeMS": [{}],
     "AnyOut": [{}, {"outlier_score": "density"}],

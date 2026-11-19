@@ -1,9 +1,6 @@
 import numpy as np
 import pytest
 
-# River needs Python 3.11 or newer, so the test group installs it only there.
-pytest.importorskip("river")
-
 
 def _forecasters():
     from river import time_series, tree

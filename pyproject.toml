@@ -5,16 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pysad"
 dynamic = ["version"]
-# The lowest-versions job in .github/workflows/coverage.yml installs these floors. The
-# NumPy floor is 1.23, which the job pins to 1.23.0. The scipy and scikit-learn floors are
-# the first releases built for NumPy 2, so no allowed combination pairs NumPy 2 with an
-# older build compiled for NumPy 1.
+# The lowest-versions job resolves the lowest versions that the test dependencies allow.
+# The SciPy and scikit-learn floors support NumPy 2.
+# These floors prevent NumPy 2 from loading older builds compiled for NumPy 1.
 dependencies = [
   "numpy>=1.23",
   "scikit-learn>=1.4.2",
   "scipy>=1.13.0",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
   {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"},
 ]
@@ -48,7 +47,6 @@ classifiers = [
         'Operating System :: Unix',
         'Operating System :: MacOS',
         'Operating System :: Microsoft :: Windows',
-        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
@@ -70,27 +68,24 @@ Changelog = "https://github.com/selimfirat/pysad/releases"
 runtime = [
   "numpy==2.2.6",
   "scikit-learn==1.7.2",
-  "scipy==1.15.3; python_version < '3.11'",
-  "scipy>=1.15.4; python_version >= '3.11'",
+  "scipy>=1.15.4",
   "setuptools>=84.0.0,<85.0.0",
 ]
 test = [
   # PandasStreamer takes DataFrames.
   "pandas==2.3.3",
   # examples/example_plot_stream.py draws with matplotlib.
-  "matplotlib==3.10.9; python_version < '3.11'",
-  "matplotlib==3.11.2; python_version >= '3.11'",
+  "matplotlib==3.11.2",
   # PolarsStreamer takes Polars DataFrames.
-  "polars==2.0.0; python_version < '3.11'",
-  "polars==2.1.0; python_version >= '3.11'",
+  "polars==2.1.0",
   # The reference that LocalOutlierProbability is tested against.
   "PyNomaly==0.4.0",
   # The batch detectors that the tests and examples run through pysad.integrations.
   "pyod>=3.6.2",
   # Security floor for pillow, a transitive dependency of pyod via matplotlib.
   "pillow>=12.3.0",
-  # Adapters for River pipelines in pysad.integrations. River needs Python 3.11 or newer.
-  "river==0.26.1; python_version >= '3.11'",
+  # Adapters for River pipelines in pysad.integrations.
+  "river==0.26.1",
   "hypothesis==6.168.5",
   # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
   "mmh3==5.3.1",
@@ -164,7 +159,6 @@ conflicts = [
 ]
 
 [tool.uv.dependency-groups]
-compare = {requires-python = ">=3.11"}
 compare-numpy1 = {requires-python = "<3.12"}
 
 [tool.pytest.ini_options]
@@ -210,7 +204,7 @@ ignore = [
 "tests/**" = ["NPY002"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 files = ["pysad"]
 warn_unused_ignores = true
 warn_redundant_casts = true

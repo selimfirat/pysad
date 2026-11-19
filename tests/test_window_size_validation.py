@@ -54,7 +54,10 @@ def _discover_window_size_components() -> list[Any]:
         for name in getattr(mod, "__all__", ()):
             if name.startswith("_"):
                 continue
-            if name == "RiverAnomalyDetector" and importlib.util.find_spec("river") is None:
+            if name == "RiverAnomalyDetector" and (
+                importlib.util.find_spec("river") is None
+                or not hasattr(importlib.import_module("river.base"), "AnomalyDetector")
+            ):
                 continue
             obj = getattr(mod, name)
             if not (inspect.isclass(obj) and not inspect.isabstract(obj)) or obj in seen:

@@ -596,3 +596,22 @@ def test_creditcard_keeps_transaction_order_and_separates_class_in_shared_cache(
     stream = list(Data().get_iterator("creditcard/creditcard.arff", shuffle=False))
     np.testing.assert_array_equal([x for x, _ in stream], X)
     np.testing.assert_array_equal([label for _, label in stream], y)
+
+
+def test_data_pickle_round_trip(tmp_path):
+    """Verify Data preserves cache path and cached data retrieval across pickle round-trip."""
+    import pickle
+
+    dataset_path = tmp_path / "sample.txt"
+    arr = np.array([[1.0, 2.0, 0.0], [3.0, 4.0, 1.0]])
+    np.savetxt(dataset_path, arr, delimiter=",")
+
+    data = Data(data_base_path=str(tmp_path))
+    X_orig, y_orig = data.get_data("sample.txt", download=False)
+
+    restored = pickle.loads(pickle.dumps(data))
+    assert restored.data_base_path == data.data_base_path
+
+    X_restored, y_restored = restored.get_data("sample.txt", download=False)
+    np.testing.assert_array_equal(X_restored, X_orig)
+    np.testing.assert_array_equal(y_restored, y_orig)

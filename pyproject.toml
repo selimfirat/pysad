@@ -221,6 +221,8 @@ module = [
     "pysad.evaluation.windowed_metric",
     "pysad.statistics.basic",
     "pysad.statistics.drift",
+    "pysad.statistics.exponential_moving_average_meter",
+    "pysad.statistics.exponential_moving_variance_meter",
     "pysad.statistics.quantiles",
     "pysad.statistics.relative_error_quantile_meter",
     "pysad.statistics.running_statistic",

@@ -3,10 +3,21 @@ Tests for pysad.utils module functions and classes.
 """
 
 import numpy as np
+import pytest
 
 
 class TestUtilsFunctions:
     """Tests for utility functions in pysad.utils."""
+
+    @pytest.mark.parametrize("dtype", [np.int64, np.float32, np.float64])
+    def test_scalar_bounds_are_python_floats(self, dtype):
+        from pysad.utils import get_minmax_scalar
+
+        low, high = get_minmax_scalar(np.array([[2, -3], [7, 1]], dtype=dtype))
+
+        assert type(low) is float
+        assert type(high) is float
+        assert (low, high) == (-3.0, 7.0)
 
     def test_fix_seed(self):
         """Test fix_seed function for reproducible randomness."""
@@ -160,7 +171,7 @@ class TestWindow:
 
         window = Window(window_size=5)
         assert window.window_size == 5
-        assert window.window == []
+        assert window.get() == []
 
     def test_window_update_within_size(self):
         """Test Window update within size limit."""
@@ -200,8 +211,8 @@ class TestWindow:
         window.update(2.0)
         assert window.get() == [2.0]
 
-    def test_window_get_copy(self):
-        """Test that Window.get() returns the actual list."""
+    def test_window_get_returns_same_list_each_call(self):
+        """Test that Window.get() returns the window items, oldest first."""
         from pysad.utils import Window
 
         window = Window(window_size=5)
@@ -211,45 +222,91 @@ class TestWindow:
         result1 = window.get()
         result2 = window.get()
 
-        # Should be the same list
-        assert result1 is result2
+        assert result1 == result2 == [1.0, 2.0]
+        assert len(window) == 2
+        assert list(window) == [1.0, 2.0]
 
-    def test_unlimited_window_initialization(self):
-        """Test UnlimitedWindow initialization."""
-        from pysad.utils.window import UnlimitedWindow
+    def test_window_get_returns_a_copy(self):
+        """Changing the returned list does not change the window."""
+        from pysad.utils import Window
 
-        window = UnlimitedWindow()
-        assert window.window_size is None
-        assert window.window == []
-
-    def test_unlimited_window_growth(self):
-        """Test UnlimitedWindow unlimited growth."""
-        from pysad.utils.window import UnlimitedWindow
-
-        window = UnlimitedWindow()
-
-        # Add many items
-        for i in range(100):
-            window.update(float(i))
+        window = Window(window_size=3)
+        window.update(1.0)
+        window.update(2.0)
 
         result = window.get()
-        assert len(result) == 100
-        assert result[0] == 0.0
-        assert result[-1] == 99.0
+        result[0] = 9.0
+        result.append(3.0)
 
-    def test_unlimited_window_no_size_limit(self):
-        """Test that UnlimitedWindow doesn't remove old items."""
-        from pysad.utils.window import UnlimitedWindow
+        assert window.get() == [1.0, 2.0]
+        assert list(window) == [1.0, 2.0]
 
-        window = UnlimitedWindow()
+    def test_ring_buffer_scalar_and_vector_wraparound(self):
+        """Test RingBuffer chronological order and active slices for scalars and vectors."""
+        from pysad.utils import RingBuffer
 
-        for i in range(10):
-            window.update(float(i))
+        scalar_buf = RingBuffer(window_size=3)
+        assert len(scalar_buf) == 0
+        np.testing.assert_array_equal(scalar_buf.to_array(), np.empty(0))
 
-        # All items should be present
-        result = window.get()
-        expected = [float(i) for i in range(10)]
-        assert result == expected
+        for val in (10.0, 20.0, 30.0, 40.0, 50.0):
+            scalar_buf.append(val)
+        assert len(scalar_buf) == 3
+        np.testing.assert_array_equal(scalar_buf.to_array(), [30.0, 40.0, 50.0])
+
+        vec_buf = RingBuffer(window_size=3)
+        for i in range(5):
+            vec_buf.append(np.array([float(i), float(10 * i)]))
+        np.testing.assert_array_equal(vec_buf.to_array(), [[2.0, 20.0], [3.0, 30.0], [4.0, 40.0]])
+        first, second, active_count = vec_buf.active_slices()
+        assert active_count == 2
+        active = first if second is None else np.vstack([a for a in (first, second) if len(a) > 0])
+        assert {tuple(row) for row in active} == {(3.0, 30.0), (4.0, 40.0)}
+
+    @pytest.mark.parametrize("num_appended", [4, 5, 6, 7, 8, 9])
+    def test_ring_buffer_active_slices_after_wraparound(self, num_appended):
+        """After the buffer is full, active_slices drops the item that the next append expires."""
+        from pysad.utils import RingBuffer
+
+        buffer = RingBuffer(window_size=4)
+        values = [float(v) for v in range(1, num_appended + 1)]
+        for value in values:
+            buffer.append(value)
+
+        newer, older, active_count = buffer.active_slices()
+
+        assert active_count == 3
+        assert older is not None
+        assert len(newer) + len(older) == active_count
+        # The oldest stored item, values[-4], expires when the next item arrives.
+        np.testing.assert_array_equal(np.concatenate((older, newer)), values[-3:])
+
+    @pytest.mark.parametrize(
+        ("first", "mismatched"),
+        [(1.0, np.array([2.0])), (np.array([1.0, 2.0]), 3.0)],
+    )
+    def test_ring_buffer_rejects_a_different_item_shape(self, first, mismatched):
+        """The first item fixes the shape accepted by later appends."""
+        from pysad.utils import RingBuffer
+
+        buffer = RingBuffer(window_size=2)
+        buffer.append(first)
+
+        with pytest.raises(ValueError, match="item must have shape"):
+            buffer.append(mismatched)
+
+    def test_ring_buffer_to_array_returns_a_copy(self):
+        """Changing the returned array does not change buffered items."""
+        from pysad.utils import RingBuffer
+
+        buffer = RingBuffer(window_size=3)
+        for value in (1.0, 2.0, 3.0, 4.0):
+            buffer.append(value)
+
+        result = buffer.to_array()
+        result[0] = -1.0
+
+        np.testing.assert_array_equal(buffer.to_array(), [2.0, 3.0, 4.0])
 
 
 class TestArrayStreamer:
@@ -292,6 +349,44 @@ class TestArrayStreamer:
             np.testing.assert_array_equal(xi, X[i])
             assert yi == y[i]
 
+    def test_array_streamer_first_row_memory(self):
+        """Unshuffled streams yield the first row with bounded extra memory."""
+        import tracemalloc
+
+        from pysad.utils import ArrayStreamer
+
+        X = np.broadcast_to(np.array([1, 2]), (100_000, 2))
+        y = np.broadcast_to(3, (len(X),))
+        for labels in (None, y):
+            tracemalloc.start()
+            try:
+                first = next(ArrayStreamer(shuffle=False).iter(X, labels))
+                _, peak = tracemalloc.get_traced_memory()
+            finally:
+                tracemalloc.stop()
+
+            # Materializing 100,000 indices requires several megabytes.
+            assert peak < 100_000
+            if labels is None:
+                np.testing.assert_array_equal(first, [1, 2])
+            else:
+                np.testing.assert_array_equal(first[0], [1, 2])
+                assert first[1] == 3
+
+    def test_array_streamer_seeded_row_order(self):
+        """Seeded shuffling preserves the permutation and feature-label pairing."""
+        from pysad.utils import ArrayStreamer
+
+        X = np.arange(12).reshape(6, 2)
+        y = np.arange(6)
+        expected = [0, 1, 5, 2, 4, 3]
+        streamer = ArrayStreamer(shuffle=True, random_state=42)
+
+        np.testing.assert_array_equal(list(streamer.iter(X)), X[expected])
+        rows = list(streamer.iter(X, y))
+        np.testing.assert_array_equal([row for row, _ in rows], X[expected])
+        np.testing.assert_array_equal([label for _, label in rows], y[expected])
+
     def test_array_streamer_length_mismatch(self):
         """Test ArrayStreamer rejects labels of a different length."""
         import pytest
@@ -330,3 +425,107 @@ class TestArrayStreamer:
 
         assert default == list(ArrayStreamer(shuffle=True, random_state=4).iter(X))
         assert default != list(ArrayStreamer(shuffle=True, random_state=8).iter(X))
+
+
+class TestPlotStream:
+    """Tests for plot_stream."""
+
+    def _use_agg_backend(self):
+        import matplotlib
+
+        matplotlib.use("Agg")
+
+    def test_plot_stream_returns_figure_and_three_axes(self):
+        """plot_stream returns a figure and three axes."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        rng = np.random.default_rng(0)
+        X = rng.normal(size=(50, 2))
+        scores = rng.random(50)
+
+        fig, axes = plot_stream(X, scores)
+
+        assert len(axes) == 3
+        assert len(fig.axes) == 3
+        plt.close(fig)
+
+    def test_plot_stream_draws_score_and_threshold_lines(self):
+        """With a threshold, the scores panel shows the score line and the threshold line."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+
+        _, axes = plot_stream(scores.reshape(-1, 1), scores)
+
+        assert len(axes[1].get_lines()) == 1
+
+        _, axes = plot_stream(scores.reshape(-1, 1), scores, threshold=0.5)
+
+        assert len(axes[1].get_lines()) == 2
+        threshold_line = axes[1].get_lines()[1]
+        assert threshold_line.get_ydata()[0] == 0.5
+
+        plt.close("all")
+
+    def test_plot_stream_draws_confidence_band(self):
+        """With lower and upper bounds, the scores panel shows the confidence band."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+        lower = scores - 0.1
+        upper = scores + 0.1
+
+        _, axes = plot_stream(scores.reshape(-1, 1), scores, lower=lower, upper=upper)
+
+        assert len(axes[1].collections) >= 1
+
+        plt.close("all")
+
+    def test_plot_stream_draws_alert_spikes(self):
+        """With alerts and labels, the alerts panel shows the spikes."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+        alerts = np.array([2])
+        labels = np.array([0, 0, 0, 0, 1])
+
+        _, axes = plot_stream(scores.reshape(-1, 1), scores, alerts=alerts, labels=labels)
+
+        assert len(axes[2].collections) >= 1
+
+        plt.close("all")
+
+    def test_plot_stream_without_optional_args(self):
+        """plot_stream works with only the features and the scores."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.utils import plot_stream
+
+        rng = np.random.default_rng(0)
+        X = rng.normal(size=(20, 3))
+        scores = rng.random(20)
+
+        fig, axes = plot_stream(X, scores)
+
+        assert len(axes[0].get_lines()) == 3
+        assert len(axes[1].get_lines()) == 1
+
+        plt.close(fig)

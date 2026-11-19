@@ -5,27 +5,19 @@ The :mod:`pysad.transform.postprocessing` module includes postprocessors to tran
 from .postprocessors import (
     AveragePostprocessor,
     MaxPostprocessor,
+    MedianPostprocessor,
+    NonparametricDynamicThresholdPostprocessor,
     QuantileFilter,
     ThresholdFilter,
     ZScorePostprocessor,
-)
-from .running_postprocessors import (
-    NonparametricDynamicThresholdPostprocessor,
-    RunningAveragePostprocessor,
-    RunningMaxPostprocessor,
-    RunningMedianPostprocessor,
-    RunningZScorePostprocessor,
 )
 
 __all__ = [
     "AveragePostprocessor",
     "MaxPostprocessor",
+    "MedianPostprocessor",
     "NonparametricDynamicThresholdPostprocessor",
     "QuantileFilter",
-    "RunningAveragePostprocessor",
-    "RunningMaxPostprocessor",
-    "RunningMedianPostprocessor",
-    "RunningZScorePostprocessor",
     "ThresholdFilter",
     "ZScorePostprocessor",
 ]

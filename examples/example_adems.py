@@ -7,6 +7,7 @@ from pysad.utils import ArrayStreamer, Data
 if __name__ == "__main__":
     X, y = Data().get_data("arrhythmia.mat")
 
+    # No threshold: the initial stream instances bootstrap the sketch.
     model = ADeMS()
     metric = AUROCMetric()
 

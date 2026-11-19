@@ -145,3 +145,29 @@ def test_duplicate_instances_stay_finite_through_repeated_summaries():
     assert np.isfinite(scores).all()
     assert np.isfinite(probes).all()
     assert probes[2] > probes[0]
+
+
+@pytest.mark.parametrize("scale", [1e-12, 1e-6, 1e6])
+def test_scores_and_skipping_do_not_depend_on_the_unit_of_the_values(scale):
+    from pysad.models import DILOF
+
+    rng = np.random.RandomState(0)
+    X = rng.normal(size=(600, 2))
+    X[[300, 301, 302, 450]] += 8.0
+
+    # The window of 60 is summarized several times, and the outliers start the skipping scheme.
+    model = DILOF(num_neighbors=5, window_size=60)
+    scaled_model = DILOF(num_neighbors=5, window_size=60)
+    skipped = []
+    for instance in X:
+        model.fit_partial(instance)
+        scaled_model.fit_partial(scale * instance)
+        skipped.append((model._last_outlier is None, scaled_model._last_outlier is None))
+
+    assert any(not unscaled for unscaled, _ in skipped)
+    assert all(unscaled == scaled for unscaled, scaled in skipped)
+    np.testing.assert_allclose(
+        scaled_model.X_[: scaled_model.num_instances_], scale * model.X_[: model.num_instances_]
+    )
+    probes = rng.normal(size=(20, 2))
+    np.testing.assert_allclose(scaled_model.score(scale * probes), model.score(probes), rtol=1e-9)

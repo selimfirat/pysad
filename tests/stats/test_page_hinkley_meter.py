@@ -58,8 +58,9 @@ def test_negative_delta_is_rejected():
 
 
 def test_remove_is_not_supported():
-    meter = PageHinkleyMeter()
-    meter.update(1.0)
+    from pysad.statistics import RunningStatistic
 
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+    meter = PageHinkleyMeter()
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(PageHinkleyMeter, window_size=10)

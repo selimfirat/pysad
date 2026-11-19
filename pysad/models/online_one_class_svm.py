@@ -33,6 +33,8 @@ class OnlineOneClassSVM(BaseModel):
         gamma: float | None = None,
         window_size: int = 1000,
     ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
         if not (0.0 < nu <= 1.0 and 0.0 < learning_rate < 1.0):
             raise ValueError(
                 f"nu must be in (0, 1] and learning_rate in (0, 1), got nu={nu} and learning_rate={learning_rate}."

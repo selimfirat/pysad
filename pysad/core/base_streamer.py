@@ -1,12 +1,15 @@
 import abc
 from abc import abstractmethod
 from collections.abc import Iterator
-from typing import Any, overload
+from typing import Any, Generic, TypeVar, overload
 
-import numpy as np
+from numpy.typing import NDArray
+
+_Features = TypeVar("_Features")
+_Labels = TypeVar("_Labels")
 
 
-class BaseStreamer(abc.ABC):
+class BaseStreamer(abc.ABC, Generic[_Features, _Labels]):
     """Abstract base class to simulate the streaming data.
 
     Args:
@@ -17,19 +20,19 @@ class BaseStreamer(abc.ABC):
         self.shuffle = shuffle
 
     @overload
-    def iter(self, X: np.ndarray, y: None = None) -> Iterator[np.ndarray]: ...
+    def iter(self, X: _Features, y: None = None) -> Iterator[NDArray[Any]]: ...
 
     @overload
-    def iter(self, X: np.ndarray, y: np.ndarray) -> Iterator[tuple[np.ndarray, Any]]: ...
+    def iter(self, X: _Features, y: _Labels) -> Iterator[tuple[NDArray[Any], Any]]: ...
 
     @abstractmethod
     def iter(
-        self, X: np.ndarray, y: np.ndarray | None = None
-    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
+        self, X: _Features, y: _Labels | None = None
+    ) -> Iterator[NDArray[Any] | tuple[NDArray[Any], Any]]:
         """Method that iterates array of data and (optionally) labels.
 
         Args:
-            X (np.array of shape (num_instances, num_features)): The features of instances to iterate.
-            y (np.array of shape (num_instances,) or None): If not None, the labels to iterate in the same order (Default=None).
+            X: Feature rows in the container that the streamer supports.
+            y: Labels in the same row order, or None (Default=None).
         """
         pass

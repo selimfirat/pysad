@@ -41,7 +41,7 @@ def test_reference_window(test_path):
     from sklearn.utils import shuffle
 
     from pysad.evaluation import AUROCMetric
-    from pysad.models.integrations import ReferenceWindowModel
+    from pysad.integrations import ReferenceWindowModel
     from pysad.utils import ArrayStreamer, Data
 
     data = Data(os.path.join(test_path, "../../examples/data"))
@@ -81,7 +81,7 @@ def test_one_fit(test_path):
     from sklearn.utils import shuffle
 
     from pysad.evaluation import AUROCMetric
-    from pysad.models.integrations.one_fit_model import OneFitModel
+    from pysad.integrations import OneFitModel
     from pysad.utils import ArrayStreamer, Data
 
     data = Data(os.path.join(test_path, "../../examples/data"))
@@ -112,7 +112,7 @@ def test_one_fit_model_basic():
     import numpy as np
     from pyod.models.iforest import IForest
 
-    from pysad.models.integrations.one_fit_model import OneFitModel
+    from pysad.integrations import OneFitModel
 
     # Create test data
     np.random.seed(42)
@@ -139,7 +139,7 @@ def test_reference_window_model_with_labels():
     import numpy as np
     from pyod.models.iforest import IForest
 
-    from pysad.models.integrations.reference_window_model import ReferenceWindowModel
+    from pysad.integrations import ReferenceWindowModel
 
     # Create test data with labels
     np.random.seed(42)
@@ -175,7 +175,7 @@ def test_reference_window_model_window_update():
     import numpy as np
     from pyod.models.iforest import IForest
 
-    from pysad.models.integrations.reference_window_model import ReferenceWindowModel
+    from pysad.integrations import ReferenceWindowModel
 
     # Test with small window and sliding size for easier testing
     np.random.seed(42)
@@ -209,7 +209,7 @@ def test_reference_window_model_issue_23_fix():
     import numpy as np
     from pyod.models.iforest import IForest
 
-    from pysad.models.integrations.reference_window_model import ReferenceWindowModel
+    from pysad.integrations import ReferenceWindowModel
 
     # Setup from issue #23
     window_size = 4
@@ -268,7 +268,7 @@ def test_reference_window_model_issue_25_fix():
     import numpy as np
     from pyod.models.iforest import IForest
 
-    from pysad.models.integrations.reference_window_model import ReferenceWindowModel
+    from pysad.integrations import ReferenceWindowModel
 
     window_size = 4
     sliding_size = 2
@@ -353,7 +353,7 @@ def test_one_fit_model_batch_score_and_fit_score():
     import numpy as np
     from pyod.models.iforest import IForest
 
-    from pysad.models.integrations import OneFitModel
+    from pysad.integrations import OneFitModel
 
     rng = np.random.default_rng(42)
     initial_X = rng.random((30, 3))
@@ -375,7 +375,7 @@ def test_reference_window_model_batch_score_and_fit_score():
     import numpy as np
     from pyod.models.iforest import IForest
 
-    from pysad.models.integrations import ReferenceWindowModel
+    from pysad.integrations import ReferenceWindowModel
 
     rng = np.random.default_rng(42)
     X = rng.random((25, 3))
@@ -484,7 +484,7 @@ def test_reference_window_model_pickle_round_trip():
     import numpy as np
     from pyod.models.iforest import IForest
 
-    from pysad.models.integrations import ReferenceWindowModel
+    from pysad.integrations import ReferenceWindowModel
 
     rng = np.random.default_rng(0)
     initial_X = rng.random((16, 3))
@@ -514,7 +514,7 @@ def test_one_fit_model_pickle_round_trip():
     import numpy as np
     from pyod.models.knn import KNN
 
-    from pysad.models.integrations import OneFitModel
+    from pysad.integrations import OneFitModel
 
     rng = np.random.default_rng(0)
     initial_X = rng.random((30, 3))
@@ -527,3 +527,51 @@ def test_one_fit_model_pickle_round_trip():
     original_scores = [model.fit_score_partial(x) for x in X]
     restored_scores = [restored.fit_score_partial(x) for x in X]
     np.testing.assert_allclose(restored_scores, original_scores)
+
+
+def test_sklearn_outlier_estimators_score_higher_for_anomalies():
+    """Native scikit-learn OutlierMixin estimators work in OneFitModel and ReferenceWindowModel
+    with negated decision_function so higher scores mean more anomalous."""
+    import numpy as np
+    from sklearn.ensemble import IsolationForest
+    from sklearn.neighbors import LocalOutlierFactor
+    from sklearn.svm import OneClassSVM
+
+    from pysad.integrations import OneFitModel, ReferenceWindowModel
+
+    rng = np.random.default_rng(0)
+    inliers = rng.normal(loc=0.0, scale=0.2, size=(60, 2))
+    stream = np.vstack([rng.normal(loc=0.0, scale=0.2, size=(12, 2)), [[8.0, 8.0], [-8.0, -8.0]]])
+
+    one_fit_svm = OneFitModel(OneClassSVM, initial_X=inliers, gamma="scale", nu=0.05)
+    svm_batch = one_fit_svm.fit_score(stream)
+    svm_partial = np.array([one_fit_svm.score_partial(xi) for xi in stream])
+    np.testing.assert_allclose(svm_batch, svm_partial, rtol=1e-12, atol=1e-12)
+    assert svm_batch[-2:].min() > svm_batch[:-2].max()
+
+    one_fit_lof = OneFitModel(
+        LocalOutlierFactor, initial_X=inliers, n_neighbors=10, novelty=True, contamination=0.05
+    )
+    lof_scores = one_fit_lof.score(stream)
+    assert lof_scores[-2:].min() > lof_scores[:-2].max()
+
+    rw_iforest_batch = ReferenceWindowModel(
+        IsolationForest,
+        window_size=32,
+        sliding_size=8,
+        initial_window_X=inliers,
+        n_estimators=25,
+        random_state=0,
+    )
+    rw_iforest_partial = ReferenceWindowModel(
+        IsolationForest,
+        window_size=32,
+        sliding_size=8,
+        initial_window_X=inliers,
+        n_estimators=25,
+        random_state=0,
+    )
+    batch_scores = rw_iforest_batch.fit_score(stream)
+    partial_scores = np.array([rw_iforest_partial.fit_score_partial(xi) for xi in stream])
+    np.testing.assert_allclose(batch_scores, partial_scores, rtol=1e-12, atol=1e-12)
+    assert batch_scores[-2:].min() > batch_scores[:-2].max()

@@ -103,8 +103,9 @@ def test_levels_out_of_order_are_rejected():
 
 
 def test_remove_is_not_supported():
-    meter = DDMMeter()
-    meter.update(1.0)
+    from pysad.statistics import RunningStatistic
 
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+    meter = DDMMeter()
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(DDMMeter, window_size=10)

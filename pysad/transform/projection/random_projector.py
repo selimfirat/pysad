@@ -4,6 +4,7 @@ from abc import abstractmethod
 from typing import Any, Literal, cast
 
 import numpy as np
+from scipy.sparse import issparse
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
 
 from pysad.core.base_transformer import BaseTransformer
@@ -67,6 +68,14 @@ class BaseSKLearnProjector(BaseTransformer):
             np.float64 array of shape (num_instances, num_components): Projected feature vectors.
         """
         self.fit(X)
+        if isinstance(X, np.ndarray) and X.ndim == 2:
+            if len(X) == 0:
+                return np.empty((0, self.output_dims), dtype=np.float64)
+            assert self._components is not None
+            if issparse(self._components):
+                return np.asarray(self._components.dot(X.T).T, dtype=np.float64)
+            with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+                return np.asarray(X @ self._components.T, dtype=np.float64)
 
         return super().transform(X)
 

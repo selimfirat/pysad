@@ -15,7 +15,7 @@ def test_one_feature_stream_maps_to_one_autoencoder():
 
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit(X)
 
-    assert model.model.v == [[0]]
+    assert model.feature_map_ == [[0]]
     assert np.isfinite(model.score(X)).all()
 
 
@@ -71,13 +71,13 @@ def test_grace_periods_last_the_given_numbers_of_instances():
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=7, random_state=0)
 
     model.fit(X[:5])
-    assert model.model.FM.N == 5
+    assert model.model.fm.n_updates == 5
     assert model.model.temporary
 
     model.fit(X[5:])
-    assert model.model.FM.N == 5
+    assert model.model.fm.n_updates == 5
     assert not model.model.temporary
-    assert model.model.outputLayer.n == 7
+    assert model.model.output_layer.n_trained == 7
 
 
 def _break_recursively(dendro, max_size):
@@ -94,14 +94,14 @@ def _break_recursively(dendro, max_size):
 def test_feature_mapping_matches_the_recursive_split(seed, max_size):
     from scipy.cluster.hierarchy import linkage, to_tree
 
-    from pysad.models.kitnet_model.corClust import corClust
+    from pysad.models.kitnet import _CorClust
 
     rng = np.random.RandomState(seed)
     X = rng.rand(30, 60) @ rng.rand(60, 60)
-    clusterer = corClust(X.shape[1])
+    clusterer = _CorClust(X.shape[1])
     for x in X:
         clusterer.update(x)
-    D = clusterer.corrDist()
+    D = clusterer.corr_dist()
     dendro = to_tree(linkage(D[np.triu_indices(X.shape[1], 1)]))
 
     assert clusterer.cluster(max_size) == _break_recursively(dendro, max_size)
@@ -115,8 +115,8 @@ def test_feature_mapping_of_a_wide_stream_does_not_recurse():
 
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit(X)
 
-    assert sorted(i for cluster in model.model.v for i in cluster) == list(range(2000))
-    assert all(len(cluster) <= 10 for cluster in model.model.v)
+    assert sorted(i for cluster in model.feature_map_ for i in cluster) == list(range(2000))
+    assert all(len(cluster) <= 10 for cluster in model.feature_map_)
 
 
 def test_default_grace_periods_score_a_short_stream():
@@ -128,27 +128,27 @@ def test_default_grace_periods_score_a_short_stream():
     # Only the first instance has no autoencoders to score it.
     assert scores[0] == 0.0
     assert (scores[1:] > 0.0).all()
-    assert not model.model.inGrace()
+    assert not model.model.in_grace()
 
 
 def test_temporary_autoencoders_do_not_change_the_final_model():
     """During the feature mapping, temporary autoencoders are built at 1, 2, 4, ... instances.
     After it, the autoencoders are built again on the final mapping and train on the same
     instances as a KitNET that is given that mapping, so the two score the same."""
-    from pysad.models.kitnet_model.KitNET import KitNET
+    from pysad.models.kitnet import _KitNET
 
     X = _stream(num_instances=30)
-    model = KitNET(3, 2, FM_grace_period=8, AD_grace_period=8, random_state=0)
+    model = _KitNET(3, 2, fm_grace_period=8, ad_grace_period=8, random_state=0)
     built = []
-    create = model.__createAD__
-    model.__createAD__ = lambda m, temporary: (
+    create = model._create_autoencoders
+    model._create_autoencoders = lambda m, temporary: (
         built.append(model.n_trained + 1),
         create(m, temporary),
     )
     for x in X[:16]:
         model.train(x)
-    given_map = KitNET(
-        3, 2, FM_grace_period=0, AD_grace_period=8, feature_map=model.v, random_state=0
+    given_map = _KitNET(
+        3, 2, fm_grace_period=0, ad_grace_period=8, feature_map=model.feature_map, random_state=0
     )
     for x in X[8:16]:
         given_map.train(x)
@@ -157,3 +157,108 @@ def test_temporary_autoencoders_do_not_change_the_final_model():
     assert not model.temporary
     for x in X[16:]:
         assert model.execute(x) == given_map.execute(x)
+
+
+def test_kitnet_explain_returns_per_feature_weights():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+    model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
+
+    weights = model.explain_partial(X[101])
+
+    assert weights.shape == (4,)
+    assert np.all(weights >= 0.0)
+    assert abs(weights.sum() - 1.0) < 1e-12
+    assert weights.dtype == np.float64
+
+
+def test_kitnet_explain_does_not_change_state():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+    model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
+
+    before = model.score_partial(X[101])
+    model.explain_partial(X[101])
+    after = model.score_partial(X[101])
+
+    assert before == after
+
+
+def test_kitnet_explain_is_reproducible():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+
+    model_a = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0)
+    model_a.fit(X[:100])
+    weights_a = model_a.explain_partial(X[101])
+
+    model_b = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0)
+    model_b.fit(X[:100])
+    weights_b = model_b.explain_partial(X[101])
+
+    np.testing.assert_array_equal(weights_a, weights_b)
+
+
+def test_kitnet_explain_weights_depend_on_the_instance():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+    model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
+
+    normal = model.explain_partial(X[101])
+    outside = model.explain_partial(np.array([100.0, -50.0, 25.0, -200.0]))
+
+    assert not np.allclose(normal, outside)
+
+
+def test_kitnet_explain_returns_zeros_before_any_fit():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0)
+
+    weights = model.explain_partial(np.array([0.3, 0.6, 0.1]))
+
+    assert weights.shape == (3,)
+    assert np.all(weights == 0.0)
+
+
+def test_kitnet_explain_rejects_nan():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+    model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
+
+    anomalous = X[101].copy()
+    anomalous[1] = np.nan
+    with pytest.raises(ValueError, match="KitNet does not accept NaN values"):
+        model.explain_partial(anomalous)
+
+
+def test_custom_hidden_ratio_changes_the_scores():
+    X = _stream(num_features=6)
+
+    scores = KitNet(
+        grace_feature_mapping=5, grace_anomaly_detector=5, hidden_ratio=0.5, random_state=0
+    ).fit_score(X)
+    other = KitNet(
+        grace_feature_mapping=5, grace_anomaly_detector=5, hidden_ratio=0.9, random_state=0
+    ).fit_score(X)
+
+    assert all(isinstance(score, float) for score in scores.tolist())
+    assert np.isfinite(scores).all()
+    assert not np.array_equal(scores, other)

@@ -36,6 +36,8 @@ class D3(BaseModel):
         max_radius: float = 0.01,
         random_state: int | np.random.RandomState | None = None,
     ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
         self.window_size = window_size
         self.sample_fraction = sample_fraction
         self.max_radius = max_radius

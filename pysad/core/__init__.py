@@ -5,6 +5,7 @@ The :mod:`pysad.core` module defines the base classes for metrics, models, postp
 from .base_metric import BaseMetric
 from .base_model import BaseModel
 from .base_postprocessor import BasePostprocessor
+from .base_score_ensembler import BaseScoreEnsembler
 from .base_statistic import BaseStatistic
 from .base_streamer import BaseStreamer
 from .base_transformer import BaseTransformer
@@ -13,6 +14,7 @@ __all__ = [
     "BaseMetric",
     "BaseModel",
     "BasePostprocessor",
+    "BaseScoreEnsembler",
     "BaseStatistic",
     "BaseStreamer",
     "BaseTransformer",

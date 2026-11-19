@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 
 from pysad.core.base_model import BaseModel
@@ -24,6 +26,22 @@ class TEDA(BaseModel):
     - The model returns :math:`\lVert x - \mu_k \rVert^2 / \sigma_k^2` instead of the normalized eccentricity. The paper threshold changes with :math:`k`, so the normalized eccentricities of two points are not comparable. The returned score is above :math:`m^2` exactly when the paper flags the point, so the paper's rule with :math:`m = 3` is the fixed threshold 9.
     - The paper divides by zero when :math:`\sigma_k^2 = 0`, for example at the first point or on a constant stream. The model scores such a point 0.
     """
+
+    __bibtex__: ClassVar[str] = """
+@inproceedings{angelov2014anomaly,
+  title={Anomaly Detection Based on Eccentricity Analysis},
+  author={Angelov, Plamen},
+  booktitle={2014 IEEE Symposium on Evolving and Autonomous Learning Systems (EALS)},
+  pages={1--8},
+  year={2014},
+  doi={10.1109/EALS.2014.7009497}
+}
+"""
+    _detector_doc: ClassVar[tuple[str, str, str]] = (
+        "Eccentricity from the recursive mean and variance :cite:`angelov2014anomaly`",
+        "Nothing",
+        "Fixed: the count, the mean and the variance",
+    )
 
     def __init__(self) -> None:
         self.count_ = 0

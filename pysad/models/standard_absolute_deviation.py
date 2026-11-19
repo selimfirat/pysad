@@ -3,10 +3,9 @@ from __future__ import annotations
 import numpy as np
 
 from pysad.core.base_model import BaseModel
-from pysad.statistics.average_meter import AverageMeter
-from pysad.statistics.median_meter import MedianMeter
+from pysad.statistics.basic import VarianceMeter
+from pysad.statistics.quantiles import MedianMeter
 from pysad.statistics.running_statistic import RunningStatistic
-from pysad.statistics.variance_meter import VarianceMeter
 from pysad.utils.validation import check_univariate
 
 
@@ -38,16 +37,15 @@ class StandardAbsoluteDeviation(BaseModel):
         if window_size < 1:
             raise ValueError("window_size must be at least 1.")
 
+        self.subtracted_statistic = subtracted_statistic
         self.absolute = absolute
         self.variance_meter = VarianceMeter()
         self.window_size = window_size
-        self.sub_meter: AverageMeter | RunningStatistic
+        self.sub_meter: RunningStatistic | None = None
 
         if subtracted_statistic == "median":
             self.sub_meter = RunningStatistic(MedianMeter, window_size=window_size)
-        elif subtracted_statistic == "mean":
-            self.sub_meter = AverageMeter()
-        else:
+        elif subtracted_statistic != "mean":
             raise ValueError("Unknown subtracted_statistic value! Please choose median or mean.")
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> StandardAbsoluteDeviation:
@@ -62,7 +60,8 @@ class StandardAbsoluteDeviation(BaseModel):
         """
         val = check_univariate(X, "StandardAbsoluteDeviation")
         self.variance_meter.update(val)
-        self.sub_meter.update(val)
+        if self.sub_meter is not None:
+            self.sub_meter.update(val)
 
         return self
 
@@ -75,11 +74,11 @@ class StandardAbsoluteDeviation(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        if self.variance_meter.count == 0:  # there is no statistic before the first value
+        if self.variance_meter.count == 0:
             return 0.0
 
         val = check_univariate(X, "StandardAbsoluteDeviation")
-        sub = self.sub_meter.get()
+        sub = self.variance_meter.mean if self.sub_meter is None else self.sub_meter.get()
         dev = self.variance_meter.get() ** 0.5
 
         score = (val - sub) / (dev + 1e-10)

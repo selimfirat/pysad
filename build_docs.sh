@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-cd docs
-#sphinx-apidoc --no-headings --no-toc -f -o . .. ../tests ../setup.py ../pysad/models/kitnet_model ../pysad/version.py
-make clean
-make html
+set -e
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+sphinx-build -M clean "$ROOT/docs" "$ROOT/docs/_build"
+sphinx-build -M html "$ROOT/docs" "$ROOT/docs/_build"

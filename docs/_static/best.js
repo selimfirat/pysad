@@ -1,7 +1,7 @@
 // Makes the best value of each metric column bold in the tables with the class "best-columns".
 // The lowest value is best in a column of ranks or times, and the highest value in the others.
 document.addEventListener("DOMContentLoaded", () => {
-  const metric = /AUROC|AUPR|rank|Time|Standard|Low false alerts|Low misses|Solved|Precision|Recall|F1/;
+  const metric = /AUROC|AUPR|rank|Time|Standard|Low false alerts|Low misses|Solved|Precision|Recall|F1|MCC/;
   for (const table of document.querySelectorAll("table.best-columns")) {
     const headers = [...table.querySelectorAll("thead th")].map((th) => th.textContent);
     const rows = [...table.querySelectorAll("tbody tr")].map((tr) => [...tr.children]);

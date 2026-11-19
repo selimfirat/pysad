@@ -1,7 +1,9 @@
 Calibrators
 ===========
 
-A calibrator turns the scores of a detector into values from 0 to 1, and an alert is a calibrated score at or above a threshold, as :doc:`/guides/alerts` shows. This table compares the two probability calibrators of PySAD on the runs of the multivariate detectors, with their default parameters. The fixed thresholds 0.95, 0.99 and 0.995 give the fraction of normal points that raise an alert. The threshold "1 - anomaly rate" gives as many alerts as there are anomalies. It uses the labels, so it shows the best case. The highest precision, recall and F1 are in bold, and :doc:`methodology` explains how the benchmark counts the alerts. The table has these columns:
+A calibrator turns detector scores into values from 0 to 1. A calibrated score at or above a threshold raises an alert. See :doc:`/guides/alerts` for examples. This table compares the two probability calibrators on multivariate detector runs, with their default parameters.
+
+The fixed thresholds are 0.95, 0.99 and 0.995. The threshold "1 - anomaly rate" uses the labels, which a live stream does not provide. The highest precision, recall, F1 and MCC are in bold. See :doc:`methodology` for the alert rules. The table has these columns:
 
 Expected
    The expected false alert rate, one minus the threshold.
@@ -14,6 +16,13 @@ Range
 
 Precision, Recall and F1
    The fraction of the alerts that are anomalies, the fraction of the anomalies that raised an alert, and their harmonic mean. A run without alerts does not count in the precision, and the cell is empty when no run had alerts.
+
+MCC
+   The mean Matthews correlation coefficient over all valid runs, at the same thresholds as precision and recall.
+   It counts true and false predictions for both classes.
+   A score of 1 means perfect agreement. A score of -1 means complete disagreement.
+   Constant predictions give 0. Invalid runs do not count.
+   An empty cell means that no run has an MCC value. Rerun the benchmark to fill it.
 
 .. csv-table::
    :file: ../benchmark/alerts.csv

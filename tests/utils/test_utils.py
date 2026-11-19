@@ -263,6 +263,24 @@ class TestWindow:
         active = first if second is None else np.vstack([a for a in (first, second) if len(a) > 0])
         assert {tuple(row) for row in active} == {(3.0, 30.0), (4.0, 40.0)}
 
+    @pytest.mark.parametrize("num_appended", [4, 5, 6, 7, 8, 9])
+    def test_ring_buffer_active_slices_after_wraparound(self, num_appended):
+        """After the buffer is full, active_slices drops the item that the next append expires."""
+        from pysad.utils import RingBuffer
+
+        buffer = RingBuffer(window_size=4)
+        values = [float(v) for v in range(1, num_appended + 1)]
+        for value in values:
+            buffer.append(value)
+
+        newer, older, active_count = buffer.active_slices()
+
+        assert active_count == 3
+        assert older is not None
+        assert len(newer) + len(older) == active_count
+        # The oldest stored item, values[-4], expires when the next item arrives.
+        np.testing.assert_array_equal(np.concatenate((older, newer)), values[-3:])
+
     @pytest.mark.parametrize(
         ("first", "mismatched"),
         [(1.0, np.array([2.0])), (np.array([1.0, 2.0]), 3.0)],

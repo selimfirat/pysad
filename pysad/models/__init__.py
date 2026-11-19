@@ -20,6 +20,7 @@ from .gng_a import GNGA
 from .half_space_trees import HalfSpaceTrees
 from .holt_winters import HoltWinters
 from .htm.htm import HTM
+from .idks import IDKS
 from .iforest_asd import IForestASD
 from .incremental_lof import IncrementalLOF
 from .inqmad import Inqmad
@@ -75,6 +76,7 @@ __all__ = [
     "HalfSpaceTrees",
     "HoltWinters",
     "HTM",
+    "IDKS",
     "IForestASD",
     "IncrementalLOF",
     "Inqmad",

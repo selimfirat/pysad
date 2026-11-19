@@ -47,6 +47,7 @@ def _model_specs():
         "HoltWinters": {"period": 4, "threshold": 1},
         "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 256},
         "IForestASD": {"window_size": 32},
+        "IDKS": {"input_shape": NUM_FEATURES, "window_size": 20, "num_samples": 4},
         "IncrementalLOF": {"window_size": 20},
         "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32},
         "KELOS": {"window_size": 20, "radius": 0.3, "num_neighbors": 3},

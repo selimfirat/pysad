@@ -619,3 +619,42 @@ def test_log_loss_metric_running_state():
     for i, (yt, yp) in enumerate(zip(y_true, y_pred, strict=True)):
         metric.update(yt, yp)
         assert np.isclose(metric.get(), expected_means[i])
+
+
+@pytest.mark.parametrize(
+    "metric_cls",
+    [
+        "AUROCMetric",
+        "AUPRMetric",
+        "PrecisionMetric",
+        "RecallMetric",
+        "F1Metric",
+        "BalancedAccuracyMetric",
+        "MatthewsCorrelationMetric",
+    ],
+)
+def test_metrics_empty_batch(metric_cls):
+    """Verify update_batch with empty sequences preserves metric state and value."""
+    import copy
+    import numpy as np
+
+    import pysad.evaluation as pe
+
+    cls = getattr(pe, metric_cls)
+    metric = cls()
+
+    metric.update(1, 1)
+    metric.update(0, 0)
+    metric.update(1, 0)
+
+    val_before = metric.get()
+    state_before = copy.deepcopy(metric.__dict__)
+
+    metric.update_batch([], [])
+    assert metric.get() == val_before
+    assert metric.__dict__ == state_before
+
+    metric.update_batch(np.array([], dtype=int), np.array([], dtype=float))
+    assert metric.get() == val_before
+    assert metric.__dict__ == state_before
+

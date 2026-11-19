@@ -111,33 +111,52 @@ class SpatialPooler:
         self.active_duty_cycles_ = np.zeros(self.num_columns)
         self.min_overlap_duty_cycles_ = np.zeros(self.num_columns)
         self.boost_factors_ = np.ones(self.num_columns)
+        self._deltas = np.full(self.num_inputs, -self.permanence_decrement)
         self.num_learned_ = 0
 
     def compute(self, x: np.ndarray, learn: bool = True) -> np.ndarray:
         """Returns the sorted indices of the active columns for the boolean input `x` of shape (num_inputs,), and learns from it if `learn` is True."""
-        overlaps = self.connected_[:, x].sum(axis=1)  # (num_columns,)
-        boosted = self.boost_factors_ * overlaps if learn else overlaps
-        # A stable sort puts the larger column index last among ties, so it wins them.
-        winners = np.argsort(boosted, kind="stable")[-self.num_active :]
-        active = np.sort(winners[boosted[winners] >= self.stimulus_threshold])
+        active_inputs = np.flatnonzero(x)
+        overlaps = (
+            self.connected_[:, active_inputs].sum(axis=1)
+            if active_inputs.size
+            else np.zeros(self.num_columns, dtype=np.intp)
+        )
+        boosted = (
+            self.boost_factors_ * overlaps if (learn and self.boost_strength != 0.0) else overlaps
+        )
+        # Among ties at the cutoff, the columns with the largest indices win.
+        k = self.num_active
+        cutoff = boosted[np.argpartition(boosted, -k)[-k]]
+        above = np.flatnonzero(boosted > cutoff)
+        if above.size == k:
+            winners = above
+        else:
+            ties = np.flatnonzero(boosted == cutoff)[-(k - above.size) :]
+            winners = np.concatenate((above, ties)) if above.size else ties
+        active = winners[boosted[winners] >= self.stimulus_threshold]
+        if 0 < above.size < k and active.size > 1:
+            active.sort()
         if not learn:
             return active
 
         self.num_learned_ += 1
-        deltas = np.where(x, self.permanence_increment, -self.permanence_decrement)  # (num_inputs,)
+        deltas = self._deltas
+        deltas[active_inputs] = self.permanence_increment
         self._set_permanences(
             active,
             self.permanences_[active] + deltas * self.potential_[active],
             raise_to_threshold=True,
         )
+        deltas[active_inputs] = -self.permanence_decrement
 
         period = min(self.duty_cycle_period, self.num_learned_)
-        is_active = np.zeros(self.num_columns)
-        is_active[active] = 1.0
-        self.overlap_duty_cycles_ = (
-            self.overlap_duty_cycles_ * (period - 1) + (overlaps > 0)
-        ) / period
-        self.active_duty_cycles_ = (self.active_duty_cycles_ * (period - 1) + is_active) / period
+        self.overlap_duty_cycles_ *= period - 1
+        self.overlap_duty_cycles_[overlaps > 0] += 1.0
+        self.overlap_duty_cycles_ /= period
+        self.active_duty_cycles_ *= period - 1
+        self.active_duty_cycles_[active] += 1.0
+        self.active_duty_cycles_ /= period
 
         weak = np.flatnonzero(self.overlap_duty_cycles_ < self.min_overlap_duty_cycles_)
         if weak.size:
@@ -146,9 +165,10 @@ class SpatialPooler:
                 self.permanences_[weak] + self._bump * self.potential_[weak],
                 raise_to_threshold=False,
             )
-        self.boost_factors_ = np.exp(
-            (self.target_density - self.active_duty_cycles_) * self.boost_strength
-        )
+        if self.boost_strength != 0.0:
+            np.subtract(self.target_density, self.active_duty_cycles_, out=self.boost_factors_)
+            self.boost_factors_ *= self.boost_strength
+            np.exp(self.boost_factors_, out=self.boost_factors_)
         if self.num_learned_ % _UPDATE_PERIOD == 0:
             self.min_overlap_duty_cycles_.fill(
                 self.min_overlap_duty_cycle * self.overlap_duty_cycles_.max()

@@ -1,7 +1,7 @@
 Build a pipeline
 ================
 
-A pipeline adds stages before and after the detector. Each stage is an object that learns from the stream. You call each stage once per point, in the same loop as the detector. :doc:`/concepts` shows the stages in order.
+A pipeline applies preprocessing, detection and postprocessing to each point. :doc:`/concepts` explains the stages.
 
 The examples on this page use the ``arrhythmia`` benchmark dataset, which has 274 features:
 
@@ -20,14 +20,14 @@ This pipeline scales each point to length 1, projects it to 20 features, scores 
 .. code-block:: python
 
    from pysad.models import LODA
-   from pysad.transform.postprocessing import RunningAveragePostprocessor
+   from pysad.transform.postprocessing import AveragePostprocessor
    from pysad.transform.preprocessing import InstanceUnitNormScaler
    from pysad.transform.projection import GaussianRandomProjector
 
    scaler = InstanceUnitNormScaler()
    projector = GaussianRandomProjector(num_components=20, random_state=0)
    model = LODA(random_state=0)
-   smoother = RunningAveragePostprocessor(window_size=5)
+   smoother = AveragePostprocessor(window_size=5)
 
    for x in streamer.iter(X):
        x = scaler.fit_transform_partial(x)
@@ -35,14 +35,14 @@ This pipeline scales each point to length 1, projects it to 20 features, scores 
        score = model.fit_score_partial(x)
        score = smoother.fit_transform_partial(score)
 
-Preprocessors and projectors return a NumPy array, and postprocessors return a ``float``. Each ``fit_transform_partial`` call updates the stage with its input and then transforms the input. :class:`~pysad.transform.preprocessing.ShingleTransformer` is the exception, as the next section explains.
+Preprocessors and projectors return NumPy arrays. Postprocessors return ``float`` values. ``fit_transform_partial`` fits before transforming, except for :class:`~pysad.transform.preprocessing.ShingleTransformer`, described below.
 
-If the points have many features, project them to fewer features. A detector needs less time per point on fewer features. Random projections keep the distances between points approximately the same.
+Projecting to fewer features reduces detection cost. Random projections approximately preserve distances.
 
 Give a detector the recent history
 ----------------------------------
 
-A detector of single points sees only the values of each point. But many anomalies of a time series are a normal value at the wrong time, for example a high value at night. :class:`~pysad.transform.preprocessing.ShingleTransformer` turns each point into a shingle, the last ``shingle_size`` points side by side, so that the detector sees the recent pattern:
+Some anomalies depend on context, such as a high value at night. :class:`~pysad.transform.preprocessing.ShingleTransformer` concatenates the latest ``shingle_size`` points into one vector so the detector sees recent patterns:
 
 .. code-block:: python
 
@@ -59,21 +59,20 @@ A detector of single points sees only the values of each point. But many anomali
        shingle = shingler.fit_transform_partial(np.array([value]))  # the last 24 values
        score = model.fit_score_partial(shingle)
 
-Choose ``shingle_size`` so that a shingle holds a typical pattern, for example one period of a seasonal series. ``fit_transform_partial`` of this stage builds the shingle first and then adds the point to its history, so a shingle holds only the point and the points before it.
+Set ``shingle_size`` to cover a typical pattern, such as one seasonal period. This stage’s ``fit_transform_partial`` builds the shingle before updating its history, using the current and earlier points.
 
 Chain the stages into one model
 -------------------------------
 
-:class:`~pysad.models.StreamPipeline` runs the same loop in one model. It has the methods of a detector, so it goes where a detector goes, for example into an evaluation loop or an ensemble:
+The ``|`` operator builds a :class:`~pysad.models.StreamPipeline` with the detector interface. Use it in evaluation loops or ensembles:
 
 .. code-block:: python
 
-   from pysad.models import LODA, StreamPipeline
-
-   pipeline = StreamPipeline(
-       model=LODA(random_state=0),
-       preprocessors=[InstanceUnitNormScaler(), GaussianRandomProjector(num_components=20, random_state=0)],
-       postprocessors=[RunningAveragePostprocessor(window_size=5)],
+   pipeline = (
+       InstanceUnitNormScaler()
+       | GaussianRandomProjector(num_components=20, random_state=0)
+       | LODA(random_state=0)
+       | AveragePostprocessor(window_size=5)
    )
 
    for x in streamer.iter(X):
@@ -84,7 +83,7 @@ Chain the stages into one model
 Use a PySAD model in River
 --------------------------------
 
-:class:`~pysad.integrations.RiverAnomalyDetector` exposes a PySAD model through River's ``learn_one`` and ``score_one`` methods. It requires Python 3.11 or newer and works as the final stage of a River pipeline:
+:class:`~pysad.integrations.RiverAnomalyDetector` exposes a PySAD model through River's ``learn_one`` and ``score_one`` methods. It works as the final stage of a River pipeline:
 
 .. code-block:: python
 
@@ -102,45 +101,42 @@ Use a PySAD model in River
        score = pipeline.score_one(features)
        pipeline.learn_one(features)
 
-Call ``score_one`` before ``learn_one`` for each point. The wrapper scores without fitting the PySAD model, and preserves its score range and warm-up behavior. River controls when the other pipeline stages learn.
+Call ``score_one`` before ``learn_one``. The wrapper preserves PySAD’s score range and warm-up behavior. River controls learning in the other stages.
 
-The first dictionary fixes the feature order. Later dictionaries may list the keys in any order, but missing or new keys raise ``ValueError``. Pass ``feature_names`` to set the column order explicitly, for example ``feature_names=("cpu", "latency")``. The feature mapping stays fixed in size as the stream grows.
+The first dictionary fixes feature order and mapping size. Later dictionaries can list the keys in any order, but missing or new keys raise ``ValueError``. Set the order explicitly with ``feature_names``, for example ``feature_names=("cpu", "latency")``.
 
-Pass a model class, such as ``RiverAnomalyDetector(LODA)``, or a zero-argument factory that creates a fresh model with custom parameters, as above. The adapter exposes the created model as ``model_``. River's ``clone()`` returns an untrained adapter, resetting inferred feature names and retaining explicit ones. Use ``clone(include_attributes=True)`` to copy both learned state and feature mapping, including in pipelines.
+Pass a model class, such as ``RiverAnomalyDetector(LODA)``, or a zero-argument factory as above. Access the model as ``model_``. River’s ``clone()`` resets training and inferred feature names, retaining explicit names. ``clone(include_attributes=True)`` copies learned state and feature mapping, including in pipelines.
 
 See ``examples/example_river_pipeline.py`` for a complete evaluation loop.
 
 Combine several detectors
 -------------------------
 
-An ensemble combines the scores of several detectors into one score. It is usually more stable than each of its detectors.
+An ensemble combines the scores of several detectors into one score. Compare its performance with the individual detectors on your data, as :doc:`evaluate` shows.
 
-The raw scores of different detectors have different scales. Before you combine the scores, normalize the scores of each detector. This example uses a running z-score, the distance from the recent mean in standard deviations:
+Normalize each detector’s scores with a windowed :class:`~pysad.transform.postprocessing.ZScorePostprocessor`, then combine pipelines with ``&``. Use :class:`~pysad.models.ModelEnsemble` for a custom ensembler:
 
 .. code-block:: python
 
-   import numpy as np
-
-   from pysad.models import LODA, RSHash, xStream
-   from pysad.transform.ensemble import AverageScoreEnsembler
-   from pysad.transform.postprocessing import RunningZScorePostprocessor
+   from pysad.models import LODA, ModelEnsemble, RSHash, xStream
+   from pysad.transform.ensemble import MaximumScoreEnsembler
+   from pysad.transform.postprocessing import ZScorePostprocessor
    from pysad.utils import get_minmax_array
 
    mins, maxes = get_minmax_array(X)
-   models = [
-       LODA(random_state=0),
-       xStream(random_state=0),
-       RSHash(feature_mins=mins, feature_maxes=maxes, random_state=0),
-   ]
-   normalizers = [RunningZScorePostprocessor(window_size=500) for _ in models]
-   ensembler = AverageScoreEnsembler()
+   ensemble = (
+       (LODA(random_state=0) | ZScorePostprocessor(window_size=500))
+       & (xStream(random_state=0) | ZScorePostprocessor(window_size=500))
+       & (
+           RSHash(feature_mins=mins, feature_maxes=maxes, random_state=0)
+           | ZScorePostprocessor(window_size=500)
+       )
+   )
 
    for x in streamer.iter(X):
-       scores = np.array([
-           normalizer.fit_transform_partial(model.fit_score_partial(x))
-           for model, normalizer in zip(models, normalizers)
-       ])
-       score = ensembler.fit_transform_partial(scores)
+       score = ensemble.fit_score_partial(x)
+
+   max_ensemble = ModelEnsemble(ensemble.models, ensembler=MaximumScoreEnsembler())
 
 PySAD has five ensemblers in :mod:`pysad.transform.ensemble`:
 
@@ -165,7 +161,7 @@ For the last two ensemblers, the number of detectors must be a multiple of ``n_b
 Track running statistics
 ------------------------
 
-A meter tracks one statistic of a stream of values, for example the mean of the scores. The meters are in :mod:`pysad.statistics`. Each meter has ``update``, ``remove`` and ``get``. :class:`~pysad.statistics.RunningStatistic` applies a meter to a window of recent values and has ``update`` and ``get``:
+Meters in :mod:`pysad.statistics` track statistics with ``update``, ``remove`` and ``get``. :class:`~pysad.statistics.RunningStatistic` applies a meter to a recent window using ``update`` and ``get``:
 
 .. code-block:: python
 

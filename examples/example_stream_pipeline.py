@@ -2,7 +2,7 @@
 
 from pysad.evaluation import AUROCMetric
 from pysad.models import StreamPipeline, xStream
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import InstanceUnitNormScaler
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import ArrayStreamer, Data
@@ -14,7 +14,7 @@ if __name__ == "__main__":
         model=xStream(random_state=0),
         preprocessors=[InstanceUnitNormScaler()],
         postprocessors=[
-            RunningZScorePostprocessor(window_size=100),
+            ZScorePostprocessor(window_size=100),
             ConformalProbabilityCalibrator(window_size=300),
         ],
     )

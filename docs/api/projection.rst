@@ -9,8 +9,4 @@ This module holds random projections that reduce the number of features. See :do
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-
-   GaussianRandomProjector
-   SparseRandomProjector
-   StreamhashProjector
-   BaseSKLearnProjector
+   :tail: BaseSKLearnProjector

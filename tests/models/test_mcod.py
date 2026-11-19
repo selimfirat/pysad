@@ -52,3 +52,30 @@ def test_mcod_neighbor_counting():
     assert model.score_partial(np.array([0.0])) == pytest.approx(1 / 5)
     assert model.score_partial(np.array([5.5])) == pytest.approx(4 / 5)
     assert model.score_partial(np.array([20.0])) == 1.0
+
+
+@pytest.mark.parametrize(
+    "model_name",
+    ["CPOD", "D3", "KELOS", "MCOD", "NETS", "OnlineOneClassSVM", "xStream"],
+)
+@pytest.mark.parametrize("window_size", [0, -1])
+def test_non_positive_window_size_raises(model_name, window_size):
+    from pysad import models
+
+    cls = getattr(models, model_name)
+    with pytest.raises(ValueError, match="window_size"):
+        cls(window_size=window_size)
+
+
+def test_mcod_larger_outlier_fraction_gives_higher_scores():
+    import numpy as np
+
+    from pysad.models import MCOD
+
+    X = np.random.RandomState(0).normal(size=(300, 2))
+    few = MCOD(window_size=100, calibration_size=100, outlier_fraction=0.05).fit(X)
+    many = MCOD(window_size=100, calibration_size=100, outlier_fraction=0.5).fit(X)
+
+    # The radius is the 1 - outlier_fraction quantile of the nearest-neighbor distances, so a larger outlier_fraction gives a smaller radius and fewer neighbors.
+    assert many.radius_ < few.radius_
+    assert many.score(X[-50:]).mean() > few.score(X[-50:]).mean()

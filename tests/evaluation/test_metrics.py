@@ -88,7 +88,7 @@ def test_metric_error_handling():
 
     # AUROC should work with both classes
     score = metric.get()
-    assert isinstance(score, (int, float))
+    assert isinstance(score, int | float)
     assert 0.0 <= score <= 1.0
 
 
@@ -292,17 +292,18 @@ def test_precision_recall_without_threshold_on_binary_predictions():
 
 
 def test_precision_recall_without_threshold_reject_scores():
-    """Test PrecisionMetric and RecallMetric do not pick a threshold for scores on their own."""
+    """Test PrecisionMetric and RecallMetric reject continuous scores immediately when threshold is None."""
     import pytest
 
     from pysad.evaluation import PrecisionMetric, RecallMetric
 
     for metric_cls in [PrecisionMetric, RecallMetric]:
         metric = metric_cls()
-        metric.update(1, 0.9)
-        metric.update(0, 0.2)
-        with pytest.raises(ValueError):
-            metric.get()
+        metric.update(1, 1)
+        assert not hasattr(metric, "y_true")
+        with pytest.raises(ValueError, match="y_pred must be 0 or 1"):
+            metric.update(1, 0.9)
+        assert metric.get() == 1.0
 
 
 def test_empty_metric_contract():
@@ -323,6 +324,53 @@ def test_empty_metric_contract():
 
     with pytest.raises(ValueError, match="No samples recorded"):
         AUPRMetric().get()
+
+
+def test_precision_recall_prefixes_match_sklearn():
+    """Every prefix agrees, including undefined ratios and threshold ties."""
+    import pytest
+    from sklearn.metrics import precision_score, recall_score
+
+    from pysad.evaluation import PrecisionMetric, RecallMetric
+
+    labels = [0, 0, 1, 1, 0, 1, 0, 1]
+    for threshold, predictions in [
+        (None, [0, 1, 0, 1, 1, 1, 0, 0]),
+        (0.5, [0.1, 0.5, 0.4, 0.8, 0.7, 0.5, 0.2, 0.3]),
+        (-2.0, [-3.0, -2.0, -2.1, 0.0, 1.0, -2.0, -4.0, -3.0]),
+    ]:
+        classes = predictions if threshold is None else [int(p >= threshold) for p in predictions]
+        for metric_cls, reference in [
+            (PrecisionMetric, precision_score),
+            (RecallMetric, recall_score),
+        ]:
+            metric = metric_cls(threshold=threshold)
+            assert metric.get() == 0.0
+            for end, (label, prediction) in enumerate(zip(labels, predictions, strict=True), 1):
+                assert metric.update(label, prediction) is None
+                expected = reference(labels[:end], classes[:end], zero_division=0)
+                assert metric.get() == pytest.approx(expected)
+                assert metric.get() == pytest.approx(expected)
+
+
+def test_precision_recall_retained_state_is_bounded():
+    """Serialization stays small after a long stream instead of retaining samples."""
+    import pickle
+
+    from pysad.evaluation import PrecisionMetric, RecallMetric
+
+    for metric_cls in [PrecisionMetric, RecallMetric]:
+        metric = metric_cls(threshold=0.5)
+        for _ in range(250):
+            for label, score in [(1, 0.8), (0, 0.7), (1, 0.2), (0, 0.1)]:
+                metric.update(label, score)
+        initial_size = len(pickle.dumps(metric))
+        for _ in range(24750):
+            for label, score in [(1, 0.8), (0, 0.7), (1, 0.2), (0, 0.1)]:
+                metric.update(label, score)
+        # Allow integer counters to grow, but no storage proportional to the stream.
+        assert len(pickle.dumps(metric)) <= initial_size + 64
+        assert metric.get() == 0.5
 
 
 @pytest.mark.parametrize("threshold", [None, 0.5])
@@ -374,3 +422,200 @@ def test_matthews_correlation_rejects_nonbinary_inputs(threshold, label, predict
     with pytest.raises(ValueError):
         metric.update(label, prediction)
     assert metric.get() == 1.0
+
+
+def test_update_batch_matches_sequential_updates_across_all_metrics():
+    import numpy as np
+
+    from pysad.evaluation import (
+        AUPRMetric,
+        AUROCMetric,
+        BalancedAccuracyMetric,
+        F1Metric,
+        MatthewsCorrelationMetric,
+        PrecisionMetric,
+        RecallMetric,
+        RollingMetric,
+        WindowedMetric,
+    )
+
+    rng = np.random.default_rng(7)
+    y_true = rng.integers(0, 2, size=85)
+    scores = rng.random(size=85)
+    preds = (scores >= 0.5).astype(int)
+
+    specs = [
+        (lambda: AUROCMetric(), scores),
+        (lambda: AUPRMetric(), scores),
+        (lambda: PrecisionMetric(threshold=0.5), scores),
+        (lambda: RecallMetric(threshold=0.5), scores),
+        (lambda: F1Metric(threshold=0.5), scores),
+        (lambda: BalancedAccuracyMetric(threshold=0.5), scores),
+        (lambda: MatthewsCorrelationMetric(threshold=0.5), scores),
+        (lambda: F1Metric(), preds),
+        (lambda: BalancedAccuracyMetric(), preds),
+        (lambda: MatthewsCorrelationMetric(), preds),
+        (
+            lambda: WindowedMetric(AUROCMetric, window_size=20, ignore_nonempty_last=False),
+            scores,
+        ),
+        (lambda: WindowedMetric(F1Metric, window_size=20, threshold=0.5), scores),
+        (lambda: RollingMetric(AUROCMetric, window_size=25), scores),
+        (lambda: RollingMetric(F1Metric, window_size=25, threshold=0.5), scores),
+    ]
+
+    for make_metric, yp in specs:
+        seq = make_metric()
+        for yt_i, yp_i in zip(y_true, yp, strict=True):
+            seq.update(int(yt_i), float(yp_i))
+
+        batched = make_metric()
+        assert batched.update_batch(y_true[:30], yp[:30]) is batched
+        batched.update_batch(y_true[30:], yp[30:])
+        assert batched.get() == pytest.approx(seq.get())
+
+    # Invalid batch leaves confusion-count metrics unmutated and raises ValueError.
+    for cls in (
+        PrecisionMetric,
+        RecallMetric,
+        F1Metric,
+        BalancedAccuracyMetric,
+        MatthewsCorrelationMetric,
+    ):
+        m = cls()
+        m.update(1, 1)
+        m.update(0, 0)
+        with pytest.raises(ValueError, match="y_true must be 0 or 1"):
+            m.update_batch([1, 2], [1, 0])
+        with pytest.raises(ValueError, match="y_pred must be 0 or 1"):
+            m.update_batch([1, 0], [1, 0.3])
+        with pytest.raises(ValueError, match="same length"):
+            m.update_batch([1, 0], [1])
+        assert m.get() == 1.0
+
+
+def test_log_loss_metric_sequential_and_batch():
+    """Verify LogLossMetric against independent expected values for sequential and batch updates."""
+    import numpy as np
+
+    from pysad.evaluation import LogLossMetric, RollingMetric
+
+    metric = LogLossMetric()
+    assert metric.get() is None
+
+    y_true = [1, 0, 1, 0]
+    y_pred = [0.8, 0.2, 0.6, 0.1]
+
+    expected_losses = [
+        -np.log(0.8),
+        -np.log(1.0 - 0.2),
+        -np.log(0.6),
+        -np.log(1.0 - 0.1),
+    ]
+    expected_means = np.cumsum(expected_losses) / np.arange(1, len(expected_losses) + 1)
+
+    for i, (yt, yp) in enumerate(zip(y_true, y_pred, strict=True)):
+        metric.update(yt, yp)
+        assert np.isclose(metric.get(), expected_means[i])
+
+    # Batch update
+    batch_metric = LogLossMetric()
+    batch_metric.update_batch(y_true, y_pred)
+    assert np.isclose(batch_metric.get(), expected_means[-1])
+    assert np.isclose(batch_metric.get(), metric.get())
+
+    # Rolling metric compatibility
+    rolling = RollingMetric(LogLossMetric, window_size=2)
+    rolling.update_batch(y_true, y_pred)
+    # Most recent 2 pairs are (1, 0.6) and (0, 0.1)
+    rolling_expected = (-np.log(0.6) - np.log(0.9)) / 2.0
+    assert np.isclose(rolling.get(), rolling_expected)
+
+
+def test_log_loss_metric_boundary_probabilities():
+    """Verify LogLossMetric clipping at boundary probabilities 0.0 and 1.0."""
+    import numpy as np
+
+    from pysad.evaluation import LogLossMetric
+
+    eps = 1e-12
+    metric = LogLossMetric(eps=eps)
+
+    # Perfect predictions: loss should be close to 0
+    metric.update(1, 1.0)
+    assert np.isclose(metric.get(), -np.log(1.0 - eps), atol=1e-10)
+
+    metric_zero = LogLossMetric(eps=eps)
+    metric_zero.update(0, 0.0)
+    assert np.isclose(metric_zero.get(), -np.log(1.0 - eps), atol=1e-10)
+
+    # Completely wrong predictions: loss is bounded by -log(eps)
+    metric_wrong = LogLossMetric(eps=eps)
+    metric_wrong.update(1, 0.0)
+    assert np.isclose(metric_wrong.get(), -np.log(eps))
+
+
+def test_log_loss_metric_invalid_inputs():
+    """Verify LogLossMetric input validation."""
+    import pytest
+
+    from pysad.evaluation import LogLossMetric
+
+    with pytest.raises(ValueError, match="eps must be strictly between 0 and 0.5"):
+        LogLossMetric(eps=0.0)
+    with pytest.raises(ValueError, match="eps must be strictly between 0 and 0.5"):
+        LogLossMetric(eps=-0.1)
+    with pytest.raises(ValueError, match="eps must be strictly between 0 and 0.5"):
+        LogLossMetric(eps=0.5)
+    with pytest.raises(ValueError, match="eps must be strictly between 0 and 0.5"):
+        LogLossMetric(eps=float("nan"))
+    with pytest.raises(ValueError, match="eps must be strictly between 0 and 0.5"):
+        LogLossMetric(eps=1e-20)
+
+    m = LogLossMetric()
+    with pytest.raises(ValueError, match="y_true must be 0 or 1"):
+        m.update(2, 0.5)
+    with pytest.raises(ValueError, match="y_true must be 0 or 1"):
+        m.update(-1, 0.5)
+
+    with pytest.raises(ValueError, match="y_pred must be a probability between 0 and 1"):
+        m.update(1, 1.5)
+    with pytest.raises(ValueError, match="y_pred must be a probability between 0 and 1"):
+        m.update(1, -0.1)
+    with pytest.raises(ValueError, match="y_pred must be a probability between 0 and 1"):
+        m.update(1, float("nan"))
+
+
+@pytest.mark.parametrize("eps", [1e-15, 1e-12, 1e-6, 0.01, 0.49])
+def test_log_loss_metric_finite_boundary_loss(eps):
+    """Verify that every accepted eps produces strictly finite loss on boundary instances."""
+    import numpy as np
+
+    from pysad.evaluation import LogLossMetric
+
+    metric = LogLossMetric(eps=eps)
+    for yt in (0, 1):
+        for yp in (0.0, 1.0):
+            metric.update(yt, yp)
+            assert np.isfinite(metric.get())
+            assert metric.get() > 0.0
+
+
+def test_log_loss_metric_running_state():
+    """Verify LogLossMetric reports the mean loss of all updates so far."""
+    import numpy as np
+
+    from pysad.evaluation import LogLossMetric
+
+    metric = LogLossMetric()
+    assert metric.get() is None
+
+    y_true = [1, 1, 0]
+    y_pred = [0.9, 0.5, 0.5]
+
+    losses = [-np.log(0.9), -np.log(0.5), -np.log(0.5)]
+    expected_means = np.cumsum(losses) / np.arange(1, 4)
+
+    for i, (yt, yp) in enumerate(zip(y_true, y_pred, strict=True)):
+        metric.update(yt, yp)
+        assert np.isclose(metric.get(), expected_means[i])

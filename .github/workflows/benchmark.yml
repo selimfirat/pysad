@@ -48,15 +48,31 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pysad
-          key: pysad-data-${{ hashFiles('pysad/utils/data.py') }}
+          key: pysad-data-${{ hashFiles('pysad/utils/data.py', 'pysad/utils/_datasets.py') }}
       # Both runs use the benchmark.py of the pull request, so that only the code of pysad differs.
-      - name: Run the base branch
+      - name: Resolve base commit and affected detectors
+        id: base
         if: github.base_ref != ''
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --depth=1 origin "$BASE_REF"
+          echo "sha=$(git rev-parse "origin/$BASE_REF")" >> "$GITHUB_OUTPUT"
+          detectors=$(python -c 'import os, sys; sys.path.insert(0, "benchmarks"); import benchmark; print(",".join(sorted(benchmark.changed_detectors("origin/" + os.environ["BASE_REF"]))))')
+          echo "detectors_hash=$(printf '%s' "$detectors" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Cache base branch benchmark
+        id: cache-base
+        if: github.base_ref != ''
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: base.csv
+          key: benchmark-base-${{ matrix.part }}-${{ steps.base.outputs.sha }}-${{ steps.base.outputs.detectors_hash }}-${{ hashFiles('benchmarks/benchmark.py', 'pyproject.toml') }}
+      - name: Run the base branch
+        if: github.base_ref != '' && steps.cache-base.outputs.cache-hit != 'true'
         env:
           BASE_REF: ${{ github.base_ref }}
           PART: ${{ matrix.part }}
         run: |
-          git fetch --depth=1 origin "$BASE_REF"
           git worktree add ../base "origin/$BASE_REF"
           uv pip install --system --no-deps -e ../base
           python benchmarks/benchmark.py --ci base.csv --since "origin/$BASE_REF" --parts "$PART"

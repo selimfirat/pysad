@@ -44,3 +44,31 @@ class InstanceStandardScaler(BaseTransformer):
         X_std = X.std()
 
         return (X - X_mean) / X_std
+
+    def fit(self, X: np.ndarray) -> InstanceStandardScaler:
+        """Return the scaler without learning from the input."""
+        return self
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        """Scale each row of a 2-D feature batch to zero mean and unit standard deviation."""
+        if isinstance(X, np.ndarray) and X.ndim == 2:
+            if X.shape[0] == 0 or X.shape[1] == 0:
+                return np.empty(X.shape, dtype=np.float64)
+            const_finite = np.isfinite(X[:, 0]) & (X == X[:, :1]).all(axis=1)
+            if const_finite.all():
+                return np.zeros(X.shape, dtype=np.float64)
+            if not const_finite.any():
+                means = X.mean(axis=1, keepdims=True)
+                stds = X.std(axis=1, keepdims=True)
+                return np.asarray((X - means) / stds, dtype=np.float64)
+            out = np.zeros(X.shape, dtype=np.float64)
+            sub = X[~const_finite]
+            means = sub.mean(axis=1, keepdims=True)
+            stds = sub.std(axis=1, keepdims=True)
+            out[~const_finite] = (sub - means) / stds
+            return out
+        return super().transform(X)
+
+    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+        """Scale each row of a 2-D feature batch to zero mean and unit standard deviation."""
+        return self.transform(X)

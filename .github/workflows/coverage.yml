@@ -67,13 +67,12 @@ jobs:
           files: coverage.lcov
 
   tests:
-    # The coverage job runs Python 3.12 on Linux. This job runs Python 3.10, 3.11 and 3.13 on
-    # Linux and Python 3.12 on macOS and Windows, with the pinned runtime dependencies.
+    # The coverage job runs Python 3.12 on Linux. This job runs Python 3.11 and 3.13 on Linux.
+    # It also runs Python 3.12 on macOS and Windows with the pinned runtime dependencies.
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-latest, python: "3.10"}
           - {os: ubuntu-latest, python: "3.11"}
           - {os: ubuntu-latest, python: "3.13"}
           - {os: macos-latest, python: "3.12"}
@@ -96,7 +95,15 @@ jobs:
         run: |
           uv pip install --system --group runtime --group test -e .
       - name: Test
-        run: pytest -n auto
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            export PYSAD_TESTS_SINCE="origin/$BASE_REF"
+          fi
+          pytest -n auto
 
   unpinned-314:
     runs-on: ubuntu-latest
@@ -117,7 +124,40 @@ jobs:
         run: |
           uv pip install --system -e . --group test
       - name: Test
-        run: pytest -n auto
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            export PYSAD_TESTS_SINCE="origin/$BASE_REF"
+          fi
+          pytest -n auto
+
+  numpy-123:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - name: Install NumPy 1.23 with compatible test dependencies
+        # These River and Matplotlib versions support NumPy 1.23.
+        run: |
+          printf '%s\n' 'river==0.21.2' 'matplotlib==3.10.8' > "$RUNNER_TEMP/numpy123-overrides.txt"
+          uv pip install --system --only-binary :all: --no-binary pysad --group test -e . "numpy==1.23.5" \
+            --override "$RUNNER_TEMP/numpy123-overrides.txt"
+      - name: Test with NumPy 1.23
+        run: |
+          python -c 'import numpy; assert numpy.__version__ == "1.23.5", numpy.__version__'
+          pytest -n auto
 
   lowest-versions:
     runs-on: ubuntu-latest
@@ -129,15 +169,22 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
       - name: Install the lowest allowed dependencies
-        # lowest-direct installs the floor of every dependency pyproject.toml names, on the
-        # oldest supported Python, and the newest versions of their own dependencies.
+        # Resolve the lowest direct dependencies on the oldest supported Python.
+        # River requires NumPy 2.2.5 or newer, so the test group cannot use NumPy 1.23.
         run: |
           uv pip install --system --resolution lowest-direct -e . --group test
       - name: Test
-        run: pytest -n auto
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            export PYSAD_TESTS_SINCE="origin/$BASE_REF"
+          fi
+          pytest -n auto

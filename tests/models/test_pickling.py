@@ -5,35 +5,21 @@ import numpy as np
 import pytest
 
 import pysad.models
-from pysad.transform.postprocessing import RunningZScorePostprocessor
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import fix_seed
+from tests.models.conftest import (
+    EDGE_MODELS,
+    TIMESTAMPED_MODELS,
+    UNIVARIATE_MODELS,
+    active_model_names,
+    short_stream_params,
+)
 
 SEED = 61
 NUM_FIT = 60
 NUM_NEXT = 20
-
-UNIVARIATE_MODELS = {
-    "ChangeFinder",
-    "DAMP",
-    "HoltWinters",
-    "KNNCAD",
-    "MatrixProfile",
-    "MedianAbsoluteDeviation",
-    "RelativeEntropy",
-    "SAND",
-    "SeasonalESD",
-    "SeasonalHybridESD",
-    "SpectralResidual",
-    "StandardAbsoluteDeviation",
-}
-
-# These models take each instance as [timestamp, value].
-TIMESTAMPED_MODELS = {"HTM"}
-
-# These models take each instance as an edge [source, destination].
-EDGE_MODELS = {"MIDAS"}
 
 MODEL_PARAMS = {
     # The tree splits, merges and discards entries before and after the round trip.
@@ -59,6 +45,7 @@ MODEL_PARAMS = {
     # The anomaly likelihood leaves its probationary period before the round trip.
     "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 40, "num_columns": 256},
     "IForestASD": {"window_size": 32},
+    "IDKS": {"input_shape": 3, "window_size": 30, "num_samples": 4},
     # Violations count toward failures before and after the round trip.
     "HoltWinters": {"period": 4, "threshold": 1},
     # The window is summarized before and after the round trip.
@@ -84,9 +71,16 @@ MODEL_PARAMS = {
     "MIDAS": {"tick_size": 7},
     # Cells empty out and fill again within the first instances.
     "NETS": {"window_size": 30, "max_radius": 0.6},
+    # Output neurons merge and replace the oldest one before and after the round trip.
+    "OeSNNUAD": {"window_size": 20, "num_output_neurons": 4},
     "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
     # A window that wraps before and after the round trip.
     "OnlineOneClassSVM": {"window_size": 32},
+    "PCBIsolationForest": {
+        "num_trees": 10,
+        "window_size": 32,
+        "stat_size": 10,
+    },
     # Non-overlapping windows of 5 close 4 times among the NUM_NEXT compared values, and 80 buckets
     # split the noise so that some of them score 1.0 (see test_relative_entropy_compared_scores_use_learned_state).
     "RelativeEntropy": {
@@ -137,12 +131,14 @@ def _make_model(model_name, X):
             model=pysad.models.LODA(),
             preprocessors=[ShingleTransformer(shingle_size=2)],
             postprocessors=[
-                RunningZScorePostprocessor(window_size=20),
+                ZScorePostprocessor(window_size=20),
                 ConformalProbabilityCalibrator(window_size=20),
             ],
         )
 
-    return model_cls(**MODEL_PARAMS.get(model_name, {}))
+    return model_cls(
+        **(MODEL_PARAMS.get(model_name) or short_stream_params(model_name, X.shape[1]))
+    )
 
 
 def _fitted_model(model_name, X, y):
@@ -173,7 +169,7 @@ def _assert_same_scores(original, restored, X, y):
 
 def _model_params(xfail_models):
     params = []
-    for model_name in pysad.models.__all__:
+    for model_name in active_model_names():
         marks = []
         if model_name in xfail_models:
             marks.append(pytest.mark.xfail(reason=xfail_models[model_name], strict=True))
@@ -193,7 +189,7 @@ def test_pickle_round_trip(model_name):
     _assert_same_scores(model, restored, X, y)
 
 
-@pytest.mark.parametrize("model_name", pysad.models.__all__)
+@pytest.mark.parametrize("model_name", active_model_names())
 def test_deepcopy(model_name):
     X, y = _data(model_name)
     model = _fitted_model(model_name, X, y)
@@ -221,9 +217,8 @@ def test_rrcf_pickle_round_trip():
     restored = pickle.loads(pickle.dumps(model))
 
     assert restored.index == model.index == NUM_FIT
-    assert len(restored.forest) == model.num_trees
-    for original_tree, restored_tree in zip(model.forest, restored.forest, strict=True):
-        assert sorted(restored_tree.leaves) == sorted(original_tree.leaves)
+    assert len(restored._slot_leaves) == model.num_trees
+    assert restored._slot_leaves == model._slot_leaves
 
     # tree_size < NUM_FIT, so the next instances also exercise forgetting old points after restoring.
     _assert_same_scores(model, restored, X, y)

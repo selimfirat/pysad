@@ -30,6 +30,8 @@ class KELOS(BaseModel):
     def __init__(
         self, window_size: int = 1000, radius: float = 0.5, num_neighbors: int = 100
     ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be a positive integer.")
         self.window_size = window_size
         self.radius = radius
         self.num_neighbors = num_neighbors

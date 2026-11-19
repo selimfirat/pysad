@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any, cast
 
+import numpy as np
+from numpy.typing import NDArray
+
 from pysad.core.base_metric import BaseMetric
-from pysad.statistics.average_meter import AverageMeter
+from pysad.statistics.basic import AverageMeter
 
 
 class WindowedMetric(BaseMetric):
@@ -41,8 +45,14 @@ class WindowedMetric(BaseMetric):
         self.num_windows = 1
 
     def _init_metric(self, **kwargs: Any) -> BaseMetric:
-
         return self.metric_cls(**kwargs)
+
+    def _complete_window(self) -> None:
+        """Average the completed window score and start a new metric."""
+        self.num_windows += 1
+        score = cast(float, self.metric.get())
+        self.score_meter.update(score)
+        self.metric = self._init_metric(**self.metric_kwargs)
 
     def update(self, y_true: int, y_pred: float) -> WindowedMetric:
         """Updates the score with new true label and predicted score/label.
@@ -58,12 +68,27 @@ class WindowedMetric(BaseMetric):
         self.metric.update(y_true, y_pred)
 
         if self.step % self.window_size == 0:
-            self.num_windows += 1
-            # The window metric has seen data here, so get() never returns None.
-            score = cast(float, self.metric.get())
-            self.score_meter.update(score)
-            self.metric = self._init_metric(**self.metric_kwargs)
+            self._complete_window()
 
+        return self
+
+    def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> WindowedMetric:
+        """Updates the windowed metric with batches of true labels and predictions."""
+        yt: NDArray[Any] | list[int] = y_true if isinstance(y_true, np.ndarray) else list(y_true)
+        yp: NDArray[Any] | list[float] = y_pred if isinstance(y_pred, np.ndarray) else list(y_pred)
+        if len(yt) != len(yp):
+            raise ValueError("y_true and y_pred must have the same length.")
+        pos = 0
+        n = len(yt)
+        while pos < n:
+            rem = self.window_size - (self.step % self.window_size)
+            take = min(rem, n - pos)
+            end = pos + take
+            self.metric.update_batch(yt[pos:end], yp[pos:end])
+            self.step += take
+            if self.step % self.window_size == 0:
+                self._complete_window()
+            pos = end
         return self
 
     def get(self) -> float | None:

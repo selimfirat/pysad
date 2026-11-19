@@ -116,8 +116,9 @@ def test_window_of_exactly_two_samples_tests_when_full():
 
 
 def test_remove_is_not_supported():
-    meter = KSWINMeter()
-    meter.update(1.0)
+    from pysad.statistics import RunningStatistic
 
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+    meter = KSWINMeter()
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(KSWINMeter, window_size=100, stat_size=30)

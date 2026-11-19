@@ -49,16 +49,19 @@ STUMPI_SCORES = [
 ]
 
 
-def test_scores_match_stumpy_stumpi():
+# A z-normalized distance does not depend on a constant offset of the series. Values near 1e6
+# keep only about 1e-10 of absolute precision, so the scores match to a looser tolerance.
+@pytest.mark.parametrize(("offset", "tol"), [(0.0, 1e-9), (1e6, 1e-6)])
+def test_scores_match_stumpy_stumpi(offset, tol):
     from pysad.models import MatrixProfile
 
-    values = np.sin(0.7 * np.arange(30))
+    values = np.sin(0.7 * np.arange(30)) + offset
     values[20:23] += 1.0
     scores = MatrixProfile(window_length=4, history_size=12).fit_score(values.reshape(-1, 1))
 
     first = 4 + math.ceil(4 / 2)
     np.testing.assert_array_equal(scores[:first], 0.0)
-    np.testing.assert_allclose(scores[first:], STUMPI_SCORES, rtol=1e-9, atol=1e-9)
+    np.testing.assert_allclose(scores[first:], STUMPI_SCORES, rtol=tol, atol=tol)
 
 
 def test_inserted_discords_get_the_highest_scores():

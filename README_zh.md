@@ -111,7 +111,7 @@ pip install pysad
 conda install -c conda-forge pysad
 ```
 
-PySAD 支持 Linux、macOS 和 Windows 上的 Python 3.10 至 3.14。执行安装后，所有检测器即可使用，无需安装任何可选依赖。
+PySAD 支持 Linux、macOS 和 Windows 上的 Python 3.11 至 3.14。执行安装后，所有检测器即可使用，无需安装任何可选依赖。
 
 从 `master` 分支安装最新开发版本：
 
@@ -191,7 +191,7 @@ for message in consumer:  # 例如一个 Kafka 消费者
 
 ```python
 from pyod.models.iforest import IForest
-from pysad.models.integrations import ReferenceWindowModel
+from pysad.integrations import ReferenceWindowModel
 
 # 在最近 200 个点上训练批处理孤立森林，每 50 个点重新训练一次。
 model = ReferenceWindowModel(IForest, window_size=200, sliding_size=50, initial_window_X=X[:100])
@@ -234,6 +234,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `MIDAS` | MIDAS 图数据流的边计数 (Bhatia et al., AAAI 2020) |
 | `IForestASD` | 滑动窗口上的孤立森林 (Ding & Fei, IFAC 2013) |
 | `OnlineIsolationForest` | 在线孤立森林 (Leveni et al., ICML 2024) |
+| `PCBIsolationForest` | 带性能计数器并在检测到漂移后替换树的 PCB-iForest 孤立森林 (Heigl et al., *Electronics* 2021) |
 | `KitNet` | KitNET 自编码器集成 (Mirsky et al., NDSS 2018) |
 | `ExactStorm` | Exact-STORM 基于距离的离群点检测 (Angiulli & Fassetti, CIKM 2007) |
 | `ApproxStorm` | 基于窗口采样的 Approx-STORM 距离离群点检测 (Angiulli & Fassetti, CIKM 2007) |
@@ -247,12 +248,14 @@ for x in ArrayStreamer().iter(X[100:]):
 | `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |
 | `KELOS` | 基于窗口微簇的核密度局部离群点检测 (Qin et al., EDBT 2019) |
 | `AnyOut` | 基于 ClusTree 最近簇距离的随时离群点检测 (Assent et al., DASFAA 2012) |
+| `SDOstream` | 带指数衰减的稀疏数据观测器低密度流模型 (Hartl et al., ESANN 2020) |
 | `ADeMS` | Frequent Directions 矩阵概要 (Huang & Kasiviswanathan, VLDB 2015) |
 | `LocalOutlierProbability` | 局部离群概率 (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD 量子测量密度估计 (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | 基于带折扣学习的有限混合模型 (Yamanishi et al., KDD 2000) |
 | `TEDA` | 典型性与离心率数据分析 (Angelov, EALS 2014) |
 | `EXPoSE` | 与核均值嵌入的期望相似度 (Schneider et al., Machine Learning 2016) |
+| `IDKS` | IDK-S 滑动窗口上的增量分布核 (Xu et al., AAAI 2026) |
 
 **单变量**
 
@@ -271,6 +274,8 @@ for x in ArrayStreamer().iter(X[100:]):
 | `SAND` | 基于 k-Shape 聚类的流式子序列异常检测 (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | 滑动窗口上的中位数绝对偏差 (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | 在线 3-sigma 规则 (Hochenbaum et al., 2017) |
+| `OeSNNUAD` | 用于无监督异常检测的在线演化脉冲神经网络 (Maciąg et al., *Neural Networks* 2021) |
+| `PEWMA` | 概率指数加权移动平均 (Carter & Streilein, SSP 2012) |
 
 `ReferenceWindowModel` 和 `OneFitModel` 可以在数据流上运行任意 [PyOD](https://github.com/yzhao062/pyod) 检测器。[检测器目录](https://pysad.readthedocs.io/en/stable/detectors.html) 列出了每个检测器的输入、配置和内存占用，[API 参考](https://pysad.readthedocs.io/en/stable/api.html) 列出了所有参数。
 

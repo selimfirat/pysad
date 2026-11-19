@@ -28,7 +28,7 @@ Open a pull request
 
 PySAD uses trunk-based development: each change goes to the ``master`` branch through a short-lived branch and a pull request. Each pull request fixes one issue.
 
-You need git, Python 3.10 or newer, and pip 25.1 or newer.
+You need git, Python 3.11 or newer, and pip 25.1 or newer.
 
 Set up once
 ~~~~~~~~~~~

@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
+from pysad.models._window import _RadiusCalibrator
 
 
 class ApproxStorm(BaseModel):
@@ -53,8 +54,7 @@ class ApproxStorm(BaseModel):
             None if random_state is None else check_random_state(random_state)
         )
         self.radius_: float | None = max_radius
-        self._calibration: list[np.ndarray] = []  # the first instances, while they set the radius
-        self._nearest = np.empty(0)  # the distance from each of them to its nearest other one
+        self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
         self.points_ = np.empty((0, 0))  # the window as a ring buffer, (window_size, num_features)
         self.kept_ = np.zeros(window_size, dtype=bool)  # whether each slot holds a kept instance
         # The number of the instance and its later neighbors, for each slot.
@@ -91,17 +91,10 @@ class ApproxStorm(BaseModel):
             removed = rng.choice(safe, size=len(safe) - self.num_safe_inliers, replace=False)
             self.kept_[removed] = False
 
-        if self.max_radius is None and len(self._calibration) < self.calibration_size:
-            self._calibrate(X)
+        if self._calibrator.active:
+            self.radius_ = self._calibrator.update(X)
 
         return self
-
-    def _calibrate(self, X: np.ndarray) -> None:
-        dists = np.linalg.norm(np.array(self._calibration) - X, axis=1) if self._calibration else []
-        self._nearest = np.append(np.minimum(self._nearest, dists), np.min(dists, initial=np.inf))
-        self._calibration.append(X)
-        if len(self._calibration) >= 2:
-            self.radius_ = float(np.quantile(self._nearest, 1 - self.outlier_fraction))
 
     def _neighbors(self, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Returns the kept slots, except the slot of the next instance, and which of them are neighbors of X."""

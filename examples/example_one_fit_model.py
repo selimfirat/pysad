@@ -3,7 +3,7 @@
 from pyod.models.knn import KNN
 
 from pysad.evaluation import AUROCMetric
-from pysad.models.integrations import OneFitModel
+from pysad.integrations import OneFitModel
 from pysad.utils import ArrayStreamer, Data
 
 if __name__ == "__main__":

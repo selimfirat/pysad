@@ -636,6 +636,7 @@ def test_log_loss_metric_running_state():
 def test_metrics_empty_batch(metric_cls):
     """Verify update_batch with empty sequences preserves metric state and value."""
     import copy
+
     import numpy as np
 
     import pysad.evaluation as pe
@@ -657,4 +658,3 @@ def test_metrics_empty_batch(metric_cls):
     metric.update_batch(np.array([], dtype=int), np.array([], dtype=float))
     assert metric.get() == val_before
     assert metric.__dict__ == state_before
-

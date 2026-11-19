@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pysad.core.base_statistic import UnivariateStatistic
+from pysad.core.base_statistic import BaseStatistic
 
 
-class ExponentialMovingAverageMeter(UnivariateStatistic):
+class ExponentialMovingAverageMeter(BaseStatistic):
     """The statistic that tracks an exponentially weighted moving average of the stream.
 
     Each update moves the tracked value a fraction ``alpha`` of the way toward the new
@@ -34,22 +34,7 @@ class ExponentialMovingAverageMeter(UnivariateStatistic):
     """
 
     def __init__(self, alpha: float | None = None, half_life: float | None = None) -> None:
-        if alpha is not None and half_life is not None:
-            raise ValueError("Pass only one of alpha and half_life.")
-
-        if half_life is not None:
-            if half_life <= 0:
-                raise ValueError("half_life must be positive.")
-
-            alpha = 1.0 - 0.5 ** (1.0 / half_life)
-
-        if alpha is None:
-            alpha = 0.1
-
-        if not 0.0 < alpha <= 1.0:
-            raise ValueError("alpha must be in the interval (0, 1].")
-
-        self.alpha = alpha
+        self.alpha = _resolve_alpha(alpha, half_life)
         self.num_items = 0
         self._value = 0.0
 
@@ -71,22 +56,6 @@ class ExponentialMovingAverageMeter(UnivariateStatistic):
 
         return self
 
-    def remove(self, num: float) -> ExponentialMovingAverageMeter:
-        """Raises ``NotImplementedError``, because the meter cannot remove observations.
-
-        The meter keeps only its current value, so a past observation cannot be taken
-        back. Use a windowed batch average for windows.
-
-        Args:
-            num (float): The value to be removed.
-
-        Returns:
-            object: self.
-        """
-        raise NotImplementedError(
-            "The meter keeps only its current value, so it cannot remove observations."
-        )
-
     def get(self) -> float:
         """Method to obtain the tracked statistic.
 
@@ -94,3 +63,23 @@ class ExponentialMovingAverageMeter(UnivariateStatistic):
             float: The current exponentially weighted moving average, or 0.0 before any update.
         """
         return self._value
+
+
+def _resolve_alpha(alpha: float | None, half_life: float | None) -> float:
+    """Resolve the weight for an exponential moving meter."""
+    if alpha is not None and half_life is not None:
+        raise ValueError("Pass only one of alpha and half_life.")
+
+    if half_life is not None:
+        if half_life <= 0:
+            raise ValueError("half_life must be positive.")
+
+        alpha = 1.0 - 0.5 ** (1.0 / half_life)
+
+    if alpha is None:
+        alpha = 0.1
+
+    if not 0.0 < alpha <= 1.0:
+        raise ValueError("alpha must be in the interval (0, 1].")
+
+    return alpha

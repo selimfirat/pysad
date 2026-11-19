@@ -14,14 +14,17 @@ Each page lists the public classes and functions of one module. Each name has a 
      - Streaming anomaly detectors
      - ``pysad.models``
    * - :doc:`api/integrations`
-     - Wrappers for PyOD detectors and River forecasters
-     - ``pysad.models.integrations``
+     - Bidirectional wrappers and adapters for PyOD, scikit-learn, and River
+     - ``pysad.integrations``
    * - :doc:`api/preprocessing`
      - Scalers and seasonal decomposition
      - ``pysad.transform.preprocessing``
    * - :doc:`api/projection`
      - Random projections
      - ``pysad.transform.projection``
+   * - :doc:`api/stream_generators`
+     - Adversarial stream generators
+     - ``pysad.transform.stream_generators``
    * - :doc:`api/postprocessing`
      - Score smoothing and normalization
      - ``pysad.transform.postprocessing``
@@ -32,7 +35,7 @@ Each page lists the public classes and functions of one module. Each name has a 
      - Score calibrators
      - ``pysad.transform.probability_calibration``
    * - :doc:`api/evaluation`
-     - Streaming metrics
+     - Streaming metrics, including :class:`~pysad.evaluation.RollingMetric`
      - ``pysad.evaluation``
    * - :doc:`api/statistics`
      - Running statistics
@@ -51,6 +54,7 @@ Each page lists the public classes and functions of one module. Each name has a 
    api/integrations
    api/preprocessing
    api/projection
+   api/stream_generators
    api/postprocessing
    api/ensemble
    api/calibration

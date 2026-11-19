@@ -48,6 +48,31 @@ def test_get_data_mat(monkeypatch, tmp_path):
     assert np.all(y == np.arange(5))
 
 
+def test_get_data_flips_the_vertebral_labels(monkeypatch, tmp_path):
+    """The ODDS file of vertebral marks the healthy patients as the anomalies. Data flips the
+    labels, so the anomaly class is the unhealthy patients."""
+    shipped_y = np.zeros((240, 1), dtype=np.uint8)
+    shipped_y[:30] = 1  # the 30 healthy patients that ODDS marks as anomalies
+
+    class DummyF:
+        def __getitem__(self, key):
+            if key == "X":
+                return np.ones((240, 6))
+            if key == "y":
+                return shipped_y
+
+    monkeypatch.setattr("scipy.io.loadmat", lambda path: DummyF())
+    (tmp_path / "vertebral.mat").write_bytes(b"dummy")
+    d = Data(data_base_path=str(tmp_path))
+
+    X, y = d.get_data("vertebral.mat", download=False)
+
+    assert X.shape == (240, 6)
+    assert y.dtype == shipped_y.dtype
+    assert int(y.sum()) == 210
+    np.testing.assert_array_equal(y, (shipped_y.ravel() == 0).astype(np.uint8))
+
+
 def test_get_data_txt():
     # Create a temporary .txt file
     arr = np.hstack([np.random.rand(5, 2), np.arange(5).reshape(-1, 1)])
@@ -72,15 +97,6 @@ def test_get_iterator(monkeypatch):
     for x, y in items:
         assert np.all(x == 1)
         assert y in [0, 1, 2]
-
-
-def test_datasets():
-    files = Data.datasets()
-    assert isinstance(files, list)
-    assert len(files) == 17
-    assert "arrhythmia.mat" in files
-    assert "cardio.mat" in files
-    assert all(f.endswith(".mat") for f in files)
 
 
 def test_get_iterator_random_state_shuffles_without_the_global_state():
@@ -113,17 +129,6 @@ def test_get_stream_keeps_shuffles_and_scales():
     np.testing.assert_array_equal(Xs[:, 1], 0.0)  # a constant feature becomes 0
 
 
-def test_get_iterator_without_seed(monkeypatch):
-    """Test get_iterator without seed parameter."""
-    d = Data()
-    d.get_data = lambda data_file, download=True: (np.ones((3, 2)), np.arange(3))
-
-    # Should work without seed
-    it = d.get_iterator("dummy.txt", shuffle=False)
-    items = list(it)
-    assert len(items) == 3
-
-
 def test_data_init_default_path(monkeypatch):
     """Test Data class initialization with default cache path and PYSAD_DATA_DIR env var."""
     monkeypatch.delenv("PYSAD_DATA_DIR", raising=False)
@@ -141,24 +146,11 @@ def test_data_init_custom_path():
     assert d.data_base_path == "/custom/path"
 
 
-def test_load_via_txt_method():
-    """Test the _load_via_txt method directly."""
-    arr = np.random.rand(4, 3)
-    with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt", delete=False) as f:
-        np.savetxt(f, arr, delimiter=",")
-        f.close()
-
-        d = Data()
-        result = d._load_via_txt(f.name)
-        assert result.shape == (4, 3)
-        assert np.allclose(result, arr)
-
-    os.remove(f.name)
-
-
 def test_datasets_content():
-    """Test that datasets returns the expected ODDS dataset names."""
+    """Test that datasets returns a list with the expected ODDS dataset names."""
     files = Data.datasets()
+
+    assert isinstance(files, list)
 
     expected_files = [
         "arrhythmia.mat",
@@ -337,14 +329,6 @@ def test_download_does_not_try_again_after_a_client_error(tmp_path, monkeypatch)
 
     assert len(calls) == 1
     assert list(tmp_path.iterdir()) == []
-
-
-def test_explicit_data_base_path_wins(tmp_path):
-    """Test that an explicit data_base_path is preserved and used."""
-    custom_dir = tmp_path / "my_custom_dir"
-    custom_dir.mkdir()
-    d = Data(data_base_path=str(custom_dir))
-    assert d.data_base_path == str(custom_dir)
 
 
 def test_download_with_a_wrong_checksum_raises_and_leaves_no_file(tmp_path, monkeypatch):
@@ -569,3 +553,46 @@ def test_insects_streams_have_the_label_in_the_last_column(tmp_path, monkeypatch
 
     np.testing.assert_array_equal(X, [[0.5, 0.25], [0.75, 1.0]])
     np.testing.assert_array_equal(y, [0, 1])
+
+
+def test_creditcard_keeps_transaction_order_and_separates_class_in_shared_cache(
+    tmp_path, monkeypatch
+):
+    from pysad.utils import Data
+
+    monkeypatch.setenv("PYSAD_DATA_DIR", str(tmp_path))
+    names = ["Time", *(f"V{i}" for i in range(1, 29)), "Amount"]
+    header = "@relation creditcard\n" + "".join(f"@attribute {n} numeric\n" for n in names)
+    header += "@attribute Class {'0','1'}\n@data\n"
+    rows = [
+        "0," + "1," * 28 + "10.5,'0'",
+        "0," + "2," * 28 + "20.5,'1'",
+        "1," + "3," * 28 + "30.5,'0'",
+    ]
+    content = (header + "\n".join(rows) + "\n").encode()
+    url = "https://openml.org/data/v1/download/1673544/creditcard.arff"
+    _serve(monkeypatch, {url: content})
+
+    assert Data.datasets("creditcard") == ["creditcard/creditcard.arff"]
+    with pytest.raises(FileNotFoundError, match="download=False"):
+        Data().get_data("creditcard/creditcard.arff", download=False)
+    X, y = Data().get_data("creditcard/creditcard.arff")
+
+    assert X.shape == (3, 30)
+    assert X.dtype == np.float64
+    np.testing.assert_array_equal(X[:, 0], [0, 0, 1])
+    np.testing.assert_array_equal(X[:, 1:29], [[1] * 28, [2] * 28, [3] * 28])
+    np.testing.assert_array_equal(X[:, -1], [10.5, 20.5, 30.5])
+    np.testing.assert_array_equal(y, [0, 1, 0])
+    assert (tmp_path / "creditcard/creditcard.arff").read_bytes() == content
+
+    def offline(req, timeout):
+        pytest.fail("A cached dataset must not need the network")
+
+    monkeypatch.setattr("urllib.request.urlopen", offline)
+    cached_X, cached_y = Data().get_data("creditcard/creditcard.arff", download=False)
+    np.testing.assert_array_equal(cached_X, X)
+    np.testing.assert_array_equal(cached_y, y)
+    stream = list(Data().get_iterator("creditcard/creditcard.arff", shuffle=False))
+    np.testing.assert_array_equal([x for x, _ in stream], X)
+    np.testing.assert_array_equal([label for _, label in stream], y)

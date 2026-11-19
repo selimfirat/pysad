@@ -1,14 +1,72 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from collections.abc import Iterable
+from math import sqrt
+from typing import cast
 
-from sklearn.metrics import average_precision_score, precision_score, recall_score, roc_auc_score
+import numpy as np
+from sklearn.metrics import average_precision_score, roc_auc_score
 
 from pysad.core.base_metric import BaseMetric
 
 
+def _validate_binary_probability(y_true: int, y_pred: float) -> None:
+    """Require a binary label and a finite anomaly probability in [0, 1]."""
+    if y_true not in (0, 1):
+        raise ValueError("y_true must be 0 or 1.")
+    if not 0.0 <= y_pred <= 1.0:
+        raise ValueError("y_pred must be a finite probability in [0, 1].")
+
+
+def _confusion_counts_batch(
+    y_true: Iterable[int],
+    y_pred: Iterable[float],
+    threshold: float | None,
+) -> tuple[int, int, int, int] | None:
+    """Validates binary inputs and returns ``(tp, fp, fn, tn)``, or ``None`` if non-numeric."""
+    yt_arr = y_true if isinstance(y_true, np.ndarray) else np.asarray(list(y_true))
+    yp_arr = y_pred if isinstance(y_pred, np.ndarray) else np.asarray(list(y_pred))
+    if yt_arr.ndim != 1 or yp_arr.ndim != 1:
+        if len(yt_arr) != len(yp_arr):
+            raise ValueError("y_true and y_pred must have the same length.")
+        return None
+    if len(yt_arr) != len(yp_arr):
+        raise ValueError("y_true and y_pred must have the same length.")
+    if len(yt_arr) == 0:
+        return (0, 0, 0, 0)
+    if yt_arr.dtype.kind not in "biuf" or yp_arr.dtype.kind not in "biuf":
+        return None
+
+    yt_valid = (yt_arr == 0) | (yt_arr == 1)
+    if threshold is None:
+        yp_valid = (yp_arr == 0) | (yp_arr == 1)
+        if not bool(yt_valid.all()):
+            if bool(yp_valid.all()) or int(np.flatnonzero(~yt_valid)[0]) <= int(
+                np.flatnonzero(~yp_valid)[0]
+            ):
+                raise ValueError("y_true must be 0 or 1.")
+            raise ValueError("y_pred must be 0 or 1 when threshold is None.")
+        if not bool(yp_valid.all()):
+            raise ValueError("y_pred must be 0 or 1 when threshold is None.")
+        pred_pos = yp_arr == 1
+    else:
+        if not bool(yt_valid.all()):
+            raise ValueError("y_true must be 0 or 1.")
+        pred_pos = yp_arr >= threshold
+
+    actual_pos = yt_arr == 1
+    n_pos = int(np.count_nonzero(actual_pos))
+    n_pred = int(np.count_nonzero(pred_pos))
+    tp = int(np.count_nonzero(actual_pos & pred_pos))
+    fp = n_pred - tp
+    fn = n_pos - tp
+    tn = len(yt_arr) - n_pos - fp
+    return (tp, fp, fn, tn)
+
+
 class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
-    """Abstract base class to wrap the sklearn metrics."""
+    """Abstract base class for ranking metrics that require full score history."""
 
     def __init__(self) -> None:
         self.y_true: list[int] = []
@@ -24,15 +82,23 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         self.y_true.append(y_true)
         self.y_pred.append(y_pred)
 
+    def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> BaseSKLearnMetric:
+        """Appends batches of true labels and predicted values in stream order."""
+        yt_list = y_true.tolist() if isinstance(y_true, np.ndarray) else list(y_true)
+        yp_list = y_pred.tolist() if isinstance(y_pred, np.ndarray) else list(y_pred)
+        if len(yt_list) != len(yp_list):
+            raise ValueError("y_true and y_pred must have the same length.")
+        self.y_true.extend(yt_list)
+        self.y_pred.extend(yp_list)
+        return self
+
     def get(self) -> float:
         """Gets the current value of the score.
 
         Returns:
             float: The current score.
         """
-        score = self._evaluate(self.y_true, self.y_pred)
-
-        return score
+        return self._evaluate(self.y_true, self.y_pred)
 
     @abstractmethod
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
@@ -45,62 +111,270 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         pass
 
 
-def _apply_threshold(y_pred: list[float], threshold: float | None) -> list[float] | list[int]:
-    """Turns anomaly scores into 0/1 predictions when a threshold is given.
+class BrierScoreMetric(BaseMetric):
+    """Mean squared error for binary anomaly probabilities.
 
-    Args:
-        y_pred (list[float]): Predicted classes or scores.
-        threshold (float | None): The score at or above which an instance is predicted anomalous. If None, y_pred is returned unchanged.
+    Labels use 1 for anomalies and 0 for normal instances. Predictions give
+    the probability of an anomaly, from 0 to 1. Lower scores mean better
+    predictions. The score ranges from 0 for perfect predictions to 1 for
+    fully wrong predictions. An empty stream returns 0.0.
 
-    Returns:
-        list[float] | list[int]: The predicted classes.
+    Each update takes constant time. A running squared-error sum and count
+    keep memory use constant as the stream grows.
     """
-    if threshold is None:
-        return y_pred
 
-    return [1 if score >= threshold else 0 for score in y_pred]
+    def __init__(self) -> None:
+        super().__init__()
+        self.squared_error_sum_ = 0.0
+        self.count_ = 0
+
+    def update(self, y_true: int, y_pred: float) -> None:
+        """Record one binary label and anomaly probability.
+
+        Args:
+            y_true (int): True label, 1 for an anomaly or 0 for normal.
+            y_pred (float): Probability of an anomaly in [0, 1].
+
+        Raises:
+            ValueError: If the label is not 0 or 1, or the probability
+                is not finite or lies outside [0, 1]. Invalid pairs leave
+                the metric unchanged.
+        """
+        _validate_binary_probability(y_true, y_pred)
+        error = float(y_pred) - float(y_true)
+        self.squared_error_sum_ += error * error
+        self.count_ += 1
+
+    def get(self) -> float:
+        """Return the mean squared error, or 0.0 for an empty stream.
+
+        Returns:
+            float: The current Brier score.
+        """
+        return self.squared_error_sum_ / self.count_ if self.count_ else 0.0
 
 
-class PrecisionMetric(BaseSKLearnMetric):
-    """Precision wrapper class for sklearn.
+class ExpectedCalibrationErrorMetric(BaseMetric):
+    """Expected calibration error for binary anomaly probabilities.
 
-    Precision is defined on predicted classes. With the default ``threshold=None``, ``y_pred`` must be 0 or 1 and is used as given. To pass anomaly scores, set ``threshold``. Scores at or above it are predicted anomalous (1) and the rest normal (0).
+    Labels use 1 for anomalies and 0 for normal instances. Predictions give
+    anomaly probabilities. Each fixed, equal-width bin compares its mean
+    probability with its fraction of anomalies. The score weights each
+    absolute difference by the bin's fraction of the stream.
 
-    Calling ``get()`` before any samples have been recorded returns ``0.0``.
+    Bin k covers [k / num_bins, (k + 1) / num_bins). The final bin includes
+    1.0. Empty bins contribute zero. An empty stream returns 0.0.
+    Lower scores mean better calibration. Scores range from 0 to 1.
+
+    Counts, label sums, and probability sums use O(num_bins) storage.
+    Updates take O(log(num_bins)) time. Reading the score takes O(num_bins)
+    time. These costs do not grow with the stream.
 
     Args:
-        threshold (float | None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions. (Default=None).
+        num_bins (int): Number of equal-width probability bins (Default=10).
+
+    Raises:
+        ValueError: If num_bins is less than 1.
+    """
+
+    def __init__(self, num_bins: int = 10) -> None:
+        if num_bins < 1:
+            raise ValueError("num_bins must be a positive integer.")
+        super().__init__()
+        self.num_bins = num_bins
+        self.counts_ = np.zeros(num_bins, dtype=np.int64)
+        self.label_sums_ = np.zeros(num_bins, dtype=np.float64)
+        self.probability_sums_ = np.zeros(num_bins, dtype=np.float64)
+        self._edges = np.arange(1, num_bins, dtype=np.float64) / num_bins
+        self.count_ = 0
+
+    def update(self, y_true: int, y_pred: float) -> None:
+        """Record one binary label and anomaly probability.
+
+        Args:
+            y_true (int): True label, 1 for an anomaly or 0 for normal.
+            y_pred (float): Probability of an anomaly in [0, 1].
+
+        Raises:
+            ValueError: If the label is not 0 or 1, or the probability
+                is not finite or lies outside [0, 1]. Invalid pairs leave
+                the metric unchanged.
+        """
+        _validate_binary_probability(y_true, y_pred)
+        index = int(np.searchsorted(self._edges, y_pred, side="right"))
+        self.counts_[index] += 1
+        self.label_sums_[index] += float(y_true)
+        self.probability_sums_[index] += float(y_pred)
+        self.count_ += 1
+
+    def get(self) -> float:
+        """Return the calibration error, or 0.0 for an empty stream.
+
+        Returns:
+            float: The weighted absolute calibration error across bins.
+        """
+        if not self.count_:
+            return 0.0
+        return float(np.abs(self.label_sums_ - self.probability_sums_).sum() / self.count_)
+
+
+class _ConfusionMatrixMetric(BaseMetric, metaclass=ABCMeta):
+    """Base class for binary classification metrics backed by O(1) confusion counts.
+
+    Args:
+        threshold (float or None): Scores at or above this value predict anomaly label 1. None expects 0/1 predictions (Default=None).
     """
 
     def __init__(self, threshold: float | None = None) -> None:
         super().__init__()
         self.threshold = threshold
+        self.tp_ = 0
+        self.tn_ = 0
+        self.fp_ = 0
+        self.fn_ = 0
 
-    def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
-        if not y_true:
-            return 0.0
-        return precision_score(y_true, _apply_threshold(y_pred, self.threshold))
+    def update(self, y_true: int, y_pred: float) -> None:
+        """Records one binary label and prediction (or thresholded score) in constant time.
+
+        Args:
+            y_true (int): True label, 1 for an anomaly or 0 for normal.
+            y_pred (float): Binary prediction, or anomaly score when ``threshold`` is set.
+
+        Raises:
+            ValueError: If ``y_true`` is not 0/1, or ``y_pred`` is not 0/1 when ``threshold`` is None.
+        """
+        if y_true not in (0, 1):
+            raise ValueError("y_true must be 0 or 1.")
+        if self.threshold is None:
+            if y_pred not in (0, 1):
+                raise ValueError("y_pred must be 0 or 1 when threshold is None.")
+            predicted = y_pred == 1
+        else:
+            predicted = y_pred >= self.threshold
+
+        if y_true == 1:
+            if predicted:
+                self.tp_ += 1
+            else:
+                self.fn_ += 1
+        elif predicted:
+            self.fp_ += 1
+        else:
+            self.tn_ += 1
+
+    def update_batch(
+        self, y_true: Iterable[int], y_pred: Iterable[float]
+    ) -> _ConfusionMatrixMetric:
+        """Records batches of binary labels and predictions or scores in vectorized form."""
+        counts = _confusion_counts_batch(y_true, y_pred, self.threshold)
+        if counts is None:
+            super().update_batch(y_true, y_pred)
+            return self
+        tp, fp, fn, tn = counts
+        self.tp_ += tp
+        self.fp_ += fp
+        self.fn_ += fn
+        self.tn_ += tn
+        return self
 
 
-class RecallMetric(BaseSKLearnMetric):
-    """Recall wrapper class for sklearn.
+class PrecisionMetric(_ConfusionMatrixMetric):
+    """Binary precision over a stream using constant memory and constant work per update.
 
-    Recall is defined on predicted classes. With the default ``threshold=None``, ``y_pred`` must be 0 or 1 and is used as given. To pass anomaly scores, set ``threshold``. Scores at or above it are predicted anomalous (1) and the rest normal (0).
-
-    Calling ``get()`` before any samples have been recorded returns ``0.0``.
+    Precision is ``TP / (TP + FP)`` for the anomaly class (1). With the default ``threshold=None``,
+    ``y_pred`` must be 0 or 1. To pass anomaly scores, set ``threshold`` so scores at or above it
+    predict an anomaly (1). Calling ``get()`` before any updates or with no positive predictions
+    returns ``0.0``.
 
     Args:
-        threshold (float | None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions. (Default=None).
+        threshold (float or None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions (Default=None).
     """
 
-    def __init__(self, threshold: float | None = None) -> None:
-        super().__init__()
-        self.threshold = threshold
+    def get(self) -> float:
+        """Returns current precision without changing the counts."""
+        predicted_pos = self.tp_ + self.fp_
+        return self.tp_ / predicted_pos if predicted_pos else 0.0
 
-    def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
-        if not y_true:
+
+class RecallMetric(_ConfusionMatrixMetric):
+    """Binary recall over a stream using constant memory and constant work per update.
+
+    Recall is ``TP / (TP + FN)`` for the anomaly class (1). With the default ``threshold=None``,
+    ``y_pred`` must be 0 or 1. To pass anomaly scores, set ``threshold`` so scores at or above it
+    predict an anomaly (1). Calling ``get()`` before any updates or with no true anomalies
+    returns ``0.0``.
+
+    Args:
+        threshold (float or None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions (Default=None).
+    """
+
+    def get(self) -> float:
+        """Returns current recall without changing the counts."""
+        positives = self.tp_ + self.fn_
+        return self.tp_ / positives if positives else 0.0
+
+
+class F1Metric(_ConfusionMatrixMetric):
+    """Binary F1 score over a stream using constant memory and constant work per update.
+
+    F1 is ``2 * TP / (2 * TP + FP + FN)`` for the anomaly class (1). With ``threshold=None``,
+    ``y_pred`` must be 0 or 1. With a threshold, scores at or above it predict an anomaly (1).
+    ``get()`` returns ``0.0`` before any updates or when the denominator is zero, matching
+    scikit-learn with ``zero_division=0``.
+
+    Args:
+        threshold (float or None): The score at or above which an instance is predicted anomalous. None expects 0/1 predictions (Default=None).
+    """
+
+    def get(self) -> float:
+        """Returns the current F1 score, or 0.0 if its denominator is zero."""
+        denominator = 2 * self.tp_ + self.fp_ + self.fn_
+        return 2 * self.tp_ / denominator if denominator else 0.0
+
+
+class BalancedAccuracyMetric(_ConfusionMatrixMetric):
+    """Mean recall across the true classes in a binary stream using constant memory.
+
+    With both true classes present, the result is the mean of sensitivity and specificity. With
+    one true class present, the result is its recall, matching scikit-learn's
+    ``balanced_accuracy_score``. Before any updates, ``get()`` returns ``0.0``.
+
+    Args:
+        threshold (float or None): Scores at or above this value predict an anomaly (1). None requires 0/1 predictions (Default=None).
+    """
+
+    def get(self) -> float:
+        """Returns balanced accuracy without changing the counts."""
+        positives = self.tp_ + self.fn_
+        negatives = self.tn_ + self.fp_
+        if not positives:
+            return self.tn_ / negatives if negatives else 0.0
+        if not negatives:
+            return self.tp_ / positives
+        return (self.tp_ / positives + self.tn_ / negatives) / 2.0
+
+
+class MatthewsCorrelationMetric(_ConfusionMatrixMetric):
+    """Matthews correlation coefficient for binary labels and predictions using constant memory.
+
+    The result ranges from -1 for opposite predictions to 1 for perfect predictions. Zero means no
+    correlation. An empty stream or a zero denominator returns ``0.0``.
+
+    Args:
+        threshold (float or None): Scores at or above this value predict anomaly label 1. None requires predictions of 0 or 1 (Default=None).
+    """
+
+    def get(self) -> float:
+        """Returns the correlation without changing the counts."""
+        denominator = (
+            (self.tp_ + self.fp_)
+            * (self.tp_ + self.fn_)
+            * (self.tn_ + self.fp_)
+            * (self.tn_ + self.fn_)
+        )
+        if denominator == 0:
             return 0.0
-        return recall_score(y_true, _apply_threshold(y_pred, self.threshold))
+        return (self.tp_ * self.tn_ - self.fp_ * self.fn_) / sqrt(denominator)
 
 
 class AUROCMetric(BaseSKLearnMetric):
@@ -110,12 +384,11 @@ class AUROCMetric(BaseSKLearnMetric):
     """
 
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
-        # Check if only one class is present
         if len(set(y_true)) <= 1:
             raise ValueError(
                 "Only one class present in y_true. ROC AUC score is not defined in that case."
             )
-        return roc_auc_score(y_true, y_pred)
+        return cast(float, roc_auc_score(y_true, y_pred))
 
 
 class AUPRMetric(BaseSKLearnMetric):
@@ -127,4 +400,73 @@ class AUPRMetric(BaseSKLearnMetric):
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
         if not y_true:
             raise ValueError("No samples recorded. PR AUC score is not defined in that case.")
-        return average_precision_score(y_true, y_pred)
+        return cast(float, average_precision_score(y_true, y_pred))
+
+
+class LogLossMetric(BaseMetric):
+    r"""Prequential logarithmic loss metric for probability evaluation :cite:`cesabianchi2001worst`.
+
+    Computes the running logarithmic loss (binary cross-entropy) of predicted anomaly
+    probabilities with respect to observed binary ground truth classes. For each instance
+    :math:`(y_t, p_t)` where :math:`y_t \in \{0, 1\}` and :math:`p_t \in [0, 1]`,
+    the loss is:
+
+    .. math::
+
+        \ell(y_t, p_t) = -\left[ y_t \ln(p_t) + (1 - y_t) \ln(1 - p_t) \right]
+
+    Lower loss indicates better calibration and prediction quality, with 0.0
+    representing perfect prediction.
+
+    Probabilities are clipped to :math:`[\epsilon, 1 - \epsilon]` to ensure numerical
+    stability and finite loss when :math:`p_t \in \{0, 1\}`. Updates execute in
+    :math:`\mathcal{O}(1)` time and memory.
+
+    Args:
+        eps (float): Epsilon clipping factor to bound probabilities away from 0 and 1. (Default=1e-15).
+    """
+
+    def __init__(self, eps: float = 1e-15) -> None:
+        if np.isnan(eps) or eps <= 0.0 or eps >= 0.5 or (1.0 - float(eps) >= 1.0):
+            raise ValueError(
+                "eps must be strictly between 0 and 0.5, and 1.0 - eps must be strictly less than 1.0."
+            )
+        super().__init__()
+        self.eps = float(eps)
+        self.total_loss_: float = 0.0
+        self.count_: int = 0
+
+    def update(self, y_true: int, y_pred: float) -> LogLossMetric:
+        """Updates the metric with given true class and predicted anomaly probability.
+
+        Args:
+            y_true (int): Ground truth class. Either 1 or 0.
+            y_pred (float): Predicted anomaly probability in [0, 1].
+
+        Raises:
+            ValueError: If `y_true` is not 0 or 1, or `y_pred` is outside [0, 1] or NaN.
+
+        Returns:
+            LogLossMetric: The metric itself.
+        """
+        if y_true not in (0, 1):
+            raise ValueError("y_true must be 0 or 1.")
+        yp = float(y_pred)
+        if not (0.0 <= yp <= 1.0):
+            raise ValueError("y_pred must be a probability between 0 and 1.")
+
+        p = min(max(yp, self.eps), 1.0 - self.eps)
+        loss = -np.log(p) if y_true == 1 else -np.log(1.0 - p)
+
+        self.total_loss_ += float(loss)
+        self.count_ += 1
+        self.score = self.total_loss_ / self.count_
+        return self
+
+    def get(self) -> float | None:
+        """Gets the running average logarithmic loss.
+
+        Returns:
+            float | None: The current running log loss, or None if no instances have been evaluated.
+        """
+        return self.score

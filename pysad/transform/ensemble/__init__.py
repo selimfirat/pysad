@@ -11,9 +11,9 @@ from .ensemblers import (
 )
 
 __all__ = [
-    "MaximumScoreEnsembler",
-    "MedianScoreEnsembler",
+    "AverageOfMaximumScoreEnsembler",
     "AverageScoreEnsembler",
     "MaximumOfAverageScoreEnsembler",
-    "AverageOfMaximumScoreEnsembler",
+    "MaximumScoreEnsembler",
+    "MedianScoreEnsembler",
 ]

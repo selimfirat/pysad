@@ -113,8 +113,9 @@ def test_confidences_out_of_order_are_rejected(drift_confidence, warning_confide
 
 
 def test_remove_is_not_supported():
-    meter = HDDMAMeter()
-    meter.update(1.0)
+    from pysad.statistics import RunningStatistic
 
-    with pytest.raises(NotImplementedError):
-        meter.remove(1.0)
+    meter = HDDMAMeter()
+    assert not hasattr(meter, "remove")
+    with pytest.raises(TypeError, match="does not support remove"):
+        RunningStatistic(HDDMAMeter, window_size=10)

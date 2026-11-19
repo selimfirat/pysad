@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_transformer import BaseTransformer
-from pysad.statistics.variance_meter import VarianceMeter
+from pysad.statistics.basic import VarianceMeter
 from pysad.transform.preprocessing.modified_stl_residual import _periodic_stl_seasonal
 from pysad.utils.validation import check_univariate
 
@@ -73,7 +74,7 @@ class OneShotSTL(BaseTransformer):
         self.shift_threshold = shift_threshold
 
         self.init_values_: list[float] | None = []
-        self.seasonal_ = np.zeros(period)
+        self.seasonal_: NDArray[np.float64] = np.zeros(period)
         self.num_online_ = 0
         self.residual_meter_ = VarianceMeter()
         # For each IRLS iteration: the rows of L (8, 4), D (4,) and the forward substituted

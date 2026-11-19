@@ -46,44 +46,17 @@ PARAMS = {
     "GaussianTailProbabilityCalibrator": {"window_size": 10, "short_window_size": 3},
 }
 
-# Open bugs that a property finds, by test and class. Each is a strict xfail, so the test starts
-# failing once the bug is fixed, as a reminder to remove it here.
-KNOWN_FAILURES = {
-    "test_transform_partial_does_not_change_state": {
-        "GaussianTailProbabilityCalibrator": (
-            "transform_partial treats a score as already fitted only on its first call after "
-            "fit_partial, so a second call with the same score counts it twice in the short-term "
-            "average."
-        ),
-    },
-    "test_batch_methods_agree_with_partial_methods": {
-        "GaussianTailProbabilityCalibrator": (
-            "After fit_partial, transform_partial counts a score equal to the last fitted one "
-            "only once in the short-term average, but after fit it adds the score again."
-        ),
-    },
-    "test_higher_score_never_gets_lower_output": {
-        "GaussianTailProbabilityCalibrator": (
-            "Right after fit_partial, the fitted score is counted once in the short-term "
-            "average, but any other score is added to it, which drops the oldest score, so a "
-            "slightly higher score can get a lower output."
-        ),
-    },
-}
+
 
 
 def _calibrators(test_name):
-    """The concrete classes that the subpackage exports, with the known failures of `test_name`."""
+    """The concrete classes that the subpackage exports."""
     module = pysad.transform.probability_calibration
-    known_failures = KNOWN_FAILURES.get(test_name, {})
     params = []
     for name in module.__all__:
         if inspect.isabstract(getattr(module, name)):
             continue
-        marks = []
-        if name in known_failures:
-            marks.append(pytest.mark.xfail(reason=known_failures[name], strict=True))
-        params.append(pytest.param(name, marks=marks))
+        params.append(pytest.param(name))
 
     return params
 

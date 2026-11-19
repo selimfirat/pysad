@@ -93,7 +93,7 @@ Integrate a one-dimensional stream
 ----------------------------------
 
 This script uses one feature per point. It scores each point before the update and calibrates the raw score.
-See :doc:`guides/one_dimensional_integration` for input shapes, feature bounds, and the py-outlier wrapper mismatch.
+See :ref:`one-dimensional-stream` for input shapes and feature bounds.
 
 .. literalinclude:: ../examples/example_one_dimensional_integration.py
    :language: python
@@ -388,7 +388,7 @@ It prints:
 Score forecast errors of a River forecaster
 -------------------------------------------
 
-This script scores a seasonal series with spikes with :class:`~pysad.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast. River needs Python 3.11 or newer.
+This script scores a seasonal series with spikes with :class:`~pysad.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast.
 
 .. literalinclude:: ../examples/example_predictive_anomaly_detector.py
    :language: python
@@ -553,6 +553,22 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.739
+
+Use an incremental distributional kernel detector
+-------------------------------------------------
+
+This script scores each point with IDK-S. IDK-S keeps a sliding window of recent instances as
+hypersphere partitions and scores each point by how many window instances share its partition. It
+takes the raw points.
+
+.. literalinclude:: ../examples/example_usage_idks.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.728
 
 Use a Gaussian mixture detector
 -------------------------------
@@ -790,7 +806,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.770
+   AUROC: 0.751
 
 Track running statistics
 ------------------------

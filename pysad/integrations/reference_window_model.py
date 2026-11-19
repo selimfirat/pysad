@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar
+from typing import Any, Self
 
 import numpy as np
 
 from pysad.utils import _iterate
 
 from ._batch_model import _BatchModel
-
-# typing.Self needs Python 3.11; this TypeVar lets fit_partial return the subclass type.
-_ReferenceWindowModelT = TypeVar("_ReferenceWindowModelT", bound="ReferenceWindowModel")
 
 
 class ReferenceWindowModel(_BatchModel):
@@ -61,9 +58,7 @@ class ReferenceWindowModel(_BatchModel):
         else:
             self.initial_ref_window = False
 
-    def fit_partial(
-        self: _ReferenceWindowModelT, X: np.ndarray, y: int | None = None
-    ) -> _ReferenceWindowModelT:
+    def fit_partial(self, X: np.ndarray, y: int | None = None) -> Self:
         """Updates the model with the next instance.
 
         Args:

@@ -21,7 +21,7 @@ class PredictiveAnomalyDetector(BaseModel):
     - Eq. (1) is the signed relative error. The model takes its absolute value, so that a value far below its forecast also gets a high score.
     - The first ``probationary_period`` values get the score 0, a case that the paper does not discuss. Some forecasters cannot forecast before they see enough values. For example, ``HoltWinters`` needs ``max(2, seasonality)`` values.
 
-    River needs Python 3.11 or newer. Install it with ``pip install river``.
+    Install River with ``pip install river``.
 
     Args:
         model (object): A River forecaster. The detector trains this object in place.

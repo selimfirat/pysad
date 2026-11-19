@@ -4,9 +4,10 @@ from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_metric import BaseMetric
-from pysad.evaluation.metrics import _ConfusionMatrixMetric
+from pysad.evaluation.metrics import BrierScoreMetric, _ConfusionMatrixMetric
 
 
 class RollingMetric(BaseMetric):
@@ -18,9 +19,11 @@ class RollingMetric(BaseMetric):
     For example, AUROCMetric raises ValueError when a window contains only one class.
 
     Storage uses O(window_size) pairs in preallocated NumPy ring arrays, and updates take O(1) time.
-    Confusion-matrix metrics (precision, recall, F1, balanced accuracy, MCC) maintain sliding
-    confusion counts so ``get()`` runs in O(1) time; AUROCMetric and AUPRMetric sort scores in
-    O(window_size * log(window_size)) time.
+    Confusion-matrix metrics (precision, recall, F1, balanced accuracy, MCC) maintain sliding counts.
+    BrierScoreMetric maintains a running squared-error sum and subtracts errors when pairs expire.
+    For these metrics, ``get()`` takes O(1) time for valid windows.
+    AUROCMetric and AUPRMetric sort scores in O(window_size * log(window_size)) time.
+    Other metrics use a fresh metric to evaluate the window.
 
     Unlike this sliding window, :class:`~pysad.evaluation.WindowedMetric`
     averages metric values from consecutive windows that do not overlap.
@@ -51,6 +54,8 @@ class RollingMetric(BaseMetric):
         self._head = 0
 
         self._is_confusion = issubclass(metric_cls, _ConfusionMatrixMetric)
+        self._is_brier = metric_cls is BrierScoreMetric
+        self._squared_error_sum = 0.0
         self._threshold: float | None = kwargs.get("threshold")
         self._bucket_buf = np.empty(window_size, dtype=np.int8) if self._is_confusion else None
         self._counts = [0, 0, 0, 0]  # [tp, fp, fn, tn]
@@ -69,6 +74,13 @@ class RollingMetric(BaseMetric):
             return 0 if pred else 2
         return 1 if pred else 3
 
+    def _update_brier(self, y_true: float, y_pred: float, weight: int) -> None:
+        if y_true not in (0, 1) or not 0.0 <= y_pred <= 1.0:
+            self._invalid_count += weight
+            return
+        error = float(y_pred) - float(y_true)
+        self._squared_error_sum += weight * error * error
+
     def update(self, y_true: int, y_pred: float) -> RollingMetric:
         """Add a label-score pair to the recent window.
 
@@ -80,6 +92,10 @@ class RollingMetric(BaseMetric):
             RollingMetric: This metric.
         """
         slot = self._head
+        if self._is_brier:
+            if self._count == self.window_size:
+                self._update_brier(self._yt_buf[slot], self._yp_buf[slot], -1)
+            self._update_brier(y_true, y_pred, 1)
         if self._is_confusion:
             assert self._bucket_buf is not None
             if self._count == self.window_size:
@@ -118,6 +134,11 @@ class RollingMetric(BaseMetric):
             self._yp_buf[:] = yp_tail
             self._count = self.window_size
             self._head = 0
+            if self._is_brier:
+                self._squared_error_sum = 0.0
+                self._invalid_count = 0
+                for yt, yp in zip(yt_tail, yp_tail, strict=True):
+                    self._update_brier(yt, yp, 1)
             if self._is_confusion:
                 assert self._bucket_buf is not None
                 self._counts = [0, 0, 0, 0]
@@ -138,7 +159,7 @@ class RollingMetric(BaseMetric):
             self.update(yt, yp)
         return self
 
-    def _ordered_window(self) -> tuple[np.ndarray, np.ndarray]:
+    def _ordered_window(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         if self._count < self.window_size or self._head == 0:
             return self._yt_buf[: self._count], self._yp_buf[: self._count]
         h = self._head
@@ -148,7 +169,7 @@ class RollingMetric(BaseMetric):
         )
 
     def get(self) -> float | None:
-        """Recompute the metric without changing the window.
+        """Return the metric without changing the window.
 
         Returns:
             float | None: The metric result, or None for an empty window.
@@ -157,6 +178,8 @@ class RollingMetric(BaseMetric):
             return None
 
         metric = self.metric_cls(**self.metric_kwargs)
+        if self._is_brier and self._invalid_count == 0:
+            return max(0.0, self._squared_error_sum / self._count)
         if self._is_confusion and self._invalid_count == 0:
             assert isinstance(metric, _ConfusionMatrixMetric)
             metric.tp_, metric.fp_, metric.fn_, metric.tn_ = self._counts

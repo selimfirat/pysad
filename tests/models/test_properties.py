@@ -101,6 +101,7 @@ def _model_params(model_name, num_features, data):
         },
         # A short period and a threshold of 1, so that the streams reach the failure rule.
         "HoltWinters": {"period": 2, "window_size": 3, "threshold": 1},
+        "IDKS": {"input_shape": num_features, "window_size": 8, "num_samples": 4},
         "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
         "KELOS": {"window_size": 20, "radius": 0.1, "num_neighbors": 3},
         "MatrixProfile": {"window_length": 4, "history_size": 20},
@@ -111,6 +112,7 @@ def _model_params(model_name, num_features, data):
         # The drawn values reach -1e6, below the domain of log(1 + x).
         "MIDAS": {"num_buckets": 16, "tick_size": 3},
         "MemStream": {"window_size": 8, "num_epochs": 20},
+        "MiLOF": {"num_neighbors": 3, "window_size": 8, "num_summaries": 2},
         "MStream": {"log_transform": False},
         "NETS": {"window_size": 20, "max_radius": 0.1},
         "OeSNNUAD": {"window_size": 5, "num_output_neurons": 5},

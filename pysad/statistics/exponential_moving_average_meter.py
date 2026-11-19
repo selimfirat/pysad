@@ -34,22 +34,7 @@ class ExponentialMovingAverageMeter(BaseStatistic):
     """
 
     def __init__(self, alpha: float | None = None, half_life: float | None = None) -> None:
-        if alpha is not None and half_life is not None:
-            raise ValueError("Pass only one of alpha and half_life.")
-
-        if half_life is not None:
-            if half_life <= 0:
-                raise ValueError("half_life must be positive.")
-
-            alpha = 1.0 - 0.5 ** (1.0 / half_life)
-
-        if alpha is None:
-            alpha = 0.1
-
-        if not 0.0 < alpha <= 1.0:
-            raise ValueError("alpha must be in the interval (0, 1].")
-
-        self.alpha = alpha
+        self.alpha = _resolve_alpha(alpha, half_life)
         self.num_items = 0
         self._value = 0.0
 
@@ -78,3 +63,23 @@ class ExponentialMovingAverageMeter(BaseStatistic):
             float: The current exponentially weighted moving average, or 0.0 before any update.
         """
         return self._value
+
+
+def _resolve_alpha(alpha: float | None, half_life: float | None) -> float:
+    """Resolve the weight for an exponential moving meter."""
+    if alpha is not None and half_life is not None:
+        raise ValueError("Pass only one of alpha and half_life.")
+
+    if half_life is not None:
+        if half_life <= 0:
+            raise ValueError("half_life must be positive.")
+
+        alpha = 1.0 - 0.5 ** (1.0 / half_life)
+
+    if alpha is None:
+        alpha = 0.1
+
+    if not 0.0 < alpha <= 1.0:
+        raise ValueError("alpha must be in the interval (0, 1].")
+
+    return alpha

@@ -1,5 +1,3 @@
-import importlib.util
-
 import numpy as np
 import pytest
 
@@ -15,9 +13,10 @@ def _initial_X(num_features):
 
 def _model_specs():
     from pyod.models.iforest import IForest
+    from river import time_series
 
     from pysad import models
-    from pysad.integrations import OneFitModel, ReferenceWindowModel
+    from pysad.integrations import OneFitModel, PredictiveAnomalyDetector, ReferenceWindowModel
     from pysad.transform.postprocessing import ZScorePostprocessor
     from pysad.transform.preprocessing import ShingleTransformer
     from tests.models.conftest import active_model_names, num_features_for, short_stream_params
@@ -47,6 +46,7 @@ def _model_specs():
         "HoltWinters": {"period": 4, "threshold": 1},
         "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 256},
         "IForestASD": {"window_size": 32},
+        "IDKS": {"input_shape": NUM_FEATURES, "window_size": 20, "num_samples": 4},
         "IncrementalLOF": {"window_size": 20},
         "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32},
         "KELOS": {"window_size": 20, "radius": 0.3, "num_neighbors": 3},
@@ -128,19 +128,13 @@ def _model_specs():
         ),
     ]
 
-    # River needs Python 3.11 or newer, so the test group installs it only there.
-    if importlib.util.find_spec("river") is not None:
-        from river import time_series
-
-        from pysad.integrations import PredictiveAnomalyDetector
-
-        specs.append(
-            (
-                "PredictiveAnomalyDetector",
-                lambda: PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=0)),
-                1,
-            )
+    specs.append(
+        (
+            "PredictiveAnomalyDetector",
+            lambda: PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=0)),
+            1,
         )
+    )
 
     return specs
 

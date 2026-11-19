@@ -87,3 +87,17 @@ def test_thresh_leap_sets_the_radius_from_the_first_instances():
 
     nearest = np.sort(np.linalg.norm(X[:40, None] - X[None, :40], axis=2), axis=1)[:, 1]
     assert model.radius_ == np.quantile(nearest, 0.95)
+
+
+def test_thresh_leap_larger_outlier_fraction_gives_higher_scores():
+    import numpy as np
+
+    from pysad.models import ThreshLEAP
+
+    X = np.random.RandomState(0).normal(size=(300, 2))
+    few = ThreshLEAP(window_size=100, calibration_size=100, outlier_fraction=0.05).fit(X)
+    many = ThreshLEAP(window_size=100, calibration_size=100, outlier_fraction=0.5).fit(X)
+
+    # The radius is the 1 - outlier_fraction quantile of the nearest-neighbor distances, so a larger outlier_fraction gives a smaller radius and fewer neighbors.
+    assert many.radius_ < few.radius_
+    assert many.score(X[-50:]).mean() > few.score(X[-50:]).mean()

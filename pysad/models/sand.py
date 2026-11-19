@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -177,11 +178,15 @@ class SAND(BaseModel):
         self.count_ = 0  # values of the current batch in buffer_
         self.time_ = 0  # values seen
         self.centroids_: np.ndarray | None = None  # (num_centroids, centroid_length)
-        self.matrices_ = np.empty((0, self.centroid_length, self.centroid_length))
-        self.distances_ = np.empty(0)  # mean SBD of each cluster to its centroid
-        self.sizes_ = np.empty(0)  # subsequences in each cluster
-        self.last_ = np.empty(0)  # start of the latest subsequence of each cluster
-        self.weights_ = np.empty(0)
+        self.matrices_: NDArray[np.float64] = np.empty(
+            shape=(0, self.centroid_length, self.centroid_length)
+        )
+        # Mean SBD of each cluster to its centroid.
+        self.distances_: NDArray[np.float64] = np.empty(0)
+        self.sizes_: NDArray[np.float64] = np.empty(0)  # subsequences in each cluster
+        # Start of each cluster's latest subsequence.
+        self.last_: NDArray[np.float64] = np.empty(0)
+        self.weights_: NDArray[np.float64] = np.empty(0)
         # The z-normalized windows of subsequence_length values of each centroid, and their squared norms.
         self.windows_ = np.empty(
             (0, self.centroid_length - self.subsequence_length + 1, self.subsequence_length)

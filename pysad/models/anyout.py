@@ -66,6 +66,7 @@ class AnyOut(BaseModel):
     - A split that would make the tree taller than `max_height` levels is never made, as in MOA. The leaf then merges its closest pair of entries, the rule of the thesis for a node that has no time to split. Thus the tree holds at most 3^`max_height` leaf entries.
     - Before a node splits, it discards its entry with the smallest n if n < 2^(-`decay` `snapshot_interval`) (Eq. 11.1), and the cluster feature of the entry is subtracted from the entries above it. Since no snapshots are taken, `snapshot_interval` only sets this threshold.
     - The tree is built by insertion, not by the bulk loading that some experiments of the thesis use. The confidence 1 - e^(-s) of Section 14.4.4 only orders the instances of a constant stream for more computation time, so this class does not compute it.
+    - The cluster features hold the sums of `x - origin_`, where `origin_` is the first fitted instance. Every distance and variance of the tree depends only on the differences between the instances, so a constant offset leaves the scores the same in exact arithmetic. The sums then stay on the scale of the spread around the first instance, and the variance keeps its precision when the values are far from 0.
 
     Args:
         depth (int | None): The number of tree levels that the descent of an instance reads before it is scored, at least 1. None reads down to a leaf (Default=None).
@@ -117,7 +118,9 @@ class AnyOut(BaseModel):
         if self.root_ is None:
             self.root_ = _Node(len(x), self._time)
             # The cluster features hold each instance minus the first one, so that SS / n - mean^2
-            # does not cancel to rounding noise on values far from 0. The scores do not change.
+            # does not cancel to rounding noise on values far from 0. The scores are the same in
+            # exact arithmetic, but their last bits differ, so points with equal scores can change
+            # their order.
             self.origin_ = x.copy()
         x = x - self.origin_
 

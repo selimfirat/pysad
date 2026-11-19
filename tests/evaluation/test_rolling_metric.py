@@ -29,7 +29,8 @@ def test_recent_pairs(metric_name, expected):
 
 
 @pytest.mark.parametrize(
-    "metric_name", ["PrecisionMetric", "RecallMetric", "AUROCMetric", "AUPRMetric"]
+    "metric_name",
+    ["PrecisionMetric", "RecallMetric", "AUROCMetric", "AUPRMetric", "BrierScoreMetric"],
 )
 def test_empty_window(metric_name):
     import pysad.evaluation as evaluation
@@ -102,3 +103,75 @@ def test_rolling_confusion_metrics_match_batch_and_recover_from_invalid_pair():
         bad.get()
     bad.update(1, 1).update(1, 0)
     assert bad.get() == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("window_size", [1, 3, 8])
+@pytest.mark.parametrize("batch_size", [1, 2, 3, 10])
+def test_rolling_brier_matches_independent_windows(window_size, batch_size):
+    from pysad.evaluation import BrierScoreMetric, RollingMetric
+
+    pairs = [(1, 0.8), (0, 0.9), (0, 0.1), (1, 0.2), (1, 0.7), (0, 0.6)] * 4
+    metric = RollingMetric(BrierScoreMetric, window_size=window_size)
+    for start in range(0, len(pairs), batch_size):
+        batch = pairs[start : start + batch_size]
+        if batch_size == 1:
+            assert metric.update(*batch[0]) is metric
+        else:
+            assert metric.update_batch((y for y, _ in batch), (p for _, p in batch)) is metric
+        end = start + len(batch)
+        window = pairs[max(0, end - window_size) : end]
+        expected = sum((p - y) ** 2 for y, p in window) / len(window)
+        assert metric.get() == pytest.approx(expected)
+        assert metric.get() == pytest.approx(expected)
+        assert isinstance(metric.get(), float)
+
+    assert metric.update_batch([], []) is metric
+    assert metric.get() == pytest.approx(expected)
+    with pytest.raises(ValueError):
+        metric.update_batch([0, 1], [0.5])
+    assert metric.get() == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "pair",
+    [
+        (2, 0.5),
+        (0.5, 0.5),
+        (float("nan"), 0.5),
+        (0, -0.1),
+        (1, 1.1),
+        (0, float("nan")),
+        (1, float("inf")),
+        (0, -float("inf")),
+    ],
+)
+@pytest.mark.parametrize("as_batch", [False, True])
+def test_rolling_brier_invalid_pair_expires(pair, as_batch):
+    from pysad.evaluation import BrierScoreMetric, RollingMetric
+
+    metric = RollingMetric(BrierScoreMetric, window_size=2)
+    if as_batch:
+        metric.update_batch([1, pair[0]], [0.5, pair[1]])
+    else:
+        metric.update(1, 0.5).update(*pair)
+    with pytest.raises(ValueError):
+        metric.get()
+    metric.update(0, 0.0)
+    with pytest.raises(ValueError):
+        metric.get()
+    metric.update(1, 0.5)
+    assert metric.get() == pytest.approx(0.125)
+    metric.update_batch([0, 1], [1.0, 0.0])
+    assert metric.get() == pytest.approx(1.0)
+
+
+def test_rolling_brier_subclass_keeps_custom_result():
+    from pysad.evaluation import BrierScoreMetric, RollingMetric
+
+    class DoubledBrier(BrierScoreMetric):
+        def get(self):
+            return 2 * super().get()
+
+    metric = RollingMetric(DoubledBrier, window_size=2)
+    metric.update_batch([0, 1, 0], [0.2, 0.5, 0.5])
+    assert metric.get() == pytest.approx(0.5)

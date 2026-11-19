@@ -34,6 +34,7 @@ REQUIRED_ARGS: dict[str, dict[str, Any]] = {
     "ApproxStorm": {"sample_fraction": 0.5},
     "HalfSpaceTrees": {"feature_mins": [0.0], "feature_maxes": [1.0]},
     "HoltWinters": {"period": 2},
+    "IDKS": {"input_shape": 1},
     "ModifiedSTLResidualTransformer": {"period": 2},
     "ReferenceWindowModel": {"model_cls": IForest, "sliding_size": 5},
     "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0},
@@ -53,7 +54,10 @@ def _discover_window_size_components() -> list[Any]:
         for name in getattr(mod, "__all__", ()):
             if name.startswith("_"):
                 continue
-            if name == "RiverAnomalyDetector" and importlib.util.find_spec("river") is None:
+            if name == "RiverAnomalyDetector" and (
+                importlib.util.find_spec("river") is None
+                or not hasattr(importlib.import_module("river.base"), "AnomalyDetector")
+            ):
                 continue
             obj = getattr(mod, name)
             if not (inspect.isclass(obj) and not inspect.isabstract(obj)) or obj in seen:

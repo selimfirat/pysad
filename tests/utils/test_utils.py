@@ -3,10 +3,21 @@ Tests for pysad.utils module functions and classes.
 """
 
 import numpy as np
+import pytest
 
 
 class TestUtilsFunctions:
     """Tests for utility functions in pysad.utils."""
+
+    @pytest.mark.parametrize("dtype", [np.int64, np.float32, np.float64])
+    def test_scalar_bounds_are_python_floats(self, dtype):
+        from pysad.utils import get_minmax_scalar
+
+        low, high = get_minmax_scalar(np.array([[2, -3], [7, 1]], dtype=dtype))
+
+        assert type(low) is float
+        assert type(high) is float
+        assert (low, high) == (-3.0, 7.0)
 
     def test_fix_seed(self):
         """Test fix_seed function for reproducible randomness."""
@@ -200,7 +211,7 @@ class TestWindow:
         window.update(2.0)
         assert window.get() == [2.0]
 
-    def test_window_get_returns_items_in_order(self):
+    def test_window_get_returns_same_list_each_call(self):
         """Test that Window.get() returns the window items, oldest first."""
         from pysad.utils import Window
 
@@ -215,42 +226,20 @@ class TestWindow:
         assert len(window) == 2
         assert list(window) == [1.0, 2.0]
 
-    def test_unlimited_window_initialization(self):
-        """Test UnlimitedWindow initialization."""
-        from pysad.utils.window import UnlimitedWindow
+    def test_window_get_returns_a_copy(self):
+        """Changing the returned list does not change the window."""
+        from pysad.utils import Window
 
-        window = UnlimitedWindow()
-        assert window.window_size is None
-        assert window.get() == []
-
-    def test_unlimited_window_growth(self):
-        """Test UnlimitedWindow unlimited growth."""
-        from pysad.utils.window import UnlimitedWindow
-
-        window = UnlimitedWindow()
-
-        # Add many items
-        for i in range(100):
-            window.update(float(i))
+        window = Window(window_size=3)
+        window.update(1.0)
+        window.update(2.0)
 
         result = window.get()
-        assert len(result) == 100
-        assert result[0] == 0.0
-        assert result[-1] == 99.0
+        result[0] = 9.0
+        result.append(3.0)
 
-    def test_unlimited_window_no_size_limit(self):
-        """Test that UnlimitedWindow doesn't remove old items."""
-        from pysad.utils.window import UnlimitedWindow
-
-        window = UnlimitedWindow()
-
-        for i in range(10):
-            window.update(float(i))
-
-        # All items should be present
-        result = window.get()
-        expected = [float(i) for i in range(10)]
-        assert result == expected
+        assert window.get() == [1.0, 2.0]
+        assert list(window) == [1.0, 2.0]
 
     def test_ring_buffer_scalar_and_vector_wraparound(self):
         """Test RingBuffer chronological order and active slices for scalars and vectors."""
@@ -273,6 +262,33 @@ class TestWindow:
         assert active_count == 2
         active = first if second is None else np.vstack([a for a in (first, second) if len(a) > 0])
         assert {tuple(row) for row in active} == {(3.0, 30.0), (4.0, 40.0)}
+
+    @pytest.mark.parametrize(
+        ("first", "mismatched"),
+        [(1.0, np.array([2.0])), (np.array([1.0, 2.0]), 3.0)],
+    )
+    def test_ring_buffer_rejects_a_different_item_shape(self, first, mismatched):
+        """The first item fixes the shape accepted by later appends."""
+        from pysad.utils import RingBuffer
+
+        buffer = RingBuffer(window_size=2)
+        buffer.append(first)
+
+        with pytest.raises(ValueError, match="item must have shape"):
+            buffer.append(mismatched)
+
+    def test_ring_buffer_to_array_returns_a_copy(self):
+        """Changing the returned array does not change buffered items."""
+        from pysad.utils import RingBuffer
+
+        buffer = RingBuffer(window_size=3)
+        for value in (1.0, 2.0, 3.0, 4.0):
+            buffer.append(value)
+
+        result = buffer.to_array()
+        result[0] = -1.0
+
+        np.testing.assert_array_equal(buffer.to_array(), [2.0, 3.0, 4.0])
 
 
 class TestArrayStreamer:

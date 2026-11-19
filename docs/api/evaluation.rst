@@ -3,7 +3,24 @@ Evaluation
 
 .. module:: pysad.evaluation
 
-This module holds streaming metrics. Each metric updates its value one point at a time. See :doc:`/guides/evaluate`.
+This module holds streaming metrics, including :class:`~pysad.evaluation.LogLossMetric` for probability evaluation. Each metric updates its value one point at a time. See :doc:`/guides/evaluate`.
+
+:class:`BrierScoreMetric` measures mean squared error for binary anomaly probabilities.
+Use label 1 for anomalies and 0 for normal instances. Lower scores mean better probabilities.
+An empty stream returns ``0.0``. Invalid labels or probabilities raise ``ValueError``.
+Use :class:`RollingMetric` with :class:`BrierScoreMetric` to evaluate only recent pairs.
+Single-pair updates and results take constant time for valid windows.
+An empty rolling window returns ``None``.
+If a window contains an invalid pair, reading its result raises ``ValueError`` until that pair expires.
+
+:class:`ExpectedCalibrationErrorMetric` measures calibration for binary anomaly probabilities.
+It weights each bin's absolute difference between mean probability and anomaly frequency by its fraction of the stream.
+Use label 1 for anomalies and 0 for normal instances. Lower scores mean better calibration.
+The ``num_bins`` parameter sets fixed, equal-width bins (default 10).
+Bin k covers ``[k / num_bins, (k + 1) / num_bins)``. The final bin includes ``1.0``.
+Empty bins contribute zero. An empty stream returns ``0.0``.
+Invalid labels or probabilities raise ``ValueError`` and leave the metric unchanged.
+Counts, label sums, and probability sums use fixed storage that does not grow with the stream.
 
 .. autosummary::
    :nosignatures:

@@ -182,6 +182,38 @@ def test_postprocessors_partial_matches_batch():
         np.testing.assert_allclose(partial_scores, batch_scores, err_msg=postprocessor_cls.__name__)
 
 
+def test_dynamic_threshold_respects_custom_z_values():
+    import numpy as np
+
+    scores = np.array([1.0] * 9 + [6.0])
+
+    mean = scores.mean()
+    std = scores.std()
+
+    low_z = NonparametricDynamicThresholdPostprocessor(
+        window_size=10,
+        span=1,
+        z_values=(1.0,),
+    )
+    high_z = NonparametricDynamicThresholdPostprocessor(
+        window_size=10,
+        span=1,
+        z_values=(10.0,),
+    )
+
+    low_threshold = mean + 1.0 * std
+    high_threshold = mean + 10.0 * std
+
+    low_output = [low_z.fit_transform_partial(score) for score in scores]
+    high_output = [high_z.fit_transform_partial(score) for score in scores]
+
+    assert scores[-1] > low_threshold
+    assert scores[-1] < high_threshold
+    assert low_output[-1] == 1.0
+    assert high_output[-1] == 0.0
+    assert low_output[-1] != high_output[-1]
+
+
 def test_max_postprocessor_memory_does_not_grow_with_the_stream():
     import numpy as np
 
@@ -250,6 +282,29 @@ def test_dynamic_threshold_rejects_negative_scores():
 
     with pytest.raises(ValueError, match="nonnegative"):
         NonparametricDynamicThresholdPostprocessor().fit_partial(-1.0)
+
+
+def test_dynamic_threshold_uses_custom_z_values():
+    import numpy as np
+
+    scores = np.array([1.0, 2.0] * 20 + [10.0])
+    # span=1 turns off the smoothing, so the window holds the raw scores.
+    low = NonparametricDynamicThresholdPostprocessor(window_size=41, span=1, z_values=(1.0,))
+    high = NonparametricDynamicThresholdPostprocessor(window_size=41, span=1, z_values=(10.0,))
+
+    low_out = []
+    high_out = []
+    for score in scores:
+        low_out.append(low.fit_transform_partial(score))
+        high_out.append(high.fit_transform_partial(score))
+
+    # The spike is above mean + 1 * std of the window and below mean + 10 * std.
+    mean = scores.mean()
+    std = scores.std()
+    low_threshold = mean + 1.0 * std
+    np.testing.assert_array_equal(low_out[:-1], 0.0)
+    np.testing.assert_array_equal(high_out, 0.0)
+    np.testing.assert_allclose(low_out[-1], (10.0 - low_threshold) / (mean + std))
 
 
 def test_quantile_filter_labels_scores_with_the_quantile_of_the_previous_scores():

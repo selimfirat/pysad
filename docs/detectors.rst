@@ -114,6 +114,10 @@ These detectors take points with one or more features. A feature is one measured
      - The local outlier factor of :class:`~pysad.models.IncrementalLOF` in a window that keeps a density-preserving summary of old points :cite:`na2018dilof`
      - Nothing
      - Fixed: a window of at most ``window_size`` points and their ``num_neighbors`` nearest neighbors
+   * - :class:`~pysad.models.MiLOF`
+     - The local outlier factor of :class:`~pysad.models.IncrementalLOF` with older points summarized as cluster centers :cite:`salehi2016fast`
+     - Nothing
+     - Fixed: a window of ``window_size`` points, ``num_summaries`` cluster centers, and their ``num_neighbors`` nearest neighbors
    * - :class:`~pysad.models.KELOS`
      - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
      - Nothing
@@ -138,14 +142,18 @@ These detectors take points with one or more features. A feature is one measured
      - Quantum measurement density estimation :cite:`gallego2022inqmad`
      - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``)
      - Fixed: a ``dim_x`` by ``dim_x`` matrix
-   * - :class:`~pysad.models.EXPoSE`
-     - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
-     - Nothing
-     - Fixed: ``num_random_features`` frequencies per feature and the mean of the features
-   * - :class:`~pysad.models.OnlineKMeans`
-     - Squared distance to the nearest center of online k-means, which opens each point as a new center with a probability that grows with its distance :cite:`liberty2016online`
-     - Nothing
-     - Fixed: the ``max_centers`` most recent centers
+* - :class:`~pysad.models.EXPoSE`
+      - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
+      - Nothing
+      - Fixed: ``num_random_features`` frequencies per feature and the mean of the features
+    * - :class:`~pysad.models.OnlineKMeans`
+      - Squared distance to the nearest center of online k-means, which opens each point as a new center with a probability that grows with its distance :cite:`liberty2016online`
+      - Nothing
+      - Fixed: the ``max_centers`` most recent centers
+    * - :class:`~pysad.models.IDKS`
+      - Similarity to the data distribution of a sliding window, from hypersphere partitions of the Isolation Distributional Kernel :cite:`xu2026idks`
+      - The number of features, the window size, the number of partitions and the number of samples per partition
+      - Fixed: a window of ``window_size`` points and ``num_partitions * num_samples`` hypersphere samples
 
 Univariate detectors
 --------------------

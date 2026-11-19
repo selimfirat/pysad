@@ -47,8 +47,6 @@ PARAMS = {
 }
 
 
-
-
 def _calibrators(test_name):
     """The concrete classes that the subpackage exports."""
     module = pysad.transform.probability_calibration

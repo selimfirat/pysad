@@ -14,6 +14,7 @@ from .dilof import DILOF
 from .drift_adaptive_detector import DriftAdaptiveDetector
 from .exact_storm import ExactStorm
 from .expose import EXPoSE
+from .feedback_hst import FeedbackHST
 from .fluxev import FluxEV
 from .frahst import FRAHST
 from .gng_a import GNGA
@@ -70,6 +71,7 @@ __all__ = [
     "DriftAdaptiveDetector",
     "ExactStorm",
     "EXPoSE",
+    "FeedbackHST",
     "FluxEV",
     "FRAHST",
     "GNGA",

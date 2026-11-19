@@ -222,6 +222,7 @@ module = [
     "pysad.statistics.basic",
     "pysad.statistics.drift",
     "pysad.statistics.quantiles",
+    "pysad.statistics.relative_error_quantile_meter",
     "pysad.statistics.running_statistic",
 ]
 disallow_any_generics = true

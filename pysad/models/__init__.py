@@ -40,6 +40,7 @@ from .mstream import MStream
 from .nets import NETS
 from .oesnn_uad import OeSNNUAD
 from .online_isolation_forest import OnlineIsolationForest
+from .online_kmeans import OnlineKMeans
 from .online_one_class_svm import OnlineOneClassSVM
 from .pcb_isolation_forest import PCBIsolationForest
 from .pewma import PEWMA
@@ -97,6 +98,7 @@ __all__ = [
     "NullModel",
     "OeSNNUAD",
     "OnlineIsolationForest",
+    "OnlineKMeans",
     "OnlineOneClassSVM",
     "PCBIsolationForest",
     "PerfectModel",

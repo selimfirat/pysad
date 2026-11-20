@@ -471,6 +471,7 @@ class FeedbackHST(BaseModel):
             return False
 
         new_dists = self._compute_node_distributions(X_new)
+        assert self._ref_node_dists is not None
         kl_trees, _ = self._compute_kl_divergence(self._ref_node_dists, new_dists)
 
         if self.check_kl_divergence:
@@ -500,10 +501,12 @@ class FeedbackHST(BaseModel):
                 p2 = self._compute_node_distributions(X2)
                 kl_trees, _ = self._compute_kl_divergence(p1, p2)
             else:
+                assert self._ref_node_dists is not None
                 kl_trees, _ = self._compute_kl_divergence(
                     self._ref_node_dists, self._ref_node_dists
                 )
 
+            assert self._kl_q_alpha is not None
             for i in range(self.num_trees):
                 self._kl_q_alpha[i] = float(np.quantile(kl_trees[i : i + 1], 1 - self.kl_alpha))
             return True

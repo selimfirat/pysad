@@ -6,6 +6,7 @@ from .adems import ADeMS
 from .anyout import AnyOut
 from .approx_storm import ApproxStorm
 from .baselines import NullModel, PerfectModel, RandomModel
+from .budgeted_active_learner import BudgetedActiveLearner
 from .change_finder import ChangeFinder
 from .cpod import CPOD
 from .d3 import D3
@@ -62,6 +63,7 @@ __all__ = [
     "ADeMS",
     "AnyOut",
     "ApproxStorm",
+    "BudgetedActiveLearner",
     "ChangeFinder",
     "CPOD",
     "D3",

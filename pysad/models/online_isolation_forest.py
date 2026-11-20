@@ -31,6 +31,7 @@ import numpy as np
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
+from pysad.explainability import treeshap_ensemble
 
 
 def _path_length(num_samples: float, max_leaf_samples: int, inv_log: float) -> float:
@@ -641,3 +642,91 @@ class OnlineIsolationForest(BaseModel):
 
         depth = sum(tree.predict_one(X) for tree in self.trees_) / self.num_trees
         return float(2.0 ** (-depth / (self.normalization_ + np.finfo(float).eps)))
+
+    def explain_partial(self, X: np.ndarray) -> np.ndarray:
+        """Returns per-feature SHAP values for the anomaly score of the next instance.
+
+        Uses the TreeSHAP algorithm :cite:`lundberg2020consistent` to compute exact SHAP values
+        for the tree ensemble. The SHAP values explain the average path length (depth) across
+        trees, which is monotonically related to the anomaly score. Positive values indicate
+        features that increase the path length (making the instance more normal), negative values
+        indicate features that decrease the path length (making the instance more anomalous).
+
+        Like ``score_partial``, it does not update the model or record the instance. Before
+        the first instance is fitted, the method returns zeros of shape ``(num_features,)``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to explain.
+
+        Returns:
+            np.float64 array of shape (num_features,): SHAP values, one per feature.
+            Positive values mean the feature increases the average path length (more normal),
+            negative values mean it decreases the path length (more anomalous).
+            Returns zeros before any fitting.
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        if not self.window_:
+            return np.zeros(x.shape[0], dtype=np.float64)
+
+        if self.branching_factor != 2:
+            # TreeSHAP currently only supports binary trees.
+            return np.zeros(x.shape[0], dtype=np.float64)
+
+        # Extract tree structures from packed representation.
+        num_features = x.shape[0]
+        trees_features: list[np.ndarray] = []
+        trees_thresholds: list[np.ndarray] = []
+        trees_left: list[np.ndarray] = []
+        trees_right: list[np.ndarray] = []
+        trees_values: list[np.ndarray] = []
+
+        for t_idx in range(self.num_trees):
+            max_d = self.trees_[t_idx].max_depth
+            if max_d == 0:
+                # Empty tree: single leaf node with value 0.
+                trees_features.append(np.array([-1], dtype=np.intp))
+                trees_thresholds.append(np.array([0.0], dtype=np.float64))
+                trees_left.append(np.array([0], dtype=np.intp))
+                trees_right.append(np.array([0], dtype=np.intp))
+                trees_values.append(np.array([0.0], dtype=np.float64))
+                continue
+
+            nc = self.trees_[t_idx].node_count
+            # Packed arrays for this tree.
+            p_dim = self._p_dim[t_idx, :nc]
+            p_split = self._p_split[t_idx, :nc]
+            p_left = self._p_left[t_idx, :nc]
+            p_right = self._p_right[t_idx, :nc]
+            p_leaf_pl = self._p_leaf_pl[t_idx, :nc]
+
+            # TreeSHAP expects leaf nodes to have feature = -1.
+            # In our packed representation, leaf nodes have p_dim = 0 and p_left = p_right = node.
+            # We need to convert: for leaf nodes, set feature to -1.
+            features = p_dim.copy()
+            is_leaf = p_left == p_right
+            features[is_leaf] = -1
+
+            trees_features.append(features)
+            trees_thresholds.append(p_split)
+            trees_left.append(p_left)
+            trees_right.append(p_right)
+            trees_values.append(p_leaf_pl)
+
+        # Compute SHAP values for the average path length.
+        phi = treeshap_ensemble(
+            x,
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            num_features,
+        )
+
+        return phi

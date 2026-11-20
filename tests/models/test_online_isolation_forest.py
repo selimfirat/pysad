@@ -274,3 +274,122 @@ def test_packed_capacity_growth_across_trees_and_eviction():
     assert scores.shape == (260,)
     assert np.all(np.isfinite(scores))
     assert np.all((scores >= 0.0) & (scores <= 1.0))
+
+
+def test_online_isolation_forest_explain_returns_shap_values():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(200, 5)
+    model = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+    model.fit(X[:100])
+
+    shap_values = model.explain_partial(X[101])
+
+    assert shap_values.shape == (5,)
+    assert shap_values.dtype == np.float64
+    # SHAP values can be positive or negative
+    # They sum to the average path length minus the expected path length
+
+
+def test_online_isolation_forest_explain_does_not_change_state():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(200, 5)
+    model = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+    model.fit(X[:100])
+
+    before = model.score_partial(X[101])
+    model.explain_partial(X[101])
+    after = model.score_partial(X[101])
+
+    assert before == after
+
+
+def test_online_isolation_forest_explain_is_reproducible():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(200, 5)
+
+    model_a = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+    model_a.fit(X[:100])
+    weights_a = model_a.explain_partial(X[101])
+
+    model_b = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+    model_b.fit(X[:100])
+    weights_b = model_b.explain_partial(X[101])
+
+    np.testing.assert_array_equal(weights_a, weights_b)
+
+
+def test_online_isolation_forest_explain_shap_depends_on_the_instance():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(200, 5)
+    model = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+    model.fit(X[:100])
+
+    normal = model.explain_partial(X[101])
+    outside = model.explain_partial(np.array([100.0, -50.0, 25.0, -75.0, 200.0]))
+
+    assert not np.allclose(normal, outside)
+
+
+def test_online_isolation_forest_explain_returns_zeros_before_any_fit():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+
+    weights = model.explain_partial(np.array([0.3, 0.6, 0.1, 0.2, 0.5]))
+
+    assert weights.shape == (5,)
+    assert np.all(weights == 0.0)
+
+
+def test_online_isolation_forest_explain_rejects_nan():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    X = np.random.RandomState(0).rand(200, 5)
+    model = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0).fit(X[:100])
+
+    anomalous = X[101].copy()
+    anomalous[1] = np.nan
+    with pytest.raises(ValueError, match="OnlineIsolationForest does not accept NaN values"):
+        model.explain_partial(anomalous)
+
+
+def test_online_isolation_forest_explain_non_binary_trees_returns_zeros():
+    """TreeSHAP currently only supports binary trees; non-binary should return zeros."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(200, 5)
+    model = OnlineIsolationForest(num_trees=10, window_size=100, branching_factor=4, random_state=0)
+    model.fit(X[:100])
+
+    weights = model.explain_partial(X[101])
+
+    assert weights.shape == (5,)
+    assert np.all(weights == 0.0)

@@ -656,7 +656,7 @@ It prints:
    AUROC: 0.843
 
 Use an online isolation forest
------------------------------
+------------------------------
 
 This script scores each point with OnlineIsolationForest. The forest keeps a bounded window of recent points. It scores each point before it learns it. When the window is full, it forgets the oldest point. A point is anomalous when the trees isolate it on a short path.
 

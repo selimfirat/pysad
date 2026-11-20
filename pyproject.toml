@@ -230,6 +230,18 @@ module = [
     "pysad.core.*",
     "pysad.evaluation.*",
     "pysad.statistics.*",
+    "pysad.evaluation.metrics",
+    "pysad.evaluation.prequential",
+    "pysad.evaluation.rolling_metric",
+    "pysad.evaluation.windowed_metric",
+    "pysad.statistics.basic",
+    "pysad.statistics.drift",
+    "pysad.statistics.exponential_moving_average_meter",
+    "pysad.statistics.exponential_moving_variance_meter",
+    "pysad.statistics.quantiles",
+    "pysad.statistics.relative_error_quantile_meter",
+    "pysad.statistics.running_statistic",
+    "pysad.utils.window",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true

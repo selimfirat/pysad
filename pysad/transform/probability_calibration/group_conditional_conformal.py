@@ -96,10 +96,10 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
         return entry
 
     def fit_partial(self, score: float, regime: Any = None) -> GroupConditionalConformalCalibrator:
-        """Fits the next score into its regime's window without changing the calibrated output.
+        """Adds the score to its regime's window without transforming it.
 
-        The score is added to the regime's window after it is transformed, matching the online
-        workflow where a score is evaluated against past data before the model learns from it.
+        fit_partial does not transform the score; it only adds it to the regime's window. Adding
+        the score changes future calibrated output, because later scores are compared against it.
         When the regime window is full, its oldest score is evicted.
 
         Args:
@@ -123,11 +123,10 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
         return self
 
     def fit_transform_partial(self, score: float, regime: Any = None) -> float:
-        """Updates the calibrator with the next score and transforms the score.
+        """Adds the score to its regime's window, then transforms it.
 
-        The score is transformed against its regime's window before it is added, matching the
-        online workflow where a score is evaluated against past data before the model learns from
-        it.
+        The score is added to the window before it is transformed, so it is counted in its own
+        fraction. The score is transformed against its regime's window after it is added.
 
         Args:
             score (float): Input score.

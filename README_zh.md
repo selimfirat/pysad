@@ -36,6 +36,7 @@
   <a href="https://pysad.readthedocs.io/en/stable/benchmark.html">基准测试</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/detectors.html">检测器</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/api.html">API</a> ·
+  <a href="https://huggingface.co/spaces/selimfirat/pysad-playground">交互式演练场</a> ·
   <a href="https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb">在线演示</a> ·
   <a href="https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb">在 Colab 中试用</a>
 </p>
@@ -127,6 +128,7 @@ pip install git+https://github.com/selimfirat/pysad.git
 
 ## 快速开始
 
+[![Open in Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm.svg)](https://huggingface.co/spaces/selimfirat/pysad-playground)
 [![Open in JupyterLite](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb)
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb)
 

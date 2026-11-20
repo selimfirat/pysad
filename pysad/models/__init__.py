@@ -11,11 +11,16 @@ from .cpod import CPOD
 from .d3 import D3
 from .damp import DAMP
 from .dilof import DILOF
+from .drift_adaptive_detector import DriftAdaptiveDetector
 from .exact_storm import ExactStorm
 from .expose import EXPoSE
+from .fluxev import FluxEV
+from .frahst import FRAHST
+from .gng_a import GNGA
 from .half_space_trees import HalfSpaceTrees
 from .holt_winters import HoltWinters
 from .htm.htm import HTM
+from .idks import IDKS
 from .iforest_asd import IForestASD
 from .incremental_lof import IncrementalLOF
 from .inqmad import Inqmad
@@ -49,6 +54,7 @@ from .smart_sifter import SmartSifter
 from .spectral_residual import SpectralResidual
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .stream_pipeline import StreamPipeline
+from .streaming_autoregressive import StreamingAutoregressiveDetector
 from .teda import TEDA
 from .thresh_leap import ThreshLEAP
 from .xstream import xStream
@@ -62,11 +68,16 @@ __all__ = [
     "D3",
     "DAMP",
     "DILOF",
+    "DriftAdaptiveDetector",
     "ExactStorm",
     "EXPoSE",
+    "FluxEV",
+    "FRAHST",
+    "GNGA",
     "HalfSpaceTrees",
     "HoltWinters",
     "HTM",
+    "IDKS",
     "IForestASD",
     "IncrementalLOF",
     "Inqmad",
@@ -103,6 +114,7 @@ __all__ = [
     "SmartSifter",
     "SpectralResidual",
     "StandardAbsoluteDeviation",
+    "StreamingAutoregressiveDetector",
     "StreamPipeline",
     "TEDA",
     "ThreshLEAP",

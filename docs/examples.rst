@@ -73,7 +73,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.878
+   AUROC: 0.930
 
 Score a synthetic stream
 ------------------------
@@ -388,7 +388,7 @@ It prints:
 Score forecast errors of a River forecaster
 -------------------------------------------
 
-This script scores a seasonal series with spikes with :class:`~pysad.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast. River needs Python 3.11 or newer.
+This script scores a seasonal series with spikes with :class:`~pysad.integrations.PredictiveAnomalyDetector`. A River ``SNARIMAX`` forecaster predicts each value from the last 24 values, and the score is the absolute error of the forecast.
 
 .. literalinclude:: ../examples/example_predictive_anomaly_detector.py
    :language: python
@@ -554,6 +554,22 @@ It prints:
 
    AUROC: 0.739
 
+Use an incremental distributional kernel detector
+-------------------------------------------------
+
+This script scores each point with IDK-S. IDK-S keeps a sliding window of recent instances as
+hypersphere partitions and scores each point by how many window instances share its partition. It
+takes the raw points.
+
+.. literalinclude:: ../examples/example_usage_idks.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.728
+
 Use a Gaussian mixture detector
 -------------------------------
 
@@ -624,6 +640,20 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.651
+
+Use a distance-based detector
+-----------------------------
+
+This script scores each point with MCOD. MCOD keeps the last ``window_size`` points and scores each point by the fraction of them that are not its neighbors, that is, farther than the radius. It groups the window into micro-clusters to compute fewer distances, so it gives the same scores as :class:`~pysad.models.ExactStorm`. With ``max_radius=None``, the first ``calibration_size`` points set the radius.
+
+.. literalinclude:: ../examples/example_mcod.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.843
 
 Use an online isolation forest
 ------------------------------
@@ -790,7 +820,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.751
+   AUROC: 0.770
 
 Track running statistics
 ------------------------

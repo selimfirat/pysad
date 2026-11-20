@@ -3,7 +3,7 @@ Getting started
 
 We will use LODA to score a synthetic stream, evaluate the scores, and raise alerts. Allow ten minutes and run the code blocks in order in one Python session.
 
-You need Python 3.10 or newer. You do not need to know about anomaly detection.
+You need Python 3.11 or newer. You do not need to know about anomaly detection.
 
 Install PySAD
 -------------

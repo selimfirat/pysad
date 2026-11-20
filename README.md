@@ -115,7 +115,7 @@ Or with Conda / Mamba / Pixi:
 conda install -c conda-forge pysad
 ```
 
-PySAD supports Python 3.10 to 3.14 on Linux, macOS and Windows. Every detector works after installation, with no optional extras.
+PySAD supports Python 3.11 to 3.14 on Linux, macOS and Windows. Every detector works after installation, with no optional extras.
 
 To install the latest development version from `master`:
 
@@ -259,6 +259,7 @@ These starting points come from the design of each method. They are not benchmar
 | `SmartSifter` | Finite mixtures with discounting learning (Yamanishi et al., KDD 2000) |
 | `TEDA` | Typicality and eccentricity data analytics (Angelov, EALS 2014) |
 | `EXPoSE` | Expected similarity to the kernel mean embedding (Schneider et al., Machine Learning 2016) |
+| `IDKS` | IDK-S incremental distributional kernel over a sliding window (Xu et al., AAAI 2026) |
 
 **Univariate**
 

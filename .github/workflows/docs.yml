@@ -1,7 +1,7 @@
 name: docs
 
 # Builds the Sphinx documentation the same way Read the Docs does (.readthedocs.yaml:
-# Python 3.10, the runtime and docs dependency groups, docs/conf.py) so a broken docs build fails the
+# Python 3.11, the runtime and docs dependency groups, docs/conf.py) so a broken docs build fails the
 # pull request instead of surfacing on Read the Docs after the merge.
 on:
   pull_request:
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           # Matches build.tools.python in .readthedocs.yaml.
-          python-version: "3.10"
+          python-version: "3.11"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true

@@ -324,6 +324,14 @@ def _run_stochastic_component(name: str, cls: type, seed: int) -> np.ndarray:
         meter = cls(window_size=16, stat_size=6, random_state=seed)
         vals = np.sin(np.arange(40, dtype=np.float64))
         return np.array([meter.update(float(v)).get() for v in vals])
+    if name == "RelativeErrorQuantileMeter":
+        meter = cls(k=2, max_items=64, random_state=seed)
+        vals = np.sin(np.arange(40, dtype=np.float64))
+        return np.array([meter.update(float(v)).get() for v in vals])
+    if name == "CountMinSketch":
+        sketch = cls(width=16, depth=3, random_state=seed)
+        sketch.update_many(range(40))
+        return np.array([sketch.estimate(item) for item in range(80)])
     streamer = cls(shuffle=True, random_state=seed)
     if name == "PandasStreamer":
         data: Any = pd.DataFrame(X)
@@ -357,6 +365,9 @@ def test_non_model_random_state_determinism_and_global_isolation(name: str, cls:
 def test_bounded_components_do_not_grow_memory_after_warmup() -> None:
     """Bounded meters, postprocessors, calibrators, and preprocessors keep O(1)/O(W) state."""
     for name, cls in STATISTIC_CLASSES:
+        if name == "RelativeErrorQuantileMeter":
+            # Its levels grow within max_items. Its dedicated test covers the memory limit.
+            continue
         if name == "MedianMeter":
             meter = pysad.statistics.RunningStatistic(cls, window_size=20)
         else:

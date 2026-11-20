@@ -8,8 +8,10 @@ import numpy as np
 
 from .array_streamer import ArrayStreamer
 from .array_streamer import _iterate as _iterate
+from .count_min_sketch import CountMinSketch
 from .csv_streamer import CSVStreamer
 from .data import Data
+from .hyperloglog import HyperLogLog
 from .pandas_streamer import PandasStreamer
 from .plotting import plot_stream
 from .polars_streamer import PolarsStreamer
@@ -21,12 +23,14 @@ __all__ = [
     "ArrayStreamer",
     "check_feature_bounds",
     "check_univariate",
+    "CountMinSketch",
     "CSVStreamer",
     "Data",
     "fix_seed",
     "generate_stream",
     "get_minmax_array",
     "get_minmax_scalar",
+    "HyperLogLog",
     "PandasStreamer",
     "plot_stream",
     "PolarsStreamer",

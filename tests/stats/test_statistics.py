@@ -69,7 +69,6 @@ def test_all_zero_stats():
 
 
 def test_stats_with_batch_numpy():
-
     import numpy as np
 
     from pysad.statistics import (

@@ -12,19 +12,24 @@ from .basic import (
     SumSquaresMeter,
     VarianceMeter,
 )
+from .cusum import CUSUMMeter
 from .drift import (
     ADWINMeter,
     DDMMeter,
     EDDMMeter,
     FHDDMMeter,
+    FHDDMSAddMeter,
+    FHDDMSMeter,
     HDDMAMeter,
     HDDMWMeter,
     KSWINMeter,
     PageHinkleyMeter,
 )
 from .exponential_moving_average_meter import ExponentialMovingAverageMeter
+from .exponential_moving_variance_meter import ExponentialMovingVarianceMeter
 from .online_periodicity_meter import OnlinePeriodicityMeter
 from .quantiles import DDSketchMeter, MedianMeter, QuantileMeter
+from .relative_error_quantile_meter import RelativeErrorQuantileMeter
 from .running_statistic import RunningStatistic
 
 __all__ = [
@@ -32,11 +37,15 @@ __all__ = [
     "ADWINMeter",
     "AverageMeter",
     "CountMeter",
+    "CUSUMMeter",
     "DDMMeter",
     "DDSketchMeter",
     "EDDMMeter",
     "ExponentialMovingAverageMeter",
+    "ExponentialMovingVarianceMeter",
     "FHDDMMeter",
+    "FHDDMSAddMeter",
+    "FHDDMSMeter",
     "HDDMAMeter",
     "HDDMWMeter",
     "KSWINMeter",
@@ -46,6 +55,7 @@ __all__ = [
     "OnlinePeriodicityMeter",
     "PageHinkleyMeter",
     "QuantileMeter",
+    "RelativeErrorQuantileMeter",
     "RunningStatistic",
     "SumMeter",
     "SumSquaresMeter",

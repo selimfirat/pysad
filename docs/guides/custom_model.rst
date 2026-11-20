@@ -109,7 +109,7 @@ The other component types follow the same pattern. Subclass the base class from 
 Add your detector to PySAD
 --------------------------
 
-PySAD accepts published detectors whose paper has 20 or more citations, appeared at an A* venue, or has an official GitHub repository with 50 or more stars. It also accepts a streaming detector with a top-three score on a public streaming benchmark such as NAB. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, create a single module in ``pysad/models``:
+PySAD accepts published detectors whose paper has 20 or more citations, or appeared in 2025 or later at a CORE A* conference (for example, ICLR, ICCV, ICML, or NeurIPS). It also accepts a streaming detector with a top-three score on a public streaming benchmark such as NAB. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, create a single module in ``pysad/models``:
 
 #. Implement the detector as its paper describes, in a new module in ``pysad/models``.
 #. Cite the paper in the class docstring with ``:cite:`` and define ``__bibtex__`` at module scope (or add the BibTeX entry to ``docs/refs.bib``).

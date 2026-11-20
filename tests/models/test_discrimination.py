@@ -31,7 +31,7 @@ ANOMALY_RATE = 0.05
 
 # Subspace detectors score the distance of the direction of an instance from a low-rank subspace,
 # so they need normal instances near such a subspace.
-SUBSPACE_MODELS = {"ADeMS"}
+SUBSPACE_MODELS = {"ADeMS", "FRAHST"}
 
 # NullModel and PerfectModel do not score the data, and RandomModel is the chance reference.
 REFERENCE_MODELS = {"NullModel", "PerfectModel", "RandomModel"}
@@ -94,6 +94,7 @@ def _model_params(model_name, X):
     """The constructor arguments of `model_name` for the stream `X`."""
     feature_mins, feature_maxes = X.min(axis=0), X.max(axis=0)
     params = {
+        "DriftAdaptiveDetector": {"model_factory": pysad.models.LODA},
         "HalfSpaceTrees": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
         "HTM": {
             "min_val": feature_mins[-1],
@@ -105,6 +106,12 @@ def _model_params(model_name, X):
         # The anomalies are single spikes, so one violation in the window is a failure.
         "HoltWinters": {"period": 24, "threshold": 1},
         "IForestASD": {"window_size": WARMUP},
+        "IDKS": {
+            "input_shape": NUM_FEATURES,
+            "window_size": 100,
+            "num_samples": 4,
+            "num_partitions": 40,
+        },
         "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32},
         # Grace periods that end with the warmup.
         "KitNet": {"grace_feature_mapping": 50, "grace_anomaly_detector": 150},

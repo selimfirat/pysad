@@ -36,8 +36,10 @@ jobs:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - name: Build JupyterLite
+        # The pins live in the jupyterlite dependency group, so Dependabot bumps them with
+        # the existing weekly schedule and cooldown.
         run: |
-          uv pip install --system jupyterlite-core jupyterlite-pyodide-kernel jupyter-server
+          uv pip install --system --group jupyterlite
           jupyter lite build --contents examples --output-dir _output
       - name: Configure GitHub Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

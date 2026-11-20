@@ -126,7 +126,12 @@ class _DenoisingAutoencoder:
 
 
 class _KitNET:
-    """Two-layer online autoencoder ensemble from KitNET-py."""
+    """Two-layer online autoencoder ensemble from KitNET-py.
+
+    This implementation matches KitNET-py's behavior: no autoencoder training occurs
+    during the feature mapping grace period. Only the correlation matrix is updated.
+    Autoencoders are created and trained only after the feature mapping grace period ends.
+    """
 
     def __init__(
         self,
@@ -152,7 +157,6 @@ class _KitNET:
         self.feature_map = feature_map
         self.fm = _CorClust(self.n)
         self.active_map: list[list[int]] | None = None
-        self.temporary = False
         self.ensemble_layer: list[_DenoisingAutoencoder] = []
         self.output_layer: _DenoisingAutoencoder | None = None
 
@@ -162,18 +166,16 @@ class _KitNET:
     def train(self, x: np.ndarray) -> None:
         if self.n_trained < self.fm_grace_period and self.feature_map is None:
             self.fm.update(x)
-            if (self.n_trained + 1) & self.n_trained == 0:
-                self._create_autoencoders(self.fm.cluster(self.m), temporary=True)
-        elif self.output_layer is None or self.temporary:
+        elif self.output_layer is None:
             if self.feature_map is None:
                 self.feature_map = self.fm.cluster(self.m)
             self._create_autoencoders(self.feature_map, temporary=False)
 
-        assert self.active_map is not None and self.output_layer is not None
-        scores_l1 = np.empty(len(self.ensemble_layer), dtype=np.float64)
-        for idx, ae in enumerate(self.ensemble_layer):
-            scores_l1[idx] = ae.train(x[self.active_map[idx]])
-        self.output_layer.train(scores_l1)
+        if self.active_map is not None and self.output_layer is not None:
+            scores_l1 = np.empty(len(self.ensemble_layer), dtype=np.float64)
+            for idx, ae in enumerate(self.ensemble_layer):
+                scores_l1[idx] = ae.train(x[self.active_map[idx]])
+            self.output_layer.train(scores_l1)
         self.n_trained += 1
 
     def execute(self, x: np.ndarray) -> float:
@@ -200,9 +202,11 @@ class _KitNET:
 class KitNet(BaseModel):
     """Scores each instance by the reconstruction error of an online ensemble of small autoencoders (KitNET) :cite:`mirsky2018kitsune`.
 
-    This model uses the implementation from `KitNET-py <https://github.com/ymirsky/KitNET-py>`_ with two changes: the 0-1 normalization only shifts an input that was constant in training, which KitNET-py divides by 1e-16, and the feature mapping learns from ``grace_feature_mapping`` instances instead of one more.
+    This model uses the implementation from `KitNET-py <https://github.com/ymirsky/KitNET-py>`_ with one change: the 0-1 normalization only shifts an input that was constant in training, which KitNET-py divides by 1e-16.
 
-    As in the paper, the model learns only during two grace periods at the start of the stream and then only scores. The first ``grace_feature_mapping`` instances learn which features go to which autoencoder. KitNET-py scores them 0. This model scores them with temporary autoencoders on the feature mapping so far, which it builds again each time the number of instances doubles (1, 2, 4, 8 and so on). After the feature mapping, it builds the autoencoders again on the final mapping, so the model after the grace periods is the same as without the temporary autoencoders. The next ``grace_anomaly_detector`` instances train the autoencoders, and their scores come from autoencoders that are still training. Choose both so that their sum is a small part of the stream and still covers its normal behavior. The defaults, 100 and 1,000 instances, keep the 1:10 ratio of the KitNET-py example (5,000 and 50,000 on a capture of 100,000 packets), scaled down so that a stream of a few hundred instances gets real scores. For a long stream whose start is free of anomalies, such as the paper's network captures (it trains on the first million packets), longer grace periods give the autoencoders more normal behavior to learn.
+    As in the paper, the model learns only during two grace periods at the start of the stream and then only scores. The first ``grace_feature_mapping`` instances learn which features go to which autoencoder; during this period the model returns ``0.0`` and does not train autoencoders. The next ``grace_anomaly_detector`` instances train the autoencoders, and their scores come from autoencoders that are still training. Choose both so that their sum is a small part of the stream and still covers its normal behavior. The defaults, 100 and 1,000 instances, keep the 1:10 ratio of the KitNET-py example (5,000 and 50,000 on a capture of 100,000 packets), scaled down so that a stream of a few hundred instances gets real scores. For a long stream whose start is free of anomalies, such as the paper's network captures (it trains on the first million packets), longer grace periods give the autoencoders more normal behavior to learn.
+
+    On datasets smaller than the combined grace periods, the model will not finish training and scores will be unreliable (returning ``0.0`` during the feature mapping period). For the ODDS benchmark datasets, grace periods should be set proportionally to the dataset size (e.g., 5% and 50% of the stream length).
 
     :meth:`explain_partial` returns the per-feature attribution weights of one instance.
     Each ensemble autoencoder reconstructs the features it maps, and its squared reconstruction
@@ -248,9 +252,10 @@ class KitNet(BaseModel):
         The first ``grace_feature_mapping`` instances learn the feature mapping;
         the next ``grace_anomaly_detector`` instances train the autoencoders.
         Before the first instance, :meth:`score_partial` returns ``0.0``.
-        During both grace periods, it returns real scores from temporary or
-        partially trained autoencoders, so they are unreliable for alerting.
-        After both grace periods the model stops learning and only scores.
+        During the feature mapping grace period, :meth:`score_partial` returns ``0.0``
+        and no autoencoder training occurs. During the anomaly detector grace period,
+        scores come from autoencoders that are still training, so they are unreliable
+        for alerting. After both grace periods the model stops learning and only scores.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to fit.
@@ -279,6 +284,10 @@ class KitNet(BaseModel):
 
     def score_partial(self, X: np.ndarray) -> float:
         """Scores the anomalousness of the next instance.
+
+        Returns ``0.0`` before the first instance and during the feature mapping grace
+        period. During the anomaly detector grace period, scores come from partially
+        trained autoencoders and are unreliable for alerting.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.

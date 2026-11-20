@@ -54,6 +54,8 @@ def _on_source_read(app: Sphinx, docname: str, source: list[str]) -> None:
         source[0] = expand_detectors_tables(source[0])
     elif docname == "examples":
         source[0] = expand_examples_gallery(source[0], ROOT_DIR)
+    elif docname == "installation":
+        source[0] = source[0].replace("|release|", str(app.config.release))
 
 
 def setup(app: Sphinx) -> None:
@@ -123,6 +125,7 @@ linkcheck_ignore = [
     r"https://doi\.org/10\.1137/",  # SIAM
     r"https://doi\.org/10\.1145/",  # ACM
     r"https://doi\.org/10\.14778/",  # VLDB papers on ACM
+    r"https://doi\.org/10\.3390/",  # MDPI
 ]
 
 # llms.txt lists the rendered pages, because the API pages get their text from docstrings.

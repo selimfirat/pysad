@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_metric import BaseMetric
 from pysad.core.base_model import BaseModel
@@ -10,7 +12,7 @@ from pysad.core.base_model import BaseModel
 
 def evaluate_stream(
     model: BaseModel,
-    X: Iterable[np.ndarray],
+    X: Iterable[NDArray[Any]],
     y: Iterable[int],
     metrics: dict[str, BaseMetric],
 ) -> dict[str, float | None]:

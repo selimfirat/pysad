@@ -4,7 +4,7 @@ from functools import partial
 import numpy as np
 import pytest
 
-pytest.importorskip("river")
+pytest.importorskip("river", minversion="0.26.1")
 
 
 def test_scores_match_pysad_before_learning():

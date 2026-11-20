@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from itertools import repeat
+from typing import cast
 
 import numpy as np
 from sklearn.utils import check_random_state
@@ -179,7 +180,10 @@ class _HSChains:
             cur_bins[:, slot] = np.floor(updated).astype(np.int32)
             bins[:, :, depth, 1:] = cur_bins.reshape(n, self.nchains, self.depth)
 
-        return bins.view(np.dtype((np.void, bins.shape[-1] * bins.itemsize))).reshape(-1).tolist()
+        return cast(
+            list[bytes],
+            bins.view(np.dtype((np.void, bins.shape[-1] * bins.itemsize))).reshape(-1).tolist(),
+        )
 
     def _score_keys(self, keys: list[bytes], n: int = 1) -> np.ndarray:
         counts = np.fromiter(

@@ -1,7 +1,7 @@
 Installation
 ============
 
-PySAD supports Python 3.10 to 3.14 on Linux, macOS and Windows.
+PySAD supports Python 3.11 to 3.14 on Linux, macOS and Windows.
 
 Install from PyPI
 -----------------
@@ -61,7 +61,7 @@ pip and conda install the runtime dependencies listed below. PySAD has no option
      - Minimum version
      - Used for
    * - NumPy
-     - 1.22.4
+     - 1.23
      - Arrays in every component
    * - scikit-learn
      - 1.4.2
@@ -75,7 +75,7 @@ Install integration libraries
 
 To run a PyOD detector through :mod:`pysad.integrations`, install PyOD with ``pip install pyod`` or ``conda install -c conda-forge pyod``. See :doc:`guides/pyod` for usage.
 
-To run a River forecaster through :class:`~pysad.integrations.PredictiveAnomalyDetector`, install River with ``pip install river``. River needs Python 3.11 or newer.
+To run a River forecaster through :class:`~pysad.integrations.PredictiveAnomalyDetector`, install River with ``pip install river``.
 
 Test the installation
 ---------------------
@@ -85,4 +85,4 @@ To test the installation, run this command. It prints the installed version:
 .. code-block:: console
 
    $ python -c "import pysad; print(pysad.__version__)"
-   0.6.0
+   |release|

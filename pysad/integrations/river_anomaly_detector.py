@@ -12,7 +12,7 @@ from pysad.core.base_model import BaseModel
 class RiverAnomalyDetector(base.AnomalyDetector):
     """Exposes a PySAD model through River's anomaly detector interface.
 
-    Requires Python 3.11 or newer and River 0.26.1 or newer.
+    Requires River 0.26.1 or newer.
 
     ``learn_one`` updates the wrapped model with ``fit_partial``; ``score_one``
     calls ``score_partial`` without learning. Higher scores mean more anomalous

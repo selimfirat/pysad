@@ -83,7 +83,7 @@ The ``|`` operator builds a :class:`~pysad.models.StreamPipeline` with the detec
 Use a PySAD model in River
 --------------------------------
 
-:class:`~pysad.integrations.RiverAnomalyDetector` exposes a PySAD model through River's ``learn_one`` and ``score_one`` methods. It requires Python 3.11 or newer and works as the final stage of a River pipeline:
+:class:`~pysad.integrations.RiverAnomalyDetector` exposes a PySAD model through River's ``learn_one`` and ``score_one`` methods. It works as the final stage of a River pipeline:
 
 .. code-block:: python
 

@@ -33,6 +33,7 @@ MODEL_PARAMS = {
         "max_depth": 8,
     },
     "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 256},
+    "IDKS": {"input_shape": NUM_FEATURES, "window_size": 30, "num_samples": 4},
     "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32, "initial_size": 20},
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 30},
@@ -84,7 +85,14 @@ def test_same_seed_gives_same_scores(name):
 
 
 @pytest.mark.parametrize("name", ACTIVE_NAMES)
-def test_different_seeds_give_different_scores(name):
+def test_different_seeds_change_model(name):
+    if name == "FRAHST":
+        # Binary alarms can agree even when the learned bases differ.
+        models = [MODELS[name](random_state=seed) for seed in (5, 6)]
+        for model in models:
+            model.fit_partial(_data(model)[0])
+        assert not np.array_equal(models[0].basis_, models[1].basis_)
+        return
     assert not np.array_equal(
         _scores(MODELS[name](random_state=5)), _scores(MODELS[name](random_state=6))
     )

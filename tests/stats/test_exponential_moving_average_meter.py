@@ -60,21 +60,37 @@ def test_update_returns_self():
     assert meter.update(3.0) is meter
 
 
-def test_remove_is_not_supported():
+@pytest.mark.parametrize(
+    "meter_name", ["ExponentialMovingAverageMeter", "ExponentialMovingVarianceMeter"]
+)
+def test_remove_is_not_supported(meter_name):
+    import pysad.statistics as statistics
     from pysad.statistics import RunningStatistic
 
-    meter = ExponentialMovingAverageMeter(alpha=0.5)
+    meter_cls = getattr(statistics, meter_name)
+
+    meter = meter_cls(alpha=0.5)
     assert not hasattr(meter, "remove")
     with pytest.raises(TypeError, match="does not support remove"):
-        RunningStatistic(ExponentialMovingAverageMeter, window_size=10, alpha=0.5)
+        RunningStatistic(meter_cls, window_size=10, alpha=0.5)
 
 
 @pytest.mark.parametrize("kwargs", [{"alpha": 0.0}, {"alpha": 1.5}, {"half_life": 0.0}])
-def test_invalid_parameters_raise(kwargs):
+@pytest.mark.parametrize(
+    "meter_name", ["ExponentialMovingAverageMeter", "ExponentialMovingVarianceMeter"]
+)
+def test_invalid_parameters_raise(kwargs, meter_name):
+    import pysad.statistics as statistics
+
     with pytest.raises(ValueError):
-        ExponentialMovingAverageMeter(**kwargs)
+        getattr(statistics, meter_name)(**kwargs)
 
 
-def test_both_alpha_and_half_life_raise():
+@pytest.mark.parametrize(
+    "meter_name", ["ExponentialMovingAverageMeter", "ExponentialMovingVarianceMeter"]
+)
+def test_both_alpha_and_half_life_raise(meter_name):
+    import pysad.statistics as statistics
+
     with pytest.raises(ValueError, match="only one"):
-        ExponentialMovingAverageMeter(alpha=0.5, half_life=2.0)
+        getattr(statistics, meter_name)(alpha=0.5, half_life=2.0)

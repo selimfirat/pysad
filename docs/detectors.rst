@@ -146,6 +146,10 @@ These detectors take points with one or more features. A feature is one measured
      - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
      - Nothing
      - Fixed: ``num_random_features`` frequencies per feature and the mean of the features
+   * - :class:`~pysad.models.IDKS`
+     - Similarity to the data distribution of a sliding window, from hypersphere partitions of the Isolation Distributional Kernel :cite:`xu2026idks`
+     - The number of features, the window size, the number of partitions and the number of samples per partition
+     - Fixed: a window of ``window_size`` points and ``num_partitions * num_samples`` hypersphere samples
 
 Univariate detectors
 --------------------
@@ -212,6 +216,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Saliency of the newest value in the spectral residual of a sliding window, with estimated values after it :cite:`ren2019time`
      - The window size
      - Fixed: a window of ``window_size`` values
+   * - :class:`~pysad.models.StreamingAutoregressiveDetector`
+     - Absolute forecasting residual of a streaming autoregressive model learned with the SDAR algorithm :cite:`takeuchi2006unifying`
+     - Nothing
+     - Fixed: ``order`` past values and the model coefficients
    * - :class:`~pysad.models.RelativeEntropy`
      - Relative entropy of windowed histograms :cite:`wang2011statistical`
      - The range of the values

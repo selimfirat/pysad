@@ -111,7 +111,7 @@ pip install pysad
 conda install -c conda-forge pysad
 ```
 
-PySAD 支持 Linux、macOS 和 Windows 上的 Python 3.10 至 3.14。执行安装后，所有检测器即可使用，无需安装任何可选依赖。
+PySAD 支持 Linux、macOS 和 Windows 上的 Python 3.11 至 3.14。执行安装后，所有检测器即可使用，无需安装任何可选依赖。
 
 从 `master` 分支安装最新开发版本：
 
@@ -255,6 +255,7 @@ for x in ArrayStreamer().iter(X[100:]):
 | `SmartSifter` | 基于带折扣学习的有限混合模型 (Yamanishi et al., KDD 2000) |
 | `TEDA` | 典型性与离心率数据分析 (Angelov, EALS 2014) |
 | `EXPoSE` | 与核均值嵌入的期望相似度 (Schneider et al., Machine Learning 2016) |
+| `IDKS` | IDK-S 滑动窗口上的增量分布核 (Xu et al., AAAI 2026) |
 
 **单变量**
 

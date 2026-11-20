@@ -244,7 +244,7 @@ class FeedbackHST(BaseModel):
 
         # Build sparse matrix: each instance has num_trees non-zero entries
         rows = np.repeat(np.arange(n), self.num_trees)
-        cols = (np.arange(self.num_trees) * num_leaves + leaf_indices.T.ravel())
+        cols = np.arange(self.num_trees) * num_leaves + leaf_indices.T.ravel()
         data = np.ones(n * self.num_trees, dtype=np.float64)
 
         return csr_matrix((data, (rows, cols)), shape=(n, m))
@@ -369,7 +369,7 @@ class FeedbackHST(BaseModel):
             start = tree_idx * num_leaves
             # Count occurrences of each leaf index for this tree
             counts = np.bincount(leaf_indices[:, tree_idx], minlength=num_leaves)
-            dists[start:start + num_leaves] += counts.astype(np.float32)
+            dists[start : start + num_leaves] += counts.astype(np.float32)
 
         # Normalize per tree
         for tree_idx in range(self.num_trees):

@@ -39,7 +39,10 @@ EXTRA_MODULE_EXPORTS: dict[str, dict[str, tuple[str, ...]]] = {
 }
 
 LAZY_EXPORTS: dict[str, dict[str, str]] = {
-    "pysad/integrations": {"RiverAnomalyDetector": "river_anomaly_detector"},
+    "pysad/integrations": {
+        "RiverAnomalyDetector": "river_anomaly_detector",
+        "RiverDriftDetector": "river_drift_detector",
+    },
 }
 
 

@@ -85,7 +85,8 @@ class NETS(BaseModel):
         if self.radius_ == 0:
             # A cell with a diagonal of 0 holds equal instances only, so the bits of X index it (-0.0 + 0.0 is 0.0).
             return (X + 0.0).view(np.int64)
-        return np.floor(X / (self.radius_ / np.sqrt(X.shape[-1]))).astype(np.int64)
+        cells: np.ndarray = np.floor(X / (self.radius_ / np.sqrt(X.shape[-1]))).astype(np.int64)
+        return cells
 
     def _build(self) -> None:
         """Builds the cardinality grid of the window with the current radius."""

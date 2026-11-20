@@ -108,7 +108,7 @@ class StreamhashProjector(BaseTransformer):
 
         R = self._get_projection_matrix(ndim)
 
-        Y = np.dot(X, R.T)[0]
+        Y: np.ndarray = np.dot(X, R.T)[0]
 
         return Y
 

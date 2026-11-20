@@ -70,7 +70,8 @@ class ADeMS(BaseModel):
         nrm = np.linalg.norm(y)
         if nrm == 0.0:
             return None
-        return y / nrm
+        unit: np.ndarray = y / nrm
+        return unit
 
     def _normalize_batch(self, Y: np.ndarray) -> np.ndarray:
         """Normalize each column of Y to unit L2 norm, dropping zero columns."""

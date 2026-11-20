@@ -17,7 +17,8 @@ def _lof(reach: np.ndarray, neighbor_reach: np.ndarray) -> np.ndarray:
     largest = np.maximum(reach, neighbor_reach.max(axis=1))
     # If every distance is 0, the instance and its neighbors are duplicates, with an LOF of 1.
     floor = np.where(largest > 0.0, _EPS * largest, 1.0)
-    return (reach + floor) * (1.0 / (neighbor_reach + floor[:, None])).mean(axis=1)
+    ratios: np.ndarray = (reach + floor) * (1.0 / (neighbor_reach + floor[:, None])).mean(axis=1)
+    return ratios
 
 
 class IncrementalLOF(BaseModel):

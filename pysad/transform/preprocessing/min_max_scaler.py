@@ -7,12 +7,20 @@ from pysad.statistics import MaxMeter, MinMeter
 
 
 class MinMaxScaler(BaseTransformer):
-    """Scale each feature to the running interval [0, 1].
+    """Scale each feature with the running minimum and maximum.
 
     Keep one MinMeter and one MaxMeter per feature, created with keep_values=False so each
     meter keeps only its extreme value and memory stays constant as the stream grows.
     fit_partial updates both meters with the next instance, then transform_partial subtracts
     the running minimum and divides by the running range (maximum minus minimum).
+
+    Only values inside the observed range land in [0, 1]. Scaling does not clip, so a value
+    below the running minimum scales to a negative number and a value above the running
+    maximum scales above one. For example, after fitting 0 and 2, transforming 4 returns 2 and
+    transforming -1 returns -0.5. Callers that need a bounded output clip the result.
+
+    The bounds only move when fit_partial is called. transform_partial never updates them, so
+    transforming an unobserved value repeatedly keeps the same bounds and the same result.
 
     A constant feature has zero range, so every scaled value of that feature is zero.
     Before fit_partial is called, transform_partial returns the input unchanged because no
@@ -56,13 +64,19 @@ class MinMaxScaler(BaseTransformer):
         return self
 
     def transform_partial(self, X: np.ndarray) -> np.ndarray:
-        """Scale X to the running interval [0, 1] of each feature.
+        """Scale X with the running minimum and maximum of each feature.
+
+        The result lies in [0, 1] only for values between the running minimum and maximum,
+        because the output is not clipped. See the class docstring for an example. Bounds come
+        from the last fit_partial call, so this method leaves them unchanged. Before the first
+        fit_partial call, X is returned as a copy.
 
         Args:
             X (np.float64 array of shape (num_features,)): Input feature vector.
 
         Returns:
-            np.float64 array of shape (num_features,): Scaled features. A constant feature scales to zero.
+            np.float64 array of shape (num_features,): Scaled features. A value outside the
+            running range scales below zero or above one, and a constant feature scales to zero.
         """
         if self.minimums_ is None:
             return X.astype(np.float64, copy=True)

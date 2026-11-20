@@ -7,6 +7,7 @@ from .anyout import AnyOut
 from .approx_storm import ApproxStorm
 from .baselines import NullModel, PerfectModel, RandomModel
 from .change_finder import ChangeFinder
+from .cost_sensitive_stream import CostSensitiveStreamModel
 from .cpod import CPOD
 from .d3 import D3
 from .damp import DAMP
@@ -65,6 +66,7 @@ __all__ = [
     "AnyOut",
     "ApproxStorm",
     "ChangeFinder",
+    "CostSensitiveStreamModel",
     "CPOD",
     "D3",
     "DAMP",

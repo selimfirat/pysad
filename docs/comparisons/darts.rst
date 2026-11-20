@@ -1,3 +1,6 @@
+.. meta::
+   :description: PySAD vs Darts for time series anomaly detection: compare point-by-point streaming detectors with whole-series forecasting scorers.
+
 PySAD vs Darts
 ==============
 

@@ -196,7 +196,8 @@ def _grimshaw(peaks: np.ndarray) -> tuple[float, float]:
 
     def w(x: np.ndarray | float) -> np.ndarray:
         xy = np.multiply.outer(x, peaks)  # (num_x, num_peaks)
-        return (1 / (1 + xy)).mean(axis=-1) * (1 + np.log1p(xy).mean(axis=-1)) - 1
+        res: np.ndarray = (1 / (1 + xy)).mean(axis=-1) * (1 + np.log1p(xy).mean(axis=-1)) - 1
+        return res
 
     # The roots of w other than 0 are in (-1 / high, 0) and (0, 2 (mean - low) / low^2].
     # The grids are dense near both ends of each interval.

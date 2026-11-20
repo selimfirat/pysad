@@ -173,7 +173,10 @@ class PCBIsolationForest(BaseModel):
                 self._right_[self._indices, nodes],
             )
             nodes = np.where(left == -1, nodes, branch)
-        return np.exp2(-self._paths_[self._indices, nodes] / self._correction[self.window_size])
+        scores: np.ndarray = np.exp2(
+            -self._paths_[self._indices, nodes] / self._correction[self.window_size]
+        )
+        return scores
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> PCBIsolationForest:
         """Learn one instance and replace weak trees after drift.

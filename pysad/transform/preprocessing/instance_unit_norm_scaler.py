@@ -42,7 +42,8 @@ class InstanceUnitNormScaler(BaseTransformer):
         if X_norm == 0:
             return X.astype(np.float64)
 
-        return X / X_norm
+        scaled: np.ndarray = X / X_norm
+        return scaled
 
     def fit(self, X: np.ndarray) -> InstanceUnitNormScaler:
         """Returns the scaler unchanged without iterating the batch."""

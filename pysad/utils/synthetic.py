@@ -60,7 +60,8 @@ def generate_stream(
 
     def direction() -> np.ndarray:
         d = rng.standard_normal(num_features)
-        return d / np.linalg.norm(d)
+        unit: np.ndarray = d / np.linalg.norm(d)
+        return unit
 
     # Place the longest anomalies first, so that the short ones fill the gaps.
     for _ in range(num_drifts):

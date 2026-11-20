@@ -12,6 +12,7 @@ __all__ = [
     "PredictiveAnomalyDetector",
     "ReferenceWindowModel",
     "RiverAnomalyDetector",
+    "RiverDriftDetector",
     "SklearnAnomalyDetector",
 ]
 
@@ -21,4 +22,8 @@ def __getattr__(name: str) -> Any:
         from .river_anomaly_detector import RiverAnomalyDetector
 
         return RiverAnomalyDetector
+    if name == "RiverDriftDetector":
+        from .river_drift_detector import RiverDriftDetector
+
+        return RiverDriftDetector
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

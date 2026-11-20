@@ -64,6 +64,7 @@ class AnomalyLikelihoodProbabilityCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
+        score = float(score)
         self.scores_[self.num_scores_ % self.window_size] = score
         self.short_window_.append(score)
         self.num_scores_ += 1
@@ -87,6 +88,7 @@ class AnomalyLikelihoodProbabilityCalibrator(BasePostprocessor):
         """
         if self.num_scores_ < self.learning_period + self.num_estimation_samples:
             return 0.5
+        score = float(score)
 
         total = sum(self.short_window_)
         prev_tail = self._tail(total / len(self.short_window_))

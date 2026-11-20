@@ -20,7 +20,7 @@ authors = [
 maintainers = [
   {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"}
 ]
-description = "Streaming anomaly detection in Python: online detectors (xStream, LODA, RS-Hash, Half-Space Trees, RRCF...) plus calibration and prequential evaluation for real-time data."
+description = "Streaming anomaly detection in Python: 50+ online multivariate and univariate detectors (LODA, RRCF, Half-Space Trees, xStream, DAMP, SAND) with calibrated alerts, drift handling, and prequential evaluation."
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 keywords = [
@@ -32,6 +32,13 @@ keywords = [
   "real-time",
   "incremental learning",
   "time series",
+  "concept drift",
+  "conformal prediction",
+  "prequential evaluation",
+  "rrcf",
+  "half-space trees",
+  "loda",
+  "spot",
 ]
 classifiers = [
         'Development Status :: 5 - Production/Stable',
@@ -56,8 +63,11 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/selimfirat/pysad"
 Documentation = "https://pysad.readthedocs.io/"
+"Live Demo" = "https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb"
+Benchmarks = "https://pysad.readthedocs.io/en/stable/benchmark.html"
 Repository = "https://github.com/selimfirat/pysad.git"
 "Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
+Discussions = "https://github.com/selimfirat/pysad/discussions"
 Changelog = "https://github.com/selimfirat/pysad/releases"
 
 # PEP 735 dependency groups. The runtime dependencies only have floors in [project]; these

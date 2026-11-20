@@ -1,7 +1,10 @@
 # Configuration file for the Sphinx documentation builder.
 # See https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import html
+import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -58,10 +61,71 @@ def _on_source_read(app: Sphinx, docname: str, source: list[str]) -> None:
         source[0] = source[0].replace("|release|", str(app.config.release))
 
 
+_DEFAULT_SEO_DESCRIPTION = (
+    "PySAD is a Python library for streaming anomaly detection with 50+ online multivariate and "
+    "univariate detectors, calibrated alerts (conformal and SPOT), drift monitoring, and "
+    "prequential evaluation."
+)
+_META_TAG_RE = re.compile(r"<meta\b[^>]*>", re.I)
+_META_NAME_DESC_RE = re.compile(r"""name\s*=\s*(["'])description\1""", re.I)
+_META_CONTENT_RE = re.compile(r"""content\s*=\s*(["'])(.*?)\1""", re.I | re.S)
+
+
+def _add_seo_context(
+    app: Sphinx,
+    pagename: str,
+    templatename: str,
+    context: dict[str, object],
+    doctree: object,
+) -> None:
+    """Populate description, OpenGraph, Twitter Card, and SoftwareSourceCode JSON-LD metadata."""
+    metatags = str(context.get("metatags", ""))
+    extracted_description = ""
+    has_meta_description = False
+    for tag in _META_TAG_RE.findall(metatags):
+        if _META_NAME_DESC_RE.search(tag):
+            has_meta_description = True
+            content_match = _META_CONTENT_RE.search(tag)
+            if content_match:
+                extracted_description = html.unescape(content_match.group(2)).strip()
+            break
+
+    context["seo_has_meta_description"] = has_meta_description
+    context["seo_description"] = extracted_description or _DEFAULT_SEO_DESCRIPTION
+
+    if pagename == "index":
+        canonical_url = str(context.get("pageurl") or "https://pysad.readthedocs.io/en/stable/")
+        context["seo_jsonld"] = json.dumps(
+            {
+                "@context": "https://schema.org",
+                "@type": "SoftwareSourceCode",
+                "name": "PySAD",
+                "description": context["seo_description"],
+                "url": canonical_url,
+                "codeRepository": "https://github.com/selimfirat/pysad",
+                "programmingLanguage": "Python",
+                "license": "https://opensource.org/licenses/BSD-3-Clause",
+                "softwareVersion": str(app.config.release),
+                "author": {"@type": "Person", "name": "Selim Firat Yilmaz"},
+                "keywords": [
+                    "streaming anomaly detection",
+                    "online outlier detection",
+                    "concept drift",
+                    "conformal prediction",
+                    "prequential evaluation",
+                    "Python",
+                ],
+            }
+        )
+    else:
+        context["seo_jsonld"] = ""
+
+
 def setup(app: Sphinx) -> None:
     autosummary_generate_mod.find_autosummary_in_files = _find_autosummary_in_files
     app.add_role("strong-emphasis", StrongEmphasis())
     app.connect("source-read", _on_source_read)
+    app.connect("html-page-context", _add_seo_context)
 
 
 # Live substitutions computed from Data.datasets(), pysad.models.__all__, and benchmark.py.
@@ -130,9 +194,17 @@ linkcheck_ignore = [
 
 # llms.txt lists the rendered pages, because the API pages get their text from docstrings.
 llms_txt_summary = (
-    "PySAD is a Python library that finds anomalies (unusual data points) in data streams. "
-    "It scores each point when the point arrives. "
-    "It has streaming detectors, calibrated alerts and streaming evaluation."
+    "PySAD is a Python library for streaming anomaly detection on multivariate and univariate "
+    "data streams. Detectors learn and score one instance at a time via fit_partial, "
+    "score_partial, and fit_score_partial with bounded memory, returning higher scores for more "
+    "anomalous points. Core patterns: compose pipelines with `|` (StreamPipeline, e.g. "
+    "`StandardScaler() | LODA() | ConformalProbabilityCalibrator()`), ensemble models with `&` "
+    "(ModelEnsemble), calibrate raw scores with ConformalProbabilityCalibrator or "
+    "SPOTProbabilityCalibrator, attribute anomalous features with LODA.explain_partial(), monitor "
+    "and reset on concept drift with DriftAdaptiveDetector and streaming drift meters, evaluate "
+    "prequentially with evaluate_stream, and integrate PyOD (ReferenceWindowModel, OneFitModel), "
+    "River (RiverAnomalyDetector, PredictiveAnomalyDetector), and scikit-learn "
+    "(SklearnAnomalyDetector)."
 )
 llms_txt_uri_template = "{base_url}{docname}.html"
 

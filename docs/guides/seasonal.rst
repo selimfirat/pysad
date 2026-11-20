@@ -1,3 +1,6 @@
+.. meta::
+   :description: Detect anomalies in streaming time series with daily or weekly seasonality in Python using SeasonalHybridESD and SeasonalESD in PySAD.
+
 Detect anomalies in seasonal series
 ===================================
 

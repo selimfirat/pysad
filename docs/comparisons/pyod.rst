@@ -1,3 +1,6 @@
+.. meta::
+   :description: PySAD vs PyOD: compare native streaming anomaly detectors with PyOD batch detectors running on sliding windows via ReferenceWindowModel across 17 ODDS datasets.
+
 PySAD vs PyOD
 =============
 

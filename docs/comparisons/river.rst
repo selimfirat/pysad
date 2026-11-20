@@ -1,3 +1,6 @@
+.. meta::
+   :description: PySAD vs River for streaming anomaly detection in Python: feature matrix and same-hardware AUROC, AUPR, and latency comparison across 17 ODDS datasets.
+
 PySAD vs River
 ==============
 

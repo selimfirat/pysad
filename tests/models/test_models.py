@@ -17,6 +17,16 @@ MODEL_CASES = {
     "DAMP": [{"window_length": 10}],
     "DILOF": [{"num_neighbors": 5, "window_size": 40}],
     "EXPoSE": [{"num_random_features": 50}],
+    "FeedbackHST": [
+        {
+            "feature_mins": [0.0],
+            "feature_maxes": [1.0],
+            "window_size": 10,
+            "num_trees": 5,
+            "max_depth": 5,
+            "feedback_budget": 10,
+        }
+    ],
     "HalfSpaceTrees": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
     "HoltWinters": [{"period": 10}, {"period": 10, "threshold": 1}],
     "HTM": [

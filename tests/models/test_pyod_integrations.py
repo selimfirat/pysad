@@ -129,7 +129,7 @@ def test_one_fit_model_basic():
     # Test scoring
     for i in range(len(test_X)):
         score = model.score_partial(test_X[i])
-        assert isinstance(score, (int, float))
+        assert isinstance(score, int | float)
 
 
 def test_reference_window_model_with_labels():
@@ -167,7 +167,7 @@ def test_reference_window_model_with_labels():
         for instance, label in zip(test_instances, test_labels, strict=True):
             model.fit_partial(instance, label)
             score = model.score_partial(instance)
-            assert isinstance(score, (int, float))
+            assert isinstance(score, int | float)
 
 
 def test_reference_window_model_window_update():
@@ -194,7 +194,7 @@ def test_reference_window_model_window_update():
     for instance in test_instances:
         model.fit_partial(instance)
         score = model.score_partial(instance)
-        assert isinstance(score, (int, float))
+        assert isinstance(score, int | float)
 
         # Check internal state
         assert len(model.cur_window_X) <= model.window_size

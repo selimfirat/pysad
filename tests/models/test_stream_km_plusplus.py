@@ -219,3 +219,26 @@ def test_stream_km_plusplus_rejects_bad_parameters():
         StreamKMPlusPlus(num_iterations=0)
     with pytest.raises(ValueError):
         StreamKMPlusPlus(n_max=0)
+
+
+def test_stream_km_plusplus_first_center_is_uniform_over_non_dummy_points():
+    import numpy as np
+
+    from pysad.models import StreamKMPlusPlus
+
+    # With four clusters on four points, Lloyd iterations leave the centers as the
+    # points themselves, so centers[0] is the first k-means++ pick. The reference
+    # picks it uniformly from non-dummy points (paper section 5), so a point with
+    # weight 1 must be picked about as often as the point with weight 100, and a
+    # zero-weight point must never be picked. Weight-proportional picking would
+    # pick the weight-1 point about 1% of the time.
+    points = np.array([[0.0], [1.0], [2.0], [3.0]])
+    weights = np.array([100.0, 1.0, 1.0, 0.0])
+    picks = []
+    for seed in range(200):
+        model = StreamKMPlusPlus(num_clusters=4, coreset_size=4, random_state=seed)
+        centers = model._kmeans_once(points, weights)
+        picks.append(float(centers[0, 0]))
+    picks = np.array(picks)
+    assert (picks == 3.0).sum() == 0
+    assert (picks == 1.0).mean() > 0.10

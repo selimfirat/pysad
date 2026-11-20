@@ -259,7 +259,13 @@ class StreamKMPlusPlus(BaseModel):
         min_dists = np.full(num_points, np.inf)  # squared distance to the nearest center
         for j in range(num_centers):
             if j == 0:
-                probs = weights / weights.sum()
+                # The reference picks the first center uniformly from non-dummy points
+                # (paper section 5), so points with zero weight are excluded and the
+                # rest are equally likely, instead of picking proportional to weight.
+                non_dummy = weights > 0.0
+                if not non_dummy.any():
+                    non_dummy = np.ones(num_points, dtype=bool)
+                probs = np.where(non_dummy, 1.0 / float(non_dummy.sum()), 0.0)
             else:
                 probs = weights * min_dists
                 total = probs.sum()

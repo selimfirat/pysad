@@ -125,17 +125,17 @@ class RollingMetric(BaseMetric):
         window replaces the retained window with the batch's final
         pairs; a smaller batch slides the window forward one pair at a
         time. An empty batch leaves the window unchanged.
-        
+
         Args:
             y_true (Iterable[int]): True labels, 1 for an anomaly and 0 otherwise.
             y_pred (Iterable[float]): Predicted scores or labels, one per label.
 
-            Returns:
+        Returns:
             RollingMetric: This metric.
 
-Raises:
-    ValueError: If y_true and y_pred do not have the same length.
-"""
+        Raises:
+            ValueError: If y_true and y_pred do not have the same length.
+        """
         yt_arr = np.asarray(y_true if isinstance(y_true, np.ndarray) else list(y_true))
         yp_arr = np.asarray(y_pred if isinstance(y_pred, np.ndarray) else list(y_pred))
         if len(yt_arr) != len(yp_arr):

@@ -82,9 +82,9 @@ class ADWINMeter(BaseStatistic):
     Follows ADWIN2 by Bifet and Gavaldà :cite:`bifet2007learning`. The window
     ``W`` holds the most recent items and grows while the stream is stationary.
     After each update, every split of ``W`` into an older part ``W0`` and a newer
-    part ``W1`` at a bucket border is tested, and the oldest bucket is dropped
-    while some split has ``|mean(W0) - mean(W1)| > eps_cut``, with the paper's
-    normal-approximation bound (Eq. 3.1)::
+    part ``W1`` at a bucket border is tested. If some split has
+    ``|mean(W0) - mean(W1)| > eps_cut``, the window is cut at the earliest such
+    split (largest ``W0``), dropping ``W0`` entirely. The bound (Eq. 3.1) is::
 
         eps_cut = sqrt(2 / m * var(W) * ln(2 / delta')) + 2 / (3 * m) * ln(2 / delta')
 
@@ -187,6 +187,11 @@ class ADWINMeter(BaseStatistic):
             self._buckets[level + 1].append(merged)
 
     def _has_cut(self) -> bool:
+        """Returns True if any split has a significant difference.
+
+        Tests splits from newest to oldest (smallest W0 first), as in the
+        original ADWIN2 bucket-based implementation.
+        """
         n = self.width
         if n < 2:
             return False
@@ -195,8 +200,9 @@ class ADWINMeter(BaseStatistic):
         log_term = math.log(2.0 * math.log(n) / self.delta)
         n0, sum0 = 0, 0.0
         for level in range(len(self._buckets) - 1, -1, -1):
+            size = 2**level
             for bucket_sum, _ in self._buckets[level]:
-                n0 += 2**level
+                n0 += size
                 sum0 += bucket_sum
                 n1 = n - n0
                 if n1 == 0:
@@ -212,16 +218,29 @@ class ADWINMeter(BaseStatistic):
         return False
 
     def _drop_oldest(self) -> None:
-        size = 2 ** (len(self._buckets) - 1)
-        bucket_sum, bucket_sq_dev = self._buckets[-1].pop(0)
+        """Drops the oldest bucket from the window."""
+        # The oldest bucket is at the highest non-empty level, index 0.
+        level = len(self._buckets) - 1
+        while level >= 0 and not self._buckets[level]:
+            level -= 1
+        if level < 0:
+            return
+
+        size = 2**level
+        bucket_sum, bucket_sq_dev = self._buckets[level].pop(0)
         rest = self.width - size
-        diff = bucket_sum / size - (self._sum - bucket_sum) / rest
-        self._sq_dev = max(
-            0.0, self._sq_dev - bucket_sq_dev - diff * diff * size * rest / self.width
-        )
+        if rest > 0:
+            diff = bucket_sum / size - (self._sum - bucket_sum) / rest
+            self._sq_dev = max(
+                0.0, self._sq_dev - bucket_sq_dev - diff * diff * size * rest / self.width
+            )
+        else:
+            self._sq_dev = 0.0
         self._sum -= bucket_sum
         self.width = rest
-        while not self._buckets[-1]:
+
+        # Clean up empty bucket levels
+        while self._buckets and not self._buckets[-1]:
             self._buckets.pop()
 
 

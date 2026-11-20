@@ -151,6 +151,9 @@ dev = [
 [tool.setuptools.dynamic]
 version = {attr = "pysad.version.__version__"}
 
+[tool.setuptools.packages.find]
+include = ["pysad*"]
+
 [tool.setuptools.package-data]
 # PEP 561 marker: type checkers use pysad's inline type hints.
 pysad = ["py.typed"]

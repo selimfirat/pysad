@@ -5,9 +5,10 @@ from collections.abc import Iterator, Sequence
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 
-def _kth_abs_dev(sub: Sequence[float] | np.ndarray, center: float, h: int, k: int) -> float:
+def _kth_abs_dev(sub: Sequence[float] | NDArray[np.float64], center: float, h: int, k: int) -> float:
     """Returns the 0-indexed k-th smallest element of ``|sub - center|`` for sorted ``sub`` in O(log m)."""
     left_len = h
     right_len = len(sub) - h
@@ -31,7 +32,7 @@ def _kth_abs_dev(sub: Sequence[float] | np.ndarray, center: float, h: int, k: in
     return a_val if a_val <= b_val else b_val
 
 
-def _median_and_mad_sorted(sub: Sequence[float] | np.ndarray) -> tuple[float, float]:
+def _median_and_mad_sorted(sub: Sequence[float] | NDArray[np.float64]) -> tuple[float, float]:
     """Returns ``(median, MAD)`` of a non-empty sorted 1-D sequence ``sub`` in O(log m) time."""
     m = len(sub)
     h = m >> 1
@@ -61,11 +62,11 @@ class RingBuffer:
         if window_size < 1:
             raise ValueError("window_size must be a positive integer.")
         self.window_size = window_size
-        self.points: np.ndarray = np.empty(0, dtype=np.float64)
+        self.points: NDArray[np.float64] = np.empty(0, dtype=np.float64)
         self.count = 0
         self.next_slot = 0
 
-    def append(self, item: float | np.ndarray) -> int:
+    def append(self, item: float | NDArray[np.float64]) -> int:
         """Writes ``item`` into the next slot, advances the ring, and returns the written slot index.
 
         Args:
@@ -91,7 +92,7 @@ class RingBuffer:
             self.count += 1
         return slot
 
-    def active_slices(self) -> tuple[np.ndarray, np.ndarray | None, int]:
+    def active_slices(self) -> tuple[NDArray[np.float64], NDArray[np.float64] | None, int]:
         """Returns zero-copy slice(s) of the window after the oldest slot of a full window expires.
 
         Returns:
@@ -102,7 +103,7 @@ class RingBuffer:
         slot = self.next_slot
         return self.points[:slot], self.points[slot + 1 :], self.window_size - 1
 
-    def to_array(self) -> np.ndarray:
+    def to_array(self) -> NDArray[np.float64]:
         """Returns a contiguous oldest-first copy of the items currently in the buffer.
 
         Returns:

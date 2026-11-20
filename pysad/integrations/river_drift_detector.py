@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from river.base import DriftDetector
+if TYPE_CHECKING:
+    from river.base import DriftDetector
+else:
+    try:
+        from river.base import DriftDetector
+    except ImportError:  # pragma: no cover
+        DriftDetector = object
 
 from pysad.core.base_statistic import BaseStatistic
 

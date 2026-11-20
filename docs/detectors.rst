@@ -125,7 +125,7 @@ These detectors take points with one or more features. A feature is one measured
    * - :class:`~pysad.models.StreamKMPlusPlus`
      - Distance to the nearest center of a streaming coreset clustering :cite:`ackermann2012streamkmpp`
      - Nothing
-     - Grows with the log of the stream length: a buffer of ``coreset_size`` points and one coreset of ``coreset_size`` points per merge-and-reduce level
+     - Bounded: a buffer of ``coreset_size`` points and at most ``ceil(log2(n_max))`` level coresets of ``coreset_size`` points
    * - :class:`~pysad.models.AnyOut`
      - Distance to the mean, or Gaussian density, of the closest cluster at the level of a ClusTree that the time budget ``depth`` reaches :cite:`assent2012anyout`
      - Nothing

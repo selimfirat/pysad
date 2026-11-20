@@ -1,8 +1,9 @@
 """TreeSHAP explainability for tree ensembles.
 
-Implements the TreeSHAP algorithm from Lundberg et al. (2020) "Consistent Individualized
-Feature Attribution for Tree Ensembles", Nature MI. Computes exact SHAP values for
-tree ensemble models in streaming anomaly detection.
+Implements the TreeSHAP algorithm from Lundberg et al. (2020) "From local explanations
+to global understanding with explainable AI for trees", Nature Machine Intelligence
+:cite:`lundberg2020consistent`. Computes exact SHAP values for tree ensemble models
+in streaming anomaly detection.
 
 The implementation computes exact Shapley values by explicit enumeration of all
 subsets of features on the decision path (exponential in path length, equivalent

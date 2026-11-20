@@ -186,16 +186,16 @@ class KLLMeter(BaseStatistic):
                     self._sampler_item = item
                 self._sampler_weight = v + w
         elif v + w == target:
-            if v == 0:
+            if v == 0 or self._sampler_item is None:
                 out_item = item
             else:
                 out_item = item if self._rng.uniform() < (w / (v + w)) else self._sampler_item
-            self._levels[0].append(out_item)  # type: ignore[arg-type]
+            self._levels[0].append(out_item)
             self._sampler_item = None
             self._sampler_weight = 0
             self._compress()
         else:  # v + w > target (Section 3 sampler overflow rule)
-            if w >= v:
+            if w >= v or self._sampler_item is None:
                 heavy_item, light_item = item, self._sampler_item
                 heavy_w, light_w = w, v
             else:
@@ -206,7 +206,7 @@ class KLLMeter(BaseStatistic):
             self._sampler_weight = light_w
 
             if self._rng.uniform() < (heavy_w / target):
-                self._levels[0].append(heavy_item)  # type: ignore[arg-type]
+                self._levels[0].append(heavy_item)
                 self._compress()
 
     def _compress(self) -> None:

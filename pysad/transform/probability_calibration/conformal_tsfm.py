@@ -105,7 +105,6 @@ class ConformalTSFMCalibrator(BasePostprocessor):
 
     @property
     def threshold_(self) -> float:
-        """Current adaptive threshold ``qhat_t``, the ``(1 - alpha_t)``-quantile of the window."""
         return self._compute_qhat()
 
     def _compute_qhat(self) -> float:

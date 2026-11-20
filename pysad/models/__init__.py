@@ -16,6 +16,7 @@ from .drift_adaptive_detector import DriftAdaptiveDetector
 from .exact_storm import ExactStorm
 from .expose import EXPoSE
 from .fluxev import FluxEV
+from .foundation_feature_detector import FoundationFeatureDetector
 from .frahst import FRAHST
 from .gng_a import GNGA
 from .half_space_trees import HalfSpaceTrees
@@ -74,6 +75,7 @@ __all__ = [
     "ExactStorm",
     "EXPoSE",
     "FluxEV",
+    "FoundationFeatureDetector",
     "FRAHST",
     "GNGA",
     "HalfSpaceTrees",

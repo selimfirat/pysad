@@ -236,6 +236,15 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
             "postprocessors": [ZScorePostprocessor(window_size=10)],
         },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
+        "FoundationFeatureDetector": {
+            "model_name": "patchtst",
+            "model_size": "small",
+            "context_length": 16,
+            "patch_length": 4,
+            "patch_stride": 2,
+            "warmup_windows": 2,
+            "ema_alpha": 0.1,
+        },
     }
     if name in params:
         return params[name]

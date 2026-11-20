@@ -49,6 +49,15 @@ MODEL_PARAMS = {
     "RSHash": {"feature_mins": [0.0] * NUM_FEATURES, "feature_maxes": [1.0] * NUM_FEATURES},
     "SAND": {"subsequence_length": 4, "batch_size": 24},
     "xStream": {"n_chains": 10, "depth": 10, "window_size": 20},
+    "FoundationFeatureDetector": {
+        "model_name": "patchtst",
+        "model_size": "small",
+        "context_length": 16,
+        "patch_length": 4,
+        "patch_stride": 2,
+        "warmup_windows": 2,
+        "ema_alpha": 0.1,
+    },
 }
 
 NAMES = [

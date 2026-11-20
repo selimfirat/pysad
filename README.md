@@ -61,7 +61,7 @@ Every detector learns from and scores one point at a time with `fit_partial`, `s
 </td>
 <td width="50%" valign="top">
 
-#### 53 detectors from published papers
+#### 54 detectors from published papers
 
 Covers multivariate and univariate streams: robust/seasonal statistics (`MAD`, `SeasonalHybridESD`, `FluxEV`), forests and sketches (`LODA`, `HalfSpaceTrees`, `RobustRandomCutForest`, `RSHash`, `xStream`), subsequences (`DAMP`, `MatrixProfile`, `SAND`), graphs (`MIDAS`), and 10 drift monitors (`ADWINMeter`, `PageHinkleyMeter`, `DriftAdaptiveDetector`).
 
@@ -270,11 +270,11 @@ Comparing implementations of the same streaming algorithm under the exact same p
 These starting points come from the design of each method. They are not benchmark rankings. Compare two or three detectors on your own data, as the [guide to choosing a detector](https://pysad.readthedocs.io/en/stable/guides/choose_detector.html) shows.
 
 <details>
-<summary><b>All 53 streaming detectors (36 multivariate, 17 univariate)</b></summary>
+<summary><b>All 54 streaming detectors (37 multivariate, 17 univariate)</b></summary>
 
 <br>
 
-**Multivariate (36)**
+**Multivariate (37)**
 
 | Class | Method |
 |---|---|
@@ -300,6 +300,7 @@ These starting points come from the design of each method. They are not benchmar
 | `ThreshLEAP` | Distance-based outliers with minimal, newest-first probing (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | Online one-class SVM, NORMA (Kivinen et al., IEEE TSP 2004) |
+| `CostSensitiveStreamModel` | Cost-sensitive online gradient descent with a weighted hinge loss (Wang et al., IEEE TKDE 2014) |
 | `DILOF` | Density summarizing incremental LOF (Na et al., KDD 2018) |
 | `MiLOF` | Memory-efficient incremental LOF with cluster summaries (Salehi et al., IEEE TKDE 2016) |
 | `KELOS` | Kernel density local outliers over micro-clusters of a window (Qin et al., EDBT 2019) |

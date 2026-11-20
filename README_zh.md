@@ -61,7 +61,7 @@
 </td>
 <td width="50%" valign="top">
 
-#### 53 个来自已发表论文的检测器
+#### 54 个来自已发表论文的检测器
 
 覆盖多变量与单变量流：稳健/季节性统计方法（`MAD`、`SeasonalHybridESD`、`FluxEV`）、随机森林与概要结构（`LODA`、`HalfSpaceTrees`、`RobustRandomCutForest`、`RSHash`、`xStream`）、子序列（`DAMP`、`MatrixProfile`、`SAND`）、图流（`MIDAS`）以及 10 个漂移监测器（`ADWINMeter`、`PageHinkleyMeter`、`DriftAdaptiveDetector`）。
 
@@ -270,11 +270,11 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 以上建议来自每种方法的设计，而不是基准测试排名。请按照 [检测器选择指南](https://pysad.readthedocs.io/en/stable/guides/choose_detector.html) 中的方法，在你自己的数据上比较两到三个检测器。
 
 <details>
-<summary><b>全部 53 个流式检测器（36 个多变量，17 个单变量）</b></summary>
+<summary><b>全部 54 个流式检测器（37 个多变量，17 个单变量）</b></summary>
 
 <br>
 
-**多变量（36）**
+**多变量（37）**
 
 | 类 | 方法 |
 |---|---|
@@ -300,6 +300,7 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | `ThreshLEAP` | 基于最小探测与最新优先探测的距离离群点检测 (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
+| `CostSensitiveStreamModel` | 带加权铰链损失的成本敏感在线梯度下降 (Wang et al., IEEE TKDE 2014) |
 | `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |
 | `MiLOF` | 带聚类摘要的高内存效率增量 LOF (Salehi et al., IEEE TKDE 2016) |
 | `KELOS` | 基于窗口微簇的核密度局部离群点检测 (Qin et al., EDBT 2019) |

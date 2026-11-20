@@ -269,7 +269,7 @@ def test_statistics_update_get_and_pickle_contracts(name: str, cls: type) -> Non
         assert returned is meter
 
     val = meter.get()
-    assert isinstance(val, (int, float, np.floating)) and np.isfinite(float(val))
+    assert isinstance(val, int | float | np.floating) and np.isfinite(float(val))
 
     restored = pickle.loads(pickle.dumps(meter))
     assert restored.get() == meter.get()

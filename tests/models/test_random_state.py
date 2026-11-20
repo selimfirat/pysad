@@ -25,6 +25,14 @@ MODEL_PARAMS = {
     },
     "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.3},
     "EXPoSE": {"num_random_features": 50},
+    "FeedbackHST": {
+        "feature_mins": [0.0] * NUM_FEATURES,
+        "feature_maxes": [1.0] * NUM_FEATURES,
+        "window_size": 20,
+        "num_trees": 5,
+        "max_depth": 5,
+        "feedback_budget": 10,
+    },
     "HalfSpaceTrees": {
         "feature_mins": [0.0] * NUM_FEATURES,
         "feature_maxes": [1.0] * NUM_FEATURES,

@@ -943,7 +943,7 @@ def _parse_detector_tables(source):
             and len(node.targets) == 1
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id in _DETECTOR_TABLES
-            and isinstance(node.value, (ast.Dict, ast.List))
+            and isinstance(node.value, ast.Dict | ast.List)
         ):
             name = node.targets[0].id
             if isinstance(node.value, ast.Dict):

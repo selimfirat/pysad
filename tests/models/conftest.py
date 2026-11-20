@@ -177,6 +177,14 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
         "DriftAdaptiveDetector": {
             "model_factory": functools.partial(pysad.models.LODA, random_state=0)
         },
+        "FeedbackHST": {
+            "feature_mins": np.array(zeros),
+            "feature_maxes": np.array(ones),
+            "window_size": 10,
+            "num_trees": 5,
+            "max_depth": 5,
+            "feedback_budget": 10,
+        },
         "HalfSpaceTrees": {
             "feature_mins": np.array(zeros),
             "feature_maxes": np.array(ones),

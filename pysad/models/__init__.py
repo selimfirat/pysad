@@ -15,6 +15,7 @@ from .dilof import DILOF
 from .drift_adaptive_detector import DriftAdaptiveDetector
 from .exact_storm import ExactStorm
 from .expose import EXPoSE
+from .feedback_hst import FeedbackHST
 from .fluxev import FluxEV
 from .foundation_feature_detector import FoundationFeatureDetector
 from .frahst import FRAHST
@@ -74,6 +75,7 @@ __all__ = [
     "DriftAdaptiveDetector",
     "ExactStorm",
     "EXPoSE",
+    "FeedbackHST",
     "FluxEV",
     "FoundationFeatureDetector",
     "FRAHST",

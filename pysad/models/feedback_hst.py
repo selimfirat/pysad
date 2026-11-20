@@ -500,7 +500,9 @@ class FeedbackHST(BaseModel):
                 p2 = self._compute_node_distributions(X2)
                 kl_trees, _ = self._compute_kl_divergence(p1, p2)
             else:
-                kl_trees, _ = self._compute_kl_divergence(self._ref_node_dists, self._ref_node_dists)
+                kl_trees, _ = self._compute_kl_divergence(
+                    self._ref_node_dists, self._ref_node_dists
+                )
 
             for i in range(self.num_trees):
                 self._kl_q_alpha[i] = float(np.quantile(kl_trees[i : i + 1], 1 - self.kl_alpha))
@@ -540,7 +542,9 @@ class FeedbackHST(BaseModel):
                 level = np.zeros(1, dtype=np.intp)
                 levels = [level]
                 for k in range(self.max_depth - 1):
-                    level = np.stack([level + 1, level + 2 ** (self.max_depth - k - 1)], axis=1).ravel()
+                    level = np.stack(
+                        [level + 1, level + 2 ** (self.max_depth - k - 1)], axis=1
+                    ).ravel()
                     levels.append(level)
                 atts = atts_depth_first[np.concatenate(levels)]
 
@@ -576,7 +580,9 @@ class FeedbackHST(BaseModel):
         # Renormalize weights
         if self._region_weights is not None:
             self._region_weights /= np.sqrt(self._region_weights.dot(self._region_weights))
-            self._uniform_weights = np.ones_like(self._region_weights) / np.sqrt(len(self._region_weights))
+            self._uniform_weights = np.ones_like(self._region_weights) / np.sqrt(
+                len(self._region_weights)
+            )
 
         # Reset HST's window state so it starts fresh with new trees
         self._hst.is_first_window = True

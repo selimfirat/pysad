@@ -12,13 +12,3 @@ including TreeSHAP for tree ensembles.
 
    treeshap_ensemble
    treeshap_ensemble_weighted
-
-pysad.explainability.treeshap
------------------------------
-
-.. module:: pysad.explainability.treeshap
-
-.. automodule:: pysad.explainability.treeshap
-   :members:
-   :undoc-members:
-   :show-inheritance:

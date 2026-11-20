@@ -40,15 +40,15 @@ Each page lists the public classes and functions of one module. Each name has a 
    * - :doc:`api/statistics`
      - Running statistics
      - ``pysad.statistics``
-* - :doc:`api/explainability`
-      - TreeSHAP explainability for tree ensembles
-      - ``pysad.explainability``
-    * - :doc:`api/utils`
-      - Streamers, datasets and helpers
-      - ``pysad.utils``
-    * - :doc:`api/core`
-      - Abstract base classes
-      - ``pysad.core``
+   * - :doc:`api/explainability`
+     - TreeSHAP explainability for tree ensembles
+     - ``pysad.explainability``
+   * - :doc:`api/utils`
+     - Streamers, datasets and helpers
+     - ``pysad.utils``
+   * - :doc:`api/core`
+     - Abstract base classes
+     - ``pysad.core``
 
 .. toctree::
    :hidden:

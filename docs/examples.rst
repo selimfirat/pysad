@@ -73,7 +73,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.878
+   AUROC: 0.930
 
 Score a synthetic stream
 ------------------------

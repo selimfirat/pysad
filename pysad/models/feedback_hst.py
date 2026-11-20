@@ -74,6 +74,35 @@ class FeedbackHST(BaseModel):
       node counts and raises NotImplementedError for HSTree replacement. This
       deviation enables full tree adaptation to concept drift in the streaming
       setting.
+    - **KL-divergence threshold**: The reference computes a per-tree KL
+      distribution from repeated random half-splits of the reference window
+      and thresholds each tree individually. This implementation builds the
+      same per-tree distribution but uses the reference window data directly
+      rather than sampling from feature bounds. The threshold logic is
+      otherwise aligned (per-tree quantile at 1 - kl_alpha).
+    - **Weight update loss**: The reference uses a hinge loss with class-weight
+      parameters Ca, Cn, Cx, class-count normalization, a tau-relative term,
+      and an L2 prior with sigma2 scaling, optimized via gradient descent.
+      This implementation uses a simplified hinge loss without the Ca/Cn/Cx
+      parameters or class-count normalization, omits the tau-relative term,
+      scales the L2 prior by `prior_influence / (num_labeled_anomalies + num_labeled_nominals)`,
+      and uses RMSProp instead of gradient descent. Hyperparameters
+      (`learning_rate`, `max_epochs`, `rmsprop_decay`, `rmsprop_eps`,
+      `prior_influence`) are configurable.
+    - **Score transition window**: A `score_transition_window` parameter
+      (default=50) blends base HST and ensemble scores over the first N
+      instances after feedback starts to avoid a score discontinuity. This
+      parameter and behavior are not in the paper or reference implementation
+      and have no citation. Set to 0 for immediate switch to ensemble scores.
+    - **Reference region estimation for KL check**: The reference uses the
+      actual reference window distributions. This implementation also uses
+      the reference window data (split into random halves) rather than
+      sampling random points from feature bounds.
+    - **Weight initialization after tree replacement**: Replaced trees reset
+      their region weights to uniform values (1/sqrt(num_leaves)) and the
+      full weight vector is renormalized. The retained trees' weights are
+      kept but participate in the renormalization. The reference does not
+      implement HSTree replacement, so no direct comparison exists.
 
     Args:
         feature_mins (np.ndarray | list[float] | tuple[float, ...]): Minimum boundary of each feature.

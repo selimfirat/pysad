@@ -1,3 +1,6 @@
+.. meta::
+   :description: Feature and benchmark comparison of PySAD against River, CapyMOA, StreamAD, PyOD, Alibi Detect, and Darts for streaming anomaly detection in Python.
+
 Overview
 ========
 
@@ -8,6 +11,20 @@ PySAD does anomaly detection on streams. Other Python libraries cover part of th
 - `PyOD <https://github.com/yzhao062/pyod>`_ does anomaly detection on batch data.
 - `Alibi Detect <https://github.com/SeldonIO/alibi-detect>`_ does outlier, adversarial and drift detection, mostly on batch data.
 - `Darts <https://github.com/unit8co/darts>`_ does time series forecasting, and it detects anomalies in a whole time series.
+
+.. container:: stream-figure
+
+   .. image:: ../images/comparison-light.svg
+      :alt: Scatter plot of throughput in points per second versus mean AUROC across 17 ODDS datasets comparing PySAD, River, CapyMOA, and PyOD.
+      :class: only-light
+
+   .. image:: ../images/comparison-dark.svg
+      :alt: Scatter plot of throughput in points per second versus mean AUROC across 17 ODDS datasets comparing PySAD, River, CapyMOA, and PyOD.
+      :class: only-dark
+
+   .. rst-class:: caption
+
+      Same-hardware prequential benchmark across |num_datasets| ODDS datasets (default parameters, seed 0). PySAD detectors span the upper-right speed/accuracy frontier.
 
 Table 1 of the :ref:`PySAD paper <citing-pysad>` compares PySAD with other libraries by their main functions. The table below gives the same comparison for the current versions: PySAD, River 0.26.1, CapyMOA 0.15.1, StreamAD 0.3.1, PyOD 3.6.7, Alibi Detect 0.13.0 and Darts 0.48.1. River includes creme and scikit-multiflow, two of the libraries in the paper.
 

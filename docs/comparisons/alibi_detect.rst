@@ -1,3 +1,6 @@
+.. meta::
+   :description: PySAD vs Alibi Detect for outlier and drift detection: compare point-by-point streaming detectors and drift monitors with batch-oriented detectors.
+
 PySAD vs Alibi Detect
 =====================
 
@@ -23,7 +26,7 @@ Functions
      - Streaming detectors, see :doc:`../detectors`, and every PyOD detector through a sliding window
      - 10: ``IForest``, ``Mahalanobis`` and ``SpectralResidual``, and 7 that need TensorFlow or Prophet, for example ``OutlierVAE`` and ``OutlierProphet``
    * - Drift detectors
-     - None
+     - Streaming drift meters (:class:`~pysad.statistics.ADWINMeter`, :class:`~pysad.statistics.PageHinkleyMeter`, :class:`~pysad.statistics.KSWINMeter`, DDMs, HDDMs, FHDDMs) and :class:`~pysad.models.DriftAdaptiveDetector`
      - Detectors that compare a batch with reference data, and online detectors, for example ``MMDDriftOnline`` and ``CVMDriftOnline``
    * - Adversarial detectors
      - None

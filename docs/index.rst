@@ -1,3 +1,6 @@
+.. meta::
+   :description: PySAD is a Python library for streaming anomaly detection on multivariate and univariate data streams, with 50+ online detectors, conformal and SPOT calibration, drift monitoring, and prequential evaluation.
+
 :hide-toc:
 
 PySAD

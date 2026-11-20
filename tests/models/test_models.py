@@ -10,39 +10,41 @@ from pysad.utils import fix_seed
 from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, active_model_names
 
 MODEL_CASES = {
-    "DriftAdaptiveDetector": [{"model_factory": pysad.models.LODA}],
+    "ADeMS": [{}],
     "AnyOut": [{}, {"outlier_score": "density"}],
+    "ApproxStorm": [{}],
     "ChangeFinder": [{}, {"change_point": False}],
+    "CPOD": [{}],
     "D3": [{"window_size": 50}],
     "DAMP": [{"window_length": 10}],
     "DILOF": [{"num_neighbors": 5, "window_size": 40}],
+    "DriftAdaptiveDetector": [{"model_factory": pysad.models.LODA}],
+    "ExactStorm": [{}],
     "EXPoSE": [{"num_random_features": 50}],
+    "FluxEV": [{}],
+    "FRAHST": [{}],
+    "GNGA": [{}],
     "HalfSpaceTrees": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
     "HoltWinters": [{"period": 10}, {"period": 10, "threshold": 1}],
     "HTM": [
         {"min_val": 0.0, "max_val": 1.0, "probationary_period": 50, "likelihood": True},
         {"min_val": 0.0, "max_val": 1.0, "probationary_period": 50, "likelihood": False},
     ],
-    "IncrementalLOF": [{"window_size": 20}],
     "IDKS": [{"input_shape": 1, "window_size": 64, "num_samples": 4}],
+    "IForestASD": [{}],
+    "IncrementalLOF": [{"window_size": 20}],
     "Inqmad": [{"input_shape": 1, "dim_x": 128}],
+    "KELOS": [{}],
+    "KitNet": [{}],
     "KNNCAD": [{"probationary_period": 50}],
     "LocalOutlierProbability": [{"initial_X": True}],
+    "LODA": [{}],
     "MatrixProfile": [{"window_length": 10}],
+    "MCOD": [{}],
     "MedianAbsoluteDeviation": [{}, {"absolute": False}],
     "MemStream": [{"window_size": 8, "num_epochs": 20}],
     "MIDAS": [{"tick_size": 10}],
     "MiLOF": [{"window_size": 30, "num_summaries": 5}],
-    "OeSNNUAD": [{}, {"window_size": 10, "num_output_neurons": 5}],
-    "PCBIsolationForest": [{"num_trees": 10, "window_size": 40, "stat_size": 10}],
-    "PEWMA": [{}, {"beta": 0.0}],
-    "RelativeEntropy": [{"min_val": 0.0, "max_val": 1.0}],
-    "RSForest": [{"window_size": 50}],
-    "RSHash": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
-    "SAND": [{"subsequence_length": 4, "batch_size": 40}],
-    "SeasonalESD": [{"period": 10, "window_size": 31}],
-    "SeasonalHybridESD": [{"period": 10, "window_size": 31}],
-    "StandardAbsoluteDeviation": [{}, {"absolute": False}],
     "ModelEnsemble": [
         {
             "models": [
@@ -51,6 +53,27 @@ MODEL_CASES = {
             ]
         }
     ],
+    "MStream": [{}],
+    "NETS": [{}],
+    "NullModel": [{}],
+    "OeSNNUAD": [{}, {"window_size": 10, "num_output_neurons": 5}],
+    "OnlineIsolationForest": [{}],
+    "OnlineOneClassSVM": [{}],
+    "PCBIsolationForest": [{"num_trees": 10, "window_size": 40, "stat_size": 10}],
+    "PEWMA": [{}, {"beta": 0.0}],
+    "RandomModel": [{}],
+    "RelativeEntropy": [{"min_val": 0.0, "max_val": 1.0}],
+    "RobustRandomCutForest": [{}],
+    "RSForest": [{"window_size": 50}],
+    "RSHash": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
+    "SAND": [{"subsequence_length": 4, "batch_size": 40}],
+    "SDOstream": [{}],
+    "SeasonalESD": [{"period": 10, "window_size": 31}],
+    "SeasonalHybridESD": [{"period": 10, "window_size": 31}],
+    "SmartSifter": [{}],
+    "SpectralResidual": [{}],
+    "StandardAbsoluteDeviation": [{}, {"absolute": False}],
+    "STARE": [{"window_size": 50, "slide_size": 10}],
     "StreamPipeline": [
         {
             "model": pysad.models.LODA(),
@@ -58,6 +81,9 @@ MODEL_CASES = {
             "postprocessors": [ZScorePostprocessor(window_size=20)],
         }
     ],
+    "TEDA": [{}],
+    "ThreshLEAP": [{}],
+    "xStream": [{}],
 }
 
 

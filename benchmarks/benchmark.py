@@ -188,7 +188,12 @@ def _make_univariate_factory(cls):
 
 
 # Non-default benchmark arguments; every other detector in pysad.models.__all__ is auto-discovered.
-DETECTOR_OVERRIDES = {}
+DETECTOR_OVERRIDES = {
+    "Inqmad": lambda X, seed: models.Inqmad(input_shape=X.shape[1], random_state=seed),
+    "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(
+        initial_X=X[: warmup(len(X))], random_state=seed
+    ),
+}
 UNIVARIATE_OVERRIDES = {
     # HTM learns during NAB's probationary period, as in NAB.
     "HTM": lambda n, period: models.HTM(

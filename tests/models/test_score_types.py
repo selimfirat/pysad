@@ -67,6 +67,7 @@ def _model_specs():
         "SeasonalESD": {"period": 4, "window_size": 12, "max_anomalies": 0.17},
         "SeasonalHybridESD": {"period": 4, "window_size": 12, "max_anomalies": 0.17},
         "SpectralResidual": {"window_size": 30},
+        "STARE": {"window_size": 20, "slide_size": 5, "num_neighbors": 3, "cell_size": 0.3},
         "StreamPipeline": {
             "model": models.LODA(),
             "preprocessors": [ShingleTransformer(shingle_size=2)],

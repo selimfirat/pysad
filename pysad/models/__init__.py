@@ -53,6 +53,7 @@ from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .spectral_residual import SpectralResidual
 from .standard_absolute_deviation import StandardAbsoluteDeviation
+from .stare import STARE
 from .stream_pipeline import StreamPipeline
 from .streaming_autoregressive import StreamingAutoregressiveDetector
 from .teda import TEDA
@@ -114,6 +115,7 @@ __all__ = [
     "SmartSifter",
     "SpectralResidual",
     "StandardAbsoluteDeviation",
+    "STARE",
     "StreamingAutoregressiveDetector",
     "StreamPipeline",
     "TEDA",

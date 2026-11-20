@@ -65,19 +65,6 @@ class BudgetedActiveLearner(BaseModel):
             ``warmup_period`` < 1, or ``strategy`` not recognized.
     """
 
-    __bibtex__ = r"""
-@article{zliobaite2014active,
-  title={Active learning with drifting streaming data},
-  author={Žliobaitė, Indrė and Bifet, Albert and Pfahringer, Bernhard and Holmes, Geoffrey},
-  journal={IEEE Transactions on Neural Networks and Learning Systems},
-  volume={25},
-  number={1},
-  pages={27--39},
-  year={2014},
-  publisher={IEEE}
-}
-"""
-
     def __init__(
         self,
         budget: float = 0.1,

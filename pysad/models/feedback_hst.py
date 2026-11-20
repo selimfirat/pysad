@@ -378,7 +378,7 @@ class FeedbackHST(BaseModel):
 
         # u now holds heap indices of leaves (2^max_depth to 2^(max_depth+1)-1)
         # Convert to 0-based leaf indices
-        leaf_indices = u - (2**self.max_depth)
+        leaf_indices: np.ndarray = u - (2**self.max_depth)
         return leaf_indices  # shape (n, num_trees)
 
     def _compute_region_scores(self, X: np.ndarray) -> np.ndarray:

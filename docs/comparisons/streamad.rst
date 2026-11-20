@@ -1,3 +1,6 @@
+.. meta::
+   :description: PySAD vs StreamAD for online anomaly detection in Python: compare Python 3.11-3.14 support, probability calibrators, and benchmark AUROC and speed.
+
 PySAD vs StreamAD
 =================
 
@@ -47,7 +50,7 @@ Functions
      - Meters with ``update`` and ``remove``, see :doc:`../api/statistics`
      - ``StreamStatistic``: the maximum, minimum, mean, standard deviation, sum and variance, of all points or of a window
    * - Stream simulators
-     - ``ArrayStreamer`` and ``PandasStreamer``
+     - ``ArrayStreamer``, ``PandasStreamer``, ``PolarsStreamer`` and ``CSVStreamer``
      - ``StreamGenerator``
    * - Evaluation
      - ``evaluate_stream``, with AUROC, AUPR, precision and recall, also on a sliding window

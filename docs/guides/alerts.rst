@@ -1,3 +1,6 @@
+.. meta::
+   :description: Calibrate raw streaming anomaly scores with ConformalProbabilityCalibrator and SPOTProbabilityCalibrator, choose alert thresholds, and avoid poisoning the model.
+
 Turn scores into alerts
 =======================
 

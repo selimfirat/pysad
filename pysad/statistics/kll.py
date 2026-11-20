@@ -21,42 +21,42 @@ class KLLMeter(BaseStatistic):
     rank estimate :math:`|\tilde{R}(x) - R(x)| \le \epsilon n` with probability at least
     :math:`1 - \delta`.
 
-    Algorithm & Implementation Details:
+    Hierarchical Compactors (Section 2):
+        Maintains a hierarchy of compactor levels :math:`h \in \{0, \dots, H-1\}`.
+        Each item stored at level :math:`h` represents a weight of :math:`2^h`.
+        Incoming stream items are ingested at base level :math:`0` with weight :math:`1`.
 
-    1. **Hierarchical Compactors (Section 2)**:
-       Maintains a hierarchy of compactor levels :math:`h \in \{0, \dots, H-1\}`.
-       Each item stored at level :math:`h` represents a weight of :math:`2^h`.
-       Incoming stream items are ingested at base level :math:`0` with weight :math:`1`.
+    Capacity Schedule (Section 2, Theorem 1 proof):
+        Level capacities decrease geometrically from the top level downwards at rate
+        :math:`c = 2/3`:
 
-    2. **Capacity Schedule (Section 2, Theorem 1 proof)**:
-       Level capacities decrease geometrically from the top level downwards at rate
-       :math:`c = 2/3`:
+        .. math::
 
-       .. math::
+            k_h = \max\left(8, \left\lceil k \cdot \left(\frac{2}{3}\right)^{H - 1 - h}\right\rceil\right)
 
-           k_h = \max\left(8, \left\lceil k \cdot \left(\frac{2}{3}\right)^{H - 1 - h}\right\rceil\right)
+        The top level (:math:`h = H - 1`) has capacity :math:`k`, and lower levels scale
+        downwards bounded by a minimum compactor capacity of :math:`8` (as used in Apache
+        DataSketches and ``kll_sketch``). By geometric series summation, total retained items
+        across all levels are strictly bounded by :math:`\sum k_h \approx \frac{k}{1 - 2/3} = 3k`.
 
-       The top level (:math:`h = H - 1`) has capacity :math:`k`, and lower levels scale
-       downwards bounded by a minimum compactor capacity of :math:`8` (as used in Apache
-       DataSketches and ``kll_sketch``). By geometric series summation, total retained items
-       across all levels are strictly bounded by :math:`\sum k_h \approx \frac{k}{1 - 2/3} = 3k`.
+    Unbiased Odd-Length Compaction (Section 2, Figure 1):
+        When a level fills, its items are sorted and compacted. When buffer length is odd,
+        two independent random coin flips are performed:
 
-    3. **Unbiased Odd-Length Compaction (Section 2, Figure 1)**:
-       When a level fills, its items are sorted and compacted. When buffer length is odd,
-       two independent random coin flips are performed:
-       - **Boundary selection**: Randomly retains either the first item (:math:`\text{index } 0`)
-         or the last item (:math:`\text{index } -1`) with equal probability (:math:`0.5`),
-         leaving an even-length block of remaining items.
-       - **Pairing parity**: An independent random bit (:math:`\text{offset} \in \{0, 1\}`)
-         determines which item of each adjacent pair is promoted to level :math:`h + 1` with
-         doubled weight :math:`2^{h+1}`.
-       The retained boundary item remains at level :math:`h` with weight :math:`2^h`. This
-       completely eliminates odd-length directional bias while strictly conserving total rank weight.
+        * Boundary selection: Randomly retains either the first item (:math:`\text{index } 0`)
+          or the last item (:math:`\text{index } -1`) with equal probability (:math:`0.5`),
+          leaving an even-length block of remaining items.
+        * Pairing parity: An independent random bit (:math:`\text{offset} \in \{0, 1\}`)
+          determines which item of each adjacent pair is promoted to level :math:`h + 1` with
+          doubled weight :math:`2^{h+1}`.
 
-    4. **Merge Operation (Section 2, Theorem 1 proof)**:
-       Merging concatenates corresponding same-height compactor levels of two sketches with
-       identical capacity :math:`k`, then runs compaction lazily until all levels satisfy
-       their capacity constraints, preserving total rank mass and theoretical accuracy bounds.
+        The retained boundary item remains at level :math:`h` with weight :math:`2^h`. This
+        completely eliminates odd-length directional bias while strictly conserving total rank weight.
+
+    Merge Operation (Section 2, Theorem 1 proof):
+        Merging concatenates corresponding same-height compactor levels of two sketches with
+        identical capacity :math:`k`, then runs compaction lazily until all levels satisfy
+        their capacity constraints, preserving total rank mass and theoretical accuracy bounds.
 
     Args:
         q (float): The default quantile to track, in [0, 1] (Default=0.5, the median).

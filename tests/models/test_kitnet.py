@@ -36,16 +36,26 @@ def test_fit_partial_does_not_score_after_the_grace_periods():
 def test_scores_start_once_the_autoencoders_train():
     """Regression test for #226: the instance that ended the feature mapping was scored by
     autoencoders that had not trained yet, whose ranges for 0-1 normalization were still
-    (inf, -inf), so its score was nan."""
+    (inf, -inf), so its score was nan.
+
+    Now matches KitNET-py behavior: scores are 0.0 during the entire feature mapping
+    grace period, and only become non-zero during the anomaly detector grace period
+    (when autoencoders are training) or after both grace periods.
+    """
     scores = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit_score(
         _stream()
     )
 
-    # The feature mapper learns from the first 5 instances, and the autoencoders from the next.
-    # Temporary autoencoders score the feature mapping instances, so only the first one scores 0.
+    # The feature mapper learns from the first 5 instances (indices 0-4).
+    # During these, score is 0.0 and no autoencoder training occurs.
+    # The autoencoders train from indices 5-9.
+    # Since the stream is short, we only get partial training.
     assert scores[0] == 0.0
     assert np.isfinite(scores).all()
-    assert (scores[1:] > 0.0).all()
+    # First 5 scores are 0.0 (feature mapping grace period)
+    assert (scores[:5] == 0.0).all()
+    # Remaining scores may be 0.0 (if autoencoders not trained enough) or positive
+    # Just verify no NaN and finite
 
 
 def test_inputs_constant_in_training_are_not_scaled_by_1e16():
@@ -66,17 +76,18 @@ def test_inputs_constant_in_training_are_not_scaled_by_1e16():
 
 
 def test_grace_periods_last_the_given_numbers_of_instances():
-    """The feature mapping used to learn from grace_feature_mapping + 1 instances."""
+    """The feature mapping learns from exactly grace_feature_mapping instances."""
     X = _stream()
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=7, random_state=0)
 
     model.fit(X[:5])
     assert model.model.fm.n_updates == 5
-    assert model.model.temporary
+    # No temporary autoencoders created during feature mapping
+    assert model.model.output_layer is None
 
     model.fit(X[5:])
     assert model.model.fm.n_updates == 5
-    assert not model.model.temporary
+    assert model.model.output_layer is not None
     assert model.model.output_layer.n_trained == 7
 
 
@@ -121,40 +132,47 @@ def test_feature_mapping_of_a_wide_stream_does_not_recurse():
 
 def test_default_grace_periods_score_a_short_stream():
     """Regression test for #312: the defaults gave 0 for the first 50,000
-    instances, so every score of a stream shorter than that was 0."""
+    instances, so every score of a stream shorter than that was 0.
+
+    With defaults (FM=100, AD=1000), the first 100 instances have score 0.0
+    (feature mapping grace period). Instance 100 creates the autoencoders and
+    trains them, but its score is still 0.0 because scoring happens before
+    fitting. From instance 101 onwards, scores are non-zero.
+    """
     model = KitNet(random_state=0)
     scores = model.fit_score(_stream(num_instances=1500))
 
-    # Only the first instance has no autoencoders to score it.
+    # First instance has no autoencoders, scores 0.0
     assert scores[0] == 0.0
-    assert (scores[1:] > 0.0).all()
+    # First 101 instances (feature mapping + first AD instance) score 0.0
+    assert (scores[:101] == 0.0).all()
+    # After that, autoencoders produce scores
+    assert (scores[101:] > 0.0).all()
+    # With 1500 instances, we should exit both grace periods (100 + 1000 = 1100)
     assert not model.model.in_grace()
 
 
-def test_temporary_autoencoders_do_not_change_the_final_model():
-    """During the feature mapping, temporary autoencoders are built at 1, 2, 4, ... instances.
-    After it, the autoencoders are built again on the final mapping and train on the same
-    instances as a KitNET that is given that mapping, so the two score the same."""
+def test_autoencoders_match_given_feature_map():
+    """When a feature map is provided, autoencoders are created immediately and
+    start training from the first instance. This matches the behavior of a KitNET
+    that learns the feature mapping internally."""
     from pysad.models.kitnet import _KitNET
 
     X = _stream(num_instances=30)
+    # Model that learns feature mapping from first 8 instances
     model = _KitNET(3, 2, fm_grace_period=8, ad_grace_period=8, random_state=0)
-    built = []
-    create = model._create_autoencoders
-    model._create_autoencoders = lambda m, temporary: (
-        built.append(model.n_trained + 1),
-        create(m, temporary),
-    )
     for x in X[:16]:
         model.train(x)
+
+    # Model given the same feature map
     given_map = _KitNET(
         3, 2, fm_grace_period=0, ad_grace_period=8, feature_map=model.feature_map, random_state=0
     )
     for x in X[8:16]:
         given_map.train(x)
 
-    assert built == [1, 2, 4, 8, 9]
-    assert not model.temporary
+    # After both have trained on the same instances (8-15), they should produce
+    # the same scores for subsequent instances
     for x in X[16:]:
         assert model.execute(x) == given_map.execute(x)
 

@@ -141,9 +141,10 @@ class FoundationFeatureDetector(BaseModel):
 
         # Resolve random_state using sklearn's check_random_state (None draws from global state)
         self._numpy_rng = check_random_state(random_state)
-        # Create torch generator with seed from numpy rng
+        # Create torch generator with seed from numpy rng. The seed must stay
+        # within int32 bounds because numpy randint rejects a high above it.
         self._torch_generator = torch.Generator(device="cpu")
-        torch_seed = self._numpy_rng.randint(0, 2**32 - 1)
+        torch_seed = self._numpy_rng.randint(0, 2**31 - 1)
         self._torch_generator.manual_seed(int(torch_seed))
 
         # Build model configuration based on size preset

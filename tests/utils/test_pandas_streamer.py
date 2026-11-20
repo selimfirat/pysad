@@ -26,7 +26,7 @@ def test_pandas_streamer_iter_with_labels():
     for x, y in result:
         assert isinstance(x, np.ndarray)
         assert x.shape == (3,)
-        assert isinstance(y, (int, np.integer, float, np.floating))
+        assert isinstance(y, int | np.integer | float | np.floating)
 
 
 @pytest.mark.parametrize("shuffle", [False, True])

@@ -4,8 +4,10 @@ import numbers
 
 import numpy as np
 from scipy.sparse import csr_matrix
+from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
+from pysad.models.half_space_trees import HalfSpaceTrees
 from pysad.utils.validation import check_feature_bounds
 
 __bibtex__ = """
@@ -43,7 +45,7 @@ class FeedbackHST(BaseModel):
 
     This detector extends Half-Space Trees with active learning capabilities.
     A human expert provides labels for a small number of queried instances
-    (the feedback budget). The model maintains per-tree weights that are
+    (the feedback budget). The model maintains per-region weights that are
     updated via a linear loss to rank labeled anomalies above a tau-quantile
     threshold and nominal instances below it. The weighted ensemble scores
     instances, so feedback steers the detector toward the expert's notion of
@@ -64,6 +66,9 @@ class FeedbackHST(BaseModel):
       feedback cycle is driven by the caller through `request_feedback` and
       `provide_feedback`.
     - Only leaf-level regions are used as ensemble features (add_leaf_only=True).
+    - Query diversity via compact descriptions (QUERY_TYPE=8 in reference) is
+      not implemented; only the top-tau strategy (QUERY_TYPE=1) is supported.
+      This is a deliberate simplification for the initial PySAD integration.
 
     Args:
         feature_mins (np.ndarray | list[float] | tuple[float, ...]): Minimum boundary of each feature.
@@ -156,9 +161,16 @@ class FeedbackHST(BaseModel):
 
         self.num_dimensions = len(self.feature_maxes)
 
-        # Base Half-Space Trees detector (from PySAD)
-        from pysad.models.half_space_trees import HalfSpaceTrees
+        # Random state for reproducible randomness
+        if random_state is None:
+            # Create an independent RandomState initialized from the global state
+            global_rng = check_random_state(None)
+            self._rng = np.random.RandomState()
+            self._rng.set_state(global_rng.get_state())
+        else:
+            self._rng = check_random_state(random_state)
 
+        # Base Half-Space Trees detector (from PySAD) - pass our RandomState for consistency
         self._hst = HalfSpaceTrees(
             feature_mins=self.feature_mins,
             feature_maxes=self.feature_maxes,
@@ -167,7 +179,7 @@ class FeedbackHST(BaseModel):
             max_depth=self.max_depth,
             initial_window_X=initial_window_X,
             random_work_space=self.random_work_space,
-            random_state=self.random_state,
+            random_state=self._rng,
         )
 
         # Active learning state
@@ -177,16 +189,25 @@ class FeedbackHST(BaseModel):
         self._unlabeled_buffer: list[np.ndarray] = []
         self._unlabeled_scores: list[float] = []
 
-        # Ensemble weights (one per tree). Initialized after first window.
-        self._tree_weights: np.ndarray | None = None
+        # Ensemble weights (one per tree leaf region). Initialized after first window.
+        self._region_weights: np.ndarray | None = None
         self._uniform_weights: np.ndarray | None = None
+
+        # Region scores (d) for each leaf region: -frac_insts * 2^path_length
+        self._region_scores: np.ndarray | None = None
 
         # Drift detection state
         self._ref_node_dists: np.ndarray | None = None
-        self._kl_q_alpha: float | None = None
+        self._kl_q_alpha: np.ndarray | None = None
 
         # Streaming buffer for tree updates
         self._stream_buffer: list[np.ndarray] = []
+
+        # Store initial window for drift reference initialization
+        self._initial_window_X = initial_window_X
+
+        # Track if we've initialized drift reference from initial window
+        self._drift_ref_initialized = False
 
     def _get_leaf_indices(self, X: np.ndarray) -> np.ndarray:
         """Route instances down all trees and return leaf node indices.
@@ -210,7 +231,6 @@ class FeedbackHST(BaseModel):
             node_indices = u - 1  # (n, num_trees)
 
             # Gather split features and thresholds for each instance and tree
-            # split_atts[tree, node] -> need to index as split_atts[tree, node_indices[:, tree]]
             split_features = np.empty((n, self.num_trees), dtype=split_atts.dtype)
             split_thresholds = np.empty((n, self.num_trees), dtype=np.float64)
             for tree_idx in range(self.num_trees):
@@ -218,7 +238,6 @@ class FeedbackHST(BaseModel):
                 split_thresholds[:, tree_idx] = split_values[tree_idx, node_indices[:, tree_idx]]
 
             # Get feature values for each instance-tree pair
-            # X[i, split_features[i, tree_idx]]
             x_vals = X[np.arange(n)[:, None], split_features]
 
             # Determine goes_right for each
@@ -232,8 +251,43 @@ class FeedbackHST(BaseModel):
         leaf_indices = u - (2**self.max_depth)
         return leaf_indices  # shape (n, num_trees)
 
-    def _compute_tree_features(self, X: np.ndarray) -> csr_matrix:
-        """Transform X to ensemble feature space (one feature per tree leaf)."""
+    def _compute_region_scores(self, X: np.ndarray) -> np.ndarray:
+        """Compute region scores for all leaf regions: -frac_insts * 2^path_length.
+
+        This matches the HST_SCORE_TYPE from the reference implementation.
+        Returns array of shape (num_trees * num_leaves,) where num_leaves = 2^max_depth.
+        """
+        num_leaves = 2**self.max_depth
+        m = self.num_trees * num_leaves
+
+        # Get leaf indices for the reference data
+        leaf_indices = self._get_leaf_indices(X)
+        n = leaf_indices.shape[0]
+
+        # Count samples per leaf per tree
+        region_scores = np.zeros(m, dtype=np.float64)
+        for tree_idx in range(self.num_trees):
+            start = tree_idx * num_leaves
+            counts = np.bincount(leaf_indices[:, tree_idx], minlength=num_leaves)
+            frac_insts = counts / max(1, n)
+            path_length = self.max_depth
+            region_scores[start : start + num_leaves] = -frac_insts * (2**path_length)
+
+        return region_scores
+
+    def _initialize_weights(self) -> None:
+        """Initialize uniform ensemble weights."""
+        m = self.num_trees * (2**self.max_depth)
+        self._region_weights = np.ones(m, dtype=np.float64) / np.sqrt(m)
+        self._uniform_weights = self._region_weights.copy()
+
+    def _transform_to_ensemble_features(self, X: np.ndarray) -> csr_matrix:
+        """Transform X to ensemble feature space using region scores.
+
+        Each instance activates exactly one leaf per tree, with the feature value
+        being the region score for that leaf. This matches the reference
+        implementation's transform_to_ensemble_features with add_leaf_nodes_only=True.
+        """
         X = np.asarray(X, dtype=np.float64)
         n = X.shape[0]
         num_leaves = 2**self.max_depth
@@ -243,17 +297,17 @@ class FeedbackHST(BaseModel):
         leaf_indices = self._get_leaf_indices(X)
 
         # Build sparse matrix: each instance has num_trees non-zero entries
+        # Value is the region score for that leaf
         rows = np.repeat(np.arange(n), self.num_trees)
         cols = np.arange(self.num_trees) * num_leaves + leaf_indices.T.ravel()
-        data = np.ones(n * self.num_trees, dtype=np.float64)
+
+        # Get region scores for each active leaf
+        if self._region_scores is None:
+            self._region_scores = self._compute_region_scores(X)
+
+        data = self._region_scores[cols]
 
         return csr_matrix((data, (rows, cols)), shape=(n, m))
-
-    def _initialize_weights(self) -> None:
-        """Initialize uniform ensemble weights."""
-        m = self.num_trees * (2**self.max_depth)
-        self._tree_weights = np.ones(m, dtype=np.float64) / np.sqrt(m)
-        self._uniform_weights = self._tree_weights.copy()
 
     def _update_weights_from_feedback(
         self,
@@ -263,8 +317,12 @@ class FeedbackHST(BaseModel):
         max_epochs: int = 1000,
         learning_rate: float = 0.001,
     ) -> None:
-        """Update ensemble weights using labeled feedback (AAD linear loss)."""
-        if self._tree_weights is None:
+        """Update ensemble weights using labeled feedback (AAD linear loss).
+
+        This follows the reference implementation's aad_loss_gradient_linear
+        with RMSProp optimization.
+        """
+        if self._region_weights is None:
             self._initialize_weights()
 
         # Combine labeled and unlabeled
@@ -274,9 +332,8 @@ class FeedbackHST(BaseModel):
 
         X_all = np.vstack([X_labeled, X_unlabeled])
 
-        # Get leaf indices for all instances: shape (n_total, num_trees)
-        leaf_indices = self._get_leaf_indices(X_all)
-        num_leaves = 2**self.max_depth
+        # Transform to ensemble feature space (sparse)
+        X_feat = self._transform_to_ensemble_features(X_all)
 
         # Labels: 1 for anomaly, 0 for nominal, NaN for unlabeled
         y_all = np.full(n_total, np.nan)
@@ -291,21 +348,15 @@ class FeedbackHST(BaseModel):
         tau_rank = min(bt_topK, n_total - 1)
 
         # RMSProp optimization (as in reference)
-        assert self._tree_weights is not None
-        w = self._tree_weights.copy()
+        assert self._region_weights is not None
+        w = self._region_weights.copy()
         cache = np.zeros_like(w)
         decay = 0.9
         eps = 1e-8
 
-        # Precompute the feature column index for each instance and tree
-        # feature_idx[instance, tree] = tree * num_leaves + leaf_indices[instance, tree]
-        tree_offsets = np.arange(self.num_trees) * num_leaves
-        feature_indices = leaf_indices + tree_offsets  # (n_total, num_trees)
-
         for _ in range(max_epochs):
-            # Compute scores: sum of weights for the active leaf in each tree
-            # scores[i] = sum(w[feature_indices[i, tree]] for tree in range(num_trees))
-            scores = w[feature_indices].sum(axis=1)
+            # Compute scores: X_feat @ w
+            scores = X_feat.dot(w).ravel()
 
             # Constraint: anomalies should score above tau-th quantile, nominals below
             q_val = float(np.quantile(scores, 1.0 - bt_topK / n_total))
@@ -322,7 +373,8 @@ class FeedbackHST(BaseModel):
                 if np.any(active):
                     active_ha = ha[active]
                     # For each active anomaly, decrement the weight of its active leaf per tree
-                    np.subtract.at(grad, feature_indices[active_ha].ravel(), 1.0)
+                    X_feat_anom = X_feat[active_ha]
+                    grad -= X_feat_anom.sum(axis=0).A1 / max(1, len(active_ha))
 
             # Nominal constraints: for each nominal, add weight of its active leaves
             if len(hn) > 0:
@@ -330,13 +382,14 @@ class FeedbackHST(BaseModel):
                 active = nominal_margins > 0
                 if np.any(active):
                     active_hn = hn[active]
-                    np.add.at(grad, feature_indices[active_hn].ravel(), 1.0)
+                    X_feat_noml = X_feat[active_hn]
+                    grad += X_feat_noml.sum(axis=0).A1 / max(1, len(active_hn))
 
             # Tau instance constraint
             margin = scores[tau_idx] - q_val
             if abs(margin) > 1e-8:
-                tau_features = feature_indices[tau_idx]
-                grad[tau_features] += np.sign(margin)
+                X_feat_tau = X_feat[tau_idx]
+                grad += np.sign(margin) * X_feat_tau.A1
 
             # Prior regularization (pull toward uniform)
             prior_influence = 1.0 / max(1.0, len(ha) + len(hn))
@@ -351,10 +404,13 @@ class FeedbackHST(BaseModel):
             if w_norm > 0:
                 w = w / w_norm
 
-        self._tree_weights = w
+        self._region_weights = w
 
     def _compute_node_distributions(self, X: np.ndarray) -> np.ndarray:
-        """Compute per-leaf node sample distributions for KL-divergence."""
+        """Compute per-leaf node sample distributions for KL-divergence.
+
+        Returns normalized distribution per tree (probabilities sum to 1 per tree).
+        """
         X = np.asarray(X, dtype=np.float64)
         num_leaves = 2**self.max_depth
         m = self.num_trees * num_leaves
@@ -367,7 +423,6 @@ class FeedbackHST(BaseModel):
         dists = np.ones(m, dtype=np.float32) * delta
         for tree_idx in range(self.num_trees):
             start = tree_idx * num_leaves
-            # Count occurrences of each leaf index for this tree
             counts = np.bincount(leaf_indices[:, tree_idx], minlength=num_leaves)
             dists[start : start + num_leaves] += counts.astype(np.float32)
 
@@ -380,13 +435,39 @@ class FeedbackHST(BaseModel):
 
         return dists
 
+    def _initialize_drift_reference(self, X: np.ndarray) -> None:
+        """Initialize KL-divergence reference distributions by splitting data in half.
+
+        This matches the reference implementation's get_KL_divergence_distribution
+        with simple=True, which splits the reference data in half to estimate
+        the threshold from natural variation.
+        """
+        self._ref_node_dists = self._compute_node_distributions(X)
+        # Split data in half and compute KL divergence between halves to set threshold
+        n = X.shape[0]
+        if n >= 2:
+            indices = np.arange(n)
+            self._rng.shuffle(indices)
+            h = n // 2
+            X1 = X[indices[:h]]
+            X2 = X[indices[h:]]
+            p1 = self._compute_node_distributions(X1)
+            p2 = self._compute_node_distributions(X2)
+            kl_trees, _ = self._compute_kl_divergence(p1, p2)
+        else:
+            # Not enough data to split, use self-divergence (will be 0)
+            kl_trees, _ = self._compute_kl_divergence(self._ref_node_dists, self._ref_node_dists)
+
+        # Set per-tree KL thresholds (quantile at 1 - kl_alpha)
+        self._kl_q_alpha = np.zeros(self.num_trees, dtype=np.float32)
+        for i in range(self.num_trees):
+            self._kl_q_alpha[i] = float(np.quantile(kl_trees[i : i + 1], 1 - self.kl_alpha))
+
     def _check_drift_and_replace(self, X_new: np.ndarray) -> bool:
         """Check for drift using KL-divergence and replace trees if needed."""
-        if self._ref_node_dists is None:
-            self._ref_node_dists = self._compute_node_distributions(X_new)
-            # Initialize KL threshold from reference self-divergence
-            kl_trees, _ = self._compute_kl_divergence(self._ref_node_dists, self._ref_node_dists)
-            self._kl_q_alpha = float(np.quantile(kl_trees, 1 - self.kl_alpha))
+        if not self._drift_ref_initialized:
+            self._initialize_drift_reference(X_new)
+            self._drift_ref_initialized = True
             return False
 
         new_dists = self._compute_node_distributions(X_new)
@@ -405,10 +486,24 @@ class FeedbackHST(BaseModel):
             do_replace = n_replace > 0
 
         if do_replace:
-            self._replace_trees(replace_mask)
+            self._replace_trees(replace_mask, X_new)
             self._ref_node_dists = self._compute_node_distributions(X_new)
-            kl_trees, _ = self._compute_kl_divergence(self._ref_node_dists, self._ref_node_dists)
-            self._kl_q_alpha = float(np.quantile(kl_trees, 1 - self.kl_alpha))
+            # Re-initialize KL threshold from new reference
+            n = X_new.shape[0]
+            if n >= 2:
+                indices = np.arange(n)
+                self._rng.shuffle(indices)
+                h = n // 2
+                X1 = X_new[indices[:h]]
+                X2 = X_new[indices[h:]]
+                p1 = self._compute_node_distributions(X1)
+                p2 = self._compute_node_distributions(X2)
+                kl_trees, _ = self._compute_kl_divergence(p1, p2)
+            else:
+                kl_trees, _ = self._compute_kl_divergence(self._ref_node_dists, self._ref_node_dists)
+
+            for i in range(self.num_trees):
+                self._kl_q_alpha[i] = float(np.quantile(kl_trees[i : i + 1], 1 - self.kl_alpha))
             return True
 
         return False
@@ -426,20 +521,66 @@ class FeedbackHST(BaseModel):
             kl_trees[tree] = kl
         return kl_trees, float(np.mean(kl_trees))
 
-    def _replace_trees(self, replace_mask: np.ndarray) -> None:
-        """Rebuild trees marked for replacement."""
-        # In practice, we'd rebuild the tree structures.
-        # For simplicity, we reset weights for replaced trees to uniform.
+    def _replace_trees(self, replace_mask: np.ndarray, X_new: np.ndarray) -> None:
+        """Rebuild trees marked for replacement using new window data.
+
+        This matches the reference implementation which constructs new trees
+        from the new window data (Algorithm 2: "trees are rebuilt on new windows of data").
+        """
+        num_splits = 2**self.max_depth - 1
         num_leaves = 2**self.max_depth
+
         for tree in range(self.num_trees):
             if replace_mask[tree]:
-                start = tree * num_leaves
-                end = start + num_leaves
-                if self._tree_weights is not None:
-                    self._tree_weights[start:end] = 1.0 / np.sqrt(num_leaves)
-        # Renormalize
-        if self._tree_weights is not None:
-            self._tree_weights /= np.sqrt(self._tree_weights.dot(self._tree_weights))
+                # Rebuild this tree's splits using the same logic as HalfSpaceTrees
+                mins, maxes = self._hst._work_space(self._rng)
+                atts_depth_first = self._rng.randint(self.num_dimensions, size=num_splits)
+
+                # Position in depth-first order of every internal node, level by level in heap order
+                level = np.zeros(1, dtype=np.intp)
+                levels = [level]
+                for k in range(self.max_depth - 1):
+                    level = np.stack([level + 1, level + 2 ** (self.max_depth - k - 1)], axis=1).ravel()
+                    levels.append(level)
+                atts = atts_depth_first[np.concatenate(levels)]
+
+                values = np.empty(num_splits)
+                for k in range(self.max_depth):
+                    nodes = np.arange(2**k - 1, 2 ** (k + 1) - 1)
+                    q = atts[nodes]
+                    lower, upper = mins[q], maxes[q]
+                    for ancestor_depth in range(k):
+                        ancestors = ((nodes + 1) >> (k - ancestor_depth)) - 1
+                        goes_right = (((nodes + 1) >> (k - ancestor_depth - 1)) & 1) == 1
+                        splits_q = atts[ancestors] == q
+                        upper = np.where(splits_q & ~goes_right, values[ancestors], upper)
+                        lower = np.where(splits_q & goes_right, values[ancestors], lower)
+                    values[nodes] = (upper + lower) / 2.0
+
+                self._hst.split_atts[tree] = atts
+                self._hst.split_values[tree] = values
+
+                # Reset masses for this tree
+                self._hst.l_mass[tree].fill(0)
+                self._hst.r_mass[tree].fill(0)
+
+                # Reset weights for replaced tree's regions to uniform
+                if self._region_weights is not None:
+                    start = tree * num_leaves
+                    end = start + num_leaves
+                    self._region_weights[start:end] = 1.0 / np.sqrt(num_leaves)
+
+        # Recompute region scores from new window data
+        self._region_scores = self._compute_region_scores(X_new)
+
+        # Renormalize weights
+        if self._region_weights is not None:
+            self._region_weights /= np.sqrt(self._region_weights.dot(self._region_weights))
+            self._uniform_weights = np.ones_like(self._region_weights) / np.sqrt(len(self._region_weights))
+
+        # Reset HST's window state so it starts fresh with new trees
+        self._hst.is_first_window = True
+        self._hst.step = 0
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> FeedbackHST:
         """Update the model with the next instance.
@@ -453,7 +594,7 @@ class FeedbackHST(BaseModel):
         """
         X = np.asarray(X, dtype=np.float64)
         self._hst.fit_partial(X)
-        self._stream_buffer.append(X)
+        self._stream_buffer.append(X.copy())
 
         # Check if window is complete for potential tree replacement
         if len(self._stream_buffer) >= self.window_size:
@@ -466,7 +607,9 @@ class FeedbackHST(BaseModel):
     def score_partial(self, X: np.ndarray) -> float:
         """Score the anomalousness of the next instance using weighted ensemble.
 
-        If no feedback has been provided yet, falls back to base HST score.
+        If no feedback has been provided yet, uses base HST score scaled to
+        match the ensemble score range. After feedback, uses the weighted
+        ensemble score consistently.
 
         Args:
             X (np.ndarray): Instance of shape (num_features,).
@@ -479,15 +622,16 @@ class FeedbackHST(BaseModel):
         # Base HST score (negative mass, so higher = more anomalous)
         base_score = self._hst.score_partial(X)
 
-        if self._tree_weights is None or self._feedback_used == 0:
+        if self._region_weights is None or self._feedback_used == 0:
+            # No feedback yet: use base HST score
             return base_score
 
         # Ensemble score using learned weights
-        X_feat = self._compute_tree_features(X.reshape(1, -1))
-        ensemble_score = float(X_feat.dot(self._tree_weights)[0])
+        X_feat = self._transform_to_ensemble_features(X.reshape(1, -1))
+        ensemble_score = float(X_feat.dot(self._region_weights)[0])
 
-        # Combine: ensemble score is primary, base score provides scale
-        return float(ensemble_score)
+        # Return ensemble score directly (consistent scoring after feedback)
+        return ensemble_score
 
     def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Score then fit the instance (prequential)."""
@@ -502,13 +646,18 @@ class FeedbackHST(BaseModel):
     def request_feedback(self, X: np.ndarray) -> bool:
         """Determine if the given instance should be queried for a label.
 
-        Simple strategy: query if score is in top tau-quantile of recent scores.
+        Simple strategy (QUERY_TYPE=1 in reference): query if score is in top
+        tau-quantile of recent scores.
+
+        Note: The reference implementation supports multiple query strategies
+        including diversity via compact descriptions (QUERY_TYPE=8). This
+        implementation only supports the basic top-tau strategy.
         """
         if not self.should_query():
             return False
 
         score = self.score_partial(X)
-        self._unlabeled_buffer.append(X)
+        self._unlabeled_buffer.append(X.copy())
         self._unlabeled_scores.append(score)
 
         # Keep buffer bounded
@@ -537,7 +686,7 @@ class FeedbackHST(BaseModel):
         if label not in (0, 1):
             raise ValueError(f"label must be 0 or 1, got {label}")
 
-        self._labeled_X.append(X)
+        self._labeled_X.append(X.copy())
         self._labeled_y.append(label)
         self._feedback_used += 1
 
@@ -567,8 +716,10 @@ class FeedbackHST(BaseModel):
         self._labeled_y.clear()
         self._unlabeled_buffer.clear()
         self._unlabeled_scores.clear()
-        self._tree_weights = None
+        self._region_weights = None
         self._uniform_weights = None
+        self._region_scores = None
         self._ref_node_dists = None
         self._kl_q_alpha = None
         self._stream_buffer.clear()
+        self._drift_ref_initialized = False

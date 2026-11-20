@@ -96,7 +96,8 @@ class GNGA(BaseModel):
     @property
     def neurons_(self) -> np.ndarray:
         """Returns active vectors with shape ``(num_neurons_, num_features)``."""
-        return self._positions[self._active]
+        active: np.ndarray = self._positions[self._active]
+        return active
 
     @property
     def num_neurons_(self) -> int:

@@ -91,4 +91,5 @@ class SlowPoisonStream(_AdversarialStream):
         else:
             out = x.copy()
             self._is_anomaly = False
-        return out
+        res: np.ndarray = out
+        return res

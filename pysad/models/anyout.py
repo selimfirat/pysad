@@ -23,7 +23,8 @@ class _Node:
 
     def means(self) -> np.ndarray:
         n = np.maximum(self.n[: self.size], np.finfo(np.float64).tiny)
-        return self.ls[: self.size] / n[:, None]  # (size, d)
+        res: np.ndarray = self.ls[: self.size] / n[:, None]  # (size, d)
+        return res
 
     def closest(self, x: np.ndarray) -> int:
         diff = self.means() - x

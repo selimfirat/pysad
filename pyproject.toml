@@ -221,10 +221,15 @@ warn_redundant_casts = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
+warn_return_any = true
+strict_equality = true
+extra_checks = true
 
 [[tool.mypy.overrides]]
 module = [
     "pysad.core.*",
+    "pysad.evaluation.*",
+    "pysad.statistics.*",
     "pysad.evaluation.metrics",
     "pysad.evaluation.prequential",
     "pysad.evaluation.rolling_metric",
@@ -242,10 +247,7 @@ disallow_any_generics = true
 disallow_subclassing_any = true
 disallow_untyped_calls = true
 disallow_untyped_decorators = true
-warn_return_any = true
 implicit_reexport = false
-strict_equality = true
-extra_checks = true
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]

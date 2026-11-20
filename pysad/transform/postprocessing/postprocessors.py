@@ -160,7 +160,8 @@ class MaxPostprocessor(_MeterPostprocessor):
             acc = np.maximum(meter.max, np.maximum.accumulate(arr))
             meter.max = float(acc[-1])
             self.num_seen_ += len(arr)
-            return acc
+            res: np.ndarray = acc
+            return res
         return super().fit_transform(scores)
 
 

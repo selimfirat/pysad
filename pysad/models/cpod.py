@@ -61,7 +61,8 @@ class CPOD(BaseModel):
         if len(points) == 0:
             return np.empty(0, dtype=np.float64)
         diff = points - x
-        return np.sqrt(np.einsum("ij,ij->i", diff, diff))
+        dists: np.ndarray = np.sqrt(np.einsum("ij,ij->i", diff, diff))
+        return dists
 
     def _grow_cores(self) -> np.ndarray:
         num = max(len(self.linked_), 1)

@@ -220,7 +220,7 @@ class RSHash(BaseModel):
         tstamp = int(self.sketch_timestamps[w, slot])
         wt = float(self.sketch_counts[w, slot])
 
-        return wt * 2.0 ** (-self.decay * (self.index - tstamp))
+        return float(wt * 2.0 ** (-self.decay * (self.index - tstamp)))
 
     def _sample_shifts(self, rng: np.random.RandomState) -> list[np.ndarray]:
         alpha: list[np.ndarray] = []

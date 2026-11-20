@@ -62,6 +62,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
+        score = float(score)
         self.meter.update(score)
         self.short_window.append(score)
 
@@ -82,6 +83,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         """
         if not self.short_window:
             return 0.0
+        score = float(score)
         if self.short_window_size == 1:
             short_mean = score
         else:

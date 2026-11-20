@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 import gradio as gr
@@ -728,9 +727,7 @@ def build_demo() -> gr.Blocks:
 
 
 if __name__ == "__main__":
-    server_port = int(os.environ.get("GRADIO_SERVER_PORT", "7860"))
-    server_name = os.environ.get("GRADIO_SERVER_NAME", "0.0.0.0")
-    launch_kwargs: dict[str, Any] = {"server_name": server_name, "server_port": server_port}
+    launch_kwargs: dict[str, Any] = {}
     if _GRADIO_MAJOR >= 6:
         launch_kwargs["theme"] = _build_theme()
         launch_kwargs["css"] = CUSTOM_CSS

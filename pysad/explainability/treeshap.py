@@ -1,39 +1,102 @@
 """TreeSHAP explainability for tree ensembles.
 
-Implements the TreeSHAP algorithm from Lundberg et al. (2020) "From local explanations
-to global understanding with explainable AI for trees", Nature Machine Intelligence
-:cite:`lundberg2020consistent`. Computes exact SHAP values for tree ensemble models
-in streaming anomaly detection.
-
-The implementation computes exact Shapley values by explicit enumeration of all
-subsets of features on the decision path (exponential in path length, equivalent
-to the paper's Algorithm 1 approach). For a tree of depth M, this requires
-evaluating 2^M subsets. Since isolation forest trees have bounded depth (typically
-< 10 for default parameters), the exact exponential algorithm is efficient.
+Implements the polynomial-time TreeSHAP Algorithm 2 from Lundberg et al. (2020),
+"From local explanations to global understanding with explainable AI for trees",
+Nature Machine Intelligence :cite:`lundberg2020consistent`. Computes exact Shapley
+feature attributions in O(T L D^2) time across an ensemble of T trees with up to L
+leaves and depth D.
 
 Deviations from the paper:
-- The paper's Algorithm 2 describes a polynomial-time EXTEND/UNWIND dynamic
-  programming approach. This implementation uses explicit subset enumeration
-  (exponential in path length) which is exact and equivalent for the bounded
-  tree depths in streaming isolation forests.
-- The `left_fractions` parameter (cover fractions) defaults to 0.5 for all internal
-  nodes. In the paper, these are computed from training data cover statistics.
-  For OnlineIsolationForest, cover fractions are not tracked during streaming
-  learning. Users can provide custom `left_fractions` if available.
-- Each occurrence of a feature on the decision path is treated as a separate
-  position for Shapley computation. The final SHAP values are the sum over all
-  positions of that feature. This correctly handles repeated features on a path
-  (common in isolation forests).
+- `left_fractions` defaults to 0.5 for all internal nodes when cover fractions are
+  not provided. `OnlineIsolationForest.explain_partial` supplies live per-node
+  child sample-count fractions computed from streaming `data_size` statistics.
+- Split routing uses `x[feature] < threshold` for the left branch and
+  `x[feature] >= threshold` for the right branch to match `OnlineIsolationForest`.
+- Zero-cover branches where both zero and one path fractions vanish are pruned to
+  avoid division by zero during unwinding.
 """
 
 from __future__ import annotations
 
-import math
 from collections.abc import Sequence
-from itertools import combinations
 
 import numpy as np
 from numpy.typing import NDArray
+
+
+def _extend(
+    m_d: list[int],
+    m_z: list[float],
+    m_o: list[float],
+    m_w: list[float],
+    unique_depth: int,
+    zero_fraction: float,
+    one_fraction: float,
+    feature_index: int,
+) -> None:
+    """Extend the subset-weight polynomial by one feature entry."""
+    m_d[unique_depth] = feature_index
+    m_z[unique_depth] = zero_fraction
+    m_o[unique_depth] = one_fraction
+    m_w[unique_depth] = 1.0 if unique_depth == 0 else 0.0
+
+    for i in range(unique_depth - 1, -1, -1):
+        m_w[i + 1] += one_fraction * m_w[i] * (i + 1) / (unique_depth + 1)
+        m_w[i] = zero_fraction * m_w[i] * (unique_depth - i) / (unique_depth + 1)
+
+
+def _unwind(
+    m_d: list[int],
+    m_z: list[float],
+    m_o: list[float],
+    m_w: list[float],
+    unique_depth: int,
+    path_index: int,
+) -> None:
+    """Remove a feature entry at `path_index` from the path polynomial in place."""
+    one_fraction = m_o[path_index]
+    zero_fraction = m_z[path_index]
+
+    if one_fraction != 0.0:
+        next_one = m_w[unique_depth]
+        for i in range(unique_depth - 1, -1, -1):
+            orig_w = m_w[i]
+            unwound_w = next_one * (unique_depth + 1) / (one_fraction * (i + 1))
+            m_w[i] = unwound_w
+            next_one = orig_w - unwound_w * zero_fraction * (unique_depth - i) / (unique_depth + 1)
+    else:
+        for i in range(unique_depth - 1, -1, -1):
+            m_w[i] = m_w[i] * (unique_depth + 1) / (zero_fraction * (unique_depth - i))
+
+    for i in range(path_index, unique_depth):
+        m_d[i] = m_d[i + 1]
+        m_z[i] = m_z[i + 1]
+        m_o[i] = m_o[i + 1]
+
+
+def _unwound_sum(
+    m_z: list[float],
+    m_o: list[float],
+    m_w: list[float],
+    unique_depth: int,
+    path_index: int,
+) -> float:
+    """Compute the sum of subset weights obtained by unwinding `path_index`."""
+    one_fraction = m_o[path_index]
+    zero_fraction = m_z[path_index]
+    total = 0.0
+
+    if one_fraction != 0.0:
+        next_one = m_w[unique_depth]
+        for i in range(unique_depth - 1, -1, -1):
+            unwound_w = next_one * (unique_depth + 1) / (one_fraction * (i + 1))
+            total += unwound_w
+            next_one = m_w[i] - unwound_w * zero_fraction * (unique_depth - i) / (unique_depth + 1)
+    else:
+        for i in range(unique_depth - 1, -1, -1):
+            total += m_w[i] * (unique_depth + 1) / (zero_fraction * (unique_depth - i))
+
+    return total
 
 
 def _treeshap_tree(
@@ -46,143 +109,112 @@ def _treeshap_tree(
     num_features: int,
     left_fractions: NDArray[np.float64] | None = None,
 ) -> NDArray[np.float64]:
-    """Compute SHAP values for a single tree using exact TreeSHAP via explicit subset enumeration.
-
-    This implements exact Shapley value computation by enumerating all subsets of
-    positions on the decision path. Each internal node on the path is a position.
-    For a path with M internal nodes, there are 2^M subsets. The Shapley value for
-    each position is computed as the weighted average of its marginal contributions
-    across all subsets of the other positions. Final SHAP values per feature are
-    the sum over all positions of that feature on the path.
-
-    This handles repeated features correctly: each occurrence of a feature on the
-    decision path is a separate position with its own Shapley value.
+    """Compute exact SHAP values for one tree using TreeSHAP Algorithm 2.
 
     Args:
         x: Instance to explain, shape (num_features,).
-        features: Split feature for each node, shape (num_nodes,). Leaf nodes have feature = -1.
-        thresholds: Split threshold for each node, shape (num_nodes,).
-        left_children: Left child index for each node, shape (num_nodes,).
-        right_children: Right child index for each node, shape (num_nodes,).
-        values: Output value for each node, shape (num_nodes,). Only leaf nodes have non-zero values.
-        num_features: Number of features.
-        left_fractions: Fraction of samples going left at each node, shape (num_nodes,).
-            If None, assumes 0.5 for all internal nodes. These are the "cover fractions"
-            from the paper and should ideally be computed from training data statistics.
+        features: Feature index per node (`-1` for leaves).
+        thresholds: Split threshold per node.
+        left_children: Left child node index per node.
+        right_children: Right child node index per node.
+        values: Leaf output value per node.
+        num_features: Total number of features.
+        left_fractions: Optional fraction of samples routed left at each node.
+            Defaults to 0.5 for every node when omitted.
 
     Returns:
         SHAP values for each feature, shape (num_features,).
     """
-    num_nodes = len(features)
     phi = np.zeros(num_features, dtype=np.float64)
-
-    if left_fractions is None:
-        left_fractions = np.full(num_nodes, 0.5, dtype=np.float64)
-    right_fractions = 1.0 - left_fractions
-
-    # Step 1: Compute unconditional expected values for all nodes (bottom-up).
-    # unconditional[node] = expected value if we continue from this node with all features unknown.
-    unconditional = np.zeros(num_nodes, dtype=np.float64)
-    for node in range(num_nodes - 1, -1, -1):
-        feat = features[node]
-        if feat == -1:  # leaf
-            unconditional[node] = values[node]
-        else:
-            left = left_children[node]
-            right = right_children[node]
-            unconditional[node] = (
-                left_fractions[node] * unconditional[left]
-                + right_fractions[node] * unconditional[right]
-            )
-
-    # Step 2: Find the decision path for instance x.
-    # path_nodes holds the internal node indices on the path (excluding the leaf).
-    path_nodes: list[int] = []
-    node = 0
-    while features[node] != -1:
-        path_nodes.append(node)
-        if x[features[node]] < thresholds[node]:
-            node = left_children[node]
-        else:
-            node = right_children[node]
-    # path_nodes now contains M internal nodes; the leaf is not included.
-
-    M = len(path_nodes)
-    if M == 0:
+    if len(features) == 0:
         return phi
 
-    # Step 3: Exact TreeSHAP via explicit subset enumeration over path positions.
-    # Each position i (0 <= i < M) corresponds to path_nodes[i].
-    # For each position i, compute its Shapley value:
-    # phi_i = sum_{S subset of P\{i}} weight(|S|) * (f(S U {i}) - f(S))
-    # where P is the set of M positions, weight(|S|) = 1 / (M * C(M-1, |S|))
-    # and f(S) is the expected value when positions in S are known (follow x's path)
-    # and positions not in S are unknown (use cover-weighted average).
+    left_fracs = (
+        np.full(len(features), 0.5, dtype=np.float64) if left_fractions is None else left_fractions
+    )
 
-    # Precompute expected values for all 2^M subsets.
-    # subset_values[mask] = expected value when positions in mask are known.
-    # mask is an M-bit integer where bit k corresponds to position k (path_nodes[k]).
-    num_subsets = 1 << M
-    subset_values = np.zeros(num_subsets, dtype=np.float64)
+    max_path_len = min(len(features), num_features) + 2
+    m_d = [-1] * max_path_len
+    m_z = [0.0] * max_path_len
+    m_o = [0.0] * max_path_len
+    m_w = [0.0] * max_path_len
 
-    for mask in range(num_subsets):
-        # Compute expected value for this subset of known positions.
-        # Start at root, traverse tree: known positions follow x's path, unknown use cover fractions.
-        val = 0.0
-        stack = [(0, 1.0)]  # (node, weight)
-        while stack:
-            current_node, weight = stack.pop()
-            feat = features[current_node]
-            if feat == -1:  # leaf
-                val += weight * values[current_node]
-                continue
+    def _recurse(
+        node: int,
+        unique_depth: int,
+        parent_zero_fraction: float,
+        parent_one_fraction: float,
+        parent_feature_index: int,
+    ) -> None:
+        _extend(
+            m_d,
+            m_z,
+            m_o,
+            m_w,
+            unique_depth,
+            parent_zero_fraction,
+            parent_one_fraction,
+            parent_feature_index,
+        )
 
-            # Determine if this node is on the path and if its position is known in this subset
-            on_path = False
-            path_pos = -1
-            for pos, pn in enumerate(path_nodes):
-                if pn == current_node:
-                    on_path = True
-                    path_pos = pos
-                    break
+        split_index = int(features[node])
+        if split_index < 0:
+            leaf_value = float(values[node])
+            for i in range(1, unique_depth + 1):
+                weight = _unwound_sum(m_z, m_o, m_w, unique_depth, i)
+                phi[m_d[i]] += weight * (m_o[i] - m_z[i]) * leaf_value
+            return
 
-            if on_path and (mask & (1 << path_pos)):
-                # Position is known: follow x's actual path
-                x_val = x[feat]
-                goes_right = x_val >= thresholds[current_node]
-                child = right_children[current_node] if goes_right else left_children[current_node]
-                stack.append((child, weight))
-            else:
-                # Position is unknown (or node not on path): use cover-weighted average
-                left = left_children[current_node]
-                right = right_children[current_node]
-                stack.append((left, weight * left_fractions[current_node]))
-                stack.append((right, weight * right_fractions[current_node]))
+        threshold = float(thresholds[node])
+        left_frac = float(left_fracs[node])
+        if float(x[split_index]) < threshold:
+            hot_child = int(left_children[node])
+            cold_child = int(right_children[node])
+            hot_zero = left_frac
+            cold_zero = 1.0 - left_frac
+        else:
+            hot_child = int(right_children[node])
+            cold_child = int(left_children[node])
+            hot_zero = 1.0 - left_frac
+            cold_zero = left_frac
 
-        subset_values[mask] = val
+        hot_one = 1.0
+        incoming_depth = unique_depth
+        incoming_index = -1
+        for k in range(1, unique_depth + 1):
+            if m_d[k] == split_index:
+                incoming_index = k
+                break
 
-    # Step 4: Compute Shapley values for each position on the path, accumulate by feature.
-    for i in range(M):
-        node_i = path_nodes[i]
-        feat_i = features[node_i]
-        total_contribution = 0.0
+        if incoming_index >= 0:
+            hot_zero *= m_z[incoming_index]
+            hot_one *= m_o[incoming_index]
+            cold_zero *= m_z[incoming_index]
+            _unwind(m_d, m_z, m_o, m_w, unique_depth, incoming_index)
+            incoming_depth -= 1
 
-        # Sum over all subsets S of the other M-1 positions
-        other_positions = [j for j in range(M) if j != i]
-        for k in range(M):  # subset size k
-            weight = 1.0 / (M * math.comb(M - 1, k))
-            for S in combinations(other_positions, k):
-                mask_without = 0
-                for j in S:
-                    mask_without |= 1 << j
-                mask_with = mask_without | (1 << i)
+        visit_hot = hot_zero != 0.0 or hot_one != 0.0
+        visit_cold = cold_zero != 0.0
+        next_depth = incoming_depth + 1
 
-                val_with = subset_values[mask_with]
-                val_without = subset_values[mask_without]
-                total_contribution += weight * (val_with - val_without)
+        if visit_hot and visit_cold:
+            saved_len = next_depth
+            saved_d = m_d[:saved_len]
+            saved_z = m_z[:saved_len]
+            saved_o = m_o[:saved_len]
+            saved_w = m_w[:saved_len]
+            _recurse(hot_child, next_depth, hot_zero, hot_one, split_index)
+            m_d[:saved_len] = saved_d
+            m_z[:saved_len] = saved_z
+            m_o[:saved_len] = saved_o
+            m_w[:saved_len] = saved_w
+            _recurse(cold_child, next_depth, cold_zero, 0.0, split_index)
+        elif visit_hot:
+            _recurse(hot_child, next_depth, hot_zero, hot_one, split_index)
+        elif visit_cold:
+            _recurse(cold_child, next_depth, cold_zero, 0.0, split_index)
 
-        phi[feat_i] += total_contribution
-
+    _recurse(0, 0, 1.0, 1.0, -1)
     return phi
 
 

@@ -393,3 +393,37 @@ def test_online_isolation_forest_explain_non_binary_trees_returns_zeros():
 
     assert weights.shape == (5,)
     assert np.all(weights == 0.0)
+
+
+def test_online_isolation_forest_explain_satisfies_local_accuracy():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    rng = np.random.RandomState(7)
+    X = rng.randn(180, 4)
+    model = OnlineIsolationForest(
+        num_trees=15, max_leaf_samples=8, window_size=120, random_state=7
+    ).fit(X[:150])
+
+    def _expected_depth(node, tree):
+        if node.children is None:
+            mls = tree.max_leaf_samples
+            ns = node.data_size
+            pl = 0.0 if ns <= mls else np.log(ns / mls) * tree._inv_log
+            return node.depth + pl
+        left_child, right_child = node.children
+        total = left_child.data_size + right_child.data_size
+        left_frac = left_child.data_size / total if total > 0 else 0.5
+        return left_frac * _expected_depth(left_child, tree) + (1.0 - left_frac) * _expected_depth(
+            right_child, tree
+        )
+
+    for idx in range(150, 160):
+        x = X[idx]
+        phi = model.explain_partial(x)
+        diffs = [
+            0.0 if tree.max_depth == 0 else tree.predict_one(x) - _expected_depth(tree.root, tree)
+            for tree in model.trees_
+        ]
+        np.testing.assert_allclose(phi.sum(), float(np.mean(diffs)), atol=1e-10)

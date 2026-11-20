@@ -685,6 +685,7 @@ class OnlineIsolationForest(BaseModel):
         trees_left: list[np.ndarray] = []
         trees_right: list[np.ndarray] = []
         trees_values: list[np.ndarray] = []
+        trees_left_fractions: list[np.ndarray] = []
 
         for t_idx in range(self.num_trees):
             max_d = self.trees_[t_idx].max_depth
@@ -695,6 +696,7 @@ class OnlineIsolationForest(BaseModel):
                 trees_left.append(np.array([0], dtype=np.intp))
                 trees_right.append(np.array([0], dtype=np.intp))
                 trees_values.append(np.array([0.0], dtype=np.float64))
+                trees_left_fractions.append(np.array([0.5], dtype=np.float64))
                 continue
 
             nc = self.trees_[t_idx].node_count
@@ -712,11 +714,26 @@ class OnlineIsolationForest(BaseModel):
             is_leaf = p_left == p_right
             features[is_leaf] = -1
 
+            left_fractions = np.full(nc, 0.5, dtype=np.float64)
+            root = self.trees_[t_idx].root
+            if root is not None:
+                stack = [root]
+                while stack:
+                    node = stack.pop()
+                    if node.children is not None:
+                        left_child, right_child = node.children
+                        total = left_child.data_size + right_child.data_size
+                        if total > 0:
+                            left_fractions[node.slot] = left_child.data_size / total
+                        stack.append(right_child)
+                        stack.append(left_child)
+
             trees_features.append(features)
             trees_thresholds.append(p_split)
             trees_left.append(p_left)
             trees_right.append(p_right)
             trees_values.append(p_leaf_pl)
+            trees_left_fractions.append(left_fractions)
 
         # Compute SHAP values for the average path length.
         phi = treeshap_ensemble(
@@ -727,6 +744,7 @@ class OnlineIsolationForest(BaseModel):
             trees_right,
             trees_values,
             num_features,
+            trees_left_fractions=trees_left_fractions,
         )
 
         return phi

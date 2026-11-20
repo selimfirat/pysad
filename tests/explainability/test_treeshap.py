@@ -235,3 +235,79 @@ def test_treeshap_reproducibility():
     phi2 = treeshap_ensemble(x, [features], [thresholds], [left], [right], [values], num_features=2)
 
     np.testing.assert_array_equal(phi1, phi2)
+
+
+def test_treeshap_repeated_feature_on_path():
+    """Test TreeSHAP with a feature repeated on the decision path.
+
+    Isolation forests often split on the same feature multiple times along a path.
+    This test ensures each occurrence is treated as a separate position and SHAP
+    values are correctly accumulated.
+    """
+    # Tree where feature 0 appears twice on the left path:
+    #       0 (feature 0, thresh 0.5)
+    #      /
+    #     1 (feature 0, thresh 0.25)
+    #    / \
+    #   3   4
+    #  1.0  0.0
+    # Right branch is a leaf with value 0.0
+    # x = [0.1, 0.5] -> left at root (0 < 0.5), left at node 1 (0 < 0.25) -> leaf 3 (value 1.0)
+    features = np.array([0, 0, -1, -1, -1], dtype=np.intp)
+    thresholds = np.array([0.5, 0.25, 0.0, 0.0, 0.0], dtype=np.float64)
+    left = np.array([1, 3, 1, 3, 4], dtype=np.intp)
+    right = np.array([2, 4, 1, 3, 4], dtype=np.intp)
+    values = np.array([0.0, 0.0, 0.0, 1.0, 0.0], dtype=np.float64)
+
+    x = np.array([0.1, 0.5], dtype=np.float64)
+
+    phi = treeshap_ensemble(
+        x,
+        [features],
+        [thresholds],
+        [left],
+        [right],
+        [values],
+        num_features=2,
+    )
+
+    # Feature 0 appears twice on the path and should get all the SHAP value
+    # Feature 1 is not used and should get 0
+    assert phi.shape == (2,)
+    assert phi[0] > 0.0  # Feature 0 contributes (both positions)
+    assert abs(phi[1]) < 1e-10  # Feature 1 doesn't contribute
+
+
+def test_treeshap_repeated_feature_different_branches():
+    """Test TreeSHAP with a feature used on different branches."""
+    # Tree where feature 0 is used at root, and feature 1 is used on both branches:
+    #       0 (feature 0, thresh 0.5)
+    #      / \
+    #     1   2 (feature 1, thresh 0.5)
+    #    / \  / \
+    #   3  4 5   6
+    #  1.0 0.0 0.0 1.0
+    # Both branches use feature 1, but with different outcomes.
+    # x = [0.3, 0.3] -> left at root (feature 0), left at node 1 (feature 1) -> leaf 3 (value 1.0)
+    features = np.array([0, 1, 1, -1, -1, -1, -1], dtype=np.intp)
+    thresholds = np.array([0.5, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0], dtype=np.float64)
+    left = np.array([1, 3, 5, 3, 4, 5, 6], dtype=np.intp)
+    right = np.array([2, 4, 6, 3, 4, 5, 6], dtype=np.intp)
+    values = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0], dtype=np.float64)
+
+    x = np.array([0.3, 0.3], dtype=np.float64)
+
+    phi = treeshap_ensemble(
+        x,
+        [features],
+        [thresholds],
+        [left],
+        [right],
+        [values],
+        num_features=2,
+    )
+
+    # Both features contribute to reaching leaf 3
+    assert phi.shape == (2,)
+    assert phi[0] > 0.0  # Feature 0 pushed left
+    assert phi[1] > 0.0  # Feature 1 pushed left

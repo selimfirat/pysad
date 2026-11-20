@@ -4,21 +4,25 @@ Implements the TreeSHAP algorithm from Lundberg et al. (2020) "Consistent Indivi
 Feature Attribution for Tree Ensembles", Nature MI. Computes exact SHAP values for
 tree ensemble models in streaming anomaly detection.
 
-The implementation follows Algorithm 2 from the paper, which computes exact Shapley
-values by considering all subsets of features on the decision path. For a tree of
-depth M, this requires evaluating 2^M subsets. Since isolation forest trees have
-bounded depth (typically < 10 for default parameters), the exact exponential
-algorithm is efficient and numerically equivalent to the polynomial-time EXTEND/UNWIND
-formulation.
+The implementation computes exact Shapley values by explicit enumeration of all
+subsets of features on the decision path (exponential in path length, equivalent
+to the paper's Algorithm 1 approach). For a tree of depth M, this requires
+evaluating 2^M subsets. Since isolation forest trees have bounded depth (typically
+< 10 for default parameters), the exact exponential algorithm is efficient.
 
 Deviations from the paper:
 - The paper's Algorithm 2 describes a polynomial-time EXTEND/UNWIND dynamic
-  programming approach. This implementation uses explicit subset enumeration which
-  is exact and equivalent for the bounded tree depths in streaming isolation forests.
+  programming approach. This implementation uses explicit subset enumeration
+  (exponential in path length) which is exact and equivalent for the bounded
+  tree depths in streaming isolation forests.
 - The `left_fractions` parameter (cover fractions) defaults to 0.5 for all internal
   nodes. In the paper, these are computed from training data cover statistics.
   For OnlineIsolationForest, cover fractions are not tracked during streaming
   learning. Users can provide custom `left_fractions` if available.
+- Each occurrence of a feature on the decision path is treated as a separate
+  position for Shapley computation. The final SHAP values are the sum over all
+  positions of that feature. This correctly handles repeated features on a path
+  (common in isolation forests).
 """
 
 from __future__ import annotations
@@ -41,13 +45,17 @@ def _treeshap_tree(
     num_features: int,
     left_fractions: NDArray[np.float64] | None = None,
 ) -> NDArray[np.float64]:
-    """Compute SHAP values for a single tree using exact TreeSHAP (Algorithm 2).
+    """Compute SHAP values for a single tree using exact TreeSHAP via explicit subset enumeration.
 
-    This implements the exact TreeSHAP algorithm from Lundberg et al. (2020) by
-    enumerating all subsets of features on the decision path. For a path with M
-    internal nodes, there are 2^M subsets. The Shapley value for each feature is
-    computed as the weighted average of its marginal contributions across all
-    subsets of the other features.
+    This implements exact Shapley value computation by enumerating all subsets of
+    positions on the decision path. Each internal node on the path is a position.
+    For a path with M internal nodes, there are 2^M subsets. The Shapley value for
+    each position is computed as the weighted average of its marginal contributions
+    across all subsets of the other positions. Final SHAP values per feature are
+    the sum over all positions of that feature on the path.
+
+    This handles repeated features correctly: each occurrence of a feature on the
+    decision path is a separate position with its own Shapley value.
 
     Args:
         x: Instance to explain, shape (num_features,).
@@ -87,38 +95,38 @@ def _treeshap_tree(
             )
 
     # Step 2: Find the decision path for instance x.
-    path: list[int] = []
+    # path_nodes holds the internal node indices on the path (excluding the leaf).
+    path_nodes: list[int] = []
     node = 0
     while features[node] != -1:
-        path.append(node)
+        path_nodes.append(node)
         if x[features[node]] < thresholds[node]:
             node = left_children[node]
         else:
             node = right_children[node]
-    path.append(node)  # leaf node
+    # path_nodes now contains M internal nodes; the leaf is not included.
 
-    M = len(path) - 1  # number of internal nodes (features) on the path
+    M = len(path_nodes)
     if M == 0:
         return phi
 
-    path_features = [features[n] for n in path[:-1]]
-
-    # Step 3: Exact TreeSHAP via explicit subset enumeration.
-    # For each feature i on the path, compute its Shapley value:
-    # phi_i = sum_{S subset of F\{i}} weight(|S|) * (f(S U {i}) - f(S))
-    # where F is the set of features on the path, weight(|S|) = 1 / (M * C(M-1, |S|))
-    # and f(S) is the expected value when features in S are known (follow x's path)
-    # and features not in S are unknown (use cover-weighted average).
+    # Step 3: Exact TreeSHAP via explicit subset enumeration over path positions.
+    # Each position i (0 <= i < M) corresponds to path_nodes[i].
+    # For each position i, compute its Shapley value:
+    # phi_i = sum_{S subset of P\{i}} weight(|S|) * (f(S U {i}) - f(S))
+    # where P is the set of M positions, weight(|S|) = 1 / (M * C(M-1, |S|))
+    # and f(S) is the expected value when positions in S are known (follow x's path)
+    # and positions not in S are unknown (use cover-weighted average).
 
     # Precompute expected values for all 2^M subsets.
-    # subset_values[mask] = expected value when features in mask are known.
-    # mask is an M-bit integer where bit k corresponds to path_features[k].
+    # subset_values[mask] = expected value when positions in mask are known.
+    # mask is an M-bit integer where bit k corresponds to position k (path_nodes[k]).
     num_subsets = 1 << M
     subset_values = np.zeros(num_subsets, dtype=np.float64)
 
     for mask in range(num_subsets):
-        # Compute expected value for this subset of known features.
-        # Start at root, traverse tree: known features follow x's path, unknown use cover fractions.
+        # Compute expected value for this subset of known positions.
+        # Start at root, traverse tree: known positions follow x's path, unknown use cover fractions.
         val = 0.0
         stack = [(0, 1.0)]  # (node, weight)
         while stack:
@@ -128,23 +136,23 @@ def _treeshap_tree(
                 val += weight * values[current_node]
                 continue
 
-            # Determine if this feature is on the path and if it's known in this subset
+            # Determine if this node is on the path and if its position is known in this subset
             on_path = False
-            path_idx = -1
-            for idx, pf in enumerate(path_features):
-                if pf == feat:
+            path_pos = -1
+            for pos, pn in enumerate(path_nodes):
+                if pn == current_node:
                     on_path = True
-                    path_idx = idx
+                    path_pos = pos
                     break
 
-            if on_path and (mask & (1 << path_idx)):
-                # Feature is known: follow x's actual path
+            if on_path and (mask & (1 << path_pos)):
+                # Position is known: follow x's actual path
                 x_val = x[feat]
                 goes_right = x_val >= thresholds[current_node]
                 child = right_children[current_node] if goes_right else left_children[current_node]
                 stack.append((child, weight))
             else:
-                # Feature is unknown: use cover-weighted average
+                # Position is unknown (or node not on path): use cover-weighted average
                 left = left_children[current_node]
                 right = right_children[current_node]
                 stack.append((left, weight * left_fractions[current_node]))
@@ -152,16 +160,17 @@ def _treeshap_tree(
 
         subset_values[mask] = val
 
-    # Step 4: Compute Shapley values for each feature on the path.
+    # Step 4: Compute Shapley values for each position on the path, accumulate by feature.
     for i in range(M):
-        feat = path_features[i]
+        node_i = path_nodes[i]
+        feat_i = features[node_i]
         total_contribution = 0.0
 
-        # Sum over all subsets S of the other M-1 features
-        other_indices = [j for j in range(M) if j != i]
+        # Sum over all subsets S of the other M-1 positions
+        other_positions = [j for j in range(M) if j != i]
         for k in range(M):  # subset size k
             weight = 1.0 / (M * math.comb(M - 1, k))
-            for S in combinations(other_indices, k):
+            for S in combinations(other_positions, k):
                 mask_without = 0
                 for j in S:
                     mask_without |= 1 << j
@@ -171,7 +180,7 @@ def _treeshap_tree(
                 val_without = subset_values[mask_without]
                 total_contribution += weight * (val_with - val_without)
 
-        phi[feat] += total_contribution
+        phi[feat_i] += total_contribution
 
     return phi
 

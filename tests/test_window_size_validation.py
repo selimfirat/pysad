@@ -32,6 +32,7 @@ SUBPACKAGES: tuple[str, ...] = (
 
 REQUIRED_ARGS: dict[str, dict[str, Any]] = {
     "ApproxStorm": {"sample_fraction": 0.5},
+    "ConformalTSFMCalibrator": {"alpha": 0.1, "gamma": 0.005},
     "HalfSpaceTrees": {"feature_mins": [0.0], "feature_maxes": [1.0]},
     "HoltWinters": {"period": 2},
     "IDKS": {"input_shape": 1},

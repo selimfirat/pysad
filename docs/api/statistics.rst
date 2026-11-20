@@ -8,7 +8,11 @@ This module holds running statistics. A running statistic changes as you add val
 :class:`CUSUMMeter` tracks shifts from a fixed target mean. Its ``get()`` method
 returns the larger cumulative deviation. Its ``drift_detected`` flag reports
 when this value exceeds ``threshold``. The next update restarts both sums.
-Use :class:`PageHinkleyMeter` to track deviations from a running mean instead.
+:class:`PageHinkleyMeter` tracks deviations from a running mean. Its ``get()``
+method returns the two-sided Page-Hinkley statistic. Its ``drift_detected``
+flag reports when this value exceeds ``threshold`` after at least
+``min_instances`` observations. The next update restarts both sums and the
+running mean. Use :class:`CUSUMMeter` to track shifts from a fixed target mean.
 This module holds running statistics. Call ``update`` to add a value, then call
 ``get`` to read the statistic. Removable meters also support ``remove`` and can use
 :class:`RunningStatistic` for windowed summaries. Each meter's class documentation

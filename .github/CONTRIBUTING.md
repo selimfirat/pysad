@@ -22,6 +22,6 @@ bash build_docs.sh
 
 ## Name your pull request
 
-Write the title as a conventional commit, for example `fix: return finite LODA scores for constant features`. Use one of these types: `feat`, `fix`, `docs`, `build`, `ci`, `refactor`, `test`, `style` or `chore`. The release notes group pull requests by this type.
+Write the title as a conventional commit, for example `fix: return finite LODA scores for constant features`. Use one of these types: `feat`, `fix`, `perf`, `docs`, `build`, `ci`, `refactor`, `test`, `style` or `chore`. The release notes group pull requests by this type.
 
 The project follows the [Python Software Foundation Code of Conduct](https://policies.python.org/python.org/code-of-conduct/).

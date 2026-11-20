@@ -202,3 +202,128 @@ def test_windowed_metric_log_loss():
     batch_metric = WindowedMetric(LogLossMetric, window_size=2, ignore_nonempty_last=False)
     batch_metric.update_batch(y_true, y_pred)
     assert np.isclose(batch_metric.get(), expected)
+
+
+def test_windowed_metric_update_batch_across_windows_precision():
+    """Test WindowedMetric.update_batch across several windows with PrecisionMetric.
+
+    Covers partially filled starts, exact boundaries, independent window results,
+    and final state consistency between batch and incremental updates.
+    """
+    import numpy as np
+
+    from pysad.evaluation import PrecisionMetric, WindowedMetric
+
+    # Window size 4. We feed 14 items total -> 3 full windows (12 items) + 2 partial items.
+    # y_true pattern: [1, 0, 1, 0] repeated, last two are [1, 0]
+    # y_pred pattern: [1, 1, 1, 0] repeated, last two are [1, 0]
+    # With threshold=0.5, predictions >= 0.5 are 1.
+    window_size = 4
+    y_true = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
+    y_pred = [0.9, 0.8, 0.7, 0.2, 0.9, 0.8, 0.7, 0.2, 0.9, 0.8, 0.7, 0.2, 0.9, 0.2]
+
+    # Manual window calculation with PrecisionMetric (threshold=0.5):
+    # Window 0 (indices 0-3): TP=2 (indices 0,2), FP=1 (index 1), precision = 2/3
+    # Window 1 (indices 4-7): TP=2 (indices 4,6), FP=1 (index 5), precision = 2/3
+    # Window 2 (indices 8-11): TP=2 (indices 8,10), FP=1 (index 9), precision = 2/3
+    # Partial window 3 (indices 12-13): TP=1 (index 12), FP=0 (index 13), precision = 1.0
+
+    # Test 1: Batch update all at once
+    metric_batch = WindowedMetric(
+        PrecisionMetric, window_size=window_size, ignore_nonempty_last=True, threshold=0.5
+    )
+    metric_batch.update_batch(y_true, y_pred)
+
+    # With ignore_nonempty_last=True, only full windows count (3 windows of 2/3)
+    assert np.isclose(metric_batch.get(), 2.0 / 3.0)
+    assert metric_batch.step == 14
+    assert metric_batch.num_windows == 4  # 3 completed + 1 current (partial)
+
+    # Test 2: Batch update in two chunks (partially filled start in second chunk)
+    metric_chunked = WindowedMetric(
+        PrecisionMetric, window_size=window_size, ignore_nonempty_last=True, threshold=0.5
+    )
+    metric_chunked.update_batch(y_true[:6], y_pred[:6])  # 1.5 windows
+    metric_chunked.update_batch(y_true[6:], y_pred[6:])  # 2.5 windows
+
+    assert np.isclose(metric_chunked.get(), 2.0 / 3.0)
+    assert metric_chunked.step == 14
+    assert metric_chunked.num_windows == 4
+
+    # Test 3: Batch update matching exact window boundaries
+    metric_boundary = WindowedMetric(
+        PrecisionMetric, window_size=window_size, ignore_nonempty_last=True, threshold=0.5
+    )
+    metric_boundary.update_batch(y_true[:4], y_pred[:4])  # exactly 1 window
+    metric_boundary.update_batch(y_true[4:8], y_pred[4:8])  # exactly 1 window
+    metric_boundary.update_batch(y_true[8:12], y_pred[8:12])  # exactly 1 window
+    metric_boundary.update_batch(y_true[12:], y_pred[12:])  # partial window
+
+    assert np.isclose(metric_boundary.get(), 2.0 / 3.0)
+    assert metric_boundary.step == 14
+    assert metric_boundary.num_windows == 4
+
+    # Test 4: Compare batch vs incremental (update) for exact equivalence
+    metric_incremental = WindowedMetric(
+        PrecisionMetric, window_size=window_size, ignore_nonempty_last=True, threshold=0.5
+    )
+    for yt, yp in zip(y_true, y_pred, strict=True):
+        metric_incremental.update(yt, yp)
+
+    assert np.isclose(metric_batch.get(), metric_incremental.get())
+    assert metric_batch.step == metric_incremental.step
+    assert metric_batch.num_windows == metric_incremental.num_windows
+    assert np.isclose(metric_batch.score_meter.get(), metric_incremental.score_meter.get())
+
+    # Test 5: With ignore_nonempty_last=False, partial window counts
+    metric_include_partial = WindowedMetric(
+        PrecisionMetric, window_size=window_size, ignore_nonempty_last=False, threshold=0.5
+    )
+    metric_include_partial.update_batch(y_true, y_pred)
+
+    # Average of 3 full windows (2/3 each) + 1 partial window (1.0) = (2.0 + 1.0) / 4 = 0.75
+    expected_with_partial = (3 * (2.0 / 3.0) + 1.0) / 4.0
+    assert np.isclose(metric_include_partial.get(), expected_with_partial)
+    assert metric_include_partial.step == 14
+    assert metric_include_partial.num_windows == 4
+
+    # Test 6: Verify independent window results (each window's metric state is isolated)
+    # After 1st batch (6 items = 1.5 windows), score_meter should have 1 full window score
+    metric_check = WindowedMetric(
+        PrecisionMetric, window_size=window_size, ignore_nonempty_last=True, threshold=0.5
+    )
+    metric_check.update_batch(y_true[:6], y_pred[:6])
+    # First window precision = 2/3
+    assert np.isclose(metric_check.score_meter.get(), 2.0 / 3.0)
+    # Current (partial) window: indices 4,5 -> TP=1 (index 4), FP=1 (index 5), precision = 1/2
+    assert np.isclose(metric_check.metric.get(), 0.5)
+    assert metric_check.num_windows == 2
+
+    # After 2nd batch (remaining 8 items = 2.5 windows), 2 more full windows complete
+    metric_check.update_batch(y_true[6:], y_pred[6:])
+    # score_meter should average 3 full windows (all 2/3)
+    assert np.isclose(metric_check.score_meter.get(), 2.0 / 3.0)
+    # Current partial window: indices 12,13 -> TP=1, FP=0, precision = 1.0
+    assert np.isclose(metric_check.metric.get(), 1.0)
+    assert metric_check.num_windows == 4
+
+    # Test 7: Empty batch should not change state
+    metric_empty = WindowedMetric(
+        PrecisionMetric, window_size=window_size, ignore_nonempty_last=True, threshold=0.5
+    )
+    metric_empty.update_batch([], [])
+    assert metric_empty.step == 0
+    assert metric_empty.num_windows == 1
+    # score_meter has no completed windows yet, so num_items is 0
+    assert metric_empty.score_meter.num_items == 0
+    # get() would raise ZeroDivisionError, so we check num_items instead
+
+    # Test 8: Single item batch (partial window)
+    metric_single = WindowedMetric(
+        PrecisionMetric, window_size=window_size, ignore_nonempty_last=True, threshold=0.5
+    )
+    metric_single.update_batch([1], [0.9])
+    assert metric_single.step == 1
+    assert metric_single.num_windows == 1
+    assert np.isclose(metric_single.metric.get(), 1.0)  # TP=1, FP=0
+    assert metric_single.get() == 1.0  # Only current window counts when no completed windows

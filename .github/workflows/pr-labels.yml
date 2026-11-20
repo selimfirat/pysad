@@ -2,7 +2,7 @@ name: pr labels
 
 # Labels pull requests from the type in their conventional-commit titles, which
 # .github/release.yml uses to group the generated release notes:
-#   feat -> enhancement, fix -> bug, docs -> documentation, build -> build, ci -> ci,
+#   feat, perf -> enhancement, fix -> bug, docs -> documentation, build -> build, ci -> ci,
 #   and "type!:" adds breaking. Other types get no type label.
 on:
   # pull_request_target runs in the base repository's context so the token can label
@@ -40,7 +40,7 @@ jobs:
           fi
           declare -A wanted=()
           case "$type" in
-            feat) wanted[enhancement]=1 ;;
+            feat | perf) wanted[enhancement]=1 ;;
             fix) wanted[bug]=1 ;;
             docs) wanted[documentation]=1 ;;
             build | ci) wanted[$type]=1 ;;

@@ -277,7 +277,7 @@ Extend :class:`~pysad.core.BaseModel` and implement ``fit_partial`` and ``score_
 Which detectors can PySAD include?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-PySAD includes a detector only if its paper has 20 or more citations, appeared at an A* venue, or has an official GitHub repository with 50 or more stars, or if the streaming detector has a top-three score on a public streaming benchmark such as NAB. If your detector does not meet this rule yet, share it as a :class:`~pysad.core.BaseModel` subclass. We can then add a link to it in the documentation. See :doc:`inclusion_criteria`.
+PySAD includes a detector only if its paper has 20 or more citations, appeared in 2025 or later at a CORE A* conference (for example, ICLR, ICCV, ICML, or NeurIPS), or if the streaming detector has a top-three score on a public streaming benchmark such as NAB. If your detector does not meet this rule yet, share it as a :class:`~pysad.core.BaseModel` subclass. We can then add a link to it in the documentation. See :doc:`inclusion_criteria`.
 
 How do I cite PySAD?
 ~~~~~~~~~~~~~~~~~~~~

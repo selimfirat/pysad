@@ -4,12 +4,14 @@ The :mod:`pysad.transform.probability_calibration` module provides calibrators t
 
 from .anomaly_likelihood import AnomalyLikelihoodProbabilityCalibrator
 from .conformal_prediction import ConformalProbabilityCalibrator
+from .conformal_tsfm import ConformalTSFMCalibrator
 from .gaussian_tail import GaussianTailProbabilityCalibrator
 from .spot import SPOTProbabilityCalibrator
 
 __all__ = [
     "AnomalyLikelihoodProbabilityCalibrator",
     "ConformalProbabilityCalibrator",
+    "ConformalTSFMCalibrator",
     "GaussianTailProbabilityCalibrator",
     "SPOTProbabilityCalibrator",
 ]

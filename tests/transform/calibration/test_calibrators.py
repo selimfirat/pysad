@@ -482,3 +482,38 @@ def test_all_calibrators_batch_transform_matches_partial():
             cal_f.transform(probes),
             [cal_f.transform_partial(float(p)) for p in probes],
         )
+
+
+def test_calibrators_match_batch_for_numpy_float64_scalars():
+    import numpy as np
+
+    from pysad.transform.probability_calibration import (
+        AnomalyLikelihoodProbabilityCalibrator,
+        GaussianTailProbabilityCalibrator,
+    )
+
+    scores = np.array([3.0, 1.6, 1.6, 3.0, 1.6, 1.6])
+    probes = np.array([3.0, 1.6, 1.6])
+    for cls, kwargs in [
+        (GaussianTailProbabilityCalibrator, {"window_size": 10, "short_window_size": 3}),
+        (
+            AnomalyLikelihoodProbabilityCalibrator,
+            {
+                "learning_period": 0,
+                "num_estimation_samples": 2,
+                "window_size": 10,
+                "reestimation_period": 1,
+                "short_window_size": 3,
+            },
+        ),
+    ]:
+        cal = cls(**kwargs)
+        np.testing.assert_array_equal(
+            cls(**kwargs).fit_transform(scores),
+            [cal.fit_transform_partial(s) for s in scores],
+        )
+        cal_batch = cls(**kwargs).fit(scores)
+        np.testing.assert_array_equal(
+            cal_batch.transform(probes),
+            [cal.transform_partial(p) for p in probes],
+        )

@@ -43,6 +43,7 @@ PROPERTIES = settings(
 # Constructor arguments by class. Small windows make the calibrators evict scores.
 PARAMS = {
     "ConformalProbabilityCalibrator": {"window_size": 10},
+    "ConformalTSFMCalibrator": {"alpha": 0.1, "gamma": 0.005, "window_size": 10},
     "GaussianTailProbabilityCalibrator": {"window_size": 10, "short_window_size": 3},
 }
 

@@ -236,6 +236,7 @@ module = [
     "pysad.statistics.quantiles",
     "pysad.statistics.relative_error_quantile_meter",
     "pysad.statistics.running_statistic",
+    "pysad.utils.window",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true

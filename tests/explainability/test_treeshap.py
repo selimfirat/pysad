@@ -192,18 +192,20 @@ def test_treeshap_empty_tree():
 
 def test_treeshap_multiple_features():
     """Test TreeSHAP with a tree using multiple features."""
-    # Tree:
+    # Tree where both features genuinely contribute:
     #       0 (feature 0, thresh 0.5)
     #      / \
     #     1   2 (feature 1, thresh 0.5)
     #    / \  / \
     #   3  4 5   6
-    #  1.0 0.0 1.0 0.0
+    #  1.0 0.0 0.0 1.0
+    # Left branch: feature 1 -> left=1.0, right=0.0
+    # Right branch: feature 1 -> left=0.0, right=1.0
     features = np.array([0, 1, 1, -1, -1, -1, -1], dtype=np.intp)
     thresholds = np.array([0.5, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0], dtype=np.float64)
     left = np.array([1, 3, 5, 3, 4, 5, 6], dtype=np.intp)
     right = np.array([2, 4, 6, 3, 4, 5, 6], dtype=np.intp)
-    values = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0], dtype=np.float64)
+    values = np.array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0], dtype=np.float64)
 
     # x = [0.3, 0.3] -> goes left at root, then left at feature 1 -> leaf 3 (value 1.0)
     x = np.array([0.3, 0.3], dtype=np.float64)

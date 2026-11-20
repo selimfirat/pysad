@@ -60,7 +60,8 @@ def _loess(
             w = np.where(linear[:, None], w * (slope[:, None] * d + 1.0), w)
         ys = np.einsum("ij,ij->i", w, Y)
     ys[total <= 0] = np.nan
-    return ys
+    out: np.ndarray = ys
+    return out
 
 
 @lru_cache(maxsize=64)
@@ -126,8 +127,10 @@ def _smooth(
     if np.isnan(ys).any():
         ys = np.where(np.isnan(ys), y[fit], ys)
     if fit.shape[0] == n:
-        return ys
-    return np.interp(pos_f64, fit_f64, ys)
+        out: np.ndarray = ys
+        return out
+    interp: np.ndarray = np.interp(pos_f64, fit_f64, ys)
+    return interp
 
 
 def _moving_average(x: np.ndarray, length: int) -> np.ndarray:
@@ -294,7 +297,8 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
             raise ValueError("More than 2 * period observations are required for STL.")
 
         seasonal = _periodic_stl_seasonal(arr, self.period, self.robust)
-        return arr - seasonal - np.median(arr)
+        residual: np.ndarray = arr - seasonal - np.median(arr)
+        return residual
 
     def fit_partial(self, X: np.ndarray) -> ModifiedSTLResidualTransformer:
         """Fits the next timestep by adding it to the residual window.

@@ -43,7 +43,8 @@ class InstanceStandardScaler(BaseTransformer):
         X_mean = X.mean()
         X_std = X.std()
 
-        return (X - X_mean) / X_std
+        scaled: np.ndarray = (X - X_mean) / X_std
+        return scaled
 
     def fit(self, X: np.ndarray) -> InstanceStandardScaler:
         """Return the scaler without learning from the input."""

@@ -86,7 +86,8 @@ class SDOstream(BaseModel):
     def _squared_distances(self, X: np.ndarray) -> np.ndarray:
         """Returns the squared Euclidean distance from `X` to each observer."""
         diffs = self.observers_[: self.size_] - X
-        return np.einsum("ij,ij->i", diffs, diffs)  # (size_,)
+        dists: np.ndarray = np.einsum("ij,ij->i", diffs, diffs)  # (size_,)
+        return dists
 
     def _closest(self, sq: np.ndarray, slots: np.ndarray) -> np.ndarray:
         """Returns the slots of the `num_neighbors` closest observers in `slots`.
@@ -98,7 +99,8 @@ class SDOstream(BaseModel):
             return slots
 
         chosen = np.lexsort((self._added[slots], values))[: self.num_neighbors]
-        return slots[chosen]
+        res: np.ndarray = slots[chosen]
+        return res
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> SDOstream:
         """Updates the model with the next instance.

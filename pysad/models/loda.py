@@ -58,7 +58,8 @@ class LODA(BaseModel):
 
     def _bin_indices(self, projected: np.ndarray) -> np.ndarray:
         with np.errstate(divide="ignore", invalid="ignore"):
-            return np.floor((projected - self.bin_lows_) / self.bin_widths_)
+            indices: np.ndarray = np.floor((projected - self.bin_lows_) / self.bin_widths_)
+            return indices
 
     def _extend(self, i: int, value: float) -> int:
         """Doubles the bin width of histogram ``i`` towards ``value`` until it covers ``value``."""
@@ -179,7 +180,10 @@ class LODA(BaseModel):
             mean_without = (neg_log * ~uses).sum(axis=0) / n_without
             var_with = ((neg_log - mean_with) ** 2 * uses).sum(axis=0) / (n_with - 1)
             var_without = ((neg_log - mean_without) ** 2 * ~uses).sum(axis=0) / (n_without - 1)
-            return (mean_with - mean_without) / np.sqrt(var_with / n_with + var_without / n_without)
+            t_stats: np.ndarray = (mean_with - mean_without) / np.sqrt(
+                var_with / n_with + var_without / n_without
+            )
+            return t_stats
 
     def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Scores the next instance, and then updates the model with it.

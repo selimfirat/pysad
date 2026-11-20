@@ -119,7 +119,8 @@ class BaseSKLearnProjector(BaseTransformer):
         # .dot rather than sklearn's transform: its matmul raises spurious FPE warnings with macOS Accelerate BLAS.
         # Sparse components stay sparse and use scipy's sparse product.
         assert self._components is not None
-        return self._components.dot(X)
+        projected: np.ndarray = self._components.dot(X)
+        return projected
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):

@@ -17,7 +17,7 @@ def _critical_value(alpha: float, num_tails: float, n: int, i: int) -> float:
     # is computed once instead of once per scored instance.
     p = 1.0 - alpha / (num_tails * (n - i + 1))
     t_value = t.ppf(p, n - i - 1)
-    return ((n - i) * t_value) / np.sqrt((n - i - 1 + t_value**2) * (n - i + 1))
+    return float(((n - i) * t_value) / np.sqrt((n - i - 1 + t_value**2) * (n - i + 1)))
 
 
 def _median_mad_sorted(sub: np.ndarray) -> tuple[float, float]:

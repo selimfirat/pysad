@@ -109,9 +109,10 @@ class MemStream(BaseModel):
         self.std_[self.std_ == 0.0] = 1.0
 
     def _encode(self, X: np.ndarray) -> np.ndarray:
-        return np.maximum(
+        encoded: np.ndarray = np.maximum(
             ((X - self.mean_) / self.std_).dot(self.encoder_weights_) + self.encoder_bias_, 0.0
         )
+        return encoded
 
     def _distance(self, encoding: np.ndarray) -> float:
         distances = np.abs(self.memory_ - encoding).sum(axis=1)

@@ -74,7 +74,7 @@ class KNNCAD(BaseModel):
         diff = np.asarray(self.training, dtype=np.float64) - np.asarray(item, dtype=np.float64)
         arr = np.einsum("ij,ij->i", np.einsum("ij,jk->ik", diff, sigma), diff)
 
-        return np.sum(np.partition(arr, self.k + item_in_array)[: self.k + item_in_array])
+        return float(np.sum(np.partition(arr, self.k + item_in_array)[: self.k + item_in_array]))
 
     def _sigma_at(self, record_count: int) -> np.ndarray:
         """Returns the sigma NAB uses at the given record, recomputed from the training set when a refresh is due.

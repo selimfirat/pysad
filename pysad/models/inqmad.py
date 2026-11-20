@@ -20,7 +20,7 @@ def _unit_interval(value: float, name: str) -> float:
 
 def _states(X: np.ndarray, weights: np.ndarray, offset: np.ndarray) -> np.ndarray:
     """The unit-norm random Fourier feature states of the rows of ``X``."""
-    vals = np.cos(np.atleast_2d(X) @ weights + offset)
+    vals: np.ndarray = np.cos(np.atleast_2d(X) @ weights + offset)
     vals /= np.linalg.norm(vals, axis=1, keepdims=True)
     return vals
 

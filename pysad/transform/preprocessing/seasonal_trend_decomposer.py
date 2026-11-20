@@ -78,7 +78,8 @@ class SeasonalTrendDecomposer(BaseTransformer):
         ):
             return 0.0
 
-        return self.seasonal_sums[phase] / self.seasonal_counts[phase]
+        seasonal: float | np.ndarray = self.seasonal_sums[phase] / self.seasonal_counts[phase]
+        return seasonal
 
     def fit_partial(self, X: np.ndarray) -> SeasonalTrendDecomposer:
         """Fits the next timestep's values to train the decomposer.
@@ -150,7 +151,8 @@ class SeasonalTrendDecomposer(BaseTransformer):
         seasonal = self._seasonal(phase)
         self.num_seen += 1
 
-        return X - trend - seasonal
+        residual: np.ndarray = X - trend - seasonal
+        return residual
 
     def fit_transform(self, X: np.ndarray) -> np.ndarray:
         """Fits and transforms all instances in order."""

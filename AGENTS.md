@@ -43,7 +43,7 @@ In particular, you the agent MUST obey these rules while interacting on GitHub:
 
 # PR / GitHub Metadata
 
-- Write pull request titles as conventional commits: `feat:`, `fix:`, `docs:`, `build:`, `ci:`, `refactor:`, `test:`, `style:`, or `chore:`. Add `!` before the colon for a breaking change. `.github/workflows/pr-labels.yml` labels the pull request from the title, and the release notes group pull requests by these labels.
+- Write pull request titles as conventional commits: `feat:`, `fix:`, `perf:`, `docs:`, `build:`, `ci:`, `refactor:`, `test:`, `style:`, or `chore:`. Add `!` before the colon for a breaking change. `.github/workflows/pr-labels.yml` labels the pull request from the title, and the release notes group pull requests by these labels.
 - Open one pull request per issue. Put the issue number in the branch name, for example `fix/<issue>-<slug>`.
 - Unless the user explicitly asks for it, do not mention Codex, Claude, AI, or tool attribution in pull request metadata. This includes titles, descriptions, commit messages, and review replies. Do not add `Co-Authored-By` trailers for tools.
 - Do not add a section named "Tests", "Testing", or similar to pull request descriptions unless CI does not cover the test.

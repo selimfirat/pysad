@@ -63,10 +63,16 @@ POSTPROCESSOR_PARAMS: dict[str, dict[str, Any]] = {
     "ThresholdFilter": {"threshold": 1.0},
 }
 CALIBRATOR_PARAMS: dict[str, dict[str, Any]] = {
-    "AnomalyLikelihood": {"window_size": 20, "short_window_size": 5, "probationary_period": 10},
+    "AnomalyLikelihoodProbabilityCalibrator": {
+        "window_size": 100,
+        "short_window_size": 5,
+        "learning_period": 10,
+        "num_estimation_samples": 20,
+    },
     "ConformalProbabilityCalibrator": {"window_size": 20},
+    "ConformalTSFMCalibrator": {"alpha": 0.1, "gamma": 0.005, "window_size": 20},
     "GaussianTailProbabilityCalibrator": {"window_size": 20, "short_window_size": 5},
-    "SPOT": {"init_length": 15},
+    "SPOTProbabilityCalibrator": {"num_init": 15},
 }
 ENSEMBLER_PARAMS: dict[str, dict[str, Any]] = {
     "AverageOfMaximumScoreEnsembler": {"n_buckets": 2, "random_state": 5},

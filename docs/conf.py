@@ -203,8 +203,8 @@ llms_txt_summary = (
     "SPOTProbabilityCalibrator, attribute anomalous features with LODA.explain_partial(), monitor "
     "and reset on concept drift with DriftAdaptiveDetector and streaming drift meters, evaluate "
     "prequentially with evaluate_stream, and integrate PyOD (ReferenceWindowModel, OneFitModel), "
-    "River (RiverAnomalyDetector, PredictiveAnomalyDetector), and scikit-learn "
-    "(SklearnAnomalyDetector)."
+    "River (PySADToRiverAdapter, PredictiveAnomalyDetector), and scikit-learn "
+    "(PySADToScikitLearnAdapter)."
 )
 llms_txt_uri_template = "{base_url}{docname}.html"
 

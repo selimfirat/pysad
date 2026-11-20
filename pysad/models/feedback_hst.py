@@ -22,7 +22,7 @@ __bibtex__ = """
   author={Das, Shubhomoy and Islam, Md Rakibul and Jayakodi, Nitthilan Kannappan and Doppa, Janardhan Rao},
   journal={Journal of Artificial Intelligence Research},
   volume={80},
-  pages={127--172},
+  pages={127-172},
   year={2024}
 }
 
@@ -32,7 +32,7 @@ __bibtex__ = """
   journal={ACM Transactions on Knowledge Discovery from Data},
   volume={14},
   number={4},
-  pages={1--32},
+  pages={1-32},
   year={2020},
   publisher={ACM New York, NY, USA}
 }
@@ -59,6 +59,7 @@ class FeedbackHST(BaseModel):
     the ensemble weights.
 
     Key differences from the reference implementation (ad_examples):
+
     - Uses PySAD's HalfSpaceTrees as the base detector for consistency.
     - The `fit_partial` / `score_partial` API is single-instance; the active
       feedback cycle is driven by the caller through `request_feedback` and

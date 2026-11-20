@@ -96,21 +96,24 @@ def test_nyc_taxi_univariate_stream_and_graceful_explanation():
     assert "Univariate stream" in res.explanation.note
 
 
-def test_csv_upload_parser_handles_labels_text_and_missing_values(tmp_path):
+def test_csv_upload_parser_handles_labels_text_and_missing_values():
     """CSV parser extracts numeric features, optional binary label column, and fills gaps."""
-    csv_path = tmp_path / "metrics.csv"
     lines = ["timestamp,cpu,mem,label"]
     for i in range(40):
         cpu_val = "" if i == 15 else f"{0.2 + 0.01 * i:.3f}"
         label_val = "1" if i == 30 else "0"
         lines.append(f"2026-01-01T00:{i:02d}:00,{cpu_val},{50 + i},{label_val}")
-    csv_path.write_text("\n".join(lines), encoding="utf-8")
+    csv_bytes = "\n".join(lines).encode("utf-8")
 
-    stream = engine.parse_csv_stream(csv_path)
+    stream = engine.parse_csv_stream(csv_bytes)
     assert stream.num_points == 40
     assert stream.feature_names == ["cpu", "mem"]
     assert stream.y is not None and int(stream.y.sum()) == 1
     assert np.all(np.isfinite(stream.X))
+
+    loaded = engine.load_stream(engine.STREAM_CSV, csv_data=csv_bytes)
+    assert loaded.num_points == 40
+    assert loaded.feature_names == ["cpu", "mem"]
 
 
 def test_generated_pipeline_code_is_valid_python():

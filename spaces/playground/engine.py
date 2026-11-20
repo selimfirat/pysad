@@ -288,11 +288,9 @@ def _is_float(value: str) -> bool:
         return False
 
 
-def parse_csv_stream(csv_input: str | bytes | Path, max_points: int = 2500) -> StreamData:
+def parse_csv_stream(csv_input: str | bytes, max_points: int = 2500) -> StreamData:
     """Parse an uploaded CSV file into a clean numeric StreamData object."""
-    if isinstance(csv_input, Path):
-        raw_text = csv_input.read_text(encoding="utf-8", errors="replace")
-    elif isinstance(csv_input, bytes):
+    if isinstance(csv_input, bytes):
         raw_text = csv_input.decode("utf-8", errors="replace")
     else:
         raw_text = csv_input
@@ -373,7 +371,7 @@ def parse_csv_stream(csv_input: str | bytes | Path, max_points: int = 2500) -> S
 def load_stream(
     stream_name: str,
     max_points: int = 1200,
-    csv_path: str | Path | None = None,
+    csv_data: bytes | str | None = None,
 ) -> StreamData:
     """Load the requested stream by name, falling back cleanly if CSV is omitted."""
     if stream_name == STREAM_SYNTHETIC:
@@ -383,9 +381,9 @@ def load_stream(
     if stream_name == STREAM_CREDITCARD:
         return load_creditcard_stream(max_points=max_points)
     if stream_name == STREAM_CSV:
-        if csv_path is None:
+        if csv_data is None:
             raise ValueError("Upload a CSV file to run in 'Upload CSV' mode.")
-        return parse_csv_stream(Path(csv_path), max_points=max_points)
+        return parse_csv_stream(csv_data, max_points=max_points)
     raise ValueError(f"Unknown stream choice: {stream_name!r}")
 
 
@@ -687,7 +685,7 @@ def run_playground(
     threshold: float = 0.985,
     calibrator_window: int = 350,
     max_points: int = 1200,
-    csv_path: str | Path | None = None,
+    csv_data: bytes | str | None = None,
     injected: list[dict[str, Any]] | None = None,
     inspect_step: int | None = None,
     primary_feature_name: str | None = None,
@@ -697,7 +695,7 @@ def run_playground(
     if not selected:
         selected = ["LODA"]
 
-    base_stream = load_stream(stream_name, max_points=max_points, csv_path=csv_path)
+    base_stream = load_stream(stream_name, max_points=max_points, csv_data=csv_data)
     stream, injected_mask = apply_injected_anomalies(base_stream, injected or [])
     n = stream.num_points
     warmup = min(max(60, n // 6), max(60, n - 40))

@@ -17,6 +17,7 @@ except ImportError:
 
 _DETECTOR_COLORS = ("#0741ad", "#0f766e", "#b45309")
 _FEATURE_COLORS = ("#3f6fd0", "#64748b", "#8aa8e6", "#94a3b8")
+_GRADIO_MAJOR = int(gr.__version__.split(".", 1)[0])
 
 CUSTOM_CSS = """
 .pysad-header {
@@ -313,7 +314,7 @@ def _format_injected_summary(injected: list[dict[str, Any]], feature_names: list
 
 def evaluate_ui(
     stream_name: str,
-    csv_file: str | None,
+    csv_file: bytes | str | None,
     num_points: int,
     detectors: list[str],
     calibrator_name: str,
@@ -332,7 +333,7 @@ def evaluate_ui(
             threshold=float(threshold),
             calibrator_window=int(calibrator_window),
             max_points=int(num_points),
-            csv_path=csv_file,
+            csv_data=csv_file,
             injected=injected,
             inspect_step=inspect_step,
             primary_feature_name=primary_feature,
@@ -384,7 +385,7 @@ def evaluate_ui(
 
 def on_stream_change(
     stream_name: str,
-    csv_file: str | None,
+    csv_file: bytes | str | None,
     num_points: int,
     detectors: list[str],
     calibrator_name: str,
@@ -410,7 +411,7 @@ def on_stream_change(
 
 def on_inject_anomaly(
     stream_name: str,
-    csv_file: str | None,
+    csv_file: bytes | str | None,
     num_points: int,
     detectors: list[str],
     calibrator_name: str,
@@ -423,7 +424,7 @@ def on_inject_anomaly(
 ) -> tuple[Any, ...]:
     """Inject a live anomaly into the active stream and focus explanation on it."""
     try:
-        stream = engine.load_stream(stream_name, max_points=int(num_points), csv_path=csv_file)
+        stream = engine.load_stream(stream_name, max_points=int(num_points), csv_data=csv_file)
         feat_names = stream.feature_names
     except Exception:
         feat_names = ["feature_0"]
@@ -455,7 +456,7 @@ def on_inject_anomaly(
 
 def on_clear_injected(
     stream_name: str,
-    csv_file: str | None,
+    csv_file: bytes | str | None,
     num_points: int,
     detectors: list[str],
     calibrator_name: str,
@@ -480,18 +481,25 @@ def on_clear_injected(
     return (empty_injected, *outputs)
 
 
-def build_demo() -> gr.Blocks:
-    """Create and wire the Gradio Blocks application."""
-    theme = gr.themes.Soft(
+def _build_theme() -> gr.themes.Soft:
+    return gr.themes.Soft(
         primary_hue="blue",
         neutral_hue="slate",
         font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"],
         font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
     )
 
-    with gr.Blocks(
-        title="PySAD — Streaming Anomaly Detection Playground", theme=theme, css=CUSTOM_CSS
-    ) as demo:
+
+def build_demo() -> gr.Blocks:
+    """Create and wire the Gradio Blocks application."""
+    blocks_kwargs: dict[str, Any] = {
+        "title": "PySAD — Streaming Anomaly Detection Playground",
+    }
+    if _GRADIO_MAJOR < 6:
+        blocks_kwargs["theme"] = _build_theme()
+        blocks_kwargs["css"] = CUSTOM_CSS
+
+    with gr.Blocks(**blocks_kwargs) as demo:
         injected_state = gr.State([])
 
         gr.HTML(
@@ -519,7 +527,7 @@ def build_demo() -> gr.Blocks:
                 csv_file = gr.File(
                     label="Upload CSV (numeric columns + optional binary label column)",
                     file_types=[".csv"],
-                    type="filepath",
+                    type="binary",
                     visible=False,
                 )
                 num_points = gr.Slider(
@@ -722,4 +730,8 @@ def build_demo() -> gr.Blocks:
 if __name__ == "__main__":
     server_port = int(os.environ.get("GRADIO_SERVER_PORT", "7860"))
     server_name = os.environ.get("GRADIO_SERVER_NAME", "0.0.0.0")
-    build_demo().launch(server_name=server_name, server_port=server_port)
+    launch_kwargs: dict[str, Any] = {"server_name": server_name, "server_port": server_port}
+    if _GRADIO_MAJOR >= 6:
+        launch_kwargs["theme"] = _build_theme()
+        launch_kwargs["css"] = CUSTOM_CSS
+    build_demo().launch(**launch_kwargs)

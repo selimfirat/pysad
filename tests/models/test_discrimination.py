@@ -95,6 +95,14 @@ def _model_params(model_name, X):
     feature_mins, feature_maxes = X.min(axis=0), X.max(axis=0)
     params = {
         "DriftAdaptiveDetector": {"model_factory": pysad.models.LODA},
+        "FeedbackHST": {
+            "feature_mins": feature_mins,
+            "feature_maxes": feature_maxes,
+            "window_size": 50,
+            "num_trees": 10,
+            "max_depth": 5,
+            "feedback_budget": 20,
+        },
         "HalfSpaceTrees": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
         "HTM": {
             "min_val": feature_mins[-1],

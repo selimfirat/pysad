@@ -62,7 +62,7 @@ def test_windowed_metric_window_size():
         metric.update(y_true, y_pred)
 
     score = metric.get()
-    assert isinstance(score, (int, float))
+    assert isinstance(score, int | float)
 
 
 def test_windowed_metric_ignore_nonempty_last():
@@ -88,8 +88,8 @@ def test_windowed_metric_ignore_nonempty_last():
     score_ignore = metric_ignore.get()
     score_no_ignore = metric_no_ignore.get()
 
-    assert isinstance(score_ignore, (int, float))
-    assert isinstance(score_no_ignore, (int, float))
+    assert isinstance(score_ignore, int | float)
+    assert isinstance(score_no_ignore, int | float)
 
 
 def test_windowed_metric_empty_window():
@@ -156,7 +156,7 @@ def test_windowed_metric_various_metrics():
     # All metrics should return valid scores
     for metric in continuous_metrics + binary_metrics:
         score = metric.get()
-        assert isinstance(score, (int, float))
+        assert isinstance(score, int | float)
         assert 0.0 <= score <= 1.0
 
 

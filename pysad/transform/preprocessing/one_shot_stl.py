@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -88,7 +90,7 @@ class OneShotSTL(BaseTransformer):
         # The right-hand side (y, y + v) of the last two points.
         self.rhs_ = np.zeros((2, 2))
 
-    def _decompose(self, y: float, v: float) -> tuple[float, float, tuple[np.ndarray, ...]]:
+    def _decompose(self, y: float, v: float) -> tuple[float, float, Any]:
         # Solves the system of every IRLS iteration for the newest point (Algorithm 5), and
         # returns its trend and seasonal component and the updated state.
         num_online = self.num_online_
@@ -123,7 +125,7 @@ class OneShotSTL(BaseTransformer):
             q_new = 0.5 / (abs(tau[2] - 2.0 * tau[1] + tau[0]) + _EPS)
         return tau[2], s, (L, D, z, p, q, b[2:].reshape(2, 2))
 
-    def _step(self, X: np.ndarray, update: bool) -> np.ndarray:
+    def _step(self, X: NDArray[Any], update: bool) -> NDArray[Any]:
         y = check_univariate(X, "OneShotSTL")
         if self.init_values_ is not None:
             if update:
@@ -164,7 +166,7 @@ class OneShotSTL(BaseTransformer):
             self.seasonal_ = _periodic_stl_seasonal(values, self.period, robust=True)[: self.period]
             self.init_values_ = None
 
-    def fit_partial(self, X: np.ndarray) -> OneShotSTL:
+    def fit_partial(self, X: NDArray[Any]) -> OneShotSTL:
         """Decomposes the next value and updates the decomposition with it.
 
         Args:
@@ -176,7 +178,7 @@ class OneShotSTL(BaseTransformer):
         self._step(X, update=True)
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Returns the residual of the next value, without updating the decomposition.
 
         Args:
@@ -187,7 +189,7 @@ class OneShotSTL(BaseTransformer):
         """
         return self._step(X, update=False)
 
-    def fit_transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Decomposes the next value, updates the decomposition with it, and returns its residual.
 
         Args:
@@ -200,8 +202,12 @@ class OneShotSTL(BaseTransformer):
 
 
 def _online_doolittle(
-    A: np.ndarray, b: np.ndarray, L_old: np.ndarray, D_old: np.ndarray, z_old: np.ndarray
-) -> tuple[np.ndarray, float, np.ndarray, np.ndarray, np.ndarray]:
+    A: NDArray[Any],
+    b: NDArray[Any],
+    L_old: NDArray[Any],
+    D_old: NDArray[Any],
+    z_old: NDArray[Any],
+) -> tuple[NDArray[Any], float, NDArray[Any], NDArray[Any], NDArray[Any]]:
     # Algorithm 4. The 10 unknowns are the (tau, s) pairs of the last five points. The first four
     # belong to points whose rows of the LDL factorization are final: L_old holds their columns
     # (8, 4), D_old and z_old their D and forward substituted right-hand side. A (6, 6) and b (6,)

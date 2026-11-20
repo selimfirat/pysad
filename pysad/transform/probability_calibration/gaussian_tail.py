@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.core.base_statistic import BaseStatistic
@@ -109,7 +110,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
         return self._calibrate(sum(window) / len(window))
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a 1-D batch of scores against the current frozen Gaussian statistics."""
         arr = np.asarray(scores, dtype=np.float64)
         if arr.ndim != 1:

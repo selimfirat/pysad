@@ -68,7 +68,7 @@ class RingBuffer:
         self.count = 0
         self.next_slot = 0
 
-    def append(self, item: float | NDArray[np.float64]) -> int:
+    def append(self, item: float | NDArray[Any]) -> int:
         """Writes ``item`` into the next slot, advances the ring, and returns the written slot index.
 
         Args:

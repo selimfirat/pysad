@@ -15,9 +15,10 @@ class ReservoirLifelongDetector(BaseModel):
     instance seen so far has equal probability of being in the reservoir. Anomaly scores are
     the mean Euclidean distance to the ``num_neighbors`` nearest reservoir samples.
 
-    This adapts the episodic memory idea of Gradient Episodic Memory (GEM) :cite:`lopezpaz2017gem`
-    to unsupervised streaming anomaly detection: the reservoir replays a representative subset
-    of past instances, providing continual-learning stability without storing the full stream.
+    This adapts the episodic memory idea of Gradient Episodic Memory (GEM) by Lopez-Paz and
+    Ranzato (NeurIPS 2017) to unsupervised streaming anomaly detection: the reservoir replays a
+    representative subset of past instances, providing continual-learning stability without storing
+    the full stream.
 
     Until the reservoir is full, scores are zero. The reservoir is updated after scoring,
     so each instance is scored against the reservoir from earlier instances (prequential order).
@@ -35,15 +36,6 @@ class ReservoirLifelongDetector(BaseModel):
         .. bibliography::
            :filter: docname in docnames
     """
-
-    __bibtex__ = """
-@inproceedings{lopezpaz2017gem,
-  title={Gradient Episodic Memory for Continual Learning},
-  author={Lopez-Paz, David and Ranzato, Marc'Aurelio},
-  booktitle={Advances in Neural Information Processing Systems},
-  year={2017}
-}
-"""
 
     def __init__(
         self,

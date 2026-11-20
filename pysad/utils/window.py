@@ -8,7 +8,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def _kth_abs_dev(sub: Sequence[float] | NDArray[np.float64], center: float, h: int, k: int) -> float:
+def _kth_abs_dev(
+    sub: Sequence[float] | NDArray[np.float64], center: float, h: int, k: int
+) -> float:
     """Returns the 0-indexed k-th smallest element of ``|sub - center|`` for sorted ``sub`` in O(log m)."""
     left_len = h
     right_len = len(sub) - h

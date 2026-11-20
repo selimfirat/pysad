@@ -36,6 +36,7 @@ class FoundationFeatureDetector(BaseModel):
     embeddings.
 
     The model operates in two phases:
+
     1. Warm-up: collects initial windows to establish the baseline embedding
        distribution (running mean and covariance).
     2. Detection: for each new window, extracts embeddings and computes the
@@ -193,7 +194,6 @@ class FoundationFeatureDetector(BaseModel):
 
     @property
     def embedding_dim_(self) -> int:
-        """Dimensionality of the extracted embeddings."""
         if self._embedding_dim is None:
             raise AttributeError(
                 "Model not fitted yet. embedding_dim_ is available after first fit."
@@ -202,7 +202,6 @@ class FoundationFeatureDetector(BaseModel):
 
     @property
     def is_warmed_up_(self) -> bool:
-        """Whether the warm-up phase is complete."""
         return self._windows_seen >= self.warmup_windows
 
     def _get_num_channels(self, X: NDArray[Any]) -> int:
@@ -211,7 +210,7 @@ class FoundationFeatureDetector(BaseModel):
         if x.ndim == 1:
             return 1
         elif x.ndim == 2:
-            return x.shape[1]
+            return int(x.shape[1])
         else:
             raise ValueError(f"Expected 1D or 2D input, got shape {x.shape}")
 

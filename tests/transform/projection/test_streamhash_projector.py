@@ -122,3 +122,53 @@ def test_streamhash_projector_rebuilds_matrix_on_ndim_change():
 
     assert actual.shape == (num_components,)
     assert np.array_equal(actual, x_wide @ R_ref_wide.T)
+
+
+def test_streamhash_projector_partial_preserves_single_component_axis():
+    from pysad.transform.projection import StreamhashProjector
+
+    for num_features in (1, 3):
+        x = np.arange(1.0, num_features + 1.0)
+        for num_components in (1, 2, 3):
+            expected = StreamhashProjector(num_components=num_components).transform(
+                x.reshape(1, -1)
+            )[0]
+
+            projected_t = StreamhashProjector(num_components=num_components).transform_partial(x)
+            assert projected_t.shape == (num_components,)
+            assert projected_t.ndim == 1
+            assert np.array_equal(projected_t, expected)
+
+            projected_ft = StreamhashProjector(num_components=num_components).fit_transform_partial(
+                x
+            )
+            assert projected_ft.shape == (num_components,)
+            assert projected_ft.ndim == 1
+            assert np.array_equal(projected_ft, expected)
+
+
+def test_streamhash_projector_single_component_composes_with_detector():
+    from pysad.models import LODA, StreamPipeline
+    from pysad.transform.projection import StreamhashProjector
+
+    for x in (np.array([1.0]), np.array([1.0, 2.0, 3.0])):
+        projected_ft = StreamhashProjector(num_components=1).fit_transform_partial(x)
+        score_ft = LODA(random_state=0).fit_score_partial(projected_ft)
+        assert isinstance(score_ft, float)
+        assert np.isfinite(score_ft)
+
+        projected_t = StreamhashProjector(num_components=1).transform_partial(x)
+        score_t = LODA(random_state=0).fit_score_partial(projected_t)
+        assert isinstance(score_t, float)
+        assert np.isfinite(score_t)
+        assert score_t == score_ft
+
+        pipe = StreamPipeline(
+            LODA(random_state=0), preprocessors=[StreamhashProjector(num_components=1)]
+        )
+        pipe_fit_score = pipe.fit_score_partial(x)
+        pipe_score = pipe.score_partial(x)
+        assert isinstance(pipe_fit_score, float)
+        assert np.isfinite(pipe_fit_score)
+        assert isinstance(pipe_score, float)
+        assert np.isfinite(pipe_score)

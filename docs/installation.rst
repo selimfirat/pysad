@@ -85,4 +85,4 @@ To test the installation, run this command. It prints the installed version:
 .. code-block:: console
 
    $ python -c "import pysad; print(pysad.__version__)"
-   0.6.0
+   |release|

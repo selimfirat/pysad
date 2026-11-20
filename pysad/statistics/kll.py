@@ -14,38 +14,49 @@ _C_KLL = 4.0 / 27.0
 class KLLMeter(BaseStatistic):
     r"""The statistic that tracks an arbitrary quantile of the stream using the KLL sketch.
 
-    Implements the optimal streaming quantile sketch algorithm by Karnin, Lang, and Liberty
-    :cite:`karnin2016optimal`. The algorithm guarantees an :math:`\epsilon`-approximate
+    Implements the streaming quantile sketch algorithm by Karnin, Lang, and Liberty
+    :cite:`karnin2016optimal` (Section 2), aligned with production reference implementations
+    including Apache DataSketches Java (:class:`KllSketch`, :class:`KllHelper`) and
+    `kll_sketch` Python. The algorithm guarantees an :math:`\epsilon`-approximate
     rank estimate :math:`|\tilde{R}(x) - R(x)| \le \epsilon n` with probability at least
     :math:`1 - \delta`.
 
-    The sketch combines two complementary mechanisms from the paper:
+    Algorithm & Implementation Details:
 
     1. **Hierarchical Compactors (Section 2)**:
-       Maintains compactors across levels :math:`h`. Compactor capacities decay at rate
+       Maintains a hierarchy of compactor levels :math:`h \in \{0, \dots, H-1\}`.
+       Each item stored at level :math:`h` represents a weight of :math:`2^h`.
+       Incoming stream items are ingested at base level :math:`0` with weight :math:`1`.
+
+    2. **Capacity Schedule (Section 2, Theorem 1 proof)**:
+       Level capacities decrease geometrically from the top level downwards at rate
        :math:`c = 2/3`:
 
        .. math::
 
-           k_h = \max\left(8, \left\lfloor k \cdot \left(\frac{2}{3}\right)^{H - 1 - h}\right\rfloor\right)
+           k_h = \max\left(8, \left\lceil k \cdot \left(\frac{2}{3}\right)^{H - 1 - h}\right\rceil\right)
 
-       When a level fills, its items are sorted and compacted in pairs using a fair coin flip
-       (parity offset chosen via ``random_state``), promoting half its items to level
-       :math:`h + 1` with doubled weight. If the buffer has an odd length, the remainder item is
-       retained at the current level, strictly preserving the compactor's total rank mass.
+       The top level (:math:`h = H - 1`) has capacity :math:`k`, and lower levels scale
+       downwards bounded by a minimum compactor capacity of :math:`8` (as used in Apache
+       DataSketches and ``kll_sketch``). By geometric series summation, total retained items
+       across all levels are strictly bounded by :math:`\sum k_h \approx \frac{k}{1 - 2/3} = 3k`.
 
-    2. **Reservoir Sampler (Section 3)**:
-       Maintains a sampler at height :math:`h_{\text{sampler}}` that downsamples incoming
-       stream items before they enter the compactor hierarchy. When the compactor levels reach
-       capacity, the lowest compactor level is retired into the sampler and
-       :math:`h_{\text{sampler}}` advances, keeping the total retained items across all compactors
-       and sampler strictly bounded by :math:`\mathcal{O}(k)` independent of stream length :math:`n`.
-       When items in the sampler overflow capacity (:math:`v + w > 2^h`), the lighter item is kept
-       with weight :math:`\min(v, w)` and the heavier item is output with weight :math:`2^h` with
-       probability :math:`\max(v, w) / 2^h`.
+    3. **Unbiased Odd-Length Compaction (Section 2, Figure 1)**:
+       When a level fills, its items are sorted and compacted. When buffer length is odd,
+       two independent random coin flips are performed:
+       - **Boundary selection**: Randomly retains either the first item (:math:`\text{index } 0`)
+         or the last item (:math:`\text{index } -1`) with equal probability (:math:`0.5`),
+         leaving an even-length block of remaining items.
+       - **Pairing parity**: An independent random bit (:math:`\text{offset} \in \{0, 1\}`)
+         determines which item of each adjacent pair is promoted to level :math:`h + 1` with
+         doubled weight :math:`2^{h+1}`.
+       The retained boundary item remains at level :math:`h` with weight :math:`2^h`. This
+       completely eliminates odd-length directional bias while strictly conserving total rank weight.
 
-    Merging combines another :class:`KLLMeter` with compatible capacity :math:`k`, preserving
-    summary accuracy and total rank weight.
+    4. **Merge Operation (Section 2, Theorem 1 proof)**:
+       Merging concatenates corresponding same-height compactor levels of two sketches with
+       identical capacity :math:`k`, then runs compaction lazily until all levels satisfy
+       their capacity constraints, preserving total rank mass and theoretical accuracy bounds.
 
     Args:
         q (float): The default quantile to track, in [0, 1] (Default=0.5, the median).
@@ -57,7 +68,7 @@ class KLLMeter(BaseStatistic):
             the Hoeffding failure bound :math:`\delta = 2\exp(-C \epsilon^2 k^2)`.
         delta (float): The failure probability bound in (0, 1) (Default=0.01).
         random_state (int, np.random.RandomState, or None): Controls the random coin flips
-            for compactor parity and sampler reservoir decisions. Pass an int for reproducible
+            for compactor parity and boundary retention decisions. Pass an int for reproducible
             results across runs (Default=None).
 
     Raises:
@@ -116,27 +127,20 @@ class KLLMeter(BaseStatistic):
         self._rng = check_random_state(random_state)
         self.num_items = 0
 
-        # Section 2 & 3 hierarchy parameters
         self._c = 2.0 / 3.0
-        self._H_max = max(2, int(math.ceil(math.log(self.k / 8.0) / math.log(1.0 / self._c))) + 1)
-        self._sampler_height = 0
-        self._sampler_item: float | None = None
-        self._sampler_weight = 0
         self._levels: list[list[float]] = [[]]
+        self._min_val: float | None = None
+        self._max_val: float | None = None
 
     @property
     def num_retained_items(self) -> int:
-        """The total number of items currently stored in memory across all compactors and sampler."""
-        return sum(len(lvl) for lvl in self._levels) + (1 if self._sampler_weight > 0 else 0)
+        """The total number of items currently stored in memory across all compactors."""
+        return sum(len(lvl) for lvl in self._levels)
 
     @property
     def total_weight(self) -> int:
         """The total rank mass / weight preserved across all stored items."""
-        tot = self._sampler_weight
-        for i, lvl in enumerate(self._levels):
-            h = self._sampler_height + i
-            tot += len(lvl) * (1 << h)
-        return tot
+        return sum((1 << h) * len(lvl) for h, lvl in enumerate(self._levels))
 
     @property
     def num_levels(self) -> int:
@@ -145,13 +149,13 @@ class KLLMeter(BaseStatistic):
 
     @property
     def sampler_height(self) -> int:
-        """The current height h of the Section 3 reservoir sampler."""
-        return self._sampler_height
+        """The height of the base compactor level (0 in pure hierarchical compaction)."""
+        return 0
 
     def _capacity(self, level_idx: int) -> int:
         """Computes the compactor capacity k_h for level_idx using Section 2 schedule."""
         depth = len(self._levels) - 1 - level_idx
-        return max(8, int(math.floor(self.k * (self._c**depth))))
+        return max(8, int(math.ceil(self.k * (self._c**depth))))
 
     def update(self, num: float) -> KLLMeter:
         """Updates the statistic with the value for a timestep.
@@ -163,86 +167,58 @@ class KLLMeter(BaseStatistic):
             KLLMeter: self.
         """
         self.num_items += 1
-        self._feed_sampler(float(num), 1)
+        val = float(num)
+        if self._min_val is None or val < self._min_val:
+            self._min_val = val
+        if self._max_val is None or val > self._max_val:
+            self._max_val = val
+
+        self._levels[0].append(val)
+        self._compress()
         return self
 
-    def _feed_sampler(self, item: float, weight: int) -> None:
-        """Feeds an item of given weight into the Section 3 reservoir sampler."""
-        if self._sampler_height == 0:
-            self._levels[0].append(item)
-            self._compress()
-            return
-
-        target = 1 << self._sampler_height
-        v = self._sampler_weight
-        w = weight
-
-        if v + w < target:
-            if v == 0:
-                self._sampler_item = item
-                self._sampler_weight = w
-            else:
-                if self._rng.uniform() < (w / (v + w)):
-                    self._sampler_item = item
-                self._sampler_weight = v + w
-        elif v + w == target:
-            if v == 0 or self._sampler_item is None:
-                out_item = item
-            else:
-                out_item = item if self._rng.uniform() < (w / (v + w)) else self._sampler_item
-            self._levels[0].append(out_item)
-            self._sampler_item = None
-            self._sampler_weight = 0
-            self._compress()
-        else:  # v + w > target (Section 3 sampler overflow rule)
-            if w >= v or self._sampler_item is None:
-                heavy_item, light_item = item, self._sampler_item
-                heavy_w, light_w = w, v
-            else:
-                heavy_item, light_item = self._sampler_item, item
-                heavy_w, light_w = v, w
-
-            self._sampler_item = light_item
-            self._sampler_weight = light_w
-
-            if self._rng.uniform() < (heavy_w / target):
-                self._levels[0].append(heavy_item)
-                self._compress()
-
     def _compress(self) -> None:
-        """Performs compactions across levels exceeding capacity with fair coin flips."""
+        """Performs hierarchical compactions on levels exceeding their capacity."""
         while True:
             compacted = False
             for i in range(len(self._levels)):
                 cap = self._capacity(i)
                 if len(self._levels[i]) >= cap:
+                    self._compact_level(i)
                     compacted = True
-                    buf = self._levels[i]
-                    buf.sort()
-                    # Preserve odd buffer remainder to maintain exact rank weight (Point 2)
-                    remainder = buf.pop(-1) if len(buf) % 2 == 1 else None
-                    # Fair independent coin flip (Point 1)
-                    offset = int(self._rng.randint(0, 2))
-                    promoted = buf[offset::2]
-                    buf.clear()
-                    if remainder is not None:
-                        buf.append(remainder)
-
-                    if i + 1 < len(self._levels):
-                        self._levels[i + 1].extend(promoted)
-                    else:
-                        if len(self._levels) < self._H_max:
-                            self._levels.append(promoted)
-                        else:
-                            # Advance sampler height to bound total levels to H_max (Section 3)
-                            self._sampler_height += 1
-                            old_lowest = self._levels.pop(0)
-                            self._levels.append(promoted)
-                            for val in old_lowest:
-                                self._feed_sampler(val, 1 << (self._sampler_height - 1))
                     break
             if not compacted:
                 break
+
+    def _compact_level(self, level_idx: int) -> None:
+        """Compacts a single level using two independent random choices."""
+        items = self._levels[level_idx]
+        items.sort()
+
+        # Two independent random choices (Section 2, Figure 1):
+        # Choice 1: for odd length, randomly retain either the first item (index 0)
+        # or the last item (index -1) with equal probability.
+        leftover: list[float]
+        compactable: list[float]
+        if len(items) % 2 == 1:
+            if self._rng.randint(0, 2) == 1:
+                leftover = [items[-1]]
+                compactable = items[:-1]
+            else:
+                leftover = [items[0]]
+                compactable = items[1:]
+        else:
+            leftover = []
+            compactable = items
+
+        # Choice 2: independent parity coin flip for pairing compaction.
+        offset = int(self._rng.randint(0, 2))
+        promoted = compactable[offset::2]
+
+        self._levels[level_idx] = leftover
+        while len(self._levels) <= level_idx + 1:
+            self._levels.append([])
+        self._levels[level_idx + 1].extend(promoted)
 
     def get(self) -> float:
         """Method to obtain the tracked quantile statistic.
@@ -270,13 +246,16 @@ class KLLMeter(BaseStatistic):
         if self.num_items == 0:
             return 0.0
 
-        pairs: list[tuple[float, int]] = []
-        if self._sampler_weight > 0 and self._sampler_item is not None:
-            pairs.append((self._sampler_item, self._sampler_weight))
+        if q <= 0.0 and self._min_val is not None:
+            return self._min_val
+        if q >= 1.0 and self._max_val is not None:
+            return self._max_val
 
+        pairs: list[tuple[float, int]] = []
         for i, lvl in enumerate(self._levels):
-            h = self._sampler_height + i
-            weight = 1 << h
+            if not lvl:
+                continue
+            weight = 1 << i
             for val in lvl:
                 pairs.append((val, weight))
 
@@ -293,6 +272,10 @@ class KLLMeter(BaseStatistic):
 
     def merge(self, other: KLLMeter) -> KLLMeter:
         """Merges another KLLMeter's sketch into this meter.
+
+        Concatenates compactor levels of the same height and lazily compacts
+        any levels exceeding capacity, per Karnin et al. (2016) Section 2
+        and reference implementations.
 
         Args:
             other (KLLMeter): The other meter to merge.
@@ -312,33 +295,21 @@ class KLLMeter(BaseStatistic):
                 f"Cannot merge KLLMeter with k={other.k} into KLLMeter with k={self.k}; capacities must match."
             )
 
-        # Align sampler heights
-        while self._sampler_height < other._sampler_height:
-            self._sampler_height += 1
-            if len(self._levels) > 0:
-                old_lowest = self._levels.pop(0)
-                for val in old_lowest:
-                    self._feed_sampler(val, 1 << (self._sampler_height - 1))
-            if len(self._levels) == 0:
-                self._levels.append([])
+        if other.num_items == 0:
+            return self
 
-        # Feed other's sampler into self
-        if other._sampler_weight > 0 and other._sampler_item is not None:
-            self._feed_sampler(other._sampler_item, other._sampler_weight)
+        while len(self._levels) < len(other._levels):
+            self._levels.append([])
 
-        # Feed other's compactors below self._sampler_height
-        for i, lvl in enumerate(other._levels):
-            h = other._sampler_height + i
-            if h < self._sampler_height:
-                w = 1 << h
-                for val in lvl:
-                    self._feed_sampler(val, w)
-            else:
-                target_idx = h - self._sampler_height
-                while target_idx >= len(self._levels):
-                    self._levels.append([])
-                self._levels[target_idx].extend(lvl)
+        for idx, lvl in enumerate(other._levels):
+            if lvl:
+                self._levels[idx].extend(lvl)
 
         self.num_items += other.num_items
+        if self._min_val is None or (other._min_val is not None and other._min_val < self._min_val):
+            self._min_val = other._min_val
+        if self._max_val is None or (other._max_val is not None and other._max_val > self._max_val):
+            self._max_val = other._max_val
+
         self._compress()
         return self

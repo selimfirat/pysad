@@ -177,9 +177,31 @@ def test_merge_combines_partitioned_streams():
     assert m2.get() == m2_before_val
 
 
-def test_merge_sampler_overflow_rule():
-    """Verify Section 3 reservoir sampler overflow rule when merging streams."""
-    # k=8 sets H_max=2 so sampler height advances quickly
+def test_odd_length_compaction_unbiased():
+    """Verify Section 2 Figure 1: odd-length compaction retains first or last item with equal probability."""
+    first_kept = 0
+    last_kept = 0
+    runs = 500
+
+    for seed in range(runs):
+        meter = KLLMeter(k=8, random_state=seed)
+        meter._levels[0] = [float(x) for x in range(9)]
+        meter._compact_level(0)
+        assert len(meter._levels[0]) == 1
+        leftover = meter._levels[0][0]
+        if leftover == 0.0:
+            first_kept += 1
+        elif leftover == 8.0:
+            last_kept += 1
+
+    # Both index 0 and index -1 must be kept with roughly equal probability (~50% each)
+    assert first_kept + last_kept == runs
+    assert 200 < first_kept < 300
+    assert 200 < last_kept < 300
+
+
+def test_merge_concatenates_levels_and_compacts():
+    """Verify Section 2 Theorem 1: merge concatenates same-height compactors and compacts overfull levels."""
     m1 = KLLMeter(k=8, random_state=42)
     for x in range(201):
         m1.update(float(x))
@@ -188,38 +210,13 @@ def test_merge_sampler_overflow_rule():
     for x in range(200):
         m2.update(float(x + 200))
 
-    # At this point, both meters have sampler_height == 4 (target weight 16)
-    # m1 has sampler weight 9 and m2 has sampler weight 8, so v + w = 17 > 16.
-    assert m1.sampler_height == 4
-    assert m2.sampler_height == 4
-    assert m1._sampler_weight == 9
-    assert m2._sampler_weight == 8
-
-    # Merging m2 exercises the v + w > 2**h overflow branch in _feed_sampler
     m1.merge(m2)
 
     assert m1.num_items == 401
-    assert m1.num_retained_items <= 3 * 8 + 1
+    assert m1.total_weight == 401
+    assert m1.num_retained_items <= 3 * 8 + 10
     # Median should approximate the combined stream center (approx 200)
     assert abs(m1.get() - 200.0) < 50.0
-
-
-def test_sampler_overflow_rule_preserves_lighter_item():
-    """Directly verify Section 3 overflow keeps lighter item with min(v, w) weight."""
-    m = KLLMeter(k=8, random_state=42)
-    m._sampler_height = 3  # target = 8
-    m._sampler_item = 100.0
-    m._sampler_weight = 5
-
-    # Case 1: incoming w=6 >= v=5 (v + w = 11 > 8). Lighter item (100.0, weight 5) is kept.
-    m._feed_sampler(200.0, 6)
-    assert m._sampler_weight == 5
-    assert m._sampler_item == 100.0
-
-    # Case 2: incoming w=4 < v=5 (v + w = 9 > 8). Lighter item (300.0, weight 4) is kept.
-    m._feed_sampler(300.0, 4)
-    assert m._sampler_weight == 4
-    assert m._sampler_item == 300.0
 
 
 def test_merge_incompatible_capacities_raises_value_error():

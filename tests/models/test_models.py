@@ -37,7 +37,6 @@ MODEL_CASES = {
     "PCBIsolationForest": [{"num_trees": 10, "window_size": 40, "stat_size": 10}],
     "PEWMA": [{}, {"beta": 0.0}],
     "RelativeEntropy": [{"min_val": 0.0, "max_val": 1.0}],
-    "ReservoirLifelongDetector": [{"reservoir_size": 20, "num_neighbors": 3}],
     "RSForest": [{"window_size": 50}],
     "RSHash": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
     "SAND": [{"subsequence_length": 4, "batch_size": 40}],

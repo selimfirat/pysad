@@ -230,7 +230,6 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
                 | ZScorePostprocessor(window_size=10),
             ],
         },
-        "ReservoirLifelongDetector": {"reservoir_size": 10, "num_neighbors": 3},
         "StreamPipeline": {
             "model": pysad.models.LODA(),
             "preprocessors": [ShingleTransformer(shingle_size=2)],

@@ -44,7 +44,6 @@ from .online_one_class_svm import OnlineOneClassSVM
 from .pcb_isolation_forest import PCBIsolationForest
 from .pewma import PEWMA
 from .relative_entropy import RelativeEntropy
-from .reservoir_lifelong import ReservoirLifelongDetector
 from .robust_random_cut_forest import RobustRandomCutForest
 from .rs_forest import RSForest
 from .rs_hash import RSHash
@@ -105,7 +104,6 @@ __all__ = [
     "PEWMA",
     "RandomModel",
     "RelativeEntropy",
-    "ReservoirLifelongDetector",
     "RobustRandomCutForest",
     "RSForest",
     "RSHash",

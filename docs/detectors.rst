@@ -1,5 +1,5 @@
 .. meta::
-   :description: Catalog of 53 streaming anomaly detectors in PySAD for multivariate and univariate streams, including required initialization, memory bounds, and paper citations.
+   :description: Catalog of 54 streaming anomaly detectors in PySAD for multivariate and univariate streams, including required initialization, memory bounds, and paper citations.
 
 Detectors
 =========
@@ -113,6 +113,10 @@ These detectors take points with one or more features. A feature is one measured
      - Online one-class support vector machine (NORMA) with a Gaussian kernel :cite:`kivinen2004online`
      - Nothing
      - Fixed: the support vectors among the last ``window_size`` points
+   * - :class:`~pysad.models.CostSensitiveStreamModel`
+     - Cost-sensitive online gradient descent with a weighted hinge loss :cite:`wang2013cost`
+     - Nothing
+     - Fixed: one weight vector
    * - :class:`~pysad.models.DILOF`
      - The local outlier factor of :class:`~pysad.models.IncrementalLOF` in a window that keeps a density-preserving summary of old points :cite:`na2018dilof`
      - Nothing

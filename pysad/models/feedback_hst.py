@@ -4,7 +4,6 @@ import numbers
 
 import numpy as np
 from scipy.sparse import csr_matrix
-from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import check_feature_bounds
@@ -189,90 +188,64 @@ class FeedbackHST(BaseModel):
         # Streaming buffer for tree updates
         self._stream_buffer: list[np.ndarray] = []
 
-    def _work_space(self, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
-        if not self.random_work_space:
-            return self.feature_mins.copy(), self.feature_maxes.copy()
+    def _get_leaf_indices(self, X: np.ndarray) -> np.ndarray:
+        """Route instances down all trees and return leaf node indices.
 
-        s = rng.uniform(self.feature_mins, self.feature_maxes)
-        half_width = 2.0 * np.maximum(s - self.feature_mins, self.feature_maxes - s)
-
-        return s - half_width, s + half_width
-
-    def _build_tree_splits(self, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
-        """Build split features and values for one tree (copied from HalfSpaceTrees)."""
-        mins, maxes = self._work_space(rng)
-        depth = self.max_depth
-        atts_depth_first = rng.randint(self.num_dimensions, size=2**depth - 1)
-
-        level = np.zeros(1, dtype=np.intp)
-        levels = [level]
-        for k in range(depth - 1):
-            level = np.stack([level + 1, level + 2 ** (depth - k - 1)], axis=1).ravel()
-            levels.append(level)
-        atts = atts_depth_first[np.concatenate(levels)]
-
-        values = np.empty(2**depth - 1)
-        for k in range(depth):
-            nodes = np.arange(2**k - 1, 2 ** (k + 1) - 1)
-            q = atts[nodes]
-            lower, upper = mins[q], maxes[q]
-            for ancestor_depth in range(k):
-                ancestors = ((nodes + 1) >> (k - ancestor_depth)) - 1
-                goes_right = (((nodes + 1) >> (k - ancestor_depth - 1)) & 1) == 1
-                splits_q = atts[ancestors] == q
-                upper = np.where(splits_q & ~goes_right, values[ancestors], upper)
-                lower = np.where(splits_q & goes_right, values[ancestors], lower)
-            values[nodes] = (upper + lower) / 2.0
-
-        return atts, values
-
-    def _get_tree_leaf_nodes(
-        self, X: np.ndarray, split_atts: np.ndarray, split_values: np.ndarray
-    ) -> np.ndarray:
-        """Route instances down a tree and return leaf node indices."""
+        Returns array of shape (n, num_trees) where each entry is the leaf index
+        (0 to 2^max_depth - 1) for that instance and tree.
+        """
+        X = np.asarray(X, dtype=np.float64)
         n = X.shape[0]
-        u = np.ones(n, dtype=np.intp)  # heap index starts at 1 (root)
-        for _k in range(self.max_depth):
-            # For each instance, get the split feature and value at its current node
-            node_indices = u - 1  # 0-based node index
-            # Get split feature and value for each instance's current node
-            split_features = split_atts[node_indices]
-            split_thresholds = split_values[node_indices]
-            # Get feature value for each instance
-            x_vals = X[np.arange(n), split_features]
+
+        # Use the precomputed splits from the base HST
+        split_atts = self._hst.split_atts  # (num_trees, num_splits)
+        split_values = self._hst.split_values  # (num_trees, num_splits)
+
+        # u holds heap indices (starts at 1 for root), shape (n, num_trees)
+        u = np.ones((n, self.num_trees), dtype=np.intp)
+
+        # For each depth level, route all instances through all trees
+        for _depth in range(self.max_depth):
+            # Node indices in 0-based form for gathering splits
+            node_indices = u - 1  # (n, num_trees)
+
+            # Gather split features and thresholds for each instance and tree
+            # split_atts[tree, node] -> need to index as split_atts[tree, node_indices[:, tree]]
+            split_features = np.empty((n, self.num_trees), dtype=split_atts.dtype)
+            split_thresholds = np.empty((n, self.num_trees), dtype=np.float64)
+            for tree_idx in range(self.num_trees):
+                split_features[:, tree_idx] = split_atts[tree_idx, node_indices[:, tree_idx]]
+                split_thresholds[:, tree_idx] = split_values[tree_idx, node_indices[:, tree_idx]]
+
+            # Get feature values for each instance-tree pair
+            # X[i, split_features[i, tree_idx]]
+            x_vals = X[np.arange(n)[:, None], split_features]
+
+            # Determine goes_right for each
             goes_right = x_vals > split_thresholds
+
+            # Update heap indices: u <- 2*u + goes_right
             u = 2 * u + goes_right.astype(np.intp)
+
         # u now holds heap indices of leaves (2^max_depth to 2^(max_depth+1)-1)
-        leaf_node_indices = u - (2**self.max_depth)  # 0-based leaf index
-        return leaf_node_indices
+        # Convert to 0-based leaf indices
+        leaf_indices = u - (2**self.max_depth)
+        return leaf_indices  # shape (n, num_trees)
 
     def _compute_tree_features(self, X: np.ndarray) -> csr_matrix:
         """Transform X to ensemble feature space (one feature per tree leaf)."""
+        X = np.asarray(X, dtype=np.float64)
         n = X.shape[0]
         num_leaves = 2**self.max_depth
         m = self.num_trees * num_leaves
 
-        rng = check_random_state(self.random_state)
-        # Rebuild tree splits (same as in _hst)
-        all_split_atts = []
-        all_split_values = []
-        for _tree in range(self.num_trees):
-            atts, values = self._build_tree_splits(rng)
-            all_split_atts.append(atts)
-            all_split_values.append(values)
+        # Get leaf indices for all instances and trees: shape (n, num_trees)
+        leaf_indices = self._get_leaf_indices(X)
 
-        # For each tree, route instances to leaves and set feature
-        rows = []
-        cols = []
-        data = []
-        for tree_idx in range(self.num_trees):
-            split_atts = all_split_atts[tree_idx]
-            split_values = all_split_values[tree_idx]
-            leaf_indices = self._get_tree_leaf_nodes(X, split_atts, split_values)
-            for i in range(n):
-                rows.append(i)
-                cols.append(tree_idx * num_leaves + leaf_indices[i])
-                data.append(1.0)  # Binary indicator: instance falls in this leaf
+        # Build sparse matrix: each instance has num_trees non-zero entries
+        rows = np.repeat(np.arange(n), self.num_trees)
+        cols = (np.arange(self.num_trees) * num_leaves + leaf_indices.T.ravel())
+        data = np.ones(n * self.num_trees, dtype=np.float64)
 
         return csr_matrix((data, (rows, cols)), shape=(n, m))
 
@@ -299,9 +272,11 @@ class FeedbackHST(BaseModel):
         n_unlabeled = X_unlabeled.shape[0]
         n_total = n_labeled + n_unlabeled
 
-        # Transform all instances to ensemble feature space
         X_all = np.vstack([X_labeled, X_unlabeled])
-        X_features = self._compute_tree_features(X_all)
+
+        # Get leaf indices for all instances: shape (n_total, num_trees)
+        leaf_indices = self._get_leaf_indices(X_all)
+        num_leaves = 2**self.max_depth
 
         # Labels: 1 for anomaly, 0 for nominal, NaN for unlabeled
         y_all = np.full(n_total, np.nan)
@@ -322,29 +297,46 @@ class FeedbackHST(BaseModel):
         decay = 0.9
         eps = 1e-8
 
+        # Precompute the feature column index for each instance and tree
+        # feature_idx[instance, tree] = tree * num_leaves + leaf_indices[instance, tree]
+        tree_offsets = np.arange(self.num_trees) * num_leaves
+        feature_indices = leaf_indices + tree_offsets  # (n_total, num_trees)
+
         for _ in range(max_epochs):
-            scores = X_features.dot(w)
+            # Compute scores: sum of weights for the active leaf in each tree
+            # scores[i] = sum(w[feature_indices[i, tree]] for tree in range(num_trees))
+            scores = w[feature_indices].sum(axis=1)
 
             # Constraint: anomalies should score above tau-th quantile, nominals below
             q_val = float(np.quantile(scores, 1.0 - bt_topK / n_total))
-            x_tau = X_features[np.argsort(scores)[::-1][tau_rank]]
+            sorted_idx = np.argsort(scores)[::-1]
+            tau_idx = sorted_idx[tau_rank]
 
             # Gradient of linear loss
             grad = np.zeros_like(w)
-            # Anomaly constraints
-            for idx in ha:
-                margin = q_val - scores[idx]
-                if margin > 0:
-                    grad -= X_features[idx].toarray().ravel()
-            # Nominal constraints
-            for idx in hn:
-                margin = scores[idx] - q_val
-                if margin > 0:
-                    grad += X_features[idx].toarray().ravel()
+
+            # Anomaly constraints: for each anomaly, subtract weight of its active leaves
+            if len(ha) > 0:
+                anomaly_margins = q_val - scores[ha]
+                active = anomaly_margins > 0
+                if np.any(active):
+                    active_ha = ha[active]
+                    # For each active anomaly, decrement the weight of its active leaf per tree
+                    np.subtract.at(grad, feature_indices[active_ha].ravel(), 1.0)
+
+            # Nominal constraints: for each nominal, add weight of its active leaves
+            if len(hn) > 0:
+                nominal_margins = scores[hn] - q_val
+                active = nominal_margins > 0
+                if np.any(active):
+                    active_hn = hn[active]
+                    np.add.at(grad, feature_indices[active_hn].ravel(), 1.0)
+
             # Tau instance constraint
-            margin = scores[tau_rank] - q_val
+            margin = scores[tau_idx] - q_val
             if abs(margin) > 1e-8:
-                grad += np.sign(margin) * x_tau.toarray().ravel()
+                tau_features = feature_indices[tau_idx]
+                grad[tau_features] += np.sign(margin)
 
             # Prior regularization (pull toward uniform)
             prior_influence = 1.0 / max(1.0, len(ha) + len(hn))
@@ -363,20 +355,25 @@ class FeedbackHST(BaseModel):
 
     def _compute_node_distributions(self, X: np.ndarray) -> np.ndarray:
         """Compute per-leaf node sample distributions for KL-divergence."""
+        X = np.asarray(X, dtype=np.float64)
         num_leaves = 2**self.max_depth
         m = self.num_trees * num_leaves
         delta = 1e-16
 
-        X_features = self._compute_tree_features(X)
-        dists = np.ones(m, dtype=np.float32) * delta
+        # Get leaf indices directly: shape (n, num_trees)
+        leaf_indices = self._get_leaf_indices(X)
 
-        # Count samples per leaf
-        for j in range(m):
-            dists[j] += X_features[:, j].sum()
+        # Count samples per leaf per tree using bincount
+        dists = np.ones(m, dtype=np.float32) * delta
+        for tree_idx in range(self.num_trees):
+            start = tree_idx * num_leaves
+            # Count occurrences of each leaf index for this tree
+            counts = np.bincount(leaf_indices[:, tree_idx], minlength=num_leaves)
+            dists[start:start + num_leaves] += counts.astype(np.float32)
 
         # Normalize per tree
-        for tree in range(self.num_trees):
-            start = tree * num_leaves
+        for tree_idx in range(self.num_trees):
+            start = tree_idx * num_leaves
             end = start + num_leaves
             tree_dists = dists[start:end]
             tree_dists /= tree_dists.sum()

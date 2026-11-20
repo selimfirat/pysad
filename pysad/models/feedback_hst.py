@@ -69,6 +69,11 @@ class FeedbackHST(BaseModel):
     - Query diversity via compact descriptions (QUERY_TYPE=8 in reference) is
       not implemented; only the top-tau strategy (QUERY_TYPE=1) is supported.
       This is a deliberate simplification for the initial PySAD integration.
+    - Tree replacement on drift rebuilds the half-space splits for selected
+      trees using new window data. The reference implementation only updates
+      node counts and raises NotImplementedError for HSTree replacement. This
+      deviation enables full tree adaptation to concept drift in the streaming
+      setting.
 
     Args:
         feature_mins (np.ndarray | list[float] | tuple[float, ...]): Minimum boundary of each feature.
@@ -84,6 +89,13 @@ class FeedbackHST(BaseModel):
         kl_alpha (float): Significance level for the KL-divergence threshold in (0, 1) (Default=0.05).
         replace_frac (float): Fraction of oldest trees to replace when not using KL (Default=0.2).
         random_state (int | np.random.RandomState | None): Random seed or generator (Default=None).
+        learning_rate (float): Learning rate for RMSProp weight optimization (Default=0.001).
+        max_epochs (int): Maximum optimization epochs per weight update (Default=1000).
+        rmsprop_decay (float): RMSProp decay factor in [0, 1) (Default=0.9).
+        rmsprop_eps (float): RMSProp epsilon for numerical stability (Default=1e-8).
+        prior_influence (float): Prior regularization strength pulling weights toward uniform (Default=1.0).
+        score_transition_window (int): Number of instances over which to blend base HST
+            and ensemble scores after first feedback (Default=50). Set to 0 for immediate switch.
 
     Raises:
         ValueError: If any parameter is invalid.
@@ -104,6 +116,54 @@ class FeedbackHST(BaseModel):
 
     _input_kind = "multivariate"
 
+    # Configuration parameters
+    feature_mins: np.ndarray
+    feature_maxes: np.ndarray
+    window_size: int
+    max_depth: int
+    num_trees: int
+    random_work_space: bool
+    random_state: int | np.random.RandomState | None
+    feedback_budget: int
+    tau: float
+    check_kl_divergence: bool
+    kl_alpha: float
+    replace_frac: float
+    learning_rate: float
+    max_epochs: int
+    rmsprop_decay: float
+    rmsprop_eps: float
+    prior_influence: float
+    score_transition_window: int
+    num_dimensions: int
+
+    # Base detector
+    _hst: HalfSpaceTrees
+    _rng: np.random.RandomState
+
+    # Active learning state
+    _feedback_used: int
+    _labeled_X: list[np.ndarray]
+    _labeled_y: list[int]
+    _unlabeled_buffer: list[np.ndarray]
+    _unlabeled_scores: list[float]
+    _feedback_started: bool
+    _instances_since_feedback: int
+
+    # Ensemble weights
+    _region_weights: np.ndarray | None
+    _uniform_weights: np.ndarray | None
+    _region_scores: np.ndarray | None
+
+    # Drift detection state
+    _ref_node_dists: np.ndarray | None
+    _kl_q_alpha: np.ndarray | None
+    _drift_ref_initialized: bool
+
+    # Streaming buffer
+    _stream_buffer: list[np.ndarray]
+    _initial_window_X: np.ndarray | None
+
     def __init__(
         self,
         feature_mins: np.ndarray | list[float] | tuple[float, ...],
@@ -119,6 +179,15 @@ class FeedbackHST(BaseModel):
         kl_alpha: float = 0.05,
         replace_frac: float = 0.2,
         random_state: int | np.random.RandomState | None = None,
+        # Loss optimization hyperparameters (match reference implementation defaults)
+        learning_rate: float = 0.001,
+        max_epochs: int = 1000,
+        rmsprop_decay: float = 0.9,
+        rmsprop_eps: float = 1e-8,
+        prior_influence: float = 1.0,
+        # Score transition: number of instances to blend base HST and ensemble scores
+        # after first feedback to avoid discontinuity. 0 = immediate switch.
+        score_transition_window: int = 50,
     ) -> None:
         # Validate parameters
         for name, value in [
@@ -145,6 +214,26 @@ class FeedbackHST(BaseModel):
         if not (0.0 < tau < 1.0):
             raise ValueError(f"tau must be in (0, 1), got {tau!r}.")
 
+        if not (0.0 < learning_rate):
+            raise ValueError(f"learning_rate must be positive, got {learning_rate!r}.")
+
+        if not isinstance(max_epochs, numbers.Integral) or max_epochs < 1:
+            raise ValueError(f"max_epochs must be a positive integer, got {max_epochs!r}.")
+
+        if not (0.0 <= rmsprop_decay < 1.0):
+            raise ValueError(f"rmsprop_decay must be in [0, 1), got {rmsprop_decay!r}.")
+
+        if not (0.0 < rmsprop_eps):
+            raise ValueError(f"rmsprop_eps must be positive, got {rmsprop_eps!r}.")
+
+        if not (0.0 <= prior_influence):
+            raise ValueError(f"prior_influence must be non-negative, got {prior_influence!r}.")
+
+        if not isinstance(score_transition_window, numbers.Integral) or score_transition_window < 0:
+            raise ValueError(
+                f"score_transition_window must be a non-negative integer, got {score_transition_window!r}."
+            )
+
         self.feature_mins, self.feature_maxes = check_feature_bounds(feature_mins, feature_maxes)
 
         self.window_size = int(window_size)
@@ -158,6 +247,14 @@ class FeedbackHST(BaseModel):
         self.check_kl_divergence = bool(check_kl_divergence)
         self.kl_alpha = float(kl_alpha)
         self.replace_frac = float(replace_frac)
+
+        # Loss optimization hyperparameters
+        self.learning_rate = float(learning_rate)
+        self.max_epochs = int(max_epochs)
+        self.rmsprop_decay = float(rmsprop_decay)
+        self.rmsprop_eps = float(rmsprop_eps)
+        self.prior_influence = float(prior_influence)
+        self.score_transition_window = int(score_transition_window)
 
         self.num_dimensions = len(self.feature_maxes)
 
@@ -199,6 +296,10 @@ class FeedbackHST(BaseModel):
         # Drift detection state
         self._ref_node_dists: np.ndarray | None = None
         self._kl_q_alpha: np.ndarray | None = None
+
+        # Score transition state
+        self._feedback_started = False
+        self._instances_since_feedback = 0
 
         # Streaming buffer for tree updates
         self._stream_buffer: list[np.ndarray] = []
@@ -314,13 +415,13 @@ class FeedbackHST(BaseModel):
         X_labeled: np.ndarray,
         y_labeled: np.ndarray,
         X_unlabeled: np.ndarray,
-        max_epochs: int = 1000,
-        learning_rate: float = 0.001,
     ) -> None:
         """Update ensemble weights using labeled feedback (AAD linear loss).
 
         This follows the reference implementation's aad_loss_gradient_linear
-        with RMSProp optimization.
+        with RMSProp optimization. Hyperparameters are configurable via the
+        constructor (learning_rate, max_epochs, rmsprop_decay, rmsprop_eps,
+        prior_influence).
         """
         if self._region_weights is None:
             self._initialize_weights()
@@ -351,10 +452,10 @@ class FeedbackHST(BaseModel):
         assert self._region_weights is not None
         w = self._region_weights.copy()
         cache = np.zeros_like(w)
-        decay = 0.9
-        eps = 1e-8
+        decay = self.rmsprop_decay
+        eps = self.rmsprop_eps
 
-        for _ in range(max_epochs):
+        for _ in range(self.max_epochs):
             # Compute scores: X_feat @ w
             scores = X_feat.dot(w).ravel()
 
@@ -392,12 +493,12 @@ class FeedbackHST(BaseModel):
                 grad += np.sign(margin) * X_feat_tau.A1
 
             # Prior regularization (pull toward uniform)
-            prior_influence = 1.0 / max(1.0, len(ha) + len(hn))
+            prior_influence = self.prior_influence / max(1.0, len(ha) + len(hn))
             grad += prior_influence * (w - self._uniform_weights)
 
             # RMSProp update
             cache = decay * cache + (1 - decay) * grad**2
-            w -= learning_rate * grad / (np.sqrt(cache) + eps)
+            w -= self.learning_rate * grad / (np.sqrt(cache) + eps)
 
             # Normalize
             w_norm = np.sqrt(w.dot(w))
@@ -435,33 +536,40 @@ class FeedbackHST(BaseModel):
 
         return dists
 
-    def _initialize_drift_reference(self, X: np.ndarray) -> None:
-        """Initialize KL-divergence reference distributions by splitting data in half.
+    def _initialize_drift_reference(self, X: np.ndarray, n_splits: int = 30) -> None:
+        """Initialize KL-divergence reference distributions by repeated random splits.
 
         This matches the reference implementation's get_KL_divergence_distribution
-        with simple=True, which splits the reference data in half to estimate
-        the threshold from natural variation.
+        with simple=True, which builds a distribution of KL values from repeated
+        random half-splits of the reference data, then takes the (1-kl_alpha) quantile
+        as the per-tree drift threshold.
         """
         self._ref_node_dists = self._compute_node_distributions(X)
-        # Split data in half and compute KL divergence between halves to set threshold
+
+        # Build KL distribution per tree via multiple random half-splits
         n = X.shape[0]
+        kl_samples = np.zeros((n_splits, self.num_trees), dtype=np.float32)
+
         if n >= 2:
-            indices = np.arange(n)
-            self._rng.shuffle(indices)
-            h = n // 2
-            X1 = X[indices[:h]]
-            X2 = X[indices[h:]]
-            p1 = self._compute_node_distributions(X1)
-            p2 = self._compute_node_distributions(X2)
-            kl_trees, _ = self._compute_kl_divergence(p1, p2)
+            for s in range(n_splits):
+                indices = np.arange(n)
+                self._rng.shuffle(indices)
+                h = n // 2
+                X1 = X[indices[:h]]
+                X2 = X[indices[h:]]
+                p1 = self._compute_node_distributions(X1)
+                p2 = self._compute_node_distributions(X2)
+                kl_trees, _ = self._compute_kl_divergence(p1, p2)
+                kl_samples[s] = kl_trees
         else:
             # Not enough data to split, use self-divergence (will be 0)
             kl_trees, _ = self._compute_kl_divergence(self._ref_node_dists, self._ref_node_dists)
+            kl_samples[:, :] = kl_trees
 
-        # Set per-tree KL thresholds (quantile at 1 - kl_alpha)
+        # Set per-tree KL thresholds (quantile at 1 - kl_alpha) from the distribution
         self._kl_q_alpha = np.zeros(self.num_trees, dtype=np.float32)
         for i in range(self.num_trees):
-            self._kl_q_alpha[i] = float(np.quantile(kl_trees[i : i + 1], 1 - self.kl_alpha))
+            self._kl_q_alpha[i] = float(np.quantile(kl_samples[:, i], 1 - self.kl_alpha))
 
     def _check_drift_and_replace(self, X_new: np.ndarray) -> bool:
         """Check for drift using KL-divergence and replace trees if needed."""
@@ -489,26 +597,8 @@ class FeedbackHST(BaseModel):
         if do_replace:
             self._replace_trees(replace_mask, X_new)
             self._ref_node_dists = self._compute_node_distributions(X_new)
-            # Re-initialize KL threshold from new reference
-            n = X_new.shape[0]
-            if n >= 2:
-                indices = np.arange(n)
-                self._rng.shuffle(indices)
-                h = n // 2
-                X1 = X_new[indices[:h]]
-                X2 = X_new[indices[h:]]
-                p1 = self._compute_node_distributions(X1)
-                p2 = self._compute_node_distributions(X2)
-                kl_trees, _ = self._compute_kl_divergence(p1, p2)
-            else:
-                assert self._ref_node_dists is not None
-                kl_trees, _ = self._compute_kl_divergence(
-                    self._ref_node_dists, self._ref_node_dists
-                )
-
-            assert self._kl_q_alpha is not None
-            for i in range(self.num_trees):
-                self._kl_q_alpha[i] = float(np.quantile(kl_trees[i : i + 1], 1 - self.kl_alpha))
+            # Re-initialize KL threshold from new reference using multiple splits
+            self._initialize_drift_reference(X_new)
             return True
 
         return False
@@ -616,9 +706,9 @@ class FeedbackHST(BaseModel):
     def score_partial(self, X: np.ndarray) -> float:
         """Score the anomalousness of the next instance using weighted ensemble.
 
-        If no feedback has been provided yet, uses base HST score scaled to
-        match the ensemble score range. After feedback, uses the weighted
-        ensemble score consistently.
+        If no feedback has been provided yet, uses base HST score. After feedback
+        starts, blends base HST and ensemble scores over `score_transition_window`
+        instances to avoid a discontinuity.
 
         Args:
             X (np.ndarray): Instance of shape (num_features,).
@@ -631,7 +721,7 @@ class FeedbackHST(BaseModel):
         # Base HST score (negative mass, so higher = more anomalous)
         base_score = self._hst.score_partial(X)
 
-        if self._region_weights is None or self._feedback_used == 0:
+        if not self._feedback_started or self._region_weights is None:
             # No feedback yet: use base HST score
             return base_score
 
@@ -639,7 +729,17 @@ class FeedbackHST(BaseModel):
         X_feat = self._transform_to_ensemble_features(X.reshape(1, -1))
         ensemble_score = float(X_feat.dot(self._region_weights)[0])
 
-        # Return ensemble score directly (consistent scoring after feedback)
+        # Blend scores during transition window to avoid discontinuity
+        if (
+            self.score_transition_window > 0
+            and self._instances_since_feedback < self.score_transition_window
+        ):
+            alpha = self._instances_since_feedback / self.score_transition_window
+            blended_score = (1 - alpha) * base_score + alpha * ensemble_score
+            self._instances_since_feedback += 1
+            return blended_score
+
+        # After transition, use ensemble score
         return ensemble_score
 
     def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
@@ -695,6 +795,11 @@ class FeedbackHST(BaseModel):
         if label not in (0, 1):
             raise ValueError(f"label must be 0 or 1, got {label}")
 
+        # Track when feedback starts for score transition
+        if not self._feedback_started:
+            self._feedback_started = True
+            self._instances_since_feedback = 0
+
         self._labeled_X.append(X.copy())
         self._labeled_y.append(label)
         self._feedback_used += 1
@@ -732,3 +837,5 @@ class FeedbackHST(BaseModel):
         self._kl_q_alpha = None
         self._stream_buffer.clear()
         self._drift_ref_initialized = False
+        self._feedback_started = False
+        self._instances_since_feedback = 0

@@ -12,13 +12,16 @@ Stream wrappers for external models
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-   :exclude: RiverAnomalyDetector, SklearnAnomalyDetector
+   :exclude: RiverAnomalyDetector, RiverDriftDetector, SklearnAnomalyDetector
    :tail: ReferenceWindowModel, OneFitModel, PredictiveAnomalyDetector
 
 River and scikit-learn pipeline adapters
 ----------------------------------------
 
 .. autoclass:: RiverAnomalyDetector
+   :exclude-members: clone, mutate
+
+.. autoclass:: RiverDriftDetector
    :exclude-members: clone, mutate
 
 .. autoclass:: SklearnAnomalyDetector

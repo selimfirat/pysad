@@ -1266,9 +1266,14 @@ class PageHinkleyMeter(BaseStatistic):
     identity, clamping at zero is algebraically equivalent to Page's formulation
     of subtracting the running minimum (or maximum) of the unreflected cumulative
     sum, without storing the running extrema separately. ``get`` returns
-    ``max(g+, -g-)``, the two-sided statistic: a caller raises a change-point
-    alarm when it exceeds a chosen threshold. Small fluctuations below ``delta``
-    decay back toward zero instead of accumulating.
+    ``max(g+, -g-)``, the two-sided statistic. If this value exceeds
+    ``threshold``, the meter sets ``drift_detected`` to True. Equality does
+    not trigger an alarm. The next update resets both sums before it adds
+    the new value. Small fluctuations below ``delta`` decay back toward zero
+    instead of accumulating.
+
+    The meter starts testing after ``min_instances`` observations. This avoids
+    false alarms from the noisy initial mean estimate.
 
     ``remove`` is not supported: the running mean and the cumulative sums depend
     on the full history, so a past observation cannot be taken back.
@@ -1276,27 +1281,47 @@ class PageHinkleyMeter(BaseStatistic):
     Args:
         delta (float): The smallest shift magnitude to accumulate, which must be
             non-negative (Default=0.0, every deviation accumulates).
+        threshold (float): The positive alarm limit for the two-sided statistic
+            (Default=50.0).
+        min_instances (int): The minimum number of observations before testing
+            for drift (Default=30).
 
     Raises:
-        ValueError: If ``delta`` is negative.
+        ValueError: If ``delta`` is negative, ``threshold`` is not positive, or
+            ``min_instances`` is less than 1.
 
     Attributes:
         delta (float): The smallest shift magnitude that is accumulated.
+        threshold (float): The positive alarm limit for the two-sided statistic.
+        min_instances (int): The minimum number of observations before testing.
         num_items (int): The number of items that are used to update the statistic.
         mean (float): The running mean of the observations seen so far.
         g_plus (float): The upward cumulative sum (always non-negative).
         g_minus (float): The downward cumulative sum (always non-positive).
+        drift_detected (bool): Whether the last update detected a drift.
     """
 
-    def __init__(self, delta: float = 0.0) -> None:
+    def __init__(
+        self,
+        delta: float = 0.0,
+        threshold: float = 50.0,
+        min_instances: int = 30,
+    ) -> None:
         if delta < 0.0:
             raise ValueError("delta must be non-negative.")
+        if threshold <= 0.0:
+            raise ValueError("threshold must be positive.")
+        if min_instances < 1:
+            raise ValueError("min_instances must be a positive integer.")
 
         self.delta = delta
+        self.threshold = threshold
+        self.min_instances = min_instances
         self.num_items = 0
         self.mean = 0.0
         self.g_plus = 0.0
         self.g_minus = 0.0
+        self.drift_detected = False
 
     def update(self, num: float) -> PageHinkleyMeter:
         """Updates the statistic with the value for a timestep.
@@ -1305,14 +1330,24 @@ class PageHinkleyMeter(BaseStatistic):
             num (float): The incoming value, for which the statistic is used.
 
         Returns:
-            object: self.
+            PageHinkleyMeter: self.
         """
+        if self.drift_detected:
+            self.g_plus = self.g_minus = 0.0
+            self.num_items = 0
+            self.mean = 0.0
+
         self.num_items += 1
         self.mean += (num - self.mean) / self.num_items
 
         deviation = num - self.mean
         self.g_plus = max(0.0, self.g_plus + deviation - self.delta)
         self.g_minus = min(0.0, self.g_minus + deviation + self.delta)
+
+        if self.num_items >= self.min_instances:
+            self.drift_detected = self.get() > self.threshold
+        else:
+            self.drift_detected = False
 
         return self
 

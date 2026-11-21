@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from typing import ClassVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -38,8 +39,6 @@ class PEWMA(BaseModel):
     - The paper raises an alert when :math:`P_t` is below a threshold. The model returns :math:`|Z_t|`, which ranks values in the same order as :math:`-P_t`. A higher score is more anomalous. The alert threshold :math:`\tau` corresponds to a score threshold of :math:`\sqrt{-2 \ln(\tau \sqrt{2 \pi})}`.
     - The paper does not define :math:`Z_t` when :math:`\hat{\sigma}_t = 0`. This occurs before the second value or on a constant stream. The model then uses :math:`Z_t = 0`. The value scores 0 and gets the largest probability :math:`P_t`. Rounding can make :math:`s_2 - s_1^2` slightly negative. The model then uses :math:`\hat{\sigma}_t = 0`.
 
-    __bibtex__: :cite:`carter2012probabilistic`.
-
     Args:
         alpha (float): The weight :math:`\alpha` of the previous averages after the training period, in [0, 1] (Default=0.99).
         beta (float): The probability weight :math:`\beta` in :math:`\alpha_t`, in [0, 1]. With 0, the model is an EWMA (Default=1.0).
@@ -48,6 +47,16 @@ class PEWMA(BaseModel):
     Raises:
         ValueError: If ``alpha`` or ``beta`` is not in [0, 1], or ``training_period`` is less than 1.
     """
+
+    __bibtex__: ClassVar[str] = """
+@inproceedings{carter2012probabilistic,
+  title={Probabilistic reasoning for streaming anomaly detection},
+  author={Carter, Kevin M and Streilein, William W},
+  booktitle={2012 IEEE Statistical Signal Processing Workshop (SSP)},
+  pages={377--380},
+  year={2012},
+  doi={10.1109/SSP.2012.6319708}
+"""
 
     def __init__(self, alpha: float = 0.99, beta: float = 1.0, training_period: int = 14) -> None:
         self.alpha = _finite_float(alpha, "alpha")

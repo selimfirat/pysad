@@ -206,6 +206,86 @@ class TestWindow:
         assert window.get() == [1.0, 2.0]
         assert list(window) == [1.0, 2.0]
 
+    def test_window_get_returns_copy_before_wraparound(self):
+        """get() returns a copy when buffer has not wrapped."""
+        from pysad.utils import Window
+
+        window = Window(window_size=5)
+        for v in (1.0, 2.0, 3.0):
+            window.update(v)
+
+        result = window.get()
+        result[0] = 9.0
+        result.append(4.0)
+
+        assert window.get() == [1.0, 2.0, 3.0]
+        assert list(window) == [1.0, 2.0, 3.0]
+
+    def test_window_get_returns_copy_after_wraparound(self):
+        """get() returns a copy after buffer wraps around."""
+        from pysad.utils import Window
+
+        window = Window(window_size=3)
+        for v in (1.0, 2.0, 3.0, 4.0, 5.0):
+            window.update(v)
+
+        # Buffer wrapped; internal storage is [4.0, 5.0, 3.0] with next_slot=2
+        # window_view() returns concatenated array [3.0, 4.0, 5.0]
+        result = window.get()
+        result[0] = 9.0
+        result.append(6.0)
+
+        assert window.get() == [3.0, 4.0, 5.0]
+        assert list(window) == [3.0, 4.0, 5.0]
+
+    def test_window_get_returns_copy_at_exact_wrap_boundary(self):
+        """get() returns a copy when next_slot == 0 (exact wrap boundary)."""
+        from pysad.utils import Window
+
+        window = Window(window_size=3)
+        for v in (1.0, 2.0, 3.0):
+            window.update(v)
+
+        # Buffer is full, next_slot == 0; window_view() returns a view of points[:3]
+        result = window.get()
+        result[0] = 9.0
+        result.append(4.0)
+
+        assert window.get() == [1.0, 2.0, 3.0]
+        assert list(window) == [1.0, 2.0, 3.0]
+
+    def test_window_get_copy_independent_across_calls(self):
+        """Each get() call returns an independent copy."""
+        from pysad.utils import Window
+
+        window = Window(window_size=3)
+        for v in (1.0, 2.0, 3.0):
+            window.update(v)
+
+        result1 = window.get()
+        result2 = window.get()
+
+        result1[0] = 9.0
+        result2[1] = 8.0
+
+        assert window.get() == [1.0, 2.0, 3.0]
+        assert result1 == [9.0, 2.0, 3.0]
+        assert result2 == [1.0, 8.0, 3.0]
+
+    def test_window_iter_returns_copy_across_wraparound(self):
+        """Iterating the window yields a copy after wraparound."""
+        from pysad.utils import Window
+
+        window = Window(window_size=3)
+        for v in (1.0, 2.0, 3.0, 4.0):
+            window.update(v)
+
+        items = list(window)
+        items[0] = 9.0
+
+        assert window.get() == [2.0, 3.0, 4.0]
+        assert list(window) == [2.0, 3.0, 4.0]
+
     def test_ring_buffer_scalar_and_vector_wraparound(self):
         """Test RingBuffer chronological order and active slices for scalars and vectors."""
         from pysad.utils import RingBuffer

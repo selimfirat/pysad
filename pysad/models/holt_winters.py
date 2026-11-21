@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _finite_float, _int_at_least, check_univariate
@@ -12,7 +13,7 @@ from pysad.utils.validation import _finite_float, _int_at_least, check_univariat
 SMOOTHING_WINDOW = 0.05
 
 
-def _smooth(values: np.ndarray, offset: int) -> np.ndarray:
+def _smooth(values: NDArray[np.float64], offset: int) -> NDArray[np.float64]:
     """The circular, centered, equal-weight moving average of ``values`` over ``2 * offset + 1`` points."""
     padded = np.concatenate((values[-offset:], values, values[:offset]))  # (period + 2 * offset,)
     return np.convolve(padded, np.full(2 * offset + 1, 1.0 / (2 * offset + 1)), mode="valid")
@@ -90,8 +91,8 @@ class HoltWinters(BaseModel):
 
         self.intercept_: float | None = None
         self.slope_ = 0.0
-        self.seasonal_ = np.full(self.period, np.nan)
-        self.deviation_ = np.full(self.period, np.nan)
+        self.seasonal_: NDArray[np.float64] = np.full(self.period, np.nan)
+        self.deviation_: NDArray[np.float64] = np.full(self.period, np.nan)
         self._num_values = 0
         # Whether each of the last window_size - 1 values was a violation.
         self._violations: deque[bool] = deque(maxlen=self.window_size - 1)
@@ -107,7 +108,7 @@ class HoltWinters(BaseModel):
         # A NaN deviation, before the model forecasts this point once, makes no violation.
         return forecast, bool(abs(x - forecast) > self.delta * deviation)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> HoltWinters:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> HoltWinters:
         """Updates the baseline, the trend, and the seasonal coefficient and deviation of the point of the cycle with the next value.
 
         Args:
@@ -149,7 +150,7 @@ class HoltWinters(BaseModel):
                 self.deviation_ = _smooth(self.deviation_, offset)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next value with the failure rule over the last ``window_size`` values.
 
         Args:

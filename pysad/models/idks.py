@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -94,7 +95,7 @@ class IDKS(BaseModel):
         # sigma_phi_[j] is the sum of feature map entry j over the window. Filled by _initialize.
         self.sigma_phi_ = np.zeros(self.num_detectors, dtype=np.float64)
 
-    def _instance(self, X: np.ndarray) -> np.ndarray:
+    def _instance(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """``X`` as a (1, num_features) row, or raises if it is not one instance of the fitted feature count."""
         num_features = self.window_.shape[1]
         X = np.asarray(X, dtype=np.float64)
@@ -114,7 +115,7 @@ class IDKS(BaseModel):
         np.fill_diagonal(d2, np.inf)
         self.radius_sq_[part] = d2.min(axis=1)
 
-    def _single_feature_map(self, x: np.ndarray) -> np.ndarray:
+    def _single_feature_map(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         """The feature map of one instance against the current partitions, as a flat (num_detectors,) array."""
         d2 = ((self.samples_ - x[None, None, :]) ** 2).sum(axis=-1)
         nearest = d2.argmin(axis=1)
@@ -125,7 +126,7 @@ class IDKS(BaseModel):
 
         return fmap.ravel()
 
-    def _partition_feature_map(self, window: np.ndarray, part: int) -> np.ndarray:
+    def _partition_feature_map(self, window: NDArray[np.float64], part: int) -> NDArray[np.float64]:
         """The feature map of every row of ``window`` against partition ``part``, as a (num_instances, num_samples) array."""
         d2 = ((window[:, None, :] - self.samples_[part][None, :, :]) ** 2).sum(axis=-1)
         nearest = d2.argmin(axis=1)
@@ -151,7 +152,7 @@ class IDKS(BaseModel):
         self.initialized_ = True
         self.window_index_ = 0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> IDKS:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> IDKS:
         """Updates the model with the next instance: buffers it until the first window is full, then slides the window by one.
 
         Args:
@@ -205,7 +206,7 @@ class IDKS(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance against the current window, without changing the model.
 
         Args:

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -62,11 +65,11 @@ class RSForest(BaseModel):
         self._node_offsets = np.arange(self.num_trees) * num_nodes
         self._trees = np.arange(self.num_trees)
 
-        self.initial_window_: np.ndarray | None = None
+        self.initial_window_: NDArray[Any] | None = None
         self.num_initial_ = 0
         self.num_recorded_ = 0
 
-    def _build(self, X: np.ndarray) -> None:
+    def _build(self, X: NDArray[Any]) -> None:
         """Builds the trees from the first window `X` of shape (window_size, num_features) and fills the reference profile with it."""
         num_instances, num_features = X.shape
         # Chen et al.'s HPD estimator: the shortest of the intervals [x_(j), x_(j + m)] of the sorted values.
@@ -113,7 +116,7 @@ class RSForest(BaseModel):
         for x in X:
             flat[self._path(x)] += 1
 
-    def _path(self, x: np.ndarray) -> np.ndarray:
+    def _path(self, x: NDArray[Any]) -> NDArray[Any]:
         """Returns the flat node indices of the path of `x` in each tree, of shape (max_depth + 1, num_trees)."""
         split_features, split_points = (
             self.split_features_.reshape(-1),
@@ -130,7 +133,7 @@ class RSForest(BaseModel):
 
         return path
 
-    def _score_path(self, path: np.ndarray) -> float:
+    def _score_path(self, path: NDArray[Any]) -> float:
         counts = self.reference_profile_.reshape(-1)[path]  # (max_depth + 1, num_trees)
         stops = counts <= self.node_size_limit
         stops[-1] = True
@@ -141,7 +144,7 @@ class RSForest(BaseModel):
 
         return -float(density.mean())
 
-    def _fit_path(self, path: np.ndarray, y: int | None) -> None:
+    def _fit_path(self, path: NDArray[Any], y: int | None) -> None:
         if y != 1:
             self.latest_profile_.reshape(-1)[path] += 1
         self.num_recorded_ += 1
@@ -153,7 +156,7 @@ class RSForest(BaseModel):
             self.latest_profile_.fill(0)
             self.num_recorded_ = 0
 
-    def _fit_initial(self, x: np.ndarray, y: int | None) -> None:
+    def _fit_initial(self, x: NDArray[Any], y: int | None) -> None:
         if y == 1:  # the paper builds the trees from normal instances only
             return
         if self.initial_window_ is None:
@@ -164,7 +167,7 @@ class RSForest(BaseModel):
             self._build(self.initial_window_)
             self.initial_window_ = None
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> RSForest:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> RSForest:
         """Records the next instance into the latest node profile, or into the first window until the trees are built.
 
         Args:
@@ -182,7 +185,7 @@ class RSForest(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores the next instance by its negative density under the reference node profiles, without recording it.
 
         Args:
@@ -196,7 +199,7 @@ class RSForest(BaseModel):
 
         return self._score_path(self._path(np.asarray(X, dtype=np.float64)))
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[Any], y: int | None = None) -> float:
         """Scores the next instance against the reference node profiles, and then records it.
 
         Args:

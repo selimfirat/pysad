@@ -98,6 +98,14 @@ Higher values mean more anomalous points across detectors, postprocessors, ensem
 
 Raw score scales differ: detectors return negative log densities, counts or 0 or 1. Calibrate scores before comparing different detectors.
 
+For the five detectors documented here:
+
+- :class:`~pysad.models.HTM` returns the anomaly likelihood (0 to 1, higher is more anomalous) by default, or the raw anomaly score (fraction of unpredicted active columns) if ``likelihood=False``. A spatial anomaly (value outside the observed range by more than 5%) returns 1.0.
+- :class:`~pysad.models.IDKS` returns the negated normal score (negative density), so higher scores mean more anomalous instances.
+- :class:`~pysad.models.IForestASD` returns the isolation forest anomaly score minus the ``contamination`` quantile of the training scores of the current forest, so higher scores mean more anomalous instances.
+- :class:`~pysad.models.Inqmad` returns the negative of the estimated density (quantum measurement), so higher scores (lower density) mean more anomalous instances.
+- :class:`~pysad.models.KELOS` returns the negative KLOME z-score (how much lower the density at a point is than at its nearest micro-cluster centers), so higher scores mean more anomalous instances.
+
 Calibration
 -----------
 
@@ -118,7 +126,7 @@ A calibrator converts a raw score into a value between 0 and 1. PySAD has four c
 A conformal threshold of 0.99 refers to rank within the recent window, not anomaly probability. About 1% of normal scores exceed it under a stable distribution with few ties. Drift, dependence, ties and anomalies in the window affect the observed rate. Raising the threshold reduces alerts, including false alerts on normal points.
 
 Prequential evaluation
-----------------------
+---------------------
 
 Prequential evaluation measures performance on unseen points: score each point, record the score in a metric, then learn from the point.
 
@@ -129,9 +137,20 @@ Prequential evaluation measures performance on unseen points: score each point, 
        metric.update(label, score)
        model.fit_partial(x)
 
-Most examples use ``fit_score_partial`` to combine scoring and learning. See :ref:`the model interface <model-interface>`. :func:`~pysad.evaluation.evaluate_stream` runs this loop on labeled data and returns each metric’s final value.
+Most examples use ``fit_score_partial`` to combine scoring and learning. See :ref:`the model interface <model-interface>`. :func:`~pysad.evaluation.evaluate_stream` runs this loop on labeled data and returns each metric's final value.
 
 The initial learning period is called warm-up. Full-stream metrics include it. To reveal changes over time, evaluate consecutive windows separately. See :doc:`guides/evaluate`.
+
+Warm-up behavior of selected detectors
+--------------------------------------
+
+Each detector has a warm-up period before it produces meaningful scores. During warm-up, ``score_partial`` and ``fit_score_partial`` return a fixed value (usually 0.0 or 0.5) that does not reflect anomalousness.
+
+- :class:`~pysad.models.HTM`: The anomaly likelihood is 0.5 for the first ``probationary_period`` points (default 750). The raw anomaly score (fraction of unpredicted columns) is available immediately if ``likelihood=False``. Spatial anomalies (values outside the observed range by more than 5%) return 1.0 at any time.
+- :class:`~pysad.models.IDKS`: Returns 0.0 until the first window of ``window_size`` points (default 100) is full. After the window fills, the hypersphere partitions are initialized and scores reflect similarity to the window distribution.
+- :class:`~pysad.models.IForestASD`: With ``drift_threshold=None`` (default), the forest is retrained on every completed window of ``window_size`` points (default 2048). Scores before the first retrain come from the initial forest (or the ``initial_window_X`` if provided). With a drift threshold, the first retrains happen at powers of two (1, 2, 4, 8, ...) until the first full window, then only when the window anomaly rate meets the threshold.
+- :class:`~pysad.models.Inqmad`: The first ``initial_size`` points (default 256) form the initial sample. During this period, scores use the mean squared Gaussian kernel density of the sample so far (min-max scaled by the sample). Before any points are fitted, the score is 0.0 (the most anomalous possible score). After the initial sample completes, the adaptive Fourier features are fitted and the density matrix :math:`\rho` and threshold :math:`\tau` are initialized.
+- :class:`~pysad.models.KELOS`: Returns 0.0 until the window has at least two micro-clusters with different densities. The window fills up to ``window_size`` points (default 1000). When all points in the window belong to a single cluster, or all k nearest centers have equal density, the z-score is undefined and the score is 0.0.
 
 Memory and time
 ---------------
@@ -143,7 +162,18 @@ Most PySAD detectors keep a summary of the stream, not the stream itself. The su
 - A set of trees, for example in :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`.
 - Running statistics, for example in :class:`~pysad.models.StandardAbsoluteDeviation`.
 
-These summaries bound memory and processing time independently of stream length. Some detectors retain growing state. :doc:`detectors` lists each detector’s memory requirements.
+These summaries bound memory and processing time independently of stream length. Some detectors retain growing state. :doc:`detectors` lists each detector's memory requirements.
+
+Bounded-memory contracts for selected detectors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following detectors have fixed or slowly growing memory that does not depend on stream length:
+
+- :class:`~pysad.models.HTM`: Memory grows slowly. The temporal memory has at most 65,536 cells (``num_columns`` × ``num_cells_per_column``), each with up to 128 segments of 32 synapses. The anomaly likelihood calibrator keeps a window of 8,640 recent scores. With defaults (2048 columns, 32 cells), the upper bound is about 268 million synapses, but typical streams use far fewer.
+- :class:`~pysad.models.IDKS`: Fixed memory. Keeps a sliding window of ``window_size`` points (default 100) and ``num_partitions × num_samples`` hypersphere samples (default 50 × 4 = 200 samples). Memory is independent of stream length.
+- :class:`~pysad.models.IForestASD`: Fixed memory. Keeps two windows of ``window_size`` points (default 2048) — the reference window used to train the current forest, and the current window being filled. The isolation forest itself has ``n_estimators`` trees of at most ``max_samples`` nodes each.
+- :class:`~pysad.models.Inqmad`: Fixed memory. Keeps a ``dim_x`` by ``dim_x`` density matrix (default 2000 × 2000 = 4 million entries, about 32 MB as float64), plus the random Fourier feature weights and offsets. The initial sample buffer of ``initial_size`` points (default 256) is released after initialization.
+- :class:`~pysad.models.KELOS`: Fixed memory. Keeps a window of ``window_size`` points (default 1000) and the linear sums and counts of its micro-clusters (at most ``window_size`` clusters). Memory is independent of stream length.
 
 Drift and forgetting
 --------------------

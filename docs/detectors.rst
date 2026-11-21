@@ -57,11 +57,11 @@ These detectors take points with one or more features. A feature is one measured
      - Count-min sketch counts of each edge ``[source, destination]`` of a graph stream, in the current time tick against the earlier ticks :cite:`bhatia2020midas`
      - Nothing
      - Fixed: two sketches of ``num_hash_fns`` rows of ``num_buckets`` counts
-   * - :class:`~pysad.models.IForestASD`
-     - Isolation Forest on a sliding window :cite:`ding2013anomaly`
-     - Nothing (initial points optional)
-     - Fixed: two windows of ``window_size`` points
-   * - :class:`~pysad.models.OnlineIsolationForest`
+* - :class:`~pysad.models.IForestASD`
+      - Isolation Forest on a sliding window :cite:`ding2013anomaly`
+      - Nothing (initial points optional). Warm-up: with ``drift_threshold=None`` (default), retrains on every completed window. With a threshold, first retrains at powers of two until the first full window, then only when the window anomaly rate meets the threshold.
+      - Fixed: two windows of ``window_size`` points
+    * - :class:`~pysad.models.OnlineIsolationForest`
      - Online Isolation Forest :cite:`leveni2024online`
      - Nothing
      - Fixed: ``num_trees`` trees and a sliding window of ``window_size`` points
@@ -125,11 +125,11 @@ These detectors take points with one or more features. A feature is one measured
      - The local outlier factor of :class:`~pysad.models.IncrementalLOF` with older points summarized as cluster centers :cite:`salehi2016fast`
      - Nothing
      - Fixed: a window of ``window_size`` points, ``num_summaries`` cluster centers, and their ``num_neighbors`` nearest neighbors
-   * - :class:`~pysad.models.KELOS`
-     - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
-     - Nothing
-     - Fixed: a window of ``window_size`` points and the sums of its micro-clusters
-   * - :class:`~pysad.models.StreamKMPlusPlus`
+* - :class:`~pysad.models.KELOS`
+      - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
+      - Nothing. Warm-up: returns 0.0 until the window has at least two clusters with different densities.
+      - Fixed: a window of ``window_size`` points and the sums of its micro-clusters
+    * - :class:`~pysad.models.StreamKMPlusPlus`
      - Distance to the nearest center of a streaming coreset clustering :cite:`ackermann2012streamkmpp`
      - Nothing
      - Bounded: a buffer of ``coreset_size`` points and at most ``ceil(log2(n_max))`` level coresets of ``coreset_size`` points
@@ -149,18 +149,18 @@ These detectors take points with one or more features. A feature is one measured
      - Local outlier probability :cite:`kriegel2009loop`, as in PyNomaly :cite:`constantinou2018pynomaly`
      - Initial points (``initial_X``)
      - Fixed: the initial points. Does not learn from the stream
-   * - :class:`~pysad.models.Inqmad`
-     - Quantum measurement density estimation :cite:`gallego2022inqmad`
-     - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``)
-     - Fixed: a ``dim_x`` by ``dim_x`` matrix
-   * - :class:`~pysad.models.EXPoSE`
+* - :class:`~pysad.models.Inqmad`
+      - Quantum measurement density estimation :cite:`gallego2022inqmad`
+      - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``). Warm-up: first ``initial_size`` points (default 256) build the initial sample and fit the adaptive Fourier features; before any points, the score is 0.0.
+      - Fixed: a ``dim_x`` by ``dim_x`` matrix
+    * - :class:`~pysad.models.EXPoSE`
      - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
      - Nothing
      - Fixed: ``num_random_features`` frequencies per feature and the mean of the features
-   * - :class:`~pysad.models.IDKS`
-     - Similarity to the data distribution of a sliding window, from hypersphere partitions of the Isolation Distributional Kernel :cite:`xu2026idks`
-     - The number of features, the window size, the number of partitions and the number of samples per partition
-     - Fixed: a window of ``window_size`` points and ``num_partitions * num_samples`` hypersphere samples
+* - :class:`~pysad.models.IDKS`
+      - Similarity to the data distribution of a sliding window, from hypersphere partitions of the Isolation Distributional Kernel :cite:`xu2026idks`
+      - The number of features, the window size, the number of partitions and the number of samples per partition. Warm-up: returns 0.0 until the first window of ``window_size`` points is full.
+      - Fixed: a window of ``window_size`` points and ``num_partitions * num_samples`` hypersphere samples
 
 Univariate detectors
 --------------------
@@ -207,10 +207,10 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Logarithmic loss under an autoregressive model that sequentially discounting learning fits, and a second such model on the smoothed losses for change points :cite:`takeuchi2006unifying`
      - Nothing
      - Fixed: ``order`` values and ``window_size`` scores
-   * - :class:`~pysad.models.HTM`
-     - The fraction of active columns that the temporal memory of Hierarchical Temporal Memory did not predict, turned into an anomaly likelihood :cite:`ahmad2017unsupervised`
-     - The range of the values (``min_val`` and ``max_val``), and a timestamp in seconds since the Unix epoch with each value
-     - Grows slowly: at most 128 segments of 32 synapses for each of the 65,536 cells, and a window of 8,640 scores
+* - :class:`~pysad.models.HTM`
+      - The fraction of active columns that the temporal memory of Hierarchical Temporal Memory did not predict, turned into an anomaly likelihood :cite:`ahmad2017unsupervised`
+      - The range of the values (``min_val`` and ``max_val``), and a timestamp in seconds since the Unix epoch with each value. Warm-up: the anomaly likelihood is 0.5 for the first ``probationary_period`` points (default 750); raw scores are available immediately.
+      - Grows slowly: at most 128 segments of 32 synapses for each of the 65,536 cells, and a window of 8,640 scores
    * - :class:`~pysad.models.KNNCAD`
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`
      - A probationary period: at least 48 values that it learns from before it scores

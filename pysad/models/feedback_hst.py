@@ -107,14 +107,14 @@ class FeedbackHST(BaseModel):
       implement HSTree replacement, so no direct comparison exists.
 
     Args:
-        feature_mins (np.ndarray | list[float] | tuple[float, ...]): Minimum boundary of each feature.
-        feature_maxes (np.ndarray | list[float] | tuple[float, ...]): Maximum boundary of each feature.
+        feature_mins (NDArray[Any] | list[float] | tuple[float, ...]): Minimum boundary of each feature. Arrays are converted to float64.
+        feature_maxes (NDArray[Any] | list[float] | tuple[float, ...]): Maximum boundary of each feature. Arrays are converted to float64.
         window_size (int): Size of the streaming window used to rebuild trees and compute drift. Must be positive (Default=250).
         num_trees (int): Number of half-space trees. Must be positive (Default=25).
         max_depth (int): Maximum depth of each tree. Must be positive (Default=15).
         feedback_budget (int): Total number of labels the human will provide. Must be positive (Default=30).
         tau (float): Expected anomaly proportion in [0, 1]. Used to set the tau-quantile threshold (Default=0.05).
-        initial_window_X (np.ndarray | None): Optional initial window to build the first trees (Default=None).
+        initial_window_X (NDArray[Any] | None): Optional initial window to build the first trees. The array is converted to float64 (Default=None).
         random_work_space (bool): Whether each tree uses a random work space (Default=True).
         check_kl_divergence (bool): If True, use KL-divergence to select trees for replacement on drift; otherwise replace a fixed fraction (Default=True).
         kl_alpha (float): Significance level for the KL-divergence threshold in (0, 1) (Default=0.05).
@@ -196,14 +196,14 @@ class FeedbackHST(BaseModel):
 
     def __init__(
         self,
-        feature_mins: NDArray[np.float64] | list[float] | tuple[float, ...],
-        feature_maxes: NDArray[np.float64] | list[float] | tuple[float, ...],
+        feature_mins: NDArray[Any] | list[float] | tuple[float, ...],
+        feature_maxes: NDArray[Any] | list[float] | tuple[float, ...],
         window_size: int = 250,
         num_trees: int = 25,
         max_depth: int = 15,
         feedback_budget: int = 30,
         tau: float = 0.05,
-        initial_window_X: NDArray[np.float64] | None = None,
+        initial_window_X: NDArray[Any] | None = None,
         random_work_space: bool = True,
         check_kl_divergence: bool = True,
         kl_alpha: float = 0.05,
@@ -707,7 +707,7 @@ class FeedbackHST(BaseModel):
         self._hst.is_first_window = True
         self._hst.step = 0
 
-    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> FeedbackHST:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> FeedbackHST:
         """Update the model with the next instance.
 
         Args:
@@ -729,7 +729,7 @@ class FeedbackHST(BaseModel):
 
         return self
 
-    def score_partial(self, X: NDArray[np.float64]) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Score the anomalousness of the next instance using weighted ensemble.
 
         If no feedback has been provided yet, uses base HST score. After feedback
@@ -768,7 +768,7 @@ class FeedbackHST(BaseModel):
         # After transition, use ensemble score
         return ensemble_score
 
-    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[Any], y: int | None = None) -> float:
         """Score then fit the instance (prequential)."""
         score = self.score_partial(X)
         self.fit_partial(X, y)
@@ -778,7 +778,7 @@ class FeedbackHST(BaseModel):
         """Return True if the model can request a label (feedback budget not exhausted)."""
         return self._feedback_used < self.feedback_budget
 
-    def request_feedback(self, X: NDArray[np.float64]) -> bool:
+    def request_feedback(self, X: NDArray[Any]) -> bool:
         """Determine if the given instance should be queried for a label.
 
         Simple strategy (QUERY_TYPE=1 in reference): query if score is in top
@@ -791,6 +791,7 @@ class FeedbackHST(BaseModel):
         if not self.should_query():
             return False
 
+        X = np.asarray(X, dtype=np.float64)
         score = self.score_partial(X)
         self._unlabeled_buffer.append(X.copy())
         self._unlabeled_scores.append(score)
@@ -807,7 +808,7 @@ class FeedbackHST(BaseModel):
 
         return False
 
-    def provide_feedback(self, X: NDArray[np.float64], label: int) -> None:
+    def provide_feedback(self, X: NDArray[Any], label: int) -> None:
         """Provide a label for a previously queried instance and update weights.
 
         Args:
@@ -837,7 +838,7 @@ class FeedbackHST(BaseModel):
             X_unlabeled = np.array(self._unlabeled_buffer)
             self._update_weights_from_feedback(X_labeled, y_labeled, X_unlabeled)
 
-    def explain_partial(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
+    def explain_partial(self, X: NDArray[Any]) -> NDArray[np.float64]:
         """Return per-feature attribution (delegates to base HST)."""
         return self._hst.explain_partial(X)
 

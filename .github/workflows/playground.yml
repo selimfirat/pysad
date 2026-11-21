@@ -1,0 +1,82 @@
+name: deploy playground
+
+# Builds the PySAD interactive playground (Pyodide/WASM) and deploys it to GitHub Pages.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "pysad/**"
+      - "spaces/playground/**"
+      - "examples/data/nab/**"
+      - "examples/data/arrhythmia.mat"
+      - ".github/workflows/playground.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: playground
+          prune-cache: true
+      - name: Build playground bundle
+        run: |
+          stage_dir="$(mktemp -d)"
+          echo "STAGE_DIR=$stage_dir" >> $GITHUB_ENV
+          cp spaces/playground/index.html spaces/playground/engine.py "$stage_dir"/
+          mkdir -p "$stage_dir/data/nab"
+          cp -r examples/data/nab/. "$stage_dir/data/nab"/
+          cp examples/data/arrhythmia.mat "$stage_dir/data/arrhythmia.mat"
+          uv build --wheel --out-dir "$stage_dir"
+          STAGE_DIR="$stage_dir" uv run --no-project --with "$stage_dir"/pysad-*.whl python - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          stage = Path(os.environ["STAGE_DIR"])
+          sys.path.insert(0, str(stage))
+          import engine
+
+          wheels = sorted(p.name for p in stage.glob("pysad-*.whl"))
+          (stage / "manifest.json").write_text(json.dumps({"wheel": wheels[-1]}), encoding="utf-8")
+          (stage / "initial_snapshot.json").write_text(
+              engine.build_initial_snapshot_json(),
+              encoding="utf-8",
+          )
+          PY
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ env.STAGE_DIR }}
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - name: Clean up
+        if: always()
+        run: rm -rf "${{ env.STAGE_DIR }}"

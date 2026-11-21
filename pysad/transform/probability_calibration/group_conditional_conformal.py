@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from bisect import bisect_left, insort
 from collections import OrderedDict
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -18,7 +18,7 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
     The calibrator keeps one sliding calibration window per regime (group). A score is transformed
     against its own regime's window: it returns the fraction of that window's scores below the
     score, i.e. one minus the score's conformal p-value within that regime. This rank transform
-    follows the online conformal anomaly detection of Laxhammar (2013) and the sliding calibration
+    follows the online conformal anomaly detection of Laxhammar and Falkman (2014) and the sliding calibration
     queue of Ishimtsev et al. (2017).
 
     Stratifying by regime gives conditional coverage per regime instead of only marginal coverage
@@ -51,6 +51,8 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
         window_size (int): Scores kept per regime.
         max_regimes (int): Maximum number of regimes tracked at once.
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
 
     def __init__(self, window_size: int = 500, max_regimes: int = 64) -> None:
         if window_size < 1:

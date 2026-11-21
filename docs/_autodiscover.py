@@ -6,7 +6,6 @@ import ast
 import importlib
 import inspect
 import re
-import sys
 from pathlib import Path
 
 import pysad.models
@@ -214,13 +213,7 @@ def _infer_detector_doc(cls: type) -> tuple[str, str, str]:
     doc = inspect.getdoc(cls) or cls.__name__
     first_line = doc.splitlines()[0].rstrip(".")
     sig = inspect.signature(cls.__init__)
-    required = [
-        f"``{p.name}``"
-        for p in sig.parameters.values()
-        if p.name != "self"
-        and p.default is inspect.Parameter.empty
-        and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
-    ]
+    required = [f"``{name}``" for name in cls._required_init_params()]
     needs = ", ".join(required) if required else "Nothing"
     memory = (
         "Fixed: a window of ``window_size`` points" if "window_size" in sig.parameters else "Fixed"
@@ -229,12 +222,7 @@ def _infer_detector_doc(cls: type) -> tuple[str, str, str]:
 
 
 def _is_univariate_detector(cls: type) -> bool:
-    kind = getattr(cls, "_input_kind", None)
-    if kind in ("univariate", "timestamped"):
-        return True
-    if kind in ("multivariate", "edge"):
-        return False
-    return hasattr(sys.modules[cls.__module__], "check_univariate")
+    return bool(cls._effective_input_kind() in ("univariate", "timestamped"))
 
 
 def expand_detectors_tables(text: str) -> str:

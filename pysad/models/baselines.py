@@ -78,14 +78,16 @@ class PerfectModel(BaseModel):
         return float(self.fit_partial(X, y).score_partial(X))
 
     def score_partial(self, X: np.ndarray) -> float:
-        """Returns the oldest stored label that the model has not returned yet.
+        """Returns the oldest stored label that the model has not returned yet, or ``0.0`` if none is stored.
 
         Args:
             X (np.float64 array of shape (num_features,)): Ignored.
 
         Returns:
-            float: The true label.
+            float: The true label, or ``0.0`` before any label is fitted.
         """
+        if not self.labels:
+            return 0.0
         return self.labels.popleft()
 
 

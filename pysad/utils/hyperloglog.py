@@ -11,7 +11,7 @@ _HASH_BITS = 64
 """Number of bits in each fingerprint."""
 
 _ALPHA_BY_PRECISION = {4: 0.673, 5: 0.697, 6: 0.709}
-"""Table 1 constants for precisions without a closed form."""
+"""Figure 3 constants for precisions without a closed form."""
 
 
 class HyperLogLog:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, ClassVar, Literal, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -276,6 +276,8 @@ class NonparametricDynamicThresholdPostprocessor(BasePostprocessor):
         ValueError: If ``window_size`` is less than 1.
     """
 
+    _has_decision_rule: ClassVar[bool] = True
+
     def __init__(
         self,
         window_size: int = 2100,
@@ -368,6 +370,9 @@ class NonparametricDynamicThresholdPostprocessor(BasePostprocessor):
 
         return float((sequence_max[-1] - thresholds[best]) / (mean + std))
 
+    def _decide_from_score(self, score: float) -> int:
+        return 1 if score > 0.0 else 0
+
     def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a batch using the frozen window's last-score anomaly value."""
         n = len(scores)
@@ -391,6 +396,8 @@ class QuantileFilter(BasePostprocessor):
     Args:
         q (float): The quantile of the previous scores that a score must reach to get the label 1, in the open interval (0, 1) (Default=0.95).
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "decision"
 
     def __init__(self, q: float = 0.95) -> None:
         self.meter = QuantileMeter(q=q)
@@ -451,6 +458,8 @@ class ThresholdFilter(BasePostprocessor):
     Args:
         threshold (float): The lowest score that gets the label 1.
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "decision"
 
     def __init__(self, threshold: float) -> None:
         self.threshold = threshold

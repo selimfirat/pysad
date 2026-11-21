@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -76,7 +77,7 @@ class MemStream(BaseModel):
         weights = gamma ** np.arange(num_neighbors)
         self.neighbor_weights_ = weights / weights.sum()
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> MemStream:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> MemStream:
         """Learns from one instance; y is ignored. Returns this model."""
         if self.num_seen_ == 0:
             self.data_ = np.empty((self.window_size, len(X)), dtype=np.float64)
@@ -97,7 +98,7 @@ class MemStream(BaseModel):
             self._normalize_memory()
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Returns the discounted L1 distance, or zero during initial training."""
         if self.num_seen_ < self.window_size:
             return 0.0
@@ -108,13 +109,13 @@ class MemStream(BaseModel):
         self.std_ = self.data_.std(axis=0, ddof=int(self.window_size > 1))
         self.std_[self.std_ == 0.0] = 1.0
 
-    def _encode(self, X: np.ndarray) -> np.ndarray:
-        encoded: np.ndarray = np.maximum(
+    def _encode(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
+        encoded: NDArray[np.float64] = np.maximum(
             ((X - self.mean_) / self.std_).dot(self.encoder_weights_) + self.encoder_bias_, 0.0
         )
         return encoded
 
-    def _distance(self, encoding: np.ndarray) -> float:
+    def _distance(self, encoding: NDArray[np.float64]) -> float:
         distances = np.abs(self.memory_ - encoding).sum(axis=1)
         if self.num_neighbors == 1 or self.gamma == 0.0:
             return float(distances.min())

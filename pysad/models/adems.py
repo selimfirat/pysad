@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.linalg import norm
 
 from pysad.core.base_model import BaseModel
@@ -31,7 +32,7 @@ class ADeMS(BaseModel):
         num_components: int | None = None,
         sketch_size: int | None = None,
         threshold: float | None = None,
-        initial_X: np.ndarray | None = None,
+        initial_X: NDArray[np.float64] | None = None,
     ) -> None:
         if threshold is not None and initial_X is None:
             raise ValueError(
@@ -56,12 +57,12 @@ class ADeMS(BaseModel):
             )
         default_components = min(max(1, num_features // 5), self.sketch_size_)
         self.num_components_ = self.num_components or default_components
-        self.sketch_ = np.zeros((num_features, 0))
-        self.components_ = np.zeros((num_features, 0))
+        self.sketch_: NDArray[np.float64] = np.zeros((num_features, 0))
+        self.components_: NDArray[np.float64] = np.zeros((num_features, 0))
         self.to_init = False
 
     @staticmethod
-    def _normalize(x: np.ndarray) -> np.ndarray | None:
+    def _normalize(x: NDArray[np.float64]) -> NDArray[np.float64] | None:
         """Normalize a single instance to unit L2 norm, with overflow/underflow protection."""
         scale = np.abs(x).max()
         if scale == 0.0:
@@ -70,10 +71,10 @@ class ADeMS(BaseModel):
         nrm = np.linalg.norm(y)
         if nrm == 0.0:
             return None
-        unit: np.ndarray = y / nrm
+        unit: NDArray[np.float64] = y / nrm
         return unit
 
-    def _normalize_batch(self, Y: np.ndarray) -> np.ndarray:
+    def _normalize_batch(self, Y: NDArray[np.float64]) -> NDArray[np.float64]:
         """Normalize each column of Y to unit L2 norm, dropping zero columns."""
         normalized = []
         for i in range(Y.shape[1]):
@@ -85,12 +86,12 @@ class ADeMS(BaseModel):
         return np.column_stack(normalized)
 
     @staticmethod
-    def _instance(X: np.ndarray) -> np.ndarray:
+    def _instance(X: NDArray[np.float64]) -> NDArray[np.float64]:
         # A fresh contiguous copy, so that every BLAS call sees the same memory layout and
         # alignment whatever array the caller passes, including a reused buffer.
         return np.array(X, dtype=np.float64, order="C", copy=True)
 
-    def _update(self, Y: np.ndarray) -> None:
+    def _update(self, Y: NDArray[np.float64]) -> None:
         # DetUpdate (Algorithm 3) with the new instances in the columns of Y, shape (num_features, n).
         D = np.hstack([self.sketch_, Y])  # (num_features, num_columns + n)
         U, s, _ = np.linalg.svd(D, full_matrices=False)
@@ -109,11 +110,11 @@ class ADeMS(BaseModel):
         # A copy, since pickle stores a view as a contiguous array, which changes the rounding of _residual.
         self.components_ = U[:, :k].copy()
 
-    def _residual(self, y: np.ndarray) -> float:
+    def _residual(self, y: NDArray[np.float64]) -> float:
         U = self.components_
         return float(norm(y - U @ (U.T @ y)))
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> ADeMS:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> ADeMS:
         """Updates the sketch with the next instance, unless its score is above ``threshold``.
 
         Args:
@@ -135,7 +136,7 @@ class ADeMS(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the instance by the norm of its residual after the projection on the top singular vectors.
 
         Args:

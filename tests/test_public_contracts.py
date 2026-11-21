@@ -1,6 +1,7 @@
 """Fast static checks for public API documentation, citations, and benchmark registration."""
 
 import ast
+import inspect
 import re
 import subprocess
 import sys
@@ -17,13 +18,14 @@ for _extra_dir in (ROOT / "docs", ROOT / "scripts"):
         sys.path.insert(0, str(_extra_dir))
 
 from _autodiscover import (  # noqa: E402
+    _is_univariate_detector,
     collect_bibtex,
     doc_counts,
     expand_api_autosummary,
     expand_detectors_tables,
     is_detector_model,
 )
-from sync_exports import sync_all  # noqa: E402
+from sync_exports import _discover_detectors, sync_all  # noqa: E402
 
 
 def _package_exports(package: str) -> set[str]:
@@ -67,17 +69,39 @@ def test_public_exports_match_api_reference_pages():
 
 
 def test_docstring_citations_exist_in_bibliography(tmp_path):
-    """Every :cite: key in pysad docstrings exists in docs/refs.bib or a __bibtex__ attribute."""
-    _, bib_keys = collect_bibtex(ROOT)
+    """Every :cite: key exists in the bibliography, every entry is cited, and every detector cites its source."""
+    bib_text, bib_keys = collect_bibtex(ROOT)
     assert "angelov2014anomaly" in bib_keys
+    assert not re.search(r"[\x00-\x09\x0b-\x1f]", bib_text), (
+        "Bibliography contains unexpected ASCII control characters"
+    )
 
+    cite_pattern = re.compile(r":cite(?::[a-z]+)?:`([^`]+)`")
     cited_keys: set[str] = set()
     for py_path in (ROOT / "pysad").rglob("*.py"):
-        for group in re.findall(r":cite:`([^`]+)`", py_path.read_text(encoding="utf-8")):
+        for group in cite_pattern.findall(py_path.read_text(encoding="utf-8")):
+            cited_keys.update(key.strip() for key in group.split(","))
+    for rst_path in (ROOT / "docs").rglob("*.rst"):
+        if "_build" in rst_path.parts:
+            continue
+        for group in cite_pattern.findall(rst_path.read_text(encoding="utf-8")):
             cited_keys.update(key.strip() for key in group.split(","))
 
     missing = sorted(cited_keys - bib_keys)
     assert not missing, f"Citations missing from docs/refs.bib or __bibtex__: {missing}"
+
+    unused = sorted(bib_keys - cited_keys)
+    assert not unused, f"Uncited bibliography entries in docs/refs.bib or __bibtex__: {unused}"
+
+    undocumented_detectors = [
+        name
+        for name in pysad.models.__all__
+        if is_detector_model(name)
+        and not cite_pattern.search(inspect.getdoc(getattr(pysad.models, name)) or "")
+    ]
+    assert not undocumented_detectors, (
+        f"Streaming detectors missing :cite: in class docstring: {undocumented_detectors}"
+    )
 
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "refs.bib").write_text(
@@ -103,6 +127,25 @@ def test_detectors_rst_covers_all_streaming_detectors():
     counts = doc_counts(ROOT)
     assert counts["num_detectors"] == len(expected)
     assert counts["num_drift_streams"] > 0
+
+
+def test_autodiscover_and_sync_exports_classify_all_models():
+    """AST metadata in sync_exports and docs/_autodiscover match runtime BaseModel properties."""
+    discovered = _discover_detectors()
+    for name in pysad.models.__all__:
+        cls = getattr(pysad.models, name)
+        expected_is_det = bool(cls._is_detector)
+        expected_kind = cls._effective_input_kind()
+        assert _is_univariate_detector(cls) == (expected_kind in ("univariate", "timestamped"))
+        assert discovered[name][:2] == (expected_is_det, expected_kind)
+
+
+def test_readme_detector_table_matches_models():
+    """README.md detector tables cover every streaming detector in pysad.models.__all__."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    in_readme = set(re.findall(r"^\| `(\w+)` \|", readme, re.M))
+    expected = {name for name in pysad.models.__all__ if is_detector_model(name)}
+    assert in_readme == expected
 
 
 def test_streaming_detectors_are_registered_in_benchmark():

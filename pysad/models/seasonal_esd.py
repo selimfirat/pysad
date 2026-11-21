@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.stats import t
 
 from pysad.core.base_model import BaseModel
@@ -20,7 +21,7 @@ def _critical_value(alpha: float, num_tails: float, n: int, i: int) -> float:
     return float(((n - i) * t_value) / np.sqrt((n - i - 1 + t_value**2) * (n - i + 1)))
 
 
-def _median_mad_sorted(sub: np.ndarray) -> tuple[float, float]:
+def _median_mad_sorted(sub: NDArray[np.float64]) -> tuple[float, float]:
     """Returns ``(median, 1.4826 * MAD)`` of sorted 1-D slice ``sub`` in O(log m) time."""
     center, mad = _median_and_mad_sorted(sub)
     return center, 1.4826 * mad
@@ -78,18 +79,16 @@ class SeasonalESD(BaseModel):
             period=period, window_size=window_size, robust=robust
         )
 
-    def _as_value(self, X: np.ndarray) -> float:
+    def _as_value(self, X: NDArray[np.float64]) -> float:
         return check_univariate(X, "SeasonalESD")
 
-    def _center_scale(self, values: np.ndarray) -> tuple[float, float]:
+    def _center_scale(self, values: NDArray[np.float64]) -> tuple[float, float]:
         return float(values.mean()), float(values.std(ddof=1))
 
     def _critical_value(self, n: int, i: int) -> float:
         return _critical_value(self.alpha, 2.0 if self.direction == "both" else 1.0, n, i)
 
-    def _esd_target(
-        self, values: np.ndarray, min_scale: float | np.floating, target_idx: int
-    ) -> float:
+    def _esd_target(self, values: NDArray[np.float64], min_scale: float, target_idx: int) -> float:
         arr = np.asarray(values, dtype=np.float64)
         n = arr.shape[0]
         max_k = max(1, int(self.max_anomalies * n))
@@ -192,7 +191,7 @@ class SeasonalESD(BaseModel):
 
         return 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> SeasonalESD:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> SeasonalESD:
         """Adds the next instance to the model window.
 
         Args:
@@ -205,16 +204,18 @@ class SeasonalESD(BaseModel):
         self._window.append(self._as_value(X))
         return self
 
-    def _score_window(self, values: np.ndarray) -> float:
+    def _score_window(self, values: NDArray[np.float64]) -> float:
         residuals = self.residual_transformer.transform_window(values)
         # The rounding error of the residuals grows with the window size and the largest value.
         return self._esd_target(
             residuals,
-            min_scale=self.window_size * np.finfo(np.float64).eps * float(np.abs(values).max()),
+            min_scale=float(
+                self.window_size * np.finfo(np.float64).eps * float(np.abs(values).max())
+            ),
             target_idx=values.shape[0] - 1,
         )
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next instance in the window that ends with it, without adding it to the window.
 
         Args:
@@ -236,7 +237,7 @@ class SeasonalESD(BaseModel):
         candidate[num_prior] = value
         return self._score_window(candidate)
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Adds the next instance to the window and scores it.
 
         Args:
@@ -273,7 +274,7 @@ class SeasonalHybridESD(SeasonalESD):
 
     _use_median = True
 
-    def _center_scale(self, values: np.ndarray) -> tuple[float, float]:
+    def _center_scale(self, values: NDArray[np.float64]) -> tuple[float, float]:
         center = float(np.median(values))
         scale = 1.4826 * float(np.median(np.abs(values - center)))
         return center, scale

@@ -233,6 +233,11 @@ extra_checks = true
 module = [
     "pysad.core.*",
     "pysad.evaluation.*",
+    "pysad.models.htm.htm",
+    "pysad.models.idks",
+    "pysad.models.iforest_asd",
+    "pysad.models.inqmad",
+    "pysad.models.kelos",
     "pysad.statistics.*",
     "pysad.evaluation.metrics",
     "pysad.evaluation.prequential",
@@ -250,11 +255,11 @@ module = [
     "pysad.utils.window",
     "pysad.integrations",
     "pysad.integrations.*",
-    "pysad.models.htm.htm",
-    "pysad.models.idks",
-    "pysad.models.iforest_asd",
-    "pysad.models.inqmad",
-    "pysad.models.kelos",
+    "pysad.models.adems",
+    "pysad.models.anyout",
+    "pysad.models.approx_storm",
+    "pysad.models.cpod",
+    "pysad.models.d3",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true

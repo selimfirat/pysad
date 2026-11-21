@@ -181,7 +181,7 @@ def test_alert_mcc_survives_csv_and_averages_runs(tmp_path, monkeypatch):
     benchmark.write_tables(results)
     with (tmp_path / "alerts.csv").open() as stream:
         table = list(csv.DictReader(stream))
-    assert [row["MCC"] for row in table] == ["0.289", "0.000", "-0.289", "0.289"] * 2
+    assert [row["MCC"] for row in table] == ["0.289", "0.000", "-0.289", "0.289"] * 3
 
 
 @pytest.fixture

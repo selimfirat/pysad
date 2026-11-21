@@ -72,6 +72,7 @@ CALIBRATOR_PARAMS: dict[str, dict[str, Any]] = {
     "ConformalProbabilityCalibrator": {"window_size": 20},
     "ConformalTSFMCalibrator": {"alpha": 0.1, "gamma": 0.005, "window_size": 20},
     "GaussianTailProbabilityCalibrator": {"window_size": 20, "short_window_size": 5},
+    "GroupConditionalConformalCalibrator": {"window_size": 20, "max_regimes": 4},
     "SPOTProbabilityCalibrator": {"num_init": 15, "max_peaks": 20},
 }
 ENSEMBLER_PARAMS: dict[str, dict[str, Any]] = {

@@ -4,12 +4,13 @@ from collections.abc import Callable, Hashable, Sequence
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from river import base
 
 from pysad.core.base_model import BaseModel
 
 
-class PySADToRiverAdapter(base.AnomalyDetector):
+class PySADToRiverAdapter(base.AnomalyDetector):  # type: ignore[misc]
     """Exposes a PySAD detector through River's anomaly detector interface.
 
     Requires River 0.26.1 or newer.
@@ -71,7 +72,7 @@ class PySADToRiverAdapter(base.AnomalyDetector):
         """
         return self.model_.score_partial(self._to_array(x))
 
-    def _to_array(self, x: dict[Any, Any]) -> np.ndarray:
+    def _to_array(self, x: dict[Any, Any]) -> NDArray[Any]:
         if self.feature_names_ is None:
             self.feature_names_ = tuple(x)
             self._feature_keys = frozenset(x)

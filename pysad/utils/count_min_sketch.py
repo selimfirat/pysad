@@ -8,6 +8,7 @@ from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 _HASH_PRIME = (1 << 61) - 1
@@ -179,7 +180,7 @@ class CountMinSketch:
         """
         return f"{type(self).__name__}(width={self.width}, depth={self.depth}, total={self.total})"
 
-    def _buckets(self, item: Any) -> np.ndarray:
+    def _buckets(self, item: Any) -> NDArray[np.int64]:
         """Map an item to its counter in every row.
 
         Args:

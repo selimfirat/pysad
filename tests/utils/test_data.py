@@ -811,7 +811,9 @@ def _load_creditcard_arff(monkeypatch, data_base_path: str) -> tuple:
     with open(arff_path, "w") as f:
         f.write(content.decode())
 
-    # Use monkeypatch.setitem to set the checksum so it's reverted after the test
+# Follow existing test pattern: set checksum via monkeypatch so it is reverted after the test
+    # The _source function uses "creditcard/creditcard.arff" as key for checksum lookup
+    # When download=False and file exists, checksum is checked but we can set it to match
     import hashlib
 
     import pysad.utils.data as dmod

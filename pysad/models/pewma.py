@@ -38,6 +38,8 @@ class PEWMA(BaseModel):
     - The paper raises an alert when :math:`P_t` is below a threshold. The model returns :math:`|Z_t|`, which ranks values in the same order as :math:`-P_t`. A higher score is more anomalous. The alert threshold :math:`\tau` corresponds to a score threshold of :math:`\sqrt{-2 \ln(\tau \sqrt{2 \pi})}`.
     - The paper does not define :math:`Z_t` when :math:`\hat{\sigma}_t = 0`. This occurs before the second value or on a constant stream. The model then uses :math:`Z_t = 0`. The value scores 0 and gets the largest probability :math:`P_t`. Rounding can make :math:`s_2 - s_1^2` slightly negative. The model then uses :math:`\hat{\sigma}_t = 0`.
 
+    __bibtex__: :cite:`carter2012probabilistic`.
+
     Args:
         alpha (float): The weight :math:`\alpha` of the previous averages after the training period, in [0, 1] (Default=0.99).
         beta (float): The probability weight :math:`\beta` in :math:`\alpha_t`, in [0, 1]. With 0, the model is an EWMA (Default=1.0).

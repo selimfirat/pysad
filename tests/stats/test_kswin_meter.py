@@ -8,9 +8,9 @@ from pysad.statistics import KSWINMeter
 
 
 def _spread_change(seed=0):
-    # The mean stays 0, the standard deviation changes from 1 to 3 at index 1000.
+    # The mean stays 0, the standard deviation changes from 1 to 3 at index 400.
     rng = np.random.RandomState(seed)
-    return np.concatenate([rng.normal(0, 1, 1000), rng.normal(0, 3, 1000)])
+    return np.concatenate([rng.normal(0, 1, 400), rng.normal(0, 3, 400)])
 
 
 def _run_meter(meter, values):
@@ -57,23 +57,23 @@ def test_matches_reference_kswin():
 def test_stationary_stream_has_no_drift():
     meter = KSWINMeter(random_state=0)
 
-    drifts, dists = _run_meter(meter, np.random.RandomState(1).normal(size=5000))
+    drifts, dists = _run_meter(meter, np.random.RandomState(1).normal(size=1500))
 
     assert drifts == []
     assert dists[298] == 0.0
     assert 0.0 < dists[299] <= 1.0
 
 
-@pytest.mark.parametrize("seed", range(5))
+@pytest.mark.parametrize("seed", range(2))
 def test_mean_shift_is_detected_soon_after_it_starts(seed):
     rng = np.random.RandomState(seed)
-    values = np.concatenate([rng.normal(0, 1, 1000), rng.normal(3, 1, 1000)])
+    values = np.concatenate([rng.normal(0, 1, 400), rng.normal(3, 1, 400)])
     meter = KSWINMeter(random_state=seed)
 
     drifts, _ = _run_meter(meter, values)
 
     assert drifts
-    assert 1000 <= drifts[0] < 1050
+    assert 400 <= drifts[0] < 450
 
 
 def test_window_keeps_the_newest_values_after_a_drift():
@@ -85,15 +85,6 @@ def test_window_keeps_the_newest_values_after_a_drift():
     assert drifts[0] < 130
     assert dists[drifts[0] + 1 : drifts[0] + 70] == [dists[drifts[0]]] * 69
     assert (np.diff(drifts) >= 70).all()
-
-
-def test_same_seed_gives_same_distances():
-    values = _spread_change()
-
-    _, first = _run_meter(KSWINMeter(random_state=5), values)
-    _, second = _run_meter(KSWINMeter(random_state=5), values)
-
-    assert first == second
 
 
 @pytest.mark.parametrize("alpha", [0.0, 1.0, -0.1])

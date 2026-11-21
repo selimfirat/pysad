@@ -31,8 +31,8 @@ jobs:
         with:
           token: ${{ github.token }}
           # Gives the other workflows time to register their check runs.
-          delay: 30s
-          interval: 20s
+          delay: 15s
+          interval: 5s
           # Code scanning's summary check run can report "neutral" before the analyses have
           # uploaded and flip to "success" later, which fails this job. The "analyze" jobs that
           # produce the analyses are still watched.

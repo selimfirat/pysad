@@ -35,6 +35,15 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: lint-actionlint
+          prune-cache: true
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-actionlint-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Run actionlint
         # The runner comes with shellcheck, which actionlint uses for the run: scripts.
         # The lint dependency group in pyproject.toml pins the pre-commit version. --only-group
@@ -50,6 +59,15 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: lint-zizmor
+          prune-cache: true
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-zizmor-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Run zizmor
         env:
           # Turns on zizmor's online audits, such as impostor commits, version comments

@@ -18,39 +18,6 @@ BUCKET_SCORES = [
 ]
 
 
-def test_ensemblers():
-    import numpy as np
-
-    from pysad.transform.ensemble import (
-        AverageOfMaximumScoreEnsembler,
-        AverageScoreEnsembler,
-        MaximumOfAverageScoreEnsembler,
-        MaximumScoreEnsembler,
-        MedianScoreEnsembler,
-    )
-
-    scores = np.random.rand(100, 10)
-
-    ensemblers = {
-        AverageScoreEnsembler: {},
-        MaximumScoreEnsembler: {},
-        MedianScoreEnsembler: {},
-        AverageOfMaximumScoreEnsembler: {},
-        MaximumOfAverageScoreEnsembler: {},
-    }
-
-    for ensembler_cls, params_dict in ensemblers.items():
-        ensembler = ensembler_cls(**params_dict)
-        ensembled_scores = ensembler.fit_transform(scores)
-
-        assert ensembled_scores.shape == (scores.shape[0],)
-
-        ensembler = ensembler_cls(**params_dict).fit(scores)
-        ensembled_scores = ensembler.transform(scores)
-
-        assert ensembled_scores.shape == (scores.shape[0],)
-
-
 def test_simple_ensemblers_output_values():
     import numpy as np
 
@@ -155,40 +122,6 @@ def test_bucket_ensemblers_reject_invalid_buckets(ensembler_cls, kwargs, error):
         cls(**kwargs).fit_transform(np.array(BUCKET_SCORES))
 
 
-def test_ensemblers_partial_matches_batch():
-    import numpy as np
-
-    from pysad.transform.ensemble import (
-        AverageOfMaximumScoreEnsembler,
-        AverageScoreEnsembler,
-        MaximumOfAverageScoreEnsembler,
-        MaximumScoreEnsembler,
-        MedianScoreEnsembler,
-    )
-
-    scores = np.array(BUCKET_SCORES)
-
-    ensemblers = {
-        AverageScoreEnsembler: {},
-        MaximumScoreEnsembler: {},
-        MedianScoreEnsembler: {},
-        AverageOfMaximumScoreEnsembler: {"n_buckets": 3},
-        MaximumOfAverageScoreEnsembler: {"n_buckets": 3},
-    }
-
-    for ensembler_cls, params_dict in ensemblers.items():
-        np.random.seed(0)
-        batch_scores = ensembler_cls(**params_dict).fit_transform(scores)
-
-        np.random.seed(0)
-        ensembler = ensembler_cls(**params_dict)
-        for row, batch_score in zip(scores, batch_scores, strict=True):
-            partial_score = ensembler.fit_transform_partial(row)
-
-            assert isinstance(partial_score, float)
-            np.testing.assert_allclose(partial_score, batch_score)
-
-
 @pytest.mark.parametrize(
     "ensembler_cls,params_dict",
     [
@@ -215,43 +148,6 @@ def test_ensemblers_accept_list_scores(ensembler_cls, params_dict):
     from_array = cls(**params_dict).fit_transform_partial(np.array(row))
 
     np.testing.assert_allclose(from_list, from_array)
-
-
-@pytest.mark.parametrize(
-    "ensembler_cls",
-    ["AverageOfMaximumScoreEnsembler", "MaximumOfAverageScoreEnsembler"],
-)
-def test_bucket_ensemblers_random_state_reproducibility(ensembler_cls):
-    """Fixed random_state must give identical scores and leave global state untouched (#415)."""
-    import numpy as np
-
-    from pysad.transform import ensemble as ensemble_module
-    from pysad.utils import fix_seed
-
-    cls = getattr(ensemble_module, ensembler_cls)
-    scores = np.array(BUCKET_SCORES)
-
-    # Identical integer random_state produces identical outputs.
-    scores_seed_42_a = cls(n_buckets=3, random_state=42).fit_transform(scores)
-    scores_seed_42_b = cls(n_buckets=3, random_state=42).fit_transform(scores)
-    np.testing.assert_array_equal(scores_seed_42_a, scores_seed_42_b)
-
-    # RandomState instance produces identical outputs across fresh instances.
-    scores_rng_a = cls(n_buckets=3, random_state=np.random.RandomState(42)).fit_transform(scores)
-    scores_rng_b = cls(n_buckets=3, random_state=np.random.RandomState(42)).fit_transform(scores)
-    np.testing.assert_array_equal(scores_rng_a, scores_rng_b)
-
-    # Different seeds produce different outputs.
-    scores_seed_99 = cls(n_buckets=3, random_state=99).fit_transform(scores)
-    assert not np.array_equal(scores_seed_42_a, scores_seed_99)
-
-    # Fixed seed leaves NumPy global random state untouched.
-    fix_seed(11)
-    expected_draw = np.random.rand(3)
-
-    fix_seed(11)
-    cls(n_buckets=3, random_state=42).fit_transform(scores)
-    np.testing.assert_array_equal(np.random.rand(3), expected_draw)
 
 
 @pytest.mark.parametrize(

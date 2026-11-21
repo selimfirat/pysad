@@ -17,7 +17,7 @@ def test_iforest_asd_ignores_labels_without_warning():
         X = rng.rand(40, 3)
         y = rng.randint(0, 2, 40)
 
-        model = IForestASD(window_size=16)
+        model = IForestASD(window_size=16, n_estimators=10)
         scores = []
         for xi, yi in zip(X, y, strict=True):
             scores.append(model.fit_score_partial(xi, yi if with_labels else None))
@@ -55,6 +55,7 @@ def test_reference_window(test_path):
         window_size=240,
         sliding_size=30,
         initial_window_X=X_all[:100],
+        n_estimators=20,
         random_state=seed,
     )
 
@@ -90,7 +91,9 @@ def test_one_fit(test_path):
     seed = 61
     X_all, y_all = shuffle(X_all, y_all, random_state=seed)
 
-    model = OneFitModel(model_cls=IForest, initial_X=X_all[:100], random_state=seed)
+    model = OneFitModel(
+        model_cls=IForest, initial_X=X_all[:100], n_estimators=20, random_state=seed
+    )
 
     iterator = ArrayStreamer(shuffle=False)
 
@@ -120,7 +123,7 @@ def test_one_fit_model_basic():
     test_X = np.random.random((20, 2))
 
     # Test OneFitModel
-    model = OneFitModel(model_cls=IForest, initial_X=initial_X)
+    model = OneFitModel(model_cls=IForest, initial_X=initial_X, n_estimators=10)
 
     # Test that fit_partial does nothing but returns self
     result = model.fit_partial(test_X[0])
@@ -158,6 +161,7 @@ def test_reference_window_model_with_labels():
             sliding_size=5,
             initial_window_X=initial_X,
             initial_window_y=initial_y,
+            n_estimators=10,
         )
 
         # Test fitting and scoring
@@ -186,6 +190,7 @@ def test_reference_window_model_window_update():
         window_size=5,
         sliding_size=2,  # Model should retrain every 2 instances
         initial_window_X=initial_X,
+        n_estimators=10,
     )
 
     # Add instances and verify model retrains
@@ -216,7 +221,11 @@ def test_reference_window_model_issue_23_fix():
     sliding_size = 2
 
     model = ReferenceWindowModel(
-        model_cls=IForest, window_size=window_size, sliding_size=sliding_size, initial_window_X=None
+        model_cls=IForest,
+        window_size=window_size,
+        sliding_size=sliding_size,
+        initial_window_X=None,
+        n_estimators=10,
     )
 
     # Step 1: Add first data point
@@ -274,7 +283,11 @@ def test_reference_window_model_issue_25_fix():
     sliding_size = 2
 
     model = ReferenceWindowModel(
-        model_cls=IForest, window_size=window_size, sliding_size=sliding_size, initial_window_X=None
+        model_cls=IForest,
+        window_size=window_size,
+        sliding_size=sliding_size,
+        initial_window_X=None,
+        n_estimators=10,
     )
 
     # Build up the initial window
@@ -315,8 +328,8 @@ def test_iforest_asd_scores_before_it_fits():
     from pysad.models import IForestASD
 
     X = np.random.default_rng(0).random((40, 3))
-    scored = IForestASD(window_size=16, random_state=0)
-    reference = IForestASD(window_size=16, random_state=0)
+    scored = IForestASD(window_size=16, n_estimators=10, random_state=0)
+    reference = IForestASD(window_size=16, n_estimators=10, random_state=0)
 
     assert scored.fit_score_partial(X[0]) == 0.0
     reference.fit_partial(X[0])
@@ -333,7 +346,7 @@ def test_reference_window_model_refits_when_the_first_window_doubles():
 
     from pysad.models import IForestASD
 
-    model = IForestASD(window_size=16, random_state=0)
+    model = IForestASD(window_size=16, n_estimators=10, random_state=0)
     sizes = []
     fit_model = model._fit_model
 
@@ -360,7 +373,7 @@ def test_one_fit_model_batch_score_and_fit_score():
     X = rng.random((20, 3))
     y = rng.integers(0, 2, size=20)
 
-    model = OneFitModel(IForest, initial_X=initial_X, random_state=42)
+    model = OneFitModel(IForest, initial_X=initial_X, n_estimators=10, random_state=42)
     expected_scores = np.array([model.score_partial(xi) for xi in X])
 
     np.testing.assert_allclose(model.score(X), expected_scores, rtol=1e-12, atol=1e-12)
@@ -384,14 +397,18 @@ def test_reference_window_model_batch_score_and_fit_score():
     initial_y = rng.integers(0, 2, size=12)
 
     # Without initial_window_X (including empty and pre-fit score calls, and exact-boundary fit_score)
-    unfitted = ReferenceWindowModel(IForest, window_size=8, sliding_size=4, random_state=42)
+    unfitted = ReferenceWindowModel(
+        IForest, window_size=8, sliding_size=4, n_estimators=10, random_state=42
+    )
     np.testing.assert_array_equal(unfitted.score(np.empty((0, 3))), np.empty(0, dtype=np.float64))
     np.testing.assert_array_equal(unfitted.score(X[:5]), np.zeros(5, dtype=np.float64))
 
     for n in (16, 25):
-        batch_model = ReferenceWindowModel(IForest, window_size=8, sliding_size=4, random_state=42)
+        batch_model = ReferenceWindowModel(
+            IForest, window_size=8, sliding_size=4, n_estimators=10, random_state=42
+        )
         partial_model = ReferenceWindowModel(
-            IForest, window_size=8, sliding_size=4, random_state=42
+            IForest, window_size=8, sliding_size=4, n_estimators=10, random_state=42
         )
 
         batch_scores = batch_model.fit_score(X[:n])
@@ -420,6 +437,7 @@ def test_reference_window_model_batch_score_and_fit_score():
             sliding_size=4,
             initial_window_X=initial_X,
             initial_window_y=initial_y,
+            n_estimators=10,
             random_state=42,
         )
         partial_labeled = ReferenceWindowModel(
@@ -428,6 +446,7 @@ def test_reference_window_model_batch_score_and_fit_score():
             sliding_size=4,
             initial_window_X=initial_X,
             initial_window_y=initial_y,
+            n_estimators=10,
             random_state=42,
         )
 
@@ -461,10 +480,10 @@ def test_iforest_asd_batch_fit_score():
 
     with warnings.catch_warnings():
         warnings.filterwarnings("error", message="y should not be presented", category=UserWarning)
-        batch_model = IForestASD(window_size=16, random_state=61)
+        batch_model = IForestASD(window_size=16, n_estimators=10, random_state=61)
         batch_scores = batch_model.fit_score(X, y)
 
-    partial_model = IForestASD(window_size=16, random_state=61)
+    partial_model = IForestASD(window_size=16, n_estimators=10, random_state=61)
     partial_scores = np.array(
         [partial_model.fit_score_partial(xi, yi) for xi, yi in zip(X, y, strict=True)]
     )
@@ -495,6 +514,7 @@ def test_reference_window_model_pickle_round_trip():
         window_size=16,
         sliding_size=8,
         initial_window_X=initial_X,
+        n_estimators=10,
         random_state=0,
     )
     for x in X[:40]:

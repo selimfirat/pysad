@@ -22,6 +22,14 @@ on:
 permissions:
   contents: read
 
+env:
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  VECLIB_MAXIMUM_THREADS: "1"
+  NUMEXPR_NUM_THREADS: "1"
+  MPLBACKEND: Agg
+
 concurrency:
   # PR runs share a group per PR (so stale pushes get cancelled); every push gets its own group.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -43,22 +51,39 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: examples
+          prune-cache: true
       - name: Install dependencies
         run: |
           # uv prefers wheels by default, matching pip's --prefer-binary.
           uv pip install --system --group runtime --group test -e .
-      # The examples download their datasets, for example 74 MB of KDD Cup 99 from OpenML.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/pysad
-          key: pysad-examples-data-${{ hashFiles('pysad/utils/data.py', 'pysad/utils/_datasets.py', 'examples/**') }}
-          restore-keys: pysad-examples-data-
-      - name: Run examples
+      - name: Find affected examples
+        id: plan
+        if: github.base_ref != ''
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
+          git fetch --depth=1 origin "$BASE_REF"
+          count=$(python -c 'import os; from tests.test_examples import affected_examples; print(len(affected_examples("origin/" + os.environ["BASE_REF"])))')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+      # The examples download their datasets, for example 74 MB of KDD Cup 99 from OpenML.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: github.base_ref == '' || steps.plan.outputs.count != '0'
+        with:
+          path: ~/.cache/pysad
+          key: pysad-examples-data-${{ hashFiles('pysad/utils/data.py', 'pysad/utils/_datasets.py') }}
+          restore-keys: pysad-examples-data-
+      - name: Run examples
+        if: github.base_ref == '' || steps.plan.outputs.count != '0'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          COUNT: ${{ steps.plan.outputs.count }}
+        run: |
           if [ -n "$BASE_REF" ]; then
-            git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_EXAMPLES_SINCE="origin/$BASE_REF"
           fi
-          pytest -m examples -n auto
+          if [ -n "$COUNT" ] && [ "$COUNT" -le 3 ]; then
+            pytest -m examples
+          else
+            pytest -m examples -n auto --dist worksteal
+          fi

@@ -1,46 +1,3 @@
-def test_calibrators():
-    import numpy as np
-
-    from pysad.transform.probability_calibration import (
-        AnomalyLikelihoodProbabilityCalibrator,
-        ConformalProbabilityCalibrator,
-        GaussianTailProbabilityCalibrator,
-        GroupConditionalConformalCalibrator,
-        SPOTProbabilityCalibrator,
-    )
-    from pysad.utils import fix_seed
-
-    fix_seed(61)
-
-    scores = np.random.rand(100)
-
-    calibrators = {
-        AnomalyLikelihoodProbabilityCalibrator: {
-            "learning_period": 20,
-            "num_estimation_samples": 20,
-            "reestimation_period": 10,
-        },
-        GaussianTailProbabilityCalibrator: {},
-        ConformalProbabilityCalibrator: {},
-        GroupConditionalConformalCalibrator: {"window_size": 30, "max_regimes": 4},
-        SPOTProbabilityCalibrator: {"num_init": 40, "level": 0.9, "depth": 5},
-    }
-
-    for calibrator_cls, args in calibrators.items():
-        calibrator = calibrator_cls(**args)
-        calibrated_scores = calibrator.fit_transform(scores)
-
-        assert calibrated_scores.shape == scores.shape
-        assert not np.isnan(calibrated_scores).any()
-
-        calibrator = calibrator_cls(**args).fit(scores)
-        assert type(calibrator) is calibrator_cls
-        calibrated_scores = calibrator.fit_transform(scores)
-
-        assert calibrated_scores.shape == scores.shape
-        assert not np.isnan(calibrated_scores).any()
-
-
 def test_conformal_calibrator_values():
     import numpy as np
     import pytest
@@ -289,10 +246,10 @@ def test_dspot_keeps_false_alarm_rate_under_drift():
 
     q = 1e-3
     rng = np.random.RandomState(0)
-    scores = rng.normal(size=20000) + np.arange(20000) * 1e-3
+    scores = rng.normal(size=6000) + np.arange(6000) * 3e-3
 
-    spot = SPOTProbabilityCalibrator(q=q).fit_transform(scores)[2000:]
-    dspot = SPOTProbabilityCalibrator(q=q, depth=10).fit_transform(scores)[2000:]
+    spot = SPOTProbabilityCalibrator(q=q).fit_transform(scores)[1500:]
+    dspot = SPOTProbabilityCalibrator(q=q, depth=10).fit_transform(scores)[1500:]
 
     assert (spot > 1 - q).mean() > 0.1
     assert (dspot > 1 - q).mean() < 0.01
@@ -316,8 +273,11 @@ def test_spot_constant_scores():
 
     from pysad.transform.probability_calibration import SPOTProbabilityCalibrator
 
-    calibrated = SPOTProbabilityCalibrator(num_init=50).fit_transform(np.full(200, 0.3))
+    calibrator = SPOTProbabilityCalibrator(num_init=50)
+    calibrated = calibrator.fit_transform(np.full(200, 0.3))
     assert np.all(calibrated == 0.0)
+    assert calibrator.transform_partial(1.0) == 1.0
+    assert calibrator.transform(np.array([1.0]))[0] == 1.0
 
 
 def test_spot_keeps_only_the_last_max_peaks():

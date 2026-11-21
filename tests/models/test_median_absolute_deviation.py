@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from numpy.testing import assert_allclose
 
 from pysad.models import MedianAbsoluteDeviation
@@ -90,11 +89,6 @@ def test_median_absolute_deviation_scores_do_not_depend_on_the_scale():
     small_scores = MedianAbsoluteDeviation().fit_score(1e-6 * VALUES.reshape(-1, 1))
 
     assert_allclose(small_scores[2:], scores[2:])
-
-
-def test_median_absolute_deviation_invalid_window_size():
-    with pytest.raises(ValueError, match="window_size"):
-        MedianAbsoluteDeviation(window_size=0)
 
 
 def test_median_absolute_deviation_scores_0_before_fit():

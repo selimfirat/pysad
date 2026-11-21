@@ -1,6 +1,8 @@
 {% extends "!base.html" %}
 {% block extrahead %}
 {{ super() }}
+<meta name="theme-color" content="#f2f4f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1519" media="(prefers-color-scheme: dark)">
 {% if not seo_has_meta_description %}
 <meta name="description" content="{{ seo_description|e }}">
 {% endif %}

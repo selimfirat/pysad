@@ -9,6 +9,7 @@ dynamic = ["version"]
 # The SciPy and scikit-learn floors support NumPy 2.
 # These floors prevent NumPy 2 from loading older builds compiled for NumPy 1.
 dependencies = [
+  "mcp>=1.26.0",
   "numpy>=1.23",
   "scikit-learn>=1.4.2",
   "scipy>=1.13.0",
@@ -80,6 +81,7 @@ pysad-live = "pysad.live.cli:main"
 [dependency-groups]
 # Pinned runtime dependencies, so tests and docs run against known versions.
 runtime = [
+  "mcp==1.26.0",
   "numpy==2.2.6",
   "scikit-learn==1.7.2",
   "scipy>=1.15.4",

@@ -13,7 +13,7 @@ from pysad.transform.projection.streamhash_projector import StreamhashProjector
 from pysad.utils import get_minmax_array
 
 
-class xStream(BaseModel):
+class XStream(BaseModel):
     """Scores each instance by its density in half-space chains over StreamHash projections (xStream) :cite:`xstream`.
 
     It projects each instance with StreamHash and bins it in half-space chains. The chains count the instances of the current window and score each instance with the counts of the previous (reference) window, and the two windows swap when the instance after a full window arrives, before it is counted (Algorithm 1 of the paper). As in the paper and the authors' code, the initial bin widths (half the range of each projected feature) and the shifts are estimated once from the first window and kept for the rest of the stream, so every window is binned the same way. Until the first window is full, the instances are binned with width 0.5 and scored with the counts of the first window so far. When it is full, the first window is counted again with the estimated widths. The defaults are 100 projections, 100 chains, depth 15 and a window of 256, as in the code of the authors. The paper uses a window of 25 in its experiments on evolving streams. For a short stream of a few thousand instances or fewer, a window of 25 can give better scores.
@@ -38,13 +38,13 @@ class xStream(BaseModel):
             raise ValueError("window_size must be a positive integer.")
         self.streamhash = StreamhashProjector(num_components=num_components)
         self.window_size = window_size
-        self.random_state = random_state
+        self.random_state = check_random_state(random_state)
         # The bin widths are estimated from the first window once it is full.
         self.hs_chains = _HSChains(
             deltamax=np.full(num_components, 0.5),
             n_chains=n_chains,
             depth=depth,
-            random_state=random_state,
+            random_state=self.random_state,
         )
 
         self.step = 0
@@ -66,7 +66,7 @@ class xStream(BaseModel):
                 self.first_window = None
             self.hs_chains.next_window()
 
-    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> xStream:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> XStream:
         """Updates the model with the next instance.
 
         Args:
@@ -215,3 +215,7 @@ class _HSChains:
         self._shift_by_depth = self.shift[np.arange(self.nchains)[:, None], self.fs]
         self._deltamax_by_depth = self.deltamax[self.fs]
         self._shift_over_deltamax = self._shift_by_depth / self._deltamax_by_depth
+
+
+class xStream(XStream):
+    """Backward-compatible alias for XStream."""

@@ -60,7 +60,7 @@ from .stream_pipeline import StreamPipeline
 from .streaming_autoregressive import StreamingAutoregressiveDetector
 from .teda import TEDA
 from .thresh_leap import ThreshLEAP
-from .xstream import xStream
+from .xstream import XStream, xStream
 from .zero_shot_embedding_detector import ZeroShotEmbeddingDetector
 
 __all__ = [
@@ -125,6 +125,7 @@ __all__ = [
     "StreamPipeline",
     "TEDA",
     "ThreshLEAP",
+    "XStream",
     "xStream",
     "ZeroShotEmbeddingDetector",
 ]

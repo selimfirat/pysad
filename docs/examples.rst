@@ -89,6 +89,80 @@ It prints:
 
    AUROC: 0.867
 
+Explore anomaly types in a synthetic stream
+--------------------------------------------
+
+This script shows how the parameters of :func:`~pysad.utils.generate_stream` control point anomalies, bursts and drifts. It prints the anomaly counts and groupings for each configuration.
+
+.. literalinclude:: ../examples/example_generate_stream_anomaly_types.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   === Default stream (points, bursts, drift) ===
+   Default: 2000 instances, 2 features
+     Normal: 1850, Anomalies: 150
+     Anomaly indices: [283 362 402 657 706 711 712 713 714 715]...
+     Max gap between anomalies: 430
+     Number of anomaly groups: 13
+   === Only point anomalies ===
+   Points only: 2000 instances, 2 features
+     Normal: 1980, Anomalies: 20
+     Anomaly indices: [229 267 364 378 409 488 508 619 711 854]...
+     Max gap between anomalies: 404
+     Number of anomaly groups: 20
+   === Only burst anomalies ===
+   Bursts only: 2000 instances, 2 features
+     Normal: 1925, Anomalies: 75
+     Anomaly indices: [402 403 404 405 406 407 408 409 410 411]...
+     Max gap between anomalies: 295
+     Number of anomaly groups: 5
+   === Only drift anomalies ===
+   Drifts only: 2000 instances, 2 features
+     Normal: 1760, Anomalies: 240
+     Anomaly indices: [711 712 713 714 715 716 717 718 719 720]...
+     Max gap between anomalies: 256
+     Number of anomaly groups: 3
+   === Higher magnitude anomalies ===
+   High magnitude: 2000 instances, 2 features
+     Normal: 1850, Anomalies: 150
+     Anomaly indices: [283 362 402 657 706 711 712 713 714 715]...
+     Max gap between anomalies: 430
+     Number of anomaly groups: 13
+   === More features ===
+   10 features: 2000 instances, 10 features
+     Normal: 1850, Anomalies: 150
+     Anomaly indices: [241 284 285 286 287 288 289 290 291 292]...
+     Max gap between anomalies: 281
+     Number of anomaly groups: 13
+   === Longer stream ===
+   10000 instances: 10000 instances, 2 features
+     Normal: 9850, Anomalies: 150
+     Anomaly indices: [1123 2696 2911 3957 5391 6174 6175 6176 6177 6178]...
+     Max gap between anomalies: 1573
+     Number of anomaly groups: 13
+
+Compare detectors on a synthetic stream
+--------------------------------------
+
+This script runs several detectors on the same synthetic stream and prints their AUROC scores.
+
+.. literalinclude:: ../examples/example_generate_stream_detectors.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Comparing detectors on synthetic stream:
+   Stream: 2000 instances, 2 features, 150 anomalies
+                LODA: AUROC 0.867
+             xStream: AUROC 0.841
+       HalfSpaceTrees: AUROC 0.870
+             RSForest: AUROC 0.634
+
 Integrate a one-dimensional stream
 ----------------------------------
 

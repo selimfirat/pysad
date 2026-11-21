@@ -4,6 +4,7 @@ import math
 from collections import deque
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _int_at_least, check_univariate
@@ -146,7 +147,7 @@ class FluxEV(BaseModel):
             excess = scale * math.expm1(-shape * log_ratio) / shape
         self.threshold_ += max(excess, 0.0)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> FluxEV:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> FluxEV:
         """Updates the windows and threshold with one value.
 
         Args:
@@ -185,7 +186,7 @@ class FluxEV(BaseModel):
         self._count += 1
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Returns the smoothed fluctuation without changing the model.
 
         Args:

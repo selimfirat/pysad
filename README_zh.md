@@ -62,7 +62,7 @@
 </td>
 <td width="50%" valign="top">
 
-#### 54 个来自已发表论文的检测器
+#### 来自已发表论文的检测器
 
 覆盖多变量与单变量流：稳健/季节性统计方法（`MAD`、`SeasonalHybridESD`、`FluxEV`）、随机森林与概要结构（`LODA`、`HalfSpaceTrees`、`RobustRandomCutForest`、`RSHash`、`xStream`）、子序列（`DAMP`、`MatrixProfile`、`SAND`）、图流（`MIDAS`）以及 10 个漂移监测器（`ADWINMeter`、`PageHinkleyMeter`、`DriftAdaptiveDetector`）。
 
@@ -272,11 +272,11 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 以上建议来自每种方法的设计，而不是基准测试排名。请按照 [检测器选择指南](https://pysad.readthedocs.io/en/stable/guides/choose_detector.html) 中的方法，在你自己的数据上比较两到三个检测器。
 
 <details>
-<summary><b>全部 54 个流式检测器（37 个多变量，17 个单变量）</b></summary>
+<summary><b>全部流式检测器</b></summary>
 
 <br>
 
-**多变量（37）**
+**多变量**
 
 | 类 | 方法 |
 |---|---|
@@ -317,8 +317,11 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | `TEDA` | 典型性与离心率数据分析 (Angelov, EALS 2014) |
 | `EXPoSE` | 与核均值嵌入的期望相似度 (Schneider et al., *Machine Learning* 2016) |
 | `IDKS` | IDK-S 滑动窗口上的增量分布核 (Xu et al., AAAI 2026) |
+| `FeedbackHST` | 带主动人机协同标签反馈的 Half-Space Trees (Tan et al., 2011; Das et al., JAIR 2024) |
+| `StreamKMPlusPlus` | 基于 StreamKM++ 流式核心集聚类的最近中心距离 (Ackermann et al., ACM JEA 2012) |
+| `ZeroShotEmbeddingDetector` | 基于语义锚点最大概念匹配的零样本分布外检测 (Ming et al., NeurIPS 2022) |
 
-**单变量（17）**
+**单变量**
 
 | 类 | 方法 |
 |---|---|

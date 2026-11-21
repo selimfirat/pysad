@@ -33,11 +33,11 @@ repos:
   - repo: local
     hooks:
       - id: sync-exports
-        name: sync package __init__.py exports
+        name: sync package __init__.py exports and README detector table
         entry: python scripts/sync_exports.py
         language: python
         pass_filenames: false
-        files: ^(pysad/|scripts/sync_exports\.py$)
+        files: ^(pysad/|scripts/sync_exports\.py$|README\.md$|docs/refs\.bib$)
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: ef6cf06c079dd6b299dfc720b0f14400c9d168e1  # frozen: v0.17.5

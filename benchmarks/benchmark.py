@@ -1137,8 +1137,7 @@ DIMENSION_DETECTORS = ["LODA", "xStream", "RSHash", "HalfSpaceTrees", "Inqmad", 
 DIMENSIONS = [2, 10, 50, 100, 500, 1000]
 DIMENSION_POINTS = 2000
 DIMENSION_FIELDS = ["detector", "dimension", "points", "ms_per_point"]
-DIMENSION_COLORS = ["#00757a", "#5c6bc0", "#c26d1f", "#2a9d9f", "#64748b", "#e63946"]
-DIMENSION_COLORS_DARK = ["#2dd4bf", "#818cf8", "#f59e0b", "#99f6e4", "#94a3b8", "#f45b69"]
+DIMENSION_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]
 
 
 def dimension_model(detector, d, seed):
@@ -1199,71 +1198,40 @@ def write_dimensions_svg(rows, detectors):
     def y(ms):
         return top + plot_h - plot_h * ms / (max_ms * 1.1)
 
-    sans = 'Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif'
-    mono = '"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace'
-    light_rules = "".join(f".s{i}{{stroke:{color}}}" for i, color in enumerate(DIMENSION_COLORS))
-    dark_rules = "".join(
-        f".s{i}{{stroke:{color}}}" for i, color in enumerate(DIMENSION_COLORS_DARK)
-    )
-    style = (
-        f"text{{font-family:{sans}}}"
-        f".title{{fill:#0d1b22;font-size:14px;font-weight:600}}"
-        f".axis{{fill:#5b6f78;font-size:12px;font-weight:500}}"
-        f".tick{{fill:#5b6f78;font-family:{mono};font-size:11px}}"
-        f".legend{{fill:#0d1b22;font-size:12px;font-weight:500}}"
-        f".grid{{stroke:#dce3e2;stroke-width:1}}"
-        f"{light_rules}"
-        f"@media (prefers-color-scheme:dark){{"
-        f".title,.legend{{fill:#edf5f6}}"
-        f".axis,.tick{{fill:#99b0b6}}"
-        f".grid{{stroke:#1e343d}}"
-        f"{dark_rules}"
-        f"}}"
-    )
     lines = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
-        f'width="{width}" height="{height}" role="img" aria-label="Latency per point by dimension">',
-        f"<style>{style}</style>",
-        f'<text x="{width // 2}" y="20" text-anchor="middle" class="title">'
-        "Latency per point by dimension</text>",
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
+        f'<text x="{width // 2}" y="20" text-anchor="middle">Latency per point by dimension</text>',
     ]
     for ms in np.linspace(0, max_ms, 6):
         lines.append(
-            f'<line x1="{left}" y1="{y(ms):.1f}" x2="{left + plot_w}" y2="{y(ms):.1f}" class="grid"/>'
+            f'<line x1="{left}" y1="{y(ms):.1f}" x2="{left + plot_w}" y2="{y(ms):.1f}" stroke="#ddd"/>'
         )
-        lines.append(
-            f'<text x="{left - 10}" y="{y(ms) + 4:.1f}" text-anchor="end" class="tick">{ms:.3g}</text>'
-        )
+        lines.append(f'<text x="{left - 10}" y="{y(ms) + 4:.1f}" text-anchor="end">{ms:.3g}</text>')
     for d in dims:
         lines.append(
-            f'<line x1="{x(d):.1f}" y1="{top}" x2="{x(d):.1f}" y2="{top + plot_h}" class="grid"/>'
+            f'<line x1="{x(d):.1f}" y1="{top}" x2="{x(d):.1f}" y2="{top + plot_h}" stroke="#ddd"/>'
         )
         lines.append(
-            f'<text x="{x(d):.1f}" y="{top + plot_h + 20}" text-anchor="middle" class="tick">{d}</text>'
+            f'<text x="{x(d):.1f}" y="{top + plot_h + 20}" text-anchor="middle">{d}</text>'
         )
     lines.append(
-        f'<text x="{left + plot_w // 2}" y="{height - 10}" text-anchor="middle" class="axis">'
-        "dimension d (log scale)</text>"
+        f'<text x="{left + plot_w // 2}" y="{height - 10}" text-anchor="middle">dimension d (log scale)</text>'
     )
     lines.append(
-        f'<text x="20" y="{top + plot_h // 2}" text-anchor="middle" '
-        f'transform="rotate(-90 20 {top + plot_h // 2})" class="axis">ms per point</text>'
+        f'<text x="20" y="{top + plot_h // 2}" text-anchor="middle" transform="rotate(-90 20 {top + plot_h // 2})">ms per point</text>'
     )
     for i, detector in enumerate(detectors):
-        cls = f"s{i % len(DIMENSION_COLORS)}"
+        color = DIMENSION_COLORS[i % len(DIMENSION_COLORS)]
         cells = [row for row in rows if row["detector"] == detector]
         points_attr = " ".join(f"{x(r['dimension']):.1f},{y(r['ms_per_point']):.1f}" for r in cells)
         lines.append(
-            f'<polyline fill="none" class="{cls}" stroke-width="2" points="{points_attr}"/>'
+            f'<polyline fill="none" stroke="{color}" stroke-width="2" points="{points_attr}"/>'
         )
         legend_y = top + 15 * i
         lines.append(
-            f'<line x1="{left + plot_w + 10}" y1="{legend_y}" x2="{left + plot_w + 30}" '
-            f'y2="{legend_y}" class="{cls}" stroke-width="2"/>'
+            f'<line x1="{left + plot_w + 10}" y1="{legend_y}" x2="{left + plot_w + 30}" y2="{legend_y}" stroke="{color}" stroke-width="2"/>'
         )
-        lines.append(
-            f'<text x="{left + plot_w + 35}" y="{legend_y + 4}" class="legend">{detector}</text>'
-        )
+        lines.append(f'<text x="{left + plot_w + 35}" y="{legend_y + 4}">{detector}</text>')
     lines.append("</svg>")
     with open(OUT / "dimensions.svg", "w") as f:
         f.write("\n".join(lines) + "\n")

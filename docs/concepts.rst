@@ -126,7 +126,7 @@ A calibrator converts a raw score into a value between 0 and 1. PySAD has four c
 A conformal threshold of 0.99 refers to rank within the recent window, not anomaly probability. About 1% of normal scores exceed it under a stable distribution with few ties. Drift, dependence, ties and anomalies in the window affect the observed rate. Raising the threshold reduces alerts, including false alerts on normal points.
 
 Prequential evaluation
----------------------
+======================
 
 Prequential evaluation measures performance on unseen points: score each point, record the score in a metric, then learn from the point.
 

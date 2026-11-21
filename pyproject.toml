@@ -250,6 +250,11 @@ module = [
     "pysad.utils.window",
     "pysad.integrations",
     "pysad.integrations.*",
+    "pysad.models.htm.htm",
+    "pysad.models.idks",
+    "pysad.models.iforest_asd",
+    "pysad.models.inqmad",
+    "pysad.models.kelos",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true

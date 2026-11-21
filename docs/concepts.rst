@@ -94,11 +94,38 @@ Calling only ``score_partial`` after training freezes the model while continuing
 Higher means more anomalous
 ---------------------------
 
-Higher values mean more anomalous points across detectors, postprocessors, ensemblers and calibrators. The alert rule stays the same when components change: raise an alert at or above the threshold.
+Higher values mean more anomalous points across all PySAD components: detectors, postprocessors, score ensemblers, and probability calibrators. The alert rule stays the same when components change: raise an alert at or above the threshold.
 
-Raw score scales differ: detectors return negative log densities, counts or 0 or 1. Calibrate scores before comparing different detectors.
+Raw score scales differ between detectors (negative log densities, mass-based scores, displacement scores, or 0/1 decisions). Calibrate scores before comparing different detectors.
 
-For the five detectors documented here:
+.. _score-convention:
+
+Score direction convention
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PySAD uses a single, universal convention:
+
+- **Higher score = more anomalous**.
+- **Lower score = more normal**.
+- All detectors return non-negative scores where larger values indicate greater anomalousness.
+- All postprocessors, ensemblers, and calibrators preserve this ordering: if detector A scores an instance higher than detector B, the combined or calibrated score preserves that relationship.
+
+Probability calibrators (``ConformalProbabilityCalibrator``, ``SPOTProbabilityCalibrator``, ``GaussianTailProbabilityCalibrator``, ``AnomalyLikelihoodProbabilityCalibrator``) return values in ``[0, 1]`` where higher values mean more anomalous. Internally they compute ``1 - p`` where ``p`` is the probability of being normal, so the output follows the same convention.
+
+Model decisions and ``output_kind``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every model and postprocessor exposes an ``output_kind`` attribute with one of three values:
+
+- ``"score"`` — continuous anomaly score (higher = more anomalous). This is the default for detectors.
+- ``"probability"`` — calibrated anomaly probability in ``[0, 1]`` (higher = more anomalous). Returned by probability calibrators.
+- ``"decision"`` — binary 0/1 output (1 = anomaly, 0 = normal). Returned by ``ThresholdFilter``, ``QuantileFilter``, ``FRAHST``, and ``RelativeEntropy``.
+
+Detectors with a paper-defined decision threshold (``FluxEV``, ``GNGA``, ``OeSNNUAD``, ``NonparametricDynamicThresholdPostprocessor``) set ``_has_decision_rule = True`` and override ``_decide_from_score(score) -> int`` with their specific threshold logic. The default ``_decide_from_score`` for ``"decision"`` outputs returns ``1 if score > 0.0 else 0``.
+
+Components with ``output_kind == "decision"`` or ``_has_decision_rule == True`` expose ``predict_partial``, ``fit_predict_partial``, ``predict``, and ``fit_predict`` returning ``int`` (0 or 1) or ``np.int64`` arrays. Calling ``predict*`` on a score-only model raises ``TypeError``. Piping a ``"decision"`` stage into a ``"probability"`` calibrator raises ``ValueError``.
+
+For the five detectors documented in detail here:
 
 - :class:`~pysad.models.HTM` returns the anomaly likelihood (0 to 1, higher is more anomalous) by default, or the raw anomaly score (fraction of unpredicted active columns) if ``likelihood=False``. A spatial anomaly (value outside the observed range by more than 5%) returns 1.0.
 - :class:`~pysad.models.IDKS` returns the negated normal score (negative density), so higher scores mean more anomalous instances.

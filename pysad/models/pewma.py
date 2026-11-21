@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _finite_float, _int_at_least, check_univariate
@@ -63,7 +64,7 @@ class PEWMA(BaseModel):
         variance = self.s2_ - self.s1_**2
         return (x - self.s1_) / math.sqrt(variance) if variance > 0.0 else 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> PEWMA:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> PEWMA:
         """Updates the averages with the next value.
 
         Args:
@@ -86,7 +87,7 @@ class PEWMA(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the value with the current estimates, without changing the model.
 
         Args:

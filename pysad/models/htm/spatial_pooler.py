@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.utils.validation import _int_at_least
@@ -114,7 +115,7 @@ class SpatialPooler:
         self._deltas = np.full(self.num_inputs, -self.permanence_decrement)
         self.num_learned_ = 0
 
-    def compute(self, x: np.ndarray, learn: bool = True) -> np.ndarray:
+    def compute(self, x: NDArray[np.bool_], learn: bool = True) -> NDArray[np.int64]:
         """Returns the sorted indices of the active columns for the boolean input `x` of shape (num_inputs,), and learns from it if `learn` is True."""
         active_inputs = np.flatnonzero(x)
         overlaps = (
@@ -176,7 +177,7 @@ class SpatialPooler:
         return active
 
     def _set_permanences(
-        self, columns: np.ndarray, permanences: np.ndarray, raise_to_threshold: bool
+        self, columns: NDArray[np.int64], permanences: NDArray[np.float64], raise_to_threshold: bool
     ) -> None:
         """Stores the permanences of shape (len(columns), num_inputs) for `columns`, as NuPIC's _updatePermanencesForColumn."""
         if raise_to_threshold:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 
@@ -45,10 +46,10 @@ class TEDA(BaseModel):
 
     def __init__(self) -> None:
         self.count_ = 0
-        self.mean_: np.ndarray | float = 0.0
+        self.mean_: NDArray[np.float64] | float = 0.0
         self.variance_ = 0.0
 
-    def _updated(self, X: np.ndarray) -> tuple[int, np.ndarray, float, float]:
+    def _updated(self, X: NDArray[np.float64]) -> tuple[int, NDArray[np.float64], float, float]:
         """The count, mean, variance and squared distance to the mean after the model fits ``X``."""
         k = self.count_ + 1
         mean = self.mean_ + (X - self.mean_) / k
@@ -57,7 +58,7 @@ class TEDA(BaseModel):
 
         return k, mean, variance, sq_dist
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> TEDA:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> TEDA:
         """Updates the count, the mean and the variance with the next instance.
 
         Args:
@@ -71,7 +72,7 @@ class TEDA(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the instance with the statistics that include it, without changing the model.
 
         Args:

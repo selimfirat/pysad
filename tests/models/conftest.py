@@ -274,6 +274,7 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
             "postprocessors": [ZScorePostprocessor(window_size=10)],
         },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
+        "StreamingDistiller": {"num_peers": 3, "hidden_ratio": 0.5, "learning_rate": 0.01},
     }
     if name in params:
         return params[name]

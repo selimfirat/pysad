@@ -13,16 +13,17 @@ from pysad.utils.window import Window
 
 
 class GroupConditionalConformalCalibrator(BasePostprocessor):
-    """Regime-stratified conformal calibrator with conditional coverage per regime :cite:`gupta2020distributionfree,barber2021predictive`.
+    """Regime-stratified conformal calibrator with one bounded window per regime :cite:`laxhammar2013online,ishimtsev2017conformal`.
 
     The calibrator keeps one sliding calibration window per regime (group). A score is transformed
     against its own regime's window: it returns the fraction of that window's scores below the
-    score, i.e. one minus the score's conformal p-value within that regime. Stratifying by regime
-    gives conditional coverage per regime instead of only marginal coverage over the whole stream,
-    as in distribution-free binary classification with prediction sets and conditional coverage.
+    score, i.e. one minus the score's conformal p-value within that regime. This rank transform
+    follows the online conformal anomaly detection of Laxhammar (2013) and the sliding calibration
+    queue of Ishimtsev et al. (2017).
 
-    With ``regime=None`` (the default) all scores share one window, so the calibrator behaves
-    exactly like :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`.
+    Stratifying by regime gives conditional coverage per regime instead of only marginal coverage
+    over the whole stream. With ``regime=None`` (the default) all scores share one window, so the
+    calibrator behaves exactly like :class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator`.
     Pass a regime, for example an operating mode or a drift segment, to calibrate each regime
     separately.
 
@@ -33,10 +34,10 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
     bounded by ``max_regimes``: when a new regime would exceed it, the least recently used regime
     is evicted, so memory stays bounded no matter how many regimes the stream produces.
 
-    The paper derives distribution-free calibration from score level sets. This calibrator
-    approximates that with per-regime empirical CDFs over sliding windows. Exact conditional
-    coverage requires exchangeability within a regime; the streaming setting approximates it. When
-    no regime is given, the result matches the marginal (single-window) conformal calibrator.
+    No cited paper describes this full regime-stratified sliding-window conformal rank transform.
+    The cited papers describe per-instance conformal rank transforms without regime stratification.
+    The sliding windows, LRU eviction, and regime cap are PySAD additions. Conditional coverage is
+    exact only under exchangeability within a regime; the streaming setting approximates it.
 
     Args:
         window_size (int): Scores kept per regime. Must be at least 1 (Default=500).
@@ -50,27 +51,6 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
         window_size (int): Scores kept per regime.
         max_regimes (int): Maximum number of regimes tracked at once.
     """
-
-    __bibtex__ = """
-@article{gupta2020distributionfree,
-  title={Distribution-free binary classification: prediction sets, confidence intervals and calibration},
-  author={Gupta, Chirag and Podkopaev, Aleksandr and Ramdas, Aaditya},
-  journal={arXiv preprint arXiv:2006.10564},
-  year={2020},
-  doi={10.48550/arXiv.2006.10564}
-}
-
-@article{barber2021predictive,
-  title={Predictive inference with the jackknife+},
-  author={Barber, Rina Foygel and Cand{\\`e}s, Emmanuel J. and Ramdas, Aaditya and Tibshirani, Ryan J.},
-  journal={The Annals of Statistics},
-  volume={49},
-  number={2},
-  pages={486--507},
-  year={2021},
-  doi={10.1214/20-AOS1965}
-}
-"""
 
     def __init__(self, window_size: int = 500, max_regimes: int = 64) -> None:
         if window_size < 1:

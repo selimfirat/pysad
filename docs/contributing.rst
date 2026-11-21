@@ -76,7 +76,7 @@ Make the change
 
       $ git switch -c fix/123-loda-nan-scores
 
-#. Change the code. If you add a detector, follow the steps in :doc:`guides/custom_model`.
+#. Change the code. If you add a detector, follow the steps in :doc:`guides/custom_model` (declare ``_output_kind`` or ``_has_decision_rule`` if its paper defines a binary output or decision rule).
 #. Add tests that check scores, shapes and return types, not private state. If a test uses random numbers, give it a fixed seed.
 
 `AGENTS.md <https://github.com/selimfirat/pysad/blob/master/AGENTS.md>`_ in the repository root lists all the rules for code, tests and naming.
@@ -138,8 +138,9 @@ We apply this checklist to each pull request:
 - The pull request fixes one issue, and no other open pull request covers the same work.
 - All CI checks pass.
 - New behavior has tests. A new feature also has an example or documentation.
-- A new public class is in the ``__init__.py`` and ``__all__`` of its subpackage, and in the page of its module in ``docs/api/``.
+- Run ``python scripts/sync_exports.py`` (also run by pre-commit) so a new public class is in its subpackage ``__init__.py`` (``__all__``) and the ``README.md`` detector table; ``docs/api/`` and ``docs/detectors.rst`` auto-discover from ``__all__``.
 - A new detector meets the :doc:`inclusion_criteria` and follows the steps in :doc:`guides/custom_model`.
+- Binary-output detectors and filters set ``_output_kind = "decision"``, probability calibrators set ``_output_kind = "probability"``, and continuous-score detectors with a paper-defined decision rule set ``_has_decision_rule = True`` and implement ``_decide_from_score``.
 - If the change moves the results of a detector, the pull request updates ``docs/benchmark/``. The diff of ``docs/benchmark/results.csv`` shows AUROC, AUPR and time per point before and after the change.
 - The change does not keep old behavior through deprecation aliases or compatibility code.
 

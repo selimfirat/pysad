@@ -323,6 +323,7 @@ def test_write_ranking_compares_chance_at_stored_precision(tmp_path, monkeypatch
 
 def test_changed_benchmark_detectors_isolates_table_edits():
     """Editing a detector entry in benchmark.py only flags that detector, not the whole suite."""
+    import re
     from pathlib import Path
 
     benchmark = load_benchmark()
@@ -332,18 +333,22 @@ def test_changed_benchmark_detectors_isolates_table_edits():
 
     assert benchmark._changed_benchmark_detectors(source, source) == set()
 
-    # Replace the current DETECTOR_OVERRIDES dict with one that adds a new model
-    added = source.replace(
-        'DETECTOR_OVERRIDES = {\n    "ZeroShotEmbeddingDetector": lambda X, seed: models.ZeroShotEmbeddingDetector(\n        semantic_anchors=np.random.RandomState(seed).randn(10, X.shape[1])\n    ),\n}',
-        'DETECTOR_OVERRIDES = {\n    "ZeroShotEmbeddingDetector": lambda X, seed: models.ZeroShotEmbeddingDetector(\n        semantic_anchors=np.random.RandomState(seed).randn(10, X.shape[1])\n    ),\n    "NewModel": lambda X, seed: models.LODA(random_state=seed),\n}',
+    added, count = re.subn(
+        r"DETECTOR_OVERRIDES\s*=\s*\{",
+        'DETECTOR_OVERRIDES = {\n    "NewModel": lambda X, seed: models.LODA(random_state=seed),',
+        source,
+        count=1,
     )
+    assert count == 1
     assert benchmark._changed_benchmark_detectors(source, added) == {"NewModel"}
 
-    modified = source.replace(
-        "batch_size=WARMUP_POINTS, random_state=0",
-        "batch_size=128, random_state=0",
+    synthetic_base = (
+        "WARMUP_POINTS = 256\n"
+        'DETECTOR_OVERRIDES = {"Demo": lambda X, seed: models.LODA(random_state=seed)}\n'
+        'UNIVARIATE_OVERRIDES = {"Uni": lambda n, period: models.SAND(batch_size=256)}\n'
     )
-    assert benchmark._changed_benchmark_detectors(source, modified) == {"SAND"}
+    synthetic_mod = synthetic_base.replace("batch_size=256", "batch_size=128")
+    assert benchmark._changed_benchmark_detectors(synthetic_base, synthetic_mod) == {"Uni"}
 
     shared_change = source.replace("WARMUP_POINTS = 256", "WARMUP_POINTS = 128")
     assert benchmark._changed_benchmark_detectors(source, shared_change) is None

@@ -20,6 +20,7 @@ from tests.models.conftest import (
     TIMESTAMPED_MODELS,
     UNIVARIATE_MODELS,
     active_model_names,
+    required_params,
 )
 
 SEED = 0
@@ -93,28 +94,20 @@ def _univariate_stream():
 
 
 def _model_params(model_name, X):
-    """The constructor arguments of `model_name` for the stream `X`."""
-    feature_mins, feature_maxes = X.min(axis=0), X.max(axis=0)
+    """The constructor arguments of `model_name` for the discrimination stream `X`."""
     params = {
         "CPOD": {"window_size": 200},
-        "DriftAdaptiveDetector": {"model_factory": pysad.models.LODA},
         "FeedbackHST": {
-            "feature_mins": feature_mins,
-            "feature_maxes": feature_maxes,
             "window_size": 50,
             "num_trees": 10,
             "max_depth": 5,
             "feedback_budget": 20,
         },
         "HalfSpaceTrees": {
-            "feature_mins": feature_mins,
-            "feature_maxes": feature_maxes,
             "num_trees": 10,
             "max_depth": 8,
         },
         "HTM": {
-            "min_val": feature_mins[-1],
-            "max_val": feature_maxes[-1],
             "num_columns": 64,
             # The anomaly likelihood needs a longer stream than this one to settle.
             "likelihood": False,
@@ -135,8 +128,6 @@ def _model_params(model_name, X):
         "KNNCAD": {"probationary_period": 100},
         "MatrixProfile": {"window_length": 24},
         "DAMP": {"window_length": 24},
-        "LocalOutlierProbability": {"initial_X": X[:100]},
-        "RelativeEntropy": {"min_val": feature_mins[0], "max_val": feature_maxes[0]},
         "RobustRandomCutForest": {"num_trees": 5, "tree_size": 64},
         "MemStream": {"window_size": 8, "num_epochs": 20},
         # The normal values go below -1, out of the domain of log(1 + x). The values are continuous,
@@ -145,11 +136,7 @@ def _model_params(model_name, X):
         "OnlineIsolationForest": {"num_trees": 10},
         "PCBIsolationForest": {"num_trees": 20},
         "RSForest": {"window_size": WARMUP, "num_trees": 10, "max_depth": 8},
-        "RSHash": {
-            "feature_mins": feature_mins,
-            "feature_maxes": feature_maxes,
-            "num_components": 30,
-        },
+        "RSHash": {"num_components": 30},
         # Half a period, and batches that end with the warmup.
         "SAND": {"subsequence_length": 12, "batch_size": 100},
         # The spikes go in both directions.
@@ -171,12 +158,10 @@ def _model_params(model_name, X):
                 ConformalProbabilityCalibrator(window_size=WARMUP),
             ],
         },
-        "ZeroShotEmbeddingDetector": {
-            "semantic_anchors": np.random.RandomState(SEED).rand(10, NUM_FEATURES)
-        },
     }
 
-    return params.get(model_name, {})
+    base = required_params(model_name, X.shape[1], X=X, seed=SEED)
+    return {**base, **params.get(model_name, {})}
 
 
 def _scores(model_name, X):

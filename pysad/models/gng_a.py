@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
+from typing import ClassVar
 
 import numpy as np
 from sklearn.utils import check_random_state
@@ -61,6 +62,8 @@ class GNGA(BaseModel):
         threshold_ (float): The adaptive survival threshold tau.
         window_size_ (int): The current winning window length W.
     """
+
+    _has_decision_rule: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -262,3 +265,6 @@ class GNGA(BaseModel):
             return float(distance)
         lengths = np.linalg.norm(self._positions[left] - self._positions[right], axis=1)
         return float(distance - lengths.mean())
+
+    def _decide_from_score(self, score: float) -> int:
+        return 1 if score > 0.0 else 0

@@ -11,7 +11,6 @@ Run it from the repository root:
 
 import csv
 import json
-import sys
 from pathlib import Path
 
 from pysad import models
@@ -28,9 +27,7 @@ def _detector_counts() -> dict[str, int]:
         cls = getattr(models, name)
         if not cls._is_detector:
             continue
-        kind = cls._input_kind
-        if kind == "multivariate" and hasattr(sys.modules[cls.__module__], "check_univariate"):
-            kind = "univariate"
+        kind = cls._effective_input_kind()
         group = "univariate" if kind in ("univariate", "timestamped") else "multivariate"
         counts[group] += 1
     return counts

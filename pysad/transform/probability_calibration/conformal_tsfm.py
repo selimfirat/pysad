@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from bisect import bisect_left, insort
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -67,6 +67,8 @@ class ConformalTSFMCalibrator(BasePostprocessor):
   year={2021}
 }
 """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
 
     def __init__(
         self,

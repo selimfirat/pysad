@@ -1,5 +1,5 @@
 .. meta::
-   :description: Catalog of 54 streaming anomaly detectors in PySAD for multivariate and univariate streams, including required initialization, memory bounds, and paper citations.
+   :description: Catalog of streaming anomaly detectors in PySAD for multivariate and univariate streams, including required initialization, memory bounds, and paper citations.
 
 Detectors
 =========

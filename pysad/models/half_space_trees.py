@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
+from pysad.explainability import treeshap_ensemble
 from pysad.utils.validation import check_feature_bounds
 
 
@@ -314,6 +315,147 @@ class HalfSpaceTrees(BaseModel):
             attribution = attribution / total
 
         return attribution
+
+    def _treeshap_structure(
+        self,
+    ) -> tuple[
+        list[NDArray[np.intp]],
+        list[NDArray[np.float64]],
+        list[NDArray[np.intp]],
+        list[NDArray[np.intp]],
+        list[NDArray[np.float64]],
+        list[NDArray[np.float64]],
+    ]:
+        """Extract tree structure and leaf values for TreeSHAP.
+
+        Returns:
+            Tuple of (trees_features, trees_thresholds, trees_left, trees_right,
+            trees_values, trees_left_fractions) for treeshap_ensemble.
+        """
+        num_splits = 2**self.max_depth - 1
+        num_nodes = 2 * num_splits + 1
+        mass = (self.l_mass if self.is_first_window else self.r_mass).reshape(-1).astype(np.float64)
+
+        trees_features: list[NDArray[np.intp]] = []
+        trees_thresholds: list[NDArray[np.float64]] = []
+        trees_left: list[NDArray[np.intp]] = []
+        trees_right: list[NDArray[np.intp]] = []
+        trees_values: list[NDArray[np.float64]] = []
+        trees_left_fractions: list[NDArray[np.float64]] = []
+
+        for tree in range(self.num_trees):
+            # Node indices for this tree in the flat mass array
+            base = tree * num_nodes
+
+            # Features: split feature for internal nodes, -1 for leaves
+            features = np.full(num_nodes, -1, dtype=np.intp)
+            features[:num_splits] = self.split_atts[tree]
+
+            # Thresholds: split value for internal nodes, 0 for leaves
+            thresholds = np.zeros(num_nodes, dtype=np.float64)
+            thresholds[:num_splits] = self.split_values[tree]
+
+            # Children in heap order: node i has children 2i+1, 2i+2
+            left = np.full(num_nodes, -1, dtype=np.intp)
+            right = np.full(num_nodes, -1, dtype=np.intp)
+            for i in range(num_splits):
+                left[i] = 2 * i + 1
+                right[i] = 2 * i + 2
+
+            # Leaf values: negative cumulative mass * depth_weight along path to each leaf.
+            # The anomaly score contribution of a tree is -sum(mass * 2^depth) along the path.
+            # TreeSHAP explains the leaf value, so we use the negative sum to make
+            # positive SHAP values correspond to increased anomaly score (more anomalous).
+            depth = np.zeros(num_nodes, dtype=np.intp)
+            for i in range(1, num_nodes):
+                depth[i] = depth[(i - 1) // 2] + 1
+
+            values = np.zeros(num_nodes, dtype=np.float64)
+            for i in range(num_nodes):
+                contrib = mass[base + i] * (2 ** depth[i])
+                if i == 0:
+                    values[i] = -contrib
+                else:
+                    parent = (i - 1) // 2
+                    values[i] = values[parent] - contrib
+
+            trees_features.append(features)
+            trees_thresholds.append(thresholds)
+            trees_left.append(left)
+            trees_right.append(right)
+            trees_values.append(values)
+
+            # Left fractions: default 0.5 for all internal nodes
+            left_fracs = np.full(num_nodes, 0.5, dtype=np.float64)
+            trees_left_fractions.append(left_fracs)
+
+        return (
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            trees_left_fractions,
+        )
+
+    def score_explain_partial(self, X: NDArray[np.float64]) -> tuple[float, NDArray[np.float64]]:
+        """Returns the anomaly score and per-feature SHAP values for the next instance.
+
+        Uses the TreeSHAP algorithm :cite:`lundberg2020consistent` to compute exact SHAP values
+        for the tree ensemble. The SHAP values explain the anomaly score contribution of each
+        tree (negative sum of mass * 2^depth along the path), averaged across trees.
+        Positive SHAP values indicate features that increase the anomaly score (more anomalous),
+        negative values indicate features that decrease the anomaly score (more normal).
+
+        Like ``score_partial``, it does not update the model or record the instance. Before
+        the first instance is fitted, the method returns 0.0 and zeros of shape
+        ``(num_features,)``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and explain.
+
+        Returns:
+            tuple: (score, shap_values) where
+                score (float): The anomalousness score of the input instance.
+                shap_values (np.float64 array of shape (num_features,)): SHAP values, one per
+                feature. Positive values mean the feature increases the anomaly score
+                (more anomalous), negative values mean it decreases the anomaly score
+                (more normal). Returns zeros before any fitting.
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        score = self.score_partial(X)
+
+        if self.step == 0:  # nothing fitted yet
+            return score, np.zeros(self.num_dimensions, dtype=np.float64)
+
+        # Extract tree structure and compute SHAP values
+        (
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            trees_left_fractions,
+        ) = self._treeshap_structure()
+
+        shap_values = treeshap_ensemble(
+            x,
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            self.num_dimensions,
+            trees_left_fractions=trees_left_fractions,
+        )
+
+        return score, shap_values
 
     def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the next instance against the reference mass profile, and then updates the model with it.

@@ -348,6 +348,39 @@ class KitNet(BaseModel):
 
         return attribution
 
+    def score_explain_partial(self, X: NDArray[np.float64]) -> tuple[float, NDArray[np.float64]]:
+        """Returns the anomaly score and per-feature attribution for the next instance.
+
+        The explanation attributes the reconstruction error of each ensemble autoencoder
+        to the features it maps, normalized to sum to one. Higher attribution weights
+        mean the autoencoders using that feature reconstruct it poorly, indicating
+        that feature contributes more to the anomaly score.
+
+        Like ``score_partial``, it does not update the model or record the instance.
+        Before the first autoencoders exist, the method returns 0.0 and zeros of shape
+        ``(num_features,)``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and explain.
+
+        Returns:
+            tuple: (score, attribution) where
+                score (float): The anomalousness score of the input instance.
+                attribution (np.float64 array of shape (num_features,)): Non-negative
+                attribution weights, one per feature, summing to one (zeros before the
+                first autoencoders exist).
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        score = self.score_partial(X)
+        attribution = self.explain_partial(X)
+        return score, attribution
+
 
 # _CorClust, _DenoisingAutoencoder, and _KitNET are adapted from KitNET-py
 # (https://github.com/ymirsky/KitNET-py) and Yusuke Sugomori's DeepLearning

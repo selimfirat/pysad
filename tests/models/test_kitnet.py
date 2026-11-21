@@ -471,3 +471,100 @@ def test_seeded_reproducibility_incremental():
 
     np.testing.assert_array_equal(scores_a, scores_b)
     assert model_a.feature_map_ == model_b.feature_map_
+
+
+def test_kitnet_score_explain_partial_returns_score_and_attribution():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+    model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
+
+    score, attribution = model.score_explain_partial(X[101])
+
+    assert isinstance(score, float)
+    assert attribution.shape == (4,)
+    assert np.all(attribution >= 0.0)
+    assert abs(attribution.sum() - 1.0) < 1e-12
+    assert attribution.dtype == np.float64
+
+
+def test_kitnet_score_explain_partial_does_not_change_state():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+    model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
+
+    before = model.score_partial(X[101])
+    score, _ = model.score_explain_partial(X[101])
+    after = model.score_partial(X[101])
+
+    assert before == after
+    assert score == before
+
+
+def test_kitnet_score_explain_partial_is_reproducible():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+
+    model_a = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0)
+    model_a.fit(X[:100])
+    score_a, attrib_a = model_a.score_explain_partial(X[101])
+
+    model_b = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0)
+    model_b.fit(X[:100])
+    score_b, attrib_b = model_b.score_explain_partial(X[101])
+
+    assert score_a == score_b
+    np.testing.assert_array_equal(attrib_a, attrib_b)
+
+
+def test_kitnet_score_explain_partial_attribution_depends_on_instance():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+    model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
+
+    normal_score, normal_attrib = model.score_explain_partial(X[101])
+    outside_score, outside_attrib = model.score_explain_partial(
+        np.array([100.0, -50.0, 25.0, -200.0])
+    )
+
+    assert normal_score != outside_score
+    assert not np.allclose(normal_attrib, outside_attrib)
+
+
+def test_kitnet_score_explain_partial_returns_zeros_before_autoencoders():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0)
+
+    score, attribution = model.score_explain_partial(np.array([0.3, 0.6, 0.1]))
+
+    assert score == 0.0
+    assert attribution.shape == (3,)
+    assert np.all(attribution == 0.0)
+
+
+def test_kitnet_score_explain_partial_rejects_nan():
+    import numpy as np
+
+    from pysad.models import KitNet
+
+    X = np.random.RandomState(0).rand(200, 4)
+    model = KitNet(grace_feature_mapping=10, grace_anomaly_detector=10, random_state=0).fit(X[:100])
+
+    anomalous = X[101].copy()
+    anomalous[1] = np.nan
+    with pytest.raises(ValueError, match="KitNet does not accept NaN values"):
+        model.score_explain_partial(anomalous)

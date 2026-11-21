@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
+from pysad.explainability import treeshap_ensemble
 from pysad.transform.preprocessing import ShingleTransformer
 
 
@@ -662,6 +663,213 @@ class RobustRandomCutForest(BaseModel):
             init_counts[n_done] = arena.count[s]
 
         return arena.codisp_sum(final_slots, init_counts) / self.num_trees
+
+    def _collect_tree_structure(
+        self, tree_id: int
+    ) -> tuple[
+        NDArray[np.intp],
+        NDArray[np.float64],
+        NDArray[np.intp],
+        NDArray[np.intp],
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ]:
+        """Collect the structure of a single tree for TreeSHAP.
+
+        Returns:
+            Tuple of (features, thresholds, left, right, values, left_fractions) for the tree.
+            Arrays are indexed by node ID (0 to num_nodes-1 in the collected tree).
+        """
+        arena = self._arena
+        root = arena.roots[tree_id]
+        if root < 0:
+            # Empty tree
+            return (
+                np.array([-1], dtype=np.intp),
+                np.array([0.0], dtype=np.float64),
+                np.array([-1], dtype=np.intp),
+                np.array([-1], dtype=np.intp),
+                np.array([0.0], dtype=np.float64),
+                np.array([0.5], dtype=np.float64),
+            )
+
+        # Traverse the tree to collect all nodes in BFS order
+        nodes = []
+        queue = [root]
+        node_to_idx = {root: 0}
+        next_idx = 1
+        while queue:
+            node = queue.pop(0)
+            nodes.append(node)
+            left_child = arena.left[node]
+            right_child = arena.right[node]
+            if left_child >= 0 and left_child not in node_to_idx:
+                node_to_idx[left_child] = next_idx
+                next_idx += 1
+                queue.append(left_child)
+            if right_child >= 0 and right_child not in node_to_idx:
+                node_to_idx[right_child] = next_idx
+                next_idx += 1
+                queue.append(right_child)
+
+        num_nodes = len(nodes)
+        features = np.full(num_nodes, -1, dtype=np.intp)
+        thresholds = np.zeros(num_nodes, dtype=np.float64)
+        left = np.full(num_nodes, -1, dtype=np.intp)
+        right = np.full(num_nodes, -1, dtype=np.intp)
+        values = np.zeros(num_nodes, dtype=np.float64)
+        left_fractions = np.full(num_nodes, 0.5, dtype=np.float64)
+
+        for idx, node in enumerate(nodes):
+            d = arena.dim[node]
+            if d >= 0:  # Internal node
+                features[idx] = d
+                thresholds[idx] = arena.cut[node]
+                left_child = arena.left[node]
+                right_child = arena.right[node]
+                if left_child >= 0:
+                    left[idx] = node_to_idx[left_child]
+                if right_child >= 0:
+                    right[idx] = node_to_idx[right_child]
+                # Left fraction based on counts
+                total = (
+                    arena.count[left_child] + arena.count[right_child]
+                    if left_child >= 0 and right_child >= 0
+                    else 1
+                )
+                if total > 0 and left_child >= 0:
+                    left_fractions[idx] = arena.count[left_child] / total
+            else:  # Leaf node
+                features[idx] = -1
+                # Leaf value: collusive displacement (CoDisp) for this leaf
+                # CoDisp is the max ratio count[sibling] / (count[node] + 1) along path to root
+                codisp = 0.0
+                curr = node
+                while True:
+                    p = arena.parent[curr]
+                    if p < 0:
+                        break
+                    sib = arena.sibling[curr]
+                    if sib >= 0:
+                        ratio = arena.count[sib] / (arena.count[curr] + 1)
+                        if ratio > codisp:
+                            codisp = ratio
+                    curr = p
+                # Higher CoDisp = more anomalous, so TreeSHAP positive = more anomalous
+                values[idx] = codisp
+
+        return features, thresholds, left, right, values, left_fractions
+
+    def _route_to_leaf(self, tree_id: int, point: NDArray[np.float64]) -> int:
+        """Route a point down the existing tree structure to find the leaf it would fall into.
+
+        Does not add random cuts; uses only existing splits.
+        """
+        arena = self._arena
+        node: int = int(arena.roots[tree_id])
+        if node < 0:
+            return -1
+        while True:
+            d: int = int(arena.dim[node])
+            if d < 0:
+                return node
+            if point[d] <= arena.cut[node]:
+                node = int(arena.left[node])
+            else:
+                node = int(arena.right[node])
+            if node < 0:
+                # Should not happen in a valid tree
+                return -1
+
+    def score_explain_partial(self, X: NDArray[np.float64]) -> tuple[float, NDArray[np.float64]]:
+        """Returns the anomaly score and per-feature SHAP values for the next instance.
+
+        Uses the TreeSHAP algorithm :cite:`lundberg2020consistent` to compute exact SHAP values
+        for the forest of random cut trees. The SHAP values explain the collusive displacement
+        (CoDisp) of the leaf each instance falls into, averaged across trees.
+        Positive SHAP values indicate features that increase the anomaly score (more anomalous),
+        negative values indicate features that decrease the anomaly score (more normal).
+
+        Like ``score_partial``, it does not update the model or record the instance. Before
+        the first shingle is fitted, the method returns 0.0 and zeros of shape
+        ``(shingle_size * num_features,)``.
+
+        Note: The explanation uses the current tree structure without the random cuts that
+        ``score_partial`` draws during hypothetical insertion. The SHAP values approximate
+        the feature contributions to the CoDisp-based anomaly score. The explanation operates
+        in the shingled feature space (shape ``shingle_size * num_features``), not the original
+        feature space.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and explain.
+
+        Returns:
+            tuple: (score, shap_values) where
+                score (float): The anomalousness score of the input instance (from ``score_partial``).
+                shap_values (np.float64 array of shape (shingle_size * num_features,)): SHAP values
+                in the shingled feature space. Positive values mean the feature increases the
+                anomaly score (more anomalous), negative values mean it decreases the anomaly score
+                (more normal). Returns zeros before any shingle is fitted.
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        # Save RNG state to restore after score_partial (which advances RNG for random cuts)
+        rng_state = self.rng.get_state()
+        try:
+            score = self.score_partial(X)
+        finally:
+            self.rng.set_state(rng_state)
+
+        # Check if we have any shingles fitted (shingler.full means at least one shingle)
+        if not self.shingler.full:
+            return score, np.zeros(x.shape[0], dtype=np.float64)
+
+        point = self._shingle(x)
+        if point is None:
+            return score, np.zeros(x.shape[0], dtype=np.float64)
+
+        num_features = len(point)
+
+        # Collect tree structures for all trees
+        trees_features: list[NDArray[np.intp]] = []
+        trees_thresholds: list[NDArray[np.float64]] = []
+        trees_left: list[NDArray[np.intp]] = []
+        trees_right: list[NDArray[np.intp]] = []
+        trees_values: list[NDArray[np.float64]] = []
+        trees_left_fractions: list[NDArray[np.float64]] = []
+
+        for tree_id in range(self.num_trees):
+            root = self._arena.roots[tree_id]
+            if root < 0:
+                continue
+            feat, thresh, left, right, vals, left_fracs = self._collect_tree_structure(tree_id)
+            trees_features.append(feat)
+            trees_thresholds.append(thresh)
+            trees_left.append(left)
+            trees_right.append(right)
+            trees_values.append(vals)
+            trees_left_fractions.append(left_fracs)
+
+        if not trees_features:
+            return score, np.zeros(num_features, dtype=np.float64)
+
+        shap_values = treeshap_ensemble(
+            point,
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            num_features,
+            trees_left_fractions=trees_left_fractions,
+        )
+
+        return score, shap_values
 
 
 # Tree cut and collusive displacement logic is adapted from rrcf 0.4.4, distributed under:

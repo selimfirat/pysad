@@ -210,3 +210,34 @@ class LODA(BaseModel):
             self._fit_projected(projected, inds)
 
         return score
+
+    def score_explain_partial(self, X: NDArray[np.float64]) -> tuple[float, NDArray[np.float64]]:
+        """Returns the anomaly score and per-feature t-statistic explanation for the next instance.
+
+        The explanation uses the one-tailed two-sample t statistic from Section 3.3 of the paper
+        (Eq. 4), comparing the negative log densities of projections that use each feature
+        versus those that do not. Higher t-statistic values indicate features that contribute
+        more to the anomalousness of the instance.
+
+        Like ``score_partial``, it does not update the model or record the instance.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and explain.
+
+        Returns:
+            tuple: (score, t_stats) where
+                score (float): The anomalousness score of the input instance.
+                t_stats (np.float64 array of shape (num_features,)): t-statistic for each
+                feature. Higher values mean the feature contributes more to anomalousness.
+                NaN for features with insufficient projections (fewer than 2 using or not using).
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        score = self.score_partial(X)
+        explanation = self.explain_partial(X)
+        return score, explanation

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.special import logsumexp
 
 from pysad.core.base_model import BaseModel
@@ -35,15 +36,23 @@ class KELOS(BaseModel):
         self.window_size = window_size
         self.radius = radius
         self.num_neighbors = num_neighbors
-        self.points_ = np.empty((0, 0))  # the window as a ring buffer, (window_size, num_features)
-        self.labels_ = np.zeros(window_size, dtype=np.intp)  # the cluster of each window instance
+        self.points_: NDArray[np.float64] = np.empty(
+            (0, 0)
+        )  # the window as a ring buffer, (window_size, num_features)
+        self.labels_: NDArray[np.intp] = np.zeros(
+            window_size, dtype=np.intp
+        )  # the cluster of each window instance
         # The size of each cluster, 0 for a free slot. A window of n instances has at most n clusters.
-        self.counts_ = np.zeros(window_size, dtype=np.int64)
-        self.sums_ = np.empty((0, 0))  # the linear sum of each cluster, (window_size, num_features)
+        self.counts_: NDArray[np.int64] = np.zeros(window_size, dtype=np.int64)
+        self.sums_: NDArray[np.float64] = np.empty(
+            (0, 0)
+        )  # the linear sum of each cluster, (window_size, num_features)
         self._num = 0  # the number of instances in the window
         self._next = 0  # the slot of the next instance, which holds the oldest one in a full window
 
-    def _insert(self, X: np.ndarray, counts: np.ndarray, sums: np.ndarray) -> int:
+    def _insert(
+        self, X: NDArray[np.float64], counts: NDArray[np.int64], sums: NDArray[np.float64]
+    ) -> int:
         """Moves the window of the clusters `counts` and `sums` to `X` in place and returns the cluster of `X`."""
         if self._num == self.window_size:
             oldest = self.labels_[self._next]
@@ -61,7 +70,7 @@ class KELOS(BaseModel):
         sums[cluster] += X
         return cluster
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> KELOS:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> KELOS:
         """Updates the model with the next instance. The oldest instance of a full window expires.
 
         Args:
@@ -82,7 +91,7 @@ class KELOS(BaseModel):
         self._num = min(self._num + 1, self.window_size)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance in the window that it enters, without changing the model.
 
         The oldest instance of a full window expires and the instance joins a cluster, as in `fit_partial`, so this gives the same score as `fit_score_partial`.

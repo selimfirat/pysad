@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from typing import Any, cast
+from typing import Any, ClassVar, Literal, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -29,6 +29,8 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
     Raises:
         ValueError: If ``window_size`` is less than 1 or ``short_window_size`` is less than 1.
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
 
     def __init__(
         self,

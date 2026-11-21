@@ -80,6 +80,35 @@ The ``|`` operator builds a :class:`~pysad.models.StreamPipeline` with the detec
 
 ``fit_score_partial`` gives the same scores as the loop in the first section. ``score_partial`` scores a point with the current state of each stage and does not fit any stage. A calibrator is a postprocessor, so put it last in ``postprocessors``.
 
+Wrap custom extractors or encoders
+-----------------------------------
+
+:class:`~pysad.transform.preprocessing.FunctionTransformer` turns a Python callable into a :class:`~pysad.core.BaseTransformer`, so custom feature extractors, domain parsers, or frozen embedding functions fit inside a ``|`` pipeline:
+
+.. code-block:: python
+
+   import numpy as np
+
+   from pysad.models import LODA
+   from pysad.transform.postprocessing import ThresholdFilter
+   from pysad.transform.preprocessing import FunctionTransformer
+   from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+
+   def extract_features(record):
+       return np.array([len(record), sum(c.isdigit() for c in record)], dtype=np.float64)
+
+
+   pipeline = (
+       FunctionTransformer(extract_features, output_dims=2)
+       | LODA(random_state=0)
+       | ConformalProbabilityCalibrator(window_size=200)
+       | ThresholdFilter(threshold=0.95)
+   )
+
+   for record in ["ok 1", "ok 2", "error 99999999"]:
+       alert = pipeline.fit_predict_partial(record)
+
 Use a PySAD model in River
 --------------------------------
 

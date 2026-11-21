@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any, ClassVar, Literal, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -12,6 +12,26 @@ from pysad.core._iterate import _iterate
 
 class BasePostprocessor(ABC):
     """Base class for postprocessing methods."""
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "score"
+    _has_decision_rule: ClassVar[bool] = False
+
+    @property
+    def output_kind(self) -> Literal["score", "probability", "decision"]:
+        """Output kind produced by this postprocessor."""
+        return self._output_kind
+
+    def _can_predict(self) -> bool:
+        return self.output_kind == "decision" or self._has_decision_rule
+
+    def _decide_from_score(self, score: float) -> int:
+        if self.output_kind == "decision":
+            return 1 if score > 0.0 else 0
+        raise TypeError(
+            f"{type(self).__name__} produces continuous outputs (output_kind={self.output_kind!r}) "
+            "without an intrinsic decision rule. Pipe it into ThresholdFilter or QuantileFilter "
+            "to call predict_partial."
+        )
 
     @abstractmethod
     def fit_partial(self, score: float) -> BasePostprocessor:
@@ -123,7 +143,27 @@ class _PostprocessorChain(BasePostprocessor):
     """Lightweight sequential chain of postprocessors created by ``|``."""
 
     def __init__(self, steps: tuple[BasePostprocessor, ...]) -> None:
+        kind: Literal["score", "probability", "decision"] = "score"
+        for step in steps:
+            if kind == "decision" and step.output_kind == "probability":
+                raise ValueError(
+                    f"Cannot apply probability calibrator {type(step).__name__} "
+                    "after a binary decision output."
+                )
+            kind = step.output_kind
         self.steps = steps
+
+    @property
+    def output_kind(self) -> Literal["score", "probability", "decision"]:
+        return self.steps[-1].output_kind if self.steps else "score"
+
+    def _can_predict(self) -> bool:
+        return self.steps[-1]._can_predict() if self.steps else False
+
+    def _decide_from_score(self, score: float) -> int:
+        if self.steps:
+            return self.steps[-1]._decide_from_score(score)
+        return super()._decide_from_score(score)
 
     def fit_partial(self, score: float) -> _PostprocessorChain:
         for step in self.steps[:-1]:

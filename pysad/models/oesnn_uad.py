@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 from sklearn.utils import check_random_state
 
@@ -55,6 +57,8 @@ class OeSNNUAD(BaseModel):
     Raises:
         ValueError: If ``mod`` is not in (0, 1), ``c`` is not in (0, 1], ``xi`` is not in [0, 1], or an int parameter is below its minimum.
     """
+
+    _has_decision_rule: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -222,3 +226,6 @@ class OeSNNUAD(BaseModel):
         window[self.position_] = x
         fired, largest = self._predict(self._encode(window, x)[1])
         return self._z(abs(x - self.outputs_[largest if fired is None else fired]))
+
+    def _decide_from_score(self, score: float) -> int:
+        return 1 if score > self.epsilon else 0

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from copy import deepcopy
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 import numpy as np
 
@@ -102,6 +102,29 @@ class DriftAdaptiveDetector(BaseModel):
         """
         return self.model_.score_partial(X)
 
+    @property
+    def output_kind(self) -> Literal["score", "probability", "decision"]:
+        """Output kind produced by the wrapped detector."""
+        return self.model_.output_kind
+
+    def _can_predict(self) -> bool:
+        return self.model_._can_predict()
+
+    def _decide_from_score(self, score: float) -> int:
+        return self.model_._decide_from_score(score)
+
+    def _update_after_score(self, score: float, X: np.ndarray, y: int | None) -> None:
+        value = score if self.score_transform is None else self.score_transform(score)
+        self.drift_detected_ = False
+        if math.isfinite(value):
+            self.drift_meter_.update(value)
+            self.drift_detected_ = self.drift_meter_.get() > self.threshold
+        if self.drift_detected_:
+            self.model_ = self.model_factory()
+            self.drift_meter_ = deepcopy(self.drift_meter)
+            self.num_resets_ += 1
+        self.model_.fit_partial(X, y)
+
     def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Scores the instance before updating the meter and detector.
 
@@ -113,14 +136,21 @@ class DriftAdaptiveDetector(BaseModel):
             float: The score before learning or resetting.
         """
         score = self.model_.score_partial(X)
-        value = score if self.score_transform is None else self.score_transform(score)
-        self.drift_detected_ = False
-        if math.isfinite(value):
-            self.drift_meter_.update(value)
-            self.drift_detected_ = self.drift_meter_.get() > self.threshold
-        if self.drift_detected_:
-            self.model_ = self.model_factory()
-            self.drift_meter_ = deepcopy(self.drift_meter)
-            self.num_resets_ += 1
-        self.model_.fit_partial(X, y)
+        self._update_after_score(score, X, y)
         return score
+
+    def predict_partial(self, X: np.ndarray) -> int:
+        """Predicts a binary label using the wrapped detector without learning."""
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        score = self.model_.score_partial(X)
+        return self.model_._decide_from_score(score)
+
+    def fit_predict_partial(self, X: np.ndarray, y: int | None = None) -> int:
+        """Predicts a binary label before updating the drift monitor and detector."""
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        score = self.model_.score_partial(X)
+        decision = self.model_._decide_from_score(score)
+        self._update_after_score(score, X, y)
+        return decision

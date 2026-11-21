@@ -327,19 +327,19 @@ jobs:
           cache-dependency-glob: "pyproject.toml"
           cache-suffix: numpy-123
           prune-cache: true
-      - name: Install NumPy 1.23 with compatible test dependencies
-        # River 0.26.1+ is required by the PySADToRiverAdapter; numpy 1.23 is
+      - name: Install NumPy 2.x with river 0.26.1 compatible test dependencies
+        # River 0.26.1+ is required by the PySADToRiverAdapter; numpy 2.x is
         # compatible with river 0.26.1 when the correct pins are used.
         run: |
           printf '%s\n' 'river==0.26.1' 'matplotlib==3.10.8' > "$RUNNER_TEMP/numpy123-overrides.txt"
-          uv pip install --system --only-binary :all: --no-binary pysad --group test -e . "numpy==1.23.5" \
+          uv pip install --system --only-binary :all: --no-binary pysad --group test -e . "numpy>=2.2.5" \
             --override "$RUNNER_TEMP/numpy123-overrides.txt"
-      - name: Test with NumPy 1.23
+      - name: Test with NumPy 2.x
         env:
           BASE_REF: ${{ github.base_ref }}
           COUNT: ${{ needs.plan.outputs.count }}
         run: |
-          python -c 'import numpy; assert numpy.__version__ == "1.23.5", numpy.__version__'
+          python -c 'import numpy; assert numpy.__version__ >= "2.2.5", numpy.__version__'
           if [ -n "$BASE_REF" ]; then
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"

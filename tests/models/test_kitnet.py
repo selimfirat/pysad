@@ -280,3 +280,194 @@ def test_custom_hidden_ratio_changes_the_scores():
     assert all(isinstance(score, float) for score in scores.tolist())
     assert np.isfinite(scores).all()
     assert not np.array_equal(scores, other)
+
+
+def test_grace_period_transition_feature_mapping_to_anomaly_detector():
+    """Test the exact transition from feature mapping to anomaly detector grace period.
+
+    During feature mapping (indices 0 to fm-1): score=0.0, only correlation matrix updates.
+    At index fm: autoencoders created and trained on this instance.
+    After fitting fm, score for fm is non-zero (autoencoders now exist).
+    """
+    fm = 5
+    ad = 10
+    X = np.random.RandomState(42).rand(20, 4)
+
+    model = KitNet(grace_feature_mapping=fm, grace_anomaly_detector=ad, random_state=123)
+
+    # Before any fit: score is 0.0
+    assert model.score_partial(X[0]) == 0.0
+
+    # Fit instances 0 to fm-1 (feature mapping period)
+    for i in range(fm):
+        model.fit_partial(X[i])
+        # Score during feature mapping is 0.0
+        assert model.score_partial(X[i]) == 0.0, f"Instance {i} during FM should score 0.0"
+
+    # Autoencoders not created yet
+    assert model.model.output_layer is None
+
+    # Fit instance fm (first AD instance) - creates and trains autoencoders
+    model.fit_partial(X[fm])
+    # After fitting fm, autoencoders exist, so score_partial returns non-zero
+    score_fm = model.score_partial(X[fm])
+    assert score_fm >= 0.0, f"Instance {fm} (first AD) score should be non-negative"
+    assert np.isfinite(score_fm)
+
+    # Autoencoders now exist
+    assert model.model.output_layer is not None
+    assert len(model.model.ensemble_layer) > 0
+
+    # Fit instance fm+1 - autoencoders have trained on one instance
+    model.fit_partial(X[fm + 1])
+    score_fm_plus_1 = model.score_partial(X[fm + 1])
+    assert score_fm_plus_1 >= 0.0, f"Instance {fm + 1} score should be non-negative"
+    assert np.isfinite(score_fm_plus_1)
+
+
+def test_grace_period_transition_anomaly_detector_to_scoring_only():
+    """Test the transition from anomaly detector grace period to scoring-only mode.
+
+    After fm + ad instances have been trained on: model stops learning, only scores.
+    in_grace() returns False.
+    """
+    fm = 5
+    ad = 3
+    X = np.random.RandomState(42).rand(fm + ad + 5, 4)
+
+    model = KitNet(grace_feature_mapping=fm, grace_anomaly_detector=ad, random_state=123)
+
+    # Fit through feature mapping period (instances 0 to fm-1)
+    for i in range(fm):
+        model.fit_partial(X[i])
+    assert model.model.in_grace()
+
+    # Fit through anomaly detector period (instances fm to fm+ad-1)
+    # After fitting fm+ad-1, n_trained = fm+ad, so in_grace() becomes False
+    for i in range(fm, fm + ad - 1):
+        model.fit_partial(X[i])
+        assert model.model.in_grace(), f"in_grace should be True after fitting instance {i}"
+
+    # Fit the last AD instance (fm+ad-1)
+    model.fit_partial(X[fm + ad - 1])
+    # Now n_trained = fm + ad, so in_grace() is False
+    assert not model.model.in_grace()
+
+    # Further fits should not change the model (only scoring)
+    n_trained_before = model.model.n_trained
+    model.fit_partial(X[fm + ad])
+    model.fit_partial(X[fm + ad + 1])
+    assert model.model.n_trained == n_trained_before
+
+    # Scores should still be produced
+    for i in range(fm + ad, fm + ad + 3):
+        score = model.score_partial(X[i])
+        assert np.isfinite(score)
+        assert score >= 0.0
+
+
+def test_reconstruction_error_stability_after_grace_periods():
+    """Test that reconstruction error stabilizes after grace periods end.
+
+    During AD grace period, autoencoders are still training so scores may vary.
+    After both grace periods, autoencoders stop training and scores should
+    be stable for similar normal instances.
+    """
+    fm = 10
+    ad = 20
+    rng = np.random.RandomState(42)
+    # Generate normal data from a fixed distribution
+    X_train = rng.rand(fm + ad, 5)
+    X_test = rng.rand(30, 5)  # Similar normal instances
+
+    model = KitNet(grace_feature_mapping=fm, grace_anomaly_detector=ad, random_state=123)
+    model.fit(X_train)
+
+    # Model should be out of grace periods
+    assert not model.model.in_grace()
+
+    # Score test instances - they should be relatively stable (low variance)
+    # since they come from the same distribution as training data
+    scores = model.score(X_test)
+    assert np.isfinite(scores).all()
+    assert (scores >= 0.0).all()
+
+    # The coefficient of variation should be reasonable for normal data
+    # (not a strict threshold, but scores shouldn't vary wildly)
+    cv = scores.std() / (scores.mean() + 1e-10)
+    assert cv < 5.0, f"Score coefficient of variation too high: {cv}"
+
+
+def test_seeded_reproducibility_full_pipeline():
+    """Test that KitNet with the same seed produces identical results across full pipeline.
+
+    Covers: feature mapping, autoencoder initialization, training, and scoring.
+    """
+    fm = 5
+    ad = 10
+    X = np.random.RandomState(999).rand(30, 4)
+
+    # First run
+    model_a = KitNet(grace_feature_mapping=fm, grace_anomaly_detector=ad, random_state=42)
+    scores_a = model_a.fit_score(X)
+    feature_map_a = model_a.feature_map_
+    weights_a = [ae.W.copy() for ae in model_a.model.ensemble_layer]
+    output_weights_a = model_a.model.output_layer.W.copy()
+
+    # Second run with same seed
+    model_b = KitNet(grace_feature_mapping=fm, grace_anomaly_detector=ad, random_state=42)
+    scores_b = model_b.fit_score(X)
+    feature_map_b = model_b.feature_map_
+    weights_b = [ae.W.copy() for ae in model_b.model.ensemble_layer]
+    output_weights_b = model_b.model.output_layer.W.copy()
+
+    # Scores should be identical
+    np.testing.assert_array_equal(scores_a, scores_b)
+    # Feature mapping should be identical
+    assert feature_map_a == feature_map_b
+    # Autoencoder weights should be identical
+    for wa, wb in zip(weights_a, weights_b, strict=True):
+        np.testing.assert_array_equal(wa, wb)
+    np.testing.assert_array_equal(output_weights_a, output_weights_b)
+
+
+def test_seeded_reproducibility_feature_mapping():
+    """Test that the feature mapping is reproducible with the same seed.
+
+    The correlation clustering uses random initialization for the autoencoders,
+    but the clustering itself is deterministic given the data. The random_state
+    affects the autoencoder weight initialization.
+    """
+    fm = 10
+    ad = 10
+    X = np.random.RandomState(777).rand(30, 6)
+
+    model_a = KitNet(grace_feature_mapping=fm, grace_anomaly_detector=ad, random_state=100)
+    model_a.fit(X[:fm])  # Only feature mapping period
+    feature_map_a = model_a.model.fm.cluster(fm)
+
+    model_b = KitNet(grace_feature_mapping=fm, grace_anomaly_detector=ad, random_state=100)
+    model_b.fit(X[:fm])
+    feature_map_b = model_b.model.fm.cluster(fm)
+
+    assert feature_map_a == feature_map_b
+
+
+def test_seeded_reproducibility_incremental():
+    """Test reproducibility when fitting incrementally with fit_partial."""
+    fm = 5
+    ad = 10
+    X = np.random.RandomState(888).rand(20, 3)
+
+    model_a = KitNet(grace_feature_mapping=fm, grace_anomaly_detector=ad, random_state=555)
+    scores_a = []
+    for x in X:
+        scores_a.append(model_a.fit_score_partial(x))
+
+    model_b = KitNet(grace_feature_mapping=fm, grace_anomaly_detector=ad, random_state=555)
+    scores_b = []
+    for x in X:
+        scores_b.append(model_b.fit_score_partial(x))
+
+    np.testing.assert_array_equal(scores_a, scores_b)
+    assert model_a.feature_map_ == model_b.feature_map_

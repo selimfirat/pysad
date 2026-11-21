@@ -811,7 +811,7 @@ def _load_creditcard_arff(monkeypatch, data_base_path: str) -> tuple:
     with open(arff_path, "w") as f:
         f.write(content.decode())
 
-    # Follow existing test pattern: directly set checksum in module
+    # Follow existing test pattern: set checksum via monkeypatch so it is reverted after the test
     # The _source function uses "creditcard/creditcard.arff" as key for checksum lookup
     # When download=False and file exists, checksum is checked but we can set it to match
     import hashlib
@@ -821,7 +821,9 @@ def _load_creditcard_arff(monkeypatch, data_base_path: str) -> tuple:
     # Read back the file content to compute checksum
     with open(arff_path, "rb") as f:
         file_content = f.read()
-    dmod._CHECKSUMS["creditcard/creditcard.arff"] = hashlib.sha256(file_content).hexdigest()
+    monkeypatch.setitem(
+        dmod._CHECKSUMS, "creditcard/creditcard.arff", hashlib.sha256(file_content).hexdigest()
+    )
 
     # Monkeypatch urlopen to avoid actual network calls
     def urlopen(req, timeout):

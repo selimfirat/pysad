@@ -87,15 +87,15 @@ jobs:
           if [ -n "$BASE_REF" ]; then
             git fetch --depth=1 origin "$BASE_REF"
             python3 scripts/ci_affected.py tests "origin/$BASE_REF" > "$RUNNER_TEMP/tests-plan.json"
-            python3 -c '
+            python3 - <<'PY'
           import json, os
           from pathlib import Path
           plan = json.loads(Path(os.environ["RUNNER_TEMP"], "tests-plan.json").read_text(encoding="utf-8"))
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
-              f.write(f"count={plan[\"count\"]}\n")
-              f.write("run_tests=" + ("true" if plan["count"] > 0 else "false") + "\n")
-              f.write("needs_compat=" + ("true" if plan["needs_compat"] else "false") + "\n")
-          '
+              f.write(f"count={plan['count']}\n")
+              f.write(f"run_tests={'true' if plan['count'] > 0 else 'false'}\n")
+              f.write(f"needs_compat={'true' if plan['needs_compat'] else 'false'}\n")
+          PY
           else
             {
               echo "count=999"

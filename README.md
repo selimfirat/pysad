@@ -348,7 +348,7 @@ These starting points come from the design of each method. They are not benchmar
 
 | Stage | What PySAD provides |
 |---|---|
-| Preprocessing | `StandardScaler`, `MinMaxScaler`, `InstanceStandardScaler`, `InstanceUnitNormScaler`, `ShingleTransformer`, `DrainLogParser`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
+| Preprocessing | `StandardScaler`, `MinMaxScaler`, `InstanceStandardScaler`, `InstanceUnitNormScaler`, `ShingleTransformer`, `DrainLogParser`, `FunctionTransformer`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
 | Projection | `StreamhashProjector`, `GaussianRandomProjector`, `SparseRandomProjector` |
 | Postprocessing | Running and windowed average, max, median and z-score of scores, `DynamicThresholdPostprocessor` (Telemanom), `ThresholdFilter`, `QuantileFilter` |
 | Calibration | `AnomalyLikelihoodProbabilityCalibrator`, `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |

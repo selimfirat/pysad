@@ -58,6 +58,16 @@ You get the rest from :class:`~pysad.core.BaseModel`:
 - ``fit``, ``score`` and ``fit_score`` process a 2-D array row by row.
 - ``score_partial`` and ``fit_score_partial`` return a Python ``float``, even if your method returns a NumPy scalar or a one-element array.
 
+Expose binary decisions (optional)
+----------------------------------
+
+Score-only detectors need no extra code: users can pipe them into :class:`~pysad.transform.postprocessing.ThresholdFilter`, :class:`~pysad.transform.postprocessing.QuantileFilter`, or :class:`~pysad.transform.postprocessing.NonparametricDynamicThresholdPostprocessor` to call ``predict_partial`` and ``fit_predict_partial``.
+
+If your detector's paper defines its own binary decision, opt in on your :class:`~pysad.core.BaseModel` subclass:
+
+- Binary-output detectors whose ``score_partial`` returns ``0.0`` or ``1.0`` set ``_output_kind = "decision"``.
+- Continuous-score detectors with a paper-defined threshold set ``_has_decision_rule = True`` and override ``_decide_from_score(self, score) -> int`` to return ``0`` or ``1`` without mutating state.
+
 Run your detector on a stream
 -----------------------------
 
@@ -105,6 +115,8 @@ The other component types follow the same pattern. Subclass the base class from 
    * - Metric
      - :class:`~pysad.core.BaseMetric`
      - ``update``, ``get``
+
+To wrap a Python callable without subclassing :class:`~pysad.core.BaseTransformer`, use :class:`~pysad.transform.preprocessing.FunctionTransformer`. Custom probability calibrators set ``_output_kind = "probability"``, and thresholding postprocessors set ``_output_kind = "decision"`` (or ``_has_decision_rule = True`` with ``_decide_from_score``).
 
 Add your detector to PySAD
 --------------------------

@@ -10,6 +10,7 @@ from pysad.models import (
     DriftAdaptiveDetector,
     FluxEV,
     OeSNNUAD,
+    RelativeEntropy,
     StreamPipeline,
 )
 from pysad.transform.postprocessing import (
@@ -32,6 +33,7 @@ from pysad.transform.probability_calibration import (
 def test_output_kind_across_models_calibrators_filters_and_pipelines():
     assert LODA().output_kind == "score"
     assert FRAHST().output_kind == "decision"
+    assert RelativeEntropy(min_val=0.0, max_val=1.0, window_size=5).output_kind == "decision"
     assert FluxEV().output_kind == "score"
     assert GNGA().output_kind == "score"
     assert OeSNNUAD().output_kind == "score"
@@ -63,6 +65,11 @@ def test_output_kind_across_models_calibrators_filters_and_pipelines():
 def test_invalid_decision_to_probability_compositions_raise_value_error():
     with pytest.raises(ValueError, match="probability calibrator"):
         _ = FRAHST() | SPOTProbabilityCalibrator(num_init=10)
+
+    with pytest.raises(ValueError, match="probability calibrator"):
+        _ = RelativeEntropy(
+            min_val=0.0, max_val=1.0, window_size=5
+        ) | ConformalProbabilityCalibrator(window_size=10)
 
     with pytest.raises(ValueError, match="probability calibrator"):
         _ = LODA() | ThresholdFilter(0.5) | ConformalProbabilityCalibrator(window_size=10)
@@ -241,3 +248,28 @@ def test_predict_methods_reject_nan_without_mutating_state():
 
         # Rejections leave state identical to reference model.
         np.testing.assert_allclose(model.fit_score(X_clean), ref.fit_score(X_clean))
+
+
+def test_relative_entropy_predict_decision_and_no_state_mutation():
+    X_stream = np.array([0.1] * 6 + [0.9] * 4, dtype=np.float64).reshape(-1, 1)
+    m_score = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=5)
+    m_pred = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=5)
+
+    preds = []
+    expected = []
+    for xi in X_stream:
+        pred = m_pred.fit_predict_partial(xi)
+        assert type(pred) is int
+        preds.append(pred)
+        expected.append(int(m_score.fit_score_partial(xi) > 0.0))
+
+    assert preds == expected
+    assert set(preds) == {0, 1}
+
+    probe = np.array([0.1], dtype=np.float64)
+    score_before = m_pred.score_partial(probe)
+    pred_frozen = m_pred.predict_partial(probe)
+    assert type(pred_frozen) is int
+    assert pred_frozen == int(score_before > 0.0)
+    assert m_pred.score_partial(probe) == score_before
+    assert m_pred.fit_score_partial(probe) == m_score.fit_score_partial(probe)

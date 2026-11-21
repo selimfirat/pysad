@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _finite_float
@@ -37,9 +40,9 @@ class CostSensitiveStreamModel(BaseModel):
         if self.learning_rate <= 0.0:
             raise ValueError(f"learning_rate must be positive, got {self.learning_rate}.")
 
-        self.weights_: np.ndarray | None = None
+        self.weights_: NDArray[np.float64] | None = None
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> CostSensitiveStreamModel:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> CostSensitiveStreamModel:
         """Updates the model with the next instance and its label.
 
         Args:
@@ -71,7 +74,7 @@ class CostSensitiveStreamModel(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores the next instance without changing the model.
 
         Args:

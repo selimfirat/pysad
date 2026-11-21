@@ -72,8 +72,12 @@ class RSHash(BaseModel):
         # all components, so memory stays constant however long the stream runs. sketch_timestamps
         # holds the last index each slot was updated at; sketch_counts holds its decayed count as of
         # that index.
-        self.sketch_timestamps: NDArray[np.int64] = np.zeros((self.num_hash, self.hash_range), dtype=np.int64)
-        self.sketch_counts: NDArray[np.float64] = np.zeros((self.num_hash, self.hash_range), dtype=np.float64)
+        self.sketch_timestamps: NDArray[np.int64] = np.zeros(
+            (self.num_hash, self.hash_range), dtype=np.int64
+        )
+        self.sketch_counts: NDArray[np.float64] = np.zeros(
+            (self.num_hash, self.hash_range), dtype=np.float64
+        )
 
         self._sample_dims(rng)
 

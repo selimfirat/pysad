@@ -154,7 +154,9 @@ class _HSChains:
         self.slots: NDArray[np.intp] = np.argmax(self.fs[:, :, None] == self.fs[:, None, :], axis=2)
         self._flat_slots: NDArray[np.intp] = np.arange(n_chains)[:, None] * depth + self.slots
         self.first_split: NDArray[np.bool_] = self.slots == np.arange(depth)
-        self.chain_depth_ids: NDArray[np.int32] = np.arange(n_chains * depth, dtype=np.int32).reshape(n_chains, depth)
+        self.chain_depth_ids: NDArray[np.int32] = np.arange(
+            n_chains * depth, dtype=np.int32
+        ).reshape(n_chains, depth)
         self._depths: NDArray[np.intp] = np.arange(1, depth + 1)
 
         # In the first window, the reference and current counts are the same.

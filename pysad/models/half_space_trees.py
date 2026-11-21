@@ -100,9 +100,15 @@ class HalfSpaceTrees(BaseModel):
         # tree. The split and the mass arrays are read as one flat array in which node n of tree t
         # sits at t * num_splits + n and t * num_nodes + n: gathering a split needs the index
         # u + t * num_splits - 1, a mass cell u + t * num_nodes - 1.
-        self._split_shift: NDArray[np.intp] = np.arange(self.num_trees, dtype=np.intp) * num_splits - 1
-        self._mass_shift: NDArray[np.intp] = np.arange(self.num_trees, dtype=np.intp) * (2 * num_splits + 1) - 1
-        self._flat_path: NDArray[np.intp] = np.empty((self.max_depth + 1, self.num_trees), dtype=np.intp)
+        self._split_shift: NDArray[np.intp] = (
+            np.arange(self.num_trees, dtype=np.intp) * num_splits - 1
+        )
+        self._mass_shift: NDArray[np.intp] = (
+            np.arange(self.num_trees, dtype=np.intp) * (2 * num_splits + 1) - 1
+        )
+        self._flat_path: NDArray[np.intp] = np.empty(
+            (self.max_depth + 1, self.num_trees), dtype=np.intp
+        )
         self._idx_buf: NDArray[np.intp] = np.empty(self.num_trees, dtype=np.intp)
         self._att_buf: NDArray[Any] = np.empty(self.num_trees, dtype=self.split_atts.dtype)
         self._val_buf: NDArray[np.float64] = np.empty(self.num_trees)
@@ -114,7 +120,9 @@ class HalfSpaceTrees(BaseModel):
         if initial_window_X is not None:
             self.fit(initial_window_X)
 
-    def _work_space(self, rng: np.random.RandomState) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    def _work_space(
+        self, rng: np.random.RandomState
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         if not self.random_work_space:
             return self.feature_mins.copy(), self.feature_maxes.copy()
 

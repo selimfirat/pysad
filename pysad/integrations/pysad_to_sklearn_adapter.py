@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.base import BaseEstimator, OutlierMixin
 from sklearn.utils.validation import check_array
 
 from pysad.core.base_model import BaseModel
 
 
-class PySADToScikitLearnAdapter(OutlierMixin, BaseEstimator):
+class PySADToScikitLearnAdapter(OutlierMixin, BaseEstimator):  # type: ignore[misc]
     """Expose a fitted PySAD model through the scikit-learn outlier interface.
 
     Fit the PySAD model before wrapping it. This adapter keeps the same model.
@@ -30,7 +33,7 @@ class PySADToScikitLearnAdapter(OutlierMixin, BaseEstimator):
         self.model = model
         self.threshold = threshold
 
-    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> PySADToScikitLearnAdapter:
+    def fit(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> PySADToScikitLearnAdapter:
         """Return this adapter without changing the fitted model.
 
         Args:
@@ -45,7 +48,7 @@ class PySADToScikitLearnAdapter(OutlierMixin, BaseEstimator):
     def __sklearn_is_fitted__(self) -> bool:
         return True
 
-    def score_samples(self, X: np.ndarray) -> np.ndarray:
+    def score_samples(self, X: NDArray[Any]) -> NDArray[Any]:
         """Score a batch without learning from it.
 
         Args:
@@ -56,7 +59,7 @@ class PySADToScikitLearnAdapter(OutlierMixin, BaseEstimator):
         """
         return -self.model.score(check_array(X, dtype=np.float64))
 
-    def decision_function(self, X: np.ndarray) -> np.ndarray:
+    def decision_function(self, X: NDArray[Any]) -> NDArray[Any]:
         """Return signed distances from the anomaly threshold.
 
         Args:
@@ -72,7 +75,7 @@ class PySADToScikitLearnAdapter(OutlierMixin, BaseEstimator):
             raise ValueError("Set threshold before calling decision_function or predict.")
         return self.score_samples(X) + self.threshold
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
+    def predict(self, X: NDArray[Any]) -> NDArray[Any]:
         """Label instances with the anomaly threshold.
 
         Args:

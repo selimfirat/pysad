@@ -248,12 +248,15 @@ module = [
     "pysad.transform",
     "pysad.transform.*",
     "pysad.utils.window",
+    "pysad.integrations",
+    "pysad.integrations.*",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true
 disallow_untyped_calls = true
 disallow_untyped_decorators = true
 implicit_reexport = false
+warn_unused_ignores = false
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]

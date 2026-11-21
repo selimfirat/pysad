@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, ClassVar
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.base import OutlierMixin
 
 from pysad.core.base_model import BaseModel
@@ -26,13 +27,13 @@ class _BatchModel(BaseModel):
             self.model, "_higher_is_anomalous", False
         )
 
-    def _score_one(self, X: np.ndarray) -> float:
+    def _score_one(self, X: NDArray[Any]) -> float:
         if hasattr(self.model, "score_one"):
             return float(self.model.score_one(X))
         score = float(self.model.decision_function([X])[0])
         return -score if self._negate_decision_function else score
 
-    def _score_batch(self, X: np.ndarray) -> np.ndarray:
+    def _score_batch(self, X: NDArray[Any]) -> NDArray[Any]:
         if not hasattr(self.model, "decision_function") and hasattr(self.model, "score_one"):
             return np.fromiter(
                 (float(self.model.score_one(xi)) for xi in X),

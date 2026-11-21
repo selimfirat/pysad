@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ._batch_model import _BatchModel
 
@@ -22,8 +23,8 @@ class OneFitModel(_BatchModel):
     def __init__(
         self,
         model_cls: type[Any],
-        initial_X: np.ndarray,
-        initial_y: np.ndarray | None = None,
+        initial_X: NDArray[Any],
+        initial_y: NDArray[Any] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(model_cls, **kwargs)
@@ -32,7 +33,7 @@ class OneFitModel(_BatchModel):
         self.initial_X = initial_X
         self._fit_model()
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> OneFitModel:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> OneFitModel:
         """Does nothing, because the model is fitted only once on the initial instances.
 
         Args:
@@ -52,7 +53,7 @@ class OneFitModel(_BatchModel):
         else:
             self.model.fit(self.initial_X, self.initial_y)
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -63,7 +64,7 @@ class OneFitModel(_BatchModel):
         """
         return self._score_one(X)
 
-    def score(self, X: np.ndarray) -> np.ndarray:
+    def score(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scores all instances in order.
 
         Args:
@@ -77,7 +78,7 @@ class OneFitModel(_BatchModel):
 
         return self._score_batch(X)
 
-    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
+    def fit_score(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> NDArray[Any]:
         """Scores all instances in order without updating the model.
 
         Args:

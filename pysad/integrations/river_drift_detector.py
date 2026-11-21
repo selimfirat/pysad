@@ -14,7 +14,7 @@ else:
 from pysad.core.base_statistic import BaseStatistic
 
 
-class RiverDriftDetector(DriftDetector):
+class RiverDriftDetector(DriftDetector):  # type: ignore[misc]
     """Exposes a PySAD drift meter through River's drift detector interface.
 
     Requires River 0.26.1 or newer.

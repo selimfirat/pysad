@@ -9,7 +9,7 @@ dynamic = ["version"]
 # The SciPy and scikit-learn floors support NumPy 2.
 # These floors prevent NumPy 2 from loading older builds compiled for NumPy 1.
 dependencies = [
-  "mcp>=1.26.0",
+  "mcp>=1.26.0,<2",
   "numpy>=1.23",
   "scikit-learn>=1.4.2",
   "scipy>=1.13.0",
@@ -75,7 +75,7 @@ Changelog = "https://github.com/selimfirat/pysad/releases"
 [project.scripts]
 pysad-live = "pysad.live.cli:main"
 
-# PEP 735 dependency groups. The runtime dependencies only have floors in [project]; these
+# PEP 735 dependency groups. The runtime dependencies use ranges in [project]; these
 # groups pin what CI, Read the Docs and contributors install, and Dependabot bumps them.
 # Install with `pip install -e . --group dev` (pip 25.1+) or `uv sync --group dev`.
 [dependency-groups]

@@ -27,6 +27,7 @@ cp -r examples/data/nab /tmp/pysad-space/data/
 cp examples/data/arrhythmia.mat /tmp/pysad-space/data/
 uv build --wheel --out-dir /tmp/pysad-space
 python -c 'import json, pathlib; p = pathlib.Path("/tmp/pysad-space"); (p / "manifest.json").write_text(json.dumps({"wheel": sorted(x.name for x in p.glob("pysad-*.whl"))[-1]}))'
+PYTHONPATH=spaces/playground:. python -c 'import pathlib, engine; pathlib.Path("/tmp/pysad-space/initial_snapshot.json").write_text(engine.build_initial_snapshot_json())'
 python -m http.server 7860 --directory /tmp/pysad-space
 ```
 

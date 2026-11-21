@@ -223,8 +223,24 @@ def test_static_space_bundle_metadata():
     assert "./engine.py" in index_html
     assert "./data/nab/realKnownCause/nyc_taxi.csv" in index_html
     assert "./data/arrhythmia.mat" in index_html
+    assert "./initial_snapshot.json" in index_html
+    assert "plotly-basic-" in index_html
+    assert "unpackArchive" in index_html
     for default_detector in ("LocalOutlierProbability", "RSHash", "LODA"):
         assert f'value="{default_detector}" checked' in index_html
+
+
+def test_initial_snapshot_json_omits_host_timings():
+    """Precomputed snapshot provides deterministic scores/plots without host timing leakage."""
+    import json
+
+    payload = json.loads(engine.build_initial_snapshot_json())
+    assert payload["precomputed"] is True
+    assert [tr["name"] for tr in payload["traces"]] == engine.DEFAULT_DETECTORS
+    for tr in payload["traces"]:
+        assert tr["us_per_point"] is None
+        assert tr["points_per_second"] is None
+        assert tr["auroc"] is not None and tr["auroc"] > 0.5
 
 
 def test_playground_files_have_no_em_or_en_dashes():

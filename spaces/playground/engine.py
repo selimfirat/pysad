@@ -1021,3 +1021,22 @@ def run_playground_json(
         },
     }
     return json.dumps(payload)
+
+
+def build_initial_snapshot_json() -> str:
+    """Build compact precomputed default JSON for instant browser first paint."""
+    raw = run_playground_json(
+        stream_name=STREAM_SYNTHETIC,
+        detectors=DEFAULT_DETECTORS,
+        calibrator_name=CALIBRATOR_CONFORMAL,
+        threshold=0.985,
+        calibrator_window=350,
+        max_points=1200,
+    )
+    payload = json.loads(raw)
+    payload["precomputed"] = True
+    for tr in payload["traces"]:
+        # Omit build-host timing until the visitor's WebAssembly runtime runs live.
+        tr["us_per_point"] = None
+        tr["points_per_second"] = None
+    return json.dumps(payload, separators=(",", ":"))

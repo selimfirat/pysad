@@ -4,40 +4,42 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PySAD Playground: Streaming Anomaly Detection</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231849a9'/%3E%3Cpath d='M4 18h6l3-9 4 14 3-7h8' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231849a9'/%3E%3Cpath d='M4 18h6l3-9 4 14 3-7h8' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://cdn.plot.ly" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" href="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.asm.wasm" as="fetch" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+  <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js" defer></script>
   <style>
     :root {
       --bg: #f6f5f1;
       --surface: #ffffff;
       --surface-rail: #f1efe9;
-      --surface-code: #f6f5f0;
-      --border: #e2dfd6;
-      --border-strong: #ccc7ba;
+      --surface-code: #f5f4ee;
+      --border: #ddd9ce;
+      --border-strong: #beb8a8;
       --ink: #14171f;
-      --ink-secondary: #475060;
-      --muted: #5f6776;
+      --ink-secondary: #434c5c;
+      --muted: #58606f;
       --accent: #1849a9;
       --accent-hover: #123780;
-      --accent-soft: #eef3fc;
-      --focus-ring: 0 0 0 3px rgba(24, 73, 169, 0.22);
       --danger: #c81e3a;
       --danger-bg: #fef2f4;
-      --danger-border: #f5c2cb;
-      --danger-ink: #9b142c;
+      --danger-border: #eab3be;
+      --danger-ink: #8f1127;
       --success: #0f766e;
-      --radius: 12px;
-      --radius-sm: 8px;
       --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
       --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
       --ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    *, *::before, *::after { box-sizing: border-box; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      border-radius: 0;
+    }
 
     ::selection {
       background: rgba(24, 73, 169, 0.14);
@@ -72,14 +74,40 @@
     }
 
     .topbar {
+      position: relative;
       display: flex;
       flex-wrap: wrap;
       align-items: flex-end;
       justify-content: space-between;
       gap: 16px;
       padding: 18px 0 16px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border-strong);
       margin-bottom: 18px;
+    }
+
+    .boot-progress {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 2px;
+      background: transparent;
+      overflow: hidden;
+      pointer-events: none;
+      transition: opacity 200ms var(--ease);
+    }
+
+    .boot-progress.is-done {
+      opacity: 0;
+    }
+
+    .progress-fill {
+      width: 100%;
+      height: 100%;
+      background: var(--accent);
+      transform-origin: left center;
+      transform: scaleX(0.08);
+      transition: transform 220ms var(--ease);
     }
 
     .brand-block {
@@ -126,23 +154,22 @@
     .runtime-status {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
+      gap: 8px;
       font-size: 0.78rem;
       font-weight: 500;
       color: var(--ink-secondary);
     }
 
-    .runtime-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+    .runtime-square {
+      width: 7px;
+      height: 7px;
       background: #94a3b8;
       flex-shrink: 0;
       transition: background-color 180ms var(--ease);
     }
 
-    .runtime-dot.ready { background: var(--success); }
-    .runtime-dot.error { background: var(--danger); }
+    .runtime-square.ready { background: var(--success); }
+    .runtime-square.error { background: var(--danger); }
 
     .nav-links {
       display: flex;
@@ -155,7 +182,6 @@
     .nav-links a {
       color: var(--accent);
       text-decoration: none;
-      border-radius: 4px;
       transition: color 150ms var(--ease);
     }
 
@@ -164,9 +190,13 @@
       text-decoration: underline;
     }
 
-    .nav-links a:focus-visible {
-      outline: none;
-      box-shadow: var(--focus-ring);
+    .nav-links a:focus-visible,
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .layout {
@@ -184,7 +214,6 @@
     .sidebar {
       background: var(--surface-rail);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
       padding: 16px;
       display: flex;
       flex-direction: column;
@@ -194,7 +223,6 @@
     .panel {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
       padding: 16px 18px;
     }
 
@@ -241,42 +269,32 @@
       margin: 10px 0 5px;
     }
 
-    .val-badge {
+    .val-readout {
       font-family: var(--font-mono);
-      font-size: 0.76rem;
+      font-size: 0.79rem;
+      font-weight: 500;
       font-variant-numeric: tabular-nums;
-      color: var(--accent);
-      background: var(--accent-soft);
-      border: 1px solid #d6e2f8;
-      padding: 1px 6px;
-      border-radius: 6px;
+      color: var(--ink);
     }
 
     select, input[type="file"] {
       width: 100%;
       padding: 7px 10px;
-      border-radius: var(--radius-sm);
       border: 1px solid var(--border-strong);
       background: var(--surface);
       color: var(--ink);
       caret-color: var(--accent);
       font-family: var(--font-sans);
       font-size: 0.84rem;
-      transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+      transition: border-color 150ms var(--ease);
     }
 
     select:hover:not(:disabled), input[type="file"]:hover:not(:disabled) {
-      border-color: #a9a294;
-    }
-
-    select:focus-visible, input[type="file"]:focus-visible {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: var(--focus-ring);
+      border-color: #8f897b;
     }
 
     select:disabled, input[type="file"]:disabled {
-      background: #eceae3;
+      background: #e9e6dd;
       color: var(--muted);
       cursor: not-allowed;
     }
@@ -288,25 +306,20 @@
       cursor: pointer;
     }
 
-    input[type="range"]:focus-visible {
-      outline: none;
-      box-shadow: var(--focus-ring);
-      border-radius: 6px;
-    }
-
     input[type="range"]:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
 
     .field-wrap.is-disabled {
-      opacity: 0.55;
+      opacity: 0.52;
     }
 
-    .checkbox-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 6px;
+    .ruled-list {
+      border-top: 1px solid var(--border);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      background: var(--surface-rail);
     }
 
     .check-item {
@@ -314,25 +327,22 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 7px 10px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
       font-size: 0.83rem;
       font-weight: 500;
       color: var(--ink);
       cursor: pointer;
-      transition: border-color 150ms var(--ease), background-color 150ms var(--ease);
+      transition: background-color 150ms var(--ease);
     }
 
     .check-item:hover:not(.disabled) {
-      border-color: var(--border-strong);
-      background: #faf9f6;
+      background: #f8f7f3;
     }
 
     .check-item.is-selected {
-      background: #f8faff;
-      border-color: #b8cae8;
+      background: var(--surface);
     }
 
     .check-item.disabled {
@@ -347,16 +357,12 @@
       min-width: 0;
     }
 
-    .check-main input {
+    .check-main input,
+    .radio-item input {
       margin: 0;
       flex-shrink: 0;
       accent-color: var(--accent);
       cursor: pointer;
-    }
-
-    .check-main input:focus-visible {
-      outline: none;
-      box-shadow: var(--focus-ring);
     }
 
     .check-label {
@@ -368,7 +374,7 @@
     .check-meta {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       flex-shrink: 0;
     }
 
@@ -379,24 +385,17 @@
       color: var(--muted);
     }
 
-    .swatch-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+    .swatch-line {
+      width: 12px;
+      height: 3px;
       flex-shrink: 0;
       display: inline-block;
       opacity: 0;
       transition: opacity 150ms var(--ease);
     }
 
-    .swatch-dot.visible {
+    .swatch-line.visible {
       opacity: 1;
-    }
-
-    .radio-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
     }
 
     .radio-item {
@@ -423,16 +422,10 @@
       justify-content: space-between;
       cursor: pointer;
       padding: 2px 0;
-      border-radius: 6px;
     }
 
     .control-details > summary::-webkit-details-marker {
       display: none;
-    }
-
-    .control-details > summary:focus-visible {
-      outline: none;
-      box-shadow: var(--focus-ring);
     }
 
     .chevron-icon {
@@ -459,18 +452,12 @@
 
     button {
       border: 1px solid transparent;
-      border-radius: var(--radius-sm);
       padding: 8px 12px;
       font-family: var(--font-sans);
       font-size: 0.83rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background-color 150ms var(--ease), border-color 150ms var(--ease), color 150ms var(--ease);
-    }
-
-    button:focus-visible {
-      outline: none;
-      box-shadow: var(--focus-ring);
+      transition: background-color 150ms var(--ease), border-color 150ms var(--ease);
     }
 
     button:active:not(:disabled) {
@@ -499,7 +486,7 @@
 
     .btn-secondary:hover:not(:disabled) {
       background: #f5f3ed;
-      border-color: #b4ae9f;
+      border-color: #9e9788;
     }
 
     .muted-note {
@@ -516,42 +503,6 @@
       min-width: 0;
     }
 
-    .boot-bar {
-      border: 1px solid #c7d7f4;
-      background: #f4f7fd;
-      border-radius: var(--radius);
-      padding: 12px 16px;
-    }
-
-    .boot-bar.hidden { display: none; }
-
-    .boot-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      font-size: 0.84rem;
-      font-weight: 500;
-      color: var(--ink);
-      margin-bottom: 8px;
-    }
-
-    .progress-track {
-      height: 6px;
-      border-radius: 999px;
-      background: #dce7fa;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      width: 100%;
-      background: var(--accent);
-      transform-origin: left center;
-      transform: scaleX(0.1);
-      transition: transform 220ms var(--ease);
-    }
-
     .status-strip {
       display: flex;
       justify-content: space-between;
@@ -565,13 +516,13 @@
 
     .running-tag {
       display: none;
-      font-size: 0.76rem;
-      font-weight: 600;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 500;
       color: var(--accent);
-      background: var(--accent-soft);
-      border: 1px solid #d6e2f8;
+      background: #eef3fc;
+      border: 1px solid #c7d7f4;
       padding: 2px 8px;
-      border-radius: 999px;
     }
 
     .running-tag.active { display: inline-block; }
@@ -640,6 +591,7 @@
       font-weight: 600;
       color: var(--muted);
       background: #faf9f6;
+      border-top: 1px solid var(--border);
     }
 
     .detector-cell {
@@ -655,7 +607,6 @@
     .skeleton-bar {
       display: inline-block;
       height: 12px;
-      border-radius: 4px;
       background: #eae7de;
       vertical-align: middle;
     }
@@ -671,8 +622,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 16px;
       border: 1px dashed var(--border-strong);
-      border-radius: var(--radius-sm);
       background: #fcfbf8;
       color: var(--muted);
       font-size: 0.84rem;
@@ -693,7 +644,6 @@
     pre {
       margin: 0;
       padding: 14px 16px;
-      border-radius: var(--radius-sm);
       border: 1px solid var(--border);
       background: var(--surface-code);
       color: var(--ink);
@@ -731,8 +681,8 @@
       <div class="brand-block">
         <div class="title-row">
           <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-            <rect width="32" height="32" rx="8" fill="#1849a9" />
-            <path d="M5 18h5l3-9 4 14 3-7h7" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+            <rect width="32" height="32" fill="#1849a9" />
+            <path d="M5 18h5l3-9 4 14 3-7h7" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter" />
           </svg>
           <h1>PySAD Playground</h1>
         </div>
@@ -740,8 +690,8 @@
       </div>
       <div class="topbar-meta">
         <div class="runtime-status">
-          <span id="runtimeDot" class="runtime-dot" aria-hidden="true"></span>
-          <span id="runtimeLabel">Pyodide WebAssembly (client-side)</span>
+          <span id="runtimeSquare" class="runtime-square" aria-hidden="true"></span>
+          <span id="runtimeLabel">Loading Pyodide WebAssembly runtime...</span>
         </div>
         <nav class="nav-links" aria-label="Project links">
           <a href="https://github.com/selimfirat/pysad" target="_blank" rel="noopener">GitHub</a>
@@ -749,6 +699,9 @@
           <a href="https://pysad.readthedocs.io/en/stable/benchmark.html" target="_blank" rel="noopener">Benchmarks</a>
           <a href="https://pypi.org/project/pysad/" target="_blank" rel="noopener">PyPI</a>
         </nav>
+      </div>
+      <div id="bootProgressWrap" class="boot-progress" aria-hidden="true">
+        <div id="bootProgressFill" class="progress-fill"></div>
       </div>
     </header>
 
@@ -773,7 +726,7 @@
 
           <label class="field-label" for="numPointsSlider">
             <span>Stream points</span>
-            <span id="numPointsValue" class="val-badge">1200</span>
+            <span id="numPointsValue" class="val-readout">1200</span>
           </label>
           <input id="numPointsSlider" type="range" min="400" max="2500" step="100" value="1200" disabled />
         </section>
@@ -785,62 +738,62 @@
             <h2 class="group-title">Detectors (1 to 3)</h2>
             <span id="detectorCount" class="count-readout">3 / 3</span>
           </div>
-          <div id="detectorGroup" class="checkbox-grid">
-            <label class="check-item">
+          <div id="detectorGroup" class="ruled-list">
+            <label class="check-item is-selected">
               <span class="check-main">
                 <input type="checkbox" value="LocalOutlierProbability" checked disabled />
                 <span class="check-label">LocalOutlierProbability</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">ODDS #1</span><span class="swatch-dot"></span></span>
+              <span class="check-meta"><span class="rank-tag">ODDS #1</span><span class="swatch-line visible" style="background-color: #1849a9;"></span></span>
             </label>
-            <label class="check-item">
+            <label class="check-item is-selected">
               <span class="check-main">
                 <input type="checkbox" value="RSHash" checked disabled />
                 <span class="check-label">RSHash</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">ODDS #2</span><span class="swatch-dot"></span></span>
+              <span class="check-meta"><span class="rank-tag">ODDS #2</span><span class="swatch-line visible" style="background-color: #0f766e;"></span></span>
             </label>
-            <label class="check-item">
+            <label class="check-item is-selected">
               <span class="check-main">
                 <input type="checkbox" value="LODA" checked disabled />
                 <span class="check-label">LODA</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">ODDS #4</span><span class="swatch-dot"></span></span>
+              <span class="check-meta"><span class="rank-tag">ODDS #4</span><span class="swatch-line visible" style="background-color: #b45309;"></span></span>
             </label>
             <label class="check-item">
               <span class="check-main">
                 <input type="checkbox" value="SmartSifter" disabled />
                 <span class="check-label">SmartSifter</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">Drift #2</span><span class="swatch-dot"></span></span>
+              <span class="check-meta"><span class="rank-tag">Drift #2</span><span class="swatch-line"></span></span>
             </label>
             <label class="check-item">
               <span class="check-main">
                 <input type="checkbox" value="RobustRandomCutForest" disabled />
                 <span class="check-label">RobustRandomCutForest</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">Drift #1</span><span class="swatch-dot"></span></span>
+              <span class="check-meta"><span class="rank-tag">Drift #1</span><span class="swatch-line"></span></span>
             </label>
             <label class="check-item">
               <span class="check-main">
                 <input type="checkbox" value="HalfSpaceTrees" disabled />
                 <span class="check-label">HalfSpaceTrees</span>
               </span>
-              <span class="check-meta"><span class="swatch-dot"></span></span>
+              <span class="check-meta"><span class="swatch-line"></span></span>
             </label>
             <label class="check-item">
               <span class="check-main">
                 <input type="checkbox" value="KNNCAD" disabled />
                 <span class="check-label">KNNCAD</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">NAB #4</span><span class="swatch-dot"></span></span>
+              <span class="check-meta"><span class="rank-tag">NAB #4</span><span class="swatch-line"></span></span>
             </label>
             <label class="check-item">
               <span class="check-main">
                 <input type="checkbox" value="SeasonalHybridESD" disabled />
                 <span class="check-label">SeasonalHybridESD</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">Seasonal</span><span class="swatch-dot"></span></span>
+              <span class="check-meta"><span class="rank-tag">Seasonal</span><span class="swatch-line"></span></span>
             </label>
           </div>
           <p class="muted-note">Defaults load top-ranked ODDS detectors (mean AUROC 0.842, 0.817, 0.790).</p>
@@ -852,8 +805,8 @@
           <div class="group-head">
             <h2 class="group-title">Alert calibration</h2>
           </div>
-          <div class="radio-stack">
-            <label class="check-item radio-item">
+          <div id="calibratorGroup" class="ruled-list">
+            <label class="check-item radio-item is-selected">
               <input type="radio" name="calibrator" value="Conformal (ConformalProbabilityCalibrator)" checked disabled />
               <span class="radio-copy">
                 <span>Conformal</span>
@@ -871,14 +824,14 @@
 
           <label class="field-label" for="thresholdSlider">
             <span>Alert threshold</span>
-            <span id="thresholdValue" class="val-badge">0.985</span>
+            <span id="thresholdValue" class="val-readout">0.985</span>
           </label>
           <input id="thresholdSlider" type="range" min="0.900" max="0.999" step="0.001" value="0.985" disabled />
 
           <div id="calWindowWrap" class="field-wrap">
             <label class="field-label" for="calWindowSlider">
               <span>Conformal window</span>
-              <span id="calWindowValue" class="val-badge">350</span>
+              <span id="calWindowValue" class="val-readout">350</span>
             </label>
             <input id="calWindowSlider" type="range" min="100" max="1000" step="50" value="350" disabled />
           </div>
@@ -891,7 +844,7 @@
             <summary>
               <h2 class="group-title">Anomaly injection and attribution</h2>
               <svg class="chevron-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter" />
               </svg>
             </summary>
             <div class="details-body">
@@ -902,13 +855,13 @@
 
               <label class="field-label" for="injectStepSlider">
                 <span>Inject at step</span>
-                <span id="injectStepValue" class="val-badge">720</span>
+                <span id="injectStepValue" class="val-readout">720</span>
               </label>
               <input id="injectStepSlider" type="range" min="60" max="1199" step="1" value="720" disabled />
 
               <label class="field-label" for="injectSigmaSlider">
                 <span>Magnitude (&sigma;)</span>
-                <span id="injectSigmaValue" class="val-badge">+5.5</span>
+                <span id="injectSigmaValue" class="val-readout">+5.5</span>
               </label>
               <input id="injectSigmaSlider" type="range" min="-8" max="8" step="0.5" value="5.5" disabled />
 
@@ -920,7 +873,7 @@
 
               <label class="field-label" for="inspectStepSlider">
                 <span>Explain step</span>
-                <span id="inspectStepValue" class="val-badge">468</span>
+                <span id="inspectStepValue" class="val-readout">468</span>
               </label>
               <input id="inspectStepSlider" type="range" min="60" max="1199" step="1" value="468" disabled />
             </div>
@@ -929,18 +882,8 @@
       </aside>
 
       <main class="main-stack">
-        <div id="bootBar" class="boot-bar">
-          <div class="boot-top">
-            <span id="bootStatus">Starting Pyodide WebAssembly Python runtime...</span>
-            <span id="bootPercent" class="val-badge">10%</span>
-          </div>
-          <div class="progress-track">
-            <div id="bootProgressFill" class="progress-fill"></div>
-          </div>
-        </div>
-
         <section id="statusCard" class="panel status-strip" aria-live="polite">
-          <span id="statusText">Loading Pyodide, numpy, scipy, scikit-learn, and PySAD in browser memory...</span>
+          <span id="statusText">Loading playground preview and client-side Python runtime...</span>
           <span id="runningTag" class="running-tag">Updating...</span>
         </section>
 
@@ -1054,15 +997,15 @@
       inspectStep: null,
       csvBytes: null,
       featureNames: ["sensor_1"],
+      loadedDatasets: new Set(),
     };
 
     const $ = (id) => document.getElementById(id);
 
     function setBootProgress(pct, text) {
-      const clamped = Math.max(2, Math.min(100, Number(pct)));
+      const clamped = Math.max(4, Math.min(100, Number(pct)));
       $("bootProgressFill").style.transform = `scaleX(${clamped / 100})`;
-      $("bootPercent").textContent = `${pct}%`;
-      $("bootStatus").textContent = text;
+      $("runtimeLabel").textContent = text;
     }
 
     function getSelectedDetectors() {
@@ -1082,7 +1025,7 @@
       let activeIdx = 0;
       boxes.forEach((cb) => {
         const row = cb.closest(".check-item");
-        const swatch = row.querySelector(".swatch-dot");
+        const swatch = row.querySelector(".swatch-line");
         if (cb.checked) {
           const color = DETECTOR_COLORS[activeIdx % DETECTOR_COLORS.length];
           row.classList.add("is-selected");
@@ -1098,6 +1041,12 @@
             swatch.classList.remove("visible");
           }
         }
+      });
+    }
+
+    function syncCalibratorRowStyles() {
+      document.querySelectorAll('input[name="calibrator"]').forEach((rb) => {
+        rb.closest(".check-item").classList.toggle("is-selected", rb.checked);
       });
     }
 
@@ -1117,6 +1066,7 @@
       const isConformal = getSelectedCalibrator().startsWith("Conformal");
       $("calWindowWrap").classList.toggle("is-disabled", !isConformal);
       $("calWindowSlider").disabled = !state.ready || !isConformal;
+      syncCalibratorRowStyles();
     }
 
     function syncInjectionButtons() {
@@ -1161,17 +1111,24 @@
         const firstTd = document.createElement("td");
         const nameWrap = document.createElement("span");
         nameWrap.className = "detector-cell";
-        const dot = document.createElement("span");
-        dot.className = "swatch-dot visible";
-        dot.style.backgroundColor = color;
+        const swatch = document.createElement("span");
+        swatch.className = "swatch-line visible";
+        swatch.style.backgroundColor = color;
         const nameSpan = document.createElement("span");
         nameSpan.textContent = tr.display_name;
-        nameWrap.appendChild(dot);
+        nameWrap.appendChild(swatch);
         nameWrap.appendChild(nameSpan);
         firstTd.appendChild(nameWrap);
         row.appendChild(firstTd);
 
         const injText = tr.injected_total > 0 ? `${tr.injected_caught} / ${tr.injected_total}` : "n/a";
+        const usText = tr.us_per_point === null || tr.us_per_point === undefined
+          ? "..."
+          : Number(tr.us_per_point).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        const ppsText = tr.points_per_second === null || tr.points_per_second === undefined
+          ? "..."
+          : Number(tr.points_per_second).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
         const cells = [
           fmtMetric(tr.auroc),
           fmtMetric(tr.aupr),
@@ -1179,13 +1136,13 @@
           fmtMetric(tr.precision),
           fmtMetric(tr.recall),
           injText,
-          Number(tr.us_per_point).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-          Number(tr.points_per_second).toLocaleString(undefined, { maximumFractionDigits: 0 }),
+          usText,
+          ppsText,
         ];
         cells.forEach((txt) => {
           const td = document.createElement("td");
           td.textContent = txt;
-          if (txt === "n/a") {
+          if (txt === "n/a" || txt === "...") {
             td.className = "cell-na";
           }
           row.appendChild(td);
@@ -1288,7 +1245,7 @@
         {
           text: "warm-up",
           xref: "x", yref: "y domain", x: x0, xanchor: "left", xshift: 6, y: 0.94, yanchor: "top",
-          showarrow: false, font: { size: 11, color: "#5f6776" },
+          showarrow: false, font: { size: 11, color: "#58606f" },
         },
         {
           text: `threshold = ${Number(threshold).toFixed(3)}`,
@@ -1307,10 +1264,10 @@
         font: { family: "IBM Plex Sans, ui-sans-serif, sans-serif", color: "#14171f", size: 12 },
         legend: { orientation: "h", yanchor: "bottom", y: compact ? 1.05 : 1.07, x: 0.0, font: { size: compact ? 10.5 : 11 } },
         margin: { l: compact ? 44 : 52, r: compact ? 10 : 16, t: compact ? 132 : 90, b: 44 },
-        xaxis: { matches: "x2", showticklabels: false, gridcolor: "#eeece6", zeroline: false },
-        yaxis: { title: "Value", domain: compact ? [0.56, 0.94] : [0.57, 0.97], gridcolor: "#eeece6", zerolinecolor: "#e2dfd6" },
-        xaxis2: { title: stream.timestamps ? "Timestamp" : "Stream step", anchor: "y2", gridcolor: "#eeece6", zeroline: false },
-        yaxis2: { title: "Calibrated score", range: [-0.02, 1.08], domain: [0.0, 0.41], gridcolor: "#eeece6", zerolinecolor: "#e2dfd6" },
+        xaxis: { matches: "x2", showticklabels: false, gridcolor: "#ece9e1", zeroline: false },
+        yaxis: { title: "Value", domain: compact ? [0.56, 0.94] : [0.57, 0.97], gridcolor: "#ece9e1", zerolinecolor: "#ddd9ce" },
+        xaxis2: { title: stream.timestamps ? "Timestamp" : "Stream step", anchor: "y2", gridcolor: "#ece9e1", zeroline: false },
+        yaxis2: { title: "Calibrated score", range: [-0.02, 1.08], domain: [0.0, 0.41], gridcolor: "#ece9e1", zerolinecolor: "#ddd9ce" },
         shapes,
         annotations,
       };
@@ -1365,10 +1322,10 @@
           title: "Contribution (t-statistic)",
           range: [xMin - (compact ? 0.34 : 0.24) * span, xMax + (compact ? 0.28 : 0.20) * span],
           zeroline: true,
-          zerolinecolor: "#ccc7ba",
-          gridcolor: "#eeece6",
+          zerolinecolor: "#beb8a8",
+          gridcolor: "#ece9e1",
         },
-        yaxis: { gridcolor: "#eeece6", automargin: true },
+        yaxis: { gridcolor: "#ece9e1", automargin: true },
         template: "plotly_white",
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
@@ -1395,6 +1352,55 @@
       select.value = featureNames.includes(current) ? current : featureNames[0];
     }
 
+    function applyPayload(data) {
+      $("statusText").textContent = data.precomputed
+        ? `${data.status_note} Preview loaded; initializing WebAssembly timing...`
+        : data.status_note;
+      syncFeatureOptions(data.stream.feature_names);
+      updateInjectedSummary();
+
+      const maxStep = Math.max(1, data.stream.num_points - 1);
+      $("injectStepSlider").max = String(maxStep);
+      if (Number($("injectStepSlider").value) > maxStep) {
+        $("injectStepSlider").value = String(maxStep);
+        $("injectStepValue").textContent = String(maxStep);
+      }
+      $("inspectStepSlider").max = String(maxStep);
+      $("inspectStepSlider").value = String(data.explanation.step);
+      $("inspectStepValue").textContent = String(data.explanation.step);
+
+      renderMetricsTable(data.traces);
+      renderStreamPlot(data);
+      renderExplanationPlot(data.explanation);
+      $("pipelineCode").textContent = data.pipeline_code;
+    }
+
+    async function ensureStreamDataset(streamName) {
+      const py = state.pyodide;
+      if (!py) return;
+      if (streamName === "NYC Taxi Demand (NAB, univariate)" && !state.loadedDatasets.has("nab")) {
+        $("statusText").textContent = "Fetching NAB NYC Taxi dataset...";
+        const [taxiRes, winRes] = await Promise.all([
+          fetch("./data/nab/realKnownCause/nyc_taxi.csv"),
+          fetch("./data/nab/combined_windows.json"),
+        ]);
+        if (!taxiRes.ok) throw new Error(`Failed to fetch NYC Taxi dataset (${taxiRes.status})`);
+        py.FS.mkdirTree("/home/pyodide/data/nab/realKnownCause");
+        py.FS.writeFile("/home/pyodide/data/nab/realKnownCause/nyc_taxi.csv", await taxiRes.text());
+        if (winRes.ok) {
+          py.FS.writeFile("/home/pyodide/data/nab/combined_windows.json", await winRes.text());
+        }
+        state.loadedDatasets.add("nab");
+      } else if (streamName === "Arrhythmia (ODDS, 274 features)" && !state.loadedDatasets.has("arrhythmia")) {
+        $("statusText").textContent = "Fetching ODDS Arrhythmia dataset...";
+        const res = await fetch("./data/arrhythmia.mat");
+        if (!res.ok) throw new Error(`Failed to fetch Arrhythmia dataset (${res.status})`);
+        py.FS.mkdirTree("/home/pyodide/data");
+        py.FS.writeFile("/home/pyodide/data/arrhythmia.mat", new Uint8Array(await res.arrayBuffer()));
+        state.loadedDatasets.add("arrhythmia");
+      }
+    }
+
     async function evaluate() {
       if (!state.ready || state.running) return;
       const streamName = $("streamSelect").value;
@@ -1408,9 +1414,10 @@
       $("runningTag").classList.add("active");
       $("statusCard").classList.remove("error-banner");
 
-      await new Promise((r) => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 8));
 
       try {
+        await ensureStreamDataset(streamName);
         const py = state.pyodide;
         py.globals.set("_req_json", JSON.stringify({
           stream_name: streamName,
@@ -1443,26 +1450,7 @@ engine.run_playground_json(
     primary_feature_name=req["primary_feature"],
 )
         `);
-        const data = JSON.parse(outJson);
-
-        $("statusText").textContent = data.status_note;
-        syncFeatureOptions(data.stream.feature_names);
-        updateInjectedSummary();
-
-        const maxStep = Math.max(1, data.stream.num_points - 1);
-        $("injectStepSlider").max = String(maxStep);
-        if (Number($("injectStepSlider").value) > maxStep) {
-          $("injectStepSlider").value = String(maxStep);
-          $("injectStepValue").textContent = String(maxStep);
-        }
-        $("inspectStepSlider").max = String(maxStep);
-        $("inspectStepSlider").value = String(data.explanation.step);
-        $("inspectStepValue").textContent = String(data.explanation.step);
-
-        renderMetricsTable(data.traces);
-        renderStreamPlot(data);
-        renderExplanationPlot(data.explanation);
-        $("pipelineCode").textContent = data.pipeline_code;
+        applyPayload(JSON.parse(outJson));
       } catch (err) {
         $("statusCard").classList.add("error-banner");
         $("statusText").textContent = `Error: ${err.message || String(err)}`;
@@ -1577,58 +1565,72 @@ engine.run_playground_json(
     async function boot() {
       wireUI();
       try {
-        setBootProgress(15, "Loading Pyodide 0.27.5 and fetching playground files...");
-        const pyodidePromise = loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/" });
-        const assetsPromise = Promise.all([
-          fetch("./engine.py").then((r) => { if (!r.ok) throw new Error(`Failed to fetch engine.py (${r.status})`); return r.text(); }),
-          fetch("./data/nab/realKnownCause/nyc_taxi.csv").then((r) => r.ok ? r.text() : null),
-          fetch("./data/nab/combined_windows.json").then((r) => r.ok ? r.text() : null),
-          fetch("./data/arrhythmia.mat").then((r) => r.ok ? r.arrayBuffer() : null),
-          fetch("./manifest.json").then((r) => r.ok ? r.json() : null),
-        ]);
+        setBootProgress(15, "Loading Pyodide runtime and preview...");
 
-        const [pyodide, [engineCode, taxiCsv, nabWindows, arrhythmiaBuf, manifest]] = await Promise.all([pyodidePromise, assetsPromise]);
+        const snapshotPromise = fetch("./initial_snapshot.json")
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null);
+
+        snapshotPromise.then((snap) => {
+          if (snap && !state.ready && typeof Plotly !== "undefined") {
+            applyPayload(snap);
+            window.__pysadFirstPaint = true;
+          }
+        });
+
+        const wheelBufPromise = fetch("./manifest.json")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((m) => (m && m.wheel ? fetch(`./${m.wheel}`).then((rw) => (rw.ok ? rw.arrayBuffer() : null)) : null))
+          .catch(() => null);
+
+        const enginePromise = fetch("./engine.py").then((r) => {
+          if (!r.ok) throw new Error(`Failed to fetch engine.py (${r.status})`);
+          return r.text();
+        });
+
+        const pyodidePromise = loadPyodide({
+          indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/",
+          packages: ["numpy", "scipy", "scikit-learn"],
+        });
+
+        const [pyodide, engineCode, wheelBuf] = await Promise.all([
+          pyodidePromise,
+          enginePromise,
+          wheelBufPromise,
+        ]);
         state.pyodide = pyodide;
 
-        setBootProgress(45, "Mounting bundled NAB and ODDS datasets in WebAssembly FS...");
-        pyodide.FS.mkdirTree("/home/pyodide/data/nab/realKnownCause");
+        setBootProgress(70, "Unpacking PySAD package in WebAssembly...");
+        if (wheelBuf) {
+          pyodide.unpackArchive(wheelBuf, "zip", { extractDir: "/home/pyodide" });
+        } else {
+          await pyodide.loadPackage("micropip");
+          await pyodide.runPythonAsync("import micropip; await micropip.install('pysad')");
+        }
         pyodide.FS.writeFile("/home/pyodide/engine.py", engineCode);
-        if (taxiCsv) pyodide.FS.writeFile("/home/pyodide/data/nab/realKnownCause/nyc_taxi.csv", taxiCsv);
-        if (nabWindows) pyodide.FS.writeFile("/home/pyodide/data/nab/combined_windows.json", nabWindows);
-        if (arrhythmiaBuf) pyodide.FS.writeFile("/home/pyodide/data/arrhythmia.mat", new Uint8Array(arrhythmiaBuf));
 
-        setBootProgress(65, "Loading numpy, scipy, scikit-learn, and micropip...");
-        await pyodide.loadPackage(["numpy", "scipy", "scikit-learn", "micropip"]);
-
-        setBootProgress(85, "Installing pysad via micropip...");
-        const wheelUrl = manifest && manifest.wheel ? new URL(`./${manifest.wheel}`, window.location.href).href : null;
-        pyodide.globals.set("_wheel_url", wheelUrl);
-        await pyodide.runPythonAsync(`
+        setBootProgress(85, "Importing PySAD detectors...");
+        pyodide.runPython(`
 import sys
 if "/home/pyodide" not in sys.path:
     sys.path.insert(0, "/home/pyodide")
-import micropip
-if _wheel_url:
-    await micropip.install(_wheel_url)
-else:
-    await micropip.install("pysad")
 import engine
         `);
 
-        setBootProgress(96, "Running initial benchmark-ranked PySAD comparison...");
+        setBootProgress(94, "Measuring client-side execution speed...");
         state.ready = true;
         setControlsEnabled(true);
         await evaluate();
-        setBootProgress(100, "Ready");
-        $("bootBar").classList.add("hidden");
-        $("runtimeDot").classList.add("ready");
+
+        setBootProgress(100, "Pyodide WebAssembly (client-side)");
+        $("bootProgressWrap").classList.add("is-done");
+        $("runtimeSquare").classList.add("ready");
         window.__pysadPlaygroundReady = true;
       } catch (err) {
-        $("bootStatus").textContent = `Initialization failed: ${err.message || String(err)}`;
-        $("bootBar").classList.add("error-banner");
+        $("bootProgressWrap").classList.add("is-done");
         $("statusCard").classList.add("error-banner");
-        $("statusText").textContent = `Failed to initialize PySAD playground: ${err.message || String(err)}`;
-        $("runtimeDot").classList.add("error");
+        $("statusText").textContent = `Failed to initialize PySAD playground: ${err.message || String(err)}. Reload the page to retry.`;
+        $("runtimeSquare").classList.add("error");
         $("runtimeLabel").textContent = "Pyodide WebAssembly (initialization failed)";
       }
     }

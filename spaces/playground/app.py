@@ -22,6 +22,7 @@ CUSTOM_CSS = """
 .pysad-header {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid #e2dfd6;
+  border-radius: 0;
   background: #f6f5f1;
   margin-bottom: 0.75rem;
 }

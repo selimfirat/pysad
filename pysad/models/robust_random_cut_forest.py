@@ -4,6 +4,7 @@ import heapq
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -21,21 +22,21 @@ class _ForestArena:
         self.num_trees = num_trees
         self.cap = cap
         self.num_features = 0
-        self.roots = np.full(num_trees, -1, dtype=np.int32)
-        self.left = np.full(cap, -1, dtype=np.int32)
-        self.right = np.full(cap, -1, dtype=np.int32)
-        self.parent = np.full(cap, -1, dtype=np.int32)
-        self.sibling = np.full(cap, -1, dtype=np.int32)
-        self.dim = np.full(cap, -1, dtype=np.int32)
-        self.cut = np.zeros(cap, dtype=np.float64)
-        self.count = np.zeros(cap, dtype=np.int32)
-        self.bbox_low = np.empty((cap, 0), dtype=np.float64)
-        self.bbox_high = np.empty((cap, 0), dtype=np.float64)
-        self.free_slots = np.arange(cap - 1, -1, -1, dtype=np.int32)
+        self.roots: NDArray[np.int32] = np.full(num_trees, -1, dtype=np.int32)
+        self.left: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.right: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.parent: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.sibling: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.dim: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.cut: NDArray[np.float64] = np.zeros(cap, dtype=np.float64)
+        self.count: NDArray[np.int32] = np.zeros(cap, dtype=np.int32)
+        self.bbox_low: NDArray[np.float64] = np.empty((cap, 0), dtype=np.float64)
+        self.bbox_high: NDArray[np.float64] = np.empty((cap, 0), dtype=np.float64)
+        self.free_slots: NDArray[np.int32] = np.arange(cap - 1, -1, -1, dtype=np.int32)
         self.free_top = cap
-        self._iota = np.arange(max(num_trees, 16), dtype=np.intp)
-        self._buf_lo = np.empty((max(num_trees, 1), 0), dtype=np.float64)
-        self._buf_sp = np.empty((max(num_trees, 1), 0), dtype=np.float64)
+        self._iota: NDArray[np.intp] = np.arange(max(num_trees, 16), dtype=np.intp)
+        self._buf_lo: NDArray[np.float64] = np.empty((max(num_trees, 1), 0), dtype=np.float64)
+        self._buf_sp: NDArray[np.float64] = np.empty((max(num_trees, 1), 0), dtype=np.float64)
 
     def ensure_features(self, num_features: int) -> None:
         if self.num_features == 0:
@@ -83,7 +84,7 @@ class _ForestArena:
         self.free_top += added
         self.cap = new_cap
 
-    def alloc_many(self, k: int) -> np.ndarray:
+    def alloc_many(self, k: int) -> NDArray[np.int32]:
         self._ensure_free(k)
         top = self.free_top
         self.free_top = top - k
@@ -94,8 +95,8 @@ class _ForestArena:
         self.free_top += 1
 
     def find_duplicate_batch(
-        self, point: np.ndarray, roots_sub: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
+        self, point: NDArray[np.float64], roots_sub: NDArray[np.int32]
+    ) -> tuple[NDArray[np.int32], NDArray[np.bool_]]:
         m = len(roots_sub)
         if m > len(self._iota):
             self._iota = np.arange(m, dtype=np.intp)
@@ -128,7 +129,7 @@ class _ForestArena:
         return leaves, is_dup
 
     def cut_one_slot(
-        self, point: np.ndarray, slot: int, rng: np.random.RandomState
+        self, point: NDArray[np.float64], slot: int, rng: np.random.RandomState
     ) -> tuple[int, float, bool]:
         low = self.bbox_low[slot]
         high = self.bbox_high[slot]
@@ -144,8 +145,8 @@ class _ForestArena:
         return d, c_val, bool(c_val <= low[d] or c_val >= high[d])
 
     def cut_slots(
-        self, point: np.ndarray, slots: np.ndarray, rng: np.random.RandomState
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        self, point: NDArray[np.float64], slots: NDArray[np.int32], rng: np.random.RandomState
+    ) -> tuple[NDArray[np.intp], NDArray[np.float64], NDArray[np.bool_]]:
         n = len(slots)
         d = point.shape[0]
         if n > len(self._iota):
@@ -173,7 +174,7 @@ class _ForestArena:
         stopped = (cuts <= lows[row_idx, dims]) | (cuts >= highs[row_idx, dims])
         return dims, cuts, stopped
 
-    def codisp_sum(self, slots: np.ndarray, init_counts: np.ndarray) -> float:
+    def codisp_sum(self, slots: NDArray[np.int32], init_counts: NDArray[np.int32]) -> float:
         m = len(slots)
         if m > len(self._iota):
             self._iota = np.arange(m, dtype=np.intp)
@@ -276,15 +277,15 @@ class RobustRandomCutForest(BaseModel):
 
         # The (key, index) pairs of the instances in each tree, as a min-heap on the key.
         self.samples: list[list[tuple[float, int]]] = [[] for _ in range(self.num_trees)]
-        self._min_keys = np.full(self.num_trees, -np.inf, dtype=np.float64)
+        self._min_keys: NDArray[np.float64] = np.full(self.num_trees, -np.inf, dtype=np.float64)
         self._all_heaps_full = False
-        self._done_tids = np.empty(num_trees, dtype=np.int32)
-        self._done_nodes = np.empty(num_trees, dtype=np.int32)
-        self._done_parents = np.empty(num_trees, dtype=np.int32)
-        self._done_dims = np.empty(num_trees, dtype=np.intp)
-        self._done_cuts = np.empty(num_trees, dtype=np.float64)
-        self._final_slots = np.empty(num_trees, dtype=np.int32)
-        self._init_counts = np.empty(num_trees, dtype=np.int32)
+        self._done_tids: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
+        self._done_nodes: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
+        self._done_parents: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
+        self._done_dims: NDArray[np.intp] = np.empty(num_trees, dtype=np.intp)
+        self._done_cuts: NDArray[np.float64] = np.empty(num_trees, dtype=np.float64)
+        self._final_slots: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
+        self._init_counts: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
         # The last shingle_size - 1 fitted instances, which start the shingle of the next instance.
         self.shingler: ShingleTransformer = ShingleTransformer(shingle_size)
         self.index: int = 0
@@ -300,7 +301,7 @@ class RobustRandomCutForest(BaseModel):
         self.__dict__.update(state)
         self.rng = check_random_state(self.rng)
 
-    def _shingle(self, X: np.ndarray) -> np.ndarray | None:
+    def _shingle(self, X: NDArray[np.float64]) -> NDArray[np.float64] | None:
         # The shingle that ends with X, or None while fewer than shingle_size - 1 instances are fitted.
         if not self.shingler.full:
             return None
@@ -352,7 +353,7 @@ class RobustRandomCutForest(BaseModel):
                 b_walk = nxt[keep]
                 pts = pts[keep]
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> RobustRandomCutForest:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> RobustRandomCutForest:
         """Updates the model with the next instance.
 
         Args:
@@ -457,9 +458,9 @@ class RobustRandomCutForest(BaseModel):
             self.index = idx + 1
             return self
 
-        active_tids: np.ndarray = tids_arr
-        active_nodes: np.ndarray = roots_sub
-        active_parents: np.ndarray = np.full(m, -1, dtype=np.int32)
+        active_tids: NDArray[np.int32] = tids_arr
+        active_nodes: NDArray[np.int32] = roots_sub
+        active_parents: NDArray[np.int32] = np.full(m, -1, dtype=np.int32)
 
         done_tids = self._done_tids
         done_nodes = self._done_nodes
@@ -593,7 +594,7 @@ class RobustRandomCutForest(BaseModel):
         self.index = idx + 1
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the shingle that ends with the next instance by the collusive displacement it would have in each tree if it were inserted there, averaged over the trees. The trees are not modified, so only the random cuts draw from the random number generator.
 
         Args:

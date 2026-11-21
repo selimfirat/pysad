@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -94,9 +95,9 @@ class GNGA(BaseModel):
         self.window_size_ = 10
 
     @property
-    def neurons_(self) -> np.ndarray:
+    def neurons_(self) -> NDArray[np.float64]:
         """Returns active vectors with shape ``(num_neurons_, num_features)``."""
-        active: np.ndarray = self._positions[self._active]
+        active: NDArray[np.float64] = self._positions[self._active]
         return active
 
     @property
@@ -104,7 +105,7 @@ class GNGA(BaseModel):
         """Returns the current graph size."""
         return int(self._active.sum())
 
-    def _add(self, X: np.ndarray) -> int:
+    def _add(self, X: NDArray[np.float64]) -> int:
         """Adds a prototype in an unused slot."""
         occupied = self._active.copy()
         occupied[list(self._buffer)] = True
@@ -118,13 +119,13 @@ class GNGA(BaseModel):
         self._ages[:, slot] = -1
         return slot
 
-    def _discard(self, slots: np.ndarray) -> None:
+    def _discard(self, slots: NDArray[np.int64]) -> None:
         """Removes prototypes and their incident edges."""
         self._active[slots] = False
         self._ages[slots] = -1
         self._ages[:, slots] = -1
 
-    def _remove(self, X: np.ndarray, distance: float, counts: np.ndarray) -> None:
+    def _remove(self, X: NDArray[np.float64], distance: float, counts: NDArray[np.int64]) -> None:
         """Applies Algorithm 3 to the graph and removal buffer."""
         rate = 1.0 / (1 + self._threshold_updates)
         if self._buffer:
@@ -163,7 +164,7 @@ class GNGA(BaseModel):
         self._buffer.append(candidate)
         self._discard(np.concatenate(([candidate], remaining[~linked])))
 
-    def _create(self, counts: np.ndarray) -> None:
+    def _create(self, counts: NDArray[np.int64]) -> None:
         """Applies the insertion probability and edge split of Algorithm 4."""
         active = np.flatnonzero(self._active)
         if active.size >= self.max_neurons:
@@ -185,7 +186,7 @@ class GNGA(BaseModel):
         self._ages[neighbor, slot] = self._ages[slot, neighbor] = 0
         self._last_creation = self._time
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> GNGA:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> GNGA:
         """Learns from one stream instance.
 
         Args:
@@ -244,7 +245,7 @@ class GNGA(BaseModel):
         self._log_relevance[occupied] += np.log(0.9)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Returns the nearest distance minus the mean edge length.
 
         Args:

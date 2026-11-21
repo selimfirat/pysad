@@ -426,9 +426,11 @@ def _create_configured_machine(
     expected_warmup_score = _warmup_score(model_name, params_factory())
 
     # Create class dynamically with the configuration as class attributes
+    # Wrap params_factory in staticmethod to prevent functools.partial from binding
+    # self in Python 3.14+ (where partial becomes a method descriptor)
     class_attrs = {
         "model_name": model_name,
-        "params_factory": params_factory,
+        "params_factory": staticmethod(params_factory),
         "num_features": num_features,
         "warmup_length": warmup_length,
         "has_warmup": has_warmup,

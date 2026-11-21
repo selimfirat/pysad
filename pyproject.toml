@@ -71,6 +71,9 @@ Repository = "https://github.com/selimfirat/pysad.git"
 Discussions = "https://github.com/selimfirat/pysad/discussions"
 Changelog = "https://github.com/selimfirat/pysad/releases"
 
+[project.scripts]
+pysad-live = "pysad.live.cli:main"
+
 # PEP 735 dependency groups. The runtime dependencies only have floors in [project]; these
 # groups pin what CI, Read the Docs and contributors install, and Dependabot bumps them.
 # Install with `pip install -e . --group dev` (pip 25.1+) or `uv sync --group dev`.

@@ -66,6 +66,7 @@ class RingBuffer:
         self.points: NDArray[np.float64] = np.empty(0, dtype=np.float64)
         self.count = 0
         self.next_slot = 0
+        self._item_shape: tuple[int, ...] | None = None
 
     def append(self, item: float | NDArray[Any]) -> int:
         """Writes ``item`` into the next free slot and returns the slot index.
@@ -85,16 +86,71 @@ class RingBuffer:
         """
         arr = np.asarray(item, dtype=np.float64)
         if self.count == 0 and self.points.size == 0:
-            shape = (self.window_size,) if arr.ndim == 0 else (self.window_size, arr.shape[0])
-            self.points = np.empty(shape, dtype=np.float64)
-        elif arr.shape != self.points.shape[1:]:
-            raise ValueError(f"item must have shape {self.points.shape[1:]}, got {arr.shape}.")
+            if arr.ndim == 0:
+                self._item_shape = ()
+                self.points = np.empty((self.window_size,), dtype=np.float64)
+            else:
+                self._item_shape = arr.shape
+                self.points = np.empty((self.window_size,) + arr.shape, dtype=np.float64)
+        elif self._item_shape != arr.shape:
+            raise ValueError(f"item must have shape {self._item_shape}, got {arr.shape}.")
         slot = self.next_slot
         self.points[slot] = arr
         self.next_slot = (slot + 1) % self.window_size
         if self.count < self.window_size:
             self.count += 1
         return slot
+
+    def extend(self, items: Sequence[float | NDArray[Any]] | NDArray[Any]) -> None:
+        """Appends multiple items to the buffer in a vectorized manner.
+
+        Args:
+            items: Sequence of items to append, or a 2-D array of shape (n_items, ...).
+                Each item must have the same shape as the first item appended to the buffer.
+        """
+        if len(items) == 0:
+            return
+        arr = np.asarray(items, dtype=np.float64)
+
+        # Handle scalar items: if the buffer expects scalars (shape ()), a 1-D array of
+        # shape (n,) should be treated as n scalar items. We keep it as 1-D for assignment.
+        is_scalar_batch = self._item_shape == () and arr.ndim == 1
+
+        if self.count == 0 and self.points.size == 0:
+            if arr.ndim == 1 or is_scalar_batch:
+                self._item_shape = ()
+                self.points = np.empty((self.window_size,), dtype=np.float64)
+            else:
+                self._item_shape = arr.shape[1:]
+                self.points = np.empty((self.window_size,) + arr.shape[1:], dtype=np.float64)
+        elif self._item_shape != (arr.shape[1:] if arr.ndim > 1 else ()):
+            raise ValueError(
+                f"items must have shape {self._item_shape}, got {arr.shape[1:] if arr.ndim > 1 else ()}."
+            )
+
+        n = arr.shape[0]
+        if n >= self.window_size:
+            # Batch larger than window: keep only the last window_size items
+            if is_scalar_batch:
+                self.points[:] = arr[-self.window_size :]
+            else:
+                self.points[:] = arr[-self.window_size :]
+            self.next_slot = 0
+            self.count = self.window_size
+            return
+
+        # Vectorized write using modular arithmetic
+        end_slot = self.next_slot + n
+        if end_slot <= self.window_size:
+            # No wrap
+            self.points[self.next_slot : end_slot] = arr
+        else:
+            # Wrap around
+            first_part = self.window_size - self.next_slot
+            self.points[self.next_slot :] = arr[:first_part]
+            self.points[: end_slot - self.window_size] = arr[first_part:]
+        self.next_slot = end_slot % self.window_size
+        self.count = min(self.count + n, self.window_size)
 
     def active_slices(self) -> tuple[NDArray[np.float64], NDArray[np.float64] | None, int]:
         """Returns the stored items that remain after the oldest item of a full buffer expires.
@@ -114,6 +170,23 @@ class RingBuffer:
         slot = self.next_slot
         return self.points[:slot], self.points[slot + 1 :], self.window_size - 1
 
+    def window_slices(self) -> tuple[NDArray[np.float64], NDArray[np.float64] | None]:
+        """Returns the window items in chronological order as one or two slices (views, no copy).
+
+        Unlike ``window_view``, this method never concatenates. When the buffer has not wrapped
+        or ``next_slot == 0``, returns ``(items, None)``. Otherwise returns ``(newer, older)``
+        where ``newer = points[next_slot:]`` and ``older = points[:next_slot]``.
+
+        Returns:
+            tuple: ``(first_slice, second_slice_or_None)``. The chronological order is
+                ``np.concatenate((first, second))`` if second is not None, else ``first``.
+        """
+        if self.count == 0:
+            return self.points[:0], None
+        if self.count < self.window_size or self.next_slot == 0:
+            return self.points[: self.count], None
+        return self.points[self.next_slot :], self.points[: self.next_slot]
+
     def window_view(self) -> NDArray[np.float64]:
         """Returns the window items in chronological order (oldest first) as a view when possible.
 
@@ -127,7 +200,8 @@ class RingBuffer:
             return self.points[:0]
         if self.count < self.window_size or self.next_slot == 0:
             return self.points[: self.count]
-        return np.concatenate((self.points[self.next_slot :], self.points[: self.next_slot]))
+        # Use np.roll for a single allocation instead of concatenate
+        return np.roll(self.points[: self.window_size], -self.next_slot, axis=0)
 
     def oldest(self) -> float | NDArray[np.float64] | None:
         """Returns the oldest item in the buffer, or ``None`` if empty.
@@ -140,9 +214,10 @@ class RingBuffer:
         if self.count == 0:
             return None
         if self.count < self.window_size:
-            if self.points.ndim == 1:
-                return float(self.points[0])
-            return cast(NDArray[np.float64], self.points[0])
+            item = self.points[0]
+            if item.ndim == 0:
+                return float(item)
+            return cast(NDArray[np.float64], item)
         item = self.points[self.next_slot]
         if item.ndim == 0:
             return float(item)
@@ -152,16 +227,6 @@ class RingBuffer:
         """Removes all items from the buffer."""
         self.count = 0
         self.next_slot = 0
-
-    def extend(self, items: Sequence[float | NDArray[Any]]) -> None:
-        """Appends multiple items to the buffer.
-
-        Args:
-            items: Sequence of items to append. Each item must have the same shape as the
-                first item appended to the buffer.
-        """
-        for item in items:
-            self.append(item)
 
     def to_array(self) -> NDArray[np.float64]:
         """Returns a contiguous oldest-first copy of the items currently in the buffer.
@@ -210,6 +275,17 @@ class Window:
         """
         self._buffer.append(float(item))
 
+    def update_batch(self, items: Sequence[float] | NDArray[Any]) -> None:
+        """Adds multiple items in a vectorized manner.
+
+        Args:
+            items: Sequence of items to append, or a 1-D array of floats.
+        """
+        arr = np.asarray(items, dtype=np.float64)
+        if arr.ndim != 1:
+            raise ValueError("items must be a 1-D sequence or array of floats.")
+        self._buffer.extend(arr)
+
     def get(self) -> list[float]:
         """Returns a copy of the window items, oldest first.
 
@@ -217,6 +293,16 @@ class Window:
             list[float]: The items in the window, oldest first.
         """
         return cast(list[float], self._buffer.window_view().tolist())
+
+    def get_array(self) -> NDArray[np.float64]:
+        """Returns a copy of the window items as a NumPy array, oldest first.
+
+        This avoids the Python list conversion of ``get()`` for better performance.
+
+        Returns:
+            np.float64 array: The items in the window, oldest first.
+        """
+        return self._buffer.window_view().copy()
 
     def __len__(self) -> int:
         """Returns the number of items currently in the window."""

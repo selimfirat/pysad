@@ -124,12 +124,12 @@ Add your detector to PySAD
 PySAD accepts published detectors whose paper has 20 or more citations, or appeared in 2025 or later at a CORE A* conference (for example, ICLR, ICCV, ICML, or NeurIPS). It also accepts a streaming detector with a top-three score on a public streaming benchmark such as NAB. :doc:`/inclusion_criteria` gives all the criteria. To add your detector to PySAD, create a single module in ``pysad/models``:
 
 #. Implement the detector as its paper describes, in a new module in ``pysad/models``.
-#. Cite the paper in the class docstring with ``:cite:`` and define ``__bibtex__`` at module scope (or add the BibTeX entry to ``docs/refs.bib``).
+#. Cite the paper in the class docstring with ``:cite:`` and define ``__bibtex__`` on the class or at module scope (do not edit ``docs/refs.bib``).
 #. Document each difference from the paper in the docstring.
 
    A detector from the benchmark route cites the benchmark and its reference implementation instead of a paper, and documents each difference from that implementation.
-#. Run ``python scripts/sync_exports.py`` to regenerate ``pysad/models/__init__.py`` and ``__all__``. The API reference (``docs/api/models.rst``), detector table (``docs/detectors.rst``), bibliography, benchmark registry (``benchmarks/benchmark.py``), and shared test suites in ``tests/models`` discover the new class automatically.
-#. Add an entry to ``short_stream_params`` in ``tests/models/conftest.py`` only if your detector requires constructor arguments without defaults or smaller window sizes for short test streams.
+#. Run ``python scripts/sync_exports.py`` (also run by pre-commit) to regenerate ``pysad/models/__init__.py``, ``__all__``, and the ``README.md`` detector table. The API reference (``docs/api/models.rst``), detector table (``docs/detectors.rst``), bibliography, benchmark registry (``benchmarks/benchmark.py``), and shared test suites in ``tests/models`` discover the new class automatically.
+#. Add an entry to ``short_stream_params`` in ``tests/models/conftest.py`` (or ``_short_stream_params`` on the class) only if your detector requires non-standard constructor arguments without defaults or smaller window sizes for short test streams (shared across all seven suites in ``tests/models/``).
 #. Run the tests for your detector:
 
    .. code-block:: console

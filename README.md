@@ -62,7 +62,7 @@ Every detector learns from and scores one point at a time with `fit_partial`, `s
 </td>
 <td width="50%" valign="top">
 
-#### 54 detectors from published papers
+#### Detectors from published papers
 
 Covers multivariate and univariate streams: robust/seasonal statistics (`MAD`, `SeasonalHybridESD`, `FluxEV`), forests and sketches (`LODA`, `HalfSpaceTrees`, `RobustRandomCutForest`, `RSHash`, `xStream`), subsequences (`DAMP`, `MatrixProfile`, `SAND`), graphs (`MIDAS`), and 10 drift monitors (`ADWINMeter`, `PageHinkleyMeter`, `DriftAdaptiveDetector`).
 
@@ -272,11 +272,12 @@ Comparing implementations of the same streaming algorithm under the exact same p
 These starting points come from the design of each method. They are not benchmark rankings. Compare two or three detectors on your own data, as the [guide to choosing a detector](https://pysad.readthedocs.io/en/stable/guides/choose_detector.html) shows.
 
 <details>
-<summary><b>All 54 streaming detectors (37 multivariate, 17 univariate)</b></summary>
+<!-- BEGIN:AUTOGEN_DETECTORS -->
+<summary><b>All streaming detectors</b></summary>
 
 <br>
 
-**Multivariate (37)**
+**Multivariate**
 
 | Class | Method |
 |---|---|
@@ -317,8 +318,11 @@ These starting points come from the design of each method. They are not benchmar
 | `TEDA` | Typicality and eccentricity data analytics (Angelov, EALS 2014) |
 | `EXPoSE` | Expected similarity to the kernel mean embedding (Schneider et al., *Machine Learning* 2016) |
 | `IDKS` | IDK-S incremental distributional kernel over a sliding window (Xu et al., AAAI 2026) |
+| `FeedbackHST` | Half-Space Trees with active human-in-the-loop label feedback (Tan et al., 2011; Das et al., 2024; Das et al., 2020) |
+| `StreamKMPlusPlus` | Distance to the nearest center of a StreamKM++ streaming coreset clustering (Ackermann et al., 2012) |
+| `ZeroShotEmbeddingDetector` | Zero-shot OOD detector using semantic anchors (Maximum Concept Matching) (Ming et al., 2022) |
 
-**Univariate (17)**
+**Univariate**
 
 | Class | Method |
 |---|---|
@@ -339,6 +343,7 @@ These starting points come from the design of each method. They are not benchmar
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 | `OeSNNUAD` | Online evolving spiking neural network for unsupervised anomaly detection (Maciąg et al., *Neural Networks* 2021) |
 | `PEWMA` | Probabilistic exponentially weighted moving average (Carter & Streilein, SSP 2012) |
+<!-- END:AUTOGEN_DETECTORS -->
 
 `ReferenceWindowModel` and `OneFitModel` run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. The [detector catalog](https://pysad.readthedocs.io/en/stable/detectors.html) lists the input, setup and memory of each detector, and the [API reference](https://pysad.readthedocs.io/en/stable/api.html) lists every parameter.
 

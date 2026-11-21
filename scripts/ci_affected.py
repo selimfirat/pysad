@@ -62,7 +62,7 @@ _EXTRA_DEPENDENCIES: dict[str, tuple[set[str], set[str]]] = {
         {"pysad/models/"},
     ),
     "tests/test_public_contracts.py": (
-        {"scripts/sync_exports.py", "benchmarks/benchmark.py"},
+        {"scripts/sync_exports.py", "benchmarks/benchmark.py", "README.md"},
         {"docs/", "pysad/"},
     ),
     "tests/test_component_contracts.py": (set(), {"pysad/"}),

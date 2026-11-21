@@ -17,13 +17,14 @@ for _extra_dir in (ROOT / "docs", ROOT / "scripts"):
         sys.path.insert(0, str(_extra_dir))
 
 from _autodiscover import (  # noqa: E402
+    _is_univariate_detector,
     collect_bibtex,
     doc_counts,
     expand_api_autosummary,
     expand_detectors_tables,
     is_detector_model,
 )
-from sync_exports import sync_all  # noqa: E402
+from sync_exports import _discover_detectors, sync_all  # noqa: E402
 
 
 def _package_exports(package: str) -> set[str]:
@@ -103,6 +104,25 @@ def test_detectors_rst_covers_all_streaming_detectors():
     counts = doc_counts(ROOT)
     assert counts["num_detectors"] == len(expected)
     assert counts["num_drift_streams"] > 0
+
+
+def test_autodiscover_and_sync_exports_classify_all_models():
+    """AST metadata in sync_exports and docs/_autodiscover match runtime BaseModel properties."""
+    discovered = _discover_detectors()
+    for name in pysad.models.__all__:
+        cls = getattr(pysad.models, name)
+        expected_is_det = bool(cls._is_detector)
+        expected_kind = cls._effective_input_kind()
+        assert _is_univariate_detector(cls) == (expected_kind in ("univariate", "timestamped"))
+        assert discovered[name][:2] == (expected_is_det, expected_kind)
+
+
+def test_readme_detector_table_matches_models():
+    """README.md detector tables cover every streaming detector in pysad.models.__all__."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    in_readme = set(re.findall(r"^\| `(\w+)` \|", readme, re.M))
+    expected = {name for name in pysad.models.__all__ if is_detector_model(name)}
+    assert in_readme == expected
 
 
 def test_streaming_detectors_are_registered_in_benchmark():

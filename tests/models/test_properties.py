@@ -13,7 +13,6 @@ A model that raises on any of the drawn streams fails the test as well.
 """
 
 import copy
-import functools
 
 import numpy as np
 import pytest
@@ -22,8 +21,6 @@ from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
 import pysad.models
-from pysad.transform.postprocessing import ZScorePostprocessor
-from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
 from tests.models.conftest import (
     EDGE_MODELS,
@@ -71,41 +68,20 @@ SKIPPED = {}
 
 
 def _model_params(model_name, num_features, data):
-    """The constructor arguments of `model_name`, sized to `num_features` and short streams."""
+    """The constructor arguments of `model_name`, sized to `num_features` and Hypothesis streams."""
     if model_name == "LocalOutlierProbability":
         initial_X = data.draw(
             _streams(num_features, min_length=12, max_length=20), label="initial_X"
         )
         return {"initial_X": initial_X, "num_neighbors": 10}
 
+    # Hypothesis-specific overrides for extreme values (-1e6) and very short (<=28) streams.
     params = {
-        "ApproxStorm": {
-            "window_size": 20,
-            "max_radius": 0.1,
-            "num_neighbors": 2,
-            "sample_fraction": 0.25,
-        },
         "AnyOut": {
             "outlier_score": "density",
             "max_height": 2,
             "decay": 0.1,
             "snapshot_interval": 5,
-        },
-        "CPOD": {"window_size": 20, "max_radius": 0.1},
-        "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.1},
-        "DILOF": {"num_neighbors": 3, "window_size": 12},
-        "DriftAdaptiveDetector": {
-            "model_factory": functools.partial(pysad.models.LODA, num_bins=5, num_random_cuts=10),
-        },
-        "ExactStorm": {"window_size": 20, "max_radius": 0.1},
-        "EXPoSE": {"num_random_features": 50},
-        "FeedbackHST": {
-            "feature_mins": np.zeros(num_features),
-            "feature_maxes": np.ones(num_features),
-            "window_size": 10,
-            "num_trees": 3,
-            "max_depth": 4,
-            "feedback_budget": 10,
         },
         # A short probationary period, so that the streams reach the anomaly likelihood.
         "HTM": {
@@ -115,49 +91,12 @@ def _model_params(model_name, num_features, data):
             "num_columns": 16,
             "num_cells_per_column": 2,
         },
-        # A short period and a threshold of 1, so that the streams reach the failure rule.
-        "HoltWinters": {"period": 2, "window_size": 3, "threshold": 1},
-        "IDKS": {
-            "input_shape": num_features,
-            "window_size": 8,
-            "num_samples": 4,
-            "num_partitions": 10,
-        },
-        "IForestASD": {"window_size": 8, "n_estimators": 3},
-        "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
-        "KELOS": {"window_size": 20, "radius": 0.1, "num_neighbors": 3},
-        "MatrixProfile": {"window_length": 4, "history_size": 20},
-        "DAMP": {"window_length": 4, "history_size": 20},
-        "ThreshLEAP": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
-        "LODA": {"num_bins": 5, "num_random_cuts": 10},
-        "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         # The drawn values reach -1e6, below the domain of log(1 + x).
-        "MIDAS": {"num_buckets": 16, "tick_size": 3},
-        "MemStream": {"window_size": 8, "num_epochs": 20},
-        "MiLOF": {"num_neighbors": 3, "window_size": 16, "num_summaries": 2},
         "MStream": {"log_transform": False},
-        "NETS": {"window_size": 20, "max_radius": 0.1},
         "OeSNNUAD": {"window_size": 5, "num_output_neurons": 5},
-        "PCBIsolationForest": {"num_trees": 5, "window_size": 10, "stat_size": 3},
-        "OnlineOneClassSVM": {"window_size": 10},
-        "RSForest": {"window_size": 10, "num_trees": 5, "max_depth": 5},
-        "SAND": {
-            "subsequence_length": 2,
-            "centroid_length": 4,
-            "num_clusters": 2,
-            "batch_size": 10,
-        },
-        "ZeroShotEmbeddingDetector": {
-            "semantic_anchors": np.random.RandomState(SEED).rand(10, num_features)
-        },
-        "StreamPipeline": {
-            "model": pysad.models.LODA(num_bins=5, num_random_cuts=10),
-            "preprocessors": [ShingleTransformer(shingle_size=2)],
-            "postprocessors": [ZScorePostprocessor(window_size=10)],
-        },
     }
 
-    return params.get(model_name) or short_stream_params(model_name, num_features)
+    return params.get(model_name) or short_stream_params(model_name, num_features, seed=SEED)
 
 
 @st.composite

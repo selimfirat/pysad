@@ -103,6 +103,9 @@ def _is_detector_model(name):
 
 def _model_input_kind(name):
     cls = getattr(models, name)
+    getter = getattr(cls, "_effective_input_kind", None)
+    if callable(getter) and name not in _FALLBACK_INPUT_KINDS:
+        return getter()
     kind = getattr(cls, "_input_kind", None)
     if kind is not None and kind != "multivariate":
         return kind
@@ -119,7 +122,15 @@ def _accepts_random_state(sig):
     )
 
 
-def _required_param_names(sig):
+def _required_param_names(cls_or_sig):
+    getter = getattr(cls_or_sig, "_required_init_params", None)
+    if callable(getter):
+        return list(getter())
+    sig = (
+        cls_or_sig
+        if isinstance(cls_or_sig, inspect.Signature)
+        else inspect.signature(cls_or_sig.__init__)
+    )
     return [
         p.name
         for p in sig.parameters.values()
@@ -131,7 +142,7 @@ def _required_param_names(sig):
 
 def _make_multivariate_factory(cls):
     sig = inspect.signature(cls.__init__)
-    required = _required_param_names(sig)
+    required = _required_param_names(cls)
     seeded = _accepts_random_state(sig)
 
     def factory(X, seed):
@@ -158,7 +169,7 @@ def _make_multivariate_factory(cls):
 
 def _make_univariate_factory(cls):
     sig = inspect.signature(cls.__init__)
-    required = _required_param_names(sig)
+    required = _required_param_names(cls)
     has_period = "period" in sig.parameters
     seeded = _accepts_random_state(sig)
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import sys
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import wraps
@@ -144,6 +145,29 @@ class BaseModel(ABC):
     _raw_fit_partial: Callable[..., Any]
     _raw_score_partial: Callable[..., Any]
     _raw_fit_score_partial: Callable[..., Any] | None = None
+
+    @classmethod
+    def _effective_input_kind(cls) -> Literal["multivariate", "univariate", "timestamped", "edge"]:
+        """Returns the model's effective input kind, treating modules using ``check_univariate`` as univariate."""
+        kind = cls._input_kind
+        if kind != "multivariate":
+            return kind
+        mod = sys.modules.get(cls.__module__)
+        if mod is not None and hasattr(mod, "check_univariate"):
+            return "univariate"
+        return kind
+
+    @classmethod
+    def _required_init_params(cls) -> tuple[str, ...]:
+        """Returns names of required constructor parameters without defaults."""
+        sig = inspect.signature(cls.__init__)
+        return tuple(
+            p.name
+            for p in sig.parameters.values()
+            if p.name != "self"
+            and p.default is inspect.Parameter.empty
+            and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+        )
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)

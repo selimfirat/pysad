@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -11,12 +12,17 @@ import pytest
 from spaces.playground import engine
 
 
+def test_default_detectors_match_odds_sota_trio():
+    """Playground defaults to top ODDS benchmark detectors while keeping LODA explainability."""
+    assert engine.DEFAULT_DETECTORS == ["LocalOutlierProbability", "RSHash", "LODA"]
+
+
 def test_synthetic_stream_and_all_detectors_with_both_calibrators():
     """All supported detectors run cleanly under both Conformal and SPOT calibration."""
     for calibrator in engine.CALIBRATOR_CHOICES:
         res1 = engine.run_playground(
             stream_name=engine.STREAM_SYNTHETIC,
-            detectors=["LODA", "HalfSpaceTrees", "RobustRandomCutForest"],
+            detectors=["LocalOutlierProbability", "RSHash", "LODA"],
             calibrator_name=calibrator,
             threshold=0.985,
             max_points=600,
@@ -34,14 +40,38 @@ def test_synthetic_stream_and_all_detectors_with_both_calibrators():
 
         res2 = engine.run_playground(
             stream_name=engine.STREAM_SYNTHETIC,
-            detectors=["SeasonalHybridESD", "MedianAbsoluteDeviation", "xStream"],
+            detectors=["SmartSifter", "RobustRandomCutForest", "HalfSpaceTrees"],
             calibrator_name=calibrator,
             threshold=0.95,
             max_points=600,
         )
         assert len(res2.traces) == 3
-        assert "(sensor_1)" in res2.traces[0].display_name
-        assert "(sensor_1)" in res2.traces[1].display_name
+        for tr in res2.traces:
+            assert len(tr.calibrated_scores) == 600
+            assert np.all(np.isfinite(tr.calibrated_scores))
+            assert tr.us_per_point > 0.0
+
+        res3 = engine.run_playground(
+            stream_name=engine.STREAM_SYNTHETIC,
+            detectors=["KNNCAD", "SeasonalHybridESD", "MedianAbsoluteDeviation"],
+            calibrator_name=calibrator,
+            threshold=0.95,
+            max_points=600,
+        )
+        assert len(res3.traces) == 3
+        assert "(sensor_1)" in res3.traces[0].display_name
+        assert "(sensor_1)" in res3.traces[1].display_name
+        assert "(sensor_1)" in res3.traces[2].display_name
+
+        res4 = engine.run_playground(
+            stream_name=engine.STREAM_SYNTHETIC,
+            detectors=["xStream"],
+            calibrator_name=calibrator,
+            threshold=0.95,
+            max_points=600,
+        )
+        assert len(res4.traces) == 1
+        assert np.all(np.isfinite(res4.traces[0].calibrated_scores))
 
 
 def test_spot_calibrator_handles_extreme_slider_thresholds():
@@ -117,12 +147,12 @@ def test_csv_upload_parser_handles_labels_text_and_missing_values():
 
 
 def test_generated_pipeline_code_is_valid_python():
-    """Generated pipeline code parses cleanly and uses current v0.8+ PySAD APIs."""
+    """Generated pipeline code parses cleanly for every detector and uses v0.8+ PySAD APIs."""
     for cal in engine.CALIBRATOR_CHOICES:
-        for det in (["LODA"], ["HalfSpaceTrees", "LODA"], ["SeasonalHybridESD"]):
+        for det in engine.DETECTOR_CHOICES:
             code = engine.generate_pipeline_code(
                 stream_name=engine.STREAM_SYNTHETIC,
-                detectors=det,
+                detectors=[det, "LODA"] if det != "LODA" else ["LODA"],
                 calibrator_name=cal,
                 threshold=0.985,
                 calibrator_window=350,
@@ -146,7 +176,7 @@ def test_gradio_ui_builds_and_evaluates_if_installed():
         stream_name=engine.STREAM_SYNTHETIC,
         csv_file=None,
         num_points=500,
-        detectors=["LODA", "HalfSpaceTrees"],
+        detectors=engine.DEFAULT_DETECTORS,
         calibrator_name=engine.CALIBRATOR_CONFORMAL,
         threshold=0.985,
         calibrator_window=200,
@@ -156,8 +186,68 @@ def test_gradio_ui_builds_and_evaluates_if_installed():
     )
     status_note, rows, stream_fig, explain_fig, explain_note, code, *_ = out
     assert "4 synthetic sensors" in status_note
-    assert len(rows) == 2
-    assert len(stream_fig.data) >= 3
+    assert len(rows) == 3
+    assert len(stream_fig.data) >= 4
     assert len(explain_fig.data) == 1
     assert "LODA.explain_partial()" in explain_note
     ast.parse(code)
+
+
+def test_arrhythmia_stream_and_json_bridge():
+    """Bundled Arrhythmia stream loads offline and produces a valid JSON payload for Pyodide."""
+    import json
+
+    raw = engine.run_playground_json(
+        stream_name=engine.STREAM_ARRHYTHMIA,
+        detectors=engine.DEFAULT_DETECTORS,
+        calibrator_name=engine.CALIBRATOR_CONFORMAL,
+        threshold=0.985,
+        max_points=452,
+    )
+    payload = json.loads(raw)
+    assert payload["stream"]["num_points"] == 452
+    assert payload["stream"]["num_features"] == 274
+    assert len(payload["stream"]["plotted_features"]) <= 4
+    assert len(payload["traces"]) == 3
+    assert payload["traces"][0]["auroc"] is not None
+    assert len(payload["explanation"]["feature_names"]) <= 12
+    ast.parse(payload["pipeline_code"])
+
+
+def test_static_space_bundle_metadata():
+    """Static HF Space files exist, declare sdk: static, and default to ODDS SOTA detectors."""
+    space_dir = Path(__file__).resolve().parents[1] / "spaces" / "playground"
+    readme = (space_dir / "README.md").read_text(encoding="utf-8")
+    index_html = (space_dir / "index.html").read_text(encoding="utf-8")
+    assert "sdk: static" in readme
+    assert "./engine.py" in index_html
+    assert "./data/nab/realKnownCause/nyc_taxi.csv" in index_html
+    assert "./data/arrhythmia.mat" in index_html
+    assert "./initial_snapshot.json" in index_html
+    assert "plotly-basic-" in index_html
+    assert "unpackArchive" in index_html
+    for default_detector in ("LocalOutlierProbability", "RSHash", "LODA"):
+        assert f'value="{default_detector}" checked' in index_html
+
+
+def test_initial_snapshot_json_omits_host_timings():
+    """Precomputed snapshot provides deterministic scores/plots without host timing leakage."""
+    import json
+
+    payload = json.loads(engine.build_initial_snapshot_json())
+    assert payload["precomputed"] is True
+    assert [tr["name"] for tr in payload["traces"]] == engine.DEFAULT_DETECTORS
+    for tr in payload["traces"]:
+        assert tr["us_per_point"] is None
+        assert tr["points_per_second"] is None
+        assert tr["auroc"] is not None and tr["auroc"] > 0.5
+
+
+def test_playground_files_have_no_em_or_en_dashes():
+    """Playground assets avoid em dashes and en dashes in prose, titles, and placeholders."""
+    space_dir = Path(__file__).resolve().parents[1] / "spaces" / "playground"
+    forbidden = ("\u2014", "&mdash;", "\u2013", "&ndash;")
+    for filename in ("index.html", "engine.py", "app.py", "README.md"):
+        content = (space_dir / filename).read_text(encoding="utf-8")
+        for token in forbidden:
+            assert token not in content, f"Found {token!r} in {filename}"

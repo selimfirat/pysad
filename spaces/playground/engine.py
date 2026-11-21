@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -17,11 +18,15 @@ from pysad.core.base_model import BaseModel
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.evaluation import AUPRMetric, AUROCMetric, PrecisionMetric, RecallMetric
 from pysad.models import (
+    KNNCAD,
     LODA,
     HalfSpaceTrees,
+    LocalOutlierProbability,
     MedianAbsoluteDeviation,
     RobustRandomCutForest,
+    RSHash,
     SeasonalHybridESD,
+    SmartSifter,
     xStream,
 )
 from pysad.transform.probability_calibration import (
@@ -31,16 +36,24 @@ from pysad.transform.probability_calibration import (
 from pysad.utils import Data, get_minmax_array
 
 SPACE_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SPACE_DIR.parents[1]
+REPO_ROOT = SPACE_DIR.parents[1] if len(SPACE_DIR.parents) > 1 else SPACE_DIR
 
 STREAM_SYNTHETIC = "Synthetic Drift + Spikes (4 sensors)"
 STREAM_NYC_TAXI = "NYC Taxi Demand (NAB, univariate)"
+STREAM_ARRHYTHMIA = "Arrhythmia (ODDS, 274 features)"
 STREAM_CREDITCARD = "ULB Credit Card Fraud (30 features)"
 STREAM_CSV = "Upload CSV"
 STREAM_CHOICES = [
     STREAM_SYNTHETIC,
     STREAM_NYC_TAXI,
+    STREAM_ARRHYTHMIA,
     STREAM_CREDITCARD,
+    STREAM_CSV,
+]
+BROWSER_STREAM_CHOICES = [
+    STREAM_SYNTHETIC,
+    STREAM_NYC_TAXI,
+    STREAM_ARRHYTHMIA,
     STREAM_CSV,
 ]
 
@@ -49,14 +62,17 @@ CALIBRATOR_SPOT = "SPOT / EVT (SPOTProbabilityCalibrator)"
 CALIBRATOR_CHOICES = [CALIBRATOR_CONFORMAL, CALIBRATOR_SPOT]
 
 DETECTOR_CHOICES = [
+    "LocalOutlierProbability",
+    "RSHash",
     "LODA",
-    "HalfSpaceTrees",
+    "SmartSifter",
     "RobustRandomCutForest",
+    "HalfSpaceTrees",
+    "KNNCAD",
     "SeasonalHybridESD",
-    "MedianAbsoluteDeviation",
-    "xStream",
 ]
-DEFAULT_DETECTORS = ["LODA", "HalfSpaceTrees", "RobustRandomCutForest"]
+_SUPPORTED_DETECTORS = set(DETECTOR_CHOICES) | {"MedianAbsoluteDeviation", "xStream"}
+DEFAULT_DETECTORS = ["LocalOutlierProbability", "RSHash", "LODA"]
 
 _LABEL_COLUMN_NAMES = {"label", "labels", "anomaly", "is_anomaly", "class", "target", "y"}
 
@@ -176,8 +192,8 @@ def make_synthetic_drift_stream(num_points: int = 1200, seed: int = 42) -> Strea
     return StreamData(
         name=STREAM_SYNTHETIC,
         description=(
-            f"4 synthetic sensors over {n} steps with a regime drift around step {drift_start} "
-            f"and {int(y.sum())} labeled anomaly points."
+            f"4 synthetic sensors, {n} steps, regime shift near step {drift_start}, "
+            f"{int(y.sum())} labeled anomalies."
         ),
         X=X,
         y=y,
@@ -187,10 +203,10 @@ def make_synthetic_drift_stream(num_points: int = 1200, seed: int = 42) -> Strea
     )
 
 
-def _find_nab_data_dir() -> str | None:
-    """Return a local directory containing bundled NAB data if available."""
+def _find_local_data_dir(rel_path: str) -> str | None:
+    """Return a local directory containing bundled dataset `rel_path` if available."""
     for candidate in (SPACE_DIR / "data", REPO_ROOT / "examples" / "data"):
-        if (candidate / "nab" / "realKnownCause" / "nyc_taxi.csv").is_file():
+        if (candidate / rel_path).is_file():
             return str(candidate)
     return None
 
@@ -198,7 +214,7 @@ def _find_nab_data_dir() -> str | None:
 @lru_cache(maxsize=1)
 def _load_full_nyc_taxi() -> tuple[np.ndarray, np.ndarray, list[str]]:
     """Load and cache the full NYC Taxi series with ISO timestamps."""
-    local_dir = _find_nab_data_dir()
+    local_dir = _find_local_data_dir("nab/realKnownCause/nyc_taxi.csv")
     loader = Data(local_dir) if local_dir is not None else Data()
     raw, y = loader.get_data(
         "nab/realKnownCause/nyc_taxi.csv",
@@ -231,14 +247,44 @@ def load_nyc_taxi_stream(max_points: int = 1500) -> StreamData:
     return StreamData(
         name=STREAM_NYC_TAXI,
         description=(
-            f"NYC Taxi 30-min passenger counts ({n} steps from {ts_slice[0]} to {ts_slice[-1]}, "
-            f"{int(y_slice.sum())} points inside NAB anomaly windows)."
+            f"NYC Taxi 30-min passenger counts: {n} steps ({ts_slice[0]} to {ts_slice[-1]}), "
+            f"{int(y_slice.sum())} points in NAB anomaly windows."
         ),
         X=X_slice,
         y=y_slice,
         feature_names=["passengers"],
         timestamps=ts_slice,
         seasonal_period=48,
+    )
+
+
+@lru_cache(maxsize=1)
+def _load_full_arrhythmia() -> tuple[np.ndarray, np.ndarray]:
+    """Load and cache the ODDS Arrhythmia benchmark dataset."""
+    local_dir = _find_local_data_dir("arrhythmia.mat")
+    loader = Data(local_dir) if local_dir is not None else Data()
+    X, y = loader.get_data("arrhythmia.mat", download=(local_dir is None))
+    return X.astype(np.float64), y.astype(int)
+
+
+def load_arrhythmia_stream(max_points: int = 1500) -> StreamData:
+    """Load the bundled ODDS Arrhythmia stream (up to 452 instances x 274 features)."""
+    X_full, y_full = _load_full_arrhythmia()
+    n = min(int(max(300, max_points)), len(X_full))
+    X_slice = X_full[:n].copy()
+    y_slice = y_full[:n].copy()
+    feature_names = [f"attr_{i + 1}" for i in range(X_slice.shape[1])]
+    return StreamData(
+        name=STREAM_ARRHYTHMIA,
+        description=(
+            f"ODDS Arrhythmia records: {n} steps, {X_slice.shape[1]} features, "
+            f"{int(y_slice.sum())} labeled anomalies."
+        ),
+        X=X_slice,
+        y=y_slice,
+        feature_names=feature_names,
+        timestamps=None,
+        seasonal_period=24,
     )
 
 
@@ -378,6 +424,8 @@ def load_stream(
         return make_synthetic_drift_stream(num_points=max_points)
     if stream_name == STREAM_NYC_TAXI:
         return load_nyc_taxi_stream(max_points=max_points)
+    if stream_name == STREAM_ARRHYTHMIA:
+        return load_arrhythmia_stream(max_points=max_points)
     if stream_name == STREAM_CREDITCARD:
         return load_creditcard_stream(max_points=max_points)
     if stream_name == STREAM_CSV:
@@ -438,6 +486,30 @@ def _make_detector(
 ) -> tuple[BaseModel, str, int | None]:
     """Instantiate a detector and return `(model, display_name, univariate_feature_idx)`."""
     is_uni = X.shape[1] == 1
+    if name == "LocalOutlierProbability":
+        init_len = min(len(X), max(15, min(60, warmup)))
+        num_neighbors = min(10, max(1, init_len - 1))
+        return (
+            LocalOutlierProbability(initial_X=X[:init_len], num_neighbors=num_neighbors),
+            "LocalOutlierProbability",
+            None,
+        )
+    if name == "RSHash":
+        mins, maxes = _safe_feature_bounds(X[: max(10, warmup)])
+        return (
+            RSHash(feature_mins=mins, feature_maxes=maxes, random_state=0),
+            "RSHash",
+            None,
+        )
+    if name == "SmartSifter":
+        return SmartSifter(random_state=0), "SmartSifter", None
+    if name == "KNNCAD":
+        feat_idx = 0 if is_uni else primary_feature_idx
+        return (
+            KNNCAD(probationary_period=max(20, min(warmup, len(X) // 3))),
+            "KNNCAD",
+            feat_idx,
+        )
     if name == "LODA":
         return LODA(random_state=0), "LODA", None
     if name == "HalfSpaceTrees":
@@ -588,8 +660,8 @@ def _explain_step(
             contributions=np.array([z], dtype=np.float64),
             loda_raw_score=float(raw_score),
             note=(
-                "Univariate stream has 1 feature; showing robust |x - median| / MAD deviation "
-                "(LODA.explain_partial requires >= 2 features to compare projections)."
+                "Univariate stream (1 feature): showing robust |x - median| / MAD deviation, "
+                "since LODA.explain_partial() requires at least 2 features."
             ),
         )
 
@@ -602,7 +674,7 @@ def _explain_step(
         loda_raw_score=float(raw_score),
         note=(
             f"LODA.explain_partial() one-tailed t-statistics at step {inspect_step}: "
-            f"top driver is '{stream.feature_names[top_idx]}' ({contributions[top_idx]:.2f})."
+            f"top feature is '{stream.feature_names[top_idx]}' ({contributions[top_idx]:.2f})."
         ),
     )
 
@@ -616,9 +688,11 @@ def generate_pipeline_code(
     warmup: int,
 ) -> str:
     """Build a reproducible PySAD pipeline snippet matching the active configuration."""
-    imports = ["import numpy as np", "from pysad.evaluation import AUROCMetric"]
-    model_names = ", ".join(sorted(set(detectors)))
-    imports.append(f"from pysad.models import {model_names}")
+    primary = detectors[0]
+    imports: list[str] = []
+    if stream_name not in (STREAM_NYC_TAXI, STREAM_ARRHYTHMIA, STREAM_CREDITCARD):
+        imports.append("import numpy as np")
+    imports.append(f"from pysad.models import {primary}")
     if calibrator_name == CALIBRATOR_CONFORMAL:
         cal_cls = "ConformalProbabilityCalibrator"
         cal_init = f"ConformalProbabilityCalibrator(window_size={int(calibrator_window)})"
@@ -630,10 +704,15 @@ def generate_pipeline_code(
             f"SPOTProbabilityCalibrator(q={q:.4g}, num_init={int(warmup)}, level={level:.2f})"
         )
     imports.append(f"from pysad.transform.probability_calibration import {cal_cls}")
-    imports.append("from pysad.utils import ArrayStreamer, Data")
+    if stream_name in (STREAM_NYC_TAXI, STREAM_ARRHYTHMIA, STREAM_CREDITCARD):
+        imports.append("from pysad.utils import ArrayStreamer, Data")
+    else:
+        imports.append("from pysad.utils import ArrayStreamer")
 
     if stream_name == STREAM_NYC_TAXI:
         data_line = 'X, y = Data().get_data("nab/realKnownCause/nyc_taxi.csv")'
+    elif stream_name == STREAM_ARRHYTHMIA:
+        data_line = 'X, y = Data().get_data("arrhythmia.mat")'
     elif stream_name == STREAM_CREDITCARD:
         data_line = 'X, y = Data().get_data("creditcard/creditcard.arff")'
     else:
@@ -644,7 +723,14 @@ def generate_pipeline_code(
             data_line += "\nX = np.loadtxt('stream.csv', delimiter=',', skiprows=1)\ny = None"
 
     primary = detectors[0]
-    if primary == "HalfSpaceTrees":
+    if primary == "LocalOutlierProbability":
+        model_expr = f"LocalOutlierProbability(initial_X=X[:{min(60, warmup)}])"
+    elif primary == "RSHash":
+        model_expr = (
+            f"RSHash(feature_mins=X[:{warmup}].min(axis=0), "
+            f"feature_maxes=X[:{warmup}].max(axis=0), random_state=0)"
+        )
+    elif primary == "HalfSpaceTrees":
         model_expr = (
             f"HalfSpaceTrees(feature_mins=X[:{warmup}].min(axis=0), "
             f"feature_maxes=X[:{warmup}].max(axis=0), random_state=0)"
@@ -653,6 +739,8 @@ def generate_pipeline_code(
         model_expr = "SeasonalHybridESD(period=48, window_size=192, direction='both')"
     elif primary == "MedianAbsoluteDeviation":
         model_expr = f"MedianAbsoluteDeviation(window_size={min(300, max(50, warmup))})"
+    elif primary == "KNNCAD":
+        model_expr = f"KNNCAD(probationary_period={warmup})"
     else:
         model_expr = f"{primary}(random_state=0)"
 
@@ -663,10 +751,14 @@ def generate_pipeline_code(
             "        top = pipeline.models[0].explain_partial(x).argsort()[::-1][:3]"
         )
 
+    comparison_note = (
+        [f"# Also compared in playground: {', '.join(detectors[1:])}"] if len(detectors) > 1 else []
+    )
     lines = [
         *imports,
         "",
         data_line,
+        *comparison_note,
         f"pipeline = {model_expr} | {cal_init}",
         "alerts = []",
         "",
@@ -691,9 +783,9 @@ def run_playground(
     primary_feature_name: str | None = None,
 ) -> PlaygroundResult:
     """Execute selected streaming detectors side by side on the chosen stream."""
-    selected = [d for d in detectors if d in DETECTOR_CHOICES][:3]
+    selected = [d for d in detectors if d in _SUPPORTED_DETECTORS][:3]
     if not selected:
-        selected = ["LODA"]
+        selected = ["LocalOutlierProbability"]
 
     base_stream = load_stream(stream_name, max_points=max_points, csv_data=csv_data)
     stream, injected_mask = apply_injected_anomalies(base_stream, injected or [])
@@ -805,9 +897,9 @@ def run_playground(
         calibrator_window=calibrator_window,
         warmup=warmup,
     )
-    status_note = f"{stream.description} Warm-up: first {warmup} points."
+    status_note = f"{stream.description} Warm-up: first {warmup} steps."
     if injected_mask.any():
-        status_note += f" Live injected anomalies: {int(injected_mask.sum())}."
+        status_note += f" Injected anomalies: {int(injected_mask.sum())}."
 
     return PlaygroundResult(
         stream=stream,
@@ -820,3 +912,131 @@ def run_playground(
         pipeline_code=code,
         status_note=status_note,
     )
+
+
+def run_playground_json(
+    stream_name: str,
+    detectors: list[str],
+    calibrator_name: str,
+    threshold: float = 0.985,
+    calibrator_window: int = 350,
+    max_points: int = 1200,
+    csv_data: bytes | str | None = None,
+    injected: list[dict[str, Any]] | None = None,
+    inspect_step: int | None = None,
+    primary_feature_name: str | None = None,
+) -> str:
+    """Serialize `run_playground(...)` output cleanly as JSON for Pyodide / JS UI callers."""
+    result = run_playground(
+        stream_name=stream_name,
+        detectors=detectors,
+        calibrator_name=calibrator_name,
+        threshold=threshold,
+        calibrator_window=calibrator_window,
+        max_points=max_points,
+        csv_data=csv_data,
+        injected=injected,
+        inspect_step=inspect_step,
+        primary_feature_name=primary_feature_name,
+    )
+    stream = result.stream
+    exp = result.explanation
+
+    if stream.num_features > 4:
+        ranked = np.argsort(exp.contributions)[::-1][:4].tolist()
+        feature_indices = sorted(set(ranked))
+    else:
+        feature_indices = list(range(stream.num_features))
+
+    plotted_features = [
+        {
+            "name": stream.feature_names[idx],
+            "values": [round(float(v), 5) for v in stream.X[:, idx]],
+        }
+        for idx in feature_indices
+    ]
+    labeled_indices = (
+        np.flatnonzero(stream.y == 1).astype(int).tolist()
+        if stream.y is not None and stream.y.any()
+        else []
+    )
+    primary_plot_idx = feature_indices[0]
+    labeled_primary_values = [
+        round(float(stream.X[i, primary_plot_idx]), 5) for i in labeled_indices
+    ]
+
+    order = np.argsort(exp.contributions)
+    if len(order) > 12:
+        order = order[-12:]
+
+    payload = {
+        "stream": {
+            "name": stream.name,
+            "description": stream.description,
+            "num_points": stream.num_points,
+            "num_features": stream.num_features,
+            "is_univariate": stream.is_univariate,
+            "feature_names": stream.feature_names,
+            "timestamps": stream.timestamps is not None,
+            "x_axis": stream.timestamps
+            if stream.timestamps is not None
+            else list(range(stream.num_points)),
+            "plotted_features": plotted_features,
+            "labeled_indices": labeled_indices,
+            "labeled_primary_values": labeled_primary_values,
+        },
+        "warmup": result.warmup,
+        "threshold": result.threshold,
+        "calibrator_name": result.calibrator_name,
+        "status_note": result.status_note,
+        "pipeline_code": result.pipeline_code,
+        "injected_indices": np.flatnonzero(result.injected_mask).astype(int).tolist(),
+        "traces": [
+            {
+                "name": tr.name,
+                "display_name": tr.display_name,
+                "calibrated_scores": [round(float(v), 5) for v in tr.calibrated_scores],
+                "alert_indices": np.flatnonzero(tr.alerts).astype(int).tolist(),
+                "alert_scores": [
+                    round(float(tr.calibrated_scores[i]), 5) for i in np.flatnonzero(tr.alerts)
+                ],
+                "alerts_count": int(tr.alerts.sum()),
+                "auroc": None if tr.auroc is None else round(float(tr.auroc), 4),
+                "aupr": None if tr.aupr is None else round(float(tr.aupr), 4),
+                "precision": None if tr.precision is None else round(float(tr.precision), 4),
+                "recall": None if tr.recall is None else round(float(tr.recall), 4),
+                "injected_caught": tr.injected_caught,
+                "injected_total": tr.injected_total,
+                "us_per_point": round(float(tr.us_per_point), 2),
+                "points_per_second": round(float(tr.points_per_second), 1),
+            }
+            for tr in result.traces
+        ],
+        "explanation": {
+            "step": exp.step,
+            "loda_raw_score": round(float(exp.loda_raw_score), 4),
+            "note": exp.note,
+            "feature_names": [exp.feature_names[int(i)] for i in order],
+            "contributions": [round(float(exp.contributions[int(i)]), 4) for i in order],
+        },
+    }
+    return json.dumps(payload)
+
+
+def build_initial_snapshot_json() -> str:
+    """Build compact precomputed default JSON for instant browser first paint."""
+    raw = run_playground_json(
+        stream_name=STREAM_SYNTHETIC,
+        detectors=DEFAULT_DETECTORS,
+        calibrator_name=CALIBRATOR_CONFORMAL,
+        threshold=0.985,
+        calibrator_window=350,
+        max_points=1200,
+    )
+    payload = json.loads(raw)
+    payload["precomputed"] = True
+    for tr in payload["traces"]:
+        # Omit build-host timing until the visitor's WebAssembly runtime runs live.
+        tr["us_per_point"] = None
+        tr["points_per_second"] = None
+    return json.dumps(payload, separators=(",", ":"))

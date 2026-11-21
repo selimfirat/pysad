@@ -14,35 +14,36 @@ try:
 except ImportError:
     import engine  # Deployed standalone at Hugging Face Space root.
 
-_DETECTOR_COLORS = ("#0741ad", "#0f766e", "#b45309")
-_FEATURE_COLORS = ("#3f6fd0", "#64748b", "#8aa8e6", "#94a3b8")
+_DETECTOR_COLORS = ("#1849a9", "#0f766e", "#b45309")
+_FEATURE_COLORS = ("#3b66b0", "#2a857c", "#64748b", "#9a6b2f")
 _GRADIO_MAJOR = int(gr.__version__.split(".", 1)[0])
 
 CUSTOM_CSS = """
 .pysad-header {
   padding: 1rem 1.25rem;
-  border: 1px solid #e2ddcd;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #fffef7 0%, #efebdf 100%);
+  border-bottom: 1px solid #e2dfd6;
+  border-radius: 0;
+  background: #f6f5f1;
   margin-bottom: 0.75rem;
 }
 .pysad-header h1 {
   margin: 0 0 0.25rem 0;
-  color: #0e1a33;
-  font-size: 1.55rem;
+  color: #14171f;
+  font-size: 1.35rem;
+  font-weight: 600;
 }
 .pysad-header p {
   margin: 0;
-  color: #5a6478;
-  font-size: 0.95rem;
+  color: #475060;
+  font-size: 0.9rem;
 }
 .pysad-links {
   margin-top: 0.5rem;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
 }
 .pysad-links a {
-  color: #0741ad;
-  font-weight: 600;
+  color: #1849a9;
+  font-weight: 500;
   text-decoration: none;
   margin-right: 1rem;
 }
@@ -62,13 +63,13 @@ METRICS_HEADERS = [
 
 
 def _fmt_metric(value: float | None) -> str:
-    return f"{value:.3f}" if value is not None else "—"
+    return f"{value:.3f}" if value is not None else "n/a"
 
 
 def _metrics_rows(result: engine.PlaygroundResult) -> list[list[Any]]:
     rows: list[list[Any]] = []
     for tr in result.traces:
-        inj_str = f"{tr.injected_caught} / {tr.injected_total}" if tr.injected_total > 0 else "—"
+        inj_str = f"{tr.injected_caught} / {tr.injected_total}" if tr.injected_total > 0 else "n/a"
         rows.append(
             [
                 tr.display_name,
@@ -98,8 +99,8 @@ def _empty_figure(message: str) -> go.Figure:
     )
     fig.update_layout(
         template="plotly_white",
-        paper_bgcolor="#fffef7",
-        plot_bgcolor="#fffef7",
+        paper_bgcolor="#ffffff",
+        plot_bgcolor="#ffffff",
         height=360,
         margin={"l": 40, "r": 20, "t": 30, "b": 30},
     )
@@ -119,8 +120,8 @@ def _build_stream_figure(result: engine.PlaygroundResult) -> go.Figure:
         vertical_spacing=0.14,
         row_heights=[0.48, 0.52],
         subplot_titles=(
-            f"Stream Values — {stream.name}",
-            f"Calibrated Anomaly Scores — {result.calibrator_name}",
+            f"Stream values: {stream.name}",
+            f"Calibrated anomaly scores: {result.calibrator_name}",
         ),
     )
 
@@ -248,9 +249,9 @@ def _build_stream_figure(result: engine.PlaygroundResult) -> go.Figure:
     )
     fig.update_layout(
         template="plotly_white",
-        paper_bgcolor="#fffef7",
+        paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
-        font={"family": "Inter, ui-sans-serif, sans-serif", "color": "#0e1a33", "size": 12},
+        font={"family": "IBM Plex Sans, ui-sans-serif, sans-serif", "color": "#14171f", "size": 12},
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.09, "x": 0.0},
         height=560,
         margin={"l": 56, "r": 24, "t": 96, "b": 48},
@@ -283,17 +284,17 @@ def _build_explanation_figure(result: engine.PlaygroundResult) -> go.Figure:
         )
     )
     fig.update_layout(
-        title=f"Feature Attribution at Step {exp.step} (LODA raw score: {exp.loda_raw_score:.2f})",
+        title=f"Attribution at step {exp.step} (LODA raw score: {exp.loda_raw_score:.2f})",
         xaxis={
             "title": "Contribution (LODA.explain_partial t-statistic)",
             "range": [x_min - 0.18 * span, x_max + 0.15 * span],
             "zeroline": True,
-            "zerolinecolor": "#cbd5e1",
+            "zerolinecolor": "#ccc7ba",
         },
         template="plotly_white",
-        paper_bgcolor="#fffef7",
+        paper_bgcolor="#ffffff",
         plot_bgcolor="#ffffff",
-        font={"family": "Inter, ui-sans-serif, sans-serif", "color": "#0e1a33", "size": 12},
+        font={"family": "IBM Plex Sans, ui-sans-serif, sans-serif", "color": "#14171f", "size": 12},
         height=290,
         margin={"l": 110, "r": 48, "t": 46, "b": 42},
     )
@@ -342,7 +343,7 @@ def evaluate_ui(
         empty = _empty_figure(msg)
         code = engine.generate_pipeline_code(
             stream_name=stream_name,
-            detectors=detectors or ["LODA"],
+            detectors=detectors or ["LocalOutlierProbability"],
             calibrator_name=calibrator_name,
             threshold=float(threshold),
             calibrator_window=int(calibrator_window),
@@ -484,7 +485,7 @@ def _build_theme() -> gr.themes.Soft:
     return gr.themes.Soft(
         primary_hue="blue",
         neutral_hue="slate",
-        font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"],
+        font=[gr.themes.GoogleFont("IBM Plex Sans"), "ui-sans-serif", "system-ui", "sans-serif"],
         font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
     )
 
@@ -492,7 +493,7 @@ def _build_theme() -> gr.themes.Soft:
 def build_demo() -> gr.Blocks:
     """Create and wire the Gradio Blocks application."""
     blocks_kwargs: dict[str, Any] = {
-        "title": "PySAD — Streaming Anomaly Detection Playground",
+        "title": "PySAD Playground: Streaming Anomaly Detection",
     }
     if _GRADIO_MAJOR < 6:
         blocks_kwargs["theme"] = _build_theme()
@@ -504,8 +505,8 @@ def build_demo() -> gr.Blocks:
         gr.HTML(
             """
             <div class="pysad-header">
-              <h1>PySAD — Streaming Anomaly Detection Playground</h1>
-              <p>Score and learn from every point in real time, compare detectors side by side, tune calibrated alerts, inject live anomalies, and inspect feature explanations.</p>
+              <h1>PySAD Playground</h1>
+              <p>Compare streaming anomaly detectors step by step, calibrate alert thresholds, inject anomalies, and inspect feature attribution.</p>
               <div class="pysad-links">
                 <a href="https://github.com/selimfirat/pysad" target="_blank">GitHub</a>
                 <a href="https://pysad.readthedocs.io/en/stable/" target="_blank">Documentation</a>
@@ -519,7 +520,7 @@ def build_demo() -> gr.Blocks:
         with gr.Row():
             with gr.Column(scale=4, min_width=320):
                 stream_dd = gr.Dropdown(
-                    label="1. Data Stream",
+                    label="Data stream",
                     choices=engine.STREAM_CHOICES,
                     value=engine.STREAM_SYNTHETIC,
                 )
@@ -538,13 +539,13 @@ def build_demo() -> gr.Blocks:
                 )
 
                 detectors_cb = gr.CheckboxGroup(
-                    label="2. Streaming Detectors (compare 1–3 side by side)",
+                    label="Streaming detectors (select 1 to 3)",
                     choices=engine.DETECTOR_CHOICES,
                     value=engine.DEFAULT_DETECTORS,
                 )
 
                 calibrator_rb = gr.Radio(
-                    label="3. Score Calibrator",
+                    label="Alert calibration",
                     choices=engine.CALIBRATOR_CHOICES,
                     value=engine.CALIBRATOR_CONFORMAL,
                 )

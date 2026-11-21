@@ -52,7 +52,7 @@ def plot_stream(
             shape (num_instances,) (Default=None).
         upper (NDArray[np.float64] | None): The upper bound of the confidence band,
             shape (num_instances,) (Default=None).
-        alerts (NDArray[np.bool_] | None): The stream positions that raised an alert (Default=None).
+        alerts (NDArray[bool] | None): The stream positions that raised an alert (Default=None).
         labels (NDArray[np.int64] | None): The true anomaly labels, shape (num_instances,)
             (Default=None).
         figsize (tuple[float, float]): The size of the figure (Default=(10.0, 7.0)).

@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 def _kth_abs_dev(
     sub: Sequence[float] | NDArray[np.float64], center: float, h: int, k: int
 ) -> float:
-    """Returns the 0-indexed k-th smallest element of ``|sub - center|`` for sorted ``sub`` in O(log m)."""
+    """Returns the k-th smallest value (0-indexed) of ``|sub - center|`` when ``sub`` is sorted, in O(log m) time."""
     left_len = h
     right_len = len(sub) - h
     low = max(0, k - right_len)
@@ -35,7 +35,7 @@ def _kth_abs_dev(
 
 
 def _median_and_mad_sorted(sub: Sequence[float] | NDArray[np.float64]) -> tuple[float, float]:
-    """Returns ``(median, MAD)`` of a non-empty sorted 1-D sequence ``sub`` in O(log m) time."""
+    """Returns the median and the median absolute deviation of a non-empty sorted 1-D sequence ``sub`` in O(log m) time."""
     m = len(sub)
     h = m >> 1
     center = float(sub[h]) if (m & 1) else 0.5 * (float(sub[h - 1]) + float(sub[h]))
@@ -47,14 +47,14 @@ def _median_and_mad_sorted(sub: Sequence[float] | NDArray[np.float64]) -> tuple[
 
 
 class RingBuffer:
-    """Fixed-capacity contiguous ``np.float64`` circular buffer for 1-D scalars or 2-D vectors.
+    """Fixed-capacity circular buffer of ``np.float64`` items.
 
-    The first item fixes the item shape. A scalar creates a one-dimensional buffer with shape
-    ``(window_size,)``, and a vector creates a two-dimensional buffer with shape
-    ``(window_size, num_features)``. Later items must have the same shape as the first item.
+    The first appended item fixes the item shape. A scalar item makes a buffer with shape
+    ``(window_size,)``, and a 1-D vector item makes a buffer with shape
+    ``(window_size, num_features)``. Later items must keep the shape of the first item.
 
     Args:
-        window_size (int): Maximum number of items retained in the buffer. Must be at least 1.
+        window_size (int): Maximum number of items that the buffer retains. Must be at least 1.
 
     Raises:
         ValueError: If ``window_size`` is less than 1.
@@ -69,17 +69,20 @@ class RingBuffer:
         self.next_slot = 0
 
     def append(self, item: float | NDArray[Any]) -> int:
-        """Writes ``item`` into the next slot, advances the ring, and returns the written slot index.
+        """Writes ``item`` into the next free slot and returns the slot index.
+
+        The next append writes to the following slot. At the end of the buffer, the slot index
+        wraps to 0 and the oldest item expires.
 
         Args:
             item (float or np.ndarray): Scalar value or 1-D feature vector to store. Its shape must
-                match the first item appended to the buffer.
+                match the item shape of the first stored item.
 
         Returns:
-            int: Slot index written in ``points``.
+            int: Slot index that received the item.
 
         Raises:
-            ValueError: If the item shape differs from the first appended item.
+            ValueError: If the item shape differs from the item shape of the first stored item.
         """
         arr = np.asarray(item, dtype=np.float64)
         if self.count == 0 and self.points.size == 0:
@@ -95,10 +98,17 @@ class RingBuffer:
         return slot
 
     def active_slices(self) -> tuple[NDArray[np.float64], NDArray[np.float64] | None, int]:
-        """Returns zero-copy slice(s) of the window after the oldest slot of a full window expires.
+        """Returns the stored items that remain after the oldest item of a full buffer expires.
+
+        The method returns views of the stored array, not copies. When the buffer is not full, it
+        returns ``(items, None, num_items)``, where ``items`` holds the stored items oldest first.
+        When the buffer is full, the next append expires the oldest item, so the method returns
+        the remaining items in two slices: ``second`` holds the older items, and ``first`` holds
+        the newer items.
 
         Returns:
-            tuple: ``(first_slice, second_slice_or_None, active_count)``.
+            tuple: ``(first_slice, second_slice_or_None, active_count)``, with
+                ``second_slice`` equal to None before the buffer is full.
         """
         if self.count < self.window_size:
             return self.points[: self.count], None, self.count
@@ -109,7 +119,8 @@ class RingBuffer:
         """Returns a contiguous oldest-first copy of the items currently in the buffer.
 
         Returns:
-            np.float64 array: Stored items in chronological order.
+            np.float64 array: Stored items in chronological order. The array is empty when the
+                buffer holds no item.
         """
         if self.count == 0:
             return self.points[:0].copy()
@@ -132,7 +143,7 @@ class Window:
         window_size (int): The size of the window. Must be at least 1.
 
     Raises:
-        ValueError: If window_size is less than 1.
+        ValueError: If ``window_size`` is less than 1.
     """
 
     def __init__(self, window_size: int) -> None:
@@ -153,7 +164,7 @@ class Window:
         self.window.append(item)
 
     def get(self) -> list[Any]:
-        """Method to obtain the window items.
+        """Returns a copy of the window items, oldest first.
 
         Returns:
             list: The items in the window, oldest first.

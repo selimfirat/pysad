@@ -161,3 +161,37 @@ def test_gradio_ui_builds_and_evaluates_if_installed():
     assert len(explain_fig.data) == 1
     assert "LODA.explain_partial()" in explain_note
     ast.parse(code)
+
+
+def test_arrhythmia_stream_and_json_bridge():
+    """Bundled Arrhythmia stream loads offline and produces a valid JSON payload for Pyodide."""
+    import json
+
+    raw = engine.run_playground_json(
+        stream_name=engine.STREAM_ARRHYTHMIA,
+        detectors=["LODA", "HalfSpaceTrees"],
+        calibrator_name=engine.CALIBRATOR_CONFORMAL,
+        threshold=0.985,
+        max_points=452,
+    )
+    payload = json.loads(raw)
+    assert payload["stream"]["num_points"] == 452
+    assert payload["stream"]["num_features"] == 274
+    assert len(payload["stream"]["plotted_features"]) <= 4
+    assert len(payload["traces"]) == 2
+    assert payload["traces"][0]["auroc"] is not None
+    assert len(payload["explanation"]["feature_names"]) <= 12
+    ast.parse(payload["pipeline_code"])
+
+
+def test_static_space_bundle_metadata():
+    """Static HF Space files exist, declare sdk: static, and reference bundled engine/data."""
+    from pathlib import Path
+
+    space_dir = Path(__file__).resolve().parents[1] / "spaces" / "playground"
+    readme = (space_dir / "README.md").read_text(encoding="utf-8")
+    index_html = (space_dir / "index.html").read_text(encoding="utf-8")
+    assert "sdk: static" in readme
+    assert "./engine.py" in index_html
+    assert "./data/nab/realKnownCause/nyc_taxi.csv" in index_html
+    assert "./data/arrhythmia.mat" in index_html

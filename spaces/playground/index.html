@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PySAD — Streaming Anomaly Detection Playground</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230741ad'/%3E%3Cpath d='M4 18h6l3-9 4 14 3-7h8' fill='none' stroke='%23fffef7' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js" defer></script>
+  <style>
+    :root {
+      --bg: #f8f6f0;
+      --surface: #fffef7;
+      --surface-alt: #efebdf;
+      --border: #e2ddcd;
+      --ink: #0e1a33;
+      --muted: #5a6478;
+      --primary: #0741ad;
+      --primary-hover: #053288;
+      --danger: #e11d48;
+      --emerald: #0f766e;
+      --amber: #b45309;
+      --radius: 12px;
+      --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1420px;
+      margin: 0 auto;
+      padding: 16px 20px 28px;
+    }
+
+    .header-card {
+      padding: 18px 22px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-alt) 100%);
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .header-card > div:first-child {
+      flex: 1 1 520px;
+      min-width: 0;
+    }
+
+    .header-card h1 {
+      margin: 0 0 4px;
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+    }
+
+    .header-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .wasm-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 0.88rem;
+    }
+
+    .links a {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .links a:hover { text-decoration: underline; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 335px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .header-right { align-items: flex-start; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .control-group {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 14px;
+    }
+
+    .control-group:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .group-title {
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--primary);
+      margin: 0 0 10px;
+    }
+
+    label.field-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.86rem;
+      font-weight: 600;
+      margin: 8px 0 4px;
+    }
+
+    .val-badge {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--primary);
+      background: #eef4ff;
+      padding: 1px 6px;
+      border-radius: 6px;
+    }
+
+    select, input[type="file"] {
+      width: 100%;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 0.88rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #ffffff;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .check-item input { accent-color: var(--primary); cursor: pointer; }
+
+    .check-item.disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .radio-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-family: var(--font-sans);
+      font-size: 0.86rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+
+    .btn-secondary {
+      background: #ffffff;
+      border-color: #cbd5e1;
+      color: var(--ink);
+    }
+
+    .btn-secondary:hover:not(:disabled) { background: var(--surface-alt); }
+
+    .muted-note {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 6px 0 0;
+    }
+
+    .main-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .boot-bar {
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+
+    .boot-bar.hidden { display: none; }
+
+    .boot-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .progress-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #dbeafe;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 8%;
+      background: var(--primary);
+      transition: width 0.25s ease;
+    }
+
+    .status-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .running-tag {
+      display: none;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--primary);
+      background: #eef4ff;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .running-tag.active { display: inline-block; }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th:first-child, td:first-child { text-align: left; font-weight: 600; }
+
+    th {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+      background: var(--surface-alt);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .code-header h2 {
+      margin: 0;
+      font-size: 0.96rem;
+      font-weight: 700;
+    }
+
+    pre {
+      margin: 0;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #0e1a33;
+      color: #f8fafc;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.5;
+      overflow-x: auto;
+    }
+
+    .card-title {
+      margin: 0 0 8px;
+      font-size: 0.96rem;
+      font-weight: 700;
+    }
+
+    .hidden { display: none; }
+
+    .error-banner {
+      border-color: #fecdd3;
+      background: #fff1f2;
+      color: #9f1239;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header-card">
+      <div>
+        <h1>PySAD — Streaming Anomaly Detection Playground</h1>
+        <p>Score and learn from every point in real time, compare detectors side by side, tune calibrated alerts, inject live anomalies, and inspect feature explanations.</p>
+      </div>
+      <div class="header-right">
+        <span class="wasm-pill">Runs 100% locally in Pyodide WebAssembly</span>
+        <nav class="links">
+          <a href="https://github.com/selimfirat/pysad" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://pysad.readthedocs.io/en/stable/" target="_blank" rel="noopener">Documentation</a>
+          <a href="https://pysad.readthedocs.io/en/stable/benchmark.html" target="_blank" rel="noopener">Benchmarks</a>
+          <a href="https://pypi.org/project/pysad/" target="_blank" rel="noopener">PyPI</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="panel sidebar">
+        <section class="control-group">
+          <h2 class="group-title">1. Data Stream</h2>
+          <select id="streamSelect" aria-label="Data Stream" disabled>
+            <option value="Synthetic Drift + Spikes (4 sensors)" selected>Synthetic Drift + Spikes (4 sensors)</option>
+            <option value="NYC Taxi Demand (NAB, univariate)">NYC Taxi Demand (NAB, univariate)</option>
+            <option value="Arrhythmia (ODDS, 274 features)">Arrhythmia (ODDS, 274 features)</option>
+            <option value="Upload CSV">Upload CSV</option>
+          </select>
+
+          <div id="csvUploadWrap" class="hidden" style="margin-top: 8px;">
+            <label class="field-label" for="csvFileInput">Upload CSV (numeric + optional label)</label>
+            <input id="csvFileInput" type="file" accept=".csv" disabled />
+            <p class="muted-note">CSV stays strictly in your browser memory.</p>
+          </div>
+
+          <label class="field-label" for="numPointsSlider">
+            <span>Stream points</span>
+            <span id="numPointsValue" class="val-badge">1200</span>
+          </label>
+          <input id="numPointsSlider" type="range" min="400" max="2500" step="100" value="1200" disabled />
+        </section>
+
+        <section class="control-group">
+          <h2 class="group-title">2. Streaming Detectors (1–3)</h2>
+          <div id="detectorGroup" class="checkbox-grid">
+            <label class="check-item"><input type="checkbox" value="LODA" checked disabled /> LODA</label>
+            <label class="check-item"><input type="checkbox" value="HalfSpaceTrees" checked disabled /> HalfSpaceTrees</label>
+            <label class="check-item"><input type="checkbox" value="RobustRandomCutForest" checked disabled /> RobustRandomCutForest</label>
+            <label class="check-item"><input type="checkbox" value="SeasonalHybridESD" disabled /> SeasonalHybridESD</label>
+            <label class="check-item"><input type="checkbox" value="MedianAbsoluteDeviation" disabled /> MedianAbsoluteDeviation</label>
+            <label class="check-item"><input type="checkbox" value="xStream" disabled /> xStream</label>
+          </div>
+        </section>
+
+        <section class="control-group">
+          <h2 class="group-title">3. Score Calibrator</h2>
+          <div class="radio-stack">
+            <label class="check-item">
+              <input type="radio" name="calibrator" value="Conformal (ConformalProbabilityCalibrator)" checked disabled />
+              Conformal (ConformalProbabilityCalibrator)
+            </label>
+            <label class="check-item">
+              <input type="radio" name="calibrator" value="SPOT / EVT (SPOTProbabilityCalibrator)" disabled />
+              SPOT / EVT (SPOTProbabilityCalibrator)
+            </label>
+          </div>
+
+          <label class="field-label" for="thresholdSlider">
+            <span>Alert threshold ([0, 1])</span>
+            <span id="thresholdValue" class="val-badge">0.985</span>
+          </label>
+          <input id="thresholdSlider" type="range" min="0.900" max="0.999" step="0.001" value="0.985" disabled />
+
+          <label class="field-label" for="calWindowSlider">
+            <span>Conformal window size</span>
+            <span id="calWindowValue" class="val-badge">350</span>
+          </label>
+          <input id="calWindowSlider" type="range" min="100" max="1000" step="50" value="350" disabled />
+        </section>
+
+        <section class="control-group">
+          <h2 class="group-title">4. Inject Anomaly &amp; Explain</h2>
+          <label class="field-label" for="featureSelect">Target feature</label>
+          <select id="featureSelect" disabled>
+            <option value="sensor_1">sensor_1</option>
+          </select>
+
+          <label class="field-label" for="injectStepSlider">
+            <span>Inject at step t</span>
+            <span id="injectStepValue" class="val-badge">720</span>
+          </label>
+          <input id="injectStepSlider" type="range" min="60" max="1199" step="1" value="720" disabled />
+
+          <label class="field-label" for="injectSigmaSlider">
+            <span>Magnitude (&sigma;)</span>
+            <span id="injectSigmaValue" class="val-badge">+5.5</span>
+          </label>
+          <input id="injectSigmaSlider" type="range" min="-8" max="8" step="0.5" value="5.5" disabled />
+
+          <div class="btn-row">
+            <button id="injectBtn" type="button" class="btn-primary" disabled>Inject Anomaly</button>
+            <button id="clearBtn" type="button" class="btn-secondary" disabled>Clear Injected</button>
+          </div>
+          <p id="injectedSummary" class="muted-note">Injected anomalies: none</p>
+
+          <label class="field-label" for="inspectStepSlider">
+            <span>Explain step t</span>
+            <span id="inspectStepValue" class="val-badge">468</span>
+          </label>
+          <input id="inspectStepSlider" type="range" min="60" max="1199" step="1" value="468" disabled />
+        </section>
+      </aside>
+
+      <main class="main-stack">
+        <div id="bootBar" class="boot-bar">
+          <div class="boot-top">
+            <span id="bootStatus">Starting Pyodide WebAssembly Python runtime...</span>
+            <span id="bootPercent" class="val-badge">10%</span>
+          </div>
+          <div class="progress-track">
+            <div id="bootProgressFill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <section id="statusCard" class="panel status-strip">
+          <span id="statusText">Initializing PySAD in your browser (first load downloads Pyodide + numpy + scipy + scikit-learn)...</span>
+          <span id="runningTag" class="running-tag">Running...</span>
+        </section>
+
+        <section class="panel">
+          <h2 class="card-title">Live Prequential Metrics &amp; Throughput</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Detector</th>
+                  <th>AUROC</th>
+                  <th>AUPR</th>
+                  <th>Alerts</th>
+                  <th>Precision</th>
+                  <th>Recall</th>
+                  <th>Injected</th>
+                  <th style="text-transform: none;">&micro;s / pt</th>
+                  <th style="text-transform: none;">pts / s</th>
+                </tr>
+              </thead>
+              <tbody id="metricsBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div id="streamPlot" style="width: 100%; height: 540px;"></div>
+          <p class="muted-note">Click any stream position in the chart above to inspect LODA.explain_partial() feature attribution at that step.</p>
+        </section>
+
+        <section class="panel">
+          <div id="explainPlot" style="width: 100%; height: 290px;"></div>
+          <p id="explainNote" class="muted-note"></p>
+        </section>
+
+        <section class="panel">
+          <div class="code-header">
+            <h2>Reproducible PySAD Pipeline Code</h2>
+            <button id="copyCodeBtn" type="button" class="btn-secondary">Copy</button>
+          </div>
+          <pre><code id="pipelineCode"></code></pre>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const DETECTOR_COLORS = ["#0741ad", "#0f766e", "#b45309"];
+    const FEATURE_COLORS = ["#3f6fd0", "#64748b", "#8aa8e6", "#94a3b8"];
+
+    const state = {
+      pyodide: null,
+      ready: false,
+      running: false,
+      injected: [],
+      inspectStep: null,
+      csvBytes: null,
+      featureNames: ["sensor_1"],
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function setBootProgress(pct, text) {
+      $("bootProgressFill").style.width = `${pct}%`;
+      $("bootPercent").textContent = `${pct}%`;
+      $("bootStatus").textContent = text;
+    }
+
+    function setControlsEnabled(enabled) {
+      const selector = "aside input, aside select, aside button";
+      document.querySelectorAll(selector).forEach((el) => {
+        el.disabled = !enabled;
+      });
+      if (enabled) {
+        enforceDetectorBounds();
+      }
+    }
+
+    function getSelectedDetectors() {
+      return Array.from(document.querySelectorAll('#detectorGroup input[type="checkbox"]:checked'))
+        .map((cb) => cb.value);
+    }
+
+    function getSelectedCalibrator() {
+      const checked = document.querySelector('input[name="calibrator"]:checked');
+      return checked ? checked.value : "Conformal (ConformalProbabilityCalibrator)";
+    }
+
+    function enforceDetectorBounds() {
+      const boxes = Array.from(document.querySelectorAll('#detectorGroup input[type="checkbox"]'));
+      const checked = boxes.filter((cb) => cb.checked);
+      boxes.forEach((cb) => {
+        const lockUncheck = checked.length === 1 && cb.checked;
+        const lockAdd = checked.length >= 3 && !cb.checked;
+        cb.disabled = !state.ready || lockUncheck || lockAdd;
+        cb.closest(".check-item").classList.toggle("disabled", lockUncheck || lockAdd);
+      });
+    }
+
+    function fmtMetric(v) {
+      return v === null || v === undefined ? "—" : Number(v).toFixed(3);
+    }
+
+    function updateInjectedSummary() {
+      if (!state.injected.length) {
+        $("injectedSummary").textContent = "Injected anomalies: none";
+        return;
+      }
+      const parts = state.injected
+        .filter((item) => item.feature_idx < state.featureNames.length)
+        .map((item) => {
+          const fname = state.featureNames[item.feature_idx];
+          const sign = item.magnitude_sigma >= 0 ? "+" : "";
+          return `t=${item.index} (${fname}, ${sign}${Number(item.magnitude_sigma).toFixed(1)}σ)`;
+        });
+      $("injectedSummary").textContent = `Injected anomalies: ${parts.join("; ")}`;
+    }
+
+    function renderMetricsTable(traces) {
+      const tbody = $("metricsBody");
+      const rows = traces.map((tr) => {
+        const row = document.createElement("tr");
+        const injText = tr.injected_total > 0 ? `${tr.injected_caught} / ${tr.injected_total}` : "—";
+        const cells = [
+          tr.display_name,
+          fmtMetric(tr.auroc),
+          fmtMetric(tr.aupr),
+          String(tr.alerts_count),
+          fmtMetric(tr.precision),
+          fmtMetric(tr.recall),
+          injText,
+          Number(tr.us_per_point).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+          Number(tr.points_per_second).toLocaleString(undefined, { maximumFractionDigits: 0 }),
+        ];
+        cells.forEach((txt) => {
+          const td = document.createElement("td");
+          td.textContent = txt;
+          row.appendChild(td);
+        });
+        return row;
+      });
+      tbody.replaceChildren(...rows);
+    }
+
+    function renderStreamPlot(data) {
+      const { stream, warmup, threshold, calibrator_name, traces, injected_indices, explanation } = data;
+      const xAxis = stream.x_axis;
+      const plotTraces = [];
+
+      stream.plotted_features.forEach((feat, pos) => {
+        plotTraces.push({
+          type: "scatter",
+          mode: "lines",
+          x: xAxis,
+          y: feat.values,
+          name: feat.name,
+          xaxis: "x",
+          yaxis: "y",
+          line: { width: 1.4, color: FEATURE_COLORS[pos % FEATURE_COLORS.length] },
+          opacity: 0.88,
+        });
+      });
+
+      if (stream.labeled_indices.length > 0) {
+        plotTraces.push({
+          type: "scatter",
+          mode: "markers",
+          x: stream.labeled_indices.map((i) => xAxis[i]),
+          y: stream.labeled_primary_values,
+          name: "Labeled anomaly",
+          xaxis: "x",
+          yaxis: "y",
+          marker: { color: "#e11d48", size: 6, symbol: "circle-open", line: { width: 2 } },
+        });
+      }
+
+      traces.forEach((tr, idx) => {
+        const color = DETECTOR_COLORS[idx % DETECTOR_COLORS.length];
+        plotTraces.push({
+          type: "scatter",
+          mode: "lines",
+          x: xAxis,
+          y: tr.calibrated_scores,
+          name: tr.display_name,
+          xaxis: "x2",
+          yaxis: "y2",
+          line: { width: 1.8, color },
+        });
+        if (tr.alert_indices.length > 0) {
+          plotTraces.push({
+            type: "scatter",
+            mode: "markers",
+            x: tr.alert_indices.map((i) => xAxis[i]),
+            y: tr.alert_scores,
+            name: `${tr.name} alerts`,
+            showlegend: false,
+            xaxis: "x2",
+            yaxis: "y2",
+            marker: { color: "#e11d48", size: 6, symbol: "diamond" },
+          });
+        }
+      });
+
+      const x0 = xAxis[0];
+      const x1Warm = xAxis[Math.min(warmup, xAxis.length - 1)];
+      const xEnd = xAxis[xAxis.length - 1];
+      const inspectX = xAxis[explanation.step];
+
+      const shapes = [
+        { type: "rect", xref: "x", yref: "y domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.14)", line: { width: 0 } },
+        { type: "rect", xref: "x2", yref: "y2 domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.14)", line: { width: 0 } },
+        { type: "line", xref: "x2", yref: "y2", x0, x1: xEnd, y0: threshold, y1: threshold, line: { color: "#e11d48", width: 1.5, dash: "dash" } },
+        { type: "line", xref: "x", yref: "y domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: "#0741ad", width: 1.4, dash: "dash" } },
+        { type: "line", xref: "x2", yref: "y2 domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: "#0741ad", width: 1.4, dash: "dash" } },
+      ];
+
+      injected_indices.forEach((idx) => {
+        const ix = xAxis[idx];
+        shapes.push({ type: "line", xref: "x", yref: "y domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: "#e11d48", width: 1.4, dash: "dot" } });
+        shapes.push({ type: "line", xref: "x2", yref: "y2 domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: "#e11d48", width: 1.4, dash: "dot" } });
+      });
+
+      const annotations = [
+        {
+          text: `Stream Values — ${stream.name}`,
+          xref: "paper", yref: "paper", x: 0.5, y: 1.02,
+          showarrow: false, font: { size: 13.5, color: "#0e1a33", weight: 700 },
+        },
+        {
+          text: `Calibrated Anomaly Scores — ${calibrator_name}`,
+          xref: "paper", yref: "paper", x: 0.5, y: 0.49,
+          showarrow: false, font: { size: 13.5, color: "#0e1a33", weight: 700 },
+        },
+        {
+          text: `threshold = ${Number(threshold).toFixed(3)}`,
+          xref: "x2 domain", yref: "y2", x: 0.99, y: threshold,
+          xanchor: "right", yanchor: "bottom",
+          showarrow: false, font: { size: 11, color: "#e11d48" },
+        },
+      ];
+
+      const layout = {
+        template: "plotly_white",
+        paper_bgcolor: "#fffef7",
+        plot_bgcolor: "#ffffff",
+        font: { family: "Inter, ui-sans-serif, sans-serif", color: "#0e1a33", size: 12 },
+        legend: { orientation: "h", yanchor: "bottom", y: 1.07, x: 0.0 },
+        margin: { l: 56, r: 24, t: 88, b: 48 },
+        xaxis: { matches: "x2", showticklabels: false },
+        yaxis: { title: "Value", domain: [0.56, 0.97] },
+        xaxis2: { title: stream.timestamps ? "Timestamp" : "Stream position", anchor: "y2" },
+        yaxis2: { title: "Calibrated score", range: [-0.02, 1.06], domain: [0.0, 0.43] },
+        shapes,
+        annotations,
+      };
+
+      const plotDiv = $("streamPlot");
+      Plotly.react(plotDiv, plotTraces, layout, { responsive: true, displaylogo: false });
+      plotDiv.removeAllListeners?.("plotly_click");
+      plotDiv.on("plotly_click", (evt) => {
+        if (!evt.points || !evt.points.length || !state.ready) return;
+        const pt = evt.points[0];
+        const idx = typeof pt.pointIndex === "number" ? pt.pointIndex : Number(pt.x);
+        if (Number.isFinite(idx)) {
+          state.inspectStep = Math.max(0, Math.min(stream.num_points - 1, Math.round(idx)));
+          $("inspectStepSlider").value = String(state.inspectStep);
+          $("inspectStepValue").textContent = String(state.inspectStep);
+          evaluate();
+        }
+      });
+    }
+
+    function renderExplanationPlot(exp) {
+      const vals = exp.contributions;
+      const names = exp.feature_names;
+      const colors = vals.map((v, idx) => (idx >= vals.length - 2 && v > 0 ? "#e11d48" : "#0741ad"));
+      const xMin = Math.min(0, ...vals);
+      const xMax = Math.max(0, ...vals);
+      const span = Math.max(xMax - xMin, 1.0);
+
+      const trace = {
+        type: "bar",
+        x: vals,
+        y: names,
+        orientation: "h",
+        marker: { color: colors },
+        text: vals.map((v) => Number(v).toFixed(2)),
+        textposition: "outside",
+      };
+
+      const layout = {
+        title: { text: `Feature Attribution at Step ${exp.step} (LODA raw score: ${Number(exp.loda_raw_score).toFixed(2)})`, font: { size: 14 } },
+        xaxis: {
+          title: "Contribution (LODA.explain_partial t-statistic)",
+          range: [xMin - 0.18 * span, xMax + 0.16 * span],
+          zeroline: true,
+          zerolinecolor: "#cbd5e1",
+        },
+        template: "plotly_white",
+        paper_bgcolor: "#fffef7",
+        plot_bgcolor: "#ffffff",
+        font: { family: "Inter, ui-sans-serif, sans-serif", color: "#0e1a33", size: 12 },
+        margin: { l: 112, r: 48, t: 46, b: 42 },
+      };
+
+      Plotly.react($("explainPlot"), [trace], layout, { responsive: true, displaylogo: false });
+      $("explainNote").textContent = exp.note;
+    }
+
+    function syncFeatureOptions(featureNames) {
+      state.featureNames = featureNames;
+      const select = $("featureSelect");
+      const current = select.value;
+      const opts = featureNames.map((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        return opt;
+      });
+      select.replaceChildren(...opts);
+      select.value = featureNames.includes(current) ? current : featureNames[0];
+    }
+
+    async function evaluate() {
+      if (!state.ready || state.running) return;
+      const streamName = $("streamSelect").value;
+      if (streamName === "Upload CSV" && !state.csvBytes) {
+        $("statusCard").classList.remove("error-banner");
+        $("statusText").textContent = "Select a local CSV file (numeric columns + optional binary label column) to evaluate.";
+        return;
+      }
+
+      state.running = true;
+      $("runningTag").classList.add("active");
+      $("statusCard").classList.remove("error-banner");
+
+      await new Promise((r) => setTimeout(r, 10));
+
+      try {
+        const py = state.pyodide;
+        py.globals.set("_req_json", JSON.stringify({
+          stream_name: streamName,
+          num_points: Number($("numPointsSlider").value),
+          detectors: getSelectedDetectors(),
+          calibrator_name: getSelectedCalibrator(),
+          threshold: Number($("thresholdSlider").value),
+          calibrator_window: Number($("calWindowSlider").value),
+          primary_feature: $("featureSelect").value || null,
+          injected: state.injected,
+          inspect_step: state.inspectStep,
+        }));
+        if (state.csvBytes) {
+          py.globals.set("_csv_u8", state.csvBytes);
+        } else {
+          py.globals.set("_csv_u8", null);
+        }
+
+        const outJson = py.runPython(`
+import json
+import engine
+req = json.loads(_req_json)
+csv_bytes = _csv_u8.to_bytes() if _csv_u8 is not None else None
+engine.run_playground_json(
+    stream_name=req["stream_name"],
+    detectors=req["detectors"],
+    calibrator_name=req["calibrator_name"],
+    threshold=float(req["threshold"]),
+    calibrator_window=int(req["calibrator_window"]),
+    max_points=int(req["num_points"]),
+    csv_data=csv_bytes,
+    injected=req["injected"],
+    inspect_step=req["inspect_step"],
+    primary_feature_name=req["primary_feature"],
+)
+        `);
+        const data = JSON.parse(outJson);
+
+        $("statusText").textContent = data.status_note;
+        syncFeatureOptions(data.stream.feature_names);
+        updateInjectedSummary();
+
+        const maxStep = Math.max(1, data.stream.num_points - 1);
+        $("injectStepSlider").max = String(maxStep);
+        if (Number($("injectStepSlider").value) > maxStep) {
+          $("injectStepSlider").value = String(maxStep);
+          $("injectStepValue").textContent = String(maxStep);
+        }
+        $("inspectStepSlider").max = String(maxStep);
+        $("inspectStepSlider").value = String(data.explanation.step);
+        $("inspectStepValue").textContent = String(data.explanation.step);
+
+        renderMetricsTable(data.traces);
+        renderStreamPlot(data);
+        renderExplanationPlot(data.explanation);
+        $("pipelineCode").textContent = data.pipeline_code;
+      } catch (err) {
+        $("statusCard").classList.add("error-banner");
+        $("statusText").textContent = `Error: ${err.message || String(err)}`;
+      } finally {
+        state.running = false;
+        $("runningTag").classList.remove("active");
+      }
+    }
+
+    function wireUI() {
+      $("streamSelect").addEventListener("change", () => {
+        state.injected = [];
+        state.inspectStep = null;
+        const isCsv = $("streamSelect").value === "Upload CSV";
+        $("csvUploadWrap").classList.toggle("hidden", !isCsv);
+        updateInjectedSummary();
+        evaluate();
+      });
+
+      $("csvFileInput").addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        state.csvBytes = new Uint8Array(await file.arrayBuffer());
+        state.injected = [];
+        state.inspectStep = null;
+        evaluate();
+      });
+
+      $("numPointsSlider").addEventListener("input", () => {
+        $("numPointsValue").textContent = $("numPointsSlider").value;
+      });
+      $("numPointsSlider").addEventListener("change", () => {
+        state.inspectStep = null;
+        evaluate();
+      });
+
+      document.querySelectorAll('#detectorGroup input[type="checkbox"]').forEach((cb) => {
+        cb.addEventListener("change", () => {
+          enforceDetectorBounds();
+          evaluate();
+        });
+      });
+
+      document.querySelectorAll('input[name="calibrator"]').forEach((rb) => {
+        rb.addEventListener("change", () => evaluate());
+      });
+
+      $("thresholdSlider").addEventListener("input", () => {
+        $("thresholdValue").textContent = Number($("thresholdSlider").value).toFixed(3);
+      });
+      $("thresholdSlider").addEventListener("change", () => evaluate());
+
+      $("calWindowSlider").addEventListener("input", () => {
+        $("calWindowValue").textContent = $("calWindowSlider").value;
+      });
+      $("calWindowSlider").addEventListener("change", () => evaluate());
+
+      $("featureSelect").addEventListener("change", () => evaluate());
+
+      $("injectStepSlider").addEventListener("input", () => {
+        $("injectStepValue").textContent = $("injectStepSlider").value;
+      });
+
+      $("injectSigmaSlider").addEventListener("input", () => {
+        const v = Number($("injectSigmaSlider").value);
+        $("injectSigmaValue").textContent = `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
+      });
+
+      $("inspectStepSlider").addEventListener("input", () => {
+        $("inspectStepValue").textContent = $("inspectStepSlider").value;
+      });
+      $("inspectStepSlider").addEventListener("change", () => {
+        state.inspectStep = Number($("inspectStepSlider").value);
+        evaluate();
+      });
+
+      $("injectBtn").addEventListener("click", () => {
+        const step = Number($("injectStepSlider").value);
+        const featName = $("featureSelect").value;
+        const featIdx = Math.max(0, state.featureNames.indexOf(featName));
+        const sigma = Number($("injectSigmaSlider").value);
+        state.injected = [...state.injected, { index: step, feature_idx: featIdx, magnitude_sigma: sigma }];
+        state.inspectStep = step;
+        evaluate();
+      });
+
+      $("clearBtn").addEventListener("click", () => {
+        state.injected = [];
+        state.inspectStep = null;
+        evaluate();
+      });
+
+      $("copyCodeBtn").addEventListener("click", async () => {
+        const text = $("pipelineCode").textContent || "";
+        try {
+          await navigator.clipboard.writeText(text);
+          $("copyCodeBtn").textContent = "Copied";
+          setTimeout(() => { $("copyCodeBtn").textContent = "Copy"; }, 1400);
+        } catch {
+          $("copyCodeBtn").textContent = "Select & Copy";
+        }
+      });
+    }
+
+    async function boot() {
+      wireUI();
+      try {
+        setBootProgress(15, "Loading Pyodide 0.27.5 & fetching playground files...");
+        const pyodidePromise = loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/" });
+        const assetsPromise = Promise.all([
+          fetch("./engine.py").then((r) => { if (!r.ok) throw new Error(`Failed to fetch engine.py (${r.status})`); return r.text(); }),
+          fetch("./data/nab/realKnownCause/nyc_taxi.csv").then((r) => r.ok ? r.text() : null),
+          fetch("./data/nab/combined_windows.json").then((r) => r.ok ? r.text() : null),
+          fetch("./data/arrhythmia.mat").then((r) => r.ok ? r.arrayBuffer() : null),
+          fetch("./manifest.json").then((r) => r.ok ? r.json() : null),
+        ]);
+
+        const [pyodide, [engineCode, taxiCsv, nabWindows, arrhythmiaBuf, manifest]] = await Promise.all([pyodidePromise, assetsPromise]);
+        state.pyodide = pyodide;
+
+        setBootProgress(45, "Mounting bundled NAB & ODDS datasets in WebAssembly FS...");
+        pyodide.FS.mkdirTree("/home/pyodide/data/nab/realKnownCause");
+        pyodide.FS.writeFile("/home/pyodide/engine.py", engineCode);
+        if (taxiCsv) pyodide.FS.writeFile("/home/pyodide/data/nab/realKnownCause/nyc_taxi.csv", taxiCsv);
+        if (nabWindows) pyodide.FS.writeFile("/home/pyodide/data/nab/combined_windows.json", nabWindows);
+        if (arrhythmiaBuf) pyodide.FS.writeFile("/home/pyodide/data/arrhythmia.mat", new Uint8Array(arrhythmiaBuf));
+
+        setBootProgress(65, "Loading numpy, scipy, scikit-learn, and micropip...");
+        await pyodide.loadPackage(["numpy", "scipy", "scikit-learn", "micropip"]);
+
+        setBootProgress(85, "Installing pysad via micropip...");
+        const wheelUrl = manifest && manifest.wheel ? new URL(`./${manifest.wheel}`, window.location.href).href : null;
+        pyodide.globals.set("_wheel_url", wheelUrl);
+        await pyodide.runPythonAsync(`
+import sys
+if "/home/pyodide" not in sys.path:
+    sys.path.insert(0, "/home/pyodide")
+import micropip
+if _wheel_url:
+    await micropip.install(_wheel_url)
+else:
+    await micropip.install("pysad")
+import engine
+        `);
+
+        setBootProgress(96, "Running initial live PySAD comparison...");
+        state.ready = true;
+        setControlsEnabled(true);
+        await evaluate();
+        setBootProgress(100, "Ready");
+        $("bootBar").classList.add("hidden");
+        window.__pysadPlaygroundReady = true;
+      } catch (err) {
+        $("bootStatus").textContent = `Initialization failed: ${err.message || String(err)}`;
+        $("bootBar").classList.add("error-banner");
+        $("statusCard").classList.add("error-banner");
+        $("statusText").textContent = `Failed to initialize PySAD playground: ${err.message || String(err)}`;
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", boot);
+  </script>
+</body>
+</html>

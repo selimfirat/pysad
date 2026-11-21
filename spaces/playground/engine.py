@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -31,16 +32,24 @@ from pysad.transform.probability_calibration import (
 from pysad.utils import Data, get_minmax_array
 
 SPACE_DIR = Path(__file__).resolve().parent
-REPO_ROOT = SPACE_DIR.parents[1]
+REPO_ROOT = SPACE_DIR.parents[1] if len(SPACE_DIR.parents) > 1 else SPACE_DIR
 
 STREAM_SYNTHETIC = "Synthetic Drift + Spikes (4 sensors)"
 STREAM_NYC_TAXI = "NYC Taxi Demand (NAB, univariate)"
+STREAM_ARRHYTHMIA = "Arrhythmia (ODDS, 274 features)"
 STREAM_CREDITCARD = "ULB Credit Card Fraud (30 features)"
 STREAM_CSV = "Upload CSV"
 STREAM_CHOICES = [
     STREAM_SYNTHETIC,
     STREAM_NYC_TAXI,
+    STREAM_ARRHYTHMIA,
     STREAM_CREDITCARD,
+    STREAM_CSV,
+]
+BROWSER_STREAM_CHOICES = [
+    STREAM_SYNTHETIC,
+    STREAM_NYC_TAXI,
+    STREAM_ARRHYTHMIA,
     STREAM_CSV,
 ]
 
@@ -187,10 +196,10 @@ def make_synthetic_drift_stream(num_points: int = 1200, seed: int = 42) -> Strea
     )
 
 
-def _find_nab_data_dir() -> str | None:
-    """Return a local directory containing bundled NAB data if available."""
+def _find_local_data_dir(rel_path: str) -> str | None:
+    """Return a local directory containing bundled dataset `rel_path` if available."""
     for candidate in (SPACE_DIR / "data", REPO_ROOT / "examples" / "data"):
-        if (candidate / "nab" / "realKnownCause" / "nyc_taxi.csv").is_file():
+        if (candidate / rel_path).is_file():
             return str(candidate)
     return None
 
@@ -198,7 +207,7 @@ def _find_nab_data_dir() -> str | None:
 @lru_cache(maxsize=1)
 def _load_full_nyc_taxi() -> tuple[np.ndarray, np.ndarray, list[str]]:
     """Load and cache the full NYC Taxi series with ISO timestamps."""
-    local_dir = _find_nab_data_dir()
+    local_dir = _find_local_data_dir("nab/realKnownCause/nyc_taxi.csv")
     loader = Data(local_dir) if local_dir is not None else Data()
     raw, y = loader.get_data(
         "nab/realKnownCause/nyc_taxi.csv",
@@ -239,6 +248,36 @@ def load_nyc_taxi_stream(max_points: int = 1500) -> StreamData:
         feature_names=["passengers"],
         timestamps=ts_slice,
         seasonal_period=48,
+    )
+
+
+@lru_cache(maxsize=1)
+def _load_full_arrhythmia() -> tuple[np.ndarray, np.ndarray]:
+    """Load and cache the ODDS Arrhythmia benchmark dataset."""
+    local_dir = _find_local_data_dir("arrhythmia.mat")
+    loader = Data(local_dir) if local_dir is not None else Data()
+    X, y = loader.get_data("arrhythmia.mat", download=(local_dir is None))
+    return X.astype(np.float64), y.astype(int)
+
+
+def load_arrhythmia_stream(max_points: int = 1500) -> StreamData:
+    """Load the bundled ODDS Arrhythmia stream (up to 452 instances x 274 features)."""
+    X_full, y_full = _load_full_arrhythmia()
+    n = min(int(max(300, max_points)), len(X_full))
+    X_slice = X_full[:n].copy()
+    y_slice = y_full[:n].copy()
+    feature_names = [f"attr_{i + 1}" for i in range(X_slice.shape[1])]
+    return StreamData(
+        name=STREAM_ARRHYTHMIA,
+        description=(
+            f"ODDS Arrhythmia medical records ({n} steps, {X_slice.shape[1]} features, "
+            f"{int(y_slice.sum())} anomalous records)."
+        ),
+        X=X_slice,
+        y=y_slice,
+        feature_names=feature_names,
+        timestamps=None,
+        seasonal_period=24,
     )
 
 
@@ -378,6 +417,8 @@ def load_stream(
         return make_synthetic_drift_stream(num_points=max_points)
     if stream_name == STREAM_NYC_TAXI:
         return load_nyc_taxi_stream(max_points=max_points)
+    if stream_name == STREAM_ARRHYTHMIA:
+        return load_arrhythmia_stream(max_points=max_points)
     if stream_name == STREAM_CREDITCARD:
         return load_creditcard_stream(max_points=max_points)
     if stream_name == STREAM_CSV:
@@ -634,6 +675,8 @@ def generate_pipeline_code(
 
     if stream_name == STREAM_NYC_TAXI:
         data_line = 'X, y = Data().get_data("nab/realKnownCause/nyc_taxi.csv")'
+    elif stream_name == STREAM_ARRHYTHMIA:
+        data_line = 'X, y = Data().get_data("arrhythmia.mat")'
     elif stream_name == STREAM_CREDITCARD:
         data_line = 'X, y = Data().get_data("creditcard/creditcard.arff")'
     else:
@@ -820,3 +863,112 @@ def run_playground(
         pipeline_code=code,
         status_note=status_note,
     )
+
+
+def run_playground_json(
+    stream_name: str,
+    detectors: list[str],
+    calibrator_name: str,
+    threshold: float = 0.985,
+    calibrator_window: int = 350,
+    max_points: int = 1200,
+    csv_data: bytes | str | None = None,
+    injected: list[dict[str, Any]] | None = None,
+    inspect_step: int | None = None,
+    primary_feature_name: str | None = None,
+) -> str:
+    """Serialize `run_playground(...)` output cleanly as JSON for Pyodide / JS UI callers."""
+    result = run_playground(
+        stream_name=stream_name,
+        detectors=detectors,
+        calibrator_name=calibrator_name,
+        threshold=threshold,
+        calibrator_window=calibrator_window,
+        max_points=max_points,
+        csv_data=csv_data,
+        injected=injected,
+        inspect_step=inspect_step,
+        primary_feature_name=primary_feature_name,
+    )
+    stream = result.stream
+    exp = result.explanation
+
+    if stream.num_features > 4:
+        ranked = np.argsort(exp.contributions)[::-1][:4].tolist()
+        feature_indices = sorted(set(ranked))
+    else:
+        feature_indices = list(range(stream.num_features))
+
+    plotted_features = [
+        {
+            "name": stream.feature_names[idx],
+            "values": [round(float(v), 5) for v in stream.X[:, idx]],
+        }
+        for idx in feature_indices
+    ]
+    labeled_indices = (
+        np.flatnonzero(stream.y == 1).astype(int).tolist()
+        if stream.y is not None and stream.y.any()
+        else []
+    )
+    primary_plot_idx = feature_indices[0]
+    labeled_primary_values = [
+        round(float(stream.X[i, primary_plot_idx]), 5) for i in labeled_indices
+    ]
+
+    order = np.argsort(exp.contributions)
+    if len(order) > 12:
+        order = order[-12:]
+
+    payload = {
+        "stream": {
+            "name": stream.name,
+            "description": stream.description,
+            "num_points": stream.num_points,
+            "num_features": stream.num_features,
+            "is_univariate": stream.is_univariate,
+            "feature_names": stream.feature_names,
+            "timestamps": stream.timestamps is not None,
+            "x_axis": stream.timestamps
+            if stream.timestamps is not None
+            else list(range(stream.num_points)),
+            "plotted_features": plotted_features,
+            "labeled_indices": labeled_indices,
+            "labeled_primary_values": labeled_primary_values,
+        },
+        "warmup": result.warmup,
+        "threshold": result.threshold,
+        "calibrator_name": result.calibrator_name,
+        "status_note": result.status_note,
+        "pipeline_code": result.pipeline_code,
+        "injected_indices": np.flatnonzero(result.injected_mask).astype(int).tolist(),
+        "traces": [
+            {
+                "name": tr.name,
+                "display_name": tr.display_name,
+                "calibrated_scores": [round(float(v), 5) for v in tr.calibrated_scores],
+                "alert_indices": np.flatnonzero(tr.alerts).astype(int).tolist(),
+                "alert_scores": [
+                    round(float(tr.calibrated_scores[i]), 5) for i in np.flatnonzero(tr.alerts)
+                ],
+                "alerts_count": int(tr.alerts.sum()),
+                "auroc": None if tr.auroc is None else round(float(tr.auroc), 4),
+                "aupr": None if tr.aupr is None else round(float(tr.aupr), 4),
+                "precision": None if tr.precision is None else round(float(tr.precision), 4),
+                "recall": None if tr.recall is None else round(float(tr.recall), 4),
+                "injected_caught": tr.injected_caught,
+                "injected_total": tr.injected_total,
+                "us_per_point": round(float(tr.us_per_point), 2),
+                "points_per_second": round(float(tr.points_per_second), 1),
+            }
+            for tr in result.traces
+        ],
+        "explanation": {
+            "step": exp.step,
+            "loda_raw_score": round(float(exp.loda_raw_score), 4),
+            "note": exp.note,
+            "feature_names": [exp.feature_names[int(i)] for i in order],
+            "contributions": [round(float(exp.contributions[int(i)]), 4) for i in order],
+        },
+    }
+    return json.dumps(payload)

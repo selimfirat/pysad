@@ -628,3 +628,293 @@ def test_data_pickle_round_trip(tmp_path):
     X_restored, y_restored = restored.get_data("sample.txt", download=False)
     np.testing.assert_array_equal(X_restored, X_orig)
     np.testing.assert_array_equal(y_restored, y_orig)
+
+
+def _validate_dataset_structure(X, y, num_features_min: int = 1) -> None:
+    """Validate that a loaded dataset has the expected structure.
+
+    Args:
+        X: Feature array of shape (num_instances, num_features).
+        y: Label array of shape (num_instances,).
+        num_features_min: Minimum expected number of features.
+    """
+    assert isinstance(X, np.ndarray), "X must be a numpy array"
+    assert X.ndim == 2, f"X must be 2D, got ndim={X.ndim}"
+    assert X.shape[0] > 0, "X must have at least one instance"
+    assert X.shape[1] >= num_features_min, (
+        f"X must have at least {num_features_min} feature(s), got {X.shape[1]}"
+    )
+    assert isinstance(y, np.ndarray), "y must be a numpy array"
+    assert y.ndim == 1, f"y must be 1D, got ndim={y.ndim}"
+    assert y.shape[0] == X.shape[0], (
+        f"y must have the same length as X: {y.shape[0]} vs {X.shape[0]}"
+    )
+    assert set(np.unique(y)).issubset({0, 1}), (
+        f"y must contain only binary labels (0/1), got {set(np.unique(y))}"
+    )
+
+
+# A simple Response mock used across test helpers.
+# (The Response class is defined at line 15 for reuse across tests.)
+
+
+def _load_odds_mat(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load an ODDS .mat dataset with a mocked scipy loadmat."""
+
+    class DummyF:
+        def __getitem__(self, key):
+            if key == "X":
+                return np.ones((10, 3))
+            if key == "y":
+                return np.array([0, 1] * 5).reshape(-1, 1)
+
+    monkeypatch.setattr("scipy.io.loadmat", lambda p: DummyF())
+    import hashlib
+
+    from pysad.utils._datasets import _CHECKSUMS
+
+    monkeypatch.setitem(_CHECKSUMS, data_file, hashlib.sha256(b"dummy").hexdigest())
+    d = Data(data_base_path=data_base_path)
+    X, y = d.get_data(data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=3)
+    return X, y
+
+
+def _load_nab_series(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load a NAB series with mocked combined_windows.json."""
+    import json
+    import os
+
+    d = Data(data_base_path=data_base_path)
+
+    # Use the full NAB path as expected by get_data
+    full_data_file = "nab/" + data_file
+
+    # Create the NAB data file
+    nab_dir = os.path.join(data_base_path, "nab")
+    os.makedirs(nab_dir, exist_ok=True)
+    series_dir = os.path.join(nab_dir, "realKnownCause")
+    os.makedirs(series_dir, exist_ok=True)
+    series_path = os.path.join(series_dir, "nyc_taxi.csv")
+    with open(series_path, "w") as f:
+        f.write(
+            "timestamp,value\n2014-07-01 00:00:00,1\n2014-07-01 00:30:00,2\n2014-07-01 01:00:00,30\n2014-07-01 01:30:00,4\n2014-07-01 02:00:00,5\n"
+        )
+
+    # Set up combined_windows.json with key matching name[len("nab/") :]
+    windows_path = os.path.join(nab_dir, "combined_windows.json")
+    windows = {
+        "realKnownCause/nyc_taxi.csv": [
+            ["2014-07-01 00:30:00.000000", "2014-07-01 01:00:00.000000"]
+        ]
+    }
+    with open(windows_path, "w") as f:
+        json.dump(windows, f)
+
+    X, y = d.get_data(full_data_file, download=False)
+    _validate_dataset_structure(X, y)
+    return X, y
+
+
+def _load_ucr_series(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load a UCR series with a mocked archive download."""
+    import hashlib
+    import io
+    import os
+    import zipfile
+
+    from pysad.utils.data import Data as Data_d
+
+    d = Data_d(data_base_path=data_base_path)
+
+    name = data_file
+    # Create the UCR data file in the expected location
+    ucr_dir = os.path.join(data_base_path, "ucr")
+    os.makedirs(ucr_dir, exist_ok=True)
+    data_path = os.path.join(ucr_dir, name)
+    with open(data_path, "w") as f:
+        f.write("1\n2\n3\n4\n5\n")
+
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr(f"ucr/{name}", "1\n2\n3\n4\n5\n")
+    content = archive.getvalue()
+
+    # Monkeypatch following the existing test pattern
+    def urlopen(req, timeout):
+        return type("R", (), {"read": lambda self, *a: content, "headers": {}}())()
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(pysad.utils.data, "_UCR_CHECKSUM", hashlib.sha256(content).hexdigest())
+    monkeypatch.setattr(pysad.utils.data, "_UCR_SERIES", [name])
+    X, y = d.get_data("ucr/" + name, download=False)
+    _validate_dataset_structure(X, y, num_features_min=1)
+    return X, y
+
+
+def _load_smd_stream(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load an SMD machine stream with mocked download."""
+    import os
+
+    from pysad.utils.data import Data as Data_d
+
+    d = Data_d(data_base_path=data_base_path)
+
+    # Create the SMD data and labels files in the expected locations
+    smd_dir = os.path.join(data_base_path, "smd")
+    os.makedirs(smd_dir, exist_ok=True)
+
+    # Data file
+    data_path = os.path.join(smd_dir, data_file)
+    with open(data_path, "w") as f:
+        f.write("0.1,0.2\n0.3,0.4\n0.5,0.6\n")
+
+    # Labels file (matching the data file name)
+    "smd/labels/" + data_file
+    labels_path = os.path.join(smd_dir, "labels", data_file)
+    os.makedirs(os.path.dirname(labels_path), exist_ok=True)
+    with open(labels_path, "w") as f:
+        f.write("0\n1\n0\n")
+
+    # Directly set the SMD module attribute to avoid monkeypatch.setitem issues
+    import pysad.utils.data as dmod
+
+    dmod._SMD = "smd/"
+
+    X, y = d.get_data("smd/" + data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=2)
+    return X, y
+
+
+def _load_creditcard_arff(monkeypatch, data_base_path: str) -> tuple:
+    """Load the credit-card ARFF dataset with mocked download."""
+    from pysad.utils import Data
+
+    d = Data(data_base_path=data_base_path)
+
+    names = ["Time"] + [f"V{i}" for i in range(1, 29)] + ["Amount"]
+    header = "@relation creditcard\n" + "".join(f"@attribute {n} numeric\n" for n in names)
+    header += "@attribute Class {'0','1'}\n@data\n"
+    rows = [
+        "0," + "1," * 28 + "10.5,'0'",
+        "0," + "2," * 28 + "20.5,'1'",
+        "1," + "3," * 28 + "30.5,'0'",
+    ]
+    content = (header + "\n".join(rows) + "\n").encode()
+
+    # Create the ARFF file in the expected location
+    import os
+
+    arff_dir = os.path.join(data_base_path, "creditcard")
+    os.makedirs(arff_dir, exist_ok=True)
+    arff_path = os.path.join(arff_dir, "creditcard.arff")
+    with open(arff_path, "w") as f:
+        f.write(content.decode())
+
+    # Follow existing test pattern: directly set checksum in module
+    # The _source function uses "creditcard/creditcard.arff" as key for checksum lookup
+    # When download=False and file exists, checksum is checked but we can set it to match
+    import hashlib
+
+    import pysad.utils.data as dmod
+
+    # Read back the file content to compute checksum
+    with open(arff_path, "rb") as f:
+        file_content = f.read()
+    dmod._CHECKSUMS["creditcard/creditcard.arff"] = hashlib.sha256(file_content).hexdigest()
+
+    # Monkeypatch urlopen to avoid actual network calls
+    def urlopen(req, timeout):
+        return Response(content)
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+
+    X, y = d.get_data("creditcard/creditcard.arff", download=False)
+    _validate_dataset_structure(X, y, num_features_min=30)
+    return X, y
+
+
+_SAMPLE_DATASETS_PER_SOURCE = {
+    "odds": ["arrhythmia.mat", "cardio.mat", "ionosphere.mat"],
+    "nab": ["realKnownCause/nyc_taxi.csv"],
+    "ucr": ["001_UCR_Anomaly_DISTORTED1sddb40_35000_52000_52620.txt"],
+    "kddcup99": ["http.csv"],
+    "smd": ["machine-1-1.txt"],
+    "smap": ["P-1.npy"],
+    "msl": ["M-1.npy"],
+    "insects": ["abrupt.csv"],
+    "creditcard": ["creditcard.arff"],
+}
+
+
+def test_datasets_list_by_source(monkeypatch):
+    """Test that datasets() returns the expected number of datasets per source."""
+    from pysad.utils.data import Data
+
+    d = Data()
+    expected_counts = {
+        "odds": 17,
+        "nab": 58,
+        "ucr": 250,
+        "kddcup99": 1,
+        "smd": 28,
+        "smap": 54,
+        "msl": 27,
+        "insects": 4,
+        "creditcard": 1,
+    }
+    for source, expected in expected_counts.items():
+        names = d.datasets(source)
+        assert isinstance(names, list)
+        assert len(names) == expected, (
+            f"Expected {expected} datasets for source '{source}', got {len(names)}"
+        )
+
+
+@pytest.mark.parametrize("data_file", ["arrhythmia.mat", "cardio.mat", "ionosphere.mat"])
+def test_dataset_structure_odds(monkeypatch, tmp_path, data_file):
+    """Test that ODDS .mat datasets load correctly and have expected structure."""
+    import hashlib
+
+    # Create a dummy .mat file so get_data can find it
+    from pysad.utils._datasets import _CHECKSUMS
+
+    dummy_mat = tmp_path / data_file
+    dummy_mat.write_bytes(b"MATLAB dummy content")
+
+    monkeypatch.setitem(_CHECKSUMS, data_file, hashlib.sha256(b"MATLAB dummy content").hexdigest())
+
+    class DummyF:
+        def __getitem__(self, key):
+            if key == "X":
+                return np.ones((10, 3))
+            if key == "y":
+                return np.array([0, 1] * 5).reshape(-1, 1)
+
+    monkeypatch.setattr("scipy.io.loadmat", lambda p: DummyF())
+
+    d = Data(data_base_path=str(tmp_path))
+    X, y = d.get_data(data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=3)
+
+
+def test_dataset_structure_nab(monkeypatch, tmp_path):
+    """Test that NAB series load correctly and have expected structure."""
+    _load_nab_series(monkeypatch, "realKnownCause/nyc_taxi.csv", str(tmp_path))
+
+
+def test_dataset_structure_ucr(monkeypatch, tmp_path):
+    """Test that UCR series load correctly and have expected structure."""
+    _load_ucr_series(
+        monkeypatch, "001_UCR_Anomaly_DISTORTED1sddb40_35000_52000_52620.txt", str(tmp_path)
+    )
+
+
+def test_dataset_structure_smd(monkeypatch, tmp_path):
+    """Test that SMD machine streams load correctly and have expected structure."""
+    _load_smd_stream(monkeypatch, "machine-1-1.txt", str(tmp_path))
+
+
+def test_dataset_structure_creditcard(monkeypatch, tmp_path):
+    """Test that credit-card ARFF dataset loads correctly and has expected structure."""
+    _load_creditcard_arff(monkeypatch, str(tmp_path))

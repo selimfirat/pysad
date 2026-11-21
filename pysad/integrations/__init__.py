@@ -2,12 +2,14 @@
 
 from typing import Any
 
+from .amortized_block_forecaster import AmortizedBlockForecaster
 from .one_fit_model import OneFitModel
 from .predictive_anomaly_detector import PredictiveAnomalyDetector
 from .pysad_to_sklearn_adapter import PySADToScikitLearnAdapter
 from .reference_window_model import ReferenceWindowModel
 
 __all__ = [
+    "AmortizedBlockForecaster",
     "OneFitModel",
     "PredictiveAnomalyDetector",
     "PySADToRiverAdapter",

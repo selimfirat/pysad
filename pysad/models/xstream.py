@@ -218,4 +218,7 @@ class _HSChains:
 
 
 class xStream(XStream):
-    """Backward-compatible alias for XStream."""
+    """Backward-compatible alias for XStream.
+
+    :cite:`xstream`
+    """

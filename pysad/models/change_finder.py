@@ -15,7 +15,16 @@ VARIANCE_REGULARIZATION = 1e-6
 
 
 class _SDAR:
-    """A univariate autoregressive model that the SDAR algorithm learns one value at a time."""
+    """A univariate autoregressive model that the SDAR algorithm learns one value at a time.
+
+    The model stores the last ``order`` values in a bounded-memory deque.
+    During warm-up (fewer than ``order`` values have been seen) the model
+    cannot produce a prediction or loss.
+
+    Args:
+        order (int): The number of past values to keep (Default=1).
+        discount (float): The discounting rate ``r`` in ``(0, 1)``.
+    """
 
     def __init__(self, order: int, discount: float) -> None:
         self.discount = discount
@@ -30,7 +39,17 @@ class _SDAR:
         return float(self.coefficients @ (past - self.mean)) + self.mean
 
     def log_loss(self, x: float) -> float | None:
-        """Returns ``-log p(x)`` under the current model, or None until the model holds ``order`` values."""
+        """Returns ``-log p(x)`` under the current model, or None until the model holds ``order`` values.
+
+        During warm-up fewer than ``order`` values have been stored, so the log
+        probability is not defined and ``None`` is returned.
+
+        Args:
+            x (float): The value to compute the log loss for.
+
+        Returns:
+            float | None: The negative log probability, or ``None`` during warm-up.
+        """
         if len(self.history) < len(self.coefficients):
             return None
 
@@ -38,7 +57,17 @@ class _SDAR:
         return 0.5 * (math.log(2.0 * math.pi * variance) + (x - self._prediction()) ** 2 / variance)
 
     def update(self, x: float) -> None:
-        """One SDAR step on ``x``. The model only stores ``x`` until it holds ``order`` values."""
+        """One SDAR step on ``x``. The model only stores ``x`` until it holds ``order`` values.
+
+        During warm-up the history grows up to ``order `` values; once full the
+        oldest value is dropped because the deque has ``maxlen=order``.
+
+        After enough values have been stored the model updates its mean, autocovariances,
+        coefficients, and variance using the sequentially discounting recurrence.
+
+        Args:
+            x (float): The new value to incorporate.
+        """
         if len(self.history) == len(self.coefficients):
             r = self.discount
             self.mean = (1.0 - r) * self.mean + r * x
@@ -54,36 +83,67 @@ class _SDAR:
 
 
 class ChangeFinder(BaseModel):
-    """Scores outliers and change points in a univariate stream with two autoregressive models that the SDAR algorithm learns online :cite:`takeuchi2006unifying`.
+    """Scores outliers and change points in a univariate stream with two autoregressive models
+    that the SDAR algorithm learns online :cite:`takeuchi2006unifying`.
 
-    The model learns an autoregressive (AR) model of order ``k`` with the sequentially discounting AR (SDAR) algorithm. For each value ``x_t``, SDAR updates the mean ``mu = (1 - r) mu + r x_t`` and the autocovariances ``C_j = (1 - r) C_j + r (x_t - mu)(x_{t-j} - mu)`` for ``j = 0, ..., k``, solves the Yule-Walker equations for the AR coefficients ``omega``, and updates the variance ``sigma^2 = (1 - r) sigma^2 + r (x_t - x_hat_t)^2`` with the prediction ``x_hat_t = sum_i omega_i (x_{t-i} - mu) + mu``. A larger ``discount`` ``r`` forgets the past faster.
+    The model learns an autoregressive (AR) model of order ``k`` with the sequentially
+    discounting AR (SDAR) algorithm. For each value ``x_t``, SDAR updates the mean
+    ``mu = (1 - r) mu + r x_t`` and the autocovariances ``C_j = (1 - r) C_j + r
+    (x_t - mu)(x_{t-j} - mu)`` for ``j = 0, ..., k``, solves the Yule-Walker equations
+    for the AR coefficients ``omega``, and updates the variance ``sigma^2 = (1 - r)
+    sigma^2 + r (x_t - x_hat_t)^2`` with the prediction ``x_hat_t = sum_i omega_i
+    (x_{t-i} - mu) + mu``. A larger ``discount`` ``r`` forgets the past faster.
 
     ChangeFinder runs in two stages:
 
-    1. The outlier score of ``x_t`` is its logarithmic loss ``-log p(x_t | x_{t-1}, ..., x_{t-k})`` under the first AR model before it learns ``x_t``.
-    2. The moving average ``y_t`` of the last ``window_size`` outlier scores goes to a second AR model. The change point score of ``x_t`` is the moving average of the last ``window_size`` logarithmic losses of ``y`` under the second model.
+    1. The outlier score of ``x_t`` is its logarithmic loss ``-log p(x_t | x_{t-1},
+       ..., x_{t-k})`` under the first AR model before it learns ``x_t``.
+    2. The moving average ``y_t`` of the last ``window_size`` outlier scores goes to
+       a second AR model. The change point score of ``x_t`` is the moving average of
+       the last ``window_size`` logarithmic losses of ``y`` under the second model.
 
-    Higher scores are more anomalous. The outlier score is 0.0 for the first ``order`` values, and the change point score is 0.0 for the first ``2 * (order + window_size - 1)`` values.
+    Higher scores are more anomalous. The outlier score is 0.0 for the first ``order``
+    values, and the change point score is 0.0 for the first ``2 * (order + window_size - 1)``
+    values.
 
     The implementation differs from the paper as follows:
 
     - The model takes a univariate series. The paper also defines SDAR for vectors.
-    - The paper does not give the initial parameters. Each AR model starts with ``mu = 0``, ``C_j = 0``, ``omega = 0`` and ``sigma^2 = 1``, which fits a series of about unit scale, such as a min-max scaled series.
-    - An AR model only stores the first ``order`` values that it gets, because SDAR needs ``order`` past values to learn and to score a value.
-    - The model solves the Yule-Walker equations with least squares, so that it gets coefficients when the autocovariance matrix is singular, for example on a constant series.
-    - The model adds ``1e-6`` to the variance when it computes a density, so that the logarithmic loss stays finite on a constant series.
-    - Both AR models share one ``order`` and one ``discount``. The paper lets the two models use different orders, and its experiments use 2 and 3.
-    - The default ``discount=0.01`` differs from the ``r = 0.02`` of the paper's experiments.
-    - The scores are 0.0 during the warm-up. Eq. (3) of the paper fills the warm-up with dummy values instead.
+    - The paper does not give the initial parameters. Each AR model starts with
+      ``mu = 0``, ``C_j = 0``, ``omega = 0`` and ``sigma^2 = 1``, which fits a series
+      of about unit scale, such as a min-max scaled series.
+    - An AR model only stores the first ``order`` values that it gets, because SDAR
+      needs ``order`` past values to learn and to score a value.
+    - The model solves the Yule-Walker equations with least squares, so that it gets
+      coefficients when the autocovariance matrix is singular, for example on a constant
+      series.
+    - The model adds ``1e-6`` to the variance when it computes a density, so that the
+      logarithmic loss stays finite on a constant series.
+    - Both AR models share one ``order`` and one ``discount``. The paper lets the two
+      models use different orders, and its experiments use 2 and 3.
+    - The default ``discount=0.01`` differs from the ``r = 0.02`` of the paper's
+      experiments.
+    - Both AR models share one ``window_size``. The paper lets the two models use
+      different window sizes.
+    - The scores are 0.0 during warm-up. Eq. (3) of the paper fills the warm-up with
+      dummy values instead.
+
+    Bounded memory: the model keeps only the last ``window_size - 1`` outlier scores
+    and change point scores in deques with ``maxlen``, so the memory usage is constant
+    and independent of the stream length.
 
     Args:
         order (int): The order ``k`` of both AR models (Default=1).
-        discount (float): The discounting rate ``r`` of both AR models, in ``(0, 1)``. The weight of a value decays by ``1 - r`` with each later value (Default=0.01).
+        discount (float): The discounting rate ``r`` of both AR models, in ``(0, 1)``.
+            The weight of a value decays by ``1 - r`` with each later value
+            (Default=0.01).
         window_size (int): The width ``T`` of both moving averages (Default=5).
-        change_point (bool): Whether to return the change point score. If False, the model returns the outlier score (Default=True).
+        change_point (bool): Whether to return the change point score. If False, the
+            model returns the outlier score (Default=True).
 
     Raises:
-        ValueError: If ``discount`` is not in ``(0, 1)``, or ``order`` or ``window_size`` is less than 1.
+        ValueError: If ``discount`` is not in ``(0, 1)``, or ``order`` or ``window_size``
+            is less than 1.
     """
 
     def __init__(
@@ -117,9 +177,23 @@ class ChangeFinder(BaseModel):
     def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> ChangeFinder:
         """Updates both AR models with the next value.
 
+        The model accepts one instance at a time. During warm-up (before enough
+        values have been seen) the outlier and change point scores are 0.0.
+
+        After the model has stored ``order`` values it begins producing non-zero
+        outlier scores. After ``2 * (order + window_size - 1)`` values the change
+        point scores also become non-zero.
+
+        The bounded-memory contract ensures the number of stored outlier scores and
+        change point scores never exceeds ``window_size - 1`` each; older scores are
+        dropped automatically.
+
         Args:
-            X (np.float64 array of shape (1,)): The next univariate value.
-            y (int): Ignored since the model is unsupervised (Default=None).
+            X (np.float64 array of shape (1,)):
+                The next univariate value.
+
+            y (int):
+                Ignored since the model is unsupervised (Default=None).
 
         Returns:
             object: The model itself.
@@ -138,11 +212,25 @@ class ChangeFinder(BaseModel):
     def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next value under the current AR models.
 
+        During warm-up (before enough values have been stored) the outlier score is
+        0.0 and the change point score is 0.0. Higher scores represent more anomalous
+        values.
+
+        The outlier score is returned when ``change_point`` is False. When
+        ``change_point`` is True the change point score is returned, which is 0.0
+        until ``window_size - 1`` change point scores have been accumulated.
+
+        The bounded-memory contract ensures the model's memory usage is constant:
+        only the last ``window_size - 1`` scores of each stage are kept; older scores
+        are dropped automatically.
+
         Args:
-            X (np.float64 array of shape (1,)): The next univariate value. Higher scores represent more anomalous values.
+            X (np.float64 array of shape (1,)):
+                The next univariate value. Higher scores represent more anomalous values.
 
         Returns:
-            float: The change point score of ``X``, or its outlier score if ``change_point`` is False.
+            float: The change point score of ``X``, or its outlier score if
+                ``change_point`` is False.
         """
         outlier, _, change = self._losses(check_univariate(X, "ChangeFinder"))
         if not self.change_point:

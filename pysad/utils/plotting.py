@@ -8,6 +8,13 @@ from typing import Any
 
 import numpy as np
 
+_FEATURE_COLORS = ("#00757a", "#2a9d9f", "#5c6bc0", "#64748b", "#c26d1f", "#00565a")
+_SCORE_COLOR = "#00757a"
+_BAND_COLOR = "#99d5d2"
+_ALERT_COLOR = "#e63946"
+_ANOMALY_COLOR = "#c26d1f"
+_GRID_COLOR = "#dce3e2"
+
 
 def plot_stream(
     X: np.ndarray,
@@ -51,15 +58,25 @@ def plot_stream(
     fig, axes = plt.subplots(3, 1, figsize=figsize, sharex=True, layout="constrained")
     features_ax, scores_ax, alerts_ax = axes
 
+    features_ax.set_prop_cycle(color=list(_FEATURE_COLORS))
     features_ax.plot(steps, X, linewidth=0.5)
     features_ax.set_ylabel("features")
+    features_ax.yaxis.grid(True, color=_GRID_COLOR, linewidth=0.6, alpha=0.8)
 
-    scores_ax.plot(steps, scores, linewidth=0.8, label="score")
+    scores_ax.plot(steps, scores, color=_SCORE_COLOR, linewidth=0.8, label="score")
     if lower is not None and upper is not None:
-        scores_ax.fill_between(steps, lower, upper, alpha=0.2, label="confidence band")
+        scores_ax.fill_between(
+            steps,
+            lower,
+            upper,
+            color=_BAND_COLOR,
+            alpha=0.35,
+            label="confidence band",
+        )
     if threshold is not None:
-        scores_ax.axhline(threshold, color="tab:red", linestyle="--", label="threshold")
+        scores_ax.axhline(threshold, color=_ALERT_COLOR, linestyle="--", label="threshold")
     scores_ax.set_ylabel("score")
+    scores_ax.yaxis.grid(True, color=_GRID_COLOR, linewidth=0.6, alpha=0.8)
     scores_ax.legend()
 
     positions: list[np.ndarray] = []
@@ -72,14 +89,14 @@ def plot_stream(
             positions.append(alert_positions)
             offsets.append(len(offsets))
             names.append("alert")
-            colors.append("tab:orange")
+            colors.append(_ALERT_COLOR)
     if labels is not None:
         anomaly_positions = steps[np.asarray(labels) == 1]
         if len(anomaly_positions) > 0:
             positions.append(anomaly_positions)
             offsets.append(len(offsets))
             names.append("anomaly")
-            colors.append("tab:red")
+            colors.append(_ANOMALY_COLOR)
     if positions:
         alerts_ax.eventplot(
             positions,
@@ -89,5 +106,9 @@ def plot_stream(
         )
         alerts_ax.set_yticks(offsets, names)
     alerts_ax.set_xlabel("position in the stream")
+
+    for ax in axes:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
     return fig, axes

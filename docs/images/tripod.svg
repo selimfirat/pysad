@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="250 160 570 740" width="570" height="740" role="img" aria-labelledby="t">
 <title id="t">Tripod, the pysad tripodfish</title>
-<style>.l{fill:none;stroke:#0741ad;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}.s{stroke-width:20}.e{fill:#0741ad}.f{fill:#fc3636}@media (prefers-color-scheme:dark){.l{stroke:#7c9ff0}.e{fill:#7c9ff0}}</style>
+<style>.l{fill:none;stroke:#00757a;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}.s{stroke-width:20}.e{fill:#00757a}.f{fill:#e63946}@media (prefers-color-scheme:dark){.l{stroke:#2dd4bf}.e{fill:#2dd4bf}.f{fill:#f45b69}}</style>
 <path class="f" d="M478,246 A64,64 0 1 1 606,266 Q545,248 478,246 Z"/>
 <path class="l" d="M478,246 A64,64 0 1 1 606,266"/>
 <path class="l s" d="M352,592 L284,840 M496,590 L544,872 M712,478 L712,824"/>

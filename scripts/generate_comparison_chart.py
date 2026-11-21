@@ -112,23 +112,23 @@ class ThemePalette:
 
 
 LIGHT_THEME = ThemePalette(
-    text="#0e1a33",
-    muted="#5a6478",
-    grid="#d8d2c3",
-    chance="#8b949e",
-    pysad="#0741ad",
-    river="#0f766e",
-    capymoa="#b45309",
+    text="#0d1b22",
+    muted="#5b6f78",
+    grid="#dce3e2",
+    chance="#8b99a0",
+    pysad="#00757a",
+    river="#5c6bc0",
+    capymoa="#c26d1f",
     pyod="#64748b",
 )
 
 DARK_THEME = ThemePalette(
-    text="#eef1f8",
-    muted="#a3adc2",
-    grid="#2a3a5c",
+    text="#edf5f6",
+    muted="#99b0b6",
+    grid="#1e343d",
     chance="#64748b",
-    pysad="#7c9ff0",
-    river="#2dd4bf",
+    pysad="#2dd4bf",
+    river="#818cf8",
     capymoa="#f59e0b",
     pyod="#94a3b8",
 )

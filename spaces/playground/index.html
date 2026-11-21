@@ -3,35 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f2f4f2" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b1519" media="(prefers-color-scheme: dark)" />
   <title>PySAD Playground: Streaming Anomaly Detection</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231849a9'/%3E%3Cpath d='M4 18h6l3-9 4 14 3-7h8' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -4 72 72'%3E%3Crect y='-4' width='72' height='72' rx='14' fill='%23fcfcf9'/%3E%3Cg fill='%2300757a'%3E%3Ccircle cx='66.0' cy='36.0' r='3.6'/%3E%3Ccircle cx='61.6' cy='27.6' r='3.6'/%3E%3Ccircle cx='43.3' cy='29.4' r='3.6'/%3E%3Ccircle cx='36.0' cy='36.0' r='3.6'/%3E%3Ccircle cx='28.7' cy='42.6' r='3.6'/%3E%3Ccircle cx='19.8' cy='46.4' r='3.6'/%3E%3Ccircle cx='10.4' cy='44.4' r='3.6'/%3E%3Ccircle cx='6.0' cy='36.0' r='3.6'/%3E%3Ccircle cx='10.4' cy='27.6' r='3.6'/%3E%3Ccircle cx='19.8' cy='25.6' r='3.6'/%3E%3Ccircle cx='28.7' cy='29.4' r='3.6'/%3E%3Ccircle cx='43.3' cy='42.6' r='3.6'/%3E%3Ccircle cx='52.2' cy='46.4' r='3.6'/%3E%3Ccircle cx='61.6' cy='44.4' r='3.6'/%3E%3C/g%3E%3Ccircle cx='54.1' cy='16.6' r='3.6' fill='%23e63946'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://cdn.plot.ly" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" href="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.asm.wasm" as="fetch" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js" defer></script>
   <style>
     :root {
-      --bg: #f6f5f1;
-      --surface: #ffffff;
-      --surface-rail: #f1efe9;
-      --surface-code: #f5f4ee;
-      --border: #ddd9ce;
-      --border-strong: #beb8a8;
-      --ink: #14171f;
-      --ink-secondary: #434c5c;
-      --muted: #58606f;
-      --accent: #1849a9;
-      --accent-hover: #123780;
-      --danger: #c81e3a;
-      --danger-bg: #fef2f4;
-      --danger-border: #eab3be;
-      --danger-ink: #8f1127;
-      --success: #0f766e;
-      --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --bg: #f2f4f2;
+      --surface: #fcfcf9;
+      --surface-rail: #eaf0ef;
+      --surface-code: #f4f7f6;
+      --border: #dce3e2;
+      --border-strong: #b8c7c7;
+      --ink: #0d1b22;
+      --ink-secondary: #475a63;
+      --muted: #5b6f78;
+      --accent: #00757a;
+      --accent-hover: #00565a;
+      --danger: #e63946;
+      --danger-bg: #fef2f2;
+      --danger-border: #fecaca;
+      --danger-ink: #991b1b;
+      --success: #00757a;
+      --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
       --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
       --ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
@@ -42,7 +44,7 @@
     }
 
     ::selection {
-      background: rgba(24, 73, 169, 0.14);
+      background: rgba(0, 117, 122, 0.14);
       color: var(--ink);
     }
 
@@ -123,8 +125,8 @@
     }
 
     .brand-mark {
-      width: 24px;
-      height: 24px;
+      width: 34px;
+      height: 22px;
       flex-shrink: 0;
     }
 
@@ -290,11 +292,11 @@
     }
 
     select:hover:not(:disabled), input[type="file"]:hover:not(:disabled) {
-      border-color: #8f897b;
+      border-color: #8fa3a3;
     }
 
     select:disabled, input[type="file"]:disabled {
-      background: #e9e6dd;
+      background: #e2eae9;
       color: var(--muted);
       cursor: not-allowed;
     }
@@ -338,7 +340,7 @@
     }
 
     .check-item:hover:not(.disabled) {
-      background: #f8f7f3;
+      background: #f4f7f6;
     }
 
     .check-item.is-selected {
@@ -485,8 +487,8 @@
     }
 
     .btn-secondary:hover:not(:disabled) {
-      background: #f5f3ed;
-      border-color: #9e9788;
+      background: #f2f4f2;
+      border-color: #8fa3a3;
     }
 
     .muted-note {
@@ -520,8 +522,8 @@
       font-size: 0.74rem;
       font-weight: 500;
       color: var(--accent);
-      background: #eef3fc;
-      border: 1px solid #c7d7f4;
+      background: #e7f5f5;
+      border: 1px solid #99d5d2;
       padding: 2px 8px;
     }
 
@@ -577,7 +579,7 @@
     }
 
     tbody tr:hover td {
-      background: #faf9f5;
+      background: #f4f7f6;
     }
 
     th:first-child, td:first-child {
@@ -590,7 +592,7 @@
       font-size: 0.78rem;
       font-weight: 600;
       color: var(--muted);
-      background: #faf9f6;
+      background: #f4f7f6;
       border-top: 1px solid var(--border);
     }
 
@@ -607,7 +609,7 @@
     .skeleton-bar {
       display: inline-block;
       height: 12px;
-      background: #eae7de;
+      background: #e2eae9;
       vertical-align: middle;
     }
 
@@ -624,7 +626,7 @@
       justify-content: center;
       padding: 16px;
       border: 1px dashed var(--border-strong);
-      background: #fcfbf8;
+      background: #f9fbfa;
       color: var(--muted);
       font-size: 0.84rem;
     }
@@ -673,6 +675,43 @@
       font-size: 0.8rem;
       color: var(--muted);
     }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1519;
+        --surface: #0f1f26;
+        --surface-rail: #070f12;
+        --surface-code: #070f12;
+        --border: #1b2f37;
+        --border-strong: #27424d;
+        --ink: #edf5f6;
+        --ink-secondary: #b7c9ce;
+        --muted: #99b0b6;
+        --accent: #2dd4bf;
+        --accent-hover: #5eead4;
+        --danger: #f45b69;
+        --danger-bg: #2a1216;
+        --danger-border: #6e232c;
+        --danger-ink: #fecaca;
+        --success: #2dd4bf;
+      }
+
+      ::selection {
+        background: rgba(45, 212, 191, 0.22);
+      }
+
+      .brand-mark .bm-dots { fill: #2dd4bf; }
+      .brand-mark .bm-out { fill: #f45b69; }
+      .btn-primary { color: #0b1519; }
+      .btn-secondary:hover:not(:disabled) { background: #142831; border-color: #365a68; }
+      select:hover:not(:disabled), input[type="file"]:hover:not(:disabled) { border-color: #365a68; }
+      select:disabled, input[type="file"]:disabled { background: #0b181e; }
+      .check-item:hover:not(.disabled) { background: #12252d; }
+      .running-tag { background: #122a31; border-color: #14807e; }
+      th, tbody tr:hover td { background: #0d1b22; }
+      .skeleton-bar { background: #1b2f37; }
+      .plot-skeleton { background: #0b1519; }
+    }
   </style>
 </head>
 <body>
@@ -680,9 +719,11 @@
     <header class="topbar">
       <div class="brand-block">
         <div class="title-row">
-          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-            <rect width="32" height="32" fill="#1849a9" />
-            <path d="M5 18h5l3-9 4 14 3-7h7" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter" />
+          <svg class="brand-mark" viewBox="0 8 72 46" aria-hidden="true">
+            <g class="bm-dots" fill="#00757a">
+              <circle cx="66.0" cy="36.0" r="3.6"/><circle cx="61.6" cy="27.6" r="3.6"/><circle cx="43.3" cy="29.4" r="3.6"/><circle cx="36.0" cy="36.0" r="3.6"/><circle cx="28.7" cy="42.6" r="3.6"/><circle cx="19.8" cy="46.4" r="3.6"/><circle cx="10.4" cy="44.4" r="3.6"/><circle cx="6.0" cy="36.0" r="3.6"/><circle cx="10.4" cy="27.6" r="3.6"/><circle cx="19.8" cy="25.6" r="3.6"/><circle cx="28.7" cy="29.4" r="3.6"/><circle cx="43.3" cy="42.6" r="3.6"/><circle cx="52.2" cy="46.4" r="3.6"/><circle cx="61.6" cy="44.4" r="3.6"/>
+            </g>
+            <circle class="bm-out" cx="54.1" cy="16.6" r="3.6" fill="#e63946" />
           </svg>
           <h1>PySAD Playground</h1>
         </div>
@@ -744,21 +785,21 @@
                 <input type="checkbox" value="LocalOutlierProbability" checked disabled />
                 <span class="check-label">LocalOutlierProbability</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">ODDS #1</span><span class="swatch-line visible" style="background-color: #1849a9;"></span></span>
+              <span class="check-meta"><span class="rank-tag">ODDS #1</span><span class="swatch-line visible" style="background-color: #00757a;"></span></span>
             </label>
             <label class="check-item is-selected">
               <span class="check-main">
                 <input type="checkbox" value="RSHash" checked disabled />
                 <span class="check-label">RSHash</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">ODDS #2</span><span class="swatch-line visible" style="background-color: #0f766e;"></span></span>
+              <span class="check-meta"><span class="rank-tag">ODDS #2</span><span class="swatch-line visible" style="background-color: #5c6bc0;"></span></span>
             </label>
             <label class="check-item is-selected">
               <span class="check-main">
                 <input type="checkbox" value="LODA" checked disabled />
                 <span class="check-label">LODA</span>
               </span>
-              <span class="check-meta"><span class="rank-tag">ODDS #4</span><span class="swatch-line visible" style="background-color: #b45309;"></span></span>
+              <span class="check-meta"><span class="rank-tag">ODDS #4</span><span class="swatch-line visible" style="background-color: #c26d1f;"></span></span>
             </label>
             <label class="check-item">
               <span class="check-main">
@@ -986,8 +1027,39 @@
   </div>
 
   <script>
-    const DETECTOR_COLORS = ["#1849a9", "#0f766e", "#b45309"];
-    const FEATURE_COLORS = ["#3b66b0", "#2a857c", "#64748b", "#9a6b2f"];
+    const LIGHT_PLOT = {
+      template: "plotly_white",
+      paper: "#fcfcf9",
+      ink: "#0d1b22",
+      muted: "#5b6f78",
+      grid: "#e4ebeb",
+      zero: "#b8c7c7",
+      accent: "#00757a",
+      alert: "#e63946",
+      threshBg: "rgba(252, 252, 249, 0.9)",
+      detectors: ["#00757a", "#5c6bc0", "#c26d1f"],
+      features: ["#00757a", "#2a9d9f", "#5c6bc0", "#64748b"],
+    };
+    const DARK_PLOT = {
+      template: "plotly_dark",
+      paper: "#0f1f26",
+      ink: "#edf5f6",
+      muted: "#99b0b6",
+      grid: "#1b2f37",
+      zero: "#27424d",
+      accent: "#2dd4bf",
+      alert: "#f45b69",
+      threshBg: "rgba(15, 31, 38, 0.9)",
+      detectors: ["#2dd4bf", "#818cf8", "#f59e0b"],
+      features: ["#2dd4bf", "#99f6e4", "#818cf8", "#94a3b8"],
+    };
+    const darkMedia = window.matchMedia?.("(prefers-color-scheme: dark)");
+    function isDarkTheme() {
+      return Boolean(darkMedia && darkMedia.matches);
+    }
+    function getPlotPalette() {
+      return isDarkTheme() ? DARK_PLOT : LIGHT_PLOT;
+    }
 
     const state = {
       pyodide: null,
@@ -998,6 +1070,7 @@
       csvBytes: null,
       featureNames: ["sensor_1"],
       loadedDatasets: new Set(),
+      lastPayload: null,
     };
 
     const $ = (id) => document.getElementById(id);
@@ -1019,6 +1092,7 @@
     }
 
     function syncDetectorRowStyles() {
+      const pal = getPlotPalette();
       const boxes = Array.from(document.querySelectorAll('#detectorGroup input[type="checkbox"]'));
       const checked = boxes.filter((cb) => cb.checked);
       $("detectorCount").textContent = `${checked.length} / 3`;
@@ -1027,7 +1101,7 @@
         const row = cb.closest(".check-item");
         const swatch = row.querySelector(".swatch-line");
         if (cb.checked) {
-          const color = DETECTOR_COLORS[activeIdx % DETECTOR_COLORS.length];
+          const color = pal.detectors[activeIdx % pal.detectors.length];
           row.classList.add("is-selected");
           if (swatch) {
             swatch.style.backgroundColor = color;
@@ -1103,10 +1177,11 @@
     }
 
     function renderMetricsTable(traces) {
+      const pal = getPlotPalette();
       const tbody = $("metricsBody");
       const rows = traces.map((tr, idx) => {
         const row = document.createElement("tr");
-        const color = DETECTOR_COLORS[idx % DETECTOR_COLORS.length];
+        const color = pal.detectors[idx % pal.detectors.length];
 
         const firstTd = document.createElement("td");
         const nameWrap = document.createElement("span");
@@ -1153,6 +1228,7 @@
     }
 
     function renderStreamPlot(data) {
+      const pal = getPlotPalette();
       const { stream, warmup, threshold, calibrator_name, traces, injected_indices, explanation } = data;
       const xAxis = stream.x_axis;
       const plotTraces = [];
@@ -1166,7 +1242,7 @@
           name: feat.name,
           xaxis: "x",
           yaxis: "y",
-          line: { width: 1.4, color: FEATURE_COLORS[pos % FEATURE_COLORS.length] },
+          line: { width: 1.4, color: pal.features[pos % pal.features.length] },
           opacity: 0.9,
         });
       });
@@ -1180,12 +1256,12 @@
           name: "Labeled anomaly",
           xaxis: "x",
           yaxis: "y",
-          marker: { color: "#c81e3a", size: 6, symbol: "circle-open", line: { width: 1.8 } },
+          marker: { color: pal.alert, size: 6, symbol: "circle-open", line: { width: 1.8 } },
         });
       }
 
       traces.forEach((tr, idx) => {
-        const color = DETECTOR_COLORS[idx % DETECTOR_COLORS.length];
+        const color = pal.detectors[idx % pal.detectors.length];
         plotTraces.push({
           type: "scatter",
           mode: "lines",
@@ -1206,7 +1282,7 @@
             showlegend: false,
             xaxis: "x2",
             yaxis: "y2",
-            marker: { color: "#c81e3a", size: 6, symbol: "diamond" },
+            marker: { color: pal.alert, size: 6, symbol: "diamond" },
           });
         }
       });
@@ -1219,15 +1295,15 @@
       const shapes = [
         { type: "rect", xref: "x", yref: "y domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.12)", line: { width: 0 } },
         { type: "rect", xref: "x2", yref: "y2 domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.12)", line: { width: 0 } },
-        { type: "line", xref: "x2", yref: "y2", x0, x1: xEnd, y0: threshold, y1: threshold, line: { color: "#c81e3a", width: 1.4, dash: "dash" } },
-        { type: "line", xref: "x", yref: "y domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: "#1849a9", width: 1.3, dash: "dash" } },
-        { type: "line", xref: "x2", yref: "y2 domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: "#1849a9", width: 1.3, dash: "dash" } },
+        { type: "line", xref: "x2", yref: "y2", x0, x1: xEnd, y0: threshold, y1: threshold, line: { color: pal.alert, width: 1.4, dash: "dash" } },
+        { type: "line", xref: "x", yref: "y domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: pal.accent, width: 1.3, dash: "dash" } },
+        { type: "line", xref: "x2", yref: "y2 domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: pal.accent, width: 1.3, dash: "dash" } },
       ];
 
       injected_indices.forEach((idx) => {
         const ix = xAxis[idx];
-        shapes.push({ type: "line", xref: "x", yref: "y domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: "#c81e3a", width: 1.3, dash: "dot" } });
-        shapes.push({ type: "line", xref: "x2", yref: "y2 domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: "#c81e3a", width: 1.3, dash: "dot" } });
+        shapes.push({ type: "line", xref: "x", yref: "y domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: pal.alert, width: 1.3, dash: "dot" } });
+        shapes.push({ type: "line", xref: "x2", yref: "y2 domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: pal.alert, width: 1.3, dash: "dot" } });
       });
 
       const compact = window.innerWidth < 640;
@@ -1235,39 +1311,39 @@
         {
           text: compact ? "Stream values" : `Stream values: ${stream.name}`,
           xref: "paper", yref: "paper", x: 0.0, xanchor: "left", y: compact ? 0.99 : 1.015,
-          showarrow: false, font: { size: compact ? 12 : 12.5, color: "#14171f", weight: 600 },
+          showarrow: false, font: { size: compact ? 12 : 12.5, color: pal.ink, weight: 600 },
         },
         {
           text: compact ? "Calibrated scores" : `Calibrated anomaly scores: ${calibrator_name}`,
           xref: "paper", yref: "paper", x: 0.0, xanchor: "left", y: compact ? 0.455 : 0.465,
-          showarrow: false, font: { size: compact ? 12 : 12.5, color: "#14171f", weight: 600 },
+          showarrow: false, font: { size: compact ? 12 : 12.5, color: pal.ink, weight: 600 },
         },
         {
           text: "warm-up",
           xref: "x", yref: "y domain", x: x0, xanchor: "left", xshift: 6, y: 0.94, yanchor: "top",
-          showarrow: false, font: { size: 11, color: "#58606f" },
+          showarrow: false, font: { size: 11, color: pal.muted },
         },
         {
           text: `threshold = ${Number(threshold).toFixed(3)}`,
           xref: "x2 domain", yref: "y2", x: 0.99, y: threshold,
           xanchor: "right", yanchor: "bottom",
-          bgcolor: "rgba(255, 255, 255, 0.88)",
+          bgcolor: pal.threshBg,
           borderpad: 2,
-          showarrow: false, font: { size: 11, color: "#c81e3a" },
+          showarrow: false, font: { size: 11, color: pal.alert },
         },
       ];
 
       const layout = {
-        template: "plotly_white",
-        paper_bgcolor: "#ffffff",
-        plot_bgcolor: "#ffffff",
-        font: { family: "IBM Plex Sans, ui-sans-serif, sans-serif", color: "#14171f", size: 12 },
+        template: pal.template,
+        paper_bgcolor: pal.paper,
+        plot_bgcolor: pal.paper,
+        font: { family: "Inter, ui-sans-serif, sans-serif", color: pal.ink, size: 12 },
         legend: { orientation: "h", yanchor: "bottom", y: compact ? 1.05 : 1.07, x: 0.0, font: { size: compact ? 10.5 : 11 } },
         margin: { l: compact ? 44 : 52, r: compact ? 10 : 16, t: compact ? 132 : 90, b: 44 },
-        xaxis: { matches: "x2", showticklabels: false, gridcolor: "#ece9e1", zeroline: false },
-        yaxis: { title: "Value", domain: compact ? [0.56, 0.94] : [0.57, 0.97], gridcolor: "#ece9e1", zerolinecolor: "#ddd9ce" },
-        xaxis2: { title: stream.timestamps ? "Timestamp" : "Stream step", anchor: "y2", gridcolor: "#ece9e1", zeroline: false },
-        yaxis2: { title: "Calibrated score", range: [-0.02, 1.08], domain: [0.0, 0.41], gridcolor: "#ece9e1", zerolinecolor: "#ddd9ce" },
+        xaxis: { matches: "x2", showticklabels: false, gridcolor: pal.grid, zeroline: false },
+        yaxis: { title: "Value", domain: compact ? [0.56, 0.94] : [0.57, 0.97], gridcolor: pal.grid, zerolinecolor: pal.zero },
+        xaxis2: { title: stream.timestamps ? "Timestamp" : "Stream step", anchor: "y2", gridcolor: pal.grid, zeroline: false },
+        yaxis2: { title: "Calibrated score", range: [-0.02, 1.08], domain: [0.0, 0.41], gridcolor: pal.grid, zerolinecolor: pal.zero },
         shapes,
         annotations,
       };
@@ -1290,10 +1366,11 @@
     }
 
     function renderExplanationPlot(exp) {
+      const pal = getPlotPalette();
       const compact = window.innerWidth < 640;
       const vals = exp.contributions;
       const names = exp.feature_names;
-      const colors = vals.map((v, idx) => (idx >= vals.length - 2 && v > 0 ? "#c81e3a" : "#1849a9"));
+      const colors = vals.map((v, idx) => (idx >= vals.length - 2 && v > 0 ? pal.alert : pal.accent));
       const xMin = Math.min(0, ...vals);
       const xMax = Math.max(0, ...vals);
       const span = Math.max(xMax - xMin, 1.0);
@@ -1316,20 +1393,20 @@
             : `Attribution at step ${exp.step} (LODA raw score: ${Number(exp.loda_raw_score).toFixed(2)})`,
           x: 0.0,
           xanchor: "left",
-          font: { size: compact ? 12 : 13, color: "#14171f", weight: 600 },
+          font: { size: compact ? 12 : 13, color: pal.ink, weight: 600 },
         },
         xaxis: {
           title: "Contribution (t-statistic)",
           range: [xMin - (compact ? 0.34 : 0.24) * span, xMax + (compact ? 0.28 : 0.20) * span],
           zeroline: true,
-          zerolinecolor: "#beb8a8",
-          gridcolor: "#ece9e1",
+          zerolinecolor: pal.zero,
+          gridcolor: pal.grid,
         },
-        yaxis: { gridcolor: "#ece9e1", automargin: true },
-        template: "plotly_white",
-        paper_bgcolor: "#ffffff",
-        plot_bgcolor: "#ffffff",
-        font: { family: "IBM Plex Sans, ui-sans-serif, sans-serif", color: "#14171f", size: 12 },
+        yaxis: { gridcolor: pal.grid, automargin: true },
+        template: pal.template,
+        paper_bgcolor: pal.paper,
+        plot_bgcolor: pal.paper,
+        font: { family: "Inter, ui-sans-serif, sans-serif", color: pal.ink, size: 12 },
         margin: { l: compact ? 84 : 112, r: compact ? 20 : 36, t: 42, b: 42 },
       };
 
@@ -1353,6 +1430,7 @@
     }
 
     function applyPayload(data) {
+      state.lastPayload = data;
       $("statusText").textContent = data.precomputed
         ? `${data.status_note} Preview loaded; initializing WebAssembly timing...`
         : data.status_note;
@@ -1464,6 +1542,14 @@ engine.run_playground_json(
       syncDetectorRowStyles();
       syncCalibrationControls();
       syncInjectionButtons();
+      darkMedia?.addEventListener?.("change", () => {
+        syncDetectorRowStyles();
+        if (state.lastPayload) {
+          renderMetricsTable(state.lastPayload.traces);
+          renderStreamPlot(state.lastPayload);
+          renderExplanationPlot(state.lastPayload.explanation);
+        }
+      });
 
       $("streamSelect").addEventListener("change", () => {
         state.injected = [];

@@ -59,6 +59,7 @@ from .stream_pipeline import StreamPipeline
 from .streaming_autoregressive import StreamingAutoregressiveDetector
 from .teda import TEDA
 from .thresh_leap import ThreshLEAP
+from .token_perplexity import TokenPerplexityDetector
 from .xstream import xStream
 
 __all__ = [
@@ -122,5 +123,6 @@ __all__ = [
     "StreamPipeline",
     "TEDA",
     "ThreshLEAP",
+    "TokenPerplexityDetector",
     "xStream",
 ]

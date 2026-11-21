@@ -274,6 +274,7 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
             "postprocessors": [ZScorePostprocessor(window_size=10)],
         },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
+        "TokenPerplexityDetector": {"model_name": "sshleifer/tiny-gpt2", "max_length": 32},
     }
     if name in params:
         return params[name]

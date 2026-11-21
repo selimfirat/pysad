@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from bisect import bisect_left, insort
-from typing import Any, cast
+from typing import Any, ClassVar, Literal, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -26,6 +26,8 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
     Raises:
         ValueError: If window_size is less than 1.
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
 
     def __init__(self, window_size: int = 300) -> None:
         self.window_size = window_size

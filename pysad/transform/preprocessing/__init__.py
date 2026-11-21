@@ -3,6 +3,7 @@ The :mod:`pysad.transform.preprocessing` module provides transformers that chang
 """
 
 from .drain import DrainLogParser
+from .function_transformer import FunctionTransformer
 from .identity_scaler import IdentityScaler
 from .instance_standard_scaler import InstanceStandardScaler
 from .instance_unit_norm_scaler import InstanceUnitNormScaler
@@ -15,6 +16,7 @@ from .standard_scaler import StandardScaler
 
 __all__ = [
     "DrainLogParser",
+    "FunctionTransformer",
     "IdentityScaler",
     "InstanceStandardScaler",
     "InstanceUnitNormScaler",

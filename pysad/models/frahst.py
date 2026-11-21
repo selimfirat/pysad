@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar, Literal
+
 import numpy as np
 from scipy.linalg import norm, solve
 from sklearn.utils import check_random_state
@@ -50,6 +52,8 @@ class FRAHST(BaseModel):
         energy_high (float): Upper captured-energy fraction that triggers rank reduction (Default=0.98).
         random_state (int, np.random.RandomState or None): Seed or generator for the initial basis. None uses NumPy's global generator (Default=None).
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "decision"
 
     def __init__(
         self,

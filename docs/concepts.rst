@@ -51,7 +51,7 @@ Only the stream and detector are required. Each stage manages its own state and 
      - Gives the points one at a time. Your own loop over a file, a socket or a queue also works.
    * - Preprocess
      - :mod:`pysad.transform.preprocessing`, :mod:`pysad.transform.projection`
-     - Scales a point, removes seasonality or reduces the number of features.
+     - Scales a point, removes seasonality, extracts features from raw inputs (for example with :class:`~pysad.transform.preprocessing.DrainLogParser` or :class:`~pysad.transform.preprocessing.FunctionTransformer`), or reduces the number of features.
    * - Detect
      - :mod:`pysad.models`
      - Learns from the point and gives it an anomaly score.
@@ -84,6 +84,8 @@ Every detector extends :class:`~pysad.core.BaseModel` and has two single-point m
 Most loops use ``fit_score_partial(x)``: score ``x`` using earlier points, then learn from it. This is prequential evaluation, or test-then-train. Before learning, detectors return a fixed score, usually 0. :class:`~pysad.models.SeasonalESD` and :class:`~pysad.models.SeasonalHybridESD` instead test the window containing the newest value, as their paper specifies.
 
 :class:`~pysad.core.BaseModel` provides ``fit(X)``, ``score(X)`` and ``fit_score(X)`` for arrays of shape ``(num_instances, num_features)``. Rows are processed in order. Batch scores are NumPy ``float64`` arrays of shape ``(num_instances,)``.
+
+Each model and postprocessor exposes ``output_kind`` (``"score"``, ``"probability"``, or ``"decision"``). Detectors with a paper-defined decision rule and pipelines ending in a decision postprocessor also provide ``predict_partial(x)``, ``fit_predict_partial(x)``, ``predict(X)``, and ``fit_predict(X)``, returning ``0`` or ``1`` (Python ``int`` for one instance, NumPy ``int64`` arrays for batches). See :doc:`guides/alerts`.
 
 Preprocessors, projectors, postprocessors, ensemblers and calibrators follow the same pattern with ``fit_partial``, ``transform_partial`` and ``fit_transform_partial``. Running statistics, for example a running mean, use ``update`` and ``get``. Most of them also have ``remove``.
 

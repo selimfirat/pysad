@@ -39,6 +39,28 @@ def _to_float_score(score: float | np.number[Any] | NDArray[Any] | list[float]) 
     return float(score.reshape(-1)[0])
 
 
+def _to_int_decision(label: int | bool | np.integer[Any] | NDArray[Any]) -> int:
+    """Converts a binary decision label into a plain Python int (``0`` or ``1``)."""
+    if type(label) is int and label in (0, 1):
+        return label
+    if isinstance(label, bool):
+        return int(label)
+    if isinstance(label, np.integer):
+        val = int(label)
+        if val in (0, 1):
+            return val
+        raise ValueError(f"Expected binary decision label 0 or 1, got {label!r}.")
+    arr = np.asarray(label)
+    if arr.size != 1:
+        raise ValueError(
+            f"Expected a single decision for one instance, got an array of shape {arr.shape}."
+        )
+    scalar = arr.reshape(-1)[0].item()
+    if isinstance(scalar, bool | int | np.integer) and int(scalar) in (0, 1):
+        return int(scalar)
+    raise ValueError(f"Expected binary decision label 0 or 1, got {scalar!r}.")
+
+
 def _has_nan(X: Any) -> bool:
     """Returns whether `X` is a floating or complex value/array containing NaN."""
     if isinstance(X, np.ndarray):
@@ -64,6 +86,19 @@ def _returns_float_score(method: Callable[..., Any]) -> Callable[..., float]:
 
     # Marks the method as wrapped, so that __init_subclass__ doesn't wrap it twice.
     wrapper._returns_float_score = True  # type: ignore[attr-defined]
+    return wrapper
+
+
+def _returns_int_decision(method: Callable[..., Any]) -> Callable[..., int]:
+    """Wraps a single-instance decision method so that it returns 0 or 1 as int."""
+
+    @wraps(method)
+    def wrapper(self: BaseModel, *args: Any, **kwargs: Any) -> int:
+        label = method(self, *args, **kwargs)
+        return label if type(label) is int and label in (0, 1) else _to_int_decision(label)
+
+    # Marks the method as wrapped, so that __init_subclass__ doesn't wrap it twice.
+    wrapper._returns_int_decision = True  # type: ignore[attr-defined]
     return wrapper
 
 
@@ -100,6 +135,8 @@ class BaseModel(ABC):
     _input_kind: ClassVar[Literal["multivariate", "univariate", "timestamped", "edge"]] = (
         "multivariate"
     )
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "score"
+    _has_decision_rule: ClassVar[bool] = False
     _is_detector: ClassVar[bool] = True
     _detector_doc: ClassVar[tuple[str, str, str] | None] = None
     _pipeline_cls: ClassVar[Callable[..., BaseModel] | None] = None
@@ -116,15 +153,24 @@ class BaseModel(ABC):
             if callable(method) and not getattr(method, "_returns_float_score", False):
                 setattr(cls, name, _returns_float_score(method))
 
+        for name in ("predict_partial", "fit_predict_partial"):
+            method = cls.__dict__.get(name)
+            if callable(method) and not getattr(method, "_returns_int_decision", False):
+                setattr(cls, name, _returns_int_decision(method))
+
         # The batch names are here for subclasses that override them and bypass the wrapped
         # single-instance methods, such as the pyod integrations scoring a whole window at once.
         for name in (
             "fit",
             "score",
             "fit_score",
+            "predict",
+            "fit_predict",
             "fit_partial",
             "score_partial",
             "fit_score_partial",
+            "predict_partial",
+            "fit_predict_partial",
         ):
             method = cls.__dict__.get(name)
             if callable(method) and not getattr(method, "_rejects_nan_input", False):
@@ -135,6 +181,23 @@ class BaseModel(ABC):
         raw_fit_score = inspect.unwrap(cls.fit_score_partial)
         cls._raw_fit_score_partial = (
             None if raw_fit_score is BaseModel.fit_score_partial else raw_fit_score
+        )
+
+    @property
+    def output_kind(self) -> Literal["score", "probability", "decision"]:
+        """Output kind produced by this model."""
+        return self._output_kind
+
+    def _can_predict(self) -> bool:
+        return self.output_kind == "decision" or self._has_decision_rule
+
+    def _decide_from_score(self, score: float) -> int:
+        if self.output_kind == "decision":
+            return 1 if score > 0.0 else 0
+        raise TypeError(
+            f"{type(self).__name__} produces continuous outputs (output_kind={self.output_kind!r}) "
+            "without an intrinsic decision rule. Pipe it into ThresholdFilter or QuantileFilter "
+            "to call predict_partial."
         )
 
     @abstractmethod
@@ -298,6 +361,112 @@ class BaseModel(ABC):
             y_pred[i] = _to_float_score(self.fit_score_partial(xi, yi))
 
         return y_pred
+
+    def predict_partial(self, X: NDArray[Any]) -> int:
+        """Predicts a binary anomaly label for one instance without learning.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to predict.
+
+        Returns:
+            int: 1 for anomaly or 0 for normal.
+
+        Raises:
+            TypeError: If this model has no binary output or decision rule.
+            ValueError: If ``X`` holds NaN.
+        """
+        if _has_nan(X):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        score = self.score_partial(X)
+        return _to_int_decision(self._decide_from_score(score))
+
+    def fit_predict_partial(self, X: NDArray[Any], y: int | None = None) -> int:
+        """Predicts a binary anomaly label for one instance, then updates the model.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to predict and fit.
+            y (int or None): The label of the instance. Models that do not use labels ignore it
+                (Default=None).
+
+        Returns:
+            int: 1 for anomaly or 0 for normal.
+
+        Raises:
+            TypeError: If this model has no binary output or decision rule.
+            ValueError: If ``X`` holds NaN.
+        """
+        if _has_nan(X):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        cls = type(self)
+        raw_score = cls._raw_score_partial(self, X)
+        score = raw_score if type(raw_score) is float else _to_float_score(raw_score)
+        decision = _to_int_decision(self._decide_from_score(score))
+        cls._raw_fit_partial(self, X, y)
+        return decision
+
+    def predict(self, X: NDArray[Any]) -> NDArray[np.int64]:
+        """Predicts binary anomaly labels for all instances in order without learning.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to predict.
+
+        Returns:
+            np.int64 array of shape (num_instances,): Predicted binary labels (0 or 1).
+
+        Raises:
+            TypeError: If this model has no binary output or decision rule.
+            ValueError: If any instance in ``X`` holds NaN.
+        """
+        if _has_nan(X):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        if _clean_numeric_batch(X):
+            preds = np.empty(len(X), dtype=np.int64)
+            for i in range(len(X)):
+                preds[i] = self.predict_partial(X[i])
+            return preds
+        return np.array([self.predict_partial(xi) for xi, _ in _iterate(X)], dtype=np.int64)
+
+    def fit_predict(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> NDArray[np.int64]:
+        """Applies ``fit_predict_partial`` to each instance in order.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit and
+                predict, in order.
+            y (np.int32 array of shape (num_instances,) or None): Optional instance labels
+                (Default=None).
+
+        Returns:
+            np.int64 array of shape (num_instances,): Predicted binary labels (0 or 1).
+
+        Raises:
+            TypeError: If this model has no binary output or decision rule.
+            ValueError: If ``X`` and ``y`` lengths differ, or if any instance in ``X`` holds NaN.
+        """
+        if _has_nan(X):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+        if y is not None and len(X) != len(y):
+            raise ValueError("X and y must have the same length.")
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        if _clean_numeric_batch(X):
+            preds = np.empty(len(X), dtype=np.int64)
+            if y is None:
+                for i in range(len(X)):
+                    preds[i] = self.fit_predict_partial(X[i], None)
+            else:
+                for i in range(len(X)):
+                    preds[i] = self.fit_predict_partial(X[i], y[i])
+            return preds
+        return np.array(
+            [self.fit_predict_partial(xi, yi) for xi, yi in _iterate(X, y)],
+            dtype=np.int64,
+        )
 
     @staticmethod
     def _make_pipeline(

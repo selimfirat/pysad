@@ -348,7 +348,7 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 
 | 阶段 | PySAD 提供的内容 |
 |---|---|
-| 预处理 | `StandardScaler`、`MinMaxScaler`、`InstanceStandardScaler`、`InstanceUnitNormScaler`、`ShingleTransformer`、`DrainLogParser`、`SeasonalTrendDecomposer`、`ModifiedSTLResidualTransformer`、`OneShotSTL` |
+| 预处理 | `StandardScaler`、`MinMaxScaler`、`InstanceStandardScaler`、`InstanceUnitNormScaler`、`ShingleTransformer`、`DrainLogParser`、`FunctionTransformer`、`SeasonalTrendDecomposer`、`ModifiedSTLResidualTransformer`、`OneShotSTL` |
 | 投影 | `StreamhashProjector`、`GaussianRandomProjector`、`SparseRandomProjector` |
 | 后处理 | 累计及窗口化的分数均值、最大值、中位数、z 分数，`DynamicThresholdPostprocessor`（Telemanom），`ThresholdFilter`，`QuantileFilter` |
 | 校准 | `AnomalyLikelihoodProbabilityCalibrator`、`ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |

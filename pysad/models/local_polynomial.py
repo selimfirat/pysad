@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _int_at_least, check_univariate
@@ -68,7 +69,7 @@ class LocalPolynomialDetector(BaseModel):
         self.degree = _int_at_least(degree, "degree", 1)
 
         self._window = RingBuffer(self.window_size)
-        self._coeffs: np.ndarray | None = None
+        self._coeffs: NDArray[np.float64] | None = None
 
     def _fit_polynomial(self) -> None:
         """Fits a polynomial to the current window using least squares.
@@ -92,7 +93,7 @@ class LocalPolynomialDetector(BaseModel):
 
         # Least squares solve
         coeffs, *_ = np.linalg.lstsq(A, y, rcond=None)
-        self._coeffs = coeffs
+        self._coeffs = coeffs.astype(np.float64)
 
     def _predict(self, x: float) -> float:
         """Evaluates the fitted polynomial at x using Horner's method."""
@@ -103,7 +104,7 @@ class LocalPolynomialDetector(BaseModel):
             result = result * x + c
         return result
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> LocalPolynomialDetector:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> LocalPolynomialDetector:
         """Updates the window with the next value and re-fits the polynomial.
 
         Args:
@@ -118,7 +119,7 @@ class LocalPolynomialDetector(BaseModel):
         self._fit_polynomial()
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         r"""Scores the value using the current polynomial fit, without changing the model.
 
         The score is the squared prediction error :math:`(x_t - \hat{x}_t)^2`,

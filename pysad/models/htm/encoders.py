@@ -4,6 +4,7 @@ import copy
 import math
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 # The time-of-day encoder of NAB's numenta detector, NuPIC's DateEncoder(timeOfDay=(21, 9.49)): a
@@ -13,7 +14,7 @@ TIME_OF_DAY_SIZE = math.ceil(TIME_OF_DAY_WIDTH * (24.0 / 9.49))  # 54 bits
 _TIME_OF_DAY_OFFSETS = np.arange(TIME_OF_DAY_WIDTH) - TIME_OF_DAY_WIDTH // 2
 
 
-def encode_time_of_day(timestamp: float) -> np.ndarray:
+def encode_time_of_day(timestamp: float) -> NDArray[np.int64]:
     """Returns the indices of the active bits that encode the time of day of `timestamp`, as NuPIC's DateEncoder.
 
     Args:
@@ -62,7 +63,7 @@ class RandomDistributedScalarEncoder:
         self.buckets_[middle] = self._rng.permutation(size)[:width]
         self.min_index_ = self.max_index_ = middle
 
-    def encode(self, value: float, learn: bool = True) -> np.ndarray:
+    def encode(self, value: float, learn: bool = True) -> NDArray[np.int64]:
         """Returns the indices of the active bits of `value`, of shape (width,).
 
         If `learn` is False, the state does not change: a value that sets the offset or needs a new bucket is encoded on a copy of the encoder.
@@ -87,10 +88,10 @@ class RandomDistributedScalarEncoder:
                 self.min_index_, self.min_index_ - 1
             )
             self.min_index_ -= 1
-        bucket: np.ndarray = self.buckets_[index].copy()
+        bucket: NDArray[np.int64] = self.buckets_[index].copy()
         return bucket
 
-    def _new_bucket(self, index: int, new_index: int) -> np.ndarray:
+    def _new_bucket(self, index: int, new_index: int) -> NDArray[np.int64]:
         """Returns the bits of `new_index`, which differ in one bit from those of the next bucket `index`."""
         old = self.buckets_[index]
         bits = old.copy()
@@ -108,7 +109,7 @@ class RandomDistributedScalarEncoder:
             mask[bits] = True
             overlaps = mask[existing].sum(axis=1)
             if np.where(near, overlaps == self.width - distances, overlaps <= 2).all():
-                res: np.ndarray = bits
+                res: NDArray[np.int64] = bits
                 return res
 
 

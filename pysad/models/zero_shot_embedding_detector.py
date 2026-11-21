@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.special import softmax
 
 from pysad.core.base_model import BaseModel
@@ -50,14 +51,14 @@ class ZeroShotEmbeddingDetector(BaseModel):
 
     def __init__(
         self,
-        semantic_anchors: np.ndarray,
+        semantic_anchors: NDArray[np.float64],
         temperature: float = 1.0,
         normalize: bool = True,
     ) -> None:
         self.semantic_anchors = semantic_anchors
         self.temperature = temperature
         self.normalize = normalize
-        self._anchors_normalized: np.ndarray | None = None
+        self._anchors_normalized: NDArray[np.float64] | None = None
         self._embedding_dim: int | None = None
 
     def _init_model(self, embedding_dim: int) -> None:
@@ -74,7 +75,7 @@ class ZeroShotEmbeddingDetector(BaseModel):
         else:
             self._anchors_normalized = self.semantic_anchors.copy()
 
-    def _normalize(self, X: np.ndarray) -> np.ndarray:
+    def _normalize(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         if not self.normalize:
             return X
         norm = np.linalg.norm(X)
@@ -82,7 +83,9 @@ class ZeroShotEmbeddingDetector(BaseModel):
             return X
         return np.asarray(X / norm, dtype=np.float64)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> ZeroShotEmbeddingDetector:
+    def fit_partial(
+        self, X: NDArray[np.float64], y: int | None = None
+    ) -> ZeroShotEmbeddingDetector:
         """This method does not update the model. The semantic anchors are fixed.
 
         Args:
@@ -96,7 +99,7 @@ class ZeroShotEmbeddingDetector(BaseModel):
             self._init_model(X.shape[0])
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next embedding using MCM.
 
         The score is the negative maximum softmax probability over cosine similarities
@@ -111,13 +114,15 @@ class ZeroShotEmbeddingDetector(BaseModel):
         if self._anchors_normalized is None:
             self._init_model(X.shape[0])
 
+        anchors = self._anchors_normalized
+        assert anchors is not None
         x_norm = self._normalize(X)
-        similarities = self._anchors_normalized @ x_norm
+        similarities = anchors @ x_norm
         probs = softmax(similarities / self.temperature)
         max_prob = np.max(probs)
         return float(-max_prob)
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the embedding, then fits (no-op for this detector).
 
         Args:

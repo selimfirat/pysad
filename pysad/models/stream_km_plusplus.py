@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -18,9 +19,9 @@ class _CoresetTreeNode:
 
     def __init__(
         self,
-        points: np.ndarray | None,
-        weights: np.ndarray | None,
-        rep: np.ndarray,
+        points: NDArray[np.float64] | None,
+        weights: NDArray[np.float64] | None,
+        rep: NDArray[np.float64],
         size: float,
         cost: float,
     ) -> None:
@@ -75,31 +76,35 @@ class StreamKMPlusPlus(BaseModel):
         self.n_max = n_max
         self.random_state = random_state
         self.rng_ = check_random_state(random_state)
-        self.centers_ = np.empty((0, 0))  # the current centers, (num_clusters, num_features)
-        self._buffer = np.empty(
+        self.centers_: NDArray[np.float64] = np.empty(
+            (0, 0)
+        )  # the current centers, (num_clusters, num_features)
+        self._buffer: NDArray[np.float64] = np.empty(
             (0, 0)
         )  # the points since the last reduce, (coreset_size, num_features)
         self._num_buffered = 0  # the number of points in the buffer
         self._max_levels = max(1, math.ceil(math.log2(n_max)))
-        self._levels: list[tuple[np.ndarray, np.ndarray] | None] = [
+        self._levels: list[tuple[NDArray[np.float64], NDArray[np.float64]] | None] = [
             None
         ] * self._max_levels  # one coreset per level, or None
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> dict[str, object]:
         state = self.__dict__.copy()
         if self.random_state is None:
             # The RNG draws from NumPy's global state, which is not pickled.
             state["rng_"] = None
         return state
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, object]) -> None:
         self.__dict__.update(state)
         if self.rng_ is None:
             self.rng_ = check_random_state(self.random_state)
         else:
             self.rng_ = check_random_state(self.rng_)
 
-    def _coreset(self, points: np.ndarray, weights: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _coreset(
+        self, points: NDArray[np.float64], weights: NDArray[np.float64]
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Reduces `points` with `weights` to a weighted coreset of at most `coreset_size` points.
 
         The coreset tree (paper sections 4.2-4.3) starts as one leaf holding all points, with a representative picked with probability proportional to its weight. Each next point is picked by descending the tree, choosing each child with probability proportional to its cost, and sampling a point from the chosen leaf with probability proportional to its weight times its squared distance to the leaf representative. The leaf then splits into the points nearer to its old representative and the points nearer to the new point, so the partition is the tree partition, not the global nearest-sample assignment. Each sampled point is weighted by the total weight of the points in its leaf. Sampling stops early when every remaining point coincides with a picked one.
@@ -119,7 +124,7 @@ class StreamKMPlusPlus(BaseModel):
             return points.copy(), weights.copy()
         total_weight = float(weights.sum())
         if not np.isfinite(total_weight) or total_weight <= 0.0:
-            probs = np.full(num_points, 1.0 / num_points)
+            probs: NDArray[np.float64] = np.full(num_points, 1.0 / num_points)
         else:
             probs = weights / total_weight
         first = int(self.rng_.choice(num_points, p=probs))
@@ -206,7 +211,7 @@ class StreamKMPlusPlus(BaseModel):
 
         return sampled_points, sampled_weights
 
-    def _insert(self, coreset: tuple[np.ndarray, np.ndarray]) -> None:
+    def _insert(self, coreset: tuple[NDArray[np.float64], NDArray[np.float64]]) -> None:
         """Inserts `coreset` into the merge-and-reduce levels, merging and reducing upwards.
 
         The levels are a binary counter: level ``i`` holds a coreset representing ``2**i * coreset_size`` stream points. A merge that would need a level past the cap folds into the top level instead, so the number of levels never grows past ``ceil(log2(n_max))``.
@@ -233,10 +238,14 @@ class StreamKMPlusPlus(BaseModel):
             current = self._coreset(merged_points, merged_weights)
             level += 1
 
-    def _union(self) -> tuple[np.ndarray, np.ndarray]:
+    def _union(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """The buffer and all level coresets as one weighted point set."""
-        points = [self._buffer[: self._num_buffered]] if self._num_buffered else []
-        weights = [np.ones(self._num_buffered)] if self._num_buffered else []
+        points: list[NDArray[np.float64]] = (
+            [self._buffer[: self._num_buffered]] if self._num_buffered else []
+        )
+        weights: list[NDArray[np.float64]] = (
+            [np.ones(self._num_buffered)] if self._num_buffered else []
+        )
         for level in self._levels:
             if level is not None:
                 points.append(level[0])
@@ -246,7 +255,9 @@ class StreamKMPlusPlus(BaseModel):
 
         return np.concatenate(points), np.concatenate(weights)
 
-    def _kmeans_once(self, points: np.ndarray, weights: np.ndarray) -> np.ndarray:
+    def _kmeans_once(
+        self, points: NDArray[np.float64], weights: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """One run of weighted k-means++ seeding followed by Lloyd iterations.
 
         Args:
@@ -301,7 +312,12 @@ class StreamKMPlusPlus(BaseModel):
 
         return centers
 
-    def _weighted_cost(self, points: np.ndarray, weights: np.ndarray, centers: np.ndarray) -> float:
+    def _weighted_cost(
+        self,
+        points: NDArray[np.float64],
+        weights: NDArray[np.float64],
+        centers: NDArray[np.float64],
+    ) -> float:
         """The weighted k-means cost of `centers` on `points` with `weights`."""
         dists = np.maximum(
             (points**2).sum(axis=1)[:, None] - 2.0 * points @ centers.T + (centers**2).sum(axis=1),
@@ -309,7 +325,9 @@ class StreamKMPlusPlus(BaseModel):
         ).min(axis=1)
         return float((weights * dists).sum())
 
-    def _kmeans(self, points: np.ndarray, weights: np.ndarray) -> np.ndarray:
+    def _kmeans(
+        self, points: NDArray[np.float64], weights: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """Weighted k-means++ run five times independently, keeping the lowest-cost clustering.
 
         Args:
@@ -330,7 +348,7 @@ class StreamKMPlusPlus(BaseModel):
 
         return best_centers  # type: ignore[return-value]
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> StreamKMPlusPlus:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> StreamKMPlusPlus:
         """Updates the model with the next instance and recomputes the centers.
 
         The centers come from the final size-m coreset of the buffer and all level coresets, clustered with five k-means++ restarts (paper sections 5 and 5.1).
@@ -361,7 +379,7 @@ class StreamKMPlusPlus(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance by its distance to the nearest center.
 
         Args:

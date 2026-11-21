@@ -105,7 +105,7 @@ class TemporalMemory:
         self._num_active_potential: NDArray[np.int64] = np.zeros(capacity, dtype=np.int64)
         self._predicted_columns: NDArray[np.int64] = np.empty(0, dtype=np.int64)
 
-    def score(self, active_columns: np.ndarray) -> float:
+    def score(self, active_columns: NDArray[np.int64]) -> float:
         """Gives the raw anomaly score of the active columns of the next step without learning.
 
         Args:
@@ -120,7 +120,7 @@ class TemporalMemory:
         predicted = np.isin(active_columns, self._predicted_columns, assume_unique=True)
         return float(1.0 - predicted.sum() / active_columns.size)
 
-    def fit(self, active_columns: np.ndarray) -> TemporalMemory:
+    def fit(self, active_columns: NDArray[np.int64]) -> TemporalMemory:
         """Activates the cells of the active columns, learns the transition, and predicts the next step.
 
         Args:
@@ -175,7 +175,9 @@ class TemporalMemory:
         self._iteration += 1
         return self
 
-    def _best_matching(self, bursting: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _best_matching(
+        self, bursting: NDArray[np.int64]
+    ) -> tuple[NDArray[np.int64], NDArray[np.bool_]]:
         """Finds the segment with the most synapses to cells active at t - 1 in each bursting column."""
         M = self.num_cells_per_column
         candidates = self._matching_segments
@@ -195,7 +197,7 @@ class TemporalMemory:
         unmatched = ~np.isin(bursting, columns[first], assume_unique=True)
         return matched, unmatched
 
-    def _create_segments(self, cells: np.ndarray) -> np.ndarray:
+    def _create_segments(self, cells: NDArray[np.int64]) -> NDArray[np.int64]:
         """Grows one segment in each row of cells, on the cell with the fewest segments."""
         if cells.size == 0:
             return np.empty(0, dtype=np.int64)
@@ -249,7 +251,11 @@ class TemporalMemory:
         self._free_segments.extend(range(2 * capacity - 1, capacity - 1, -1))
 
     def _adapt(
-        self, segments: np.ndarray, prev_active: np.ndarray, increment: float, decrement: float
+        self,
+        segments: NDArray[np.int64],
+        prev_active: NDArray[np.bool_],
+        increment: float,
+        decrement: float,
     ) -> None:
         """Adds `increment` to the synapses from cells active at t - 1 and subtracts `decrement` from the others."""
         if segments.size == 0:
@@ -270,7 +276,7 @@ class TemporalMemory:
                 self._seg_counts[seg] -= 1
 
     def _grow_synapses(
-        self, segment: int, prev_active_cells: np.ndarray, prev_active: np.ndarray
+        self, segment: int, prev_active_cells: NDArray[np.int64], prev_active: NDArray[np.bool_]
     ) -> None:
         if self._seg_counts[segment] == 0:
             candidates = prev_active_cells
@@ -320,7 +326,7 @@ class TemporalMemory:
         for cell, slot in zip(candidates.tolist(), slots.tolist(), strict=True):
             self._outgoing[cell].append(base + slot)
 
-    def _remove_synapses(self, segment: int, slots: np.ndarray) -> None:
+    def _remove_synapses(self, segment: int, slots: NDArray[np.int64]) -> None:
         base = segment * self.max_synapses_per_segment
         for cell, slot in zip(
             self._presynaptic[segment, slots].tolist(), slots.tolist(), strict=True

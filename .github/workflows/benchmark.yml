@@ -28,6 +28,8 @@ env:
   MKL_NUM_THREADS: "1"
   VECLIB_MAXIMUM_THREADS: "1"
   NUMEXPR_NUM_THREADS: "1"
+  OPENBLAS_CORETYPE: HASWELL
+  NPY_DISABLE_CPU_FEATURES: AVX512F
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -104,10 +106,10 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .bench-base-cache/${{ matrix.part }}
-          key: bench-base-v2-${{ matrix.part }}-${{ matrix.base_hash }}
+          key: bench-base-v3-${{ matrix.part }}-${{ matrix.base_hash }}
           restore-keys: |
-            bench-base-v2-${{ matrix.part }}-all-
-            bench-base-v2-${{ matrix.part }}-
+            bench-base-v3-${{ matrix.part }}-all-
+            bench-base-v3-${{ matrix.part }}-
       - name: Check per-detector cache
         id: detcache
         env:
@@ -236,7 +238,7 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .bench-base-cache/${{ matrix.part }}
-          key: bench-base-v2-${{ matrix.part }}-all-${{ github.sha }}
+          key: bench-base-v3-${{ matrix.part }}-all-${{ github.sha }}
 
   benchmark-head:
     needs: plan

@@ -225,4 +225,6 @@ class Window:
         """
         from collections import deque
 
-        return deque(cast(list[float], self._buffer.window_view().tolist()), maxlen=self.window_size)
+        return deque(
+            cast(list[float], self._buffer.window_view().tolist()), maxlen=self.window_size
+        )

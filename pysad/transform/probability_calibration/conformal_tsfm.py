@@ -51,6 +51,7 @@ class ConformalTSFMCalibrator(BasePostprocessor):
     Raises:
         ValueError: If ``alpha`` not in (0, 1), ``gamma <= 0``, ``window_size < 1``,
             ``method`` not in {"simple", "momentum"}, or ``momentum_bw`` not in (0, 1).
+        TypeError: If ``score`` is not convertible to float.
 
     Attributes:
         alpha_t (float): Current adaptive miscoverage level ``alpha_t``.
@@ -112,6 +113,15 @@ class ConformalTSFMCalibrator(BasePostprocessor):
     def threshold_(self) -> float:
         return self._compute_qhat()
 
+    def _validate_score(self, score: float) -> float:
+        """Convert score to float, raising TypeError if not possible."""
+        try:
+            return float(score)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"score must be convertible to float, got {type(score).__name__}: {score!r}"
+            ) from None
+
     def _compute_qhat(self) -> float:
         """Compute the ``(1 - alpha_t)``-quantile of the non-missing scores in the window."""
         n = len(self._sorted)
@@ -155,18 +165,18 @@ class ConformalTSFMCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
-        s = float(score)
+        score = self._validate_score(score)
         qhat = self._compute_qhat()
-        err_t = self._miscoverage(s, qhat)
+        err_t = self._miscoverage(score, qhat)
         self._update_alpha(err_t)
 
         if len(self.window) == self.window_size:
             oldest = self.window._buffer.oldest()
             if oldest is not None and not math.isnan(oldest):
                 del self._sorted[bisect_left(self._sorted, oldest)]
-        self.window.update(s)
-        if not math.isnan(s):
-            insort(self._sorted, s)
+        self.window.update(score)
+        if not math.isnan(score):
+            insort(self._sorted, score)
 
         return self
 
@@ -180,12 +190,13 @@ class ConformalTSFMCalibrator(BasePostprocessor):
             score (float): Input score.
 
         Returns:
-            float: Fraction of window scores below the input score, or 0.0 if the window is empty.
+            float: Fraction of window scores below the input score, or ``0.0`` if the window is empty.
         """
         n = len(self.window)
-        if n == 0 or math.isnan(score):
+        s = self._validate_score(score)
+        if n == 0 or math.isnan(s):
             return 0.0
-        return bisect_left(self._sorted, float(score)) / n
+        return bisect_left(self._sorted, float(s)) / n
 
     def fit_transform_partial(self, score: float) -> float:
         """Transform the score with the state before the score, then fit the score.

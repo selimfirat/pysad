@@ -31,6 +31,7 @@ class AnomalyLikelihoodProbabilityCalibrator(BasePostprocessor):
         short_window_size (int): The number of last scores in the short-term average (Default=10).
 
     Raises:
+        TypeError: If ``score`` is not convertible to float.
         ValueError: If window_size is less than num_estimation_samples.
     """
 
@@ -59,6 +60,15 @@ class AnomalyLikelihoodProbabilityCalibrator(BasePostprocessor):
         self.mean_ = 0.0
         self.std_ = 0.0
 
+    def _validate_score(self, score: float) -> float:
+        """Convert score to float, raising TypeError if not possible."""
+        try:
+            return float(score)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"score must be convertible to float, got {type(score).__name__}: {score!r}"
+            ) from None
+
     def fit_partial(self, score: float) -> AnomalyLikelihoodProbabilityCalibrator:
         """Fits particular (next) timestep's score to train the postprocessor.
 
@@ -68,7 +78,7 @@ class AnomalyLikelihoodProbabilityCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
-        score = float(score)
+        score = self._validate_score(score)
         self.scores_[self.num_scores_ % self.window_size] = score
         self.short_window_.append(score)
         self.num_scores_ += 1
@@ -90,9 +100,10 @@ class AnomalyLikelihoodProbabilityCalibrator(BasePostprocessor):
         Returns:
             float: The anomaly likelihood of the score.
         """
+        score = self._validate_score(score)
+
         if self.num_scores_ < self.learning_period + self.num_estimation_samples:
             return 0.5
-        score = float(score)
 
         total = sum(self.short_window_)
         prev_tail = self._tail(total / len(self.short_window_))

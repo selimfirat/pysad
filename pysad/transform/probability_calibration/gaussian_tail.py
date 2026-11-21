@@ -28,6 +28,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
     Raises:
         ValueError: If ``window_size`` is less than 1 or ``short_window_size`` is less than 1.
+        TypeError: If ``score`` is not convertible to float.
     """
 
     _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
@@ -56,6 +57,15 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
         self.short_window: deque[float] = deque(maxlen=self.short_window_size)
 
+    def _validate_score(self, score: float) -> float:
+        """Convert score to float, raising TypeError if not possible."""
+        try:
+            return float(score)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"score must be convertible to float, got {type(score).__name__}: {score!r}"
+            ) from None
+
     def fit_partial(self, score: float) -> GaussianTailProbabilityCalibrator:
         """Fits particular (next) timestep's score to train the postprocessor.
 
@@ -65,7 +75,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
-        score = float(score)
+        score = self._validate_score(score)
         self.meter.update(score)
         self.short_window.append(score)
 
@@ -84,9 +94,9 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         Returns:
             float: One minus the Gaussian tail p-value of the score, or 0.0 before the first fit.
         """
+        score = self._validate_score(score)
         if not self.short_window:
             return 0.0
-        score = float(score)
         if self.short_window_size == 1:
             short_mean = score
         else:

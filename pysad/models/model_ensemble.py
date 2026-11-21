@@ -134,6 +134,7 @@ class ModelEnsemble(BaseModel):
             y (np.int32 array of shape (num_instances,) or None): The labels of the instances, in order, passed to each model. Models that do not use labels ignore them (Default=None).
 
         Raises:
+            ValueError: If any instance in ``X`` holds NaN, at the first instance that does.
             ValueError: If ``y`` is given and its length differs from that of ``X``.
 
         Returns:
@@ -159,6 +160,9 @@ class ModelEnsemble(BaseModel):
         Args:
             X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order. An empty batch produces an empty score array.
 
+        Raises:
+            ValueError: If any instance in ``X`` holds NaN, at the first instance that does.
+
         Returns:
             np.float64 array of shape (num_instances,): The combined anomaly scores of the instances in order.
         """
@@ -172,13 +176,14 @@ class ModelEnsemble(BaseModel):
     def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
         """Fits and scores a batch of instances across all constituent models in prequential order.
 
-        Each instance is scored before the ensemble learns from it (test-then-train), so an instance is never scored by a model that has already learned from it. An empty batch produces an empty score array.
+        Each constituent model scores each instance before it learns from that instance. A stateful ensembler learns from each score before it combines that score. This order is prequential evaluation, also called test-then-train. An empty batch produces an empty score array.
 
         Args:
             X (np.float64 array of shape (num_instances, num_features)): The instances to fit and score, in order.
             y (np.int32 array of shape (num_instances,) or None): The labels of the instances, in order, passed to each model. Models that do not use labels ignore them (Default=None).
 
         Raises:
+            ValueError: If any instance in ``X`` holds NaN, at the first instance that does.
             ValueError: If ``y`` is given and its length differs from that of ``X``.
 
         Returns:

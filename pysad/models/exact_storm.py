@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import scipy
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.models._window import _RadiusCalibrator
@@ -37,7 +38,7 @@ class ExactStorm(BaseModel):
         self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
         self.radius_: float | None = max_radius
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> ExactStorm:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> ExactStorm:
         """Updates the model with the next instance by adding it to the window.
 
         Args:
@@ -54,7 +55,7 @@ class ExactStorm(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance as if it arrived, without adding it to the window.
 
         When the instance arrives, the oldest instance of a full window expires, so the instance is scored against the `window_size - 1` most recent instances. This gives the same score as `fit_score_partial`.

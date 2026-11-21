@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.spatial.distance import cdist
 
 from pysad.core.base_model import BaseModel
@@ -10,14 +11,16 @@ from pysad.core.base_model import BaseModel
 _EPS = 1e-10
 
 
-def _lof(reach: np.ndarray, neighbor_reach: np.ndarray) -> np.ndarray:
+def _lof(reach: NDArray[np.float64], neighbor_reach: NDArray[np.float64]) -> NDArray[np.float64]:
     """The LOF of instances from their mean reachability distances, of shape (m,), and those of their neighbors, of shape (m, k)."""
     # A floor relative to the distances keeps the LOF free of the unit of the values; an absolute
     # one exceeds the distances of values in small units, which pulls each LOF towards 1.
     largest = np.maximum(reach, neighbor_reach.max(axis=1))
     # If every distance is 0, the instance and its neighbors are duplicates, with an LOF of 1.
     floor = np.where(largest > 0.0, _EPS * largest, 1.0)
-    ratios: np.ndarray = (reach + floor) * (1.0 / (neighbor_reach + floor[:, None])).mean(axis=1)
+    ratios: NDArray[np.float64] = (reach + floor) * (1.0 / (neighbor_reach + floor[:, None])).mean(
+        axis=1
+    )
     return ratios
 
 
@@ -74,7 +77,7 @@ class IncrementalLOF(BaseModel):
         # The slot of the next instance, which holds the oldest instance once the window is full.
         self._next = 0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> IncrementalLOF:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> IncrementalLOF:
         """Inserts the instance into the window, deleting the oldest instance if the window is full.
 
         Args:
@@ -136,14 +139,14 @@ class IncrementalLOF(BaseModel):
         lrds = self._reverse_neighbors(updated)
         self._update_reach_dists(lrds[lrds != p])
 
-    def _reverse_neighbors(self, updated: np.ndarray) -> np.ndarray:
+    def _reverse_neighbors(self, updated: NDArray[np.intp]) -> NDArray[np.intp]:
         # The instances whose lrd changes when the k-distances of `updated` change: `updated`, and
         # each neighbor q of an instance o in `updated` that has o as a neighbor too (Fig. 4).
         candidates = self.neighbors_[updated]  # (num_updated, k)
         has_o = (self.neighbors_[candidates] == updated[:, None, None]).any(axis=2)
         return np.union1d(updated, candidates[has_o])
 
-    def _update_neighbors(self, idx: np.ndarray, exclude: int | None) -> None:
+    def _update_neighbors(self, idx: NDArray[np.intp], exclude: int | None) -> None:
         # Recomputes the k nearest neighbors of the instances in slots idx.
         n = self.num_instances_
         dists = cdist(self.X_[idx], self.X_[:n])  # (len(idx), n)
@@ -155,12 +158,12 @@ class IncrementalLOF(BaseModel):
         self.neighbor_dists_[idx] = np.take_along_axis(dists, neighbors, axis=1)
         self.k_dists_[idx] = self.neighbor_dists_[idx].max(axis=1)
 
-    def _update_reach_dists(self, idx: np.ndarray) -> None:
+    def _update_reach_dists(self, idx: NDArray[np.intp]) -> None:
         # reach-dist(q, o) = max(k-distance(o), d(q, o)) for each neighbor o of q.
         reach = np.maximum(self.k_dists_[self.neighbors_[idx]], self.neighbor_dists_[idx])
         self.reach_dists_[idx] = reach.mean(axis=1)
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the instance by its LOF against the current window, without inserting it.
 
         Args:

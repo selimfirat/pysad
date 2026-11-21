@@ -59,6 +59,46 @@ class ReferenceWindowModel(_BatchModel):
         else:
             self.initial_ref_window = False
 
+    def _should_refit(self, next_len: int) -> bool:
+        """Check if the model should be refitted after adding the next instance.
+
+        Args:
+            next_len: The length of cur_window_X after adding the next instance.
+
+        Returns:
+            bool: True if a refit should occur.
+        """
+        if (
+            not self.initial_ref_window
+            and next_len < self.window_size
+            and (self.reference_window_X is None or len(self.reference_window_X) < self.window_size)
+        ):
+            # Until the first window is full, refit when the number of instances is a power of two.
+            return (next_len & (next_len - 1)) == 0
+        # After the first window is full, refit every sliding_size instances.
+        return next_len % self.sliding_size == 0
+
+    def _update_reference_window(self, y: int | None = None) -> None:
+        """Update the reference window with the current window and refit the model."""
+        self.reference_window_X = np.concatenate(
+            [self.reference_window_X, self.cur_window_X], axis=0
+        )
+        self.reference_window_X = self.reference_window_X[
+            max(0, len(self.reference_window_X) - self.window_size) :
+        ]
+
+        if y is not None:
+            self.reference_window_y = np.concatenate(
+                [self.reference_window_y, self.cur_window_y], axis=0
+            )
+            self.reference_window_y = self.reference_window_y[
+                max(0, len(self.reference_window_y) - self.window_size) :
+            ]
+
+        self.cur_window_X = []
+        self.cur_window_y = []
+        self._fit_model()
+
     def fit_partial(self, X: NDArray[Any], y: int | None = None) -> Self:
         """Updates the model with the next instance.
 
@@ -74,36 +114,16 @@ class ReferenceWindowModel(_BatchModel):
         if y is not None:
             self.cur_window_y.append(y)
 
-        if (
-            not self.initial_ref_window
-            and len(self.cur_window_X) < self.window_size
-            and (self.reference_window_X is None or len(self.reference_window_X) < self.window_size)
-        ):
-            # Until the first window is full, the model trains on the instances so far each time
-            # their number doubles, so that the first window costs about log2(window_size) fits.
-            if len(self.cur_window_X) & (len(self.cur_window_X) - 1) == 0:
+        next_len = len(self.cur_window_X)
+        if self._should_refit(next_len):
+            if not self.initial_ref_window and next_len < self.window_size:
+                # First window filling: copy current window as reference window
                 self.reference_window_X = self.cur_window_X.copy()
                 self.reference_window_y = self.cur_window_y.copy() if y is not None else None
                 self._fit_model()
-        elif len(self.cur_window_X) % self.sliding_size == 0:
-            self.reference_window_X = np.concatenate(
-                [self.reference_window_X, self.cur_window_X], axis=0
-            )
-            self.reference_window_X = self.reference_window_X[
-                max(0, len(self.reference_window_X) - self.window_size) :
-            ]
-
-            if y is not None:
-                self.reference_window_y = np.concatenate(
-                    [self.reference_window_y, self.cur_window_y], axis=0
-                )
-                self.reference_window_y = self.reference_window_y[
-                    max(0, len(self.reference_window_y) - self.window_size) :
-                ]
-
-            self.cur_window_X = []
-            self.cur_window_y = []
-            self._fit_model()
+            else:
+                # Sliding window update
+                self._update_reference_window(y)
 
         return self
 
@@ -160,17 +180,7 @@ class ReferenceWindowModel(_BatchModel):
         start = 0
         for i, (xi, yi) in enumerate(_iterate(X, y)):
             next_len = len(self.cur_window_X) + 1
-            if (
-                not self.initial_ref_window
-                and next_len < self.window_size
-                and (
-                    self.reference_window_X is None
-                    or len(self.reference_window_X) < self.window_size
-                )
-            ):
-                refit = (next_len & (next_len - 1)) == 0
-            else:
-                refit = next_len % self.sliding_size == 0
+            refit = self._should_refit(next_len)
 
             if refit:
                 y_pred[start : i + 1] = self.score(X[start : i + 1])

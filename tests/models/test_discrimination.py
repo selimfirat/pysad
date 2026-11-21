@@ -38,7 +38,9 @@ REFERENCE_MODELS = {"NullModel", "PerfectModel", "RandomModel"}
 
 # Open bugs that the check finds, by model. Each is a strict xfail, so the test starts failing once
 # the bug is fixed, as a reminder to remove it here.
-KNOWN_FAILURES = {}
+KNOWN_FAILURES = {
+    "ZeroShotEmbeddingDetector": "Zero-shot detector requires meaningful semantic anchors; random anchors don't match test stream structure.",
+}
 
 
 def _anomalies(rng):
@@ -168,6 +170,9 @@ def _model_params(model_name, X):
                 ZScorePostprocessor(window_size=WARMUP),
                 ConformalProbabilityCalibrator(window_size=WARMUP),
             ],
+        },
+        "ZeroShotEmbeddingDetector": {
+            "semantic_anchors": np.random.RandomState(SEED).rand(10, NUM_FEATURES)
         },
     }
 

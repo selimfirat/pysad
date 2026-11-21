@@ -191,7 +191,11 @@ def _make_univariate_factory(cls):
 
 
 # Non-default benchmark arguments; every other detector in pysad.models.__all__ is auto-discovered.
-DETECTOR_OVERRIDES = {}
+DETECTOR_OVERRIDES = {
+    "ZeroShotEmbeddingDetector": lambda X, seed: models.ZeroShotEmbeddingDetector(
+        semantic_anchors=np.random.RandomState(seed).randn(10, X.shape[1])
+    ),
+}
 UNIVARIATE_OVERRIDES = {
     # HTM learns during NAB's probationary period, as in NAB.
     "HTM": lambda n, period: models.HTM(

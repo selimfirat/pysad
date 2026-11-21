@@ -274,6 +274,7 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
             "postprocessors": [ZScorePostprocessor(window_size=10)],
         },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
+        "ZeroShotEmbeddingDetector": {"semantic_anchors": np.random.RandomState(0).rand(10, 3)},
     }
     if name in params:
         return params[name]

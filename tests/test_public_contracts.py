@@ -2,6 +2,7 @@
 
 import ast
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -126,3 +127,24 @@ def test_model_pysad_files_isolates_detector_dependencies():
     assert "pysad/core/base_model.py" in sand_files
     assert "pysad/models/loda.py" not in sand_files
     assert "pysad/models/exact_storm.py" not in sand_files
+
+
+def test_subpackages_import_independently():
+    """Every public subpackage imports cleanly in a fresh Python process."""
+    import pysad
+
+    assert {"core", "models", "utils", "__version__"}.issubset(dir(pysad))
+    with pytest.raises(AttributeError):
+        _ = pysad.nonexistent_subpackage
+
+    for mod in (
+        "pysad.core",
+        "pysad.evaluation",
+        "pysad.explainability",
+        "pysad.integrations",
+        "pysad.models",
+        "pysad.statistics",
+        "pysad.transform",
+        "pysad.utils",
+    ):
+        subprocess.run([sys.executable, "-c", f"import {mod}"], check=True, cwd=ROOT)

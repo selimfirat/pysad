@@ -30,6 +30,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -1076,8 +1077,10 @@ def compare(before, after):
         if old is None:
             moved.append((k, "new", row["auroc"]))
         elif not np.isclose(
-            number(old["auroc"]), row["auroc"], atol=TOLERANCE, equal_nan=True
-        ) or not np.isclose(number(old.get("solved")), row.get("solved", np.nan), equal_nan=True):
+            number(old["auroc"]), number(row["auroc"]), atol=TOLERANCE, equal_nan=True
+        ) or not np.isclose(
+            number(old.get("solved")), number(row.get("solved", np.nan)), equal_nan=True
+        ):
             moved.append((k, old["auroc"], row["auroc"]))
     lines = [f"| {k[1]} | {k[0]} | {a} | {b} |" for k, a, b in moved]
     report = (
@@ -1269,33 +1272,79 @@ def write_dimensions_svg(rows, detectors):
         f.write("\n".join(lines) + "\n")
 
 
+_FALLBACK_PART_WEIGHTS: dict[str, dict[str, float]] = {
+    "odds": {
+        "PCBIsolationForest": 180.0,
+        "MiLOF": 50.0,
+        "IDKS": 35.0,
+        "GNGA": 25.0,
+        "FRAHST": 20.0,
+        "FeedbackHST": 18.0,
+        "CostSensitiveStreamModel": 15.0,
+        "SDOstream": 15.0,
+    },
+    "drift": {
+        "PCBIsolationForest": 140.0,
+        "MiLOF": 25.0,
+        "IDKS": 20.0,
+        "GNGA": 15.0,
+        "FRAHST": 12.0,
+        "FeedbackHST": 10.0,
+        "CostSensitiveStreamModel": 8.0,
+        "SDOstream": 8.0,
+    },
+    "univariate": {
+        "OeSNNUAD": 25.0,
+        "FluxEV": 12.0,
+        "PEWMA": 8.0,
+        "StreamingAutoregressiveDetector": 8.0,
+    },
+}
+
+
+def _write_ci_csv(out_path: Path, rows_by_key: dict[tuple[str, str, int], dict]) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w", newline="", encoding="utf-8", dir=out_path.parent, delete=False
+    ) as f:
+        tmp_path = Path(f.name)
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(CI_FIELDS)
+        writer.writerows(
+            [r.get(field, "") for field in CI_FIELDS] for _, r in sorted(rows_by_key.items())
+        )
+    tmp_path.replace(out_path)
+
+
 def _detector_weights(results_path=OUT / "results.csv"):
     """Load per-(dataset, detector) and per-part detector timings from results.csv."""
     cell_weights: dict[tuple[str, str], float] = {}
     part_weights: dict[str, dict[str, float]] = {"odds": {}, "drift": {}, "univariate": {}}
-    if not results_path.exists():
-        return cell_weights, part_weights
-    drift_keys = set(DRIFT)
-    multivariate_dets = set(DETECTORS)
-    univariate_dets = set(UNIVARIATE)
-    with open(results_path, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            ds = row.get("dataset", "")
-            det = row.get("detector", "").removesuffix(SHINGLED)
-            try:
-                ms = float(row.get("ms_per_point", ""))
-            except (TypeError, ValueError):
-                continue
-            cell_weights[(ds, det)] = ms
-            if ds in drift_keys and det in multivariate_dets:
-                part = "drift"
-            elif ds.startswith("nab/") and det in univariate_dets:
-                part = "univariate"
-            elif not ds.startswith(("nab/", "ucr/")) and det in multivariate_dets:
-                part = "odds"
-            else:
-                continue
-            part_weights[part][det] = part_weights[part].get(det, 0.0) + ms
+    if results_path.exists():
+        drift_keys = set(DRIFT)
+        multivariate_dets = set(DETECTORS)
+        univariate_dets = set(UNIVARIATE)
+        with open(results_path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                ds = row.get("dataset", "")
+                det = row.get("detector", "").removesuffix(SHINGLED)
+                try:
+                    ms = float(row.get("ms_per_point", ""))
+                except (TypeError, ValueError):
+                    continue
+                cell_weights[(ds, det)] = ms
+                if ds in drift_keys and det in multivariate_dets:
+                    part = "drift"
+                elif ds.startswith("nab/") and det in univariate_dets:
+                    part = "univariate"
+                elif not ds.startswith(("nab/", "ucr/")) and det in multivariate_dets:
+                    part = "odds"
+                else:
+                    continue
+                part_weights[part][det] = part_weights[part].get(det, 0.0) + ms
+    for part, defaults in _FALLBACK_PART_WEIGHTS.items():
+        for det, weight in defaults.items():
+            part_weights[part].setdefault(det, weight)
     return cell_weights, part_weights
 
 
@@ -1303,11 +1352,13 @@ def _ci_shard_count(part: str, count: int) -> int:
     if count <= 1:
         return max(1, count)
     if part == "odds":
-        target = 1 if count <= 6 else 2 if count <= 14 else 3 if count <= 24 else 4
+        target = (
+            1 if count <= 4 else 2 if count <= 9 else 3 if count <= 15 else 4 if count <= 22 else 5
+        )
     elif part == "drift":
-        target = 1 if count <= 10 else 2
+        target = 1 if count <= 5 else 2 if count <= 14 else 3
     else:
-        target = 1 if count <= 6 else 2
+        target = 1 if count <= 4 else 2 if count <= 10 else 3
     return min(target, count)
 
 
@@ -1329,9 +1380,46 @@ def _pack_shards(
     return [bucket for _, bucket in bins if bucket]
 
 
-def ci_plan(base: str) -> dict:
+def _cache_file(cache_dir: Path, detector: str, det_hash: str) -> Path:
+    return cache_dir / f"{detector}-{det_hash}.csv"
+
+
+def _det_base_hash(
+    part: str, bench_sha: str, detector: str, deps: set[str], ls_map: dict[str, str]
+) -> str:
+    hasher = hashlib.sha256()
+    hasher.update(f"{part}\n{bench_sha}\n{detector}\n".encode())
+    for dep in sorted(deps):
+        if dep in ls_map:
+            hasher.update((ls_map[dep] + "\n").encode())
+    return hasher.hexdigest()[:16]
+
+
+def compare_ci_dirs(base_dir: Path, head_dir: Path) -> None:
+    """Compare all ``--ci`` CSV artifacts collected under ``base_dir`` and ``head_dir``."""
+    before: dict[tuple[str, str, int], dict] = {}
+    for csv_path in sorted(base_dir.rglob("*.csv")):
+        before.update(read_results(csv_path))
+    after: dict[tuple[str, str, int], dict] = {}
+    for csv_path in sorted(head_dir.rglob("*.csv")):
+        after.update(read_results(csv_path))
+    if not after:
+        print("No head benchmark results to compare.")
+        return
+    if not before:
+        print(f"No base benchmark results to compare ({len(after)} head runs).")
+        return
+    compare(before, after)
+
+
+def ci_plan(base: str, *, all_detectors: bool = False) -> dict:
     """Compute sharded GitHub Actions matrix and content-addressed base cache keys for --ci."""
-    detectors = changed_detectors(base, ci=True) if base else [*DETECTORS, *UNIVARIATE]
+    tree_ref = (base or "HEAD") if all_detectors else base
+    detectors = (
+        [*DETECTORS, *UNIVARIATE]
+        if (all_detectors or not base)
+        else changed_detectors(base, ci=True)
+    )
     multivariate = [d for d in detectors if d in DETECTORS]
     univariate = [d for d in detectors if d in UNIVARIATE]
     _, part_weights = _detector_weights()
@@ -1339,8 +1427,8 @@ def ci_plan(base: str) -> dict:
     bench_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
 
     ls_map: dict[str, str] = {}
-    if base:
-        for line in git("ls-tree", "-r", base, "--", "pysad", "pyproject.toml").splitlines():
+    if tree_ref:
+        for line in git("ls-tree", "-r", tree_ref, "--", "pysad", "pyproject.toml").splitlines():
             parts = line.split("\t", 1)
             if len(parts) == 2:
                 ls_map[parts[1]] = line
@@ -1359,26 +1447,33 @@ def ci_plan(base: str) -> dict:
             part_weights[part],
         )
         for shard_id, shard_dets in enumerate(shards):
-            has_base = bool(base) and any(
+            has_base = bool(tree_ref) and any(
                 f"{getattr(models, d).__module__.replace('.', '/')}.py" in ls_map
                 for d in shard_dets
             )
-            deps = set(shared_deps)
-            for d in shard_dets:
-                deps |= pysad_files([getattr(models, d)])
-            hasher = hashlib.sha256()
-            hasher.update(f"{part}\n{bench_sha}\n".encode())
-            hasher.update((",".join(sorted(shard_dets)) + "\n").encode())
-            for dep in sorted(deps):
-                if dep in ls_map:
-                    hasher.update((ls_map[dep] + "\n").encode())
+            det_hashes = {
+                d: _det_base_hash(
+                    part,
+                    bench_sha,
+                    d,
+                    shared_deps | pysad_files([getattr(models, d)]),
+                    ls_map,
+                )
+                for d in sorted(shard_dets)
+            }
+            shard_hash = hashlib.sha256(
+                (
+                    f"{part}\n{bench_sha}\n" + "\n".join(f"{k}={v}" for k, v in det_hashes.items())
+                ).encode()
+            ).hexdigest()[:16]
             include.append(
                 {
                     "part": part,
                     "shard": ",".join(shard_dets),
                     "shard_id": str(shard_id),
                     "has_base": has_base,
-                    "base_hash": hasher.hexdigest()[:16],
+                    "base_hash": shard_hash,
+                    "det_hashes": json.dumps(det_hashes, separators=(",", ":")),
                 }
             )
     return {"has_jobs": bool(include), "include": include}
@@ -1422,9 +1517,30 @@ def main():
         help="print JSON sharded CI plan and content-addressed base cache keys for changes since BASE",
     )
     parser.add_argument(
+        "--all-detectors",
+        action="store_true",
+        help="with --ci-plan, include every detector instead of only detectors changed since BASE",
+    )
+    parser.add_argument(
+        "--base-cache-dir",
+        metavar="DIR",
+        help="with --ci, read and populate per-detector <detector>-<hash>.csv cache files in DIR",
+    )
+    parser.add_argument(
+        "--det-hashes",
+        metavar="JSON",
+        help="with --base-cache-dir, JSON mapping detector name to its base hash",
+    )
+    parser.add_argument(
         "--compare",
         metavar="FILE",
         help="with --ci, print the AUROC of each run that differs from FILE, a file of another --ci run",
+    )
+    parser.add_argument(
+        "--compare-dirs",
+        nargs=2,
+        metavar=("BASE_DIR", "HEAD_DIR"),
+        help="compare all --ci CSV files under BASE_DIR against HEAD_DIR",
     )
     parser.add_argument("--jobs", type=int, default=os.cpu_count())
     parser.add_argument(
@@ -1439,8 +1555,11 @@ def main():
         help="points per detector and dimension in the dimensionality sweep",
     )
     args = parser.parse_args()
+    if args.compare_dirs:
+        compare_ci_dirs(Path(args.compare_dirs[0]), Path(args.compare_dirs[1]))
+        return
     if args.ci_plan is not None:
-        print(json.dumps(ci_plan(args.ci_plan)))
+        print(json.dumps(ci_plan(args.ci_plan, all_detectors=args.all_detectors)))
         return
     if args.dimensions:
         if args.dimension_points <= 0:
@@ -1480,9 +1599,23 @@ def main():
         parser.error(f"unknown parts: {', '.join(sorted(set(parts) - set(PARTS)))}")
 
     # Each part downloads its data once, before the workers start. Every part runs once, with seed 0.
+    cache_dir = Path(args.base_cache_dir) if (ci_mode and args.base_cache_dir) else None
+    det_hashes: dict[str, str] = json.loads(args.det_hashes) if args.det_hashes else {}
+    cached_rows: dict[tuple[str, str, int], dict] = {}
+    run_detectors = list(detectors)
+    if cache_dir is not None and det_hashes:
+        run_detectors = []
+        for d in detectors:
+            det_hash = det_hashes.get(d)
+            cache_path = _cache_file(cache_dir, d, det_hash) if det_hash else None
+            if cache_path is not None and cache_path.is_file():
+                cached_rows.update(read_results(cache_path))
+            else:
+                run_detectors.append(d)
+
     jobs = []
-    multivariate = [d for d in detectors if d in DETECTORS]
-    univariate = [d for d in detectors if d in UNIVARIATE]
+    multivariate = [d for d in run_detectors if d in DETECTORS]
+    univariate = [d for d in run_detectors if d in UNIVARIATE]
     if "odds" in parts and multivariate:
         for dataset in DATASETS:
             Data().get_data(f"{dataset}.mat")
@@ -1513,11 +1646,17 @@ def main():
             for d in multivariate
             for series in nab_series()
         ]
-    cell_weights, _ = _detector_weights()
-    jobs.sort(
-        key=lambda j: cell_weights.get((j[0], j[1].removesuffix(SHINGLED)), float("inf")),
-        reverse=True,
-    )
+    cell_weights, part_weights = _detector_weights()
+    drift_keys = set(DRIFT)
+
+    def _job_weight(job: tuple) -> float:
+        ds, det_raw = job[0], job[1].removesuffix(SHINGLED)
+        if (ds, det_raw) in cell_weights:
+            return cell_weights[(ds, det_raw)]
+        part = "drift" if ds in drift_keys else "univariate" if ds.startswith("nab/") else "odds"
+        return part_weights[part].get(det_raw, float("inf"))
+
+    jobs.sort(key=_job_weight, reverse=True)
     new = {}
     if jobs:
         with ProcessPoolExecutor(args.jobs, initializer=_init_worker) as pool:
@@ -1534,12 +1673,18 @@ def main():
         row.pop("_nab", None)
 
     if ci_mode:
-        with open(args.ci, "w", newline="") as f:
-            writer = csv.writer(f, lineterminator="\n")
-            writer.writerow(CI_FIELDS)
-            writer.writerows([r.get(f, "") for f in CI_FIELDS] for _, r in sorted(new.items()))
+        if cache_dir is not None and det_hashes:
+            for d in run_detectors:
+                det_hash = det_hashes.get(d)
+                if not det_hash:
+                    continue
+                det_rows = {k: r for k, r in new.items() if k[1].removesuffix(SHINGLED) == d}
+                if det_rows:
+                    _write_ci_csv(_cache_file(cache_dir, d, det_hash), det_rows)
+        combined = {**cached_rows, **new}
+        _write_ci_csv(Path(args.ci), combined)
         if args.compare:
-            compare(read_results(Path(args.compare)), new)
+            compare(read_results(Path(args.compare)), combined)
         return
 
     results = read_results(path)

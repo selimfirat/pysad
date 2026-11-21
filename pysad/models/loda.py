@@ -92,8 +92,12 @@ class LODA(BaseModel):
                 if projected[i] == seen:
                     self.histograms_[i, 0] += 1.0
                     continue
+                width = abs(projected[i] - seen) / (self.n_bins - 0.5)
+                if width == 0.0:
+                    self.histograms_[i, 0] += 1.0
+                    continue
                 # The smaller value starts the first bin and the larger one falls in the middle of the last bin.
-                self.bin_widths_[i] = abs(projected[i] - seen) / (self.n_bins - 0.5)
+                self.bin_widths_[i] = width
                 self.bin_lows_[i] = min(projected[i], seen)
                 count = self.histograms_[i, 0]
                 self.histograms_[i, 0] = 0.0

@@ -1,8 +1,16 @@
-"""Tests for dependency-aware incremental test selection in tests/conftest.py."""
+"""Tests for dependency-aware incremental test selection and sharding."""
 
 from __future__ import annotations
 
+import functools
+import types
+
+import pytest
+
+import scripts.ci_affected as ci_affected
 import tests.conftest as root_conftest
+from pysad.evaluation import BrierScoreMetric
+from pysad.statistics import AverageMeter
 from tests.models.conftest import _changed_files_since
 
 
@@ -80,3 +88,106 @@ def test_global_triggers_and_empty_diff_cache(monkeypatch) -> None:
     _changed_files_since.cache_clear()
     monkeypatch.setenv("PYSAD_TESTS_SINCE", "HEAD")
     assert _changed_files_since("HEAD") >= frozenset()
+
+
+def test_ci_affected_plans_for_tests_examples_and_codeql(monkeypatch) -> None:
+    def with_changed(files: set[str]):
+        monkeypatch.setattr(ci_affected, "_changed_files_since", lambda base: frozenset(files))
+        monkeypatch.setattr(ci_affected, "_deps_changed_since", lambda base: False)
+        monkeypatch.setattr(ci_affected, "_runtime_toml_changed_since", lambda base: False)
+
+    with_changed({"docs/index.rst"})
+    assert set(ci_affected.tests_plan("origin/master")["files"]) == {
+        "tests/test_performance_badges.py",
+        "tests/test_public_contracts.py",
+    }
+    assert ci_affected.tests_plan("origin/master")["needs_compat"] is False
+    assert ci_affected.examples_plan("origin/master")["count"] == 0
+    assert ci_affected.codeql_plan("origin/master") == {
+        "python": False,
+        "actions": False,
+        "languages": [],
+    }
+
+    with_changed({"LICENSE"})
+    assert ci_affected.tests_plan("origin/master")["count"] == 0
+
+    with_changed({"pysad/evaluation/metrics.py"})
+    tplan = ci_affected.tests_plan("origin/master")
+    assert tplan["all"] is False
+    assert tplan["needs_compat"] is True
+    assert "tests/evaluation/test_brier_score.py" in tplan["files"]
+    assert "tests/test_component_contracts.py" in tplan["files"]
+    assert ci_affected.codeql_plan("origin/master")["languages"] == ["python"]
+
+    with_changed({".github/workflows/benchmark.yml"})
+    assert ci_affected.codeql_plan("origin/master")["languages"] == ["actions"]
+    assert ci_affected.tests_plan("origin/master")["needs_compat"] is False
+
+
+def test_pytest_ignore_collect_and_contract_filtering(monkeypatch) -> None:
+    monkeypatch.setenv("PYSAD_TESTS_SINCE", "origin/master")
+    monkeypatch.setattr(
+        root_conftest, "_changed_files_since", lambda base: frozenset({"README.md"})
+    )
+    monkeypatch.setattr(root_conftest, "_deps_changed_since", lambda base: False)
+    monkeypatch.setattr(root_conftest, "active_model_names", lambda: ())
+
+    assert (
+        root_conftest.pytest_ignore_collect(
+            root_conftest.ROOT / "tests" / "models" / "test_loda.py", config=object()
+        )
+        is True
+    )
+    assert (
+        root_conftest.pytest_ignore_collect(
+            root_conftest.ROOT / "tests" / "utils" / "test_data.py", config=object()
+        )
+        is None
+    )
+
+    brier_item = types.SimpleNamespace(
+        originalname="test_metrics_update_batch_matches_sequential_and_pickles",
+        name="test_metrics_update_batch_matches_sequential_and_pickles[BrierScoreMetric]",
+        callspec=types.SimpleNamespace(params={"cls": BrierScoreMetric}),
+    )
+    avg_item = types.SimpleNamespace(
+        originalname="test_nonpositive_window_size_is_rejected",
+        name="test_nonpositive_window_size_is_rejected[AverageMeter-0]",
+        callspec=types.SimpleNamespace(params={"component": functools.partial(AverageMeter)}),
+    )
+    changed_brier = frozenset({"pysad/evaluation/metrics.py"})
+    assert root_conftest._contract_item_selected(brier_item, changed_brier) is True
+    assert root_conftest._contract_item_selected(avg_item, changed_brier) is False
+
+
+def test_collection_sharding_partitions_all_items(monkeypatch) -> None:
+    monkeypatch.delenv("PYSAD_TESTS_SINCE", raising=False)
+    items = [
+        types.SimpleNamespace(
+            path=root_conftest.ROOT / "tests" / "evaluation" / f"test_fake_{i}.py",
+            name=f"test_{i}",
+        )
+        for i in range(5)
+    ]
+    deselected_records: list[list[object]] = []
+    config = types.SimpleNamespace(
+        hook=types.SimpleNamespace(
+            pytest_deselected=lambda items: deselected_records.append(list(items))
+        )
+    )
+
+    monkeypatch.setenv("PYSAD_TEST_SHARD", "0/2")
+    shard0 = list(items)
+    root_conftest.pytest_collection_modifyitems(config, shard0)
+    monkeypatch.setenv("PYSAD_TEST_SHARD", "1/2")
+    shard1 = list(items)
+    root_conftest.pytest_collection_modifyitems(config, shard1)
+
+    names0 = [x.name for x in shard0]
+    names1 = [x.name for x in shard1]
+    assert set(names0) & set(names1) == set()
+    assert sorted(names0 + names1) == sorted(x.name for x in items)
+
+    with pytest.raises(ValueError, match="PYSAD_TEST_SHARD"):
+        root_conftest._parse_shard_spec("2/2")

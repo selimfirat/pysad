@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import scipy
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.models._window import _RadiusCalibrator
@@ -38,16 +39,22 @@ class NETS(BaseModel):
         self.outlier_fraction = outlier_fraction
         self.radius_: float | None = max_radius
         self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
-        self.points_ = np.empty((0, 0))  # the window as a ring buffer, (window_size, num_features)
-        self.cell_ = np.full(window_size, -1)  # the cell of each slot, or -1 for none
+        self.points_: NDArray[np.float64] = np.empty(
+            (0, 0)
+        )  # the window as a ring buffer, (window_size, num_features)
+        self.cell_: NDArray[np.int64] = np.full(
+            window_size, -1
+        )  # the cell of each slot, or -1 for none
         # The grid index of each cell, (window_size, num_features).
-        self.cells_ = np.empty((0, 0), dtype=np.int64)
-        self.card_ = np.zeros(window_size, dtype=np.int64)  # the cardinality grid, 0 is a free cell
+        self.cells_: NDArray[np.int64] = np.empty((0, 0), dtype=np.int64)
+        self.card_: NDArray[np.int64] = np.zeros(
+            window_size, dtype=np.int64
+        )  # the cardinality grid, 0 is a free cell
         self._cells: dict[tuple[int, ...], int] = {}  # the cell of each non-empty grid index
         self._num = 0  # the number of instances in the window
         self._next = 0  # the slot of the next instance, which holds the oldest one in a full window
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> NETS:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> NETS:
         """Updates the model with the next instance. The oldest instance of a full window expires.
 
         Args:
@@ -79,13 +86,15 @@ class NETS(BaseModel):
 
         return self
 
-    def _index(self, X: np.ndarray) -> np.ndarray:
+    def _index(self, X: NDArray[np.float64]) -> NDArray[np.int64]:
         """The grid index of the cell that holds each instance in X."""
         assert self.radius_ is not None
         if self.radius_ == 0:
             # A cell with a diagonal of 0 holds equal instances only, so the bits of X index it (-0.0 + 0.0 is 0.0).
             return (X + 0.0).view(np.int64)
-        cells: np.ndarray = np.floor(X / (self.radius_ / np.sqrt(X.shape[-1]))).astype(np.int64)
+        cells: NDArray[np.int64] = np.floor(X / (self.radius_ / np.sqrt(X.shape[-1]))).astype(
+            np.int64
+        )
         return cells
 
     def _build(self) -> None:
@@ -123,7 +132,7 @@ class NETS(BaseModel):
         if self.card_[c] == 0:
             del self._cells[tuple(self.cells_[c].tolist())]
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance as if it arrived, without adding it to the window.
 
         When the instance arrives, the oldest instance of a full window expires, so the instance is scored against the `window_size - 1` most recent instances. This gives the same score as `fit_score_partial`.

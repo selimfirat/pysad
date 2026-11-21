@@ -29,6 +29,7 @@ from .inqmad import Inqmad
 from .kelos import KELOS
 from .kitnet import KitNet
 from .knn_cad import KNNCAD
+from .local_polynomial import LocalPolynomialDetector
 from .loda import LODA
 from .loop import LocalOutlierProbability
 from .matrix_profile import MatrixProfile
@@ -91,6 +92,7 @@ __all__ = [
     "KitNet",
     "KNNCAD",
     "LocalOutlierProbability",
+    "LocalPolynomialDetector",
     "LODA",
     "MatrixProfile",
     "MCOD",

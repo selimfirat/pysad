@@ -160,8 +160,6 @@ def test_batch_methods_return_1d_arrays(name, factory, num_features):
 def test_score_partial_before_the_first_fit_returns_a_score(name, factory, num_features):
     """Regression test for #266: fit_score_partial scores each instance before it fits it, so
     every detector must score the first instance without an error."""
-    if name == "PerfectModel":  # returns the labels that it was fitted with
-        pytest.skip("PerfectModel needs a label before it can score")
     X, _ = _data(name, num_features)
 
     score = factory().score_partial(X[0])

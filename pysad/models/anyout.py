@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 
@@ -21,16 +22,18 @@ class _Node:
         self.size = 0
         self.ts = ts  # the time of the last decay of all entries
 
-    def means(self) -> np.ndarray:
+    def means(self) -> NDArray[np.float64]:
         n = np.maximum(self.n[: self.size], np.finfo(np.float64).tiny)
-        res: np.ndarray = self.ls[: self.size] / n[:, None]  # (size, d)
+        res: NDArray[np.float64] = self.ls[: self.size] / n[:, None]  # (size, d)
         return res
 
-    def closest(self, x: np.ndarray) -> int:
+    def closest(self, x: NDArray[np.float64]) -> int:
         diff = self.means() - x
         return int(np.einsum("ij,ij->i", diff, diff).argmin())
 
-    def append(self, n: float, ls: np.ndarray, ss: np.ndarray, child: _Node | None) -> None:
+    def append(
+        self, n: float, ls: NDArray[np.float64], ss: NDArray[np.float64], child: _Node | None
+    ) -> None:
         self.n[self.size], self.ls[self.size], self.ss[self.size] = n, ls, ss
         if child is not None:
             assert self.children is not None
@@ -45,7 +48,7 @@ class _Node:
             self.children.pop()
         self.size = last
 
-    def totals(self) -> tuple[float, np.ndarray, np.ndarray]:
+    def totals(self) -> tuple[float, NDArray[np.float64], NDArray[np.float64]]:
         return (
             float(self.n[: self.size].sum()),
             self.ls[: self.size].sum(0),
@@ -77,7 +80,7 @@ class AnyOut(BaseModel):
         snapshot_interval (int): The snapshot interval t_snap of Eq. 11.1, in instances. A node about to split discards an entry that weighs less than 2^(-`decay` `snapshot_interval`) (Default=1000).
     """
 
-    origin_: np.ndarray
+    origin_: NDArray[np.float64]
 
     def __init__(
         self,
@@ -105,7 +108,7 @@ class AnyOut(BaseModel):
         node.ss *= factor
         node.ts = self._time
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> AnyOut:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> AnyOut:
         """Inserts the next instance into the ClusTree.
 
         Args:
@@ -213,7 +216,7 @@ class AnyOut(BaseModel):
         node.ss[a] += node.ss[b]
         node.remove(int(b))
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next instance against the closest entry at the level where its descent stops.
 
         Args:

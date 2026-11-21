@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _int_at_least, check_univariate
@@ -68,7 +69,7 @@ class SpectralResidual(BaseModel):
         self.values_ = np.zeros(self.window_size - 1)
         self.num_values_ = 0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> SpectralResidual:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> SpectralResidual:
         """Appends the next value to the window and drops the oldest value once the window is full.
 
         Args:
@@ -91,7 +92,7 @@ class SpectralResidual(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores `X` by its saliency in the window of the last ``window_size - 1`` fitted values followed by `X`. This method does not change the model.
 
         Args:

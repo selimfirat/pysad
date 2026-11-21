@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.spatial.distance import cdist
 
 from pysad.models.incremental_lof import _EPS, IncrementalLOF, _lof
@@ -15,8 +16,8 @@ _LAMBDA = 0.001
 _MAX_EXP_LOF = 50.0
 
 
-def _sigmoid(x: np.ndarray) -> np.ndarray:
-    res: np.ndarray = 1.0 / (1.0 + np.exp(-x))
+def _sigmoid(x: NDArray[np.float64]) -> NDArray[np.float64]:
+    res: NDArray[np.float64] = 1.0 / (1.0 + np.exp(-x))
     return res
 
 
@@ -51,10 +52,10 @@ class DILOF(IncrementalLOF):
             )
         super().__init__(num_neighbors=num_neighbors, window_size=window_size)
         self.threshold = threshold
-        self._last_outlier: np.ndarray | None = None
+        self._last_outlier: NDArray[np.float64] | None = None
         self._last_outlier_lof = 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> DILOF:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> DILOF:
         """Inserts the instance into the window unless the skipping scheme skips it, and summarizes the window when it is full.
 
         Args:
@@ -83,7 +84,7 @@ class DILOF(IncrementalLOF):
 
         return self
 
-    def _skips(self, X: np.ndarray) -> bool:
+    def _skips(self, X: NDArray[np.float64]) -> bool:
         # Whether the skipping scheme skips the instance: it is closer to the last outlier than
         # the mean nearest-neighbor distance of the window.
         if self._last_outlier is None:
@@ -91,7 +92,7 @@ class DILOF(IncrementalLOF):
         mean_nn_dist = self.neighbor_dists_[: self.num_instances_].min(axis=1).mean()
         return bool(np.linalg.norm(X - self._last_outlier) < mean_nn_dist)
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the instance by its LOF against the current window, without inserting it.
 
         If the skipping scheme would skip the instance, the score is at least the LOF of the last inserted outlier.

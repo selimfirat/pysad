@@ -34,14 +34,16 @@ ANOMALY_RATE = 0.05
 # so they need normal instances near such a subspace.
 SUBSPACE_MODELS = {"ADeMS", "FRAHST"}
 
+# Zero-shot embedding detectors score cosine similarity against semantic anchor prototypes.
+EMBEDDING_MODELS = {"ZeroShotEmbeddingDetector"}
+_EMBEDDING_ANCHORS = np.eye(8, dtype=np.float64)[:4]
+
 # NullModel and PerfectModel do not score the data, and RandomModel is the chance reference.
 REFERENCE_MODELS = {"NullModel", "PerfectModel", "RandomModel"}
 
 # Open bugs that the check finds, by model. Each is a strict xfail, so the test starts failing once
 # the bug is fixed, as a reminder to remove it here.
-KNOWN_FAILURES = {
-    "ZeroShotEmbeddingDetector": "Zero-shot detector requires meaningful semantic anchors; random anchors don't match test stream structure.",
-}
+KNOWN_FAILURES = {}
 
 
 def _anomalies(rng):
@@ -72,6 +74,19 @@ def _subspace_stream():
     anomalies, y = _anomalies(rng)
     directions = rng.normal(size=(len(anomalies), NUM_FEATURES))
     X[anomalies] += 6.0 * directions / np.linalg.norm(directions, axis=1, keepdims=True)
+    return X, y
+
+
+def _embedding_stream():
+    """Unit-direction embeddings clustered around 4 in-distribution anchors, with orthogonal OOD anomalies."""
+    rng = np.random.default_rng(SEED)
+    anchor_ids = rng.integers(0, len(_EMBEDDING_ANCHORS), size=NUM_INSTANCES)
+    X = _EMBEDDING_ANCHORS[anchor_ids] + rng.normal(0.0, 0.1, size=(NUM_INSTANCES, 8))
+    anomalies, y = _anomalies(rng)
+    ood = rng.normal(size=(len(anomalies), 4))
+    ood /= np.linalg.norm(ood, axis=1, keepdims=True)
+    X[anomalies] = rng.normal(0.0, 0.1, size=(len(anomalies), 8))
+    X[anomalies, 4:] += ood
     return X, y
 
 
@@ -142,6 +157,7 @@ def _model_params(model_name, X):
         # The spikes go in both directions.
         "SeasonalESD": {"period": 24, "window_size": 72, "direction": "both"},
         "SeasonalHybridESD": {"period": 24, "window_size": 72, "direction": "both"},
+        "ZeroShotEmbeddingDetector": {"semantic_anchors": _EMBEDDING_ANCHORS},
         "ModelEnsemble": {
             "models": [
                 pysad.models.LODA(num_random_cuts=20, random_state=0)
@@ -196,6 +212,8 @@ def test_scores_rank_anomalies_above_chance(model_name):
         X, y = _edge_stream()
     elif model_name in SUBSPACE_MODELS:
         X, y = _subspace_stream()
+    elif model_name in EMBEDDING_MODELS:
+        X, y = _embedding_stream()
     else:
         X, y = _multivariate_stream()
     scores = _scores(model_name, X)

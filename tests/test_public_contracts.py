@@ -1,6 +1,7 @@
 """Fast static checks for public API documentation, citations, and benchmark registration."""
 
 import ast
+import inspect
 import re
 import subprocess
 import sys
@@ -68,17 +69,39 @@ def test_public_exports_match_api_reference_pages():
 
 
 def test_docstring_citations_exist_in_bibliography(tmp_path):
-    """Every :cite: key in pysad docstrings exists in docs/refs.bib or a __bibtex__ attribute."""
-    _, bib_keys = collect_bibtex(ROOT)
+    """Every :cite: key exists in the bibliography, every entry is cited, and every detector cites its source."""
+    bib_text, bib_keys = collect_bibtex(ROOT)
     assert "angelov2014anomaly" in bib_keys
+    assert not re.search(r"[\x00-\x09\x0b-\x1f]", bib_text), (
+        "Bibliography contains unexpected ASCII control characters"
+    )
 
+    cite_pattern = re.compile(r":cite(?::[a-z]+)?:`([^`]+)`")
     cited_keys: set[str] = set()
     for py_path in (ROOT / "pysad").rglob("*.py"):
-        for group in re.findall(r":cite:`([^`]+)`", py_path.read_text(encoding="utf-8")):
+        for group in cite_pattern.findall(py_path.read_text(encoding="utf-8")):
+            cited_keys.update(key.strip() for key in group.split(","))
+    for rst_path in (ROOT / "docs").rglob("*.rst"):
+        if "_build" in rst_path.parts:
+            continue
+        for group in cite_pattern.findall(rst_path.read_text(encoding="utf-8")):
             cited_keys.update(key.strip() for key in group.split(","))
 
     missing = sorted(cited_keys - bib_keys)
     assert not missing, f"Citations missing from docs/refs.bib or __bibtex__: {missing}"
+
+    unused = sorted(bib_keys - cited_keys)
+    assert not unused, f"Uncited bibliography entries in docs/refs.bib or __bibtex__: {unused}"
+
+    undocumented_detectors = [
+        name
+        for name in pysad.models.__all__
+        if is_detector_model(name)
+        and not cite_pattern.search(inspect.getdoc(getattr(pysad.models, name)) or "")
+    ]
+    assert not undocumented_detectors, (
+        f"Streaming detectors missing :cite: in class docstring: {undocumented_detectors}"
+    )
 
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "refs.bib").write_text(

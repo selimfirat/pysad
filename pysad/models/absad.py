@@ -294,6 +294,8 @@ class ABSAD(BaseModel):
         (120,)
     """
 
+    _short_stream_params = {"window_size": 10, "num_neighbors": 5, "num_references": 5}
+
     __bibtex__ = """
 @article{zhang2017sliding,
   title={Sliding Window-Based Fault Detection From High-Dimensional Data Streams},

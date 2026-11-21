@@ -212,7 +212,6 @@ def short_stream_params(
     max_val = defaults["max_val"]
     initial_x = defaults["initial_X"]
     params: dict[str, dict[str, Any]] = {
-        "ABSAD": {"window_size": 10, "num_neighbors": 5, "num_references": 5},
         "AnyOut": {"max_height": 2, "decay": 0.1, "snapshot_interval": 5},
         "ApproxStorm": {
             "window_size": 20,

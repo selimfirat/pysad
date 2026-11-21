@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 from scipy.optimize import brentq
 from scipy.spatial.distance import cdist
@@ -118,7 +120,7 @@ def _calculate_feature_relevance(
     mean_relevance = float(np.mean(relevance))
     threshold = (1.0 + theta) * mean_relevance
 
-    selected_subspace = np.where(relevance > threshold)[0]  # type: ignore[assignment]
+selected_subspace = cast(np.ndarray, np.where(relevance > threshold)[0])
     if len(selected_subspace) == 0:
         # Fall back to full space if no feature dominates by the threshold
         selected_subspace = np.arange(d, dtype=int)

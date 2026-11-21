@@ -55,6 +55,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`serving`
+
+      Consume from Kafka or Redpanda, expose a FastAPI streaming endpoint, and checkpoint state to disk or Redis.
+
+   .. container:: card
+
       :doc:`custom_model`
 
       Implement the model interface for a published streaming method and add it to PySAD.

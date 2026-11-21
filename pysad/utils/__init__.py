@@ -13,7 +13,7 @@ from .csv_streamer import CSVStreamer
 from .data import Data
 from .hyperloglog import HyperLogLog
 from .pandas_streamer import PandasStreamer
-from .plotting import plot_stream
+from .plotting import plot_stream, plot_streaming_ribbon
 from .polars_streamer import PolarsStreamer
 from .synthetic import generate_stream
 from .validation import check_feature_bounds, check_univariate
@@ -33,6 +33,7 @@ __all__ = [
     "HyperLogLog",
     "PandasStreamer",
     "plot_stream",
+    "plot_streaming_ribbon",
     "PolarsStreamer",
     "RingBuffer",
     "Window",

@@ -541,3 +541,131 @@ class TestPlotStream:
         assert len(axes[1].get_lines()) == 1
 
         plt.close(fig)
+
+
+class TestPlotStreamingRibbon:
+    """Tests for plot_streaming_ribbon."""
+
+    def _use_agg_backend(self):
+        import matplotlib
+
+        matplotlib.use("Agg")
+
+    def test_plot_streaming_ribbon_draws_ribbon_and_alerts(self):
+        """With a calibrator, the scores panel shows the conformal ribbon and alerts."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.transform.probability_calibration import ConformalTSFMCalibrator
+        from pysad.utils import plot_streaming_ribbon
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+        X = scores.reshape(-1, 1)
+        calibrator = ConformalTSFMCalibrator(alpha=0.1, gamma=0.01, window_size=100)
+
+        fig, axes = plot_streaming_ribbon(X, scores, calibrator)
+
+        # Score line + ribbon (fill_between creates a collection)
+        assert len(axes[1].get_lines()) >= 1
+        assert len(axes[1].collections) >= 1
+        # Legend should have "score" and "conformal ribbon"
+        legend_texts = [t.get_text() for t in axes[1].get_legend().get_texts()]
+        assert "score" in legend_texts
+        assert "conformal ribbon" in legend_texts
+
+        # Alerts panel should have alert spikes (score 0.9 > threshold)
+        assert len(axes[2].collections) >= 1
+
+        plt.close(fig)
+
+    def test_plot_streaming_ribbon_with_labels(self):
+        """With labels, the alerts panel shows both alerts and anomalies."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.transform.probability_calibration import ConformalTSFMCalibrator
+        from pysad.utils import plot_streaming_ribbon
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+        X = scores.reshape(-1, 1)
+        labels = np.array([0, 0, 1, 0, 0])
+        calibrator = ConformalTSFMCalibrator(alpha=0.1, gamma=0.01, window_size=100)
+
+        fig, axes = plot_streaming_ribbon(X, scores, calibrator, labels=labels)
+
+        # Alerts panel should have both alert and anomaly spikes
+        assert len(axes[2].collections) >= 1
+        ytick_labels = [t.get_text() for t in axes[2].get_yticklabels()]
+        assert "alert" in ytick_labels
+        assert "anomaly" in ytick_labels
+
+        plt.close(fig)
+
+    def test_plot_streaming_ribbon_without_lower_ribbon(self):
+        """With ribbon_lower=None, only the threshold line is drawn."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.transform.probability_calibration import ConformalTSFMCalibrator
+        from pysad.utils import plot_streaming_ribbon
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+        X = scores.reshape(-1, 1)
+        calibrator = ConformalTSFMCalibrator(alpha=0.1, gamma=0.01, window_size=100)
+
+        fig, axes = plot_streaming_ribbon(X, scores, calibrator, ribbon_lower=None)
+
+        # Should have score line + threshold line (no fill_between collection)
+        assert len(axes[1].get_lines()) >= 2
+        legend_texts = [t.get_text() for t in axes[1].get_legend().get_texts()]
+        assert "score" in legend_texts
+        assert "threshold" in legend_texts
+        # No ribbon collection
+        assert len(axes[1].collections) == 0
+
+        plt.close(fig)
+
+    def test_plot_streaming_ribbon_with_array_lower(self):
+        """With array ribbon_lower, the ribbon uses per-step lower bounds."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.transform.probability_calibration import ConformalTSFMCalibrator
+        from pysad.utils import plot_streaming_ribbon
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+        X = scores.reshape(-1, 1)
+        calibrator = ConformalTSFMCalibrator(alpha=0.1, gamma=0.01, window_size=100)
+        ribbon_lower = np.array([0.0, 0.1, 0.2, 0.0, 0.1])
+
+        fig, axes = plot_streaming_ribbon(X, scores, calibrator, ribbon_lower=ribbon_lower)
+
+        assert len(axes[1].collections) >= 1
+        legend_texts = [t.get_text() for t in axes[1].get_legend().get_texts()]
+        assert "conformal ribbon" in legend_texts
+
+        plt.close(fig)
+
+    def test_plot_streaming_ribbon_does_not_modify_original_calibrator(self):
+        """The original calibrator is not modified by the plotting function."""
+        self._use_agg_backend()
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        from pysad.transform.probability_calibration import ConformalTSFMCalibrator
+        from pysad.utils import plot_streaming_ribbon
+
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
+        X = scores.reshape(-1, 1)
+        calibrator = ConformalTSFMCalibrator(alpha=0.1, gamma=0.01, window_size=100)
+        original_threshold = calibrator.threshold_
+
+        plot_streaming_ribbon(X, scores, calibrator)
+        plt.close("all")
+
+        # Original calibrator should be unchanged
+        assert calibrator.threshold_ == original_threshold

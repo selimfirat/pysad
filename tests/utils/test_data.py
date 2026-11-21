@@ -821,7 +821,9 @@ def _load_creditcard_arff(monkeypatch, data_base_path: str) -> tuple:
     # Read back the file content to compute checksum
     with open(arff_path, "rb") as f:
         file_content = f.read()
-    monkeypatch.setitem(dmod._CHECKSUMS, "creditcard/creditcard.arff", hashlib.sha256(file_content).hexdigest())
+    monkeypatch.setitem(
+        dmod._CHECKSUMS, "creditcard/creditcard.arff", hashlib.sha256(file_content).hexdigest()
+    )
 
     # Monkeypatch urlopen to avoid actual network calls
     def urlopen(req, timeout):

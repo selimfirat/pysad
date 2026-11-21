@@ -39,10 +39,12 @@ class ZeroShotEmbeddingDetector(BaseModel):
 
     __bibtex__ = """
 @inproceedings{ming2022delving,
-    title={Delving into Out-of-Distribution Detection with Vision-Language Representations},
-    author={Ming, Yifei and Cai, Ziyang and Gu, Jiuxiang and Sun, Yiyou and Li, Wei and Li, Yixuan},
-    booktitle={Advances in Neural Information Processing Systems},
-    year={2022}
+  title={Delving into Out-of-Distribution Detection with Vision-Language Representations},
+  author={Ming, Yifei and Cai, Ziyang and Gu, Jiuxiang and Sun, Yiyou and Li, Wei and Li, Yixuan},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={35},
+  pages={35087--35102},
+  year={2022}
 }
 """
 

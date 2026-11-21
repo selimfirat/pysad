@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -113,19 +114,19 @@ class SDOstream(BaseModel):
         self._touched = np.zeros(num_observers, dtype=np.int64)
         self._added = np.zeros(num_observers, dtype=np.int64)
 
-    def _faded(self, now: int) -> np.ndarray:
+    def _faded(self, now: int) -> NDArray[np.float64]:
         """Returns the quality metric of each observer faded to the time `now`."""
         return self.observations_[: self.size_] * self._fading ** (
             now - self._touched[: self.size_]
         )
 
-    def _squared_distances(self, X: np.ndarray) -> np.ndarray:
+    def _squared_distances(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """Returns the squared Euclidean distance from `X` to each observer."""
         diffs = self.observers_[: self.size_] - X
-        dists: np.ndarray = np.einsum("ij,ij->i", diffs, diffs)  # (size_,)
+        dists: NDArray[np.float64] = np.einsum("ij,ij->i", diffs, diffs)  # (size_,)
         return dists
 
-    def _closest(self, sq: np.ndarray, slots: np.ndarray) -> np.ndarray:
+    def _closest(self, sq: NDArray[np.float64], slots: NDArray[np.intp]) -> NDArray[np.intp]:
         """Returns the slots of the `num_neighbors` closest observers in `slots`.
 
         A tie on distance keeps the older observer, for reproducibility.
@@ -135,10 +136,10 @@ class SDOstream(BaseModel):
             return slots
 
         chosen = np.lexsort((self._added[slots], values))[: self.num_neighbors]
-        res: np.ndarray = slots[chosen]
+        res: NDArray[np.intp] = slots[chosen]
         return res
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> SDOstream:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> SDOstream:
         """Updates the model with the next instance.
 
         Args:
@@ -195,7 +196,7 @@ class SDOstream(BaseModel):
         self.index_ = now + 1
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

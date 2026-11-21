@@ -17,7 +17,9 @@ __bibtex__ = """
   title={Fast anomaly detection for streaming data},
   author={Tan, Swee Chuan and Ting, Kai Ming and Liu, Tony Fei},
   booktitle={Twenty-Second International Joint Conference on Artificial Intelligence},
-  year={2011}
+  pages={1511--1516},
+  year={2011},
+  doi={10.5591/978-1-57735-516-8/IJCAI11-254}
 }
 
 @article{das2024effectiveness,
@@ -25,8 +27,9 @@ __bibtex__ = """
   author={Das, Shubhomoy and Islam, Md Rakibul and Jayakodi, Nitthilan Kannappan and Doppa, Janardhan Rao},
   journal={Journal of Artificial Intelligence Research},
   volume={80},
-  pages={127-172},
-  year={2024}
+  pages={127--170},
+  year={2024},
+  doi={10.1613/jair.1.14741}
 }
 
 @article{das2020discovering,
@@ -35,9 +38,10 @@ __bibtex__ = """
   journal={ACM Transactions on Knowledge Discovery from Data},
   volume={14},
   number={4},
-  pages={1-32},
+  pages={1--32},
   year={2020},
-  publisher={ACM New York, NY, USA}
+  publisher={ACM New York, NY, USA},
+  doi={10.1145/3396608}
 }
 """
 
@@ -53,13 +57,13 @@ class FeedbackHST(BaseModel):
     instances, so feedback steers the detector toward the expert's notion of
     anomaly.
 
-    The streaming implementation follows Algorithm 2 of :cite:`das2024effectiveness`:
-    trees are rebuilt on new windows of data, and a KL-divergence check
-    (Section 4.3) decides which trees to replace when the data distribution
-    drifts. The human feedback loop runs within each window: the model scores
-    the current unlabeled buffer, queries the top-ranked instances (or a
-    diverse subset via compact descriptions), receives labels, and updates
-    the ensemble weights.
+    The streaming implementation follows Section 6 (Algorithm 4, ``HiLAD-Stream``)
+    of :cite:`das2024effectiveness`: on each new window, a KL-divergence check
+    (Algorithms 5--8, ``Update-Model`` and ``Get-KL-Threshold``) decides which
+    trees to replace when the data distribution drifts. The human feedback loop
+    runs within each window: the model scores the current unlabeled buffer,
+    queries the top-ranked instances (or a diverse subset via compact
+    descriptions), receives labels, and updates the ensemble weights.
 
     Key differences from the reference implementation (ad_examples):
 
@@ -645,8 +649,10 @@ class FeedbackHST(BaseModel):
     def _replace_trees(self, replace_mask: NDArray[np.bool_], X_new: NDArray[np.float64]) -> None:
         """Rebuild trees marked for replacement using new window data.
 
-        This matches the reference implementation which constructs new trees
-        from the new window data (Algorithm 2: "trees are rebuilt on new windows of data").
+        Adapts ``Update-Model`` (Algorithm 5 of :cite:`das2024effectiveness`, used for
+        Isolation Forest in the paper) to rebuild half-space tree splits on the new
+        window; the ``ad_examples`` reference implementation only updates node counts
+        and raises ``NotImplementedError`` for HSTree replacement.
         """
         num_splits = 2**self.max_depth - 1
         num_leaves = 2**self.max_depth

@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -59,7 +60,7 @@ class MStream(BaseModel):
         self.random_state = random_state
         self.num_fitted_ = 0
 
-    def _transform(self, X: np.ndarray) -> np.ndarray:
+    def _transform(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         x = np.asarray(X, dtype=np.float64)
         if not self.log_transform:
             return x
@@ -71,17 +72,19 @@ class MStream(BaseModel):
         return np.log1p(x)
 
     def _buckets(
-        self, x: np.ndarray, minimum: np.ndarray, maximum: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
+        self, x: NDArray[np.float64], minimum: NDArray[np.float64], maximum: NDArray[np.float64]
+    ) -> tuple[NDArray[np.intp], NDArray[np.int64]]:
         """The feature buckets, shape (num_features,), and the record buckets, shape (num_hash_fns,), of a transformed record."""
         span = maximum - minimum
         scaled = np.divide(x - minimum, span, out=np.zeros_like(x), where=span > 0.0)
-        feature_buckets = (scaled * self.num_buckets).astype(np.intp) % self.num_buckets
+        feature_buckets: NDArray[np.intp] = (scaled * self.num_buckets).astype(
+            np.intp
+        ) % self.num_buckets
         bits = self.hyperplanes_ @ scaled > 0.0  # (num_hash_fns, num_bits)
-        record_buckets = (bits @ self._bit_values) % self.num_buckets
+        record_buckets: NDArray[np.int64] = (bits @ self._bit_values) % self.num_buckets
         return feature_buckets, record_buckets
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> MStream:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> MStream:
         """Updates the bucket counts with the next record.
 
         Args:
@@ -123,7 +126,7 @@ class MStream(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next record by the counts it would have after the model fits it. This method does not change the model.
 
         Args:

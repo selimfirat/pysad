@@ -230,12 +230,7 @@ class MiLOF(IncrementalLOF):
         weights: NDArray[np.float64],
         k_dists: NDArray[np.float64],
         reach_dists: NDArray[np.float64],
-    ) -> tuple[
-        NDArray[np.float64],
-        NDArray[np.float64],
-        NDArray[np.float64],
-        NDArray[np.float64],
-    ]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         # Merges the current and previous summaries with weighted c-means, minimizing the weighted
         # squared distance to the merged centers. The weight of a center is the number of raw points
         # it represents (Equation 10 and 11 of the paper). A merged center's lrd is the weighted

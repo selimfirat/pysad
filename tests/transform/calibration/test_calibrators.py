@@ -5,6 +5,7 @@ def test_calibrators():
         AnomalyLikelihoodProbabilityCalibrator,
         ConformalProbabilityCalibrator,
         GaussianTailProbabilityCalibrator,
+        GroupConditionalConformalCalibrator,
         SPOTProbabilityCalibrator,
     )
     from pysad.utils import fix_seed
@@ -21,6 +22,7 @@ def test_calibrators():
         },
         GaussianTailProbabilityCalibrator: {},
         ConformalProbabilityCalibrator: {},
+        GroupConditionalConformalCalibrator: {"window_size": 30, "max_regimes": 4},
         SPOTProbabilityCalibrator: {"num_init": 40, "level": 0.9, "depth": 5},
     }
 

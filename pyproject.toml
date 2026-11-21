@@ -249,6 +249,8 @@ module = [
     "pysad.statistics.quantiles",
     "pysad.statistics.relative_error_quantile_meter",
     "pysad.statistics.running_statistic",
+    "pysad.transform",
+    "pysad.transform.*",
     "pysad.utils.window",
 ]
 disallow_any_generics = true

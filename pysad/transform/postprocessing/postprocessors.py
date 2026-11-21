@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.core.base_statistic import BaseStatistic
@@ -52,7 +53,7 @@ class _MeterPostprocessor(BasePostprocessor):
             return 0.0
         return self.meter.get()
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a batch of scores using the current frozen meter statistic."""
         n = len(scores)
         if n == 0:
@@ -77,7 +78,7 @@ class AveragePostprocessor(_MeterPostprocessor):
         )
         super().__init__(meter)
 
-    def fit(self, scores: np.ndarray) -> AveragePostprocessor:
+    def fit(self, scores: NDArray[Any]) -> AveragePostprocessor:
         if (
             self.window_size is None
             and isinstance(scores, np.ndarray)
@@ -92,7 +93,7 @@ class AveragePostprocessor(_MeterPostprocessor):
             return self
         return cast(AveragePostprocessor, super().fit(scores))
 
-    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+    def fit_transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         if (
             self.window_size is None
             and isinstance(scores, np.ndarray)
@@ -130,7 +131,7 @@ class MaxPostprocessor(_MeterPostprocessor):
         )
         super().__init__(meter)
 
-    def fit(self, scores: np.ndarray) -> MaxPostprocessor:
+    def fit(self, scores: NDArray[Any]) -> MaxPostprocessor:
         if (
             self.window_size is None
             and isinstance(scores, np.ndarray)
@@ -146,7 +147,7 @@ class MaxPostprocessor(_MeterPostprocessor):
             return self
         return cast(MaxPostprocessor, super().fit(scores))
 
-    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+    def fit_transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         if (
             self.window_size is None
             and isinstance(scores, np.ndarray)
@@ -160,7 +161,7 @@ class MaxPostprocessor(_MeterPostprocessor):
             acc = np.maximum(meter.max, np.maximum.accumulate(arr))
             meter.max = float(acc[-1])
             self.num_seen_ += len(arr)
-            res: np.ndarray = acc
+            res: NDArray[Any] = acc
             return res
         return super().fit_transform(scores)
 
@@ -234,7 +235,7 @@ class ZScorePostprocessor(BasePostprocessor):
 
         return float((score - self._variance_meter.mean) / np.sqrt(variance))
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Normalizes a batch of scores using the current frozen mean and variance."""
         if isinstance(scores, np.ndarray) and scores.ndim == 1:
             n = len(scores)
@@ -367,7 +368,7 @@ class NonparametricDynamicThresholdPostprocessor(BasePostprocessor):
 
         return float((sequence_max[-1] - thresholds[best]) / (mean + std))
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a batch using the frozen window's last-score anomaly value."""
         n = len(scores)
         if n == 0:
@@ -431,7 +432,7 @@ class QuantileFilter(BasePostprocessor):
         self.fit_partial(score)
         return label
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Labels a batch of scores against the current frozen quantile."""
         arr = np.asarray(scores)
         if arr.ndim == 1:
@@ -476,17 +477,17 @@ class ThresholdFilter(BasePostprocessor):
         """
         return float(score >= self.threshold)
 
-    def fit(self, scores: np.ndarray) -> ThresholdFilter:
+    def fit(self, scores: NDArray[Any]) -> ThresholdFilter:
         """Does nothing, because the threshold is fixed."""
         return self
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Labels all scores in a 1-D batch at once."""
         arr = np.asarray(scores)
         if arr.ndim == 1:
             return (arr >= self.threshold).astype(np.float64)
         return super().transform(scores)
 
-    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+    def fit_transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Labels all scores in a 1-D batch at once."""
         return self.transform(scores)

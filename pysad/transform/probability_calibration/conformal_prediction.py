@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import math
 from bisect import bisect_left, insort
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.utils.window import Window
@@ -65,7 +66,7 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             return 0.0
         return bisect_left(self._sorted, float(score)) / n
 
-    def fit(self, scores: np.ndarray) -> ConformalProbabilityCalibrator:
+    def fit(self, scores: NDArray[Any]) -> ConformalProbabilityCalibrator:
         """Fits all scores in stream order, keeping the last ``window_size`` scores."""
         if isinstance(scores, np.ndarray) and scores.ndim == 1:
             if len(scores) == 0:
@@ -85,7 +86,7 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         super().fit(scores)
         return self
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a batch of scores against the frozen calibration window."""
         arr = np.asarray(scores, dtype=np.float64)
         if arr.ndim != 1:
@@ -102,7 +103,7 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             return out
         return np.searchsorted(sorted_arr, arr, side="left") / n
 
-    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+    def fit_transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Fits and calibrates a 1-D score batch in ``O(N log W)`` time."""
         if isinstance(scores, np.ndarray) and scores.ndim == 1 and not np.isnan(scores).any():
             m = len(scores)

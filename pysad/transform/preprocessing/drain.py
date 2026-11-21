@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import numbers
 from collections.abc import Iterator
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_transformer import BaseTransformer
 
@@ -121,7 +123,7 @@ class DrainLogParser(BaseTransformer):
         self.root_node = _Node(0)
         self._next_id = 1
 
-    def _line(self, X: np.ndarray | str) -> str:
+    def _line(self, X: NDArray[Any] | str) -> str:
         """Returns the single log line held by ``X``.
 
         Args:
@@ -242,7 +244,7 @@ class DrainLogParser(BaseTransformer):
             cluster.template = _merge(cluster.template, tokens)
         return cluster
 
-    def fit_partial(self, X: np.ndarray | str) -> DrainLogParser:
+    def fit_partial(self, X: NDArray[Any] | str) -> DrainLogParser:
         """Parses the next log line and remembers its template.
 
         Args:
@@ -255,7 +257,7 @@ class DrainLogParser(BaseTransformer):
         self._find_or_create(self._line(X).split())
         return self
 
-    def transform_partial(self, X: np.ndarray | str) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any] | str) -> NDArray[Any]:
         """Returns the event ID of the next log line without changing the parser.
 
         Args:
@@ -271,7 +273,7 @@ class DrainLogParser(BaseTransformer):
             return np.array([-1.0], dtype=np.float64)
         return np.array([float(cluster.event_id)], dtype=np.float64)
 
-    def fit_transform_partial(self, X: np.ndarray | str) -> np.ndarray:
+    def fit_transform_partial(self, X: NDArray[Any] | str) -> NDArray[Any]:
         """Parses the next log line, remembers its template, and returns its event ID.
 
         Args:
@@ -284,7 +286,7 @@ class DrainLogParser(BaseTransformer):
         cluster = self._find_or_create(self._line(X).split())
         return np.array([float(cluster.event_id)], dtype=np.float64)
 
-    def _lines(self, X: np.ndarray | str) -> Iterator[str]:
+    def _lines(self, X: NDArray[Any] | str) -> Iterator[str]:
         """Yields each log line held by ``X`` as a string.
 
         Args:
@@ -304,7 +306,7 @@ class DrainLogParser(BaseTransformer):
         for element in np.asarray(X, dtype=object).ravel():
             yield self._line(element)
 
-    def fit(self, X: np.ndarray | str) -> DrainLogParser:
+    def fit(self, X: NDArray[Any] | str) -> DrainLogParser:
         """Parses every log line of ``X`` in order and remembers its templates.
 
         Args:
@@ -318,7 +320,7 @@ class DrainLogParser(BaseTransformer):
             self.fit_partial(np.array(line, dtype=object))
         return self
 
-    def transform(self, X: np.ndarray | str) -> np.ndarray:
+    def transform(self, X: NDArray[Any] | str) -> NDArray[Any]:
         """Returns the event ID of every log line of ``X`` without changing the parser.
 
         Args:
@@ -334,7 +336,7 @@ class DrainLogParser(BaseTransformer):
             return np.empty((0, 1), dtype=np.float64)
         return np.array(values, dtype=np.float64)
 
-    def fit_transform(self, X: np.ndarray | str) -> np.ndarray:
+    def fit_transform(self, X: NDArray[Any] | str) -> NDArray[Any]:
         """Parses every log line of ``X`` in order and returns its event IDs.
 
         Args:

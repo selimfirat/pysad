@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import math
 from bisect import bisect_left, insort
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.utils.window import Window
@@ -198,7 +200,7 @@ class ConformalTSFMCalibrator(BasePostprocessor):
         self.fit_partial(score)
         return calibrated
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a batch of scores against the frozen calibration window and alpha_t."""
         arr = np.asarray(scores, dtype=np.float64)
         if arr.ndim != 1:
@@ -215,7 +217,7 @@ class ConformalTSFMCalibrator(BasePostprocessor):
             return out
         return np.searchsorted(sorted_arr, arr, side="left") / n
 
-    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+    def fit_transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Fits and calibrates a 1-D score batch in ``O(N log W)`` time."""
         if isinstance(scores, np.ndarray) and scores.ndim == 1 and not np.isnan(scores).any():
             m = len(scores)

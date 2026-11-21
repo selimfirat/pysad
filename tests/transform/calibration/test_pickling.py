@@ -20,6 +20,7 @@ CALIBRATOR_PARAMS = {
     "ConformalProbabilityCalibrator": {"window_size": 20},
     "ConformalTSFMCalibrator": {"alpha": 0.1, "gamma": 0.005, "window_size": 20},
     "GaussianTailProbabilityCalibrator": {"window_size": 20, "short_window_size": 5},
+    "GroupConditionalConformalCalibrator": {"window_size": 20, "max_regimes": 4},
     "SPOTProbabilityCalibrator": {"num_init": 30, "level": 0.8, "q": 1e-3, "depth": 5},
 }
 

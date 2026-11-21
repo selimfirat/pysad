@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_transformer import BaseTransformer
 from pysad.statistics import MaxMeter, MinMeter
@@ -40,7 +43,7 @@ class MinMaxScaler(BaseTransformer):
         self.minimums_: list[MinMeter] | None = None
         self.maximums_: list[MaxMeter] | None = None
 
-    def fit_partial(self, X: np.ndarray) -> MinMaxScaler:
+    def fit_partial(self, X: NDArray[Any]) -> MinMaxScaler:
         """Update the running minimum and maximum of each feature with X.
 
         Args:
@@ -63,7 +66,7 @@ class MinMaxScaler(BaseTransformer):
 
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scale X with the running minimum and maximum of each feature.
 
         The result lies in [0, 1] only for values between the running minimum and maximum,

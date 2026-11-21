@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections import deque
+from typing import Any
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 from pysad.core.base_transformer import BaseTransformer
 
@@ -36,21 +37,21 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
         self.season_length = season_length
         self.trend_window = trend_window
-        self.window: deque[np.ndarray] = deque()
-        self._window_sum: np.ndarray | None = None
-        self.seasonal_sums: np.ndarray | None = None
-        self.seasonal_counts: np.ndarray | None = None
+        self.window: deque[NDArray[Any]] = deque()
+        self._window_sum: NDArray[Any] | None = None
+        self.seasonal_sums: NDArray[Any] | None = None
+        self.seasonal_counts: NDArray[Any] | None = None
         self.num_seen = 0
 
-    def _as_array(self, X: ArrayLike) -> np.ndarray:
+    def _as_array(self, X: ArrayLike) -> NDArray[Any]:
         return np.asarray(X, dtype=np.float64)
 
-    def _init_seasonal_state(self, X: np.ndarray) -> None:
+    def _init_seasonal_state(self, X: NDArray[Any]) -> None:
         self.seasonal_sums = np.zeros((self.season_length, X.shape[0]), dtype=np.float64)
         self.seasonal_counts = np.zeros(self.season_length, dtype=np.float64)
         self._window_sum = np.zeros(X.shape[0], dtype=np.float64)
 
-    def _push_window(self, X: np.ndarray) -> np.ndarray:
+    def _push_window(self, X: NDArray[Any]) -> NDArray[Any]:
         assert self._window_sum is not None
         if len(self.window) == self.trend_window:
             evicted = self.window.popleft()
@@ -64,13 +65,13 @@ class SeasonalTrendDecomposer(BaseTransformer):
             self._window_sum = self._window_sum + X
         return self._window_sum / len(self.window)
 
-    def _trend(self) -> float | np.ndarray:
+    def _trend(self) -> float | NDArray[Any]:
         if not self.window or self._window_sum is None:
             return 0.0
 
         return self._window_sum / len(self.window)
 
-    def _seasonal(self, phase: int) -> float | np.ndarray:
+    def _seasonal(self, phase: int) -> float | NDArray[Any]:
         if (
             self.seasonal_counts is None
             or self.seasonal_sums is None
@@ -78,10 +79,10 @@ class SeasonalTrendDecomposer(BaseTransformer):
         ):
             return 0.0
 
-        seasonal: float | np.ndarray = self.seasonal_sums[phase] / self.seasonal_counts[phase]
+        seasonal: float | NDArray[Any] = self.seasonal_sums[phase] / self.seasonal_counts[phase]
         return seasonal
 
-    def fit_partial(self, X: np.ndarray) -> SeasonalTrendDecomposer:
+    def fit_partial(self, X: NDArray[Any]) -> SeasonalTrendDecomposer:
         """Fits the next timestep's values to train the decomposer.
 
         Args:
@@ -108,7 +109,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Transforms the next timestep by removing trend and seasonality.
 
         Args:
@@ -125,7 +126,7 @@ class SeasonalTrendDecomposer(BaseTransformer):
         phase = self.num_seen % self.season_length
         return X - self._trend() - self._seasonal(phase)
 
-    def fit_transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Fits and transforms the next timestep.
 
         Args:
@@ -151,10 +152,10 @@ class SeasonalTrendDecomposer(BaseTransformer):
         seasonal = self._seasonal(phase)
         self.num_seen += 1
 
-        residual: np.ndarray = X - trend - seasonal
+        residual: NDArray[Any] = X - trend - seasonal
         return residual
 
-    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Fits and transforms all instances in order."""
         if self.num_seen > 0 or not isinstance(X, np.ndarray) or X.ndim != 2 or len(X) == 0:
             return super().fit_transform(X)

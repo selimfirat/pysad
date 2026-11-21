@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_transformer import BaseTransformer
 
@@ -17,7 +20,7 @@ class InstanceStandardScaler(BaseTransformer):
     def __init__(self) -> None:
         super().__init__(-1)
 
-    def fit_partial(self, X: np.ndarray) -> InstanceStandardScaler:
+    def fit_partial(self, X: NDArray[Any]) -> InstanceStandardScaler:
         """Return the scaler without learning from the input.
 
         Args:
@@ -28,7 +31,7 @@ class InstanceStandardScaler(BaseTransformer):
         """
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scale one feature vector across its features.
 
         Args:
@@ -43,14 +46,14 @@ class InstanceStandardScaler(BaseTransformer):
         X_mean = X.mean()
         X_std = X.std()
 
-        scaled: np.ndarray = (X - X_mean) / X_std
+        scaled: NDArray[Any] = (X - X_mean) / X_std
         return scaled
 
-    def fit(self, X: np.ndarray) -> InstanceStandardScaler:
+    def fit(self, X: NDArray[Any]) -> InstanceStandardScaler:
         """Return the scaler without learning from the input."""
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scale each row of a 2-D feature batch to zero mean and unit standard deviation."""
         if isinstance(X, np.ndarray) and X.ndim == 2:
             if X.shape[0] == 0 or X.shape[1] == 0:
@@ -70,6 +73,6 @@ class InstanceStandardScaler(BaseTransformer):
             return out
         return super().transform(X)
 
-    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scale each row of a 2-D feature batch to zero mean and unit standard deviation."""
         return self.transform(X)

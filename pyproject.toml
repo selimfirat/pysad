@@ -250,6 +250,11 @@ module = [
     "pysad.utils.window",
     "pysad.integrations",
     "pysad.integrations.*",
+    "pysad.models.adems",
+    "pysad.models.anyout",
+    "pysad.models.approx_storm",
+    "pysad.models.cpod",
+    "pysad.models.d3",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true

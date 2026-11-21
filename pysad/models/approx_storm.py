@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -61,7 +62,7 @@ class ApproxStorm(BaseModel):
         self.count_after_ = np.zeros(window_size, dtype=np.int64)
         self._next = 0  # the slot of the next instance, which holds the oldest one in a full window
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> ApproxStorm:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> ApproxStorm:
         """Updates the model with the next instance. The oldest instance of a full window expires.
 
         Args:
@@ -96,13 +97,13 @@ class ApproxStorm(BaseModel):
 
         return self
 
-    def _neighbors(self, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _neighbors(self, X: NDArray[np.float64]) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Returns the kept slots, except the slot of the next instance, and which of them are neighbors of X."""
         kept = np.flatnonzero(self.kept_)
         kept = kept[kept != self._next]
         return kept, np.linalg.norm(self.points_[kept] - X, axis=1) <= self.radius_
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance as if it arrived, without updating the model.
 
         When the instance arrives, the oldest instance of a full window expires, so the instance is scored without it. This gives the same score as `fit_score_partial`.

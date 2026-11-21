@@ -343,6 +343,7 @@ These starting points come from the design of each method. They are not benchmar
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 | `OeSNNUAD` | Online evolving spiking neural network for unsupervised anomaly detection (Maciąg et al., *Neural Networks* 2021) |
 | `PEWMA` | Probabilistic exponentially weighted moving average (Carter & Streilein, SSP 2012) |
+| `LocalPolynomialDetector` | Local polynomial fitting outlier and change detector (Li et al., 2007) |
 <!-- END:AUTOGEN_DETECTORS -->
 
 `ReferenceWindowModel` and `OneFitModel` run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. The [detector catalog](https://pysad.readthedocs.io/en/stable/detectors.html) lists the input, setup and memory of each detector, and the [API reference](https://pysad.readthedocs.io/en/stable/api.html) lists every parameter.

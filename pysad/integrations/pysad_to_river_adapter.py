@@ -10,7 +10,7 @@ from river import base
 from pysad.core.base_model import BaseModel
 
 
-class PySADToRiverAdapter(base.AnomalyDetector):
+class PySADToRiverAdapter(base.AnomalyDetector):  # type: ignore[misc]
     """Exposes a PySAD detector through River's anomaly detector interface.
 
     Requires River 0.26.1 or newer.

@@ -7,6 +7,7 @@ without it. The helpers draw a figure that a caller can show or save.
 from typing import Any, Protocol
 
 import numpy as np
+from numpy.typing import NDArray
 
 _FEATURE_COLORS = ("#00757a", "#2a9d9f", "#5c6bc0", "#64748b", "#c26d1f", "#00565a")
 _SCORE_COLOR = "#00757a"
@@ -26,14 +27,14 @@ class _HasThreshold(Protocol):
 
 
 def plot_stream(
-    X: np.ndarray,
-    scores: np.ndarray,
+    X: NDArray[np.float64],
+    scores: NDArray[np.float64],
     *,
     threshold: float | None = None,
-    lower: np.ndarray | None = None,
-    upper: np.ndarray | None = None,
-    alerts: np.ndarray | None = None,
-    labels: np.ndarray | None = None,
+    lower: NDArray[np.float64] | None = None,
+    upper: NDArray[np.float64] | None = None,
+    alerts: NDArray[np.bool_] | None = None,
+    labels: NDArray[np.int64] | None = None,
     figsize: tuple[float, float] = (10.0, 7.0),
 ) -> tuple[Any, tuple[Any, ...]]:
     """Plots the stream features, the scores with a confidence band, and the alerts.
@@ -43,16 +44,16 @@ def plot_stream(
     the alert spikes next to the true anomaly labels.
 
     Args:
-        X (np.ndarray): The features of the stream, shape (num_instances, num_features).
-        scores (np.ndarray): The anomaly scores, shape (num_instances,).
+        X (NDArray[np.float64]): The features of the stream, shape (num_instances, num_features).
+        scores (NDArray[np.float64]): The anomaly scores, shape (num_instances,).
         threshold (float | None): The alert threshold. The helper draws it as a
             horizontal line (Default=None).
-        lower (np.ndarray | None): The lower bound of the confidence band,
+        lower (NDArray[np.float64] | None): The lower bound of the confidence band,
             shape (num_instances,) (Default=None).
-        upper (np.ndarray | None): The upper bound of the confidence band,
+        upper (NDArray[np.float64] | None): The upper bound of the confidence band,
             shape (num_instances,) (Default=None).
-        alerts (np.ndarray | None): The stream positions that raised an alert (Default=None).
-        labels (np.ndarray | None): The true anomaly labels, shape (num_instances,)
+        alerts (NDArray[np.bool_] | None): The stream positions that raised an alert (Default=None).
+        labels (NDArray[np.int64] | None): The true anomaly labels, shape (num_instances,)
             (Default=None).
         figsize (tuple[float, float]): The size of the figure (Default=(10.0, 7.0)).
 
@@ -88,7 +89,7 @@ def plot_stream(
     scores_ax.yaxis.grid(True, color=_GRID_COLOR, linewidth=0.6, alpha=0.8)
     scores_ax.legend()
 
-    positions: list[np.ndarray] = []
+    positions: list[NDArray[np.int64]] = []
     offsets: list[int] = []
     names: list[str] = []
     colors: list[str] = []
@@ -124,13 +125,13 @@ def plot_stream(
 
 
 def plot_streaming_ribbon(
-    X: np.ndarray,
-    scores: np.ndarray,
+    X: NDArray[np.float64],
+    scores: NDArray[np.float64],
     calibrator: _HasThreshold,
     *,
-    labels: np.ndarray | None = None,
+    labels: NDArray[np.int64] | None = None,
     figsize: tuple[float, float] = (10.0, 7.0),
-    ribbon_lower: float | np.ndarray | None = 0.0,
+    ribbon_lower: float | NDArray[np.float64] | None = 0.0,
 ) -> tuple[Any, tuple[Any, ...]]:
     """Plots the stream features, the raw scores with a conformal ribbon, and the alerts.
 
@@ -147,14 +148,14 @@ def plot_streaming_ribbon(
     the threshold at each step. The original calibrator is not modified.
 
     Args:
-        X (np.ndarray): The features of the stream, shape (num_instances, num_features).
-        scores (np.ndarray): The raw anomaly scores, shape (num_instances,).
+        X (NDArray[np.float64]): The features of the stream, shape (num_instances, num_features).
+        scores (NDArray[np.float64]): The raw anomaly scores, shape (num_instances,).
         calibrator: A conformal calibrator instance with a ``threshold_`` property
             and a ``fit_partial`` method (e.g. ``ConformalTSFMCalibrator``).
-        labels (np.ndarray | None): The true anomaly labels, shape (num_instances,)
+        labels (NDArray[np.int64] | None): The true anomaly labels, shape (num_instances,)
             (Default=None).
         figsize (tuple[float, float]): The size of the figure (Default=(10.0, 7.0)).
-        ribbon_lower (float | np.ndarray | None): The lower bound of the ribbon.
+        ribbon_lower (float | NDArray[np.float64] | None): The lower bound of the ribbon.
             Can be a scalar (applied to all steps) or an array of shape
             (num_instances,). Use ``None`` to omit the lower bound and draw only
             the upper threshold line (Default=0.0).
@@ -180,7 +181,7 @@ def plot_streaming_ribbon(
     alerts = np.where(scores > thresholds)[0]
 
     # Prepare lower bound for the ribbon.
-    lower: np.ndarray | None
+    lower: NDArray[np.float64] | None
     if ribbon_lower is None:
         lower = None
     elif isinstance(ribbon_lower, (int, float, np.number)):
@@ -212,7 +213,7 @@ def plot_streaming_ribbon(
     scores_ax.yaxis.grid(True, color=_GRID_COLOR, linewidth=0.6, alpha=0.8)
     scores_ax.legend()
 
-    positions: list[np.ndarray] = []
+    positions: list[NDArray[np.int64]] = []
     offsets: list[int] = []
     names: list[str] = []
     colors: list[str] = []

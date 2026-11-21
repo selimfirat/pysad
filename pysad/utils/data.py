@@ -14,6 +14,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.utils._datasets import (
@@ -223,7 +224,7 @@ class Data:
                     pass
             raise
 
-    def _load_via_txt(self, path: str) -> np.ndarray:
+    def _load_via_txt(self, path: str) -> NDArray[np.float64]:
         """Loads the data file from .txt file.
 
         Args:
@@ -238,7 +239,7 @@ class Data:
 
     def get_data(
         self, data_file: str, download: bool = True, timestamps: bool = False
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads the data given the filename or path, downloading it if not present.
 
         Args:
@@ -247,7 +248,7 @@ class Data:
             timestamps (bool): Whether to give each point of a NAB series as ``[timestamp, value]``, with the timestamp in seconds since the Unix epoch, as :class:`~pysad.models.HTM` takes it. NAB gives local times without a time zone, and the timestamps read them as UTC (Default=False).
 
         Returns:
-            tuple[np.ndarray, np.ndarray]: The feature vectors of shape (num_instances, num_features) and the labels of shape (num_instances,).
+            tuple[NDArray[np.float64], NDArray[np.int64]]: The feature vectors of shape (num_instances, num_features) and the labels of shape (num_instances,).
 
         Raises:
             ValueError: If ``timestamps`` is True and ``data_file`` is not a NAB series.
@@ -319,7 +320,7 @@ class Data:
 
         return X, y
 
-    def _load_creditcard(self, data_path: str) -> tuple[np.ndarray, np.ndarray]:
+    def _load_creditcard(self, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads the numeric credit-card ARFF file and separates features from ``Class``."""
         cache_path = f"{data_path}.npz"
         if os.path.exists(cache_path) and os.path.getmtime(cache_path) >= os.path.getmtime(
@@ -377,7 +378,7 @@ class Data:
 
     def _load_nab(
         self, name: str, data_path: str, download: bool, timestamps: bool
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads a NAB series, with the timestamps if `timestamps` is True, and labels the points in its anomaly windows with 1."""
         windows_path = os.path.join(self.data_base_path, "nab", "combined_windows.json")
         if not os.path.exists(windows_path):
@@ -412,7 +413,7 @@ class Data:
         with open(data_path, "wb") as f:
             f.write(content)
 
-    def _load_ucr(self, name: str, data_path: str) -> tuple[np.ndarray, np.ndarray]:
+    def _load_ucr(self, name: str, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads a UCR series and labels the points of its anomaly with 1."""
         with open(data_path) as f:
             X = np.array(f.read().split(), dtype=np.float64).reshape(
@@ -439,7 +440,9 @@ class Data:
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
         np.savetxt(data_path, np.column_stack([X, y]), delimiter=",", fmt="%.17g")
 
-    def _load_smd(self, name: str, data_path: str, download: bool) -> tuple[np.ndarray, np.ndarray]:
+    def _load_smd(
+        self, name: str, data_path: str, download: bool
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads the test half of an SMD machine and its labels."""
         labels_name = "smd/labels/" + name[len("smd/") :]
         labels_path = os.path.join(self.data_base_path, labels_name)
@@ -454,7 +457,7 @@ class Data:
 
     def _load_nasa(
         self, name: str, data_path: str, download: bool
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads the test half of a SMAP or MSL channel and labels the points of its anomaly ranges with 1."""
         labels_path = os.path.join(self.data_base_path, _NASA_LABELS)
         if not os.path.exists(labels_path):
@@ -481,7 +484,7 @@ class Data:
         shuffle: bool = True,
         random_state: int | np.random.RandomState | None = None,
         download: bool = True,
-    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
+    ) -> Iterator[tuple[NDArray[np.float64], Any]]:
         """Returns an iterator over the instances and labels of a dataset, in shuffled order by default.
 
         Args:
@@ -491,7 +494,7 @@ class Data:
             download (bool): Whether to download the dataset if not present locally (Default=True).
 
         Returns:
-            Iterator[tuple[np.ndarray, Any]]: Iterator over ``(X, y)`` pairs, where ``X`` is the feature vector of shape (num_features,) and ``y`` is its label.
+            Iterator[tuple[NDArray[np.float64], Any]]: Iterator over ``(X, y)`` pairs, where ``X`` is the feature vector of shape (num_features,) and ``y`` is its label.
         """
         X, y = self.get_data(data_file, download=download)
 
@@ -518,7 +521,7 @@ class Data:
         max_points: int | None = None,
         scale: bool = False,
         download: bool = True,
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Returns a shuffled dataset as arrays, in the order of :meth:`get_iterator`.
 
         With ``random_state=seed``, ``max_points=5000`` and ``scale=True``, this is the stream of the PySAD benchmark for that seed.
@@ -531,7 +534,7 @@ class Data:
             download (bool): Whether to download the dataset if not present locally (Default=True).
 
         Returns:
-            tuple[np.ndarray, np.ndarray]: The feature vectors of shape (num_points, num_features) and the labels of shape (num_points,), in stream order.
+            tuple[NDArray[np.float64], NDArray[np.int64]]: The feature vectors of shape (num_points, num_features) and the labels of shape (num_points,), in stream order.
         """
         X, y = self.get_data(data_file, download=download)
         indices = list(range(len(X)))

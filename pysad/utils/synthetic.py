@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 
@@ -12,7 +13,7 @@ def generate_stream(
     drift_length: int = 100,
     magnitude: float = 5.0,
     random_state: int | np.random.RandomState | None = None,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
     """Generates a labeled synthetic stream with point, burst and drift anomalies.
 
     Normal instances are independent draws from the standard normal distribution. An anomaly adds an offset to its instance along a random unit direction. The stream has three types of anomalies:
@@ -35,7 +36,7 @@ def generate_stream(
         random_state (int, np.random.RandomState or None): Seed or random number generator for the stream. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
 
     Returns:
-        tuple[np.ndarray, np.ndarray]: The instances, a np.float64 array of shape (num_instances, num_features), and the labels, an int array of shape (num_instances,) with 1 for an anomaly and 0 for a normal instance.
+        tuple[NDArray[np.float64], NDArray[np.int64]]: The instances, a np.float64 array of shape (num_instances, num_features), and the labels, an int array of shape (num_instances,) with 1 for an anomaly and 0 for a normal instance.
 
     Raises:
         ValueError: If the anomalies do not fit into the stream after its first tenth.
@@ -58,9 +59,9 @@ def generate_stream(
         y[s : s + length] = 1
         return slice(s, s + length)
 
-    def direction() -> np.ndarray:
+    def direction() -> NDArray[np.float64]:
         d = rng.standard_normal(num_features)
-        unit: np.ndarray = d / np.linalg.norm(d)
+        unit: NDArray[np.float64] = d / np.linalg.norm(d)
         return unit
 
     # Place the longest anomalies first, so that the short ones fill the gaps.

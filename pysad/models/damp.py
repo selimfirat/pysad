@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.models.matrix_profile import _nearest_distance
@@ -49,7 +50,7 @@ class DAMP(BaseModel):
         self.num_values_ = 0
         self.best_so_far_ = 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> DAMP:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> DAMP:
         """Updates the best-so-far discord score with the score of `X`, and appends `X` to the history.
 
         Args:
@@ -66,7 +67,7 @@ class DAMP(BaseModel):
         self._learn(value, self._backward_processing(value))
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the subsequence of the last ``window_length - 1`` fitted values followed by `X`. This method does not change the model.
 
         Args:
@@ -80,7 +81,7 @@ class DAMP(BaseModel):
         """
         return self._backward_processing(check_univariate(X, "DAMP"))
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores `X` and then fits it, with one backward search.
 
         Args:

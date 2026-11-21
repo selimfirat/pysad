@@ -142,13 +142,15 @@ def test_score_during_initial_sample_is_mean_squared_kernel():
 
 
 def test_defaults_follow_the_paper():
-    """The paper uses D = 2000 features and gamma = 1 / (2 sigma^2)."""
+    """The paper uses D = 2000 features and gamma = 1 / (2 sigma^2).
+    The default initial_size is 500 for better robustness on sparse anomaly streams.
+    """
     model = Inqmad(input_shape=3)
 
     assert model.weights.shape == (3, 2000)
     assert model.gamma == 0.5
     assert (model.initial_size, model.alpha, model.beta, model.learning_rate) == (
-        256,
+        500,
         0.01,
         0.1,
         1e-3,

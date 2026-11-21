@@ -7,7 +7,7 @@ from sklearn.utils.validation import check_array
 from pysad.core.base_model import BaseModel
 
 
-class SklearnAnomalyDetector(OutlierMixin, BaseEstimator):
+class PySADToScikitLearnAdapter(OutlierMixin, BaseEstimator):
     """Expose a fitted PySAD model through the scikit-learn outlier interface.
 
     Fit the PySAD model before wrapping it. This adapter keeps the same model.
@@ -30,7 +30,7 @@ class SklearnAnomalyDetector(OutlierMixin, BaseEstimator):
         self.model = model
         self.threshold = threshold
 
-    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> SklearnAnomalyDetector:
+    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> PySADToScikitLearnAdapter:
         """Return this adapter without changing the fitted model.
 
         Args:
@@ -38,7 +38,7 @@ class SklearnAnomalyDetector(OutlierMixin, BaseEstimator):
             y (array-like or None): Ignored labels (Default=None).
 
         Returns:
-            SklearnAnomalyDetector: This adapter.
+            PySADToScikitLearnAdapter: This adapter.
         """
         return self
 

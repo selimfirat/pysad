@@ -83,7 +83,7 @@ The ``|`` operator builds a :class:`~pysad.models.StreamPipeline` with the detec
 Use a PySAD model in River
 --------------------------------
 
-:class:`~pysad.integrations.RiverAnomalyDetector` exposes a PySAD model through River's ``learn_one`` and ``score_one`` methods. It works as the final stage of a River pipeline:
+:class:`~pysad.integrations.PySADToRiverAdapter` exposes a PySAD model through River's ``learn_one`` and ``score_one`` methods. It works as the final stage of a River pipeline:
 
 .. code-block:: python
 
@@ -91,21 +91,21 @@ Use a PySAD model in River
 
    from river import preprocessing
 
-   from pysad.integrations import RiverAnomalyDetector
+   from pysad.integrations import PySADToRiverAdapter
    from pysad.models import LODA
 
-   pipeline = preprocessing.StandardScaler() | RiverAnomalyDetector(partial(LODA, random_state=0))
+   pipeline = preprocessing.StandardScaler() | PySADToRiverAdapter(partial(LODA, random_state=0))
 
    for x in streamer.iter(X):
        features = dict(enumerate(x))
        score = pipeline.score_one(features)
        pipeline.learn_one(features)
 
-Call ``score_one`` before ``learn_one``. The wrapper preserves PySAD’s score range and warm-up behavior. River controls learning in the other stages.
+Call ``score_one`` before ``learn_one``. The adapter preserves PySAD’s score range and warm-up behavior. River controls learning in the other stages.
 
 The first dictionary fixes feature order and mapping size. Later dictionaries can list the keys in any order, but missing or new keys raise ``ValueError``. Set the order explicitly with ``feature_names``, for example ``feature_names=("cpu", "latency")``.
 
-Pass a model class, such as ``RiverAnomalyDetector(LODA)``, or a zero-argument factory as above. Access the model as ``model_``. River’s ``clone()`` resets training and inferred feature names, retaining explicit names. ``clone(include_attributes=True)`` copies learned state and feature mapping, including in pipelines.
+Pass a model class, such as ``PySADToRiverAdapter(LODA)``, or a zero-argument factory as above. Access the model as ``model_``. River’s ``clone()`` resets training and inferred feature names, retaining explicit names. ``clone(include_attributes=True)`` copies learned state and feature mapping, including in pipelines.
 
 See ``examples/example_river_pipeline.py`` for a complete evaluation loop.
 

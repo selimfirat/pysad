@@ -56,7 +56,7 @@ def _discover_window_size_components() -> list[Any]:
         for name in getattr(mod, "__all__", ()):
             if name.startswith("_"):
                 continue
-            if name == "RiverAnomalyDetector" and (
+            if name == "PySADToRiverAdapter" and (
                 importlib.util.find_spec("river") is None
                 or not hasattr(importlib.import_module("river.base"), "AnomalyDetector")
             ):

@@ -7,6 +7,7 @@ from .anyout import AnyOut
 from .approx_storm import ApproxStorm
 from .baselines import NullModel, PerfectModel, RandomModel
 from .change_finder import ChangeFinder
+from .cost_sensitive_stream import CostSensitiveStreamModel
 from .cpod import CPOD
 from .d3 import D3
 from .damp import DAMP
@@ -14,6 +15,7 @@ from .dilof import DILOF
 from .drift_adaptive_detector import DriftAdaptiveDetector
 from .exact_storm import ExactStorm
 from .expose import EXPoSE
+from .feedback_hst import FeedbackHST
 from .fluxev import FluxEV
 from .frahst import FRAHST
 from .gng_a import GNGA
@@ -65,6 +67,7 @@ __all__ = [
     "AnyOut",
     "ApproxStorm",
     "ChangeFinder",
+    "CostSensitiveStreamModel",
     "CPOD",
     "D3",
     "DAMP",
@@ -72,6 +75,7 @@ __all__ = [
     "DriftAdaptiveDetector",
     "ExactStorm",
     "EXPoSE",
+    "FeedbackHST",
     "FluxEV",
     "FRAHST",
     "GNGA",

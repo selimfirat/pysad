@@ -24,7 +24,9 @@ import argparse
 import ast
 import csv
 import functools
+import hashlib
 import inspect
+import json
 import os
 import subprocess
 import sys
@@ -353,16 +355,34 @@ def warmup(n):
     return min(WARMUP_POINTS, n // 4)
 
 
+_WORKER_CACHE: dict[tuple, tuple[np.ndarray, np.ndarray]] | None = None
+
+
+def _init_worker():
+    """Enable per-process dataset caching inside benchmark worker processes."""
+    global _WORKER_CACHE
+    _WORKER_CACHE = {}
+
+
 def load(dataset, seed, points=None):
+    cache_key = ("load", dataset, None if dataset in DRIFT else seed, points)
+    if _WORKER_CACHE is not None and cache_key in _WORKER_CACHE:
+        cached_X, cached_y = _WORKER_CACHE[cache_key]
+        return cached_X.copy(), cached_y.copy()
     if dataset in DRIFT:
         X, y = Data().get_data(dataset)
         step = -(-len(X) // DRIFT_POINTS)  # the smallest step that keeps at most DRIFT_POINTS
         X, y = X[::step][:points], y[::step][:points]
         mins, maxes = X.min(axis=0), X.max(axis=0)
-        return (X - mins) / np.where(maxes > mins, maxes - mins, 1.0), y
-    return Data().get_stream(
-        f"{dataset}.mat", random_state=seed, max_points=points or MAX_POINTS, scale=True
-    )
+        result = ((X - mins) / np.where(maxes > mins, maxes - mins, 1.0), y)
+    else:
+        result = Data().get_stream(
+            f"{dataset}.mat", random_state=seed, max_points=points or MAX_POINTS, scale=True
+        )
+    if _WORKER_CACHE is not None:
+        _WORKER_CACHE[cache_key] = result
+        return result[0].copy(), result[1].copy()
+    return result
 
 
 def anomaly_fraction(dataset):
@@ -515,14 +535,22 @@ def score_stream(model: BaseModel, X: np.ndarray) -> tuple[np.ndarray, float]:
     return significant(scores), round(1000 * seconds / len(X), 3)
 
 
-def run_univariate(series, detector, points=None):
+def _load_univariate_raw(series, timestamps):
+    cache_key = ("univariate", series, timestamps)
+    if _WORKER_CACHE is not None and cache_key in _WORKER_CACHE:
+        cached_X, cached_y = _WORKER_CACHE[cache_key]
+        return cached_X.copy(), cached_y.copy()
     # The base branch's Data.get_data has no timestamps argument, so pass it only when needed.
-    X, y = (
-        Data().get_data(series, timestamps=True)
-        if detector in TIMESTAMPED
-        else Data().get_data(series)
-    )
-    X, y = X[:points], y[:points]
+    X, y = Data().get_data(series, timestamps=True) if timestamps else Data().get_data(series)
+    if _WORKER_CACHE is not None:
+        _WORKER_CACHE[cache_key] = (X, y)
+        return X.copy(), y.copy()
+    return X, y
+
+
+def run_univariate(series, detector, points=None, ci=False):
+    X, y = _load_univariate_raw(series, detector in TIMESTAMPED)
+    X, y = X[:points].copy(), y[:points]
     values = X[:, -1]  # the timestamps, if any, come first
     span = values.max() - values.min()
     X[:, -1] = (values - values.min()) / (span if span > 0 else 1.0)
@@ -535,15 +563,15 @@ def run_univariate(series, detector, points=None):
         model = DETECTORS[detector.removesuffix(SHINGLED)](X, 0)
     scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
-    if detector in NAB_UNIT_SCORES:
-        nab = (scores, y)
-    else:
-        with np.errstate(all="ignore"):
-            nab = (ConformalProbabilityCalibrator(window_size=len(X)).fit_transform(scores), y)
+    if not ci:
+        if detector in NAB_UNIT_SCORES:
+            nab = (scores, y)
+        else:
+            with np.errstate(all="ignore"):
+                nab = (ConformalProbabilityCalibrator(window_size=len(X)).fit_transform(scores), y)
     scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
     both = valid and 0 < y.sum() < len(y)  # AUROC and AUPR need both kinds of points
-    return {
-        "_nab": nab,
+    row = {
         "dataset": series,
         "detector": detector,
         "seed": 0,
@@ -551,6 +579,9 @@ def run_univariate(series, detector, points=None):
         "aupr": round(average_precision_score(y, scores), 4) if both else np.nan,
         "ms_per_point": ms_per_point,
     }
+    if not ci:
+        row["_nab"] = nab
+    return row
 
 
 def run_ucr(series, detector):
@@ -579,24 +610,27 @@ def run_ucr(series, detector):
 
 
 def run(job):
+    dataset, detector, seed, points, *rest = job
+    ci = bool(rest[0]) if rest else False
     # One thread for BLAS and OpenMP in each worker, so that the workers do not compete for the cores
     # and the times per point stay comparable. The scores do not change.
     with threadpool_limits(1):
-        return _run(*job)
+        return _run(dataset, detector, seed, points, ci=ci)
 
 
-def _run(dataset, detector, seed, points):
+def _run(dataset, detector, seed, points, ci=False):
     if dataset.startswith("ucr/"):
         return run_ucr(dataset, detector)
     if dataset.startswith("nab/"):
-        return run_univariate(dataset, detector, points)
+        return run_univariate(dataset, detector, points, ci=ci)
     X, y = load(dataset, seed, points)
     fix_seed(seed)
     model = DETECTORS[detector](X, seed)
     scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     row = {"dataset": dataset, "detector": detector, "seed": seed}
-    for name, calibrator in CALIBRATORS.items() if dataset not in DRIFT else []:
+    calibrators = [] if (ci or dataset in DRIFT) else CALIBRATORS.items()
+    for name, calibrator in calibrators:
         with np.errstate(all="ignore"):
             calibrated = calibrator().fit_transform(scores)
         row.update(alerts(name, calibrated[warmup(len(X)) :], y[warmup(len(X)) :], valid))
@@ -943,7 +977,7 @@ def _parse_detector_tables(source):
             and len(node.targets) == 1
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id in _DETECTOR_TABLES
-            and isinstance(node.value, (ast.Dict, ast.List))
+            and isinstance(node.value, ast.Dict | ast.List)
         ):
             name = node.targets[0].id
             if isinstance(node.value, ast.Dict):
@@ -980,13 +1014,14 @@ def _runtime_toml(source):
     return source.split("\ntest = [", 1)[0]
 
 
-def changed_detectors(base, path=None):
+def changed_detectors(base, path=None, ci=False):
     """The detectors whose results a change since ``base`` can move.
 
     With ``path``, also the detectors whose committed results in ``path`` changed since ``base``.
     """
     files = git("diff", "--name-only", base).split()
-    common = pysad_files([Data, fix_seed, ShingleTransformer, *CALIBRATORS.values()])
+    shared = [Data, fix_seed] if ci else [Data, fix_seed, ShingleTransformer, *CALIBRATORS.values()]
+    common = pysad_files(shared)
     if common & set(files):
         return [*DETECTORS, *UNIVARIATE]
     if "pyproject.toml" in files and _runtime_toml(
@@ -1102,7 +1137,8 @@ DIMENSION_DETECTORS = ["LODA", "xStream", "RSHash", "HalfSpaceTrees", "Inqmad", 
 DIMENSIONS = [2, 10, 50, 100, 500, 1000]
 DIMENSION_POINTS = 2000
 DIMENSION_FIELDS = ["detector", "dimension", "points", "ms_per_point"]
-DIMENSION_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]
+DIMENSION_COLORS = ["#00757a", "#5c6bc0", "#c26d1f", "#2a9d9f", "#64748b", "#e63946"]
+DIMENSION_COLORS_DARK = ["#2dd4bf", "#818cf8", "#f59e0b", "#99f6e4", "#94a3b8", "#f45b69"]
 
 
 def dimension_model(detector, d, seed):
@@ -1163,43 +1199,189 @@ def write_dimensions_svg(rows, detectors):
     def y(ms):
         return top + plot_h - plot_h * ms / (max_ms * 1.1)
 
+    sans = 'Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif'
+    mono = '"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace'
+    light_rules = "".join(f".s{i}{{stroke:{color}}}" for i, color in enumerate(DIMENSION_COLORS))
+    dark_rules = "".join(
+        f".s{i}{{stroke:{color}}}" for i, color in enumerate(DIMENSION_COLORS_DARK)
+    )
+    style = (
+        f"text{{font-family:{sans}}}"
+        f".title{{fill:#0d1b22;font-size:14px;font-weight:600}}"
+        f".axis{{fill:#5b6f78;font-size:12px;font-weight:500}}"
+        f".tick{{fill:#5b6f78;font-family:{mono};font-size:11px}}"
+        f".legend{{fill:#0d1b22;font-size:12px;font-weight:500}}"
+        f".grid{{stroke:#dce3e2;stroke-width:1}}"
+        f"{light_rules}"
+        f"@media (prefers-color-scheme:dark){{"
+        f".title,.legend{{fill:#edf5f6}}"
+        f".axis,.tick{{fill:#99b0b6}}"
+        f".grid{{stroke:#1e343d}}"
+        f"{dark_rules}"
+        f"}}"
+    )
     lines = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
-        f'<text x="{width // 2}" y="20" text-anchor="middle">Latency per point by dimension</text>',
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+        f'width="{width}" height="{height}" role="img" aria-label="Latency per point by dimension">',
+        f"<style>{style}</style>",
+        f'<text x="{width // 2}" y="20" text-anchor="middle" class="title">'
+        "Latency per point by dimension</text>",
     ]
     for ms in np.linspace(0, max_ms, 6):
         lines.append(
-            f'<line x1="{left}" y1="{y(ms):.1f}" x2="{left + plot_w}" y2="{y(ms):.1f}" stroke="#ddd"/>'
+            f'<line x1="{left}" y1="{y(ms):.1f}" x2="{left + plot_w}" y2="{y(ms):.1f}" class="grid"/>'
         )
-        lines.append(f'<text x="{left - 10}" y="{y(ms) + 4:.1f}" text-anchor="end">{ms:.3g}</text>')
+        lines.append(
+            f'<text x="{left - 10}" y="{y(ms) + 4:.1f}" text-anchor="end" class="tick">{ms:.3g}</text>'
+        )
     for d in dims:
         lines.append(
-            f'<line x1="{x(d):.1f}" y1="{top}" x2="{x(d):.1f}" y2="{top + plot_h}" stroke="#ddd"/>'
+            f'<line x1="{x(d):.1f}" y1="{top}" x2="{x(d):.1f}" y2="{top + plot_h}" class="grid"/>'
         )
         lines.append(
-            f'<text x="{x(d):.1f}" y="{top + plot_h + 20}" text-anchor="middle">{d}</text>'
+            f'<text x="{x(d):.1f}" y="{top + plot_h + 20}" text-anchor="middle" class="tick">{d}</text>'
         )
     lines.append(
-        f'<text x="{left + plot_w // 2}" y="{height - 10}" text-anchor="middle">dimension d (log scale)</text>'
+        f'<text x="{left + plot_w // 2}" y="{height - 10}" text-anchor="middle" class="axis">'
+        "dimension d (log scale)</text>"
     )
     lines.append(
-        f'<text x="20" y="{top + plot_h // 2}" text-anchor="middle" transform="rotate(-90 20 {top + plot_h // 2})">ms per point</text>'
+        f'<text x="20" y="{top + plot_h // 2}" text-anchor="middle" '
+        f'transform="rotate(-90 20 {top + plot_h // 2})" class="axis">ms per point</text>'
     )
     for i, detector in enumerate(detectors):
-        color = DIMENSION_COLORS[i % len(DIMENSION_COLORS)]
+        cls = f"s{i % len(DIMENSION_COLORS)}"
         cells = [row for row in rows if row["detector"] == detector]
         points_attr = " ".join(f"{x(r['dimension']):.1f},{y(r['ms_per_point']):.1f}" for r in cells)
         lines.append(
-            f'<polyline fill="none" stroke="{color}" stroke-width="2" points="{points_attr}"/>'
+            f'<polyline fill="none" class="{cls}" stroke-width="2" points="{points_attr}"/>'
         )
         legend_y = top + 15 * i
         lines.append(
-            f'<line x1="{left + plot_w + 10}" y1="{legend_y}" x2="{left + plot_w + 30}" y2="{legend_y}" stroke="{color}" stroke-width="2"/>'
+            f'<line x1="{left + plot_w + 10}" y1="{legend_y}" x2="{left + plot_w + 30}" '
+            f'y2="{legend_y}" class="{cls}" stroke-width="2"/>'
         )
-        lines.append(f'<text x="{left + plot_w + 35}" y="{legend_y + 4}">{detector}</text>')
+        lines.append(
+            f'<text x="{left + plot_w + 35}" y="{legend_y + 4}" class="legend">{detector}</text>'
+        )
     lines.append("</svg>")
     with open(OUT / "dimensions.svg", "w") as f:
         f.write("\n".join(lines) + "\n")
+
+
+def _detector_weights(results_path=OUT / "results.csv"):
+    """Load per-(dataset, detector) and per-part detector timings from results.csv."""
+    cell_weights: dict[tuple[str, str], float] = {}
+    part_weights: dict[str, dict[str, float]] = {"odds": {}, "drift": {}, "univariate": {}}
+    if not results_path.exists():
+        return cell_weights, part_weights
+    drift_keys = set(DRIFT)
+    multivariate_dets = set(DETECTORS)
+    univariate_dets = set(UNIVARIATE)
+    with open(results_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            ds = row.get("dataset", "")
+            det = row.get("detector", "").removesuffix(SHINGLED)
+            try:
+                ms = float(row.get("ms_per_point", ""))
+            except (TypeError, ValueError):
+                continue
+            cell_weights[(ds, det)] = ms
+            if ds in drift_keys and det in multivariate_dets:
+                part = "drift"
+            elif ds.startswith("nab/") and det in univariate_dets:
+                part = "univariate"
+            elif not ds.startswith(("nab/", "ucr/")) and det in multivariate_dets:
+                part = "odds"
+            else:
+                continue
+            part_weights[part][det] = part_weights[part].get(det, 0.0) + ms
+    return cell_weights, part_weights
+
+
+def _ci_shard_count(part: str, count: int) -> int:
+    if count <= 1:
+        return max(1, count)
+    if part == "odds":
+        target = 1 if count <= 6 else 2 if count <= 14 else 3 if count <= 24 else 4
+    elif part == "drift":
+        target = 1 if count <= 10 else 2
+    else:
+        target = 1 if count <= 6 else 2
+    return min(target, count)
+
+
+def _pack_shards(
+    detectors: list[str], num_shards: int, weights: dict[str, float]
+) -> list[list[str]]:
+    """Greedy LPT bin-packing of detectors into balanced shards."""
+    if num_shards <= 1 or len(detectors) <= 1:
+        return [list(detectors)] if detectors else []
+    known = [weights[d] for d in detectors if d in weights]
+    default_weight = float(np.median(known)) if known else 1.0
+    ordered = sorted(detectors, key=lambda d: (-weights.get(d, default_weight), d))
+    bins: list[tuple[float, list[str]]] = [(0.0, []) for _ in range(num_shards)]
+    for det in ordered:
+        bins.sort(key=lambda b: b[0])
+        load_so_far, bucket = bins[0]
+        bucket.append(det)
+        bins[0] = (load_so_far + weights.get(det, default_weight), bucket)
+    return [bucket for _, bucket in bins if bucket]
+
+
+def ci_plan(base: str) -> dict:
+    """Compute sharded GitHub Actions matrix and content-addressed base cache keys for --ci."""
+    detectors = changed_detectors(base, ci=True) if base else [*DETECTORS, *UNIVARIATE]
+    multivariate = [d for d in detectors if d in DETECTORS]
+    univariate = [d for d in detectors if d in UNIVARIATE]
+    _, part_weights = _detector_weights()
+    shared_deps = pysad_files([Data, fix_seed]) | {"pyproject.toml"}
+    bench_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
+
+    ls_map: dict[str, str] = {}
+    if base:
+        for line in git("ls-tree", "-r", base, "--", "pysad", "pyproject.toml").splitlines():
+            parts = line.split("\t", 1)
+            if len(parts) == 2:
+                ls_map[parts[1]] = line
+
+    include = []
+    for part, part_detectors in [
+        ("odds", multivariate),
+        ("drift", multivariate),
+        ("univariate", univariate),
+    ]:
+        if not part_detectors:
+            continue
+        shards = _pack_shards(
+            part_detectors,
+            _ci_shard_count(part, len(part_detectors)),
+            part_weights[part],
+        )
+        for shard_id, shard_dets in enumerate(shards):
+            has_base = bool(base) and any(
+                f"{getattr(models, d).__module__.replace('.', '/')}.py" in ls_map
+                for d in shard_dets
+            )
+            deps = set(shared_deps)
+            for d in shard_dets:
+                deps |= pysad_files([getattr(models, d)])
+            hasher = hashlib.sha256()
+            hasher.update(f"{part}\n{bench_sha}\n".encode())
+            hasher.update((",".join(sorted(shard_dets)) + "\n").encode())
+            for dep in sorted(deps):
+                if dep in ls_map:
+                    hasher.update((ls_map[dep] + "\n").encode())
+            include.append(
+                {
+                    "part": part,
+                    "shard": ",".join(shard_dets),
+                    "shard_id": str(shard_id),
+                    "has_base": has_base,
+                    "base_hash": hasher.hexdigest()[:16],
+                }
+            )
+    return {"has_jobs": bool(include), "include": include}
 
 
 def main():
@@ -1228,6 +1410,18 @@ def main():
         "--since", metavar="BASE", help="run only the detectors that changed since BASE"
     )
     parser.add_argument(
+        "--ignore-unknown",
+        action="store_true",
+        help="ignore detector names not present in this checkout",
+    )
+    parser.add_argument(
+        "--ci-plan",
+        nargs="?",
+        const="",
+        metavar="BASE",
+        help="print JSON sharded CI plan and content-addressed base cache keys for changes since BASE",
+    )
+    parser.add_argument(
         "--compare",
         metavar="FILE",
         help="with --ci, print the AUROC of each run that differs from FILE, a file of another --ci run",
@@ -1245,6 +1439,9 @@ def main():
         help="points per detector and dimension in the dimensionality sweep",
     )
     args = parser.parse_args()
+    if args.ci_plan is not None:
+        print(json.dumps(ci_plan(args.ci_plan)))
+        return
     if args.dimensions:
         if args.dimension_points <= 0:
             parser.error("--dimension-points must be positive.")
@@ -1262,11 +1459,17 @@ def main():
             )
         return
     path = OUT / "results.csv"
-    points = CI_POINTS if args.ci else None
+    ci_mode = bool(args.ci)
+    points = CI_POINTS if ci_mode else None
 
     detectors = args.detectors.split(",") if args.detectors else [*DETECTORS, *UNIVARIATE]
     if args.check or args.since:
-        detectors = changed_detectors(args.check or args.since, None if args.ci else path)
+        detectors = changed_detectors(
+            args.check or args.since, None if ci_mode else path, ci=ci_mode
+        )
+    if args.ignore_unknown:
+        known = set(DETECTORS) | set(UNIVARIATE)
+        detectors = [d for d in detectors if d in known]
     if args.check is not None or args.since:
         print("Detectors to run:", ", ".join(detectors) or "none")
     unknown = set(detectors) - set(DETECTORS) - set(UNIVARIATE)
@@ -1280,45 +1483,57 @@ def main():
     jobs = []
     multivariate = [d for d in detectors if d in DETECTORS]
     univariate = [d for d in detectors if d in UNIVARIATE]
-    if "odds" in parts:
+    if "odds" in parts and multivariate:
         for dataset in DATASETS:
             Data().get_data(f"{dataset}.mat")
-        jobs += [(ds, d, 0, points) for d in multivariate for ds in DATASETS]
-    if {"univariate", "nab", "shingles"} & set(parts):
+        jobs += [(ds, d, 0, points, ci_mode) for d in multivariate for ds in DATASETS]
+    if {"univariate", "nab", "shingles"} & set(parts) and (
+        univariate or ({"nab", "shingles"} & set(parts) and multivariate)
+    ):
         for series in nab_series():
             Data().get_data(series)
-    if "univariate" in parts:
-        jobs += [(series, d, 0, points) for d in univariate for series in series_of(d)]
-        if not args.ci:  # the training part of most UCR series is longer than CI_POINTS
+    if "univariate" in parts and univariate:
+        jobs += [(series, d, 0, points, ci_mode) for d in univariate for series in series_of(d)]
+        if not ci_mode:  # the training part of most UCR series is longer than CI_POINTS
             jobs += [
-                (s, d, 0, None)
+                (s, d, 0, None, ci_mode)
                 for d in univariate
                 if d not in SEASONAL + TIMESTAMPED
                 for s in ucr_series()
             ]
-    if "drift" in parts:
+    if "drift" in parts and multivariate:
         for stream in DRIFT:
             Data().get_data(stream)
-        jobs += [(stream, d, 0, points) for d in multivariate for stream in DRIFT]
-    if "nab" in parts:
-        jobs += [(series, d, 0, points) for d in multivariate for series in nab_series()]
-    if "shingles" in parts:
-        jobs += [(series, d + SHINGLED, 0, points) for d in multivariate for series in nab_series()]
+        jobs += [(stream, d, 0, points, ci_mode) for d in multivariate for stream in DRIFT]
+    if "nab" in parts and multivariate:
+        jobs += [(series, d, 0, points, ci_mode) for d in multivariate for series in nab_series()]
+    if "shingles" in parts and multivariate:
+        jobs += [
+            (series, d + SHINGLED, 0, points, ci_mode)
+            for d in multivariate
+            for series in nab_series()
+        ]
+    cell_weights, _ = _detector_weights()
+    jobs.sort(
+        key=lambda j: cell_weights.get((j[0], j[1].removesuffix(SHINGLED)), float("inf")),
+        reverse=True,
+    )
     new = {}
-    with ProcessPoolExecutor(args.jobs) as pool:
-        remaining = {pool.submit(run, job): job for job in jobs}
-        start, step = time.perf_counter(), max(1, len(jobs) // 20)
-        for future in as_completed(list(remaining)):
-            row = future.result()
-            new[key(row)] = row
-            del remaining[future]
-            if len(new) % step == 0 or not remaining:
-                progress(len(new), len(jobs), time.perf_counter() - start, remaining.values())
-    nab = {} if args.ci else nab_rows(new)  # the NAB score needs the whole series
+    if jobs:
+        with ProcessPoolExecutor(args.jobs, initializer=_init_worker) as pool:
+            remaining = {pool.submit(run, job): job for job in jobs}
+            start, step = time.perf_counter(), max(1, len(jobs) // 20)
+            for future in as_completed(list(remaining)):
+                row = future.result()
+                new[key(row)] = row
+                del remaining[future]
+                if len(new) % step == 0 or not remaining:
+                    progress(len(new), len(jobs), time.perf_counter() - start, remaining.values())
+    nab = {} if ci_mode else nab_rows(new)  # the NAB score needs the whole series
     for row in new.values():
         row.pop("_nab", None)
 
-    if args.ci:
+    if ci_mode:
         with open(args.ci, "w", newline="") as f:
             writer = csv.writer(f, lineterminator="\n")
             writer.writerow(CI_FIELDS)

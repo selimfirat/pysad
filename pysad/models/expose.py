@@ -50,7 +50,8 @@ class EXPoSE(BaseModel):
 
     def _unscaled_features(self, X: np.ndarray) -> np.ndarray:
         """``exp(iZx)``, the feature map without its factor ``1 / sqrt(num_random_features)``."""
-        return np.exp(1j * self.frequencies_.dot(X))
+        features: np.ndarray = np.exp(1j * self.frequencies_.dot(X))
+        return features
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> EXPoSE:
         """Updates the kernel mean embedding with the next instance.

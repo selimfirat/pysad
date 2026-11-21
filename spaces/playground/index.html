@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f2f4f2" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b1519" media="(prefers-color-scheme: dark)" />
+  <title>PySAD Playground: Streaming Anomaly Detection</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -4 72 72'%3E%3Crect y='-4' width='72' height='72' rx='14' fill='%23fcfcf9'/%3E%3Cg fill='%2300757a'%3E%3Ccircle cx='66.0' cy='36.0' r='3.6'/%3E%3Ccircle cx='61.6' cy='27.6' r='3.6'/%3E%3Ccircle cx='43.3' cy='29.4' r='3.6'/%3E%3Ccircle cx='36.0' cy='36.0' r='3.6'/%3E%3Ccircle cx='28.7' cy='42.6' r='3.6'/%3E%3Ccircle cx='19.8' cy='46.4' r='3.6'/%3E%3Ccircle cx='10.4' cy='44.4' r='3.6'/%3E%3Ccircle cx='6.0' cy='36.0' r='3.6'/%3E%3Ccircle cx='10.4' cy='27.6' r='3.6'/%3E%3Ccircle cx='19.8' cy='25.6' r='3.6'/%3E%3Ccircle cx='28.7' cy='29.4' r='3.6'/%3E%3Ccircle cx='43.3' cy='42.6' r='3.6'/%3E%3Ccircle cx='52.2' cy='46.4' r='3.6'/%3E%3Ccircle cx='61.6' cy='44.4' r='3.6'/%3E%3C/g%3E%3Ccircle cx='54.1' cy='16.6' r='3.6' fill='%23e63946'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://cdn.plot.ly" crossorigin />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" href="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.asm.wasm" as="fetch" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js" defer></script>
+  <style>
+    :root {
+      --bg: #f2f4f2;
+      --surface: #fcfcf9;
+      --surface-rail: #eaf0ef;
+      --surface-code: #f4f7f6;
+      --border: #dce3e2;
+      --border-strong: #b8c7c7;
+      --ink: #0d1b22;
+      --ink-secondary: #475a63;
+      --muted: #5b6f78;
+      --accent: #00757a;
+      --accent-hover: #00565a;
+      --danger: #e63946;
+      --danger-bg: #fef2f2;
+      --danger-border: #fecaca;
+      --danger-ink: #991b1b;
+      --success: #00757a;
+      --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      border-radius: 0;
+    }
+
+    ::selection {
+      background: rgba(0, 117, 122, 0.14);
+      color: var(--ink);
+    }
+
+    html {
+      font-size: 16px;
+      scrollbar-color: var(--border-strong) transparent;
+      scrollbar-width: thin;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      line-height: 1.5;
+      color: var(--ink);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--accent);
+      text-underline-offset: 3px;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 20px 32px;
+    }
+
+    .topbar {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 0 16px;
+      border-bottom: 1px solid var(--border-strong);
+      margin-bottom: 18px;
+    }
+
+    .boot-progress {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 2px;
+      background: transparent;
+      overflow: hidden;
+      pointer-events: none;
+      transition: opacity 200ms var(--ease);
+    }
+
+    .boot-progress.is-done {
+      opacity: 0;
+    }
+
+    .progress-fill {
+      width: 100%;
+      height: 100%;
+      background: var(--accent);
+      transform-origin: left center;
+      transform: scaleX(0.08);
+      transition: transform 220ms var(--ease);
+    }
+
+    .brand-block {
+      flex: 1 1 520px;
+      min-width: 0;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    .topbar-subtitle {
+      margin: 0;
+      max-width: 68ch;
+      font-size: 0.875rem;
+      color: var(--ink-secondary);
+    }
+
+    .topbar-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .runtime-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--ink-secondary);
+    }
+
+    .runtime-square {
+      width: 7px;
+      height: 7px;
+      background: #94a3b8;
+      flex-shrink: 0;
+      transition: background-color 180ms var(--ease);
+    }
+
+    .runtime-square.ready { background: var(--success); }
+    .runtime-square.error { background: var(--danger); }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
+
+    .nav-links a {
+      color: var(--accent);
+      text-decoration: none;
+      transition: color 150ms var(--ease);
+    }
+
+    .nav-links a:hover {
+      color: var(--accent-hover);
+      text-decoration: underline;
+    }
+
+    .nav-links a:focus-visible,
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; }
+      .topbar-meta { align-items: flex-start; }
+    }
+
+    .sidebar {
+      background: var(--surface-rail);
+      border: 1px solid var(--border);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 16px 18px;
+    }
+
+    .control-group {
+      padding: 0;
+    }
+
+    .control-divider {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 0;
+      height: 0;
+    }
+
+    .group-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+
+    .group-title {
+      margin: 0;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .count-readout {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+    }
+
+    label.field-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--ink-secondary);
+      margin: 10px 0 5px;
+    }
+
+    .val-readout {
+      font-family: var(--font-mono);
+      font-size: 0.79rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
+
+    select, input[type="file"] {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--ink);
+      caret-color: var(--accent);
+      font-family: var(--font-sans);
+      font-size: 0.84rem;
+      transition: border-color 150ms var(--ease);
+    }
+
+    select:hover:not(:disabled), input[type="file"]:hover:not(:disabled) {
+      border-color: #8fa3a3;
+    }
+
+    select:disabled, input[type="file"]:disabled {
+      background: #e2eae9;
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 2px 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    input[type="range"]:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .field-wrap.is-disabled {
+      opacity: 0.52;
+    }
+
+    .ruled-list {
+      border-top: 1px solid var(--border);
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      background: var(--surface-rail);
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      font-size: 0.83rem;
+      font-weight: 500;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background-color 150ms var(--ease);
+    }
+
+    .check-item:hover:not(.disabled) {
+      background: #f4f7f6;
+    }
+
+    .check-item.is-selected {
+      background: var(--surface);
+    }
+
+    .check-item.disabled {
+      opacity: 0.52;
+      cursor: not-allowed;
+    }
+
+    .check-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .check-main input,
+    .radio-item input {
+      margin: 0;
+      flex-shrink: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .check-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .check-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+
+    .rank-tag {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+    }
+
+    .swatch-line {
+      width: 12px;
+      height: 3px;
+      flex-shrink: 0;
+      display: inline-block;
+      opacity: 0;
+      transition: opacity 150ms var(--ease);
+    }
+
+    .swatch-line.visible {
+      opacity: 1;
+    }
+
+    .radio-item {
+      justify-content: flex-start;
+    }
+
+    .radio-copy {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.25;
+      min-width: 0;
+    }
+
+    .radio-cls {
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+      color: var(--muted);
+    }
+
+    .control-details > summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      padding: 2px 0;
+    }
+
+    .control-details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .chevron-icon {
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      transition: transform 150ms var(--ease);
+    }
+
+    .control-details[open] .chevron-icon {
+      transform: rotate(180deg);
+    }
+
+    .details-body {
+      padding-top: 6px;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    button {
+      border: 1px solid transparent;
+      padding: 8px 12px;
+      font-family: var(--font-sans);
+      font-size: 0.83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 150ms var(--ease), border-color 150ms var(--ease);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    button:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      border-color: var(--border-strong);
+      color: var(--ink);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #f2f4f2;
+      border-color: #8fa3a3;
+    }
+
+    .muted-note {
+      font-size: 0.79rem;
+      line-height: 1.45;
+      color: var(--muted);
+      margin: 8px 0 0;
+    }
+
+    .main-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .status-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      color: var(--ink-secondary);
+    }
+
+    .running-tag {
+      display: none;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: var(--accent);
+      background: #e7f5f5;
+      border: 1px solid #99d5d2;
+      padding: 2px 8px;
+    }
+
+    .running-tag.active { display: inline-block; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .card-subtitle {
+      font-size: 0.79rem;
+      color: var(--muted);
+    }
+
+    .card-subtitle.mono {
+      font-family: var(--font-mono);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover td {
+      background: #f4f7f6;
+    }
+
+    th:first-child, td:first-child {
+      text-align: left;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    th {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: #f4f7f6;
+      border-top: 1px solid var(--border);
+    }
+
+    .detector-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cell-na {
+      color: var(--muted);
+    }
+
+    .skeleton-bar {
+      display: inline-block;
+      height: 12px;
+      background: #e2eae9;
+      vertical-align: middle;
+    }
+
+    .plot-frame {
+      position: relative;
+      width: 100%;
+    }
+
+    .plot-skeleton {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      border: 1px dashed var(--border-strong);
+      background: #f9fbfa;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .plot-skeleton.hidden { display: none; }
+
+    .stream-plot-box { width: 100%; height: 520px; }
+    .explain-plot-box { width: 100%; height: 270px; }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 12px 24px; }
+      .panel { padding: 14px; }
+      th, td { padding: 7px 8px; }
+      .stream-plot-box { height: 520px; }
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      background: var(--surface-code);
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 0.79rem;
+      line-height: 1.55;
+      overflow-x: auto;
+    }
+
+    .hidden { display: none; }
+
+    .error-banner {
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
+      color: var(--danger-ink);
+    }
+
+    .site-footer {
+      margin-top: 22px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1519;
+        --surface: #0f1f26;
+        --surface-rail: #070f12;
+        --surface-code: #070f12;
+        --border: #1b2f37;
+        --border-strong: #27424d;
+        --ink: #edf5f6;
+        --ink-secondary: #b7c9ce;
+        --muted: #99b0b6;
+        --accent: #2dd4bf;
+        --accent-hover: #5eead4;
+        --danger: #f45b69;
+        --danger-bg: #2a1216;
+        --danger-border: #6e232c;
+        --danger-ink: #fecaca;
+        --success: #2dd4bf;
+      }
+
+      ::selection {
+        background: rgba(45, 212, 191, 0.22);
+      }
+
+      .brand-mark .bm-dots { fill: #2dd4bf; }
+      .brand-mark .bm-out { fill: #f45b69; }
+      .btn-primary { color: #0b1519; }
+      .btn-secondary:hover:not(:disabled) { background: #142831; border-color: #365a68; }
+      select:hover:not(:disabled), input[type="file"]:hover:not(:disabled) { border-color: #365a68; }
+      select:disabled, input[type="file"]:disabled { background: #0b181e; }
+      .check-item:hover:not(.disabled) { background: #12252d; }
+      .running-tag { background: #122a31; border-color: #14807e; }
+      th, tbody tr:hover td { background: #0d1b22; }
+      .skeleton-bar { background: #1b2f37; }
+      .plot-skeleton { background: #0b1519; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="title-row">
+          <svg class="brand-mark" viewBox="0 8 72 46" aria-hidden="true">
+            <g class="bm-dots" fill="#00757a">
+              <circle cx="66.0" cy="36.0" r="3.6"/><circle cx="61.6" cy="27.6" r="3.6"/><circle cx="43.3" cy="29.4" r="3.6"/><circle cx="36.0" cy="36.0" r="3.6"/><circle cx="28.7" cy="42.6" r="3.6"/><circle cx="19.8" cy="46.4" r="3.6"/><circle cx="10.4" cy="44.4" r="3.6"/><circle cx="6.0" cy="36.0" r="3.6"/><circle cx="10.4" cy="27.6" r="3.6"/><circle cx="19.8" cy="25.6" r="3.6"/><circle cx="28.7" cy="29.4" r="3.6"/><circle cx="43.3" cy="42.6" r="3.6"/><circle cx="52.2" cy="46.4" r="3.6"/><circle cx="61.6" cy="44.4" r="3.6"/>
+            </g>
+            <circle class="bm-out" cx="54.1" cy="16.6" r="3.6" fill="#e63946" />
+          </svg>
+          <h1>PySAD Playground</h1>
+        </div>
+        <p class="topbar-subtitle">Compare streaming anomaly detectors step by step, calibrate alert thresholds, inject anomalies, and inspect feature attribution.</p>
+      </div>
+      <div class="topbar-meta">
+        <div class="runtime-status">
+          <span id="runtimeSquare" class="runtime-square" aria-hidden="true"></span>
+          <span id="runtimeLabel">Loading Pyodide WebAssembly runtime...</span>
+        </div>
+        <nav class="nav-links" aria-label="Project links">
+          <a href="https://github.com/selimfirat/pysad" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://pysad.readthedocs.io/en/stable/" target="_blank" rel="noopener">Documentation</a>
+          <a href="https://pysad.readthedocs.io/en/stable/benchmark.html" target="_blank" rel="noopener">Benchmarks</a>
+          <a href="https://pypi.org/project/pysad/" target="_blank" rel="noopener">PyPI</a>
+        </nav>
+      </div>
+      <div id="bootProgressWrap" class="boot-progress" aria-hidden="true">
+        <div id="bootProgressFill" class="progress-fill"></div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" aria-label="Experiment controls">
+        <section class="control-group">
+          <div class="group-head">
+            <h2 class="group-title">Data stream</h2>
+          </div>
+          <select id="streamSelect" aria-label="Data stream" disabled>
+            <option value="Synthetic Drift + Spikes (4 sensors)" selected>Synthetic Drift + Spikes (4 sensors)</option>
+            <option value="NYC Taxi Demand (NAB, univariate)">NYC Taxi Demand (NAB, univariate)</option>
+            <option value="Arrhythmia (ODDS, 274 features)">Arrhythmia (ODDS, 274 features)</option>
+            <option value="Upload CSV">Upload CSV</option>
+          </select>
+
+          <div id="csvUploadWrap" class="hidden">
+            <label class="field-label" for="csvFileInput">Upload CSV (numeric + optional label)</label>
+            <input id="csvFileInput" type="file" accept=".csv" disabled />
+            <p class="muted-note">Processed locally in browser memory.</p>
+          </div>
+
+          <label class="field-label" for="numPointsSlider">
+            <span>Stream points</span>
+            <span id="numPointsValue" class="val-readout">1200</span>
+          </label>
+          <input id="numPointsSlider" type="range" min="400" max="2500" step="100" value="1200" disabled />
+        </section>
+
+        <hr class="control-divider" />
+
+        <section class="control-group">
+          <div class="group-head">
+            <h2 class="group-title">Detectors (1 to 3)</h2>
+            <span id="detectorCount" class="count-readout">3 / 3</span>
+          </div>
+          <div id="detectorGroup" class="ruled-list">
+            <label class="check-item is-selected">
+              <span class="check-main">
+                <input type="checkbox" value="LocalOutlierProbability" checked disabled />
+                <span class="check-label">LocalOutlierProbability</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">ODDS #1</span><span class="swatch-line visible" style="background-color: #00757a;"></span></span>
+            </label>
+            <label class="check-item is-selected">
+              <span class="check-main">
+                <input type="checkbox" value="RSHash" checked disabled />
+                <span class="check-label">RSHash</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">ODDS #2</span><span class="swatch-line visible" style="background-color: #5c6bc0;"></span></span>
+            </label>
+            <label class="check-item is-selected">
+              <span class="check-main">
+                <input type="checkbox" value="LODA" checked disabled />
+                <span class="check-label">LODA</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">ODDS #4</span><span class="swatch-line visible" style="background-color: #c26d1f;"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="SmartSifter" disabled />
+                <span class="check-label">SmartSifter</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">Drift #2</span><span class="swatch-line"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="RobustRandomCutForest" disabled />
+                <span class="check-label">RobustRandomCutForest</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">Drift #1</span><span class="swatch-line"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="HalfSpaceTrees" disabled />
+                <span class="check-label">HalfSpaceTrees</span>
+              </span>
+              <span class="check-meta"><span class="swatch-line"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="KNNCAD" disabled />
+                <span class="check-label">KNNCAD</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">NAB #4</span><span class="swatch-line"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="SeasonalHybridESD" disabled />
+                <span class="check-label">SeasonalHybridESD</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">Seasonal</span><span class="swatch-line"></span></span>
+            </label>
+          </div>
+          <p class="muted-note">Defaults load top-ranked ODDS detectors (mean AUROC 0.842, 0.817, 0.790).</p>
+        </section>
+
+        <hr class="control-divider" />
+
+        <section class="control-group">
+          <div class="group-head">
+            <h2 class="group-title">Alert calibration</h2>
+          </div>
+          <div id="calibratorGroup" class="ruled-list">
+            <label class="check-item radio-item is-selected">
+              <input type="radio" name="calibrator" value="Conformal (ConformalProbabilityCalibrator)" checked disabled />
+              <span class="radio-copy">
+                <span>Conformal</span>
+                <span class="radio-cls">ConformalProbabilityCalibrator</span>
+              </span>
+            </label>
+            <label class="check-item radio-item">
+              <input type="radio" name="calibrator" value="SPOT / EVT (SPOTProbabilityCalibrator)" disabled />
+              <span class="radio-copy">
+                <span>SPOT / EVT</span>
+                <span class="radio-cls">SPOTProbabilityCalibrator</span>
+              </span>
+            </label>
+          </div>
+
+          <label class="field-label" for="thresholdSlider">
+            <span>Alert threshold</span>
+            <span id="thresholdValue" class="val-readout">0.985</span>
+          </label>
+          <input id="thresholdSlider" type="range" min="0.900" max="0.999" step="0.001" value="0.985" disabled />
+
+          <div id="calWindowWrap" class="field-wrap">
+            <label class="field-label" for="calWindowSlider">
+              <span>Conformal window</span>
+              <span id="calWindowValue" class="val-readout">350</span>
+            </label>
+            <input id="calWindowSlider" type="range" min="100" max="1000" step="50" value="350" disabled />
+          </div>
+        </section>
+
+        <hr class="control-divider" />
+
+        <section class="control-group">
+          <details open class="control-details">
+            <summary>
+              <h2 class="group-title">Anomaly injection and attribution</h2>
+              <svg class="chevron-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter" />
+              </svg>
+            </summary>
+            <div class="details-body">
+              <label class="field-label" for="featureSelect">Target feature</label>
+              <select id="featureSelect" disabled>
+                <option value="sensor_1">sensor_1</option>
+              </select>
+
+              <label class="field-label" for="injectStepSlider">
+                <span>Inject at step</span>
+                <span id="injectStepValue" class="val-readout">720</span>
+              </label>
+              <input id="injectStepSlider" type="range" min="60" max="1199" step="1" value="720" disabled />
+
+              <label class="field-label" for="injectSigmaSlider">
+                <span>Magnitude (&sigma;)</span>
+                <span id="injectSigmaValue" class="val-readout">+5.5</span>
+              </label>
+              <input id="injectSigmaSlider" type="range" min="-8" max="8" step="0.5" value="5.5" disabled />
+
+              <div class="btn-row">
+                <button id="injectBtn" type="button" class="btn-primary" disabled>Inject anomaly</button>
+                <button id="clearBtn" type="button" class="btn-secondary" disabled>Clear</button>
+              </div>
+              <p id="injectedSummary" class="muted-note">Injected anomalies: none</p>
+
+              <label class="field-label" for="inspectStepSlider">
+                <span>Explain step</span>
+                <span id="inspectStepValue" class="val-readout">468</span>
+              </label>
+              <input id="inspectStepSlider" type="range" min="60" max="1199" step="1" value="468" disabled />
+            </div>
+          </details>
+        </section>
+      </aside>
+
+      <main class="main-stack">
+        <section id="statusCard" class="panel status-strip" aria-live="polite">
+          <span id="statusText">Loading playground preview and client-side Python runtime...</span>
+          <span id="runningTag" class="running-tag">Updating...</span>
+        </section>
+
+        <section class="panel">
+          <div class="card-header">
+            <h2 class="card-title">Prequential metrics</h2>
+            <span class="card-subtitle">Post-warmup evaluation</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Detector</th>
+                  <th>AUROC</th>
+                  <th>AUPR</th>
+                  <th>Alerts</th>
+                  <th>Precision</th>
+                  <th>Recall</th>
+                  <th>Injected</th>
+                  <th>&micro;s / pt</th>
+                  <th>pts / s</th>
+                </tr>
+              </thead>
+              <tbody id="metricsBody">
+                <tr>
+                  <td><span class="skeleton-bar" style="width: 140px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 28px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 32px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 44px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 48px;"></span></td>
+                </tr>
+                <tr>
+                  <td><span class="skeleton-bar" style="width: 90px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 28px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 32px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 44px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 48px;"></span></td>
+                </tr>
+                <tr>
+                  <td><span class="skeleton-bar" style="width: 72px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 28px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 32px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 44px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 48px;"></span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="card-header">
+            <h2 class="card-title">Stream and calibrated scores</h2>
+            <span class="card-subtitle">Click any step to inspect attribution</span>
+          </div>
+          <div class="plot-frame">
+            <div id="streamSkeleton" class="plot-skeleton">Waiting for initial prequential stream run...</div>
+            <div id="streamPlot" class="stream-plot-box"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="card-header">
+            <h2 class="card-title">Feature attribution</h2>
+            <span class="card-subtitle mono">LODA.explain_partial()</span>
+          </div>
+          <div class="plot-frame">
+            <div id="explainSkeleton" class="plot-skeleton">Feature contributions appear after initialization.</div>
+            <div id="explainPlot" class="explain-plot-box"></div>
+          </div>
+          <p id="explainNote" class="muted-note"></p>
+        </section>
+
+        <section class="panel">
+          <div class="card-header">
+            <h2 class="card-title">Reproducible PySAD pipeline</h2>
+            <button id="copyCodeBtn" type="button" class="btn-secondary">Copy</button>
+          </div>
+          <pre><code id="pipelineCode"># Pipeline snippet updates after the first run.</code></pre>
+        </section>
+      </main>
+    </div>
+
+    <footer class="site-footer">
+      <span>Default detectors follow PySAD ODDS benchmark rankings.</span>
+      <a href="https://pysad.readthedocs.io/en/stable/benchmark.html" target="_blank" rel="noopener">View full benchmarks</a>
+    </footer>
+  </div>
+
+  <script>
+    const LIGHT_PLOT = {
+      template: "plotly_white",
+      paper: "#fcfcf9",
+      ink: "#0d1b22",
+      muted: "#5b6f78",
+      grid: "#e4ebeb",
+      zero: "#b8c7c7",
+      accent: "#00757a",
+      alert: "#e63946",
+      threshBg: "rgba(252, 252, 249, 0.9)",
+      detectors: ["#00757a", "#5c6bc0", "#c26d1f"],
+      features: ["#00757a", "#2a9d9f", "#5c6bc0", "#64748b"],
+    };
+    const DARK_PLOT = {
+      template: "plotly_dark",
+      paper: "#0f1f26",
+      ink: "#edf5f6",
+      muted: "#99b0b6",
+      grid: "#1b2f37",
+      zero: "#27424d",
+      accent: "#2dd4bf",
+      alert: "#f45b69",
+      threshBg: "rgba(15, 31, 38, 0.9)",
+      detectors: ["#2dd4bf", "#818cf8", "#f59e0b"],
+      features: ["#2dd4bf", "#99f6e4", "#818cf8", "#94a3b8"],
+    };
+    const darkMedia = window.matchMedia?.("(prefers-color-scheme: dark)");
+    function isDarkTheme() {
+      return Boolean(darkMedia && darkMedia.matches);
+    }
+    function getPlotPalette() {
+      return isDarkTheme() ? DARK_PLOT : LIGHT_PLOT;
+    }
+
+    const state = {
+      pyodide: null,
+      ready: false,
+      running: false,
+      injected: [],
+      inspectStep: null,
+      csvBytes: null,
+      featureNames: ["sensor_1"],
+      loadedDatasets: new Set(),
+      lastPayload: null,
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function setBootProgress(pct, text) {
+      const clamped = Math.max(4, Math.min(100, Number(pct)));
+      $("bootProgressFill").style.transform = `scaleX(${clamped / 100})`;
+      $("runtimeLabel").textContent = text;
+    }
+
+    function getSelectedDetectors() {
+      return Array.from(document.querySelectorAll('#detectorGroup input[type="checkbox"]:checked'))
+        .map((cb) => cb.value);
+    }
+
+    function getSelectedCalibrator() {
+      const checked = document.querySelector('input[name="calibrator"]:checked');
+      return checked ? checked.value : "Conformal (ConformalProbabilityCalibrator)";
+    }
+
+    function syncDetectorRowStyles() {
+      const pal = getPlotPalette();
+      const boxes = Array.from(document.querySelectorAll('#detectorGroup input[type="checkbox"]'));
+      const checked = boxes.filter((cb) => cb.checked);
+      $("detectorCount").textContent = `${checked.length} / 3`;
+      let activeIdx = 0;
+      boxes.forEach((cb) => {
+        const row = cb.closest(".check-item");
+        const swatch = row.querySelector(".swatch-line");
+        if (cb.checked) {
+          const color = pal.detectors[activeIdx % pal.detectors.length];
+          row.classList.add("is-selected");
+          if (swatch) {
+            swatch.style.backgroundColor = color;
+            swatch.classList.add("visible");
+          }
+          activeIdx += 1;
+        } else {
+          row.classList.remove("is-selected");
+          if (swatch) {
+            swatch.style.backgroundColor = "transparent";
+            swatch.classList.remove("visible");
+          }
+        }
+      });
+    }
+
+    function syncCalibratorRowStyles() {
+      document.querySelectorAll('input[name="calibrator"]').forEach((rb) => {
+        rb.closest(".check-item").classList.toggle("is-selected", rb.checked);
+      });
+    }
+
+    function enforceDetectorBounds() {
+      const boxes = Array.from(document.querySelectorAll('#detectorGroup input[type="checkbox"]'));
+      const checked = boxes.filter((cb) => cb.checked);
+      boxes.forEach((cb) => {
+        const lockUncheck = checked.length === 1 && cb.checked;
+        const lockAdd = checked.length >= 3 && !cb.checked;
+        cb.disabled = !state.ready || lockUncheck || lockAdd;
+        cb.closest(".check-item").classList.toggle("disabled", !state.ready || lockUncheck || lockAdd);
+      });
+      syncDetectorRowStyles();
+    }
+
+    function syncCalibrationControls() {
+      const isConformal = getSelectedCalibrator().startsWith("Conformal");
+      $("calWindowWrap").classList.toggle("is-disabled", !isConformal);
+      $("calWindowSlider").disabled = !state.ready || !isConformal;
+      syncCalibratorRowStyles();
+    }
+
+    function syncInjectionButtons() {
+      $("clearBtn").disabled = !state.ready || state.injected.length === 0;
+    }
+
+    function setControlsEnabled(enabled) {
+      document.querySelectorAll("aside input, aside select, aside button").forEach((el) => {
+        el.disabled = !enabled;
+      });
+      enforceDetectorBounds();
+      syncCalibrationControls();
+      syncInjectionButtons();
+    }
+
+    function fmtMetric(v) {
+      return v === null || v === undefined ? "n/a" : Number(v).toFixed(3);
+    }
+
+    function updateInjectedSummary() {
+      syncInjectionButtons();
+      if (!state.injected.length) {
+        $("injectedSummary").textContent = "Injected anomalies: none";
+        return;
+      }
+      const parts = state.injected
+        .filter((item) => item.feature_idx < state.featureNames.length)
+        .map((item) => {
+          const fname = state.featureNames[item.feature_idx];
+          const sign = item.magnitude_sigma >= 0 ? "+" : "";
+          return `t=${item.index} (${fname}, ${sign}${Number(item.magnitude_sigma).toFixed(1)}\u03c3)`;
+        });
+      $("injectedSummary").textContent = `Injected anomalies: ${parts.join("; ")}`;
+    }
+
+    function renderMetricsTable(traces) {
+      const pal = getPlotPalette();
+      const tbody = $("metricsBody");
+      const rows = traces.map((tr, idx) => {
+        const row = document.createElement("tr");
+        const color = pal.detectors[idx % pal.detectors.length];
+
+        const firstTd = document.createElement("td");
+        const nameWrap = document.createElement("span");
+        nameWrap.className = "detector-cell";
+        const swatch = document.createElement("span");
+        swatch.className = "swatch-line visible";
+        swatch.style.backgroundColor = color;
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = tr.display_name;
+        nameWrap.appendChild(swatch);
+        nameWrap.appendChild(nameSpan);
+        firstTd.appendChild(nameWrap);
+        row.appendChild(firstTd);
+
+        const injText = tr.injected_total > 0 ? `${tr.injected_caught} / ${tr.injected_total}` : "n/a";
+        const usText = tr.us_per_point === null || tr.us_per_point === undefined
+          ? "..."
+          : Number(tr.us_per_point).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        const ppsText = tr.points_per_second === null || tr.points_per_second === undefined
+          ? "..."
+          : Number(tr.points_per_second).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+        const cells = [
+          fmtMetric(tr.auroc),
+          fmtMetric(tr.aupr),
+          String(tr.alerts_count),
+          fmtMetric(tr.precision),
+          fmtMetric(tr.recall),
+          injText,
+          usText,
+          ppsText,
+        ];
+        cells.forEach((txt) => {
+          const td = document.createElement("td");
+          td.textContent = txt;
+          if (txt === "n/a" || txt === "...") {
+            td.className = "cell-na";
+          }
+          row.appendChild(td);
+        });
+        return row;
+      });
+      tbody.replaceChildren(...rows);
+    }
+
+    function renderStreamPlot(data) {
+      const pal = getPlotPalette();
+      const { stream, warmup, threshold, calibrator_name, traces, injected_indices, explanation } = data;
+      const xAxis = stream.x_axis;
+      const plotTraces = [];
+
+      stream.plotted_features.forEach((feat, pos) => {
+        plotTraces.push({
+          type: "scatter",
+          mode: "lines",
+          x: xAxis,
+          y: feat.values,
+          name: feat.name,
+          xaxis: "x",
+          yaxis: "y",
+          line: { width: 1.4, color: pal.features[pos % pal.features.length] },
+          opacity: 0.9,
+        });
+      });
+
+      if (stream.labeled_indices.length > 0) {
+        plotTraces.push({
+          type: "scatter",
+          mode: "markers",
+          x: stream.labeled_indices.map((i) => xAxis[i]),
+          y: stream.labeled_primary_values,
+          name: "Labeled anomaly",
+          xaxis: "x",
+          yaxis: "y",
+          marker: { color: pal.alert, size: 6, symbol: "circle-open", line: { width: 1.8 } },
+        });
+      }
+
+      traces.forEach((tr, idx) => {
+        const color = pal.detectors[idx % pal.detectors.length];
+        plotTraces.push({
+          type: "scatter",
+          mode: "lines",
+          x: xAxis,
+          y: tr.calibrated_scores,
+          name: tr.display_name,
+          xaxis: "x2",
+          yaxis: "y2",
+          line: { width: 1.9, color },
+        });
+        if (tr.alert_indices.length > 0) {
+          plotTraces.push({
+            type: "scatter",
+            mode: "markers",
+            x: tr.alert_indices.map((i) => xAxis[i]),
+            y: tr.alert_scores,
+            name: `${tr.name} alerts`,
+            showlegend: false,
+            xaxis: "x2",
+            yaxis: "y2",
+            marker: { color: pal.alert, size: 6, symbol: "diamond" },
+          });
+        }
+      });
+
+      const x0 = xAxis[0];
+      const x1Warm = xAxis[Math.min(warmup, xAxis.length - 1)];
+      const xEnd = xAxis[xAxis.length - 1];
+      const inspectX = xAxis[explanation.step];
+
+      const shapes = [
+        { type: "rect", xref: "x", yref: "y domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.12)", line: { width: 0 } },
+        { type: "rect", xref: "x2", yref: "y2 domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.12)", line: { width: 0 } },
+        { type: "line", xref: "x2", yref: "y2", x0, x1: xEnd, y0: threshold, y1: threshold, line: { color: pal.alert, width: 1.4, dash: "dash" } },
+        { type: "line", xref: "x", yref: "y domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: pal.accent, width: 1.3, dash: "dash" } },
+        { type: "line", xref: "x2", yref: "y2 domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: pal.accent, width: 1.3, dash: "dash" } },
+      ];
+
+      injected_indices.forEach((idx) => {
+        const ix = xAxis[idx];
+        shapes.push({ type: "line", xref: "x", yref: "y domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: pal.alert, width: 1.3, dash: "dot" } });
+        shapes.push({ type: "line", xref: "x2", yref: "y2 domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: pal.alert, width: 1.3, dash: "dot" } });
+      });
+
+      const compact = window.innerWidth < 640;
+      const annotations = [
+        {
+          text: compact ? "Stream values" : `Stream values: ${stream.name}`,
+          xref: "paper", yref: "paper", x: 0.0, xanchor: "left", y: compact ? 0.99 : 1.015,
+          showarrow: false, font: { size: compact ? 12 : 12.5, color: pal.ink, weight: 600 },
+        },
+        {
+          text: compact ? "Calibrated scores" : `Calibrated anomaly scores: ${calibrator_name}`,
+          xref: "paper", yref: "paper", x: 0.0, xanchor: "left", y: compact ? 0.455 : 0.465,
+          showarrow: false, font: { size: compact ? 12 : 12.5, color: pal.ink, weight: 600 },
+        },
+        {
+          text: "warm-up",
+          xref: "x", yref: "y domain", x: x0, xanchor: "left", xshift: 6, y: 0.94, yanchor: "top",
+          showarrow: false, font: { size: 11, color: pal.muted },
+        },
+        {
+          text: `threshold = ${Number(threshold).toFixed(3)}`,
+          xref: "x2 domain", yref: "y2", x: 0.99, y: threshold,
+          xanchor: "right", yanchor: "bottom",
+          bgcolor: pal.threshBg,
+          borderpad: 2,
+          showarrow: false, font: { size: 11, color: pal.alert },
+        },
+      ];
+
+      const layout = {
+        template: pal.template,
+        paper_bgcolor: pal.paper,
+        plot_bgcolor: pal.paper,
+        font: { family: "Inter, ui-sans-serif, sans-serif", color: pal.ink, size: 12 },
+        legend: { orientation: "h", yanchor: "bottom", y: compact ? 1.05 : 1.07, x: 0.0, font: { size: compact ? 10.5 : 11 } },
+        margin: { l: compact ? 44 : 52, r: compact ? 10 : 16, t: compact ? 132 : 90, b: 44 },
+        xaxis: { matches: "x2", showticklabels: false, gridcolor: pal.grid, zeroline: false },
+        yaxis: { title: "Value", domain: compact ? [0.56, 0.94] : [0.57, 0.97], gridcolor: pal.grid, zerolinecolor: pal.zero },
+        xaxis2: { title: stream.timestamps ? "Timestamp" : "Stream step", anchor: "y2", gridcolor: pal.grid, zeroline: false },
+        yaxis2: { title: "Calibrated score", range: [-0.02, 1.08], domain: [0.0, 0.41], gridcolor: pal.grid, zerolinecolor: pal.zero },
+        shapes,
+        annotations,
+      };
+
+      $("streamSkeleton").classList.add("hidden");
+      const plotDiv = $("streamPlot");
+      Plotly.react(plotDiv, plotTraces, layout, { responsive: true, displaylogo: false });
+      plotDiv.removeAllListeners?.("plotly_click");
+      plotDiv.on("plotly_click", (evt) => {
+        if (!evt.points || !evt.points.length || !state.ready) return;
+        const pt = evt.points[0];
+        const idx = typeof pt.pointIndex === "number" ? pt.pointIndex : Number(pt.x);
+        if (Number.isFinite(idx)) {
+          state.inspectStep = Math.max(0, Math.min(stream.num_points - 1, Math.round(idx)));
+          $("inspectStepSlider").value = String(state.inspectStep);
+          $("inspectStepValue").textContent = String(state.inspectStep);
+          evaluate();
+        }
+      });
+    }
+
+    function renderExplanationPlot(exp) {
+      const pal = getPlotPalette();
+      const compact = window.innerWidth < 640;
+      const vals = exp.contributions;
+      const names = exp.feature_names;
+      const colors = vals.map((v, idx) => (idx >= vals.length - 2 && v > 0 ? pal.alert : pal.accent));
+      const xMin = Math.min(0, ...vals);
+      const xMax = Math.max(0, ...vals);
+      const span = Math.max(xMax - xMin, 1.0);
+
+      const trace = {
+        type: "bar",
+        x: vals,
+        y: names,
+        orientation: "h",
+        marker: { color: colors },
+        text: vals.map((v) => Number(v).toFixed(2)),
+        textposition: "outside",
+        constraintext: "none",
+      };
+
+      const layout = {
+        title: {
+          text: compact
+            ? `Step ${exp.step} (LODA score: ${Number(exp.loda_raw_score).toFixed(2)})`
+            : `Attribution at step ${exp.step} (LODA raw score: ${Number(exp.loda_raw_score).toFixed(2)})`,
+          x: 0.0,
+          xanchor: "left",
+          font: { size: compact ? 12 : 13, color: pal.ink, weight: 600 },
+        },
+        xaxis: {
+          title: "Contribution (t-statistic)",
+          range: [xMin - (compact ? 0.34 : 0.24) * span, xMax + (compact ? 0.28 : 0.20) * span],
+          zeroline: true,
+          zerolinecolor: pal.zero,
+          gridcolor: pal.grid,
+        },
+        yaxis: { gridcolor: pal.grid, automargin: true },
+        template: pal.template,
+        paper_bgcolor: pal.paper,
+        plot_bgcolor: pal.paper,
+        font: { family: "Inter, ui-sans-serif, sans-serif", color: pal.ink, size: 12 },
+        margin: { l: compact ? 84 : 112, r: compact ? 20 : 36, t: 42, b: 42 },
+      };
+
+      $("explainSkeleton").classList.add("hidden");
+      Plotly.react($("explainPlot"), [trace], layout, { responsive: true, displaylogo: false });
+      $("explainNote").textContent = exp.note;
+    }
+
+    function syncFeatureOptions(featureNames) {
+      state.featureNames = featureNames;
+      const select = $("featureSelect");
+      const current = select.value;
+      const opts = featureNames.map((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        return opt;
+      });
+      select.replaceChildren(...opts);
+      select.value = featureNames.includes(current) ? current : featureNames[0];
+    }
+
+    function applyPayload(data) {
+      state.lastPayload = data;
+      $("statusText").textContent = data.precomputed
+        ? `${data.status_note} Preview loaded; initializing WebAssembly timing...`
+        : data.status_note;
+      syncFeatureOptions(data.stream.feature_names);
+      updateInjectedSummary();
+
+      const maxStep = Math.max(1, data.stream.num_points - 1);
+      $("injectStepSlider").max = String(maxStep);
+      if (Number($("injectStepSlider").value) > maxStep) {
+        $("injectStepSlider").value = String(maxStep);
+        $("injectStepValue").textContent = String(maxStep);
+      }
+      $("inspectStepSlider").max = String(maxStep);
+      $("inspectStepSlider").value = String(data.explanation.step);
+      $("inspectStepValue").textContent = String(data.explanation.step);
+
+      renderMetricsTable(data.traces);
+      renderStreamPlot(data);
+      renderExplanationPlot(data.explanation);
+      $("pipelineCode").textContent = data.pipeline_code;
+    }
+
+    async function ensureStreamDataset(streamName) {
+      const py = state.pyodide;
+      if (!py) return;
+      if (streamName === "NYC Taxi Demand (NAB, univariate)" && !state.loadedDatasets.has("nab")) {
+        $("statusText").textContent = "Fetching NAB NYC Taxi dataset...";
+        const [taxiRes, winRes] = await Promise.all([
+          fetch("./data/nab/realKnownCause/nyc_taxi.csv"),
+          fetch("./data/nab/combined_windows.json"),
+        ]);
+        if (!taxiRes.ok) throw new Error(`Failed to fetch NYC Taxi dataset (${taxiRes.status})`);
+        py.FS.mkdirTree("/home/pyodide/data/nab/realKnownCause");
+        py.FS.writeFile("/home/pyodide/data/nab/realKnownCause/nyc_taxi.csv", await taxiRes.text());
+        if (winRes.ok) {
+          py.FS.writeFile("/home/pyodide/data/nab/combined_windows.json", await winRes.text());
+        }
+        state.loadedDatasets.add("nab");
+      } else if (streamName === "Arrhythmia (ODDS, 274 features)" && !state.loadedDatasets.has("arrhythmia")) {
+        $("statusText").textContent = "Fetching ODDS Arrhythmia dataset...";
+        const res = await fetch("./data/arrhythmia.mat");
+        if (!res.ok) throw new Error(`Failed to fetch Arrhythmia dataset (${res.status})`);
+        py.FS.mkdirTree("/home/pyodide/data");
+        py.FS.writeFile("/home/pyodide/data/arrhythmia.mat", new Uint8Array(await res.arrayBuffer()));
+        state.loadedDatasets.add("arrhythmia");
+      }
+    }
+
+    async function evaluate() {
+      if (!state.ready || state.running) return;
+      const streamName = $("streamSelect").value;
+      if (streamName === "Upload CSV" && !state.csvBytes) {
+        $("statusCard").classList.remove("error-banner");
+        $("statusText").textContent = "Select a local CSV file (numeric columns plus optional binary label column) to evaluate.";
+        return;
+      }
+
+      state.running = true;
+      $("runningTag").classList.add("active");
+      $("statusCard").classList.remove("error-banner");
+
+      await new Promise((r) => setTimeout(r, 8));
+
+      try {
+        await ensureStreamDataset(streamName);
+        const py = state.pyodide;
+        py.globals.set("_req_json", JSON.stringify({
+          stream_name: streamName,
+          num_points: Number($("numPointsSlider").value),
+          detectors: getSelectedDetectors(),
+          calibrator_name: getSelectedCalibrator(),
+          threshold: Number($("thresholdSlider").value),
+          calibrator_window: Number($("calWindowSlider").value),
+          primary_feature: $("featureSelect").value || null,
+          injected: state.injected,
+          inspect_step: state.inspectStep,
+        }));
+        py.globals.set("_csv_u8", state.csvBytes || null);
+
+        const outJson = py.runPython(`
+import json
+import engine
+req = json.loads(_req_json)
+csv_bytes = _csv_u8.to_bytes() if _csv_u8 is not None else None
+engine.run_playground_json(
+    stream_name=req["stream_name"],
+    detectors=req["detectors"],
+    calibrator_name=req["calibrator_name"],
+    threshold=float(req["threshold"]),
+    calibrator_window=int(req["calibrator_window"]),
+    max_points=int(req["num_points"]),
+    csv_data=csv_bytes,
+    injected=req["injected"],
+    inspect_step=req["inspect_step"],
+    primary_feature_name=req["primary_feature"],
+)
+        `);
+        applyPayload(JSON.parse(outJson));
+      } catch (err) {
+        $("statusCard").classList.add("error-banner");
+        $("statusText").textContent = `Error: ${err.message || String(err)}`;
+      } finally {
+        state.running = false;
+        $("runningTag").classList.remove("active");
+      }
+    }
+
+    function wireUI() {
+      syncDetectorRowStyles();
+      syncCalibrationControls();
+      syncInjectionButtons();
+      darkMedia?.addEventListener?.("change", () => {
+        syncDetectorRowStyles();
+        if (state.lastPayload) {
+          renderMetricsTable(state.lastPayload.traces);
+          renderStreamPlot(state.lastPayload);
+          renderExplanationPlot(state.lastPayload.explanation);
+        }
+      });
+
+      $("streamSelect").addEventListener("change", () => {
+        state.injected = [];
+        state.inspectStep = null;
+        const isCsv = $("streamSelect").value === "Upload CSV";
+        $("csvUploadWrap").classList.toggle("hidden", !isCsv);
+        updateInjectedSummary();
+        evaluate();
+      });
+
+      $("csvFileInput").addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        state.csvBytes = new Uint8Array(await file.arrayBuffer());
+        state.injected = [];
+        state.inspectStep = null;
+        evaluate();
+      });
+
+      $("numPointsSlider").addEventListener("input", () => {
+        $("numPointsValue").textContent = $("numPointsSlider").value;
+      });
+      $("numPointsSlider").addEventListener("change", () => {
+        state.inspectStep = null;
+        evaluate();
+      });
+
+      document.querySelectorAll('#detectorGroup input[type="checkbox"]').forEach((cb) => {
+        cb.addEventListener("change", () => {
+          enforceDetectorBounds();
+          evaluate();
+        });
+      });
+
+      document.querySelectorAll('input[name="calibrator"]').forEach((rb) => {
+        rb.addEventListener("change", () => {
+          syncCalibrationControls();
+          evaluate();
+        });
+      });
+
+      $("thresholdSlider").addEventListener("input", () => {
+        $("thresholdValue").textContent = Number($("thresholdSlider").value).toFixed(3);
+      });
+      $("thresholdSlider").addEventListener("change", () => evaluate());
+
+      $("calWindowSlider").addEventListener("input", () => {
+        $("calWindowValue").textContent = $("calWindowSlider").value;
+      });
+      $("calWindowSlider").addEventListener("change", () => evaluate());
+
+      $("featureSelect").addEventListener("change", () => evaluate());
+
+      $("injectStepSlider").addEventListener("input", () => {
+        $("injectStepValue").textContent = $("injectStepSlider").value;
+      });
+
+      $("injectSigmaSlider").addEventListener("input", () => {
+        const v = Number($("injectSigmaSlider").value);
+        $("injectSigmaValue").textContent = `${v >= 0 ? "+" : ""}${v.toFixed(1)}`;
+      });
+
+      $("inspectStepSlider").addEventListener("input", () => {
+        $("inspectStepValue").textContent = $("inspectStepSlider").value;
+      });
+      $("inspectStepSlider").addEventListener("change", () => {
+        state.inspectStep = Number($("inspectStepSlider").value);
+        evaluate();
+      });
+
+      $("injectBtn").addEventListener("click", () => {
+        const step = Number($("injectStepSlider").value);
+        const featName = $("featureSelect").value;
+        const featIdx = Math.max(0, state.featureNames.indexOf(featName));
+        const sigma = Number($("injectSigmaSlider").value);
+        state.injected = [...state.injected, { index: step, feature_idx: featIdx, magnitude_sigma: sigma }];
+        state.inspectStep = step;
+        evaluate();
+      });
+
+      $("clearBtn").addEventListener("click", () => {
+        state.injected = [];
+        state.inspectStep = null;
+        evaluate();
+      });
+
+      $("copyCodeBtn").addEventListener("click", async () => {
+        const text = $("pipelineCode").textContent || "";
+        try {
+          await navigator.clipboard.writeText(text);
+          $("copyCodeBtn").textContent = "Copied";
+          setTimeout(() => { $("copyCodeBtn").textContent = "Copy"; }, 1400);
+        } catch {
+          $("copyCodeBtn").textContent = "Select manually";
+        }
+      });
+    }
+
+    async function boot() {
+      wireUI();
+      try {
+        setBootProgress(15, "Loading Pyodide runtime and preview...");
+
+        const snapshotPromise = fetch("./initial_snapshot.json")
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null);
+
+        snapshotPromise.then((snap) => {
+          if (snap && !state.ready && typeof Plotly !== "undefined") {
+            applyPayload(snap);
+            window.__pysadFirstPaint = true;
+          }
+        });
+
+        const wheelBufPromise = fetch("./manifest.json")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((m) => (m && m.wheel ? fetch(`./${m.wheel}`).then((rw) => (rw.ok ? rw.arrayBuffer() : null)) : null))
+          .catch(() => null);
+
+        const enginePromise = fetch("./engine.py").then((r) => {
+          if (!r.ok) throw new Error(`Failed to fetch engine.py (${r.status})`);
+          return r.text();
+        });
+
+        const pyodidePromise = loadPyodide({
+          indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/",
+          packages: ["numpy", "scipy", "scikit-learn"],
+        });
+
+        const [pyodide, engineCode, wheelBuf] = await Promise.all([
+          pyodidePromise,
+          enginePromise,
+          wheelBufPromise,
+        ]);
+        state.pyodide = pyodide;
+
+        setBootProgress(70, "Unpacking PySAD package in WebAssembly...");
+        if (wheelBuf) {
+          pyodide.unpackArchive(wheelBuf, "zip", { extractDir: "/home/pyodide" });
+        } else {
+          await pyodide.loadPackage("micropip");
+          await pyodide.runPythonAsync("import micropip; await micropip.install('pysad')");
+        }
+        pyodide.FS.writeFile("/home/pyodide/engine.py", engineCode);
+
+        setBootProgress(85, "Importing PySAD detectors...");
+        pyodide.runPython(`
+import sys
+if "/home/pyodide" not in sys.path:
+    sys.path.insert(0, "/home/pyodide")
+import engine
+        `);
+
+        setBootProgress(94, "Measuring client-side execution speed...");
+        state.ready = true;
+        setControlsEnabled(true);
+        await evaluate();
+
+        setBootProgress(100, "Pyodide WebAssembly (client-side)");
+        $("bootProgressWrap").classList.add("is-done");
+        $("runtimeSquare").classList.add("ready");
+        window.__pysadPlaygroundReady = true;
+      } catch (err) {
+        $("bootProgressWrap").classList.add("is-done");
+        $("statusCard").classList.add("error-banner");
+        $("statusText").textContent = `Failed to initialize PySAD playground: ${err.message || String(err)}. Reload the page to retry.`;
+        $("runtimeSquare").classList.add("error");
+        $("runtimeLabel").textContent = "Pyodide WebAssembly (initialization failed)";
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", boot);
+  </script>
+</body>
+</html>

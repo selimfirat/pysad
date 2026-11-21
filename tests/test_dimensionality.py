@@ -29,8 +29,9 @@ def test_dimension_rows_cover_the_sweep():
     assert all(row["ms_per_point"] >= 0 for row in rows)
 
 
-def test_every_sweep_detector_runs_at_one_dimension():
+def test_every_sweep_detector_runs_at_one_dimension(monkeypatch):
     benchmark = load_benchmark()
+    monkeypatch.setattr(benchmark, "WARMUP_POINTS", 16)
     rows = benchmark.dimension_rows(benchmark.DIMENSION_DETECTORS, [2], 30, 0)
     assert [row["detector"] for row in rows] == benchmark.DIMENSION_DETECTORS
     assert all(row["dimension"] == 2 for row in rows)
@@ -90,6 +91,9 @@ def test_dimension_outputs(tmp_path, monkeypatch):
 def test_dimensions_command_writes_both_outputs(tmp_path, monkeypatch):
     benchmark = load_benchmark()
     monkeypatch.setattr(benchmark, "OUT", tmp_path)
+    monkeypatch.setattr(benchmark, "DIMENSION_DETECTORS", ["LODA", "xStream"])
+    monkeypatch.setattr(benchmark, "DIMENSIONS", [2, 10])
+    monkeypatch.setattr(benchmark, "WARMUP_POINTS", 10)
     monkeypatch.setattr(sys, "argv", ["benchmark.py", "--dimensions", "--dimension-points", "20"])
     benchmark.main()
     csv_lines = (tmp_path / "dimensions.csv").read_text().splitlines()

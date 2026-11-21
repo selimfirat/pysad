@@ -155,7 +155,8 @@ class _IsolationForest(IsolationForest):
             dtype=np.float64,
             count=n_samples,
         )
-        return -((-raw) - self.offset_)
+        scores: np.ndarray = -((-raw) - self.offset_)
+        return scores
 
     def predict(self, X: ArrayLike) -> np.ndarray:
         # 1 for anomalies, 0 for inliers.

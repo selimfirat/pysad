@@ -1,3 +1,6 @@
+.. meta::
+   :description: Deploy PySAD streaming anomaly detectors in production: warm up from history, serialize state safely, run per-source detectors, and monitor latency.
+
 Run a detector in production
 ============================
 

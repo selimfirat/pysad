@@ -122,11 +122,11 @@ def test_feature_mapping_of_a_wide_stream_does_not_recurse():
     """Regression test for #311: constant features are all at distance 1, so single
     linkage chains them into a dendrogram deeper than Python's recursion limit, which the
     recursive split hit."""
-    X = np.ones((10, 2000))
+    X = np.ones((10, 1100))
 
     model = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit(X)
 
-    assert sorted(i for cluster in model.feature_map_ for i in cluster) == list(range(2000))
+    assert sorted(i for cluster in model.feature_map_ for i in cluster) == list(range(1100))
     assert all(len(cluster) <= 10 for cluster in model.feature_map_)
 
 

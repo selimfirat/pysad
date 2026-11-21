@@ -20,7 +20,7 @@ authors = [
 maintainers = [
   {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"}
 ]
-description = "Streaming anomaly detection in Python: online detectors (xStream, LODA, RS-Hash, Half-Space Trees, RRCF...) plus calibration and prequential evaluation for real-time data."
+description = "Streaming anomaly detection in Python: 50+ online multivariate and univariate detectors (LODA, RRCF, Half-Space Trees, xStream, DAMP, SAND) with calibrated alerts, drift handling, and prequential evaluation."
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 keywords = [
@@ -32,6 +32,13 @@ keywords = [
   "real-time",
   "incremental learning",
   "time series",
+  "concept drift",
+  "conformal prediction",
+  "prequential evaluation",
+  "rrcf",
+  "half-space trees",
+  "loda",
+  "spot",
 ]
 classifiers = [
         'Development Status :: 5 - Production/Stable',
@@ -56,8 +63,12 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/selimfirat/pysad"
 Documentation = "https://pysad.readthedocs.io/"
+Playground = "https://huggingface.co/spaces/selimfirat/pysad-playground"
+"Live Demo" = "https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb"
+Benchmarks = "https://pysad.readthedocs.io/en/stable/benchmark.html"
 Repository = "https://github.com/selimfirat/pysad.git"
 "Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
+Discussions = "https://github.com/selimfirat/pysad/discussions"
 Changelog = "https://github.com/selimfirat/pysad/releases"
 
 # PEP 735 dependency groups. The runtime dependencies only have floors in [project]; these
@@ -140,6 +151,9 @@ dev = [
 [tool.setuptools.dynamic]
 version = {attr = "pysad.version.__version__"}
 
+[tool.setuptools.packages.find]
+include = ["pysad*"]
+
 [tool.setuptools.package-data]
 # PEP 561 marker: type checkers use pysad's inline type hints.
 pysad = ["py.typed"]
@@ -211,10 +225,15 @@ warn_redundant_casts = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
+warn_return_any = true
+strict_equality = true
+extra_checks = true
 
 [[tool.mypy.overrides]]
 module = [
     "pysad.core.*",
+    "pysad.evaluation.*",
+    "pysad.statistics.*",
     "pysad.evaluation.metrics",
     "pysad.evaluation.prequential",
     "pysad.evaluation.rolling_metric",
@@ -226,15 +245,15 @@ module = [
     "pysad.statistics.quantiles",
     "pysad.statistics.relative_error_quantile_meter",
     "pysad.statistics.running_statistic",
+    "pysad.transform",
+    "pysad.transform.*",
+    "pysad.utils.window",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true
 disallow_untyped_calls = true
 disallow_untyped_decorators = true
-warn_return_any = true
 implicit_reexport = false
-strict_equality = true
-extra_checks = true
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]

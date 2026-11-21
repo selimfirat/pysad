@@ -16,7 +16,8 @@ _MAX_EXP_LOF = 50.0
 
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
-    return 1.0 / (1.0 + np.exp(-x))
+    res: np.ndarray = 1.0 / (1.0 + np.exp(-x))
+    return res
 
 
 class DILOF(IncrementalLOF):

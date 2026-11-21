@@ -1,7 +1,10 @@
 # Configuration file for the Sphinx documentation builder.
 # See https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import html
+import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -58,10 +61,71 @@ def _on_source_read(app: Sphinx, docname: str, source: list[str]) -> None:
         source[0] = source[0].replace("|release|", str(app.config.release))
 
 
+_DEFAULT_SEO_DESCRIPTION = (
+    "PySAD is a Python library for streaming anomaly detection with 50+ online multivariate and "
+    "univariate detectors, calibrated alerts (conformal and SPOT), drift monitoring, and "
+    "prequential evaluation."
+)
+_META_TAG_RE = re.compile(r"<meta\b[^>]*>", re.I)
+_META_NAME_DESC_RE = re.compile(r"""name\s*=\s*(["'])description\1""", re.I)
+_META_CONTENT_RE = re.compile(r"""content\s*=\s*(["'])(.*?)\1""", re.I | re.S)
+
+
+def _add_seo_context(
+    app: Sphinx,
+    pagename: str,
+    templatename: str,
+    context: dict[str, object],
+    doctree: object,
+) -> None:
+    """Populate description, OpenGraph, Twitter Card, and SoftwareSourceCode JSON-LD metadata."""
+    metatags = str(context.get("metatags", ""))
+    extracted_description = ""
+    has_meta_description = False
+    for tag in _META_TAG_RE.findall(metatags):
+        if _META_NAME_DESC_RE.search(tag):
+            has_meta_description = True
+            content_match = _META_CONTENT_RE.search(tag)
+            if content_match:
+                extracted_description = html.unescape(content_match.group(2)).strip()
+            break
+
+    context["seo_has_meta_description"] = has_meta_description
+    context["seo_description"] = extracted_description or _DEFAULT_SEO_DESCRIPTION
+
+    if pagename == "index":
+        canonical_url = str(context.get("pageurl") or "https://pysad.readthedocs.io/en/stable/")
+        context["seo_jsonld"] = json.dumps(
+            {
+                "@context": "https://schema.org",
+                "@type": "SoftwareSourceCode",
+                "name": "PySAD",
+                "description": context["seo_description"],
+                "url": canonical_url,
+                "codeRepository": "https://github.com/selimfirat/pysad",
+                "programmingLanguage": "Python",
+                "license": "https://opensource.org/licenses/BSD-3-Clause",
+                "softwareVersion": str(app.config.release),
+                "author": {"@type": "Person", "name": "Selim Firat Yilmaz"},
+                "keywords": [
+                    "streaming anomaly detection",
+                    "online outlier detection",
+                    "concept drift",
+                    "conformal prediction",
+                    "prequential evaluation",
+                    "Python",
+                ],
+            }
+        )
+    else:
+        context["seo_jsonld"] = ""
+
+
 def setup(app: Sphinx) -> None:
     autosummary_generate_mod.find_autosummary_in_files = _find_autosummary_in_files
     app.add_role("strong-emphasis", StrongEmphasis())
     app.connect("source-read", _on_source_read)
+    app.connect("html-page-context", _add_seo_context)
 
 
 # Live substitutions computed from Data.datasets(), pysad.models.__all__, and benchmark.py.
@@ -73,7 +137,9 @@ rst_epilog = (
 
 _COLLECTED_BIB = DOCS_DIR / "_build" / "collected.bib"
 _COLLECTED_BIB.parent.mkdir(parents=True, exist_ok=True)
-_COLLECTED_BIB.write_text(collect_bibtex(ROOT_DIR)[0], encoding="utf-8")
+_BIB_TEXT = collect_bibtex(ROOT_DIR)[0]
+if not _COLLECTED_BIB.exists() or _COLLECTED_BIB.read_text(encoding="utf-8") != _BIB_TEXT:
+    _COLLECTED_BIB.write_text(_BIB_TEXT, encoding="utf-8")
 
 # -- Project information -----------------------------------------------------
 
@@ -130,9 +196,17 @@ linkcheck_ignore = [
 
 # llms.txt lists the rendered pages, because the API pages get their text from docstrings.
 llms_txt_summary = (
-    "PySAD is a Python library that finds anomalies (unusual data points) in data streams. "
-    "It scores each point when the point arrives. "
-    "It has streaming detectors, calibrated alerts and streaming evaluation."
+    "PySAD is a Python library for streaming anomaly detection on multivariate and univariate "
+    "data streams. Detectors learn and score one instance at a time via fit_partial, "
+    "score_partial, and fit_score_partial with bounded memory, returning higher scores for more "
+    "anomalous points. Core patterns: compose pipelines with `|` (StreamPipeline, e.g. "
+    "`StandardScaler() | LODA() | ConformalProbabilityCalibrator()`), ensemble models with `&` "
+    "(ModelEnsemble), calibrate raw scores with ConformalProbabilityCalibrator or "
+    "SPOTProbabilityCalibrator, attribute anomalous features with LODA.explain_partial(), monitor "
+    "and reset on concept drift with DriftAdaptiveDetector and streaming drift meters, evaluate "
+    "prequentially with evaluate_stream, and integrate PyOD (ReferenceWindowModel, OneFitModel), "
+    "River (PySADToRiverAdapter, PredictiveAnomalyDetector), and scikit-learn "
+    "(PySADToScikitLearnAdapter)."
 )
 llms_txt_uri_template = "{base_url}{docname}.html"
 
@@ -168,37 +242,37 @@ html_theme_options = {
     "source_repository": "https://github.com/selimfirat/pysad/",
     "source_branch": "master",
     "source_directory": "docs/",
-    # Brand colors: cobalt #0741ad, coral #fc3636, paper #fffef7, ivory #efebdf and ink #0e1a33.
+    # Brand colors: abyssal teal #00757a (deep #00565a, dark #2dd4bf), signal coral #e63946, paper #fcfcf9, canvas #f2f4f2, ink #0d1b22.
     "light_css_variables": {
         "font-stack": 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif',
         "font-stack--monospace": '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
         "font-stack--headings": "var(--font-stack)",
-        "color-foreground-primary": "#0e1a33",
-        "color-background-primary": "#fffef7",
-        "color-background-secondary": "#efebdf",
-        "color-background-border": "#e2ddcd",
-        "color-code-background": "#f6f3ea",
-        "color-code-string": "#3f6fd0",
-        "color-highlight-on-target": "#e6ecf8",
-        "color-api-name": "#0e1a33",
-        "color-api-pre-name": "#5a6478",
-        "color-brand-primary": "#0741ad",
-        "color-brand-content": "#0741ad",
-        "color-brand-visited": "#0741ad",
+        "color-foreground-primary": "#0d1b22",
+        "color-background-primary": "#fcfcf9",
+        "color-background-secondary": "#f2f4f2",
+        "color-background-border": "#dce3e2",
+        "color-code-background": "#f4f7f6",
+        "color-code-string": "#2a9d9f",
+        "color-highlight-on-target": "#e7f5f5",
+        "color-api-name": "#0d1b22",
+        "color-api-pre-name": "#5b6f78",
+        "color-brand-primary": "#00757a",
+        "color-brand-content": "#00565a",
+        "color-brand-visited": "#00565a",
     },
     "dark_css_variables": {
-        "color-foreground-primary": "#eef1f8",
-        "color-background-primary": "#0e1a33",
-        "color-background-secondary": "#0a1428",
-        "color-background-border": "#22304f",
-        "color-code-background": "#0a1428",
-        "color-code-string": "#b6c9f7",
-        "color-highlight-on-target": "#1c2b4d",
-        "color-api-name": "#eef1f8",
-        "color-api-pre-name": "#a3adc2",
-        "color-brand-primary": "#7c9ff0",
-        "color-brand-content": "#7c9ff0",
-        "color-brand-visited": "#7c9ff0",
+        "color-foreground-primary": "#edf5f6",
+        "color-background-primary": "#0b1519",
+        "color-background-secondary": "#070f12",
+        "color-background-border": "#1b2f37",
+        "color-code-background": "#070f12",
+        "color-code-string": "#99f6e4",
+        "color-highlight-on-target": "#122a31",
+        "color-api-name": "#edf5f6",
+        "color-api-pre-name": "#99b0b6",
+        "color-brand-primary": "#2dd4bf",
+        "color-brand-content": "#2dd4bf",
+        "color-brand-visited": "#2dd4bf",
     },
     "footer_icons": [
         {

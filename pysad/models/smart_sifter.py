@@ -73,7 +73,8 @@ class SmartSifter(BaseModel):
     def _log_joint(self, x: np.ndarray) -> np.ndarray:
         """Returns ``log(c_i p_i(x))`` for each component, of shape (k,)."""
         z = np.einsum("kij,kj->ki", self._inv_chol, x - self.means_)  # (k, d)
-        return np.log(self.weights_) + self._log_norms - 0.5 * (z * z).sum(axis=1)
+        res: np.ndarray = np.log(self.weights_) + self._log_norms - 0.5 * (z * z).sum(axis=1)
+        return res
 
     def _update(self, x: np.ndarray, log_joint: np.ndarray) -> None:
         """One SDEM step on ``x``, given the log joint densities under the current mixture."""
@@ -116,7 +117,7 @@ class SmartSifter(BaseModel):
         if self.to_init:
             self._init_model(X.shape[0])
 
-        return -logsumexp(self._log_joint(X))
+        return float(-logsumexp(self._log_joint(X)))
 
     def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
         """Scores the next instance, and then updates the mixture with it.
@@ -133,4 +134,4 @@ class SmartSifter(BaseModel):
 
         log_joint = self._log_joint(X)
         self._update(X, log_joint)
-        return -logsumexp(log_joint)
+        return float(-logsumexp(log_joint))

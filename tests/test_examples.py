@@ -1,14 +1,19 @@
 import ast
+import contextlib
 import functools
 import importlib
+import io
 import json
 import os
 import re
+import runpy
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 from types import ModuleType
 
+import numpy as np
 import pytest
 
 import pysad
@@ -23,6 +28,23 @@ EXAMPLES = sorted(
     for name in os.listdir(EXAMPLES_DIR)
     if name.startswith("example_") and name.endswith(".py")
 )
+_SLOW_EXAMPLES = (
+    "example_htm.py",
+    "example_mstream.py",
+    "example_usage_smart_sifter.py",
+    "example_usage_inqmad.py",
+    "example_sand.py",
+    "example_xstream.py",
+    "example_creditcard.py",
+    "example_windowed_metric.py",
+    "example_streaming_ensemble.py",
+    "example_concept_drift.py",
+    "example_usage_rrcf.py",
+    "example_usage_iforest_asd.py",
+)
+EXAMPLES_EXECUTION_ORDER = [e for e in _SLOW_EXAMPLES if e in EXAMPLES] + [
+    e for e in EXAMPLES if e not in _SLOW_EXAMPLES
+]
 DOCUMENTED_OUTPUTS = parse_documented_example_outputs(
     (ROOT / "docs" / "examples.rst").read_text(encoding="utf-8")
 )
@@ -106,8 +128,9 @@ def _documented_outputs_at(base: str) -> dict[str, tuple[str, str]]:
     return parse_documented_example_outputs(proc.stdout)
 
 
-def _should_run_example(rel_path: str, code: str) -> bool:
-    base = os.environ.get("PYSAD_EXAMPLES_SINCE")
+def _should_run_example(rel_path: str, code: str, base: str | None = None) -> bool:
+    if base is None:
+        base = os.environ.get("PYSAD_EXAMPLES_SINCE")
     if not base:
         return True
     changed = _changed_files_since(base)
@@ -133,6 +156,20 @@ def _should_run_example(rel_path: str, code: str) -> bool:
         if before.split("\ntest = [", 1)[0] != after.split("\ntest = [", 1)[0]:
             return True
     return rel_path in changed or bool(_example_pysad_files(code) & changed)
+
+
+def affected_examples(base: str) -> list[str]:
+    """Return example scripts and notebooks affected by changes since ``base``."""
+    affected: list[str] = []
+    for example in EXAMPLES_EXECUTION_ORDER:
+        code = (ROOT / "examples" / example).read_text(encoding="utf-8")
+        if _should_run_example(f"examples/{example}", code, base=base):
+            affected.append(example)
+    for nb in ("quickstart.ipynb", "nyc_taxi_alerts.ipynb"):
+        code = notebook_code(os.path.join(EXAMPLES_DIR, nb))
+        if _should_run_example(f"examples/{nb}", code, base=base):
+            affected.append(nb)
+    return affected
 
 
 def _assert_output_matches_docs(
@@ -183,20 +220,45 @@ def _assert_output_matches_docs(
                 )
 
 
-def run_python(*args):
-    """Runs the Python interpreter from the examples directory, with a non-interactive plot backend."""
-    existing_py = os.environ.get("PYTHONPATH")
-    pythonpath = f"{ROOT}{os.pathsep}{existing_py}" if existing_py else str(ROOT)
-    env = {**os.environ, "MPLBACKEND": "Agg", "PYTHONPATH": pythonpath}
-    return subprocess.run(
-        [sys.executable, *args],
-        cwd=EXAMPLES_DIR,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        timeout=600,
-        env=env,
-    )
+def _run_in_process(
+    path: Path | None = None, code: str | None = None, name: str = "<example>"
+) -> str:
+    """Executes an example script or notebook snippet in-process and captures stdout."""
+    prev_cwd = os.getcwd()
+    prev_path = sys.path[:]
+    prev_argv = sys.argv[:]
+    prev_filters = warnings.filters[:]
+    prev_err = np.seterr()
+    prev_backend = os.environ.get("MPLBACKEND")
+    os.environ["MPLBACKEND"] = "Agg"
+    if "matplotlib.pyplot" in sys.modules:
+        sys.modules["matplotlib.pyplot"].switch_backend("Agg")
+    elif "matplotlib" in sys.modules:
+        sys.modules["matplotlib"].use("Agg")
+    buf = io.StringIO()
+    try:
+        os.chdir(EXAMPLES_DIR)
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        sys.argv = [str(path) if path is not None else name]
+        with contextlib.redirect_stdout(buf):
+            if path is not None:
+                runpy.run_path(str(path), run_name="__main__")
+            else:
+                exec(compile(code or "", name, "exec"), {"__name__": "__main__"})
+    finally:
+        os.chdir(prev_cwd)
+        sys.path[:] = prev_path
+        sys.argv[:] = prev_argv
+        warnings.filters[:] = prev_filters
+        np.seterr(**prev_err)
+        if prev_backend is None:
+            os.environ.pop("MPLBACKEND", None)
+        else:
+            os.environ["MPLBACKEND"] = prev_backend
+        if "matplotlib.pyplot" in sys.modules:
+            sys.modules["matplotlib.pyplot"].close("all")
+    return buf.getvalue()
 
 
 def test_examples_gallery_autodiscovers_all_scripts_and_parses_outputs():
@@ -219,18 +281,18 @@ def test_examples_gallery_autodiscovers_all_scripts_and_parses_outputs():
 
 
 @pytest.mark.examples
-@pytest.mark.parametrize("example", EXAMPLES)
+@pytest.mark.parametrize("example", EXAMPLES_EXECUTION_ORDER)
 def test_example_runs(example):
-    code = (ROOT / "examples" / example).read_text(encoding="utf-8")
+    path = ROOT / "examples" / example
+    code = path.read_text(encoding="utf-8")
     if not _should_run_example(f"examples/{example}", code):
         pytest.skip(f"No changes affecting {example} since {os.environ['PYSAD_EXAMPLES_SINCE']}")
 
-    result = run_python(example)
+    stdout = _run_in_process(path=path, name=example)
 
-    assert result.returncode == 0, f"{example} failed:\n{result.stderr[-3000:]}"
     if example in DOCUMENTED_OUTPUTS:
         mode, expected = DOCUMENTED_OUTPUTS[example]
-        _assert_output_matches_docs(example, result.stdout, mode, expected)
+        _assert_output_matches_docs(example, stdout, mode, expected)
 
 
 def notebook_code(path):
@@ -255,9 +317,7 @@ def test_quickstart_notebook_runs():
             f"No changes affecting quickstart.ipynb since {os.environ['PYSAD_EXAMPLES_SINCE']}"
         )
 
-    result = run_python("-c", code)
-
-    assert result.returncode == 0, f"quickstart.ipynb failed:\n{result.stderr[-3000:]}"
+    _run_in_process(code=code, name="quickstart.ipynb")
 
 
 @pytest.mark.examples
@@ -268,6 +328,4 @@ def test_nyc_taxi_alerts_notebook_runs():
             f"No changes affecting nyc_taxi_alerts.ipynb since {os.environ['PYSAD_EXAMPLES_SINCE']}"
         )
 
-    result = run_python("-c", code)
-
-    assert result.returncode == 0, f"nyc_taxi_alerts.ipynb failed:\n{result.stderr[-3000:]}"
+    _run_in_process(code=code, name="nyc_taxi_alerts.ipynb")

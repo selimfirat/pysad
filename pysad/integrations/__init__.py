@@ -4,21 +4,26 @@ from typing import Any
 
 from .one_fit_model import OneFitModel
 from .predictive_anomaly_detector import PredictiveAnomalyDetector
+from .pysad_to_sklearn_adapter import PySADToScikitLearnAdapter
 from .reference_window_model import ReferenceWindowModel
-from .sklearn_anomaly_detector import SklearnAnomalyDetector
 
 __all__ = [
     "OneFitModel",
     "PredictiveAnomalyDetector",
+    "PySADToRiverAdapter",
+    "PySADToScikitLearnAdapter",
     "ReferenceWindowModel",
-    "RiverAnomalyDetector",
-    "SklearnAnomalyDetector",
+    "RiverDriftDetector",
 ]
 
 
 def __getattr__(name: str) -> Any:
-    if name == "RiverAnomalyDetector":
-        from .river_anomaly_detector import RiverAnomalyDetector
+    if name == "PySADToRiverAdapter":
+        from .pysad_to_river_adapter import PySADToRiverAdapter
 
-        return RiverAnomalyDetector
+        return PySADToRiverAdapter
+    if name == "RiverDriftDetector":
+        from .river_drift_detector import RiverDriftDetector
+
+        return RiverDriftDetector
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -1,6 +1,25 @@
 {% extends "!base.html" %}
 {% block extrahead %}
 {{ super() }}
+<meta name="theme-color" content="#f2f4f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1519" media="(prefers-color-scheme: dark)">
+{% if not seo_has_meta_description %}
+<meta name="description" content="{{ seo_description|e }}">
+{% endif %}
+{% set og_title = "PySAD — Streaming Anomaly Detection in Python" if pagename == "index" else (title|striptags|e ~ " — PySAD") %}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PySAD">
+<meta property="og:title" content="{{ og_title }}">
+<meta property="og:description" content="{{ seo_description|e }}">
 <meta property="og:image" content="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/images/social-preview.png">
+{% if pageurl %}
+<meta property="og:url" content="{{ pageurl|e }}">
+{% endif %}
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ og_title }}">
+<meta name="twitter:description" content="{{ seo_description|e }}">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/images/social-preview.png">
+{% if pagename == "index" and seo_jsonld %}
+<script type="application/ld+json">{{ seo_jsonld|safe }}</script>
+{% endif %}
 {% endblock %}

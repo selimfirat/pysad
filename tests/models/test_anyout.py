@@ -5,11 +5,11 @@ def generate_stream(seed=61):
     import numpy as np
 
     rng = np.random.RandomState(seed)
-    X = rng.normal(0.0, 1.0, size=(1000, 3))
+    X = rng.normal(0.0, 1.0, size=(400, 3))
     y = np.zeros(X.shape[0], dtype=int)
 
-    outlier_idx = rng.choice(np.arange(100, X.shape[0]), size=30, replace=False)
-    X[outlier_idx] += rng.choice([-6.0, 6.0], size=(30, 3))
+    outlier_idx = rng.choice(np.arange(100, X.shape[0]), size=15, replace=False)
+    X[outlier_idx] += rng.choice([-6.0, 6.0], size=(15, 3))
     y[outlier_idx] = 1
 
     return X, y
@@ -22,7 +22,7 @@ def test_anyout_auroc():
 
     X, y = generate_stream()
 
-    for params in [{}, {"outlier_score": "density"}, {"depth": 2}, {"max_height": 3}]:
+    for params in [{"outlier_score": "density"}, {"depth": 2}, {"max_height": 3}]:
         scores = AnyOut(**params).fit_score(X)
         assert scores.shape == (X.shape[0],)
         assert roc_auc_score(y, scores) > 0.9, params

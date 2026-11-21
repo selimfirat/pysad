@@ -1,3 +1,6 @@
+.. meta::
+   :description: Get started with streaming anomaly detection in Python using PySAD: score points one at a time, measure prequential AUROC, and calibrate alerts.
+
 Getting started
 ===============
 

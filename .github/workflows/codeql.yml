@@ -7,6 +7,14 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+    paths:
+      - "pysad/**"
+      - ".github/**"
+      - "benchmarks/**"
+      - "scripts/**"
+      - "spaces/**"
+      - "docs/*.py"
+      - "pyproject.toml"
   schedule:
     # Weekly, so new queries also run against code that has not changed.
     - cron: "41 5 * * 1"

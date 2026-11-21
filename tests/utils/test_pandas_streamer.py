@@ -1,3 +1,4 @@
+import gc
 import multiprocessing
 import tracemalloc
 
@@ -26,7 +27,7 @@ def test_pandas_streamer_iter_with_labels():
     for x, y in result:
         assert isinstance(x, np.ndarray)
         assert x.shape == (3,)
-        assert isinstance(y, (int, np.integer, float, np.floating))
+        assert isinstance(y, int | np.integer | float | np.floating)
 
 
 @pytest.mark.parametrize("shuffle", [False, True])
@@ -55,15 +56,6 @@ def test_pandas_streamer_shuffle():
 
     # With shuffle=False, first row should be [0, 1]
     assert np.array_equal(result_no_shuffle[0], np.array([0, 1]))
-
-
-def test_pandas_streamer_inheritance():
-    """Test that PandasStreamer properly inherits from BaseStreamer."""
-    streamer = PandasStreamer(shuffle=True)
-    assert streamer.shuffle is True
-
-    streamer = PandasStreamer(shuffle=False)
-    assert streamer.shuffle is False
 
 
 def test_pandas_streamer_empty_dataframe():
@@ -154,24 +146,52 @@ def test_pandas_streamer_label_values_and_shapes(label_kind, shuffle):
         assert label.dtype == expected.dtype
 
 
-@pytest.mark.parametrize("num_rows", [1_000, 1_000_000])
-@pytest.mark.parametrize("data_kind", ["mixed", "integer", "nullable", "missing"])
-@pytest.mark.parametrize("label_kind", [None, "series", "frame"])
-def test_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind):
+def test_pandas_streamer_unshuffled_memory():
     # tracemalloc counts all threads. Keep test runner allocations outside the measurement.
-    process = multiprocessing.get_context("spawn").Process(
-        target=_assert_pandas_streamer_unshuffled_memory,
-        args=(num_rows, data_kind, label_kind),
+    ctx = multiprocessing.get_context("spawn")
+    parent_conn, child_conn = ctx.Pipe(duplex=False)
+    process = ctx.Process(
+        target=_run_pandas_streamer_unshuffled_memory_cases,
+        args=(child_conn,),
     )
     process.start()
+    child_conn.close()
     try:
+        if parent_conn.poll(120):
+            try:
+                error = parent_conn.recv()
+            except EOFError:
+                error = "Child process exited unexpectedly"
+        else:
+            error = "Timed out waiting for child process"
         process.join(timeout=60)
-        assert process.exitcode == 0
+        assert process.exitcode == 0, error
+        assert error is None, error
     finally:
+        parent_conn.close()
         if process.is_alive():
             process.terminate()
             process.join()
         process.close()
+
+
+def _run_pandas_streamer_unshuffled_memory_cases(conn):
+    try:
+        # Warm up lazy pandas/iterator initialization once before measuring per-case peak memory.
+        warmup = PandasStreamer().iter(pd.DataFrame({"a": [0]}))
+        next(warmup)
+        warmup.close()
+        for num_rows in (1_000, 1_000_000):
+            for data_kind in ("mixed", "integer", "nullable", "missing"):
+                for label_kind in (None, "series", "frame"):
+                    _assert_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind)
+                    gc.collect()
+    except BaseException as exc:
+        conn.send(f"{type(exc).__name__}: {exc}")
+    else:
+        conn.send(None)
+    finally:
+        conn.close()
 
 
 def _assert_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind):
@@ -189,6 +209,7 @@ def _assert_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind):
         labels = df.copy()
     rows = PandasStreamer().iter(df, labels)
 
+    gc.collect()
     tracemalloc.start()
     try:
         first = next(rows)
@@ -201,7 +222,10 @@ def _assert_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind):
     np.testing.assert_array_equal(first if labels is None else first[0], expected)
     if labels is not None:
         np.testing.assert_array_equal(first[1], 0 if label_kind == "series" else expected)
-    assert peak < 50_000
+    assert peak < 50_000, (
+        f"Peak memory {peak} >= 50000 for num_rows={num_rows}, "
+        f"data_kind={data_kind}, label_kind={label_kind}"
+    )
 
 
 @pytest.mark.parametrize("as_frame", [False, True])

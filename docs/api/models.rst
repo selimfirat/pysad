@@ -13,6 +13,8 @@ This module holds the streaming anomaly detectors. :doc:`/detectors` compares th
 
 ``DriftAdaptiveDetector`` resets a detector after Page-Hinkley alerts on its scores. Pass a factory that creates fresh detectors. The monitor adds constant memory and update cost. Scoring alone does not update the drift monitor.
 
+``CostSensitiveStreamModel`` uses cost-sensitive online gradient descent. It treats label one as an anomaly and applies a larger loss to missed anomalies. It also runs without labels by treating each instance as normal.
+
 .. autosummary::
    :nosignatures:
    :template: class.rst

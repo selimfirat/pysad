@@ -82,4 +82,4 @@ class PredictiveAnomalyDetector(BaseModel):
         forecast = self.model.forecast(horizon=1)[0]
         error = abs(value - forecast)
 
-        return error / abs(forecast) if self.relative else error
+        return float(error / abs(forecast) if self.relative else error)

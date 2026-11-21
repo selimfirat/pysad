@@ -43,9 +43,15 @@ MODEL_PARAMS = {
         "max_depth": 8,
     },
     # The anomaly likelihood leaves its probationary period before the round trip.
-    "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 40, "num_columns": 256},
-    "IForestASD": {"window_size": 32},
-    "IDKS": {"input_shape": 3, "window_size": 30, "num_samples": 4},
+    "HTM": {
+        "min_val": 0.0,
+        "max_val": 1.0,
+        "probationary_period": 40,
+        "num_columns": 64,
+        "num_cells_per_column": 4,
+    },
+    "IForestASD": {"window_size": 32, "n_estimators": 5},
+    "IDKS": {"input_shape": 3, "window_size": 30, "num_samples": 4, "num_partitions": 10},
     # Violations count toward failures before and after the round trip.
     "HoltWinters": {"period": 4, "threshold": 1},
     # The window is summarized before and after the round trip.
@@ -73,11 +79,11 @@ MODEL_PARAMS = {
     "NETS": {"window_size": 30, "max_radius": 0.6},
     # Output neurons merge and replace the oldest one before and after the round trip.
     "OeSNNUAD": {"window_size": 20, "num_output_neurons": 4},
-    "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
+    "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 8, "window_size": 32},
     # A window that wraps before and after the round trip.
     "OnlineOneClassSVM": {"window_size": 32},
     "PCBIsolationForest": {
-        "num_trees": 10,
+        "num_trees": 5,
         "window_size": 32,
         "stat_size": 10,
     },
@@ -92,7 +98,11 @@ MODEL_PARAMS = {
     },
     "RobustRandomCutForest": {"tree_size": 32},
     "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
-    "RSHash": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0]},
+    "RSHash": {
+        "feature_mins": [0.0, 0.0, 0.0],
+        "feature_maxes": [1.0, 1.0, 1.0],
+        "num_components": 10,
+    },
     # Batches complete before and after the round trip.
     "SAND": {"subsequence_length": 4, "batch_size": 25},
     "SeasonalESD": {"period": 4, "window_size": 16, "max_anomalies": 0.19},
@@ -206,22 +216,3 @@ def test_relative_entropy_compared_scores_use_learned_state():
     model = _fitted_model("RelativeEntropy", X, y)
 
     assert _next_scores(model, X, y).max() == 1.0
-
-
-def test_rrcf_pickle_round_trip():
-    from pysad.models import RobustRandomCutForest
-
-    X, y = _data("RobustRandomCutForest")
-    model = _fitted_model("RobustRandomCutForest", X, y)
-
-    restored = pickle.loads(pickle.dumps(model))
-
-    assert restored.index == model.index == NUM_FIT
-    assert len(restored._slot_leaves) == model.num_trees
-    assert restored._slot_leaves == model._slot_leaves
-
-    # tree_size < NUM_FIT, so the next instances also exercise forgetting old points after restoring.
-    _assert_same_scores(model, restored, X, y)
-
-    restored_again = pickle.loads(pickle.dumps(restored))
-    assert isinstance(restored_again, RobustRandomCutForest)

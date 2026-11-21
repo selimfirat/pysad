@@ -28,7 +28,7 @@ def _to_float_score(score: float | np.number[Any] | NDArray[Any] | list[float]) 
     """
     if type(score) is float:
         return score
-    if isinstance(score, (int, np.floating, np.integer)) and not isinstance(score, bool):
+    if isinstance(score, int | np.floating | np.integer) and not isinstance(score, bool):
         return float(score)
     score = np.asarray(score)
     if score.size != 1:

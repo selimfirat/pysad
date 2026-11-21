@@ -181,7 +181,7 @@ def test_alert_mcc_survives_csv_and_averages_runs(tmp_path, monkeypatch):
     benchmark.write_tables(results)
     with (tmp_path / "alerts.csv").open() as stream:
         table = list(csv.DictReader(stream))
-    assert [row["MCC"] for row in table] == ["0.289", "0.000", "-0.289", "0.289"] * 2
+    assert [row["MCC"] for row in table] == ["0.289", "0.000", "-0.289", "0.289"] * 3
 
 
 @pytest.fixture
@@ -536,3 +536,99 @@ def test_summary_has_no_mean_aupr(tmp_path, monkeypatch):
         aupr_rows = list(csv.DictReader(f))
     assert [row["Dataset"] for row in aupr_rows] == datasets
     assert float(aupr_rows[0]["RSHash"].replace("*", "")) == 0.9  # the best cell is bolded
+
+
+def test_ci_mode_skips_calibrators_and_changed_detectors_isolates_calibrator_edits(monkeypatch):
+    benchmark = load_benchmark()
+    monkeypatch.setattr(
+        benchmark, "git", lambda *args: "pysad/transform/probability_calibration/gaussian_tail.py\n"
+    )
+    assert benchmark.changed_detectors("origin/master", ci=True) == []
+    assert benchmark.changed_detectors("origin/master", ci=False) == [
+        *benchmark.DETECTORS,
+        *benchmark.UNIVARIATE,
+    ]
+
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(300, 2))
+    y = np.zeros(300, dtype=int)
+    y[290:] = 1
+    monkeypatch.setattr(benchmark, "load", lambda *args: (X.copy(), y.copy()))
+    row = benchmark.run(("synthetic", "LODA", 0, 300, True))
+    assert set(row) == {"dataset", "detector", "seed", "auroc", "aupr", "ms_per_point"}
+
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda self, name: (X[:, :1].copy(), y.copy()))
+    uni_row = benchmark.run(("nab/synthetic.csv", "StandardAbsoluteDeviation", 0, 300, True))
+    assert "_nab" not in uni_row
+    assert set(uni_row) == {"dataset", "detector", "seed", "auroc", "aupr", "ms_per_point"}
+
+
+def test_ci_plan_shards_and_ignore_unknown(monkeypatch):
+    import json
+    import sys
+
+    benchmark = load_benchmark()
+    monkeypatch.setattr(
+        benchmark,
+        "changed_detectors",
+        lambda base, path=None, ci=False: ["LODA", "xStream", "StandardAbsoluteDeviation"],
+    )
+    monkeypatch.setattr(
+        benchmark,
+        "git",
+        lambda *args: (
+            "100644 blob aaa\tpysad/models/loda.py\n100644 blob bbb\tpysad/models/xstream.py\n"
+        ),
+    )
+    plan = benchmark.ci_plan("origin/master")
+    assert plan["has_jobs"] is True
+    assert [(row["part"], row["shard"], row["has_base"]) for row in plan["include"]] == [
+        ("odds", "LODA,xStream", True),
+        ("drift", "LODA,xStream", True),
+        ("univariate", "StandardAbsoluteDeviation", False),
+    ]
+    assert all(len(row["base_hash"]) == 16 for row in plan["include"])
+
+    monkeypatch.setattr(benchmark, "changed_detectors", lambda base, path=None, ci=False: [])
+    empty_plan = benchmark.ci_plan("origin/master")
+    assert empty_plan == {"has_jobs": False, "include": []}
+
+    shards = benchmark._pack_shards(
+        ["A", "B", "C", "D"], 2, {"A": 10.0, "B": 9.0, "C": 2.0, "D": 1.0}
+    )
+    assert len(shards) == 2
+    assert {d for s in shards for d in s} == {"A", "B", "C", "D"}
+
+    # --ignore-unknown silently filters unknown detectors without error.
+    ran = []
+    monkeypatch.setattr(
+        benchmark,
+        "run",
+        lambda job: (
+            ran.append(job)
+            or {"dataset": "d", "detector": job[1], "seed": 0, "auroc": 0.5, "aupr": 0.5}
+        ),
+    )
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda self, name: None)
+    out_csv = str(__import__("pathlib").Path(__file__).resolve().parent / "__tmp_ignored.csv")
+    try:
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "benchmark.py",
+                "--ci",
+                out_csv,
+                "--parts",
+                "odds",
+                "--detectors",
+                "NonExistentDetector",
+                "--ignore-unknown",
+            ],
+        )
+        benchmark.main()
+        assert ran == []
+    finally:
+        __import__("pathlib").Path(out_csv).unlink(missing_ok=True)
+        __import__("sys")
+    assert isinstance(json.dumps(plan), str)

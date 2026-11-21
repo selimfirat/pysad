@@ -82,9 +82,9 @@ class ADWINMeter(BaseStatistic):
     Follows ADWIN2 by Bifet and Gavaldà :cite:`bifet2007learning`. The window
     ``W`` holds the most recent items and grows while the stream is stationary.
     After each update, every split of ``W`` into an older part ``W0`` and a newer
-    part ``W1`` at a bucket border is tested, and the oldest bucket is dropped
-    while some split has ``|mean(W0) - mean(W1)| > eps_cut``, with the paper's
-    normal-approximation bound (Eq. 3.1)::
+    part ``W1`` at a bucket border is tested. If some split has
+    ``|mean(W0) - mean(W1)| > eps_cut``, the window is cut at the earliest such
+    split (largest ``W0``), dropping ``W0`` entirely. The bound (Eq. 3.1) is::
 
         eps_cut = sqrt(2 / m * var(W) * ln(2 / delta')) + 2 / (3 * m) * ln(2 / delta')
 
@@ -187,6 +187,11 @@ class ADWINMeter(BaseStatistic):
             self._buckets[level + 1].append(merged)
 
     def _has_cut(self) -> bool:
+        """Returns True if any split has a significant difference.
+
+        Tests splits from newest to oldest (smallest W0 first), as in the
+        original ADWIN2 bucket-based implementation.
+        """
         n = self.width
         if n < 2:
             return False
@@ -195,8 +200,9 @@ class ADWINMeter(BaseStatistic):
         log_term = math.log(2.0 * math.log(n) / self.delta)
         n0, sum0 = 0, 0.0
         for level in range(len(self._buckets) - 1, -1, -1):
+            size = 2**level
             for bucket_sum, _ in self._buckets[level]:
-                n0 += 2**level
+                n0 += size
                 sum0 += bucket_sum
                 n1 = n - n0
                 if n1 == 0:
@@ -212,16 +218,29 @@ class ADWINMeter(BaseStatistic):
         return False
 
     def _drop_oldest(self) -> None:
-        size = 2 ** (len(self._buckets) - 1)
-        bucket_sum, bucket_sq_dev = self._buckets[-1].pop(0)
+        """Drops the oldest bucket from the window."""
+        # The oldest bucket is at the highest non-empty level, index 0.
+        level = len(self._buckets) - 1
+        while level >= 0 and not self._buckets[level]:
+            level -= 1
+        if level < 0:
+            return
+
+        size = 2**level
+        bucket_sum, bucket_sq_dev = self._buckets[level].pop(0)
         rest = self.width - size
-        diff = bucket_sum / size - (self._sum - bucket_sum) / rest
-        self._sq_dev = max(
-            0.0, self._sq_dev - bucket_sq_dev - diff * diff * size * rest / self.width
-        )
+        if rest > 0:
+            diff = bucket_sum / size - (self._sum - bucket_sum) / rest
+            self._sq_dev = max(
+                0.0, self._sq_dev - bucket_sq_dev - diff * diff * size * rest / self.width
+            )
+        else:
+            self._sq_dev = 0.0
         self._sum -= bucket_sum
         self.width = rest
-        while not self._buckets[-1]:
+
+        # Clean up empty bucket levels
+        while self._buckets and not self._buckets[-1]:
             self._buckets.pop()
 
 
@@ -1247,9 +1266,14 @@ class PageHinkleyMeter(BaseStatistic):
     identity, clamping at zero is algebraically equivalent to Page's formulation
     of subtracting the running minimum (or maximum) of the unreflected cumulative
     sum, without storing the running extrema separately. ``get`` returns
-    ``max(g+, -g-)``, the two-sided statistic: a caller raises a change-point
-    alarm when it exceeds a chosen threshold. Small fluctuations below ``delta``
-    decay back toward zero instead of accumulating.
+    ``max(g+, -g-)``, the two-sided statistic. If this value exceeds
+    ``threshold``, the meter sets ``drift_detected`` to True. Equality does
+    not trigger an alarm. The next update resets both sums before it adds
+    the new value. Small fluctuations below ``delta`` decay back toward zero
+    instead of accumulating.
+
+    The meter starts testing after ``min_instances`` observations. This avoids
+    false alarms from the noisy initial mean estimate.
 
     ``remove`` is not supported: the running mean and the cumulative sums depend
     on the full history, so a past observation cannot be taken back.
@@ -1257,27 +1281,47 @@ class PageHinkleyMeter(BaseStatistic):
     Args:
         delta (float): The smallest shift magnitude to accumulate, which must be
             non-negative (Default=0.0, every deviation accumulates).
+        threshold (float): The positive alarm limit for the two-sided statistic
+            (Default=50.0).
+        min_instances (int): The minimum number of observations before testing
+            for drift (Default=30).
 
     Raises:
-        ValueError: If ``delta`` is negative.
+        ValueError: If ``delta`` is negative, ``threshold`` is not positive, or
+            ``min_instances`` is less than 1.
 
     Attributes:
         delta (float): The smallest shift magnitude that is accumulated.
+        threshold (float): The positive alarm limit for the two-sided statistic.
+        min_instances (int): The minimum number of observations before testing.
         num_items (int): The number of items that are used to update the statistic.
         mean (float): The running mean of the observations seen so far.
         g_plus (float): The upward cumulative sum (always non-negative).
         g_minus (float): The downward cumulative sum (always non-positive).
+        drift_detected (bool): Whether the last update detected a drift.
     """
 
-    def __init__(self, delta: float = 0.0) -> None:
+    def __init__(
+        self,
+        delta: float = 0.0,
+        threshold: float = 50.0,
+        min_instances: int = 30,
+    ) -> None:
         if delta < 0.0:
             raise ValueError("delta must be non-negative.")
+        if threshold <= 0.0:
+            raise ValueError("threshold must be positive.")
+        if min_instances < 1:
+            raise ValueError("min_instances must be a positive integer.")
 
         self.delta = delta
+        self.threshold = threshold
+        self.min_instances = min_instances
         self.num_items = 0
         self.mean = 0.0
         self.g_plus = 0.0
         self.g_minus = 0.0
+        self.drift_detected = False
 
     def update(self, num: float) -> PageHinkleyMeter:
         """Updates the statistic with the value for a timestep.
@@ -1286,14 +1330,24 @@ class PageHinkleyMeter(BaseStatistic):
             num (float): The incoming value, for which the statistic is used.
 
         Returns:
-            object: self.
+            PageHinkleyMeter: self.
         """
+        if self.drift_detected:
+            self.g_plus = self.g_minus = 0.0
+            self.num_items = 0
+            self.mean = 0.0
+
         self.num_items += 1
         self.mean += (num - self.mean) / self.num_items
 
         deviation = num - self.mean
         self.g_plus = max(0.0, self.g_plus + deviation - self.delta)
         self.g_minus = min(0.0, self.g_minus + deviation + self.delta)
+
+        if self.num_items >= self.min_instances:
+            self.drift_detected = self.get() > self.threshold
+        else:
+            self.drift_detected = False
 
         return self
 

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_transformer import BaseTransformer
 from pysad.statistics import AverageMeter, VarianceMeter
@@ -33,7 +35,7 @@ class StandardScaler(BaseTransformer):
         self.means_: list[AverageMeter] | None = None
         self.variances_: list[VarianceMeter] | None = None
 
-    def fit_partial(self, X: np.ndarray) -> StandardScaler:
+    def fit_partial(self, X: NDArray[Any]) -> StandardScaler:
         """Update the running mean and variance of each feature with X.
 
         Args:
@@ -56,7 +58,7 @@ class StandardScaler(BaseTransformer):
 
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scale X with the running mean and standard deviation of each feature.
 
         Args:

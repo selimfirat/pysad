@@ -87,7 +87,8 @@ class RandomDistributedScalarEncoder:
                 self.min_index_, self.min_index_ - 1
             )
             self.min_index_ -= 1
-        return self.buckets_[index].copy()
+        bucket: np.ndarray = self.buckets_[index].copy()
+        return bucket
 
     def _new_bucket(self, index: int, new_index: int) -> np.ndarray:
         """Returns the bits of `new_index`, which differ in one bit from those of the next bucket `index`."""
@@ -107,7 +108,8 @@ class RandomDistributedScalarEncoder:
             mask[bits] = True
             overlaps = mask[existing].sum(axis=1)
             if np.where(near, overlaps == self.width - distances, overlaps <= 2).all():
-                return bits
+                res: np.ndarray = bits
+                return res
 
 
 # RandomDistributedScalarEncoder and encode_time_of_day are adapted from the encoders of NuPIC,

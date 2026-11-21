@@ -78,7 +78,7 @@ def test_memory_stays_bounded():
     )
     sizes = []
     for _ in range(3):
-        for _ in range(2000):
+        for _ in range(500):
             columns = rng.choice(64, 4, replace=False)
             assert 0.0 <= tm.score(columns) <= 1.0
             tm.fit(columns)

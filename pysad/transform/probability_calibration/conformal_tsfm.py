@@ -29,7 +29,8 @@ class ConformalTSFMCalibrator(BasePostprocessor):
     where ``err_t = 1`` if ``score_t > qhat_t`` else ``0``, and ``qhat_t`` is the
     ``(1 - alpha_t)``-quantile of the recent scores. The result is clipped to ``[0, 1]`` when
     ``clip_alpha`` is enabled. A momentum variant replaces ``err_t`` with a weighted average of
-    past errors.
+    past errors. The momentum variant, fixed sliding score window, and conformal rank output are
+    PySAD extensions beyond :cite:`gibbs2021adaptive`.
 
     As for model scores, higher calibrated values mean more anomalous. Alert when the calibrated
     score exceeds ``1 - alpha`` (approximately), or equivalently when the raw score exceeds

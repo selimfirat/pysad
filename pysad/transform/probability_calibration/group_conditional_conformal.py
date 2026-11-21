@@ -18,7 +18,7 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
     The calibrator keeps one sliding calibration window per regime (group). A score is transformed
     against its own regime's window: it returns the fraction of that window's scores below the
     score, i.e. one minus the score's conformal p-value within that regime. This rank transform
-    follows the online conformal anomaly detection of Laxhammar (2013) and the sliding calibration
+    follows the online conformal anomaly detection of Laxhammar and Falkman (2014) and the sliding calibration
     queue of Ishimtsev et al. (2017).
 
     Stratifying by regime gives conditional coverage per regime instead of only marginal coverage

@@ -218,7 +218,12 @@ class OeSNNUAD(BaseModel):
             X (np.float64 array of shape (1,)): The value to score. This model is univariate.
 
         Returns:
-            float: The prediction error in standard deviations above the mean recent error of the values that were not anomalies. It is 0 during the first ``window_size`` values, while the repository is empty, or when that standard deviation is 0.
+            float: The prediction error in standard deviations above the mean recent error
+                of the values that were not anomalies. It is 0 during the first
+                ``window_size`` values, while the repository is empty, or when that
+                standard deviation is 0. Higher scores represent more anomalous instances.
+                A threshold :math:`\\varepsilon` is used for binary decision classification
+                via :meth:`_decide_from_score`.
         """
         x = check_univariate(X, "OeSNNUAD")
         if self.count_ < self.window_size or not self.num_neurons_:

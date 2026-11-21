@@ -34,7 +34,8 @@ class NullModel(BaseModel):
             X: any (Ignored)
 
         Returns:
-            float: Equal to `0.5`.
+            float: Equal to ``0.5``. This baseline model returns a constant score for every
+                instance, used as a reference for pipeline testing.
         """
         return 0.5
 
@@ -85,7 +86,9 @@ class PerfectModel(BaseModel):
             X (np.float64 array of shape (num_features,)): Ignored.
 
         Returns:
-            float: The true label, or ``0.0`` before any label is fitted.
+            float: The true label of the instance, or ``0.0`` before any label is fitted.
+                This model returns ground truth labels as scores, used for pipeline testing
+                and evaluation.
         """
         if not self.labels:
             return 0.0
@@ -127,7 +130,9 @@ class RandomModel(BaseModel):
             X: any (Ignored)
 
         Returns:
-            float: Uniform random between [0,1).
+            float: Uniform random score from ``[0, 1)``. This baseline model returns
+                random scores for every instance, used as a chance reference in pipeline
+                testing and evaluation.
         """
         rng = self._rng if self._rng is not None else check_random_state(None)
 

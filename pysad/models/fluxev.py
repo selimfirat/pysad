@@ -197,6 +197,9 @@ class FluxEV(BaseModel):
 
         Returns:
             float: The nonnegative fluctuation S, or zero during the smoothing warmup.
+            Higher scores represent more anomalous instances. A threshold
+            :math:`S_{\\text{th}}` is used for binary decision classification
+            via :meth:`_decide_from_score`.
         """
         return self._features(check_univariate(X, "FluxEV"))[2]
 

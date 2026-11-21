@@ -99,7 +99,15 @@ class MemStream(BaseModel):
         return self
 
     def score_partial(self, X: NDArray[np.float64]) -> float:
-        """Returns the discounted L1 distance, or zero during initial training."""
+        """Returns the discounted L1 distance, or zero during initial training.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score.
+
+        Returns:
+            float: The discounted L1 distance. Higher scores represent more anomalous
+                instances.
+        """
         if self.num_seen_ < self.window_size:
             return 0.0
         return self._distance(self._encode(X))

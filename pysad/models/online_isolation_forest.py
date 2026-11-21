@@ -609,7 +609,8 @@ class OnlineIsolationForest(BaseModel):
             X (np.float64 array of shape (num_features,)): Instance to score.
 
         Returns:
-            float: Anomaly score in [0, 1], or 0.0 before learning.
+            float: Anomaly score in [0, 1], or 0.0 before learning. Higher scores
+                represent more anomalous instances.
         """
         if not self.window_:
             return 0.0

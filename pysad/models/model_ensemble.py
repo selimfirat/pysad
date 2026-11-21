@@ -99,7 +99,7 @@ class ModelEnsemble(BaseModel):
             X (np.float64 array of shape (num_features,)): The instance to score.
 
         Returns:
-            float: Combined anomaly score.
+            float: Combined anomaly score. Higher scores represent more anomalous instances.
         """
         scores = np.fromiter(
             (model.score_partial(X) for model in self.models),

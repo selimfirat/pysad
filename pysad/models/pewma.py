@@ -106,6 +106,7 @@ class PEWMA(BaseModel):
             X (np.float64 array of shape (1,)): The value to score. This model is univariate.
 
         Returns:
-            float: The absolute z-score :math:`|Z_t|` of the value. It is 0 while the standard deviation is 0.
+            float: The absolute z-score :math:`|Z_t|` of the value. It is 0 while the
+                standard deviation is 0. Higher scores represent more anomalous instances.
         """
         return abs(self._z(check_univariate(X, "PEWMA")))

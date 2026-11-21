@@ -132,10 +132,13 @@ class RelativeEntropy(BaseModel):
             X (float or np.float64 array): The instance to score, holding exactly one value.
 
         Returns:
-            float: 1.0 if the window agrees with no hypothesis, or with one that fewer than `c_th` earlier windows created or agreed with (never, at the default `c_th=1`), and 0.0 if it agrees with another hypothesis. Also 0.0 before the window is full, when `X` doesn't close a window (per `step`, only the value that closes a window gets its score), before any hypothesis has been learned, or when `min_val == max_val` (bucket width `stepSize` is 0).
-
-        Raises:
-            ValueError: If `X` holds more than one value or is NaN.
+            float: Decision score: ``1.0`` if the window agrees with no hypothesis, or with one that
+                fewer than ``c_th`` earlier windows created or agreed with (never, at the default
+                ``c_th=1``), and ``0.0`` if it agrees with another hypothesis. Also ``0.0``
+                before the window is full, when ``X`` doesn't close a window (per ``step``, only
+                the value that closes a window gets its score), before any hypothesis has been
+                learned, or when ``min_val == max_val`` (bucket width ``stepSize`` is 0).
+                Higher scores indicate more anomalous windows (agreeing with fewer hypotheses).
         """
         x = self._value(X)
 

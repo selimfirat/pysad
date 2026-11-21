@@ -105,7 +105,9 @@ class StreamPipeline(BaseModel):
             X (np.float64 array of shape (num_features,) or Any): The instance to score.
 
         Returns:
-            float: The output of the last stage.
+            float: The output of the last stage. Higher scores represent more anomalous
+                instances, consistent with the output kind of the last model or postprocessor
+                in the pipeline.
         """
         for preprocessor in self.preprocessors:
             X = preprocessor.transform_partial(X)

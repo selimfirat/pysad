@@ -214,7 +214,8 @@ class PCBIsolationForest(BaseModel):
             X (np.float64 array of shape (num_features,)): Instance to score.
 
         Returns:
-            float: Mean tree score in [0, 1], or 0.0 before initialization.
+            float: Mean tree score in [0, 1], or 0.0 before initialization. Higher scores
+                represent more anomalous instances.
         """
         if self._count < self.window_size:
             return 0.0

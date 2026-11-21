@@ -57,7 +57,6 @@ from .spectral_residual import SpectralResidual
 from .standard_absolute_deviation import StandardAbsoluteDeviation
 from .stream_pipeline import StreamPipeline
 from .streaming_autoregressive import StreamingAutoregressiveDetector
-from .streaming_distiller import StreamingDistiller
 from .teda import TEDA
 from .thresh_leap import ThreshLEAP
 from .xstream import xStream
@@ -120,7 +119,6 @@ __all__ = [
     "SpectralResidual",
     "StandardAbsoluteDeviation",
     "StreamingAutoregressiveDetector",
-    "StreamingDistiller",
     "StreamPipeline",
     "TEDA",
     "ThreshLEAP",

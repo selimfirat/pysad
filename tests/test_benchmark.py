@@ -632,3 +632,158 @@ def test_ci_plan_shards_and_ignore_unknown(monkeypatch):
         __import__("pathlib").Path(out_csv).unlink(missing_ok=True)
         __import__("sys")
     assert isinstance(json.dumps(plan), str)
+
+
+def test_ci_plan_fallback_weights_and_det_hashes(monkeypatch):
+    import json
+
+    benchmark = load_benchmark()
+    _, pw = benchmark._detector_weights()
+    assert pw["odds"]["PCBIsolationForest"] > pw["odds"].get("LODA", 0.0)
+    shards = benchmark._pack_shards(
+        ["PCBIsolationForest", "OnlineIsolationForest", "RobustRandomCutForest", "LODA"],
+        3,
+        pw["odds"],
+    )
+    heavy_buckets = [
+        i
+        for i, s in enumerate(shards)
+        for name in s
+        if name in {"PCBIsolationForest", "OnlineIsolationForest", "RobustRandomCutForest"}
+    ]
+    assert len(set(heavy_buckets)) == 3
+
+    monkeypatch.setattr(
+        benchmark,
+        "git",
+        lambda *args: "100644 blob aaa\tpysad/models/loda.py\n",
+    )
+    plan = benchmark.ci_plan("HEAD", all_detectors=True)
+    assert plan["has_jobs"] is True
+    for row in plan["include"]:
+        det_hashes = json.loads(row["det_hashes"])
+        assert sorted(det_hashes) == sorted(row["shard"].split(","))
+
+
+def test_base_cache_dir_and_compare_dirs(tmp_path, monkeypatch, capsys):
+    import json
+    import sys
+
+    benchmark = load_benchmark()
+    cache_dir = tmp_path / "cache"
+    out1 = tmp_path / "run1.csv"
+    out2 = tmp_path / "run2.csv"
+    calls = []
+
+    def fake_run(job):
+        ds, det, seed, points, ci = job
+        calls.append(det)
+        return {
+            "dataset": ds,
+            "detector": det,
+            "seed": seed,
+            "auroc": 0.9 if det == "LODA" else 0.8,
+            "aupr": 0.7,
+        }
+
+    class DummyFuture:
+        def __init__(self, value):
+            self._value = value
+
+        def result(self):
+            return self._value
+
+    class DummyExecutor:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def submit(self, fn, arg):
+            return DummyFuture(fn(arg))
+
+    monkeypatch.setattr(benchmark, "run", fake_run)
+    monkeypatch.setattr(benchmark, "ProcessPoolExecutor", DummyExecutor)
+    monkeypatch.setattr(benchmark, "as_completed", list)
+    monkeypatch.setattr(benchmark, "DRIFT", {"kddcup99/http.csv": "KDD http"})
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda self, name: None)
+
+    hashes1 = json.dumps({"LODA": "aaaa1111aaaa1111", "xStream": "bbbb2222bbbb2222"})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "benchmark.py",
+            "--ci",
+            str(out1),
+            "--parts",
+            "drift",
+            "--detectors",
+            "LODA,xStream",
+            "--base-cache-dir",
+            str(cache_dir),
+            "--det-hashes",
+            hashes1,
+        ],
+    )
+    benchmark.main()
+    assert sorted(calls) == ["LODA", "xStream"]
+    assert (cache_dir / "LODA-aaaa1111aaaa1111.csv").is_file()
+    assert (cache_dir / "xStream-bbbb2222bbbb2222.csv").is_file()
+
+    # Re-run when only xStream hash changed: LODA is served from cache, xStream recomputes.
+    calls.clear()
+    hashes2 = json.dumps({"LODA": "aaaa1111aaaa1111", "xStream": "cccc3333cccc3333"})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "benchmark.py",
+            "--ci",
+            str(out2),
+            "--parts",
+            "drift",
+            "--detectors",
+            "LODA,xStream",
+            "--base-cache-dir",
+            str(cache_dir),
+            "--det-hashes",
+            hashes2,
+        ],
+    )
+    benchmark.main()
+    assert calls == ["xStream"]
+    assert set(benchmark.read_results(out2)) == {
+        ("kddcup99/http.csv", "LODA", 0),
+        ("kddcup99/http.csv", "xStream", 0),
+    }
+
+    base_dir = tmp_path / "base_artifacts"
+    head_dir = tmp_path / "head_artifacts"
+    (base_dir / "s0").mkdir(parents=True)
+    (head_dir / "s0").mkdir(parents=True)
+    (base_dir / "s0" / "base.csv").write_text(out1.read_text(encoding="utf-8"), encoding="utf-8")
+    (head_dir / "s0" / "head.csv").write_text(out2.read_text(encoding="utf-8"), encoding="utf-8")
+    benchmark.compare_ci_dirs(base_dir, head_dir)
+    assert "No run moved, out of 2." in capsys.readouterr().out
+
+    # Perturb head AUROC and verify drift detection via --compare-dirs CLI.
+    (head_dir / "s0" / "head.csv").write_text(
+        out2.read_text(encoding="utf-8").replace(",0.9,", ",0.5,"), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        sys, "argv", ["benchmark.py", "--compare-dirs", str(base_dir), str(head_dir)]
+    )
+    benchmark.main()
+    out = capsys.readouterr().out
+    assert "1 of 2 runs moved." in out and "LODA" in out
+
+    # Empty base directory leaves comparison graceful.
+    empty_base = tmp_path / "empty_base"
+    empty_base.mkdir()
+    benchmark.compare_ci_dirs(empty_base, head_dir)
+    assert "No base benchmark results to compare" in capsys.readouterr().out

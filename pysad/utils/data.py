@@ -1,3 +1,4 @@
+import contextlib
 import csv
 import gzip
 import hashlib
@@ -320,6 +321,16 @@ class Data:
 
     def _load_creditcard(self, data_path: str) -> tuple[np.ndarray, np.ndarray]:
         """Loads the numeric credit-card ARFF file and separates features from ``Class``."""
+        cache_path = f"{data_path}.npz"
+        if os.path.exists(cache_path) and os.path.getmtime(cache_path) >= os.path.getmtime(
+            data_path
+        ):
+            try:
+                with np.load(cache_path) as cached:
+                    return cached["X"], cached["y"]
+            except (OSError, ValueError, KeyError):
+                pass
+
         attributes: list[str] = []
         with open(data_path, encoding="utf-8") as f:
             for line in f:
@@ -348,9 +359,21 @@ class Data:
         class_idx = attributes.index("Class")
         arr = np.fromstring(body, dtype=np.float64, sep=",").reshape(-1, num_cols)
         if class_idx == num_cols - 1:
-            return np.ascontiguousarray(arr[:, :class_idx]), arr[:, class_idx].astype(int)
-        feature_cols = [i for i in range(num_cols) if i != class_idx]
-        return np.ascontiguousarray(arr[:, feature_cols]), arr[:, class_idx].astype(int)
+            X = np.ascontiguousarray(arr[:, :class_idx])
+        else:
+            feature_cols = [i for i in range(num_cols) if i != class_idx]
+            X = np.ascontiguousarray(arr[:, feature_cols])
+        y = arr[:, class_idx].astype(int)
+
+        tmp_path = f"{data_path}.{os.getpid()}.tmp.npz"
+        try:
+            np.savez(tmp_path, X=X, y=y)
+            os.replace(tmp_path, cache_path)
+        except OSError:
+            if os.path.exists(tmp_path):
+                with contextlib.suppress(OSError):
+                    os.remove(tmp_path)
+        return X, y
 
     def _load_nab(
         self, name: str, data_path: str, download: bool, timestamps: bool

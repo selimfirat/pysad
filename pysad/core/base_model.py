@@ -10,9 +10,9 @@ from typing import Any, ClassVar, Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from pysad.core._iterate import _iterate
 from pysad.core.base_postprocessor import BasePostprocessor, _PostprocessorChain
 from pysad.core.base_transformer import BaseTransformer, _TransformerChain
-from pysad.utils import _iterate
 
 
 def _to_float_score(score: float | np.number[Any] | NDArray[Any] | list[float]) -> float:

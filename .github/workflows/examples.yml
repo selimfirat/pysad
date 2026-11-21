@@ -7,6 +7,8 @@ on:
       - "pysad/**"
       - "examples/**"
       - "docs/examples.rst"
+      - "docs/_autodiscover.py"
+      - "scripts/ci_affected.py"
       - "tests/test_examples.py"
       - "pyproject.toml"
       - ".github/workflows/examples.yml"
@@ -15,6 +17,8 @@ on:
       - "pysad/**"
       - "examples/**"
       - "docs/examples.rst"
+      - "docs/_autodiscover.py"
+      - "scripts/ci_affected.py"
       - "tests/test_examples.py"
       - "pyproject.toml"
       - ".github/workflows/examples.yml"
@@ -44,19 +48,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          enable-cache: true
-          cache-dependency-glob: "pyproject.toml"
-          cache-suffix: examples
-          prune-cache: true
-      - name: Install dependencies
-        run: |
-          # uv prefers wheels by default, matching pip's --prefer-binary.
-          uv pip install --system --group runtime --group test -e .
       - name: Find affected examples
         id: plan
         if: github.base_ref != ''
@@ -64,8 +55,24 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           git fetch --depth=1 origin "$BASE_REF"
-          count=$(python -c 'import os; from tests.test_examples import affected_examples; print(len(affected_examples("origin/" + os.environ["BASE_REF"])))')
+          count=$(python3 -c 'import json, os, subprocess; print(json.loads(subprocess.check_output(["python3", "scripts/ci_affected.py", "examples", "origin/" + os.environ["BASE_REF"]], text=True))["count"])')
           echo "count=$count" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        if: github.base_ref == '' || steps.plan.outputs.count != '0'
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: github.base_ref == '' || steps.plan.outputs.count != '0'
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: examples
+          prune-cache: true
+      - name: Install dependencies
+        if: github.base_ref == '' || steps.plan.outputs.count != '0'
+        run: |
+          # uv prefers wheels by default, matching pip's --prefer-binary.
+          uv pip install --system --group runtime --group test -e .
       # The examples download their datasets, for example 74 MB of KDD Cup 99 from OpenML.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: github.base_ref == '' || steps.plan.outputs.count != '0'

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import itertools
+
 import numpy as np
 from numpy.typing import NDArray
 from sklearn.utils import check_random_state
@@ -80,6 +82,7 @@ class TemporalMemory:
         # Segment s belongs to cell _segment_cells[s] (-1 if the slot is free). Its synapse k goes
         # from cell _presynaptic[s, k] (-1 if the slot is empty) with permanence _permanences[s, k].
         self._segment_cells: NDArray[np.int64] = np.full(capacity, -1, dtype=np.int64)
+        self._seg_counts: list[int] = [0] * capacity
         self._last_learned: NDArray[np.int64] = np.zeros(capacity, dtype=np.int64)
         self._presynaptic: NDArray[np.int64] = np.full(
             shape=(capacity, max_synapses_per_segment), fill_value=-1, dtype=np.int64
@@ -219,6 +222,7 @@ class TemporalMemory:
     def _destroy_segment(self, segment: int) -> None:
         slots = np.flatnonzero(self._presynaptic[segment] >= 0)
         self._remove_synapses(segment, slots)
+        self._seg_counts[segment] = 0
         self._num_segments[self._segment_cells[segment]] -= 1
         self._segment_cells[segment] = -1
         self._num_active_connected[segment] = 0
@@ -230,6 +234,7 @@ class TemporalMemory:
         self._segment_cells = np.concatenate(
             [self._segment_cells, np.full(capacity, -1, dtype=np.int64)]
         )
+        self._seg_counts.extend([0] * capacity)
         self._last_learned = np.concatenate(
             [self._last_learned, np.zeros(capacity, dtype=np.int64)]
         )
@@ -262,10 +267,27 @@ class TemporalMemory:
                 self._outgoing[cell].remove(seg * max_syn + slot)
                 self._presynaptic[seg, slot] = -1
                 self._permanences[seg, slot] = 0.0
+                self._seg_counts[seg] -= 1
 
     def _grow_synapses(
         self, segment: int, prev_active_cells: np.ndarray, prev_active: np.ndarray
     ) -> None:
+        if self._seg_counts[segment] == 0:
+            candidates = prev_active_cells
+            if candidates.size > self.max_new_synapses:
+                candidates = self._rng.choice(candidates, size=self.max_new_synapses, replace=False)
+            k = candidates.size
+            if k == 0:
+                return
+            self._presynaptic[segment, :k] = candidates
+            self._permanences[segment, :k] = self.initial_permanence
+            self._seg_counts[segment] = k
+            base = segment * self.max_synapses_per_segment
+            outgoing = self._outgoing
+            for slot, cell in enumerate(candidates.tolist()):
+                outgoing[cell].append(base + slot)
+            return
+
         presynaptic = self._presynaptic[segment]
         exists = presynaptic >= 0
         existing = presynaptic[exists]
@@ -283,7 +305,7 @@ class TemporalMemory:
                 prev_active[active_existing] = True
         if candidates.size > num_new:
             candidates = self._rng.choice(candidates, size=num_new, replace=False)
-        excess = int(exists.sum()) + candidates.size - self.max_synapses_per_segment
+        excess = int(self._seg_counts[segment]) + candidates.size - self.max_synapses_per_segment
         if excess > 0:
             weakest = np.flatnonzero(exists)[
                 self._permanences[segment, exists].argsort(kind="stable")[:excess]
@@ -293,6 +315,7 @@ class TemporalMemory:
         slots = np.flatnonzero(~exists)[: candidates.size]
         presynaptic[slots] = candidates
         self._permanences[segment, slots] = self.initial_permanence
+        self._seg_counts[segment] += candidates.size
         base = segment * self.max_synapses_per_segment
         for cell, slot in zip(candidates.tolist(), slots.tolist(), strict=True):
             self._outgoing[cell].append(base + slot)
@@ -305,6 +328,7 @@ class TemporalMemory:
             self._outgoing[cell].remove(base + slot)
         self._presynaptic[segment, slots] = -1
         self._permanences[segment, slots] = 0.0
+        self._seg_counts[segment] -= slots.size
 
     def _update_activity(self) -> None:
         """Counts the synapses of each segment to the active cells and predicts the next columns (Eq. 1)."""
@@ -313,10 +337,9 @@ class TemporalMemory:
             self._num_active_connected[self._dirty_segments] = 0
 
         outgoing = self._outgoing
-        flat: list[int] = []
-        for cell in self._active_cells.tolist():
-            if outgoing[cell]:
-                flat.extend(outgoing[cell])
+        flat = list(
+            itertools.chain.from_iterable(map(outgoing.__getitem__, self._active_cells.tolist()))
+        )
 
         if not flat and self.activation_threshold >= 0 and self.learning_threshold > 0:
             self._dirty_segments = np.empty(0, dtype=np.int64)

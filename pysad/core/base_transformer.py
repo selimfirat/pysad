@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from pysad.utils import _iterate
+from pysad.core._iterate import _iterate
 
 
 class BaseTransformer(ABC):

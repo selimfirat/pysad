@@ -151,14 +151,16 @@ release = __version__
 
 # -- General configuration ---------------------------------------------------
 
+_FAST_DOCS = os.environ.get("PYSAD_DOCS_FAST") == "1"
+
 extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
-    "sphinx.ext.viewcode",
+    *([] if _FAST_DOCS else ["sphinx.ext.viewcode"]),
     "sphinxcontrib.bibtex",
     "sphinx_copybutton",
-    "sphinx_llms_txt",
+    *([] if _FAST_DOCS else ["sphinx_llms_txt"]),
 ]
 
 templates_path = ["_templates"]
@@ -171,12 +173,25 @@ autodoc_default_options = {"members": True, "inherited-members": True}
 autodoc_typehints = "none"
 autodoc_mock_imports = ["river"]
 
+_INTERSPHINX_URLS = {
+    "python": "https://docs.python.org/3",
+    "numpy": "https://numpy.org/doc/stable/",
+    "pandas": "https://pandas.pydata.org/docs/",
+    "scipy": "https://docs.scipy.org/doc/scipy/",
+    "sklearn": "https://scikit-learn.org/stable/",
+}
+_INV_CACHE_DIR = Path(
+    os.environ.get("PYSAD_INTERSPHINX_CACHE", str(DOCS_DIR / "_build" / "intersphinx"))
+)
+intersphinx_cache_limit = 7
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "pandas": ("https://pandas.pydata.org/docs/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
-    "sklearn": ("https://scikit-learn.org/stable/", None),
+    name: (
+        url,
+        (str(_INV_CACHE_DIR / f"{name}.inv"), None)
+        if (_INV_CACHE_DIR / f"{name}.inv").is_file()
+        else None,
+    )
+    for name, url in _INTERSPHINX_URLS.items()
 }
 
 bibtex_bibfiles = ["_build/collected.bib"]
@@ -194,21 +209,22 @@ linkcheck_ignore = [
     r"https://doi\.org/10\.3390/",  # MDPI
 ]
 
-# llms.txt lists the rendered pages, because the API pages get their text from docstrings.
-llms_txt_summary = (
-    "PySAD is a Python library for streaming anomaly detection on multivariate and univariate "
-    "data streams. Detectors learn and score one instance at a time via fit_partial, "
-    "score_partial, and fit_score_partial with bounded memory, returning higher scores for more "
-    "anomalous points. Core patterns: compose pipelines with `|` (StreamPipeline, e.g. "
-    "`StandardScaler() | LODA() | ConformalProbabilityCalibrator()`), ensemble models with `&` "
-    "(ModelEnsemble), calibrate raw scores with ConformalProbabilityCalibrator or "
-    "SPOTProbabilityCalibrator, attribute anomalous features with LODA.explain_partial(), monitor "
-    "and reset on concept drift with DriftAdaptiveDetector and streaming drift meters, evaluate "
-    "prequentially with evaluate_stream, and integrate PyOD (ReferenceWindowModel, OneFitModel), "
-    "River (PySADToRiverAdapter, PredictiveAnomalyDetector), and scikit-learn "
-    "(PySADToScikitLearnAdapter)."
-)
-llms_txt_uri_template = "{base_url}{docname}.html"
+if not _FAST_DOCS:
+    # llms.txt lists the rendered pages, because the API pages get their text from docstrings.
+    llms_txt_summary = (
+        "PySAD is a Python library for streaming anomaly detection on multivariate and univariate "
+        "data streams. Detectors learn and score one instance at a time via fit_partial, "
+        "score_partial, and fit_score_partial with bounded memory, returning higher scores for more "
+        "anomalous points. Core patterns: compose pipelines with `|` (StreamPipeline, e.g. "
+        "`StandardScaler() | LODA() | ConformalProbabilityCalibrator()`), ensemble models with `&` "
+        "(ModelEnsemble), calibrate raw scores with ConformalProbabilityCalibrator or "
+        "SPOTProbabilityCalibrator, attribute anomalous features with LODA.explain_partial(), monitor "
+        "and reset on concept drift with DriftAdaptiveDetector and streaming drift meters, evaluate "
+        "prequentially with evaluate_stream, and integrate PyOD (ReferenceWindowModel, OneFitModel), "
+        "River (PySADToRiverAdapter, PredictiveAnomalyDetector), and scikit-learn "
+        "(PySADToScikitLearnAdapter)."
+    )
+    llms_txt_uri_template = "{base_url}{docname}.html"
 
 # Copy only the code from prompts such as ">>> " and "$ ".
 copybutton_prompt_text = r">>> |\.\.\. |\$ "

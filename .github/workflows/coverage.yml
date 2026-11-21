@@ -67,12 +67,53 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  coverage:
+  plan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # Lets the Qlty upload authenticate with OIDC instead of a stored token.
-      id-token: write
+    outputs:
+      count: ${{ steps.plan.outputs.count }}
+      run_tests: ${{ steps.plan.outputs.run_tests }}
+      needs_compat: ${{ steps.plan.outputs.needs_compat }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Plan affected tests
+        id: plan
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            python3 scripts/ci_affected.py tests "origin/$BASE_REF" > "$RUNNER_TEMP/tests-plan.json"
+            python3 -c '
+          import json, os
+          from pathlib import Path
+          plan = json.loads(Path(os.environ["RUNNER_TEMP"], "tests-plan.json").read_text(encoding="utf-8"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"count={plan[\"count\"]}\n")
+              f.write("run_tests=" + ("true" if plan["count"] > 0 else "false") + "\n")
+              f.write("needs_compat=" + ("true" if plan["needs_compat"] else "false") + "\n")
+          '
+          else
+            {
+              echo "count=999"
+              echo "run_tests=true"
+              echo "needs_compat=true"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+  coverage-shard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {shard: "0/2", shard_id: "0"}
+          - {shard: "1/2", shard_id: "1"}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -90,10 +131,48 @@ jobs:
         run: |
           # uv prefers wheels by default, matching pip's --prefer-binary.
           uv pip install --system --group runtime --group test -e .
-      - name: Test with coverage
+      - name: Test shard with coverage
         env:
           COVERAGE_CORE: sysmon
-        run: pytest -n auto --dist worksteal --cov=pysad --cov-report=lcov
+          PYSAD_TEST_SHARD: ${{ matrix.shard }}
+          COVERAGE_FILE: coverage.shard-${{ matrix.shard_id }}
+        run: pytest -n auto --dist worksteal --cov=pysad --cov-report=
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-shard-${{ matrix.shard_id }}
+          path: coverage.shard-${{ matrix.shard_id }}
+          retention-days: 1
+
+  coverage:
+    needs: coverage-shard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Lets the Qlty upload authenticate with OIDC instead of a stored token.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: coverage-combine
+          prune-cache: true
+      - name: Install coverage
+        run: uv pip install --system coverage
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: coverage-shard-*
+          merge-multiple: true
+      - name: Combine coverage and generate LCOV
+        run: |
+          coverage combine coverage.shard-*
+          coverage lcov -o coverage.lcov
       - name: Upload to Coveralls
         uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
@@ -108,16 +187,19 @@ jobs:
           files: coverage.lcov
 
   tests:
-    # The coverage job runs Python 3.12 on Linux. This job runs Python 3.11 and 3.13 on Linux.
-    # It also runs Python 3.12 on macOS and Windows with the pinned runtime dependencies.
+    # The coverage job runs Python 3.12 on Linux. This job runs Python 3.11 and 3.13 on Linux,
+    # Python 3.12 on macOS, and 2-way sharded Python 3.12 on Windows.
+    needs: plan
+    if: needs.plan.outputs.run_tests == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-latest, python: "3.11"}
-          - {os: ubuntu-latest, python: "3.13"}
-          - {os: macos-latest, python: "3.12"}
-          - {os: windows-latest, python: "3.12"}
+          - {os: ubuntu-latest, python: "3.11", shard: ""}
+          - {os: ubuntu-latest, python: "3.13", shard: ""}
+          - {os: macos-latest, python: "3.12", shard: ""}
+          - {os: windows-latest, python: "3.12", shard: "0/2"}
+          - {os: windows-latest, python: "3.12", shard: "1/2"}
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -134,25 +216,60 @@ jobs:
           cache-dependency-glob: "pyproject.toml"
           cache-suffix: tests-${{ matrix.os }}-${{ matrix.python }}
           prune-cache: true
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: win-venv
+        if: runner.os == 'Windows'
+        with:
+          path: .venv
+          key: win-venv-312-${{ hashFiles('pyproject.toml') }}
+      - name: Install dependencies (Windows venv)
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          CACHE_HIT: ${{ steps.win-venv.outputs.cache-hit }}
+        run: |
+          if [ "$CACHE_HIT" != "true" ]; then
+            uv venv .venv --python "$(python -c 'import sys; print(sys.executable)')"
+            uv pip install --python .venv/Scripts/python.exe --group runtime --group test -e .
+          else
+            uv pip install --python .venv/Scripts/python.exe --no-deps -e .
+          fi
       - name: Install dependencies
+        if: runner.os != 'Windows'
         run: |
           uv pip install --system --group runtime --group test -e .
       - name: Test
         shell: bash
         env:
           BASE_REF: ${{ github.base_ref }}
+          COUNT: ${{ needs.plan.outputs.count }}
+          SHARD: ${{ matrix.shard }}
         run: |
+          if [ -x .venv/Scripts/pytest.exe ]; then
+            PYTEST=.venv/Scripts/pytest.exe
+          else
+            PYTEST=pytest
+          fi
           if [ -n "$BASE_REF" ]; then
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
+          if [ -n "$SHARD" ]; then
+            export PYSAD_TEST_SHARD="$SHARD"
+          fi
           status=0
-          pytest -n auto --dist worksteal || status=$?
+          if [ -n "$BASE_REF" ] && [ -z "$SHARD" ] && [ "${COUNT:-999}" -le 3 ]; then
+            "$PYTEST" || status=$?
+          else
+            "$PYTEST" -n auto --dist worksteal || status=$?
+          fi
           if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
             exit "$status"
           fi
 
   unpinned-314:
+    needs: plan
+    if: needs.plan.outputs.run_tests == 'true' && needs.plan.outputs.needs_compat == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -175,18 +292,25 @@ jobs:
       - name: Test
         env:
           BASE_REF: ${{ github.base_ref }}
+          COUNT: ${{ needs.plan.outputs.count }}
         run: |
           if [ -n "$BASE_REF" ]; then
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
           status=0
-          pytest -n auto --dist worksteal || status=$?
+          if [ -n "$BASE_REF" ] && [ "${COUNT:-999}" -le 3 ]; then
+            pytest || status=$?
+          else
+            pytest -n auto --dist worksteal || status=$?
+          fi
           if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
             exit "$status"
           fi
 
   numpy-123:
+    needs: plan
+    if: needs.plan.outputs.run_tests == 'true' && needs.plan.outputs.needs_compat == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -212,6 +336,7 @@ jobs:
       - name: Test with NumPy 1.23
         env:
           BASE_REF: ${{ github.base_ref }}
+          COUNT: ${{ needs.plan.outputs.count }}
         run: |
           python -c 'import numpy; assert numpy.__version__ == "1.23.5", numpy.__version__'
           if [ -n "$BASE_REF" ]; then
@@ -219,12 +344,18 @@ jobs:
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
           status=0
-          pytest -n auto --dist worksteal || status=$?
+          if [ -n "$BASE_REF" ] && [ "${COUNT:-999}" -le 3 ]; then
+            pytest || status=$?
+          else
+            pytest -n auto --dist worksteal || status=$?
+          fi
           if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
             exit "$status"
           fi
 
   lowest-versions:
+    needs: plan
+    if: needs.plan.outputs.run_tests == 'true' && needs.plan.outputs.needs_compat == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -249,13 +380,18 @@ jobs:
       - name: Test
         env:
           BASE_REF: ${{ github.base_ref }}
+          COUNT: ${{ needs.plan.outputs.count }}
         run: |
           if [ -n "$BASE_REF" ]; then
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
           status=0
-          pytest -n auto --dist worksteal || status=$?
+          if [ -n "$BASE_REF" ] && [ "${COUNT:-999}" -le 3 ]; then
+            pytest || status=$?
+          else
+            pytest -n auto --dist worksteal || status=$?
+          fi
           if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
             exit "$status"
           fi

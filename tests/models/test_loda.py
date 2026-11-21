@@ -198,3 +198,13 @@ def test_loda_explanation_is_nan_without_projections_to_compare():
     model = LODA(random_state=61).fit(rng.randn(100, 1))
 
     assert np.isnan(model.explain_partial(np.array([5.0]))).all()
+
+
+def test_loda_subnormal_difference_does_not_hang():
+    import numpy as np
+
+    from pysad.models import LODA
+
+    model = LODA(num_bins=10, num_random_cuts=5, random_state=0)
+    assert np.isfinite(model.fit_score_partial(np.array([0.0])))
+    assert np.isfinite(model.fit_score_partial(np.array([5e-324])))

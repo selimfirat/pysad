@@ -597,6 +597,19 @@ def test_creditcard_keeps_transaction_order_and_separates_class_in_shared_cache(
     np.testing.assert_array_equal([x for x, _ in stream], X)
     np.testing.assert_array_equal([label for _, label in stream], y)
 
+    arff_path = tmp_path / "creditcard" / "creditcard.arff"
+    npz_path = tmp_path / "creditcard" / "creditcard.arff.npz"
+    assert npz_path.exists()
+    # Replacing the cached .arff with a newer mtime invalidates the sidecar cache.
+    updated_content = (header + "0," + "4," * 28 + "40.5,'1'\n").encode()
+    arff_path.write_bytes(updated_content)
+    newer_mtime = npz_path.stat().st_mtime + 10.0
+    os.utime(arff_path, (newer_mtime, newer_mtime))
+    reloaded_X, reloaded_y = Data().get_data("creditcard/creditcard.arff", download=False)
+    assert reloaded_X.shape == (1, 30)
+    np.testing.assert_array_equal(reloaded_X[:, -1], [40.5])
+    np.testing.assert_array_equal(reloaded_y, [1])
+
 
 def test_data_pickle_round_trip(tmp_path):
     """Verify Data preserves cache path and cached data retrieval across pickle round-trip."""

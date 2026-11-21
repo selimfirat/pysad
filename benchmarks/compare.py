@@ -37,6 +37,24 @@ from threadpoolctl import threadpool_limits
 from pysad.integrations import ReferenceWindowModel
 from pysad.utils import fix_seed
 
+
+class _MultivariateWrapper:
+    """Wrap a univariate StreamAD detector for multivariate data.
+
+    Creates one detector instance per feature and returns the maximum score across features.
+    """
+
+    def __init__(self, detector_cls, n_features, **kwargs):
+        self.detectors = [detector_cls(**kwargs) for _ in range(n_features)]
+
+    def fit_score(self, x):
+        scores = []
+        for i, det in enumerate(self.detectors):
+            score = det.fit_score(np.array([x[i]]))
+            scores.append(0.0 if score is None else score)
+        return float(np.max(scores))
+
+
 SEED = 0
 # Each PyOD detector fits on the warm-up points first, then refits on the last WINDOW points
 # every SLIDE points.
@@ -114,7 +132,11 @@ def streamad():
     # from NumPy's global random state. score_first=True scores each point before the detector
     # learns from it. OCSVMDetector and RrcfDetector fail with it, so they keep the default, which
     # learns from each point first.
+    # Univariate detectors are wrapped with _MultivariateWrapper to run on each feature separately.
     from streamad import model
+
+    def n_features(X):
+        return X.shape[1]
 
     return {
         "HSTreeDetector": lambda X, seed: model.HSTreeDetector(score_first=True),
@@ -123,6 +145,13 @@ def streamad():
         "RShashDetector": lambda X, seed: model.RShashDetector(score_first=True),
         "RrcfDetector": lambda X, seed: model.RrcfDetector(),
         "xStreamDetector": lambda X, seed: model.xStreamDetector(score_first=True),
+        "KNNDetector": lambda X, seed: _MultivariateWrapper(model.KNNDetector, n_features(X)),
+        "SpotDetector": lambda X, seed: _MultivariateWrapper(model.SpotDetector, n_features(X)),
+        "SRDetector": lambda X, seed: _MultivariateWrapper(model.SRDetector, n_features(X)),
+        "ZScoreDetector": lambda X, seed: _MultivariateWrapper(model.ZScoreDetector, n_features(X)),
+        "MadDetector": lambda X, seed: _MultivariateWrapper(model.MadDetector, n_features(X)),
+        "SArimaDetector": lambda X, seed: _MultivariateWrapper(model.SArimaDetector, n_features(X)),
+        "ZSpotDetector": lambda X, seed: _MultivariateWrapper(model.ZSpotDetector, n_features(X)),
     }
 
 

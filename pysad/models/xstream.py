@@ -5,6 +5,7 @@ from itertools import repeat
 from typing import cast
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -47,9 +48,9 @@ class xStream(BaseModel):
         )
 
         self.step = 0
-        self.first_window: list[np.ndarray] | None = []
+        self.first_window: list[NDArray[np.float64]] | None = []
 
-    def _fit_projected(self, X: np.ndarray, keys: list[bytes]) -> None:
+    def _fit_projected(self, X: NDArray[np.float64], keys: list[bytes]) -> None:
         self.step += 1
 
         if self.first_window is not None:
@@ -65,7 +66,7 @@ class xStream(BaseModel):
                 self.first_window = None
             self.hs_chains.next_window()
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> xStream:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> xStream:
         """Updates the model with the next instance.
 
         Args:
@@ -80,7 +81,7 @@ class xStream(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -94,7 +95,7 @@ class xStream(BaseModel):
 
         return float(score[0])
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the next instance, and then updates the model with it.
 
         Args:
@@ -111,7 +112,7 @@ class xStream(BaseModel):
 
         return float(score[0])
 
-    def _set_bin_widths(self, window: np.ndarray) -> None:
+    def _set_bin_widths(self, window: NDArray[np.float64]) -> None:
         # Sets the bin widths to half the range of the first window and counts the first window again with them.
         mn, mx = get_minmax_array(window)
         deltamax = (mx - mn) / 2.0
@@ -129,7 +130,7 @@ class _HSChains:
 
     def __init__(
         self,
-        deltamax: np.ndarray,
+        deltamax: NDArray[np.float64],
         n_chains: int = 100,
         depth: int = 15,
         random_state: int | np.random.RandomState | None = None,
@@ -141,8 +142,8 @@ class _HSChains:
         self.depth = depth
 
         # Draw the split features and the shifts chain by chain to keep the order of the random numbers.
-        self.fs = np.empty((n_chains, depth), dtype=np.intp)
-        self.rand_arr = np.empty((n_chains, k))
+        self.fs: NDArray[np.intp] = np.empty((n_chains, depth), dtype=np.intp)
+        self.rand_arr: NDArray[np.float64] = np.empty((n_chains, k))
         for c in range(n_chains):
             self.fs[c] = [rng.randint(0, k) for d in range(depth)]
             self.rand_arr[c] = rng.rand(k)
@@ -150,17 +151,19 @@ class _HSChains:
         self.set_deltamax(deltamax)
 
         # A split on a feature is stored in the slot of the first depth that splits on the same feature, so a bin only holds the features its chain splits on.
-        self.slots = np.argmax(self.fs[:, :, None] == self.fs[:, None, :], axis=2)
-        self._flat_slots = np.arange(n_chains)[:, None] * depth + self.slots
-        self.first_split = self.slots == np.arange(depth)
-        self.chain_depth_ids = np.arange(n_chains * depth, dtype=np.int32).reshape(n_chains, depth)
-        self._depths = np.arange(1, depth + 1)
+        self.slots: NDArray[np.intp] = np.argmax(self.fs[:, :, None] == self.fs[:, None, :], axis=2)
+        self._flat_slots: NDArray[np.intp] = np.arange(n_chains)[:, None] * depth + self.slots
+        self.first_split: NDArray[np.bool_] = self.slots == np.arange(depth)
+        self.chain_depth_ids: NDArray[np.int32] = np.arange(
+            n_chains * depth, dtype=np.int32
+        ).reshape(n_chains, depth)
+        self._depths: NDArray[np.intp] = np.arange(1, depth + 1)
 
         # In the first window, the reference and current counts are the same.
         self.counts: Counter[bytes] = Counter()
-        self.counts_cur = self.counts
+        self.counts_cur: Counter[bytes] = self.counts
 
-    def _bin_keys(self, X: np.ndarray) -> list[bytes]:
+    def _bin_keys(self, X: NDArray[np.float64]) -> list[bytes]:
         # Returns the bytes key of the bin of every instance, chain and depth (flattened in that order).
         n = X.shape[0]
         first = (X[:, self.fs] + self._shift_by_depth) / self._deltamax_by_depth
@@ -185,7 +188,7 @@ class _HSChains:
             bins.view(np.dtype((np.void, bins.shape[-1] * bins.itemsize))).reshape(-1).tolist(),
         )
 
-    def _score_keys(self, keys: list[bytes], n: int = 1) -> np.ndarray:
+    def _score_keys(self, keys: list[bytes], n: int = 1) -> NDArray[np.float64]:
         counts = np.fromiter(
             map(self.counts.get, keys, repeat(0)), dtype=np.float64, count=len(keys)
         ).reshape(n, self.nchains, self.depth)
@@ -199,14 +202,14 @@ class _HSChains:
         scores /= float(self.nchains)
         return scores
 
-    def score(self, X: np.ndarray) -> np.ndarray:
+    def score(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         return self._score_keys(self._bin_keys(X), len(X))
 
     def next_window(self) -> None:
         self.counts = self.counts_cur
         self.counts_cur = Counter()
 
-    def set_deltamax(self, deltamax: np.ndarray) -> None:
+    def set_deltamax(self, deltamax: NDArray[np.float64]) -> None:
         self.deltamax = deltamax
         self.shift = self.rand_arr * deltamax
         self._shift_by_depth = self.shift[np.arange(self.nchains)[:, None], self.fs]

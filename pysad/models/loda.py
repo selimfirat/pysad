@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -43,22 +44,22 @@ class LODA(BaseModel):
         n_nonzero_components = max(1, int(np.sqrt(self.num_features)))
         rng = check_random_state(self.random_state)
 
-        self.projections_: np.ndarray = np.zeros((self.n_random_cuts, self.num_features))
+        self.projections_: NDArray[np.float64] = np.zeros((self.n_random_cuts, self.num_features))
         for i in range(self.n_random_cuts):
             nonzero = rng.permutation(self.num_features)[:n_nonzero_components]
             self.projections_[i, nonzero] = rng.randn(n_nonzero_components)
 
-        self.histograms_: np.ndarray = np.zeros((self.n_random_cuts, self.n_bins))
+        self.histograms_: NDArray[np.float64] = np.zeros((self.n_random_cuts, self.n_bins))
         # Left edge and width of the bins of each histogram. A width of 0 means that the projection has only seen a single distinct value so far, which is kept in ``bin_lows_``.
-        self.bin_lows_: np.ndarray = np.zeros(self.n_random_cuts)
-        self.bin_widths_: np.ndarray = np.zeros(self.n_random_cuts)
+        self.bin_lows_: NDArray[np.float64] = np.zeros(self.n_random_cuts)
+        self.bin_widths_: NDArray[np.float64] = np.zeros(self.n_random_cuts)
         self.num_seen_ = 0
 
         self.to_init = False
 
-    def _bin_indices(self, projected: np.ndarray) -> np.ndarray:
+    def _bin_indices(self, projected: NDArray[np.float64]) -> NDArray[np.float64]:
         with np.errstate(divide="ignore", invalid="ignore"):
-            indices: np.ndarray = np.floor((projected - self.bin_lows_) / self.bin_widths_)
+            indices: NDArray[np.float64] = np.floor((projected - self.bin_lows_) / self.bin_widths_)
             return indices
 
     def _extend(self, i: int, value: float) -> int:
@@ -77,7 +78,7 @@ class LODA(BaseModel):
             self.histograms_[i] = padded.reshape(self.n_bins, 2).sum(axis=1)
             self.bin_widths_[i] *= 2.0
 
-    def _fit_projected(self, projected: np.ndarray, inds: np.ndarray) -> None:
+    def _fit_projected(self, projected: NDArray[np.float64], inds: NDArray[np.float64]) -> None:
         if self.num_seen_ == 0:
             self.bin_lows_[:] = projected
             self.histograms_[:, 0] = 1.0
@@ -108,7 +109,7 @@ class LODA(BaseModel):
 
         self.num_seen_ += 1
 
-    def _neg_log_densities(self, inds: np.ndarray) -> np.ndarray:
+    def _neg_log_densities(self, inds: NDArray[np.float64]) -> NDArray[np.float64]:
         ready = self.bin_widths_ > 0.0
         in_range = ready & (inds >= 0) & (inds < self.n_bins)
 
@@ -122,7 +123,7 @@ class LODA(BaseModel):
 
         return neg_log_densities
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> LODA:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> LODA:
         """Updates the model with the next instance.
 
         Args:
@@ -143,7 +144,7 @@ class LODA(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -158,7 +159,7 @@ class LODA(BaseModel):
         projected = self.projections_.dot(X.reshape(-1))
         return float(self._neg_log_densities(self._bin_indices(projected)).mean())
 
-    def explain_partial(self, X: np.ndarray) -> np.ndarray:
+    def explain_partial(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """Ranks the features of the next instance by their contribution to its score, with Eq. (4) of the paper.
 
         For each feature, the one-tailed two-sample t statistic compares the negative log densities of the projections that use the feature with those of the projections that do not. A higher value means that the feature contributes more to the anomalousness of the instance. Like ``score_partial``, it does not update the model.
@@ -184,12 +185,12 @@ class LODA(BaseModel):
             mean_without = (neg_log * ~uses).sum(axis=0) / n_without
             var_with = ((neg_log - mean_with) ** 2 * uses).sum(axis=0) / (n_with - 1)
             var_without = ((neg_log - mean_without) ** 2 * ~uses).sum(axis=0) / (n_without - 1)
-            t_stats: np.ndarray = (mean_with - mean_without) / np.sqrt(
+            t_stats: NDArray[np.float64] = (mean_with - mean_without) / np.sqrt(
                 var_with / n_with + var_without / n_without
             )
             return t_stats
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the next instance, and then updates the model with it.
 
         Args:

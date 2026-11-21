@@ -3,10 +3,12 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Any
 
-import numpy as np
+import numpy.typing as npt
 
 
-def _iterate(X: np.ndarray, y: np.ndarray | None = None) -> Iterator[tuple[np.ndarray, Any | None]]:
+def _iterate(
+    X: npt.NDArray[Any], y: npt.NDArray[Any] | None = None
+) -> Iterator[tuple[npt.NDArray[Any], Any | None]]:
     """Iterates array of features and possibly labels.
 
     Args:

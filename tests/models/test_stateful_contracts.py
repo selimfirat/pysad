@@ -6,6 +6,8 @@ streaming anomaly detectors, covering:
 - Warmup/grace/probationary period behavior (models return specific values during warmup)
 - Single-instance equivalence to batch (sequential fit_partial/score_partial matches batch)
 - State reset (new instance with same params + same data = same scores)
+- Score state invariance (score_partial does not mutate model state)
+- Predict contracts for decision-capable models (predict_partial, fit_predict_partial, predict, fit_predict)
 
 Each model in pysad.models.__all__ is tested against these contracts.
 """
@@ -118,6 +120,12 @@ def _warmup_score(model_name: str, params: dict[str, Any] | None = None) -> floa
     if model_name in ("KitNET", "KNNCAD", "DAMP", "FluxEV"):
         return 0.0
     return 0.0
+
+
+def _is_decision_capable(model_name: str) -> bool:
+    """Check if a model supports predict_partial (has decision output or intrinsic decision rule)."""
+    cls = getattr(pysad.models, model_name)
+    return cls._output_kind == "decision" or cls._has_decision_rule
 
 
 class _FitScorePartialMachine(RuleBasedStateMachine):
@@ -240,6 +248,28 @@ class _FitScorePartialMachine(RuleBasedStateMachine):
         if original_y is not None:
             np.testing.assert_array_equal(original_y, self.all_y, err_msg="Input y was mutated")
 
+    @rule()
+    def check_score_state_invariance(self):
+        """Multiple score_partial calls on the same instance return the same value (idempotence)."""
+        if not self.all_X or self.model_name in NON_IDEMPOTENT_SCORE_MODELS:
+            return
+        # Pick a few instances to test (first, middle, last)
+        indices = [0]
+        if len(self.all_X) > 2:
+            indices.append(len(self.all_X) // 2)
+        indices.append(len(self.all_X) - 1)
+
+        for idx in indices:
+            xi = self.all_X[idx]
+            # Score multiple times
+            score1 = self.model.score_partial(xi)
+            score2 = self.model.score_partial(xi)
+            score3 = self.model.score_partial(xi)
+            assert score1 == score2 == score3, (
+                f"{self.model_name}: score_partial not idempotent on instance {idx}: "
+                f"{score1}, {score2}, {score3}"
+            )
+
 
 class _FitThenScoreMachine(RuleBasedStateMachine):
     """State machine for testing fit_partial + score_partial streaming contracts."""
@@ -323,12 +353,206 @@ class _FitThenScoreMachine(RuleBasedStateMachine):
         if original_y is not None:
             np.testing.assert_array_equal(original_y, self.all_y, err_msg="Input y was mutated")
 
+    @rule()
+    def check_score_state_invariance(self):
+        """Multiple score_partial calls on the same instance return the same value (idempotence)."""
+        if not self.all_X or self.model_name in NON_IDEMPOTENT_SCORE_MODELS:
+            return
+        # Pick a few instances to test (first, middle, last)
+        indices = [0]
+        if len(self.all_X) > 2:
+            indices.append(len(self.all_X) // 2)
+        indices.append(len(self.all_X) - 1)
+
+        for idx in indices:
+            xi = self.all_X[idx]
+            # Score multiple times
+            score1 = self.model.score_partial(xi)
+            score2 = self.model.score_partial(xi)
+            score3 = self.model.score_partial(xi)
+            assert score1 == score2 == score3, (
+                f"{self.model_name}: score_partial not idempotent on instance {idx}: "
+                f"{score1}, {score2}, {score3}"
+            )
+
 
 # Known failures that are tracked as strict xfails
 KNOWN_STATEFUL_FAILURES: dict[str, str] = {}
 
 # Models to skip entirely from stateful testing
 SKIPPED_STATEFUL: dict[str, str] = {}
+
+# Models to skip from predict stateful testing (e.g., models with known predict issues)
+SKIPPED_PREDICT_STATEFUL: dict[str, str] = {}
+
+# Models with known non-idempotent score_partial (by design or bug)
+# RandomModel returns random scores by design.
+# RobustRandomCutForest has a bug where score_partial mutates state.
+NON_IDEMPOTENT_SCORE_MODELS = frozenset({"RandomModel", "RobustRandomCutForest"})
+
+
+class _PredictMachine(RuleBasedStateMachine):
+    """State machine for testing predict contracts for decision-capable models."""
+
+    # Class attributes set by _create_configured_predict_machine
+    model_name: str
+    params: dict[str, Any]
+    num_features: int
+
+    # Instance attributes initialized in setup
+    model = None
+    step = 0
+    all_X = None
+    all_y = None
+    predictions = None
+
+    @initialize()
+    def setup(self):
+        fix_seed(SEED)
+        model_cls = getattr(pysad.models, self.model_name)
+        self.model = model_cls(**copy.deepcopy(self.params))
+        self.step = 0
+        self.all_X = []
+        self.all_y = []
+        self.predictions = []
+
+    def _draw_instance(self) -> tuple[np.ndarray, int]:
+        rng = np.random.RandomState(SEED + self.step * 17 + hash(self.model_name) % 1000)
+        xi = rng.choice(FINITE_VALUES, size=self.num_features).astype(np.float64)
+        yi = rng.randint(0, 2)
+        return xi, yi
+
+    @rule()
+    def step_fit_predict_partial(self):
+        xi, yi = self._draw_instance()
+        self.all_X.append(xi.copy())
+        self.all_y.append(yi)
+
+        pred = self.model.fit_predict_partial(xi, yi)
+        assert isinstance(pred, int), f"Expected int, got {type(pred)}"
+        assert pred in (0, 1), f"Expected 0 or 1, got {pred}"
+        self.predictions.append(pred)
+        self.step += 1
+
+    @rule()
+    def check_predict_partial_state_invariance(self):
+        """Multiple predict_partial calls on the same instance return the same value and don't mutate state."""
+        if not self.all_X:
+            return
+        indices = [0]
+        if len(self.all_X) > 2:
+            indices.append(len(self.all_X) // 2)
+        indices.append(len(self.all_X) - 1)
+
+        for idx in indices:
+            xi = self.all_X[idx]
+            pred1 = self.model.predict_partial(xi)
+            pred2 = self.model.predict_partial(xi)
+            pred3 = self.model.predict_partial(xi)
+            assert pred1 == pred2 == pred3, (
+                f"{self.model_name}: predict_partial not idempotent on instance {idx}: "
+                f"{pred1}, {pred2}, {pred3}"
+            )
+
+    @rule()
+    def check_fit_predict_partial_equivalence(self):
+        """fit_predict_partial(xi, yi) == predict_partial(xi) then fit_partial(xi, yi)."""
+        if not self.all_X:
+            return
+        # Test on the last instance
+        idx = len(self.all_X) - 1
+        xi = self.all_X[idx]
+        yi = self.all_y[idx]
+
+        # Path 1: fit_predict_partial
+        fix_seed(SEED)
+        model_cls = getattr(pysad.models, self.model_name)
+        model1 = model_cls(**copy.deepcopy(self.params))
+        for j in range(idx):
+            model1.fit_predict_partial(self.all_X[j], self.all_y[j])
+        pred_fit_predict = model1.fit_predict_partial(xi, yi)
+
+        # Path 2: predict_partial then fit_partial
+        fix_seed(SEED)
+        model2 = model_cls(**copy.deepcopy(self.params))
+        for j in range(idx):
+            model2.fit_predict_partial(self.all_X[j], self.all_y[j])
+        pred_predict = model2.predict_partial(xi)
+        model2.fit_partial(xi, yi)
+
+        assert pred_fit_predict == pred_predict, (
+            f"{self.model_name}: fit_predict_partial ({pred_fit_predict}) != "
+            f"predict_partial then fit_partial ({pred_predict}) on instance {idx}"
+        )
+
+    @rule()
+    def check_batch_predict_equivalence(self):
+        """Sequential predict_partial matches batch predict."""
+        if not self.all_X:
+            return
+        X_arr = np.array(self.all_X)
+
+        fix_seed(SEED)
+        model_cls = getattr(pysad.models, self.model_name)
+        seq_model = model_cls(**copy.deepcopy(self.params))
+        for xi, yi in zip(self.all_X, self.all_y, strict=True):
+            seq_model.fit_predict_partial(xi, yi)
+        seq_preds = [seq_model.predict_partial(xi) for xi in self.all_X]
+
+        fix_seed(SEED)
+        batch_model = model_cls(**copy.deepcopy(self.params))
+        batch_model.fit(X_arr, np.array(self.all_y) if self.all_y else None)
+        batch_preds = batch_model.predict(X_arr)
+
+        np.testing.assert_array_equal(
+            batch_preds,
+            np.array(seq_preds, dtype=np.int64),
+            err_msg=f"{self.model_name}: batch predict != sequential predict_partial",
+        )
+
+    @rule()
+    def check_batch_fit_predict_equivalence(self):
+        """Sequential fit_predict_partial matches batch fit_predict."""
+        if not self.all_X:
+            return
+        X_arr = np.array(self.all_X)
+        y_arr = np.array(self.all_y) if self.all_y else None
+
+        fix_seed(SEED)
+        model_cls = getattr(pysad.models, self.model_name)
+        seq_model = model_cls(**copy.deepcopy(self.params))
+        seq_preds = [
+            seq_model.fit_predict_partial(xi, yi)
+            for xi, yi in zip(self.all_X, self.all_y, strict=True)
+        ]
+
+        fix_seed(SEED)
+        batch_model = model_cls(**copy.deepcopy(self.params))
+        batch_preds = batch_model.fit_predict(X_arr, y_arr)
+
+        np.testing.assert_array_equal(
+            batch_preds,
+            np.array(seq_preds, dtype=np.int64),
+            err_msg=f"{self.model_name}: batch fit_predict != sequential fit_predict_partial",
+        )
+
+    @rule()
+    def check_input_immutability(self):
+        if not self.all_X:
+            return
+        original_X = [x.copy() for x in self.all_X]
+        original_y = self.all_y.copy() if self.all_y else None
+
+        fix_seed(SEED)
+        model_cls = getattr(pysad.models, self.model_name)
+        test_model = model_cls(**copy.deepcopy(self.params))
+        for xi, yi in zip(self.all_X, self.all_y, strict=True):
+            test_model.fit_predict_partial(xi, yi)
+
+        for i, (orig, curr) in enumerate(zip(original_X, self.all_X, strict=False)):
+            np.testing.assert_array_equal(orig, curr, err_msg=f"Input X[{i}] was mutated")
+        if original_y is not None:
+            np.testing.assert_array_equal(original_y, self.all_y, err_msg="Input y was mutated")
 
 
 def _create_configured_machine(
@@ -423,6 +647,74 @@ def _create_configured_machine(
     return TestCase
 
 
+def _create_configured_predict_machine(
+    base_machine_cls,
+    model_name: str,
+    params: dict[str, Any],
+    num_features: int,
+):
+    """Create a RuleBasedStateMachine subclass configured for a specific decision-capable model.
+
+    Returns the TestCase class for pytest to collect.
+    """
+    # Model-specific _draw_instance overrides (same as for fit/score machines)
+    draw_instance_overrides = {}
+    if model_name == "HTM":
+        # HTM needs timestamp and value within min/max range to avoid spatial anomalies
+        min_val = params.get("min_val", 0.0)
+        max_val = params.get("max_val", 1.0)
+        mid_value = (min_val + max_val) / 2.0
+
+        def htm_draw_instance(self):
+            rng = np.random.RandomState(SEED + self.step * 17 + hash(self.model_name) % 1000)
+            timestamp = float(self.step * 3600)  # hourly timestamps
+            xi = np.array([timestamp, mid_value], dtype=np.float64)
+            yi = rng.randint(0, 2)
+            return xi, yi
+
+        draw_instance_overrides["_draw_instance"] = htm_draw_instance
+    elif model_name == "MStream":
+        # MStream needs positive values for log(1+x) transform
+        def mstream_draw_instance(self):
+            rng = np.random.RandomState(SEED + self.step * 17 + hash(self.model_name) % 1000)
+            xi = rng.uniform(0, 10, size=self.num_features).astype(np.float64)
+            yi = rng.randint(0, 2)
+            return xi, yi
+
+        draw_instance_overrides["_draw_instance"] = mstream_draw_instance
+    elif model_name == "Inqmad":
+        # Inqmad can have numerical issues with extreme values; use moderate range
+        def inqmad_draw_instance(self):
+            rng = np.random.RandomState(SEED + self.step * 17 + hash(self.model_name) % 1000)
+            xi = rng.uniform(-1, 1, size=self.num_features).astype(np.float64)
+            yi = rng.randint(0, 2)
+            return xi, yi
+
+        draw_instance_overrides["_draw_instance"] = inqmad_draw_instance
+
+    # Create class dynamically with the configuration as class attributes
+    class_attrs = {
+        "model_name": model_name,
+        "params": copy.deepcopy(params),
+        "num_features": num_features,
+    }
+    class_attrs.update(draw_instance_overrides)
+
+    ConfiguredMachine = type(
+        f"_{model_name}{base_machine_cls.__name__}", (base_machine_cls,), class_attrs
+    )
+
+    # Apply settings
+    ConfiguredMachine = STATEFUL_SETTINGS(ConfiguredMachine)
+
+    # Get the TestCase class for pytest
+    TestCase = ConfiguredMachine.TestCase
+    TestCase.__name__ = f"Test{model_name}{base_machine_cls.__name__}"
+    TestCase.__qualname__ = f"Test{model_name}{base_machine_cls.__name__}"
+
+    return TestCase
+
+
 # Generate test case classes for each model
 for _name in active_model_names():
     if _name not in SKIPPED_STATEFUL:
@@ -440,6 +732,13 @@ for _name in active_model_names():
             _FitThenScoreMachine, _name, _params, _num_features, is_fit_then_score=True
         )
         globals()[f"Test{_name}FitThenScore"] = _fit_then_score_testcase
+
+        # Predict machine for decision-capable models
+        if _is_decision_capable(_name) and _name not in SKIPPED_PREDICT_STATEFUL:
+            _predict_testcase = _create_configured_predict_machine(
+                _PredictMachine, _name, _params, _num_features
+            )
+            globals()[f"Test{_name}Predict"] = _predict_testcase
 
 
 # Additional focused tests for specific contract properties (non-stateful, simpler)

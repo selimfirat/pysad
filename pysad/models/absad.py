@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import cast
-
 import numpy as np
+from numpy.typing import NDArray
 from scipy.optimize import brentq
 from scipy.spatial.distance import cdist
 from scipy.special import ndtr
@@ -12,7 +11,9 @@ from pysad.core.base_model import BaseModel
 from pysad.utils.window import RingBuffer
 
 
-def _normalize_window_and_point(W: np.ndarray, x: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def _normalize_window_and_point(
+    W: NDArray[np.float64], x: NDArray[np.float64]
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Normalizes the sliding window and query point by feature-wise mean and std.
 
     Args:
@@ -40,8 +41,8 @@ def _normalize_window_and_point(W: np.ndarray, x: np.ndarray) -> tuple[np.ndarra
 
 
 def _select_reference_set(
-    W_norm: np.ndarray, x_norm: np.ndarray, k: int, s: int
-) -> tuple[np.ndarray, np.ndarray]:
+    W_norm: NDArray[np.float64], x_norm: NDArray[np.float64], k: int, s: int
+) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
     """Selects the reference set using Shared Nearest Neighbor (SNN) similarity.
 
     1. Identifies the k nearest neighbors of x_norm in W_norm.
@@ -87,8 +88,8 @@ def _select_reference_set(
 
 
 def _calculate_feature_relevance(
-    ref_set: np.ndarray, x_norm: np.ndarray, theta: float
-) -> tuple[np.ndarray, np.ndarray]:
+    ref_set: NDArray[np.float64], x_norm: NDArray[np.float64], theta: float
+) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
     """Calculates angle-based feature relevance and selects the relevant subspace.
 
     For each dimension j, the relevance is defined by the absolute cosine of the angle
@@ -110,9 +111,11 @@ def _calculate_feature_relevance(
     v = x_norm - c_s
     v_norm = float(np.linalg.norm(v))
 
+    selected_subspace: NDArray[np.int64]
+
     if v_norm < 1e-12:
         relevance = np.full(d, 1.0 / d, dtype=np.float64)
-        selected_subspace = np.arange(d, dtype=int)
+        selected_subspace = np.arange(d, dtype=np.int64)
         return relevance, selected_subspace
 
     # Angle between v and standard basis vector e_j has cos(alpha_j) = v_j / ||v||
@@ -120,16 +123,16 @@ def _calculate_feature_relevance(
     mean_relevance = float(np.mean(relevance))
     threshold = (1.0 + theta) * mean_relevance
 
-    selected_subspace = cast(np.ndarray, np.where(relevance > threshold)[0])
+    selected_subspace = np.where(relevance > threshold)[0].astype(np.int64)
     if len(selected_subspace) == 0:
         # Fall back to full space if no feature dominates by the threshold
-        selected_subspace = np.arange(d, dtype=int)
+        selected_subspace = np.arange(d, dtype=np.int64)
 
     return relevance, selected_subspace
 
 
 def _calculate_local_outlier_score(
-    ref_set: np.ndarray, x_norm: np.ndarray, subspace: np.ndarray
+    ref_set: NDArray[np.float64], x_norm: NDArray[np.float64], subspace: NDArray[np.int64]
 ) -> float:
     """Calculates the Local Outlier Score (LOS) via normalized squared Mahalanobis distance.
 
@@ -178,7 +181,7 @@ def _calculate_local_outlier_score(
     return max(0.0, d_m_sq / d_sub)
 
 
-def _calculate_control_limit(los_history: np.ndarray, confidence: float) -> float:
+def _calculate_control_limit(los_history: NDArray[np.float64], confidence: float) -> float:
     """Estimates the control limit using Gaussian Kernel Density Estimation (KDE).
 
     Finds the (1 - gamma) quantile of the fitted Gaussian KDE distribution on the
@@ -345,7 +348,7 @@ class ABSAD(BaseModel):
         self._window_los: RingBuffer = RingBuffer(window_size)
         self.control_limit_: float | None = None
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> ABSAD:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> ABSAD:
         """Updates the detector with the next instance.
 
         During warm-up, instances are accepted unconditionally into the window. Once the window
@@ -353,7 +356,7 @@ class ABSAD(BaseModel):
         statistical control limit. Anomalous instances exceeding the control limit are rejected.
 
         Args:
-            X (np.ndarray): The instance to fit of shape (num_features,).
+            X (np.float64 array of shape (num_features,)): The instance to fit.
             y (int or None): Ignored (unsupervised detector).
 
         Returns:
@@ -384,11 +387,11 @@ class ABSAD(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance without modifying model state.
 
         Args:
-            X (np.ndarray): The instance to score of shape (num_features,).
+            X (np.float64 array of shape (num_features,)): The instance to score.
 
         Returns:
             float: Local Outlier Score (LOS). Higher scores indicate greater anomalousness.

@@ -39,19 +39,20 @@ class KLLMeter(BaseStatistic):
         DataSketches and ``kll_sketch``). By geometric series summation, total retained items
         across all levels are strictly bounded by :math:`\sum k_h \approx \frac{k}{1 - 2/3} = 3k`.
 
-    Unbiased Odd-Length Compaction (Section 2, Figure 1):
-        When a level fills, its items are sorted and compacted. When buffer length is odd,
-        two independent random coin flips are performed:
+    Unbiased Compaction (Section 2, Figure 1; odd-length handling from Apache DataSketches):
+        When a level fills, its items are sorted and compacted using two independent random
+        coin flips:
 
-        * Boundary selection: Randomly retains either the first item (:math:`\text{index } 0`)
-          or the last item (:math:`\text{index } -1`) with equal probability (:math:`0.5`),
-          leaving an even-length block of remaining items.
-        * Pairing parity: An independent random bit (:math:`\text{offset} \in \{0, 1\}`)
-          determines which item of each adjacent pair is promoted to level :math:`h + 1` with
-          doubled weight :math:`2^{h+1}`.
+        * Boundary selection (Apache DataSketches / ``kll_sketch``): When buffer length is odd,
+          randomly retains either the first item (:math:`\text{index } 0`) or the last item
+          (:math:`\text{index } -1`) with equal probability (:math:`0.5`), leaving an even-length
+          block of remaining items. The retained boundary item stays at level :math:`h` with
+          weight :math:`2^h`.
+        * Pairing parity (Section 2, Figure 1 of :cite:`karnin2016optimal`): An independent random
+          bit (:math:`\text{offset} \in \{0, 1\}`) determines which item of each adjacent pair is
+          promoted to level :math:`h + 1` with doubled weight :math:`2^{h+1}`.
 
-        The retained boundary item remains at level :math:`h` with weight :math:`2^h`. This
-        completely eliminates odd-length directional bias while strictly conserving total rank weight.
+        This eliminates odd-length directional bias while strictly conserving total rank weight.
 
     Merge Operation (Section 2, Theorem 1 proof):
         Merging concatenates corresponding same-height compactor levels of two sketches with
@@ -195,7 +196,7 @@ class KLLMeter(BaseStatistic):
         items = self._levels[level_idx]
         items.sort()
 
-        # Two independent random choices (Section 2, Figure 1):
+        # Random boundary retention for odd lengths (Apache DataSketches) and random parity (Section 2, Figure 1):
         # Choice 1: for odd length, randomly retain either the first item (index 0)
         # or the last item (index -1) with equal probability.
         leftover: list[float]

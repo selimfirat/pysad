@@ -23,7 +23,7 @@ def _lof(reach: np.ndarray, neighbor_reach: np.ndarray) -> np.ndarray:
 
 class IncrementalLOF(BaseModel):
     """Scores each instance by its local outlier factor (LOF) in a sliding window that the incremental
-    LOF algorithm updates.
+    LOF algorithm updates :cite:`pokrajac2007incremental`.
 
     The LOF of an instance is the mean local reachability density (lrd) of its `num_neighbors`
     nearest neighbors divided by its own lrd, so instances in sparser regions than their neighbors

@@ -228,13 +228,11 @@ class SeasonalESD(BaseModel):
         if len(self._window) + 1 < self.window_size:
             return 0.0
 
-        first, second, num_prior = self._window.active_slices()
-        candidate = np.empty(num_prior + 1, dtype=np.float64)
-        n_first = first.shape[0]
-        candidate[:n_first] = first
-        if second is not None:
-            candidate[n_first:num_prior] = second
-        candidate[num_prior] = value
+        # The window without the oldest item (which would be evicted when the new item arrives).
+        window = self._window.window_view()
+        if len(self._window) == self.window_size:
+            window = window[:-1]
+        candidate = np.append(window, value)
         return self._score_window(candidate)
 
     def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
@@ -250,7 +248,7 @@ class SeasonalESD(BaseModel):
         self.fit_partial(X, y)
         if len(self._window) < self.window_size:
             return 0.0
-        return self._score_window(self._window.to_array())
+        return self._score_window(self._window.window_view())
 
 
 class SeasonalHybridESD(SeasonalESD):

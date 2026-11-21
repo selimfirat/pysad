@@ -44,8 +44,8 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             object: self.
         """
         if len(self.window) == self.window_size:
-            oldest = float(self.window.window[0])
-            if not math.isnan(oldest):
+            oldest = self.window._buffer.oldest()
+            if oldest is not None and not math.isnan(oldest):
                 del self._sorted[bisect_left(self._sorted, oldest)]
         self.window.update(score)
         s = float(score)
@@ -77,8 +77,8 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
                 tail = cast(
                     list[float], scores[-self.window_size :].astype(np.float64, copy=False).tolist()
                 )
-                self.window.window.clear()
-                self.window.window.extend(tail)
+                self.window._buffer.clear()
+                self.window._buffer.extend(tail)
                 self._sorted = sorted(x for x in tail if not math.isnan(x))
                 return self
             vals = cast(list[float], scores.astype(np.float64, copy=False).tolist())
@@ -112,7 +112,7 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             out = np.empty(m, dtype=np.float64)
             if m == 0:
                 return out
-            win_dq = self.window.window
+            buf = self.window._buffer
             sorted_vals = self._sorted
             w_size = self.window_size
             _bisect_left = bisect_left
@@ -120,12 +120,12 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             _isnan = math.isnan
             vals = cast(list[float], scores.astype(np.float64, copy=False).tolist())
             for i, s in enumerate(vals):
-                if len(win_dq) == w_size:
-                    oldest = float(win_dq[0])
-                    if not _isnan(oldest):
+                if len(buf) == w_size:
+                    oldest = buf.oldest()
+                    if oldest is not None and not _isnan(oldest):
                         del sorted_vals[_bisect_left(sorted_vals, oldest)]
-                win_dq.append(s)
+                buf.append(s)
                 _insort(sorted_vals, s)
-                out[i] = _bisect_left(sorted_vals, s) / len(win_dq)
+                out[i] = _bisect_left(sorted_vals, s) / len(buf)
             return out
         return super().fit_transform(scores)

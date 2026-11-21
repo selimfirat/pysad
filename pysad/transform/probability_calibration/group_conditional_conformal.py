@@ -95,8 +95,8 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
         window, sorted_vals = self._get_or_create(regime)
 
         if len(window) == self.window_size:
-            oldest = float(window.window[0])
-            if not math.isnan(oldest):
+            oldest = window._buffer.oldest()
+            if oldest is not None and not math.isnan(oldest):
                 del sorted_vals[bisect_left(sorted_vals, oldest)]
         window.update(s)
         if not math.isnan(s):
@@ -198,18 +198,18 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
             if m == 0:
                 return out
             window, sorted_vals = self._get_or_create(None)
-            win_dq = window.window
+            buf = window._buffer
             w_size = self.window_size
             _bisect_left = bisect_left
             _insort = insort
             _isnan = math.isnan
             for i, s in enumerate(scores.tolist()):
-                if len(win_dq) == w_size:
-                    oldest = float(win_dq[0])
-                    if not _isnan(oldest):
+                if len(buf) == w_size:
+                    oldest = buf.oldest()
+                    if oldest is not None and not _isnan(oldest):
                         del sorted_vals[_bisect_left(sorted_vals, oldest)]
-                win_dq.append(s)
+                buf.append(s)
                 _insort(sorted_vals, s)
-                out[i] = _bisect_left(sorted_vals, s) / len(win_dq)
+                out[i] = _bisect_left(sorted_vals, s) / len(buf)
             return out
         return super().fit_transform(scores)

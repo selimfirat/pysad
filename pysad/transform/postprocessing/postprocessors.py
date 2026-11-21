@@ -331,12 +331,12 @@ class NonparametricDynamicThresholdPostprocessor(BasePostprocessor):
         """
         if self.num_seen_ == 0:
             return 0.0
-        raw = self._buffer.points[: self._buffer.count]
+        raw = self._buffer.window_view()
         approx_thresh = raw.mean() + self._z[0] * raw.std()
         if not self._current > approx_thresh - 1e-12 * abs(approx_thresh) - 1e-15:
             return 0.0
 
-        window = self._buffer.to_array()
+        window = self._buffer.window_view()
         mean = window.mean()
         std = window.std()
         thresholds = mean + self._z * std

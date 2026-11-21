@@ -161,8 +161,8 @@ class ConformalTSFMCalibrator(BasePostprocessor):
         self._update_alpha(err_t)
 
         if len(self.window) == self.window_size:
-            oldest = float(self.window.window[0])
-            if not math.isnan(oldest):
+            oldest = self.window._buffer.oldest()
+            if oldest is not None and not math.isnan(oldest):
                 del self._sorted[bisect_left(self._sorted, oldest)]
         self.window.update(s)
         if not math.isnan(s):
@@ -227,7 +227,7 @@ class ConformalTSFMCalibrator(BasePostprocessor):
             out = np.empty(m, dtype=np.float64)
             if m == 0:
                 return out
-            win_dq = self.window.window
+            buf = self.window._buffer
             sorted_vals = self._sorted
             w_size = self.window_size
             _bisect_left = bisect_left
@@ -237,7 +237,7 @@ class ConformalTSFMCalibrator(BasePostprocessor):
             _update_alpha = self._update_alpha
             for i, s in enumerate(scores.tolist()):
                 # Transform with the current state (before adding s).
-                n_curr = len(win_dq)
+                n_curr = len(buf)
                 out[i] = 0.0 if n_curr == 0 else _bisect_left(sorted_vals, s) / n_curr
 
                 # Fit: compute qhat from the current window, update alpha, then add s.
@@ -245,11 +245,11 @@ class ConformalTSFMCalibrator(BasePostprocessor):
                 err_t = _miscoverage(s, qhat)
                 _update_alpha(err_t)
 
-                if len(win_dq) == w_size:
-                    oldest = float(win_dq[0])
-                    if not _isnan(oldest):
+                if len(buf) == w_size:
+                    oldest = buf.oldest()
+                    if oldest is not None and not _isnan(oldest):
                         del sorted_vals[_bisect_left(sorted_vals, oldest)]
-                win_dq.append(s)
+                buf.append(s)
                 _insort(sorted_vals, s)
             return out
         return super().fit_transform(scores)

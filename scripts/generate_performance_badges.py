@@ -86,12 +86,12 @@ def main() -> None:
     rate = _format_rate(_median_points_per_second())
 
     badges = {
-        "throughput.json": _badge("median throughput", rate, "green"),
+        "throughput.json": _badge("median throughput", rate, "00757a"),
         "univariate_detectors.json": _badge(
-            "univariate detectors", str(counts["univariate"]), "blue"
+            "univariate detectors", str(counts["univariate"]), "00565a"
         ),
         "multivariate_detectors.json": _badge(
-            "multivariate detectors", str(counts["multivariate"]), "blue"
+            "multivariate detectors", str(counts["multivariate"]), "00565a"
         ),
     }
 

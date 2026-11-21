@@ -14,27 +14,27 @@ try:
 except ImportError:
     import engine  # Deployed standalone at Hugging Face Space root.
 
-_DETECTOR_COLORS = ("#1849a9", "#0f766e", "#b45309")
-_FEATURE_COLORS = ("#3b66b0", "#2a857c", "#64748b", "#9a6b2f")
+_DETECTOR_COLORS = ("#00757a", "#5c6bc0", "#c26d1f")
+_FEATURE_COLORS = ("#00757a", "#2a9d9f", "#5c6bc0", "#64748b")
 _GRADIO_MAJOR = int(gr.__version__.split(".", 1)[0])
 
 CUSTOM_CSS = """
 .pysad-header {
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e2dfd6;
+  border-bottom: 1px solid #dce3e2;
   border-radius: 0;
-  background: #f6f5f1;
+  background: #f2f4f2;
   margin-bottom: 0.75rem;
 }
 .pysad-header h1 {
   margin: 0 0 0.25rem 0;
-  color: #14171f;
+  color: #0d1b22;
   font-size: 1.35rem;
   font-weight: 600;
 }
 .pysad-header p {
   margin: 0;
-  color: #475060;
+  color: #475a63;
   font-size: 0.9rem;
 }
 .pysad-links {
@@ -42,7 +42,7 @@ CUSTOM_CSS = """
   font-size: 0.85rem;
 }
 .pysad-links a {
-  color: #1849a9;
+  color: #00757a;
   font-weight: 500;
   text-decoration: none;
   margin-right: 1rem;
@@ -95,12 +95,12 @@ def _empty_figure(message: str) -> go.Figure:
         x=0.5,
         y=0.5,
         showarrow=False,
-        font={"size": 14, "color": "#5a6478"},
+        font={"size": 14, "color": "#5b6f78"},
     )
     fig.update_layout(
         template="plotly_white",
-        paper_bgcolor="#ffffff",
-        plot_bgcolor="#ffffff",
+        paper_bgcolor="#fcfcf9",
+        plot_bgcolor="#fcfcf9",
         height=360,
         margin={"l": 40, "r": 20, "t": 30, "b": 30},
     )
@@ -169,7 +169,7 @@ def _build_stream_figure(result: engine.PlaygroundResult) -> go.Figure:
                 mode="markers",
                 name="Labeled anomaly",
                 marker={
-                    "color": "#fc3636",
+                    "color": "#e63946",
                     "size": 6,
                     "symbol": "circle-open",
                     "line": {"width": 2},
@@ -201,7 +201,7 @@ def _build_stream_figure(result: engine.PlaygroundResult) -> go.Figure:
                     y=tr.calibrated_scores[alert_idx],
                     mode="markers",
                     name=f"{tr.name} alerts",
-                    marker={"color": "#fc3636", "size": 6, "symbol": "diamond"},
+                    marker={"color": "#e63946", "size": 6, "symbol": "diamond"},
                     showlegend=False,
                 ),
                 row=2,
@@ -212,7 +212,7 @@ def _build_stream_figure(result: engine.PlaygroundResult) -> go.Figure:
     fig.add_hline(
         y=result.threshold,
         line_dash="dash",
-        line_color="#fc3636",
+        line_color="#e63946",
         line_width=1.5,
         annotation_text=f"threshold = {result.threshold:.3f}",
         annotation_position="top right",
@@ -225,7 +225,7 @@ def _build_stream_figure(result: engine.PlaygroundResult) -> go.Figure:
             fig.add_vline(
                 x=x_axis[int(inj_i)],
                 line_dash="dot",
-                line_color="#fc3636",
+                line_color="#e63946",
                 line_width=1.4,
                 row=row_idx,
                 col=1,
@@ -236,7 +236,7 @@ def _build_stream_figure(result: engine.PlaygroundResult) -> go.Figure:
         fig.add_vline(
             x=inspect_x,
             line_dash="dash",
-            line_color="#0741ad",
+            line_color="#00757a",
             line_width=1.4,
             row=row_idx,
             col=1,
@@ -249,9 +249,9 @@ def _build_stream_figure(result: engine.PlaygroundResult) -> go.Figure:
     )
     fig.update_layout(
         template="plotly_white",
-        paper_bgcolor="#ffffff",
-        plot_bgcolor="#ffffff",
-        font={"family": "IBM Plex Sans, ui-sans-serif, sans-serif", "color": "#14171f", "size": 12},
+        paper_bgcolor="#fcfcf9",
+        plot_bgcolor="#fcfcf9",
+        font={"family": "Inter, ui-sans-serif, sans-serif", "color": "#0d1b22", "size": 12},
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.09, "x": 0.0},
         height=560,
         margin={"l": 56, "r": 24, "t": 96, "b": 48},
@@ -268,7 +268,7 @@ def _build_explanation_figure(result: engine.PlaygroundResult) -> go.Figure:
         order = order[-12:]
     names = [exp.feature_names[i] for i in order]
     vals = [float(exp.contributions[i]) for i in order]
-    colors = ["#fc3636" if i >= len(order) - 2 and v > 0 else "#0741ad" for i, v in enumerate(vals)]
+    colors = ["#e63946" if i >= len(order) - 2 and v > 0 else "#00757a" for i, v in enumerate(vals)]
     x_min = min(min(vals, default=0.0), 0.0)
     x_max = max(max(vals, default=0.0), 0.0)
     span = max(x_max - x_min, 1.0)
@@ -289,12 +289,12 @@ def _build_explanation_figure(result: engine.PlaygroundResult) -> go.Figure:
             "title": "Contribution (LODA.explain_partial t-statistic)",
             "range": [x_min - 0.18 * span, x_max + 0.15 * span],
             "zeroline": True,
-            "zerolinecolor": "#ccc7ba",
+            "zerolinecolor": "#b8c7c7",
         },
         template="plotly_white",
-        paper_bgcolor="#ffffff",
-        plot_bgcolor="#ffffff",
-        font={"family": "IBM Plex Sans, ui-sans-serif, sans-serif", "color": "#14171f", "size": 12},
+        paper_bgcolor="#fcfcf9",
+        plot_bgcolor="#fcfcf9",
+        font={"family": "Inter, ui-sans-serif, sans-serif", "color": "#0d1b22", "size": 12},
         height=290,
         margin={"l": 110, "r": 48, "t": 46, "b": 42},
     )
@@ -483,9 +483,9 @@ def on_clear_injected(
 
 def _build_theme() -> gr.themes.Soft:
     return gr.themes.Soft(
-        primary_hue="blue",
+        primary_hue="teal",
         neutral_hue="slate",
-        font=[gr.themes.GoogleFont("IBM Plex Sans"), "ui-sans-serif", "system-ui", "sans-serif"],
+        font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"],
         font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
     )
 

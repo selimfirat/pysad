@@ -1,8 +1,8 @@
 ---
 title: PySAD Streaming Anomaly Detection Playground
 emoji: 📡
-colorFrom: blue
-colorTo: indigo
+colorFrom: green
+colorTo: blue
 sdk: static
 pinned: false
 license: bsd-3-clause

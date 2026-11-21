@@ -321,6 +321,7 @@ These starting points come from the design of each method. They are not benchmar
 | `FeedbackHST` | Half-Space Trees with active human-in-the-loop label feedback (Tan et al., 2011; Das et al., 2024; Das et al., 2020) |
 | `StreamKMPlusPlus` | Distance to the nearest center of a StreamKM++ streaming coreset clustering (Ackermann et al., 2012) |
 | `ZeroShotEmbeddingDetector` | Zero-shot OOD detector using semantic anchors (Maximum Concept Matching) (Ming et al., 2022) |
+| `ABSAD` | Angle-Based Subspace Anomaly Detection (ABSAD) (Zhang et al., 2017) |
 
 **Univariate**
 

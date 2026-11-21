@@ -95,16 +95,18 @@ def _nearest_distance(series: np.ndarray, query: np.ndarray) -> float:
     neighbors = sliding_window_view(series, m)  # (num_neighbors, m)
 
     stds = neighbors.std(axis=1)
-    constant = neighbors.max(axis=1) == neighbors.min(axis=1)
-    query_constant = query.max() == query.min()
+    query_std = query.std()
+    constant = (neighbors.max(axis=1) == neighbors.min(axis=1)) | (stds == 0.0)
+    query_constant = (query.max() == query.min()) | (query_std == 0.0)
     # The centered query sums to 0, so its dot product with a subsequence equals the dot product
     # of both centered. Shifting the series by the query mean avoids the cancellation of
     # sum(x * y) - m * mean(x) * mean(y) when the values are far from 0.
     query_mean = query.mean()
     with np.errstate(divide="ignore", invalid="ignore"):
         correlations = np.correlate(series - query_mean, query - query_mean) / (
-            m * stds * query.std()
+            m * stds * query_std
         )
+    correlations = np.where(np.isfinite(correlations), correlations, 0.0)
     squared = 2 * m * (1 - np.minimum(correlations, 1.0))
     squared = np.where(constant | query_constant, m, squared)
     squared[constant & query_constant] = 0.0

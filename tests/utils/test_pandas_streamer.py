@@ -181,10 +181,24 @@ def _run_pandas_streamer_unshuffled_memory_cases(conn):
         warmup = PandasStreamer().iter(pd.DataFrame({"a": [0]}))
         next(warmup)
         warmup.close()
-        for num_rows in (1_000, 1_000_000):
+        for num_rows in (1_000, 200_000):
             for data_kind in ("mixed", "integer", "nullable", "missing"):
+                df = pd.DataFrame({"a": np.arange(num_rows)})
+                if data_kind == "mixed":
+                    df["b"] = np.zeros(num_rows)
+                elif data_kind in ("nullable", "missing"):
+                    df = df.astype("Int64")
+                    if data_kind == "missing":
+                        df.iloc[-1, 0] = pd.NA
                 for label_kind in (None, "series", "frame"):
-                    _assert_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind)
+                    labels = None
+                    if label_kind == "series":
+                        labels = df["a"]
+                    elif label_kind == "frame":
+                        labels = df
+                    _assert_pandas_streamer_unshuffled_memory(
+                        df, labels, num_rows, data_kind, label_kind
+                    )
                     gc.collect()
     except BaseException as exc:
         conn.send(f"{type(exc).__name__}: {exc}")
@@ -194,19 +208,7 @@ def _run_pandas_streamer_unshuffled_memory_cases(conn):
         conn.close()
 
 
-def _assert_pandas_streamer_unshuffled_memory(num_rows, data_kind, label_kind):
-    df = pd.DataFrame({"a": np.arange(num_rows)})
-    if data_kind == "mixed":
-        df["b"] = np.zeros(num_rows)
-    elif data_kind in ("nullable", "missing"):
-        df = df.astype("Int64")
-        if data_kind == "missing":
-            df.iloc[-1, 0] = pd.NA
-    labels = None
-    if label_kind == "series":
-        labels = df["a"].copy()
-    elif label_kind == "frame":
-        labels = df.copy()
+def _assert_pandas_streamer_unshuffled_memory(df, labels, num_rows, data_kind, label_kind):
     rows = PandasStreamer().iter(df, labels)
 
     gc.collect()

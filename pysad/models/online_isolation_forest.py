@@ -133,8 +133,6 @@ class _OnlineIsolationTree:
         binary = self.branching_factor == 2
         while curr.children is not None:
             curr.data_size += 1
-            np.minimum(curr.min_values, X, out=curr.min_values)
-            np.maximum(curr.max_values, X, out=curr.max_values)
             parent = curr
             if binary:
                 child_idx = 1 if X[curr.dim] >= curr.split_val else 0
@@ -166,9 +164,10 @@ class _OnlineIsolationTree:
     ) -> tuple[_OnlineIsolationNode, bool]:
         if X is not None:
             node.data_size += 1
-            np.minimum(node.min_values, X, out=node.min_values)
-            np.maximum(node.max_values, X, out=node.max_values)
         if node.children is None:
+            if X is not None:
+                np.minimum(node.min_values, X, out=node.min_values)
+                np.maximum(node.max_values, X, out=node.max_values)
             if node.data_size >= node.threshold and node.depth < self.depth_limit:
                 samples = rng.uniform(
                     low=node.min_values,
@@ -248,26 +247,24 @@ class _OnlineIsolationTree:
         return self._unlearn(self.root, X)
 
     def _unlearn(
-        self, node: _OnlineIsolationNode, X: np.ndarray | None
+        self, node: _OnlineIsolationNode, X: np.ndarray
     ) -> tuple[bool, _OnlineIsolationNode | None]:
-        if X is not None:
-            node.data_size -= 1
-        if node.children is None:
-            return False, node if X is not None else None
-        if node.data_size < node.threshold:
-            self._unbuild(node)
-            return True, None
-        index = node.child_index(X) if X is not None else -1
-        changed = False
-        touched: _OnlineIsolationNode | None = None
-        for i, child in enumerate(node.children):
-            c_changed, c_leaf = self._unlearn(child, X if i == index else None)
-            if c_changed:
-                changed = True
-            if c_leaf is not None:
-                touched = c_leaf
-        self._refresh_bounds(node)
-        return changed, touched
+        binary = self.branching_factor == 2
+        curr = node
+        while True:
+            curr.data_size -= 1
+            children = curr.children
+            if children is None:
+                return False, curr
+            if curr.data_size < curr.threshold:
+                self._unbuild(curr)
+                return True, None
+            if binary:
+                curr = children[1 if X[curr.dim] >= curr.split_val else 0]
+            else:
+                assert curr.split_values is not None
+                idx = int(np.searchsorted(curr.split_values, X[curr.dim], side="right"))
+                curr = children[idx]
 
     def _refresh_bounds(self, node: _OnlineIsolationNode) -> None:
         assert node.children is not None

@@ -4,6 +4,7 @@ from typing import Any, overload
 import numpy as np
 from sklearn.utils import check_random_state
 
+from pysad.core._iterate import _iterate as _iterate
 from pysad.core.base_streamer import BaseStreamer
 
 
@@ -58,20 +59,3 @@ class ArrayStreamer(BaseStreamer[np.ndarray, np.ndarray]):
                 raise ValueError("X and y must have the same length.")
             for i in indices:
                 yield X[i], y[i]
-
-
-def _iterate(X: np.ndarray, y: np.ndarray | None = None) -> Iterator[tuple[np.ndarray, Any | None]]:
-    """Iterates array of features and possibly labels.
-
-    Args:
-        X (np.array of shape (num_instances, num_features)): The features array.
-        y (np.array of shape (num_instances,)): The array containing labels (Default=None).
-    """
-    iterator = ArrayStreamer(shuffle=False)
-
-    if y is None:
-        for xi in iterator.iter(X):
-            yield xi, None
-    else:
-        for xi, yi in iterator.iter(X, y):
-            yield xi, yi

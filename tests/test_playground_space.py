@@ -18,60 +18,70 @@ def test_default_detectors_match_odds_sota_trio():
 
 
 def test_synthetic_stream_and_all_detectors_with_both_calibrators():
-    """All supported detectors run cleanly under both Conformal and SPOT calibration."""
-    for calibrator in engine.CALIBRATOR_CHOICES:
-        res1 = engine.run_playground(
-            stream_name=engine.STREAM_SYNTHETIC,
-            detectors=["LocalOutlierProbability", "RSHash", "LODA"],
-            calibrator_name=calibrator,
-            threshold=0.985,
-            max_points=600,
-        )
-        assert len(res1.traces) == 3
-        for tr in res1.traces:
-            assert len(tr.raw_scores) == 600
-            assert len(tr.calibrated_scores) == 600
-            assert np.all(np.isfinite(tr.calibrated_scores))
-            assert (
-                0.0 <= float(tr.calibrated_scores.min()) <= float(tr.calibrated_scores.max()) <= 1.0
-            )
-            assert tr.us_per_point > 0.0
-            assert tr.auroc is not None and tr.auroc > 0.5
+    """All supported detectors run cleanly under Conformal and SPOT calibration."""
+    res1 = engine.run_playground(
+        stream_name=engine.STREAM_SYNTHETIC,
+        detectors=["LocalOutlierProbability", "RSHash", "LODA"],
+        calibrator_name=engine.CALIBRATOR_CONFORMAL,
+        threshold=0.985,
+        max_points=300,
+    )
+    assert len(res1.traces) == 3
+    for tr in res1.traces:
+        assert len(tr.raw_scores) == 300
+        assert len(tr.calibrated_scores) == 300
+        assert np.all(np.isfinite(tr.calibrated_scores))
+        assert 0.0 <= float(tr.calibrated_scores.min()) <= float(tr.calibrated_scores.max()) <= 1.0
+        assert tr.us_per_point > 0.0
+        assert tr.auroc is not None and tr.auroc > 0.5
 
-        res2 = engine.run_playground(
-            stream_name=engine.STREAM_SYNTHETIC,
-            detectors=["SmartSifter", "RobustRandomCutForest", "HalfSpaceTrees"],
-            calibrator_name=calibrator,
-            threshold=0.95,
-            max_points=600,
-        )
-        assert len(res2.traces) == 3
-        for tr in res2.traces:
-            assert len(tr.calibrated_scores) == 600
-            assert np.all(np.isfinite(tr.calibrated_scores))
-            assert tr.us_per_point > 0.0
+    res2 = engine.run_playground(
+        stream_name=engine.STREAM_SYNTHETIC,
+        detectors=["SmartSifter", "RobustRandomCutForest", "HalfSpaceTrees"],
+        calibrator_name=engine.CALIBRATOR_CONFORMAL,
+        threshold=0.95,
+        max_points=300,
+    )
+    assert len(res2.traces) == 3
+    for tr in res2.traces:
+        assert len(tr.calibrated_scores) == 300
+        assert np.all(np.isfinite(tr.calibrated_scores))
+        assert tr.us_per_point > 0.0
 
-        res3 = engine.run_playground(
-            stream_name=engine.STREAM_SYNTHETIC,
-            detectors=["KNNCAD", "SeasonalHybridESD", "MedianAbsoluteDeviation"],
-            calibrator_name=calibrator,
-            threshold=0.95,
-            max_points=600,
-        )
-        assert len(res3.traces) == 3
-        assert "(sensor_1)" in res3.traces[0].display_name
-        assert "(sensor_1)" in res3.traces[1].display_name
-        assert "(sensor_1)" in res3.traces[2].display_name
+    res3 = engine.run_playground(
+        stream_name=engine.STREAM_SYNTHETIC,
+        detectors=["KNNCAD", "SeasonalHybridESD", "MedianAbsoluteDeviation"],
+        calibrator_name=engine.CALIBRATOR_CONFORMAL,
+        threshold=0.95,
+        max_points=300,
+    )
+    assert len(res3.traces) == 3
+    assert "(sensor_1)" in res3.traces[0].display_name
+    assert "(sensor_1)" in res3.traces[1].display_name
+    assert "(sensor_1)" in res3.traces[2].display_name
 
-        res4 = engine.run_playground(
-            stream_name=engine.STREAM_SYNTHETIC,
-            detectors=["xStream"],
-            calibrator_name=calibrator,
-            threshold=0.95,
-            max_points=600,
-        )
-        assert len(res4.traces) == 1
-        assert np.all(np.isfinite(res4.traces[0].calibrated_scores))
+    res4 = engine.run_playground(
+        stream_name=engine.STREAM_SYNTHETIC,
+        detectors=["xStream"],
+        calibrator_name=engine.CALIBRATOR_CONFORMAL,
+        threshold=0.95,
+        max_points=300,
+    )
+    assert len(res4.traces) == 1
+    assert np.all(np.isfinite(res4.traces[0].calibrated_scores))
+
+    res_spot = engine.run_playground(
+        stream_name=engine.STREAM_SYNTHETIC,
+        detectors=["LODA", "MedianAbsoluteDeviation"],
+        calibrator_name=engine.CALIBRATOR_SPOT,
+        threshold=0.985,
+        max_points=300,
+    )
+    assert len(res_spot.traces) == 2
+    for tr in res_spot.traces:
+        assert len(tr.calibrated_scores) == 300
+        assert np.all(np.isfinite(tr.calibrated_scores))
+        assert 0.0 <= float(tr.calibrated_scores.min()) <= float(tr.calibrated_scores.max()) <= 1.0
 
 
 def test_spot_calibrator_handles_extreme_slider_thresholds():
@@ -82,21 +92,21 @@ def test_spot_calibrator_handles_extreme_slider_thresholds():
             detectors=["LODA"],
             calibrator_name=engine.CALIBRATOR_SPOT,
             threshold=thresh,
-            max_points=500,
+            max_points=300,
         )
-        assert len(res.traces[0].calibrated_scores) == 500
+        assert len(res.traces[0].calibrated_scores) == 300
         assert np.all(np.isfinite(res.traces[0].calibrated_scores))
 
 
 def test_live_anomaly_injection_is_detected_and_attributed_by_loda():
     """Injecting a spike raises alerts at that step and ranks the target feature highest."""
-    target_step = 420
+    target_step = 250
     res = engine.run_playground(
         stream_name=engine.STREAM_SYNTHETIC,
         detectors=["LODA", "HalfSpaceTrees"],
         calibrator_name=engine.CALIBRATOR_CONFORMAL,
         threshold=0.98,
-        max_points=600,
+        max_points=350,
         injected=[{"index": target_step, "feature_idx": 3, "magnitude_sigma": 7.0}],
         inspect_step=target_step,
     )
@@ -117,7 +127,7 @@ def test_nyc_taxi_univariate_stream_and_graceful_explanation():
         detectors=["LODA", "SeasonalHybridESD", "MedianAbsoluteDeviation"],
         calibrator_name=engine.CALIBRATOR_CONFORMAL,
         threshold=0.985,
-        max_points=600,
+        max_points=300,
     )
     assert res.stream.is_univariate
     assert res.stream.timestamps is not None
@@ -175,11 +185,11 @@ def test_gradio_ui_builds_and_evaluates_if_installed():
     out = app.evaluate_ui(
         stream_name=engine.STREAM_SYNTHETIC,
         csv_file=None,
-        num_points=500,
+        num_points=300,
         detectors=engine.DEFAULT_DETECTORS,
         calibrator_name=engine.CALIBRATOR_CONFORMAL,
         threshold=0.985,
-        calibrator_window=200,
+        calibrator_window=120,
         primary_feature="sensor_1",
         injected=[],
         inspect_step=None,

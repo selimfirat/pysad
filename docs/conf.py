@@ -137,7 +137,9 @@ rst_epilog = (
 
 _COLLECTED_BIB = DOCS_DIR / "_build" / "collected.bib"
 _COLLECTED_BIB.parent.mkdir(parents=True, exist_ok=True)
-_COLLECTED_BIB.write_text(collect_bibtex(ROOT_DIR)[0], encoding="utf-8")
+_BIB_TEXT = collect_bibtex(ROOT_DIR)[0]
+if not _COLLECTED_BIB.exists() or _COLLECTED_BIB.read_text(encoding="utf-8") != _BIB_TEXT:
+    _COLLECTED_BIB.write_text(_BIB_TEXT, encoding="utf-8")
 
 # -- Project information -----------------------------------------------------
 

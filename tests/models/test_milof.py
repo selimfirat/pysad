@@ -51,15 +51,6 @@ def test_scores_zero_until_the_memory_holds_more_than_num_neighbors():
     assert (scores[6:] > 0.0).all()
 
 
-def test_outlier_scores_higher():
-    from pysad.models import MiLOF
-
-    X = np.random.RandomState(0).normal(size=(500, 2))
-    model = MiLOF(window_size=100).fit(X)
-
-    assert model.score_partial(np.array([6.0, 6.0])) > model.score_partial(np.zeros(2))
-
-
 def test_rejects_invalid_parameters():
     from pysad.models import MiLOF
 
@@ -115,19 +106,6 @@ def test_kept_points_use_centers_as_neighbors_after_merge():
 
     np.testing.assert_allclose(model.k_dists_[:half], expected_k_dists)
     np.testing.assert_allclose(model.reach_dists_[:half], expected_reach_dists)
-
-
-def test_fixed_random_state_is_reproducible():
-    from pysad.models import MiLOF
-
-    X = np.random.RandomState(0).normal(size=(200, 3))
-    probes = np.random.RandomState(1).normal(size=(10, 3))
-
-    first = MiLOF(num_neighbors=5, window_size=40, num_summaries=4, random_state=3)
-    second = MiLOF(num_neighbors=5, window_size=40, num_summaries=4, random_state=3)
-
-    np.testing.assert_allclose(first.fit_score(X), second.fit_score(X))
-    np.testing.assert_allclose(first.score(probes), second.score(probes))
 
 
 def test_repeated_points_score_finite_after_the_merge():

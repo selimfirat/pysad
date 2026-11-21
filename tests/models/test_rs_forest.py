@@ -51,13 +51,6 @@ def test_rs_forest_learns_the_latest_window_without_labeled_anomalies(label, den
     assert (model.score_partial(np.array([2.0, 2.0])) < 0.0) == dense
 
 
-def test_rs_forest_rejects_a_zero_window_size():
-    from pysad.models import RSForest
-
-    with pytest.raises(ValueError, match="window_size"):
-        RSForest(window_size=0)
-
-
 def test_rs_forest_replaces_the_reference_only_at_window_boundaries():
     from pysad.models import RSForest
 

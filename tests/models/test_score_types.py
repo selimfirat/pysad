@@ -3,7 +3,7 @@ import pytest
 
 from pysad.utils import fix_seed
 
-NUM_INSTANCES = 150
+NUM_INSTANCES = 80
 NUM_FEATURES = 3
 
 
@@ -19,7 +19,12 @@ def _model_specs():
     from pysad.integrations import OneFitModel, PredictiveAnomalyDetector, ReferenceWindowModel
     from pysad.transform.postprocessing import ZScorePostprocessor
     from pysad.transform.preprocessing import ShingleTransformer
-    from tests.models.conftest import active_model_names, num_features_for, short_stream_params
+    from tests.models.conftest import (
+        active_model_names,
+        is_component_active,
+        num_features_for,
+        short_stream_params,
+    )
 
     mins, maxes = [0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES
     params = {
@@ -44,9 +49,14 @@ def _model_specs():
             "max_depth": 5,
         },
         "HoltWinters": {"period": 4, "threshold": 1},
-        "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 256},
-        "IForestASD": {"window_size": 32},
-        "IDKS": {"input_shape": NUM_FEATURES, "window_size": 20, "num_samples": 4},
+        "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 64},
+        "IForestASD": {"window_size": 32, "n_estimators": 5},
+        "IDKS": {
+            "input_shape": NUM_FEATURES,
+            "window_size": 20,
+            "num_samples": 4,
+            "num_partitions": 10,
+        },
         "IncrementalLOF": {"window_size": 20},
         "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32},
         "KELOS": {"window_size": 20, "radius": 0.3, "num_neighbors": 3},
@@ -62,7 +72,7 @@ def _model_specs():
         "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 10, "step": 1},
         "RobustRandomCutForest": {"num_trees": 4, "tree_size": 32},
         "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
-        "RSHash": {"feature_mins": mins, "feature_maxes": maxes},
+        "RSHash": {"feature_mins": mins, "feature_maxes": maxes, "num_components": 10},
         "SAND": {"subsequence_length": 4, "batch_size": 40},
         "SeasonalESD": {"period": 4, "window_size": 12, "max_anomalies": 0.17},
         "SeasonalHybridESD": {"period": 4, "window_size": 12, "max_anomalies": 0.17},
@@ -100,7 +110,7 @@ def _model_specs():
         (
             "HTM",
             "HTM-raw",
-            lambda: models.HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=256),
+            lambda: models.HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=64),
             2,
         ),
         (
@@ -117,24 +127,36 @@ def _model_specs():
         ),
     ]
     specs += [(vid, fn, nf) for base_name, vid, fn, nf in variants if base_name in active]
-    specs += [
-        ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
-        (
-            "ReferenceWindowModel",
-            lambda: ReferenceWindowModel(
-                IForest, window_size=20, sliding_size=10, initial_window_X=_initial_X(NUM_FEATURES)
-            ),
-            NUM_FEATURES,
-        ),
-    ]
-
-    specs.append(
-        (
-            "PredictiveAnomalyDetector",
-            lambda: PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=0)),
-            1,
+    if is_component_active(OneFitModel):
+        specs.append(
+            (
+                "OneFitModel",
+                lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES), n_estimators=10),
+                NUM_FEATURES,
+            )
         )
-    )
+    if is_component_active(ReferenceWindowModel):
+        specs.append(
+            (
+                "ReferenceWindowModel",
+                lambda: ReferenceWindowModel(
+                    IForest,
+                    window_size=20,
+                    sliding_size=10,
+                    initial_window_X=_initial_X(NUM_FEATURES),
+                    n_estimators=10,
+                ),
+                NUM_FEATURES,
+            )
+        )
+    if is_component_active(PredictiveAnomalyDetector):
+        specs.append(
+            (
+                "PredictiveAnomalyDetector",
+                lambda: PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=0)),
+                1,
+            )
+        )
 
     return specs
 

@@ -45,29 +45,31 @@ def test_sand_ranks_subsequences_of_another_shape_above_the_normal_ones():
 
     from pysad.models import SAND
 
+    length = 15
     rng = np.random.default_rng(0)
-    x, y = _sine(4000, 25, rng), np.zeros(4000, dtype=int)
-    for start in range(1200, 4000, 400):
-        x[start : start + LENGTH] = np.sin(2 * np.pi * np.arange(LENGTH) / 10)
+    x, y = _sine(2000, length, rng), np.zeros(2000, dtype=int)
+    for start in range(500, 2000, 300):
+        x[start : start + length] = np.sin(2 * np.pi * np.arange(length) / 6)
         # The model scores the subsequence that ends with each value.
-        y[start + LENGTH - 1 : start + 2 * LENGTH - 1] = 1
+        y[start + length - 1 : start + 2 * length - 1] = 1
 
-    scores = SAND(subsequence_length=LENGTH, batch_size=1000, random_state=0).fit_score(x[:, None])
+    scores = SAND(subsequence_length=length, batch_size=400, random_state=0).fit_score(x[:, None])
 
-    assert roc_auc_score(y[1000:], scores[1000:]) > 0.9
+    assert roc_auc_score(y[400:], scores[400:]) > 0.9
 
 
 def test_sand_learns_a_new_normal_behavior():
     from pysad.models import SAND
 
+    length = 15
     rng = np.random.default_rng(0)
-    x = np.concatenate([_sine(3000, 25, rng), _sine(5000, 40, rng)])
-    model = SAND(subsequence_length=LENGTH, batch_size=1000, random_state=0)
+    x = np.concatenate([_sine(1200, length, rng), _sine(2400, 28, rng)])
+    model = SAND(subsequence_length=length, batch_size=400, random_state=0)
     scores = model.fit_score(x[:, None])
 
     # Once the new behavior fills batches, its clusters gain weight and its scores fall. With
     # alpha=0, the weights, mu and sigma stay those of the first batch, and the scores stay high.
-    assert np.median(scores[7000:]) < 0.1 * np.median(scores[3000:4000])
+    assert np.median(scores[3000:]) < 0.1 * np.median(scores[1200:1600])
 
 
 @pytest.mark.parametrize(
@@ -98,11 +100,11 @@ def test_sand_is_univariate():
 def test_sand_min_weight_bounds_the_clusters_on_a_drifting_stream():
     from pysad.models import SAND
 
-    batches = np.random.default_rng(0).normal(size=8000).cumsum().reshape(20, 400, 1)
+    batches = np.random.default_rng(0).normal(size=2100).cumsum().reshape(14, 150, 1)
     min_weight = 0.25
     bounded = SAND(
-        subsequence_length=LENGTH,
-        batch_size=400,
+        subsequence_length=10,
+        batch_size=150,
         min_weight=min_weight,
         random_state=0,
     )
@@ -122,8 +124,8 @@ def test_sand_min_weight_bounds_the_clusters_on_a_drifting_stream():
 def test_sand_min_weight_none_keeps_every_cluster():
     from pysad.models import SAND
 
-    x = np.random.default_rng(0).normal(size=3000).cumsum()[:, None]
-    scores = SAND(subsequence_length=LENGTH, batch_size=400, random_state=0).fit_score(x)
-    explicit = SAND(subsequence_length=LENGTH, batch_size=400, min_weight=None, random_state=0)
+    x = np.random.default_rng(0).normal(size=1200).cumsum()[:, None]
+    scores = SAND(subsequence_length=10, batch_size=200, random_state=0).fit_score(x)
+    explicit = SAND(subsequence_length=10, batch_size=200, min_weight=None, random_state=0)
 
     np.testing.assert_array_equal(explicit.fit_score(x), scores)

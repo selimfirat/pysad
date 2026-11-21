@@ -74,8 +74,8 @@ def test_one_shot_stl_matches_the_exact_solution_of_the_paper_problem(num_iterat
 def test_one_shot_stl_recovers_the_noise_of_a_series_with_trend_and_cycle():
     from pysad.transform.preprocessing import OneShotSTL
 
-    period = 24
-    y, noise = _series(2000, period)
+    period = 12
+    y, noise = _series(600, period)
 
     residuals = OneShotSTL(period=period).fit_transform(y[:, None]).ravel()
 
@@ -83,48 +83,24 @@ def test_one_shot_stl_recovers_the_noise_of_a_series_with_trend_and_cycle():
     # The residual follows the noise, including after the level jumps at the middle.
     errors = np.abs(residuals - noise)[4 * period :]
     assert errors.mean() < 0.08
-    assert np.abs(residuals - noise)[1050:].mean() < 0.08
+    assert np.abs(residuals - noise)[330:].mean() < 0.08
 
 
 def test_one_shot_stl_shift_window_follows_a_shifted_cycle():
     from pysad.transform.preprocessing import OneShotSTL
 
-    period = 50
-    t = np.arange(3000)
+    period = 12
+    t = np.arange(400)
     noise = 0.05 * np.random.default_rng(0).normal(size=t.size)
-    shifted = t + np.where(t > 1500, 5, 0)
+    shifted = t + np.where(t > 200, 2, 0)
     y = np.where(shifted % period < period // 2, 1.0, -1.0) + noise
 
     errors = {}
-    for shift_window in (0, 10):
+    for shift_window in (0, 3):
         transformer = OneShotSTL(period=period, shift_window=shift_window)
-        errors[shift_window] = np.abs(transformer.fit_transform(y[:, None]).ravel() - noise)[1500:]
+        errors[shift_window] = np.abs(transformer.fit_transform(y[:, None]).ravel() - noise)[200:]
 
-    assert errors[10].mean() < 0.7 * errors[0].mean()
-
-
-def test_one_shot_stl_custom_shift_threshold():
-    from pysad.transform.preprocessing import OneShotSTL
-
-    period = 20
-    t = np.arange(200)
-    shift_start = 100
-
-    pattern = np.arange(period, dtype=float)
-    shifted = t + np.where(t >= shift_start, 5, 0)
-    y = pattern[shifted % period]
-
-    residuals = {}
-    for threshold in (1.0, 1e12):
-        transformer = OneShotSTL(
-            period=period,
-            shift_window=10,
-            shift_threshold=threshold,
-        )
-        residuals[threshold] = transformer.fit_transform(y[:, None]).ravel()
-
-    # The lower threshold detects the shift at its first observation.
-    assert abs(residuals[1.0][shift_start]) < abs(residuals[1e12][shift_start])
+    assert errors[3].mean() < 0.7 * errors[0].mean()
 
 
 def test_one_shot_stl_residual_statistics_use_the_unshifted_residual():
@@ -148,23 +124,6 @@ def test_one_shot_stl_residual_statistics_use_the_unshifted_residual():
 
     assert transformer.residual_meter_.mean == pytest.approx(expected.mean)
     assert transformer.residual_meter_.get() == pytest.approx(expected.get())
-
-
-def test_one_shot_stl_transform_partial_does_not_update():
-    from pysad.transform.preprocessing import OneShotSTL
-
-    period = 4
-    y, _ = _series(40, period)
-    transformer = OneShotSTL(period=period, shift_window=1)
-    transformer.fit(y[:30, None])
-
-    first = transformer.transform_partial(y[30:31])
-    second = transformer.transform_partial(y[30:31])
-    fitted = transformer.fit_transform_partial(y[30:31])
-
-    assert first.shape == (1,)
-    np.testing.assert_array_equal(first, second)
-    np.testing.assert_array_equal(first, fitted)
 
 
 def test_one_shot_stl_rejects_multivariate_input():

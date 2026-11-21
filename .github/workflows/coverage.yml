@@ -328,9 +328,10 @@ jobs:
           cache-suffix: numpy-123
           prune-cache: true
       - name: Install NumPy 1.23 with compatible test dependencies
-        # These River and Matplotlib versions support NumPy 1.23.
+        # River 0.26.1+ is required by the PySADToRiverAdapter; numpy 1.23 is
+        # compatible with river 0.26.1 when the correct pins are used.
         run: |
-          printf '%s\n' 'river==0.21.2' 'matplotlib==3.10.8' > "$RUNNER_TEMP/numpy123-overrides.txt"
+          printf '%s\n' 'river==0.26.1' 'matplotlib==3.10.8' > "$RUNNER_TEMP/numpy123-overrides.txt"
           uv pip install --system --only-binary :all: --no-binary pysad --group test -e . "numpy==1.23.5" \
             --override "$RUNNER_TEMP/numpy123-overrides.txt"
       - name: Test with NumPy 1.23

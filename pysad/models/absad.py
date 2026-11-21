@@ -118,7 +118,7 @@ def _calculate_feature_relevance(
     mean_relevance = float(np.mean(relevance))
     threshold = (1.0 + theta) * mean_relevance
 
-    selected_subspace = np.where(relevance > threshold)[0]
+    selected_subspace = np.where(relevance > threshold)[0]  # type: ignore[assignment]
     if len(selected_subspace) == 0:
         # Fall back to full space if no feature dominates by the threshold
         selected_subspace = np.arange(d, dtype=int)

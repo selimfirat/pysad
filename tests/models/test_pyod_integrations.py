@@ -527,6 +527,82 @@ def test_reference_window_model_pickle_round_trip():
     np.testing.assert_allclose(restored_scores, original_scores)
 
 
+def test_reference_window_model_fit_score_empty_X():
+    """fit_score with empty X returns empty array."""
+    import numpy as np
+    from pyod.models.iforest import IForest
+
+    from pysad.integrations import ReferenceWindowModel
+
+    model = ReferenceWindowModel(
+        IForest, window_size=8, sliding_size=4, n_estimators=10, random_state=42
+    )
+    result = model.fit_score(np.empty((0, 3)))
+    np.testing.assert_array_equal(result, np.empty(0, dtype=np.float64))
+
+
+def test_reference_window_model_fit_score_no_initial_window():
+    """fit_score without initial_window_X: prequential scores match fit_score_partial."""
+    import numpy as np
+    from pyod.models.iforest import IForest
+
+    from pysad.integrations import ReferenceWindowModel
+
+    rng = np.random.default_rng(42)
+    X = rng.random((20, 3))
+    y = rng.integers(0, 2, size=20)
+
+    # Two identical models: one for fit_score, one for fit_score_partial iteration
+    batch_model = ReferenceWindowModel(
+        IForest, window_size=8, sliding_size=5, n_estimators=10, random_state=42
+    )
+    partial_model = ReferenceWindowModel(
+        IForest, window_size=8, sliding_size=5, n_estimators=10, random_state=42
+    )
+
+    # fit_score should produce the same scores as fit_score_partial iterated
+    batch_scores = batch_model.fit_score(X, y)
+    partial_scores = np.array(
+        [partial_model.fit_score_partial(xi, yi) for xi, yi in zip(X, y, strict=True)]
+    )
+
+    np.testing.assert_allclose(batch_scores, partial_scores, rtol=1e-12, atol=1e-12)
+
+
+def test_reference_window_model_fit_score_power_of_two_refit():
+    """fit_score respects power-of-two refit during first window filling."""
+    import numpy as np
+    from pyod.models.iforest import IForest
+
+    from pysad.integrations import ReferenceWindowModel
+
+    rng = np.random.default_rng(42)
+    X = rng.random((30, 3))
+    y = rng.integers(0, 2, size=30)
+    initial_X = rng.random((5, 3))
+    initial_y = rng.integers(0, 2, size=5)
+
+    # window_size=8, sliding_size=4: refits at 1, 2, 4, 8 instances during first window
+    model = ReferenceWindowModel(
+        IForest,
+        window_size=8,
+        sliding_size=4,
+        initial_window_X=initial_X,
+        initial_window_y=initial_y,
+        n_estimators=10,
+        random_state=42,
+    )
+
+    batch_scores = model.fit_score(X, y)
+
+    # Verify we got scores for all instances
+    assert len(batch_scores) == len(X)
+    assert np.all(np.isfinite(batch_scores))
+
+    # Verify scores are not all zero (model should have learned something)
+    assert not np.all(batch_scores == 0.0)
+
+
 def test_one_fit_model_pickle_round_trip():
     """A pickled OneFitModel scores the next instances as the original model does."""
     import pickle

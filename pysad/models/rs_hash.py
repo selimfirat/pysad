@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -32,8 +33,8 @@ class RSHash(BaseModel):
 
     def __init__(
         self,
-        feature_mins: np.ndarray | list[float] | tuple[float, ...],
-        feature_maxes: np.ndarray | list[float] | tuple[float, ...],
+        feature_mins: NDArray[np.float64] | list[float] | tuple[float, ...],
+        feature_maxes: NDArray[np.float64] | list[float] | tuple[float, ...],
         decay: float = 0.015,
         num_components: int = 100,
         num_hash_fns: int = 1,
@@ -48,8 +49,10 @@ class RSHash(BaseModel):
         num_hash_fns = _int_at_least(num_hash_fns, "num_hash_fns", 1)
         hash_range = _int_at_least(hash_range, "hash_range", 1)
 
+        self.minimum: NDArray[np.float64]
+        self.maximum: NDArray[np.float64]
         self.minimum, self.maximum = check_feature_bounds(feature_mins, feature_maxes)
-        self.range = self.maximum - self.minimum
+        self.range: NDArray[np.float64] = self.maximum - self.minimum
         self.range[self.range == 0] = 1.0
 
         self.m = num_components
@@ -61,7 +64,7 @@ class RSHash(BaseModel):
         self.random_state = random_state
         rng = check_random_state(random_state)
 
-        self.f = rng.uniform(
+        self.f: NDArray[np.float64] = rng.uniform(
             low=1.0 / np.sqrt(self.effS), high=1 - (1.0 / np.sqrt(self.effS)), size=self.m
         )
 
@@ -69,15 +72,15 @@ class RSHash(BaseModel):
         # all components, so memory stays constant however long the stream runs. sketch_timestamps
         # holds the last index each slot was updated at; sketch_counts holds its decayed count as of
         # that index.
-        self.sketch_timestamps = np.zeros((self.num_hash, self.hash_range), dtype=np.int64)
-        self.sketch_counts = np.zeros((self.num_hash, self.hash_range), dtype=np.float64)
+        self.sketch_timestamps: NDArray[np.int64] = np.zeros((self.num_hash, self.hash_range), dtype=np.int64)
+        self.sketch_counts: NDArray[np.float64] = np.zeros((self.num_hash, self.hash_range), dtype=np.float64)
 
         self._sample_dims(rng)
 
         self.alpha = self._sample_shifts(rng)
-        self._V_flat = np.concatenate(self.V)
-        self._alpha_flat = np.concatenate(self.alpha)
-        self._f_flat = np.repeat(self.f, self.r)
+        self._V_flat: NDArray[np.intp] = np.concatenate(self.V)
+        self._alpha_flat: NDArray[np.float64] = np.concatenate(self.alpha)
+        self._f_flat: NDArray[np.float64] = np.repeat(self.f, self.r)
         ends = np.cumsum(self.r).tolist()
         self._component_slices: list[tuple[int, int]] = list(
             zip([0] + ends[:-1], ends, strict=True)
@@ -104,7 +107,7 @@ class RSHash(BaseModel):
 
         self.index = 1
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> RSHash:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> RSHash:
         """Updates the model with the next instance.
 
         Args:
@@ -118,7 +121,7 @@ class RSHash(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance. This method does not change the model.
 
         Args:
@@ -129,7 +132,7 @@ class RSHash(BaseModel):
         """
         return self._score_slots([self._cell_slots(key) for key in self._cell_keys(X)])
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the next instance against the current state, then fits the model to it.
 
         The paper's streaming variant scores an instance before learning it (Sathe & Aggarwal 2016, §III): the "testing step" reads the current hash table, and the "training update" then updates the counts.
@@ -168,7 +171,7 @@ class RSHash(BaseModel):
         # Low counts indicate outliers in the paper, so the average log-count is negated to make higher scores more anomalous.
         return -score_instance / self.m
 
-    def _cell_keys(self, X: np.ndarray) -> list[tuple[int, ...]]:
+    def _cell_keys(self, X: NDArray[np.float64]) -> list[tuple[int, ...]]:
         """Computes each ensemble component's grid cell key for a normalized instance.
 
         Args:
@@ -222,8 +225,8 @@ class RSHash(BaseModel):
 
         return float(wt * 2.0 ** (-self.decay * (self.index - tstamp)))
 
-    def _sample_shifts(self, rng: np.random.RandomState) -> list[np.ndarray]:
-        alpha: list[np.ndarray] = []
+    def _sample_shifts(self, rng: np.random.RandomState) -> list[NDArray[np.float64]]:
+        alpha: list[NDArray[np.float64]] = []
         for r in range(self.m):
             alpha.append(rng.uniform(low=0, high=self.f[r], size=len(self.V[r])))
 
@@ -242,8 +245,8 @@ class RSHash(BaseModel):
         high_value = np.floor(common_term).astype(int)
         low_value = np.minimum(np.ceil(1 + 0.5 * common_term).astype(int), high_value)
 
-        self.r: np.ndarray = np.empty([self.m], dtype=int)
-        self.V: list[np.ndarray] = []
+        self.r: NDArray[np.intp] = np.empty([self.m], dtype=int)
+        self.V: list[NDArray[np.intp]] = []
         for i in range(self.m):
             self.r[i] = min(
                 rng.randint(low=low_value[i], high=high_value[i] + 1), len(choice_feats)

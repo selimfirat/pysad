@@ -4,6 +4,7 @@ import numbers
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -45,12 +46,12 @@ class HalfSpaceTrees(BaseModel):
 
     def __init__(
         self,
-        feature_mins: np.ndarray | list[float] | tuple[float, ...],
-        feature_maxes: np.ndarray | list[float] | tuple[float, ...],
+        feature_mins: NDArray[np.float64] | list[float] | tuple[float, ...],
+        feature_maxes: NDArray[np.float64] | list[float] | tuple[float, ...],
         window_size: int = 250,
         num_trees: int = 25,
         max_depth: int = 15,
-        initial_window_X: np.ndarray | None = None,
+        initial_window_X: NDArray[np.float64] | None = None,
         random_work_space: bool = True,
         random_state: int | np.random.RandomState | None = None,
     ) -> None:
@@ -80,40 +81,40 @@ class HalfSpaceTrees(BaseModel):
         # the masses take the smallest unsigned integers that hold them: a node records at most
         # `window_size` instances per window.
         num_splits = 2**self.max_depth - 1
-        self.split_atts: np.ndarray = np.empty(
+        self.split_atts: NDArray[Any] = np.empty(
             (self.num_trees, num_splits), dtype=np.min_scalar_type(self.num_dimensions - 1)
         )
-        self.split_values = np.empty((self.num_trees, num_splits))
+        self.split_values: NDArray[np.float64] = np.empty((self.num_trees, num_splits))
         rng = check_random_state(random_state)
         for tree in range(self.num_trees):
             self.split_atts[tree], self.split_values[tree] = self._build_tree(rng)
-        self.l_mass = np.zeros(
+        self.l_mass: NDArray[Any] = np.zeros(
             (self.num_trees, 2 * num_splits + 1), dtype=np.min_scalar_type(self.window_size)
         )
-        self.r_mass = np.zeros_like(self.l_mass)
+        self.r_mass: NDArray[Any] = np.zeros_like(self.l_mass)
         # r * 2^k of a node at depth k.
-        self._depth_weights = 2 ** np.arange(self.max_depth + 1, dtype=np.int64)
+        self._depth_weights: NDArray[np.int64] = 2 ** np.arange(self.max_depth + 1, dtype=np.int64)
         # Traversal state shared by every point. Each tree's current node is kept as the
         # tree-independent heap index u = node + 1, one per row of `self._flat_path`, so a depth
         # step is u <- 2u + goes_right for every tree at once and no Python loop touches a single
         # tree. The split and the mass arrays are read as one flat array in which node n of tree t
         # sits at t * num_splits + n and t * num_nodes + n: gathering a split needs the index
         # u + t * num_splits - 1, a mass cell u + t * num_nodes - 1.
-        self._split_shift = np.arange(self.num_trees, dtype=np.intp) * num_splits - 1
-        self._mass_shift = np.arange(self.num_trees, dtype=np.intp) * (2 * num_splits + 1) - 1
-        self._flat_path = np.empty((self.max_depth + 1, self.num_trees), dtype=np.intp)
-        self._idx_buf = np.empty(self.num_trees, dtype=np.intp)
-        self._att_buf = np.empty(self.num_trees, dtype=self.split_atts.dtype)
-        self._val_buf = np.empty(self.num_trees)
-        self._x_buf = np.empty(self.num_trees)
-        self._goes_right_buf = np.empty(self.num_trees, dtype=np.bool_)
+        self._split_shift: NDArray[np.intp] = np.arange(self.num_trees, dtype=np.intp) * num_splits - 1
+        self._mass_shift: NDArray[np.intp] = np.arange(self.num_trees, dtype=np.intp) * (2 * num_splits + 1) - 1
+        self._flat_path: NDArray[np.intp] = np.empty((self.max_depth + 1, self.num_trees), dtype=np.intp)
+        self._idx_buf: NDArray[np.intp] = np.empty(self.num_trees, dtype=np.intp)
+        self._att_buf: NDArray[Any] = np.empty(self.num_trees, dtype=self.split_atts.dtype)
+        self._val_buf: NDArray[np.float64] = np.empty(self.num_trees)
+        self._x_buf: NDArray[np.float64] = np.empty(self.num_trees)
+        self._goes_right_buf: NDArray[np.bool_] = np.empty(self.num_trees, dtype=np.bool_)
 
         self.is_first_window = True
         self.step = 0
         if initial_window_X is not None:
             self.fit(initial_window_X)
 
-    def _work_space(self, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
+    def _work_space(self, rng: np.random.RandomState) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         if not self.random_work_space:
             return self.feature_mins.copy(), self.feature_maxes.copy()
 
@@ -123,7 +124,7 @@ class HalfSpaceTrees(BaseModel):
 
         return s - half_width, s + half_width
 
-    def _build_tree(self, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
+    def _build_tree(self, rng: np.random.RandomState) -> tuple[NDArray[Any], NDArray[np.float64]]:
         """Draws the split features and computes the split values of one tree, in heap order.
 
         The tree halves its work space at every internal node: the node splits the feature drawn for it at the
@@ -160,7 +161,7 @@ class HalfSpaceTrees(BaseModel):
 
         return atts, values
 
-    def _path(self, X: np.ndarray) -> np.ndarray:
+    def _path(self, X: NDArray[np.float64]) -> NDArray[np.intp]:
         """Returns the flat index into the mass arrays of the max_depth + 1 nodes that `X` visits in each tree."""
         X = np.asarray(X)
         # A float64 X can be gathered through a reusable buffer; other dtypes (a float32 or an int
@@ -188,7 +189,7 @@ class HalfSpaceTrees(BaseModel):
 
         return path
 
-    def _fit_path(self, path: np.ndarray) -> None:
+    def _fit_path(self, path: NDArray[np.intp]) -> None:
         self.step += 1
         self.l_mass.reshape(-1)[path] += 1
 
@@ -198,7 +199,7 @@ class HalfSpaceTrees(BaseModel):
             self.l_mass.fill(0)
             self.is_first_window = False
 
-    def _score_path(self, path: np.ndarray) -> float:
+    def _score_path(self, path: NDArray[np.intp]) -> float:
         # During the first window there is no reference yet, so score against the mass recorded so far.
         mass = (self.l_mass if self.is_first_window else self.r_mass).reshape(-1)[path]
         s = float((mass * self._depth_weights[:, None]).sum())
@@ -210,7 +211,7 @@ class HalfSpaceTrees(BaseModel):
 
         return 0.0 - s
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> HalfSpaceTrees:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> HalfSpaceTrees:
         """Updates the model with the next instance.
 
         Args:
@@ -224,7 +225,7 @@ class HalfSpaceTrees(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance against the reference mass profile built from the previous window, without recording it.
 
         Args:
@@ -235,7 +236,7 @@ class HalfSpaceTrees(BaseModel):
         """
         return self._score_path(self._path(X))
 
-    def explain_partial(self, X: np.ndarray) -> np.ndarray:
+    def explain_partial(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """Returns per-feature attribution weights for the anomaly score of the next instance.
 
         Each tree routes the instance down one path from its root to a leaf. The tree blames the
@@ -294,11 +295,11 @@ class HalfSpaceTrees(BaseModel):
         flat_split_index = best_node - tree_id * (num_splits + 1)
         split_feature = self.split_atts.reshape(-1)[flat_split_index]  # (num_trees,)
 
-        attribution: np.ndarray = np.bincount(
+        attribution = np.bincount(
             split_feature,
             weights=rarity_weight,
             minlength=self.num_dimensions,
-        )
+        ).astype(np.float64)
 
         total = float(attribution.sum())
         if total > 0.0:
@@ -306,7 +307,7 @@ class HalfSpaceTrees(BaseModel):
 
         return attribution
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the next instance against the reference mass profile, and then updates the model with it.
 
         Args:

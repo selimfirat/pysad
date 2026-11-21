@@ -332,9 +332,10 @@ def test_changed_benchmark_detectors_isolates_table_edits():
 
     assert benchmark._changed_benchmark_detectors(source, source) == set()
 
+    # Replace the current DETECTOR_OVERRIDES dict with one that adds a new model
     added = source.replace(
-        "DETECTOR_OVERRIDES = {}",
-        'DETECTOR_OVERRIDES = {"NewModel": lambda X, seed: models.LODA(random_state=seed)}',
+        'DETECTOR_OVERRIDES = {\n    "ZeroShotEmbeddingDetector": lambda X, seed: models.ZeroShotEmbeddingDetector(\n        semantic_anchors=np.random.RandomState(seed).randn(10, X.shape[1])\n    ),\n}',
+        'DETECTOR_OVERRIDES = {\n    "ZeroShotEmbeddingDetector": lambda X, seed: models.ZeroShotEmbeddingDetector(\n        semantic_anchors=np.random.RandomState(seed).randn(10, X.shape[1])\n    ),\n    "NewModel": lambda X, seed: models.LODA(random_state=seed),\n}',
     )
     assert benchmark._changed_benchmark_detectors(source, added) == {"NewModel"}
 

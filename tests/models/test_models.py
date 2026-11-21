@@ -70,6 +70,7 @@ MODEL_CASES = {
     "SeasonalESD": [{"period": 10, "window_size": 31}],
     "SeasonalHybridESD": [{"period": 10, "window_size": 31}],
     "StandardAbsoluteDeviation": [{}],
+    "ZeroShotEmbeddingDetector": [{"semantic_anchors": np.random.RandomState(0).rand(10, 1)}],
     "ModelEnsemble": [
         {
             "models": [

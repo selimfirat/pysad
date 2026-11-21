@@ -147,6 +147,9 @@ def _model_params(model_name, num_features, data):
             "num_clusters": 2,
             "batch_size": 10,
         },
+        "ZeroShotEmbeddingDetector": {
+            "semantic_anchors": np.random.RandomState(SEED).rand(10, num_features)
+        },
         "StreamPipeline": {
             "model": pysad.models.LODA(num_bins=5, num_random_cuts=10),
             "preprocessors": [ShingleTransformer(shingle_size=2)],

@@ -275,6 +275,7 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
         },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
         "TokenPerplexityDetector": {"model_name": "sshleifer/tiny-gpt2", "max_length": 32},
+        "ZeroShotEmbeddingDetector": {"semantic_anchors": np.random.RandomState(0).rand(10, 3)},
     }
     if name in params:
         return params[name]

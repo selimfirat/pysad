@@ -25,6 +25,7 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
 
     Raises:
         ValueError: If window_size is less than 1.
+        TypeError: If ``score`` is not convertible to float.
     """
 
     _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
@@ -33,6 +34,15 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         self.window_size = window_size
         self.window = Window(window_size=self.window_size)
         self._sorted: list[float] = []
+
+    def _validate_score(self, score: float) -> float:
+        """Convert score to float, raising TypeError if not possible."""
+        try:
+            return float(score)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"score must be convertible to float, got {type(score).__name__}: {score!r}"
+            ) from None
 
     def fit_partial(self, score: float) -> ConformalProbabilityCalibrator:
         """Fits particular (next) timestep's score to train the postprocessor.
@@ -43,11 +53,12 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
+        score = self._validate_score(score)
         if len(self.window) == self.window_size:
             oldest = self.window._buffer.oldest()
             if oldest is not None and not math.isnan(oldest):
                 del self._sorted[bisect_left(self._sorted, oldest)]
-        self.window.update(score)
+        self.window.update(float(score))
         s = float(score)
         if not math.isnan(s):
             insort(self._sorted, s)
@@ -64,9 +75,10 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             float: One minus the conformal p-value of the score, or 0.0 before the first fit.
         """
         n = len(self.window)
-        if n == 0 or math.isnan(score):
+        s = self._validate_score(score)
+        if n == 0 or math.isnan(s):
             return 0.0
-        return bisect_left(self._sorted, float(score)) / n
+        return bisect_left(self._sorted, float(s)) / n
 
     def fit(self, scores: NDArray[Any]) -> ConformalProbabilityCalibrator:
         """Fits all scores in stream order, keeping the last ``window_size`` scores."""

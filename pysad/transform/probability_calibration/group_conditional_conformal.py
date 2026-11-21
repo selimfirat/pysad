@@ -46,6 +46,7 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
 
     Raises:
         ValueError: If ``window_size < 1`` or ``max_regimes < 1``.
+        TypeError: If ``score`` is not convertible to float.
 
     Attributes:
         window_size (int): Scores kept per regime.
@@ -77,6 +78,15 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
         self._regimes.move_to_end(regime)
         return entry
 
+    def _validate_score(self, score: float) -> float:
+        """Convert score to float, raising TypeError if not possible."""
+        try:
+            return float(score)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"score must be convertible to float, got {type(score).__name__}: {score!r}"
+            ) from None
+
     def fit_partial(self, score: float, regime: Any = None) -> GroupConditionalConformalCalibrator:
         """Adds the score to its regime's window without transforming it.
 
@@ -91,16 +101,16 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
-        s = float(score)
+        score = self._validate_score(score)
         window, sorted_vals = self._get_or_create(regime)
 
         if len(window) == self.window_size:
             oldest = window._buffer.oldest()
             if oldest is not None and not math.isnan(oldest):
                 del sorted_vals[bisect_left(sorted_vals, oldest)]
-        window.update(s)
-        if not math.isnan(s):
-            insort(sorted_vals, s)
+        window.update(score)
+        if not math.isnan(score):
+            insort(sorted_vals, score)
 
         return self
 
@@ -134,7 +144,7 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
             float: Fraction of the regime's window scores below the score, or ``0.0`` if the regime
                 has no scores yet or the score is missing.
         """
-        s = float(score)
+        s = self._validate_score(score)
         if math.isnan(s):
             return 0.0
         entry = self._regimes.get(regime)
@@ -144,7 +154,7 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
         n = len(window)
         if n == 0 or not sorted_vals:
             return 0.0
-        return bisect_left(sorted_vals, s) / n
+        return bisect_left(sorted_vals, float(s)) / n
 
     def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a batch of scores against the frozen default-regime window.

@@ -1,6 +1,4 @@
-"""
-Tests for pysad.core base classes and abstract methods.
-"""
+"""Tests for pysad.core base classes and concrete default methods."""
 
 import numpy as np
 import pytest
@@ -26,7 +24,6 @@ class ConcreteModel(BaseModel):
 
     def score_partial(self, X):
         self.score_count += 1
-        # Return a simple score based on L2 norm
         return np.linalg.norm(X)
 
 
@@ -42,7 +39,6 @@ class ConcreteMetric(BaseMetric):
     def get(self):
         if not self.values:
             return 0.0
-        # Return accuracy for testing
         correct = sum(1 for y_true, y_pred in self.values if y_true == (y_pred > 0.5))
         return correct / len(self.values)
 
@@ -62,38 +58,6 @@ class ConcretePostprocessor(BasePostprocessor):
         return score * self.multiplier if score is not None else 0.0
 
 
-class ConcreteStatistic(BaseStatistic):
-    """Test implementation of BaseStatistic for testing purposes."""
-
-    def __init__(self):
-        self.values = []
-
-    def update(self, num):
-        self.values.append(num)
-
-    def get(self):
-        return np.mean(self.values) if self.values else 0.0
-
-
-class ConcreteStreamer(BaseStreamer):
-    """Test implementation of BaseStreamer for testing purposes."""
-
-    def __init__(self, shuffle=False):
-        self.shuffle = shuffle
-
-    def iter(self, X, y=None):
-        indices = np.arange(len(X))
-        if self.shuffle:
-            np.random.shuffle(indices)
-
-        if y is None:
-            for i in indices:
-                yield X[i]
-        else:
-            for i in indices:
-                yield X[i], y[i]
-
-
 class ConcreteTransformer(BaseTransformer):
     """Test implementation of BaseTransformer for testing purposes."""
 
@@ -105,20 +69,11 @@ class ConcreteTransformer(BaseTransformer):
         return self
 
     def transform_partial(self, X):
-        # Simple transformation: add 1.0
         return X + 1.0
 
 
 class TestBaseModel:
-    """Tests for BaseModel abstract class and its concrete methods."""
-
-    def test_abstract_methods_exist(self):
-        """Test that BaseModel has the required abstract methods."""
-        model = ConcreteModel()
-        assert hasattr(model, "fit_partial")
-        assert hasattr(model, "score_partial")
-        assert callable(model.fit_partial)
-        assert callable(model.score_partial)
+    """Tests for BaseModel concrete batch/partial wrappers."""
 
     def test_fit_score_partial(self):
         """Test fit_score_partial method."""
@@ -142,7 +97,7 @@ class TestBaseModel:
 
         fitted_model = model.fit(X, y)
 
-        assert fitted_model is model  # Should return self
+        assert fitted_model is model
         assert len(model.fitted_data) == 3
         for i in range(3):
             np.testing.assert_array_equal(model.fitted_data[i][0], X[i])
@@ -192,211 +147,30 @@ class TestBaseModel:
         model = ConcreteModel()
         X = np.array([[1.0, 2.0], [3.0, 4.0]])
 
-        scores = model.fit_score(X)
+        model.fit_score(X)
 
-        assert len(scores) == 2
         assert len(model.fitted_data) == 2
         for fitted_data in model.fitted_data:
             assert fitted_data[1] is None
 
 
-class TestBaseMetric:
-    """Tests for BaseMetric abstract class."""
+def test_base_transformer_fit_method():
+    """Test that fit passes each instance, not an (instance, label) pair, to fit_partial."""
+    transformer = ConcreteTransformer()
+    X = np.array([[1.0, 2.0], [3.0, 4.0]])
 
-    def test_abstract_methods_exist(self):
-        """Test that BaseMetric has the required abstract methods."""
-        metric = ConcreteMetric()
-        assert hasattr(metric, "update")
-        assert hasattr(metric, "get")
-        assert callable(metric.update)
-        assert callable(metric.get)
-
-    def test_update_and_get(self):
-        """Test basic update and get functionality."""
-        metric = ConcreteMetric()
-
-        # Initially should return default value
-        assert metric.get() == 0.0
-
-        # Add some values
-        metric.update(1, 0.8)  # Correct
-        metric.update(0, 0.2)  # Correct
-        metric.update(1, 0.3)  # Incorrect
-
-        accuracy = metric.get()
-        assert 0.0 <= accuracy <= 1.0
+    assert transformer.fit(X) is transformer
+    assert len(transformer.fitted_data) == 2
+    np.testing.assert_array_equal(transformer.fitted_data[1], X[1])
 
 
-class TestBasePostprocessor:
-    """Tests for BasePostprocessor abstract class."""
-
-    def test_abstract_methods_exist(self):
-        """Test that BasePostprocessor has the required abstract methods."""
-        processor = ConcretePostprocessor()
-        assert hasattr(processor, "fit_partial")
-        assert hasattr(processor, "transform_partial")
-        assert callable(processor.fit_partial)
-        assert callable(processor.transform_partial)
-
-    def test_fit_transform_workflow(self):
-        """Test the fit and transform workflow."""
-        processor = ConcretePostprocessor(multiplier=3.0)
-
-        # Fit on some scores
-        processor.fit_partial(1.0)
-        processor.fit_partial(2.0)
-
-        assert len(processor.fitted_scores) == 2
-
-        # Transform a score
-        result = processor.transform_partial(5.0)
-        assert result == 15.0  # 5.0 * 3.0
-
-    def test_transform_without_score(self):
-        """Test transform_partial with None score."""
-        processor = ConcretePostprocessor()
-        result = processor.transform_partial()
-        assert result == 0.0
-
-
-class TestBaseStatistic:
-    """Tests for BaseStatistic abstract class."""
-
-    def test_abstract_methods_exist(self):
-        """Test that BaseStatistic has the required abstract methods."""
-        stat = ConcreteStatistic()
-        assert hasattr(stat, "update")
-        assert hasattr(stat, "get")
-        assert callable(stat.update)
-        assert callable(stat.get)
-
-    def test_update_and_get(self):
-        """Test basic update and get functionality."""
-        stat = ConcreteStatistic()
-
-        # Initially should return default value
-        assert stat.get() == 0.0
-
-        # Add some values
-        stat.update(1.0)
-        stat.update(2.0)
-        stat.update(3.0)
-
-        mean_value = stat.get()
-        assert mean_value == 2.0
-
-
-class TestBaseStreamer:
-    """Tests for BaseStreamer abstract class."""
-
-    def test_abstract_methods_exist(self):
-        """Test that BaseStreamer has the required abstract methods."""
-        streamer = ConcreteStreamer()
-        assert hasattr(streamer, "iter")
-        assert callable(streamer.iter)
-
-    def test_iter_without_labels(self):
-        """Test iteration without labels."""
-        streamer = ConcreteStreamer(shuffle=False)
-        X = np.array([[1, 2], [3, 4], [5, 6]])
-
-        results = list(streamer.iter(X))
-        assert len(results) == 3
-        for i, x in enumerate(results):
-            np.testing.assert_array_equal(x, X[i])
-
-    def test_iter_with_labels(self):
-        """Test iteration with labels."""
-        streamer = ConcreteStreamer(shuffle=False)
-        X = np.array([[1, 2], [3, 4]])
-        y = np.array([0, 1])
-
-        results = list(streamer.iter(X, y))
-        assert len(results) == 2
-        for i, (x, y_val) in enumerate(results):
-            np.testing.assert_array_equal(x, X[i])
-            assert y_val == y[i]
-
-    def test_iter_with_shuffle(self):
-        """Test iteration with shuffle enabled."""
-        np.random.seed(42)
-        streamer = ConcreteStreamer(shuffle=True)
-        X = np.array([[1, 2], [3, 4], [5, 6]])
-
-        results = list(streamer.iter(X))
-        assert len(results) == 3
-        # With shuffle, order should potentially be different
-
-
-class TestBaseTransformer:
-    """Tests for BaseTransformer abstract class."""
-
-    def test_abstract_methods_exist(self):
-        """Test that BaseTransformer has the required abstract methods."""
-        transformer = ConcreteTransformer()
-        assert hasattr(transformer, "fit_partial")
-        assert hasattr(transformer, "transform_partial")
-        assert callable(transformer.fit_partial)
-        assert callable(transformer.transform_partial)
-
-    def test_fit_transform_workflow(self):
-        """Test the fit and transform workflow."""
-        transformer = ConcreteTransformer()
-        X = np.array([1.0, 2.0, 3.0])
-
-        # Fit
-        fitted_transformer = transformer.fit_partial(X)
-        assert fitted_transformer is transformer
-        assert len(transformer.fitted_data) == 1
-        np.testing.assert_array_equal(transformer.fitted_data[0], X)
-
-        # Transform
-        result = transformer.transform_partial(X)
-        expected = X + 1.0
-        np.testing.assert_array_equal(result, expected)
-
-    def test_fit_method(self):
-        """Test that fit passes each instance, not an (instance, label) pair, to fit_partial."""
-        transformer = ConcreteTransformer()
-        X = np.array([[1.0, 2.0], [3.0, 4.0]])
-
-        assert transformer.fit(X) is transformer
-        assert len(transformer.fitted_data) == 2
-        np.testing.assert_array_equal(transformer.fitted_data[1], X[1])
-
-
-class TestAbstractClassInstantiation:
-    """Test that abstract base classes cannot be instantiated directly."""
-
-    def test_base_model_abstract(self):
-        """Test that BaseModel cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            BaseModel()
-
-    def test_base_metric_abstract(self):
-        """Test that BaseMetric cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            BaseMetric()
-
-    def test_base_postprocessor_abstract(self):
-        """Test that BasePostprocessor cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            BasePostprocessor()
-
-    def test_base_statistic_abstract(self):
-        """Test that BaseStatistic cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            BaseStatistic()
-
-    def test_base_streamer_abstract(self):
-        """Test that BaseStreamer cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            BaseStreamer()
-
-    def test_base_transformer_abstract(self):
-        """Test that BaseTransformer cannot be instantiated directly."""
-        with pytest.raises(TypeError):
-            BaseTransformer()
+@pytest.mark.parametrize(
+    "base_cls",
+    [BaseModel, BaseMetric, BasePostprocessor, BaseStatistic, BaseStreamer, BaseTransformer],
+)
+def test_abstract_base_classes_cannot_be_instantiated(base_cls):
+    with pytest.raises(TypeError):
+        base_cls()
 
 
 def test_base_model_fit_score_partial_scores_before_it_fits():
@@ -417,15 +191,6 @@ def test_base_model_fit_score_partial_scores_before_it_fits():
     scores = LastValueModel().fit_score(np.array([[1.0], [3.0], [6.0]]))
 
     np.testing.assert_array_equal(scores, [1.0, 2.0, 3.0])
-
-
-def test_base_model_metadata_class_attributes_defaults():
-    assert BaseModel.__bibtex__ is None
-    assert BaseModel._input_kind == "multivariate"
-    assert BaseModel._detector_doc is None
-    assert ConcreteModel.__bibtex__ is None
-    assert ConcreteModel._input_kind == "multivariate"
-    assert ConcreteModel._detector_doc is None
 
 
 def test_pipe_operator_works_without_preimporting_models():

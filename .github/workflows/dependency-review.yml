@@ -5,6 +5,10 @@ name: dependency review
 on:
   pull_request:
     branches: [master]
+    paths:
+      - "pyproject.toml"
+      - ".github/workflows/**"
+      - ".pre-commit-config.yaml"
 
 permissions:
   contents: read

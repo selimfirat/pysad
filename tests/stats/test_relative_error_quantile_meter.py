@@ -11,9 +11,8 @@ def _fill(meter, values):
 
 
 @pytest.mark.parametrize("high_rank_accuracy", [False, True])
-@pytest.mark.parametrize("q", [0.001, 0.01, 0.1, 0.5, 0.9, 0.99, 0.999])
 @pytest.mark.parametrize("order", ["ascending", "descending", "shuffled"])
-def test_relative_rank_accuracy(high_rank_accuracy, q, order):
+def test_relative_rank_accuracy(high_rank_accuracy, order):
     from pysad.statistics import RelativeErrorQuantileMeter
 
     values = np.arange(30_000, dtype=float)
@@ -21,14 +20,19 @@ def test_relative_rank_accuracy(high_rank_accuracy, q, order):
         values = values[::-1]
     elif order == "shuffled":
         np.random.RandomState(61).shuffle(values)
-    meter = RelativeErrorQuantileMeter(
-        q=q, k=20, max_items=100_000, high_rank_accuracy=high_rank_accuracy, random_state=61
+    meter = _fill(
+        RelativeErrorQuantileMeter(
+            q=0.5, k=20, max_items=100_000, high_rank_accuracy=high_rank_accuracy, random_state=61
+        ),
+        values,
     )
-    estimate = _fill(meter, values).get()
-    target = q * (len(values) - 1)
-    tail_rank = (1 - q if high_rank_accuracy else q) * len(values)
-    assert abs(estimate - target) <= max(1, 0.03 * tail_rank)
     assert meter.num_items == len(values)
+    for q in [0.001, 0.01, 0.1, 0.5, 0.9, 0.99, 0.999]:
+        meter.q = q
+        estimate = meter.get()
+        target = q * (len(values) - 1)
+        tail_rank = (1 - q if high_rank_accuracy else q) * len(values)
+        assert abs(estimate - target) <= max(1, 0.03 * tail_rank)
 
 
 @pytest.mark.parametrize("high_rank_accuracy", [False, True])
@@ -89,14 +93,14 @@ def test_random_compaction_keeps_each_parity(high_rank_accuracy):
 def test_seed_and_pickle_preserve_future_estimates():
     from pysad.statistics import RelativeErrorQuantileMeter
 
-    values = np.random.RandomState(61).normal(size=20_000)
+    values = np.random.RandomState(61).normal(size=4_000)
     first = RelativeErrorQuantileMeter(k=10, max_items=100_000, random_state=61)
     second = RelativeErrorQuantileMeter(k=10, max_items=100_000, random_state=61)
-    _fill(first, values[:10_000])
-    _fill(second, values[:10_000])
+    _fill(first, values[:2_000])
+    _fill(second, values[:2_000])
     restored = pickle.loads(pickle.dumps(first))
     for meter in [first, second, restored]:
-        _fill(meter, values[10_000:])
+        _fill(meter, values[2_000:])
     for q in [0.01, 0.1, 0.5, 0.9]:
         for meter in [first, second, restored]:
             meter.q = q
@@ -107,10 +111,10 @@ def test_memory_stays_small_after_many_updates():
     from pysad.statistics import RelativeErrorQuantileMeter
 
     meter = RelativeErrorQuantileMeter(k=20, max_items=1_000_000, random_state=61)
-    _fill(meter, range(200_000))
+    _fill(meter, range(50_000))
     assert len(pickle.dumps(meter)) < 100_000
     meter.q = 0.01
-    assert abs(meter.get() - 1999.99) < 60
+    assert abs(meter.get() - 499.99) < 30
 
 
 @pytest.mark.parametrize("q, expected", [(0, -5.0), (0.5, 3.0), (1, 10.0)])

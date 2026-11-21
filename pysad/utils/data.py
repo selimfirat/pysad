@@ -13,7 +13,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import numpy as np
-from scipy.io import arff
+from sklearn.utils import check_random_state
 
 from pysad.utils._datasets import (
     _CHECKSUMS,
@@ -292,9 +292,7 @@ class Data:
                 self._download(file_name, data_path)
 
         if file_name == "creditcard/creditcard.arff":
-            records, metadata = arff.loadarff(data_path)
-            X = np.column_stack([records[n] for n in metadata.names() if n != "Class"])
-            return X, records["Class"].astype(int)
+            return self._load_creditcard(data_path)
         if file_name.startswith("nab/"):
             return self._load_nab(file_name, data_path, download, timestamps)
         if file_name.startswith("ucr/"):
@@ -319,6 +317,40 @@ class Data:
             X = X[:, :-1]
 
         return X, y
+
+    def _load_creditcard(self, data_path: str) -> tuple[np.ndarray, np.ndarray]:
+        """Loads the numeric credit-card ARFF file and separates features from ``Class``."""
+        attributes: list[str] = []
+        with open(data_path, encoding="utf-8") as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped or stripped.startswith("%"):
+                    continue
+                head = stripped.split(maxsplit=2)
+                tag = head[0].lower()
+                if tag == "@attribute" and len(head) >= 2:
+                    attributes.append(head[1].strip("'\""))
+                elif tag == "@data":
+                    break
+            raw_body = f.read()
+
+        if "%" in raw_body:
+            body = ",".join(
+                line.strip()
+                for line in raw_body.splitlines()
+                if line.strip() and not line.lstrip().startswith("%")
+            )
+        else:
+            body = raw_body.replace("\r", "").replace("\n", ",")
+        body = body.replace("'", "").replace('"', "").strip(" \t,")
+
+        num_cols = len(attributes)
+        class_idx = attributes.index("Class")
+        arr = np.fromstring(body, dtype=np.float64, sep=",").reshape(-1, num_cols)
+        if class_idx == num_cols - 1:
+            return np.ascontiguousarray(arr[:, :class_idx]), arr[:, class_idx].astype(int)
+        feature_cols = [i for i in range(num_cols) if i != class_idx]
+        return np.ascontiguousarray(arr[:, feature_cols]), arr[:, class_idx].astype(int)
 
     def _load_nab(
         self, name: str, data_path: str, download: bool, timestamps: bool
@@ -478,10 +510,13 @@ class Data:
         Returns:
             tuple[np.ndarray, np.ndarray]: The feature vectors of shape (num_points, num_features) and the labels of shape (num_points,), in stream order.
         """
-        stream = list(self.get_iterator(data_file, random_state=random_state, download=download))
-        stream = stream[:max_points]
-        X, y = np.array([x for x, _ in stream]), np.array([label for _, label in stream])
-        if scale:
+        X, y = self.get_data(data_file, download=download)
+        indices = list(range(len(X)))
+        check_random_state(random_state).shuffle(indices)
+        if max_points is not None:
+            indices = indices[:max_points]
+        X, y = X[indices], y[indices]
+        if scale and len(X) > 0:
             mins, maxes = X.min(axis=0), X.max(axis=0)
             X = (X - mins) / np.where(maxes > mins, maxes - mins, 1.0)
 

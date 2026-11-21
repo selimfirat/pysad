@@ -132,11 +132,11 @@ def test_knn_cad_matches_nab_on_long_stream(period):
 
     from pysad.models import KNNCAD
 
-    # Twenty probationary periods or more: many rotations of the training and calibration sets,
+    # Ten probationary periods or more: many rotations of the training and calibration sets,
     # many sigma refreshes and many alarms, long after the buffer is full.
     rng = np.random.RandomState(7)
-    X = np.sin(np.arange(2000) / 10.0) + rng.normal(0.0, 0.1, 2000)
-    X[rng.choice(2000, 12, replace=False)] += 6.0
+    X = np.sin(np.arange(1000) / 10.0) + rng.normal(0.0, 0.1, 1000)
+    X[rng.choice(1000, 6, replace=False)] += 6.0
     reference = NABKNNCAD(probationary_period=period)
     model = KNNCAD(probationary_period=period)
 

@@ -64,23 +64,8 @@ def num_features_for(name: str, default: int = 3) -> int:
     return 1 if name in UNIVARIATE_MODELS else default
 
 
-def _model_pysad_files(name: str) -> set[str]:
-    """Returns the repository-relative pysad source files that model `name` depends on."""
-    objects: list[Any] = [getattr(pysad.models, name)]
-    if name == "ModelEnsemble":
-        objects += [
-            pysad.models.LODA,
-            pysad.models.xStream,
-            ZScorePostprocessor,
-            AverageScoreEnsembler,
-        ]
-    if name == "StreamPipeline":
-        objects += [
-            pysad.models.LODA,
-            ShingleTransformer,
-            ZScorePostprocessor,
-            ConformalProbabilityCalibrator,
-        ]
+def _objects_pysad_files(objects: list[Any]) -> set[str]:
+    """Returns the repository-relative pysad source files that `objects` depend on."""
     files: set[str] = set()
     todo = [obj.__module__ for obj in objects]
     pysad_root = Path(pysad.__file__).parents[1]
@@ -105,9 +90,29 @@ def _model_pysad_files(name: str) -> set[str]:
     return files
 
 
+def _model_pysad_files(name: str) -> set[str]:
+    """Returns the repository-relative pysad source files that model `name` depends on."""
+    objects: list[Any] = [getattr(pysad.models, name)]
+    if name == "ModelEnsemble":
+        objects += [
+            pysad.models.LODA,
+            pysad.models.xStream,
+            ZScorePostprocessor,
+            AverageScoreEnsembler,
+        ]
+    if name == "StreamPipeline":
+        objects += [
+            pysad.models.LODA,
+            ShingleTransformer,
+            ZScorePostprocessor,
+            ConformalProbabilityCalibrator,
+        ]
+    return _objects_pysad_files(objects)
+
+
 @functools.cache
-def _models_changed_since(base: str) -> tuple[str, ...]:
-    changed = set(
+def _changed_files_since(base: str) -> frozenset[str]:
+    return frozenset(
         subprocess.run(
             ["git", "-C", str(ROOT), "diff", "--name-only", base],
             check=True,
@@ -115,20 +120,40 @@ def _models_changed_since(base: str) -> tuple[str, ...]:
             text=True,
         ).stdout.split()
     )
-    if _SHARED_MODEL_TEST_FILES & changed:
+
+
+@functools.cache
+def _deps_changed_since(base: str) -> bool:
+    if "pyproject.toml" not in _changed_files_since(base):
+        return False
+    before = subprocess.run(
+        ["git", "-C", str(ROOT), "show", f"{base}:pyproject.toml"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    ).stdout
+    after = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    return before.split("\ndocs = [", 1)[0] != after.split("\ndocs = [", 1)[0]
+
+
+@functools.cache
+def _models_changed_since(base: str) -> tuple[str, ...]:
+    changed = _changed_files_since(base)
+    if (_SHARED_MODEL_TEST_FILES & changed) or _deps_changed_since(base):
         return tuple(pysad.models.__all__)
-    if "pyproject.toml" in changed:
-        before = subprocess.run(
-            ["git", "-C", str(ROOT), "show", f"{base}:pyproject.toml"],
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        ).stdout
-        after = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        if before.split("\ndocs = [", 1)[0] != after.split("\ndocs = [", 1)[0]:
-            return tuple(pysad.models.__all__)
     return tuple(name for name in pysad.models.__all__ if _model_pysad_files(name) & changed)
+
+
+def is_component_active(obj: Any) -> bool:
+    """Returns whether non-model component `obj` should run under PYSAD_TESTS_SINCE."""
+    base = os.environ.get("PYSAD_TESTS_SINCE")
+    if not base:
+        return True
+    changed = _changed_files_since(base)
+    if (_SHARED_MODEL_TEST_FILES & changed) or _deps_changed_since(base):
+        return True
+    return bool(_objects_pysad_files([obj]) & changed)
 
 
 def active_model_names() -> tuple[str, ...]:
@@ -201,8 +226,13 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
         },
         "HTM": {"min_val": 0.0, "max_val": 1.0, "num_columns": 256},
         "HoltWinters": {"period": 2},
-        "IForestASD": {"window_size": 20, "n_estimators": 10},
-        "IDKS": {"input_shape": num_features, "window_size": 8, "num_samples": 4},
+        "IForestASD": {"window_size": 20, "n_estimators": 5},
+        "IDKS": {
+            "input_shape": num_features,
+            "window_size": 8,
+            "num_samples": 4,
+            "num_partitions": 10,
+        },
         "Inqmad": {"input_shape": num_features, "dim_x": 16},
         "MemStream": {"window_size": 4, "num_epochs": 20},
         "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},

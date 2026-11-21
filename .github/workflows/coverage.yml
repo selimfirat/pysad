@@ -10,6 +10,22 @@ on:
       - "LICENSE"
       - "CITATION.cff"
       - ".readthedocs.yaml"
+      - ".github/dependabot.yml"
+      - ".github/workflows/all-checks.yml"
+      - ".github/workflows/benchmark.yml"
+      - ".github/workflows/codeql.yml"
+      - ".github/workflows/dependency-review.yml"
+      - ".github/workflows/docs.yml"
+      - ".github/workflows/examples.yml"
+      - ".github/workflows/greetings.yml"
+      - ".github/workflows/hf-space.yml"
+      - ".github/workflows/jupyterlite.yml"
+      - ".github/workflows/lint-workflows.yml"
+      - ".github/workflows/pr-labels.yml"
+      - ".github/workflows/publish.yml"
+      - ".github/workflows/scorecard.yml"
+      - ".github/workflows/stale.yml"
+      - ".github/workflows/weekly.yml"
   pull_request:
     paths-ignore:
       - "docs/**"
@@ -18,9 +34,32 @@ on:
       - "LICENSE"
       - "CITATION.cff"
       - ".readthedocs.yaml"
+      - ".github/dependabot.yml"
+      - ".github/workflows/all-checks.yml"
+      - ".github/workflows/benchmark.yml"
+      - ".github/workflows/codeql.yml"
+      - ".github/workflows/dependency-review.yml"
+      - ".github/workflows/docs.yml"
+      - ".github/workflows/examples.yml"
+      - ".github/workflows/greetings.yml"
+      - ".github/workflows/hf-space.yml"
+      - ".github/workflows/jupyterlite.yml"
+      - ".github/workflows/lint-workflows.yml"
+      - ".github/workflows/pr-labels.yml"
+      - ".github/workflows/publish.yml"
+      - ".github/workflows/scorecard.yml"
+      - ".github/workflows/stale.yml"
+      - ".github/workflows/weekly.yml"
 
 permissions:
   contents: read
+
+env:
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  VECLIB_MAXIMUM_THREADS: "1"
+  NUMEXPR_NUM_THREADS: "1"
 
 concurrency:
   # PR runs share a group per PR (so stale pushes get cancelled); every push gets its own group.
@@ -45,6 +84,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: coverage-312
+          prune-cache: true
       - name: Install dependencies
         run: |
           # uv prefers wheels by default, matching pip's --prefer-binary.
@@ -52,7 +93,7 @@ jobs:
       - name: Test with coverage
         env:
           COVERAGE_CORE: sysmon
-        run: pytest -n auto --cov=pysad --cov-report=lcov
+        run: pytest -n auto --dist worksteal --cov=pysad --cov-report=lcov
       - name: Upload to Coveralls
         uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
@@ -91,6 +132,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: tests-${{ matrix.os }}-${{ matrix.python }}
+          prune-cache: true
       - name: Install dependencies
         run: |
           uv pip install --system --group runtime --group test -e .
@@ -103,7 +146,11 @@ jobs:
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
-          pytest -n auto
+          status=0
+          pytest -n auto --dist worksteal || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
+          fi
 
   unpinned-314:
     runs-on: ubuntu-latest
@@ -120,6 +167,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: unpinned-314
+          prune-cache: true
       - name: Install unpinned dependencies
         run: |
           uv pip install --system -e . --group test
@@ -131,7 +180,11 @@ jobs:
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
-          pytest -n auto
+          status=0
+          pytest -n auto --dist worksteal || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
+          fi
 
   numpy-123:
     runs-on: ubuntu-latest
@@ -148,6 +201,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: numpy-123
+          prune-cache: true
       - name: Install NumPy 1.23 with compatible test dependencies
         # These River and Matplotlib versions support NumPy 1.23.
         run: |
@@ -155,9 +210,19 @@ jobs:
           uv pip install --system --only-binary :all: --no-binary pysad --group test -e . "numpy==1.23.5" \
             --override "$RUNNER_TEMP/numpy123-overrides.txt"
       - name: Test with NumPy 1.23
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           python -c 'import numpy; assert numpy.__version__ == "1.23.5", numpy.__version__'
-          pytest -n auto
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            export PYSAD_TESTS_SINCE="origin/$BASE_REF"
+          fi
+          status=0
+          pytest -n auto --dist worksteal || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
+          fi
 
   lowest-versions:
     runs-on: ubuntu-latest
@@ -174,6 +239,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: lowest-versions
+          prune-cache: true
       - name: Install the lowest allowed dependencies
         # Resolve the lowest direct dependencies on the oldest supported Python.
         # River requires NumPy 2.2.5 or newer, so the test group cannot use NumPy 1.23.
@@ -187,4 +254,8 @@ jobs:
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
-          pytest -n auto
+          status=0
+          pytest -n auto --dist worksteal || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
+          fi

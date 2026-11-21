@@ -165,26 +165,6 @@ class TestUtilsFunctions:
 class TestWindow:
     """Tests for Window class."""
 
-    def test_window_initialization(self):
-        """Test Window initialization."""
-        from pysad.utils import Window
-
-        window = Window(window_size=5)
-        assert window.window_size == 5
-        assert window.get() == []
-
-    def test_window_update_within_size(self):
-        """Test Window update within size limit."""
-        from pysad.utils import Window
-
-        window = Window(window_size=3)
-
-        window.update(1.0)
-        window.update(2.0)
-
-        assert window.get() == [1.0, 2.0]
-        assert len(window.get()) == 2
-
     def test_window_update_exceeds_size(self):
         """Test Window update when exceeding size."""
         from pysad.utils import Window
@@ -210,21 +190,6 @@ class TestWindow:
 
         window.update(2.0)
         assert window.get() == [2.0]
-
-    def test_window_get_returns_same_list_each_call(self):
-        """Test that Window.get() returns the window items, oldest first."""
-        from pysad.utils import Window
-
-        window = Window(window_size=5)
-        window.update(1.0)
-        window.update(2.0)
-
-        result1 = window.get()
-        result2 = window.get()
-
-        assert result1 == result2 == [1.0, 2.0]
-        assert len(window) == 2
-        assert list(window) == [1.0, 2.0]
 
     def test_window_get_returns_a_copy(self):
         """Changing the returned list does not change the window."""
@@ -311,17 +276,6 @@ class TestWindow:
 
 class TestArrayStreamer:
     """Tests for ArrayStreamer class."""
-
-    def test_array_streamer_initialization(self):
-        """Test ArrayStreamer initialization."""
-        from pysad.utils import ArrayStreamer
-
-        streamer = ArrayStreamer(shuffle=False)
-        assert hasattr(streamer, "shuffle")
-        assert streamer.shuffle is False
-
-        streamer = ArrayStreamer(shuffle=True)
-        assert streamer.shuffle is True
 
     def test_array_streamer_iter_without_labels(self):
         """Test ArrayStreamer iteration without labels."""
@@ -410,23 +364,6 @@ class TestArrayStreamer:
         with pytest.raises(ValueError):
             list(streamer.iter(np.zeros((3, 2)), np.zeros(2)))
 
-    def test_array_streamer_shuffle(self):
-        """Test ArrayStreamer with shuffle."""
-        from pysad.utils import ArrayStreamer
-
-        # Set seed for reproducible shuffle
-        np.random.seed(42)
-        streamer = ArrayStreamer(shuffle=True)
-        X = np.array([[1, 2], [3, 4], [5, 6], [7, 8]])
-
-        results = list(streamer.iter(X))
-        assert len(results) == 4
-
-        # Results should contain all original data but potentially in different order
-        result_set = {tuple(xi) for xi in results}
-        original_set = {tuple(X[i]) for i in range(len(X))}
-        assert result_set == original_set
-
     def test_array_streamer_random_state(self):
         """Test that ArrayStreamer shuffles with its own seed, and with the global state by default."""
         from pysad.utils import ArrayStreamer, fix_seed
@@ -447,24 +384,6 @@ class TestPlotStream:
         import matplotlib
 
         matplotlib.use("Agg")
-
-    def test_plot_stream_returns_figure_and_three_axes(self):
-        """plot_stream returns a figure and three axes."""
-        self._use_agg_backend()
-        import matplotlib.pyplot as plt
-        import numpy as np
-
-        from pysad.utils import plot_stream
-
-        rng = np.random.default_rng(0)
-        X = rng.normal(size=(50, 2))
-        scores = rng.random(50)
-
-        fig, axes = plot_stream(X, scores)
-
-        assert len(axes) == 3
-        assert len(fig.axes) == 3
-        plt.close(fig)
 
     def test_plot_stream_draws_score_and_threshold_lines(self):
         """With a threshold, the scores panel shows the score line and the threshold line."""

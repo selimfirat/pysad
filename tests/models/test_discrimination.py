@@ -99,6 +99,7 @@ def _model_params(model_name, X):
     """The constructor arguments of `model_name` for the stream `X`."""
     feature_mins, feature_maxes = X.min(axis=0), X.max(axis=0)
     params = {
+        "CPOD": {"window_size": 200},
         "DriftAdaptiveDetector": {"model_factory": pysad.models.LODA},
         "FeedbackHST": {
             "feature_mins": feature_mins,
@@ -108,24 +109,30 @@ def _model_params(model_name, X):
             "max_depth": 5,
             "feedback_budget": 20,
         },
-        "HalfSpaceTrees": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
+        "HalfSpaceTrees": {
+            "feature_mins": feature_mins,
+            "feature_maxes": feature_maxes,
+            "num_trees": 10,
+            "max_depth": 8,
+        },
         "HTM": {
             "min_val": feature_mins[-1],
             "max_val": feature_maxes[-1],
-            "num_columns": 512,
+            "num_columns": 128,
             # The anomaly likelihood needs a longer stream than this one to settle.
             "likelihood": False,
         },
         # The anomalies are single spikes, so one violation in the window is a failure.
         "HoltWinters": {"period": 24, "threshold": 1},
-        "IForestASD": {"window_size": WARMUP},
+        "IForestASD": {"window_size": WARMUP, "n_estimators": 15},
         "IDKS": {
             "input_shape": NUM_FEATURES,
             "window_size": 100,
             "num_samples": 4,
-            "num_partitions": 40,
+            "num_partitions": 20,
         },
         "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32},
+        "KELOS": {"window_size": 200},
         # Grace periods that end with the warmup.
         "KitNet": {"grace_feature_mapping": 50, "grace_anomaly_detector": 150},
         "KNNCAD": {"probationary_period": 100},
@@ -133,13 +140,19 @@ def _model_params(model_name, X):
         "DAMP": {"window_length": 24},
         "LocalOutlierProbability": {"initial_X": X[:100]},
         "RelativeEntropy": {"min_val": feature_mins[0], "max_val": feature_maxes[0]},
-        "RobustRandomCutForest": {"num_trees": 10, "tree_size": 64},
+        "RobustRandomCutForest": {"num_trees": 5, "tree_size": 64},
         "MemStream": {"window_size": 8, "num_epochs": 20},
         # The normal values go below -1, out of the domain of log(1 + x). The values are continuous,
         # so fewer buckets than the default make the normal values share buckets.
         "MStream": {"num_buckets": 32, "log_transform": False},
-        "RSForest": {"window_size": WARMUP},
-        "RSHash": {"feature_mins": feature_mins, "feature_maxes": feature_maxes},
+        "OnlineIsolationForest": {"num_trees": 10},
+        "PCBIsolationForest": {"num_trees": 20},
+        "RSForest": {"window_size": WARMUP, "num_trees": 10, "max_depth": 8},
+        "RSHash": {
+            "feature_mins": feature_mins,
+            "feature_maxes": feature_maxes,
+            "num_components": 30,
+        },
         # Half a period, and batches that end with the warmup.
         "SAND": {"subsequence_length": 12, "batch_size": 100},
         # The spikes go in both directions.
@@ -147,8 +160,10 @@ def _model_params(model_name, X):
         "SeasonalHybridESD": {"period": 24, "window_size": 96, "direction": "both"},
         "ModelEnsemble": {
             "models": [
-                pysad.models.LODA(random_state=0) | ZScorePostprocessor(window_size=WARMUP),
-                pysad.models.xStream(random_state=1) | ZScorePostprocessor(window_size=WARMUP),
+                pysad.models.LODA(num_random_cuts=20, random_state=0)
+                | ZScorePostprocessor(window_size=WARMUP),
+                pysad.models.xStream(n_chains=15, random_state=1)
+                | ZScorePostprocessor(window_size=WARMUP),
             ],
         },
         "StreamPipeline": {

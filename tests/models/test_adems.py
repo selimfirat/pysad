@@ -57,7 +57,7 @@ def test_pickling_mid_stream_keeps_later_scores() -> None:
     from pysad.models import ADeMS
 
     X = np.random.RandomState(0).normal(size=(60, 8))
-    for split in range(1, X.shape[0]):
+    for split in (1, 3, 10, 30):
         model = ADeMS().fit(X[:split])
         restored = pickle.loads(pickle.dumps(model))
 

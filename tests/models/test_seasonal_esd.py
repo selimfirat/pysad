@@ -1,3 +1,5 @@
+import functools
+
 import pytest
 
 
@@ -157,6 +159,20 @@ def test_seasonal_hybrid_esd_matches_r_anomaly_detection(direction, expected):
     assert np.flatnonzero(scores > 0).tolist() == expected
 
 
+@functools.cache
+def _unit_invariance_series_and_expected(model_name):
+    import numpy as np
+
+    import pysad.models
+
+    t = np.arange(12 * 6)
+    X = 10 + 3 * np.sin(2 * np.pi * t / 12) + 0.3 * np.sin(0.7 * t**2)
+    X[[52, 60, 68]] += [4, -4, 5]
+    model = getattr(pysad.models, model_name)(period=12, window_size=49)
+    expected = np.flatnonzero(model.fit_score(X.reshape(-1, 1)) > 0).tolist()
+    return X, expected
+
+
 @pytest.mark.parametrize("model_name", ["SeasonalESD", "SeasonalHybridESD"])
 @pytest.mark.parametrize(("scale", "offset"), [(1e-12, 0.0), (1e-6, 0.0), (1e6, 0.0), (1e-4, 1e6)])
 def test_seasonal_esd_flags_do_not_depend_on_units(model_name, scale, offset):
@@ -164,14 +180,8 @@ def test_seasonal_esd_flags_do_not_depend_on_units(model_name, scale, offset):
 
     import pysad.models
 
-    t = np.arange(24 * 8)
-    X = 10 + 3 * np.sin(2 * np.pi * t / 24) + 0.3 * np.sin(0.7 * t**2)
-    X[[100, 130, 170]] += [4, -4, 5]
-
-    def flags(values):
-        model = getattr(pysad.models, model_name)(period=24, window_size=97)
-        return np.flatnonzero(model.fit_score(values.reshape(-1, 1)) > 0).tolist()
-
-    expected = flags(X)
+    X, expected = _unit_invariance_series_and_expected(model_name)
     assert expected
-    assert flags(offset + scale * X) == expected
+    model = getattr(pysad.models, model_name)(period=12, window_size=49)
+    flags = np.flatnonzero(model.fit_score((offset + scale * X).reshape(-1, 1)) > 0).tolist()
+    assert flags == expected

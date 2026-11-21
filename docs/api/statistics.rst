@@ -43,6 +43,9 @@ partitioned streams without replaying the observations. The meters must have the
 same ``relative_accuracy``. The receiver retains its ``q`` and ``max_buckets``,
 and the source stays unchanged. Counts remain exact; quantiles whose buckets have
 been collapsed in either meter may fall outside the relative-error guarantee.
+
+:class:`KLLMeter` supports ``merge(other)`` to combine summaries of partitioned
+streams. It merges and re-compacts compactors, bounding memory by :math:`O(k)`.
 See ``examples/example_ddsketch_merge.py`` for a partitioned-stream example.
 
 :class:`RelativeErrorQuantileMeter` tracks relative rank accuracy with randomized

@@ -1,0 +1,254 @@
+import pickle
+
+import numpy as np
+import pytest
+
+from pysad.statistics import KLLMeter
+
+SEED = 42
+NUM_POINTS = 10_000
+QUANTILES = [0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99]
+
+
+def test_empty_meter_returns_zero():
+    meter = KLLMeter()
+    assert meter.num_items == 0
+    assert meter.get() == 0.0
+    assert meter.quantile(0.5) == 0.0
+    assert meter.quantile(0.0) == 0.0
+    assert meter.quantile(1.0) == 0.0
+    assert meter.num_retained_items == 0
+    assert meter.total_weight == 0
+
+
+@pytest.mark.parametrize("q", [-0.01, 1.01, -1.0, 2.0])
+def test_invalid_q_raises_value_error(q):
+    with pytest.raises(ValueError, match="q must be in \\[0, 1\\]"):
+        KLLMeter(q=q)
+
+    meter = KLLMeter()
+    with pytest.raises(ValueError, match="q must be in \\[0, 1\\]"):
+        meter.quantile(q)
+
+
+@pytest.mark.parametrize("k", [0, 1, 7, -5])
+def test_invalid_k_raises_value_error(k):
+    with pytest.raises(ValueError, match="k must be at least 8"):
+        KLLMeter(k=k)
+
+
+@pytest.mark.parametrize("epsilon", [0.0, 1.0, -0.1, 1.5])
+def test_invalid_epsilon_raises_value_error(epsilon):
+    with pytest.raises(ValueError, match="epsilon must be in \\(0, 1\\)"):
+        KLLMeter(epsilon=epsilon)
+
+
+@pytest.mark.parametrize("delta", [0.0, 1.0, -0.1, 1.5])
+def test_invalid_delta_raises_value_error(delta):
+    with pytest.raises(ValueError, match="delta must be in \\(0, 1\\)"):
+        KLLMeter(delta=delta)
+
+
+def test_epsilon_parameter_resolves_capacity():
+    # Target epsilon=0.05, delta=0.01 should compute a capacity k >= 100
+    meter = KLLMeter(epsilon=0.05, delta=0.01)
+    assert meter.epsilon == 0.05
+    assert meter.k >= 8
+    # When both k and epsilon are provided, k is respected
+    meter_both = KLLMeter(k=150, epsilon=0.05)
+    assert meter_both.k == 150
+    assert meter_both.epsilon == 0.05
+
+
+def test_explicit_k_below_min_k_raises_value_error():
+    """Verify explicit k below minimum capacity required by epsilon and delta raises ValueError."""
+    # epsilon=0.01 and delta=0.01 requires min_k approx 599. Passing k=8 must raise.
+    with pytest.raises(ValueError, match="k must be at least"):
+        KLLMeter(k=8, epsilon=0.01)
+
+    with pytest.raises(ValueError, match="k must be at least"):
+        KLLMeter(k=50, epsilon=0.01, delta=0.01)
+
+    # Valid capacity at or above min_k should succeed
+    meter = KLLMeter(k=600, epsilon=0.01, delta=0.01)
+    assert meter.k == 600
+    assert meter.epsilon == 0.01
+
+
+def test_random_state_reproducibility():
+    rng = np.random.RandomState(SEED)
+    data = rng.uniform(0.0, 100.0, size=5000)
+
+    meter1 = KLLMeter(k=100, random_state=123)
+    meter2 = KLLMeter(k=100, random_state=123)
+
+    for x in data:
+        meter1.update(float(x))
+        meter2.update(float(x))
+
+    for q in QUANTILES:
+        assert meter1.quantile(q) == meter2.quantile(q)
+    assert meter1.num_retained_items == meter2.num_retained_items
+    assert meter1.total_weight == meter2.total_weight
+
+
+def test_update_returns_self_and_preserves_weight():
+    meter = KLLMeter(random_state=42)
+    ret = meter.update(42.0)
+    assert ret is meter
+    assert meter.num_items == 1
+    assert meter.total_weight == 1
+    assert meter.get() == 42.0
+
+
+@pytest.mark.parametrize("q", QUANTILES)
+def test_uniform_stream_quantile_accuracy(q):
+    rng = np.random.RandomState(SEED)
+    data = rng.uniform(0.0, 100.0, size=NUM_POINTS)
+
+    meter = KLLMeter(q=q, k=200, random_state=SEED)
+    for val in data:
+        meter.update(float(val))
+
+    estimate = meter.get()
+    exact = np.quantile(data, q)
+
+    # With k=200, approximation error is well within 2.5% of the data range
+    assert abs(estimate - exact) <= 2.5
+    assert meter.total_weight == NUM_POINTS
+
+
+def test_normal_stream_quantiles():
+    rng = np.random.RandomState(SEED)
+    data = rng.randn(NUM_POINTS)
+
+    meter = KLLMeter(k=200, random_state=SEED)
+    for val in data:
+        meter.update(float(val))
+
+    assert abs(meter.get() - 0.0) < 0.1
+    for q in [0.1, 0.25, 0.75, 0.9]:
+        est = meter.quantile(q)
+        exact = np.quantile(data, q)
+        assert abs(est - exact) < 0.15
+
+
+def test_compaction_keeps_stored_items_bounded():
+    rng = np.random.RandomState(SEED)
+    data = rng.uniform(0.0, 1000.0, size=30_000)
+
+    k = 100
+    meter = KLLMeter(k=k, random_state=SEED)
+    for val in data:
+        meter.update(float(val))
+
+    # Test reads public observables rather than private state
+    assert meter.num_retained_items <= 3 * k + 1
+    assert meter.total_weight == 30_000
+    assert meter.num_items == 30_000
+    assert meter.num_levels > 1
+
+
+def test_merge_combines_partitioned_streams():
+    rng = np.random.RandomState(SEED)
+    s1 = rng.uniform(0.0, 100.0, size=5000)
+    s2 = rng.uniform(0.0, 100.0, size=5000)
+    combined = np.concatenate([s1, s2])
+
+    m1 = KLLMeter(q=0.5, k=200, random_state=1)
+    for x in s1:
+        m1.update(float(x))
+
+    m2 = KLLMeter(q=0.5, k=200, random_state=2)
+    for x in s2:
+        m2.update(float(x))
+
+    m2_before_items = m2.num_items
+    m2_before_val = m2.get()
+
+    m1.merge(m2)
+
+    assert m1.num_items == 10_000
+    assert m1.total_weight == 10_000
+    assert abs(m1.get() - np.median(combined)) < 2.0
+
+    # m2 must remain unchanged
+    assert m2.num_items == m2_before_items
+    assert m2.get() == m2_before_val
+
+
+def test_odd_length_compaction_unbiased():
+    """Verify Section 2 Figure 1: odd-length compaction retains first or last item with equal probability."""
+    first_kept = 0
+    last_kept = 0
+    runs = 500
+
+    for seed in range(runs):
+        meter = KLLMeter(k=8, random_state=seed)
+        meter._levels[0] = [float(x) for x in range(9)]
+        meter._compact_level(0)
+        assert len(meter._levels[0]) == 1
+        leftover = meter._levels[0][0]
+        if leftover == 0.0:
+            first_kept += 1
+        elif leftover == 8.0:
+            last_kept += 1
+
+    # Both index 0 and index -1 must be kept with roughly equal probability (~50% each)
+    assert first_kept + last_kept == runs
+    assert 200 < first_kept < 300
+    assert 200 < last_kept < 300
+
+
+def test_merge_concatenates_levels_and_compacts():
+    """Verify Section 2 Theorem 1: merge concatenates same-height compactors and compacts overfull levels."""
+    m1 = KLLMeter(k=8, random_state=42)
+    for x in range(201):
+        m1.update(float(x))
+
+    m2 = KLLMeter(k=8, random_state=123)
+    for x in range(200):
+        m2.update(float(x + 200))
+
+    m1.merge(m2)
+
+    assert m1.num_items == 401
+    assert m1.total_weight == 401
+    assert m1.num_retained_items <= 3 * 8 + 10
+    # Median should approximate the combined stream center (approx 200)
+    assert abs(m1.get() - 200.0) < 50.0
+
+
+def test_merge_incompatible_capacities_raises_value_error():
+    m1 = KLLMeter(k=100)
+    m2 = KLLMeter(k=200)
+    with pytest.raises(ValueError, match="capacities must match"):
+        m1.merge(m2)
+
+
+def test_merge_invalid_type_raises_type_error():
+    meter = KLLMeter()
+    with pytest.raises(TypeError, match="Cannot merge"):
+        meter.merge("invalid_object")
+
+
+def test_pickling_preserves_state_and_functionality():
+    meter = KLLMeter(q=0.75, k=150, random_state=42)
+    for i in range(500):
+        meter.update(float(i))
+
+    dumped = pickle.dumps(meter)
+    restored = pickle.loads(dumped)
+
+    assert restored.q == meter.q
+    assert restored.k == meter.k
+    assert restored.epsilon == meter.epsilon
+    assert restored.delta == meter.delta
+    assert restored.num_items == meter.num_items
+    assert restored.total_weight == meter.total_weight
+    assert restored.num_retained_items == meter.num_retained_items
+    assert restored.get() == meter.get()
+
+    meter.update(500.0)
+    restored.update(500.0)
+    assert restored.get() == meter.get()

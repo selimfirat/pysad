@@ -18,26 +18,18 @@ class ZeroShotEmbeddingDetector(BaseModel):
     softmax probability is returned as the anomaly score. Higher scores indicate more
     anomalous instances (further from all semantic anchors).
 
-    The semantic anchors are fixed and provided at initialization. They typically represent
-    the text embeddings of known in-distribution class names (e.g., "a photo of a dog",
-    "a photo of a cat", etc.), but can be any set of reference points in the embedding space.
+    The semantic anchors are fixed and provided at initialization. They typically
+    represent the text embeddings of known in-distribution class names, but can be
+    any set of reference points in the embedding space.
 
     This implementation follows the zero-shot OOD detection approach of Ming et al. (NeurIPS 2022)
     which uses CLIP vision-language features. The detector itself does not include CLIP;
     it operates on pre-computed embeddings that are assumed to be in the same space as
     the semantic anchors.
 
-    Deviations from the paper:
-    - The paper uses CLIP to encode both images and text. This detector assumes the
-      embeddings are already computed and in the same space.
-    - The paper uses the prompt template "a photo of a {class}". This detector takes
-      the anchor embeddings directly.
-    - The paper scores ID samples high and OOD low; this detector returns the negative
-      MCM score so that higher values mean more anomalous (consistent with PySAD convention).
-
     Args:
         semantic_anchors (np.ndarray): Array of shape (num_anchors, embedding_dim) containing
-            the semantic anchor embeddings. Each row is an anchor (e.g., text prototype).
+            the semantic anchor embeddings. Each row is an anchor (for example, text prototype).
         temperature (float): Temperature parameter for softmax scaling. Lower values
             sharpen the distribution, higher values flatten it. Default=1.0.
         normalize (bool): Whether to L2-normalize input embeddings and anchors before

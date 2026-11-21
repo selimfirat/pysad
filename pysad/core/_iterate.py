@@ -6,7 +6,9 @@ from typing import Any
 import numpy as np
 
 
-def _iterate(X: np.ndarray[Any, Any], y: np.ndarray[Any, Any] | None = None) -> Iterator[tuple[np.ndarray[Any, Any], Any | None]]:
+def _iterate(
+    X: np.ndarray[Any, Any], y: np.ndarray[Any, Any] | None = None
+) -> Iterator[tuple[np.ndarray[Any, Any], Any | None]]:
     """Iterates array of features and possibly labels.
 
     Args:

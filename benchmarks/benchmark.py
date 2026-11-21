@@ -171,6 +171,7 @@ def _make_univariate_factory(cls):
     sig = inspect.signature(cls.__init__)
     required = _required_param_names(cls)
     has_period = "period" in sig.parameters
+    has_window_size = "window_size" in sig.parameters
     seeded = _accepts_random_state(sig)
 
     def factory(n, period):
@@ -194,6 +195,14 @@ def _make_univariate_factory(cls):
                 raise TypeError(
                     f"{cls.__name__} requires {param!r}; add an entry to UNIVARIATE_OVERRIDES."
                 )
+        # Pass period for detectors that have it (seasonal detectors), even if it has a default.
+        # The benchmark only runs these on series with a known period.
+        if has_period and "period" not in kwargs:
+            kwargs["period"] = period
+        # Pass window_size for detectors that have it and are seasonal, even if it has a default.
+        # Seasonal detectors need a window of at least 3 periods for STL.
+        if has_period and has_window_size and "window_size" not in kwargs:
+            kwargs["window_size"] = 3 * period + 1
         if seeded:
             kwargs["random_state"] = 0
         return cls(**kwargs)

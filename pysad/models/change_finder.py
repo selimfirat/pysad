@@ -4,6 +4,7 @@ import math
 from collections import deque
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.linalg import toeplitz
 
 from pysad.core.base_model import BaseModel
@@ -113,7 +114,7 @@ class ChangeFinder(BaseModel):
         smoothed = (sum(self._outlier_scores) + outlier) / self.window_size
         return outlier, smoothed, self._change_model.log_loss(smoothed)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> ChangeFinder:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> ChangeFinder:
         """Updates both AR models with the next value.
 
         Args:
@@ -134,7 +135,7 @@ class ChangeFinder(BaseModel):
             self._change_scores.append(change)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next value under the current AR models.
 
         Args:

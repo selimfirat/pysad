@@ -4,6 +4,7 @@ from collections import deque
 from typing import Any, ClassVar
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -46,7 +47,7 @@ class PerfectModel(BaseModel):
     def __init__(self) -> None:
         self.labels: deque[int] = deque()
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> PerfectModel:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> PerfectModel:
         """Stores the ground truth label of the next instance.
 
         Args:
@@ -63,7 +64,7 @@ class PerfectModel(BaseModel):
 
         return self
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Stores the ground truth label of the next instance, and then returns it as the score.
 
         The model needs the label before it can score, so it fits first, unlike the default of :class:`~pysad.core.BaseModel`.
@@ -77,7 +78,7 @@ class PerfectModel(BaseModel):
         """
         return float(self.fit_partial(X, y).score_partial(X))
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Returns the oldest stored label that the model has not returned yet.
 
         Args:

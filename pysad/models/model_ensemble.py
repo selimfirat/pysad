@@ -125,7 +125,20 @@ class ModelEnsemble(BaseModel):
         return self.ensembler.fit_transform_partial(scores)
 
     def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> ModelEnsemble:
-        """Fits all constituent models (and the ensembler if stateful) to a batch of instances."""
+        """Fits all constituent models (and the ensembler if stateful) to a batch of instances.
+
+        An empty batch leaves the ensemble unchanged.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
+            y (np.int32 array of shape (num_instances,) or None): The labels of the instances, in order, passed to each model. Models that do not use labels ignore them (Default=None).
+
+        Raises:
+            ValueError: If ``y`` is given and its length differs from that of ``X``.
+
+        Returns:
+            ModelEnsemble: The ensemble itself.
+        """
         if y is not None and len(X) != len(y):
             raise ValueError("X and y must have the same length.")
         if not self._can_batch():
@@ -141,7 +154,14 @@ class ModelEnsemble(BaseModel):
         return self
 
     def score(self, X: np.ndarray) -> np.ndarray:
-        """Scores a batch of instances across all constituent models without mutating state."""
+        """Scores a batch of instances across all constituent models without mutating state.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order. An empty batch produces an empty score array.
+
+        Returns:
+            np.float64 array of shape (num_instances,): The combined anomaly scores of the instances in order.
+        """
         if not self._can_batch():
             return super().score(X)
         if len(X) == 0:
@@ -150,7 +170,20 @@ class ModelEnsemble(BaseModel):
         return np.asarray(self.ensembler.transform(matrix), dtype=np.float64)
 
     def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
-        """Fits and scores a batch of instances across all constituent models in order."""
+        """Fits and scores a batch of instances across all constituent models in prequential order.
+
+        Each instance is scored before the ensemble learns from it (test-then-train), so an instance is never scored by a model that has already learned from it. An empty batch produces an empty score array.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit and score, in order.
+            y (np.int32 array of shape (num_instances,) or None): The labels of the instances, in order, passed to each model. Models that do not use labels ignore them (Default=None).
+
+        Raises:
+            ValueError: If ``y`` is given and its length differs from that of ``X``.
+
+        Returns:
+            np.float64 array of shape (num_instances,): The combined anomaly scores of the instances in order.
+        """
         if y is not None and len(X) != len(y):
             raise ValueError("X and y must have the same length.")
         if not self._can_batch():

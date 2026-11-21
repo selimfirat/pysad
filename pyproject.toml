@@ -235,9 +235,12 @@ extra_checks = true
 [[tool.mypy.overrides]]
 module = [
     "pysad.core.*",
+    "pysad.models.absad",
     "pysad.models.adems",
     "pysad.models.anyout",
     "pysad.models.approx_storm",
+    "pysad.models.baselines",
+    "pysad.models.change_finder",
     "pysad.models.cost_sensitive_stream",
     "pysad.models.cpod",
     "pysad.models.d3",

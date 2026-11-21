@@ -137,6 +137,29 @@ def test_wraparound_over_many_cycles_matches_deque():
     np.testing.assert_array_equal(buf.to_array(), np.array(ref, dtype=np.float64))
 
 
+@pytest.mark.parametrize("window_size", [1, 2, 3, 5])
+def test_to_array_is_oldest_first_after_every_wraparound(window_size):
+    """Each append past capacity keeps ``to_array`` in oldest-first order."""
+    buf = RingBuffer(window_size)
+    ref = deque(maxlen=window_size)
+    for value in range(3 * window_size + 2):
+        buf.append(float(value))
+        ref.append(float(value))
+        np.testing.assert_array_equal(buf.to_array(), np.array(ref, dtype=np.float64))
+
+
+def test_to_array_vectors_oldest_first_after_wraparound():
+    """Vector items stay in oldest-first order after the ring wraps around."""
+    window_size = 3
+    buf = RingBuffer(window_size)
+    ref = deque(maxlen=window_size)
+    for i in range(2 * window_size + 4):
+        item = np.array([float(i), float(10 * i)])
+        buf.append(item)
+        ref.append(item)
+        np.testing.assert_array_equal(buf.to_array(), np.stack(list(ref)))
+
+
 @pytest.mark.parametrize("window_size", [1, 2, 3, 8])
 def test_capacity_never_exceeds_window_size(window_size):
     """The count stays at or below window_size and reaches it once full."""

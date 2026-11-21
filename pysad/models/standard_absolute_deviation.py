@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.statistics.basic import VarianceMeter
@@ -48,7 +49,9 @@ class StandardAbsoluteDeviation(BaseModel):
         elif subtracted_statistic != "mean":
             raise ValueError("Unknown subtracted_statistic value! Please choose median or mean.")
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> StandardAbsoluteDeviation:
+    def fit_partial(
+        self, X: NDArray[np.float64], y: int | None = None
+    ) -> StandardAbsoluteDeviation:
         """Updates the model with the next instance.
 
         Args:
@@ -65,7 +68,7 @@ class StandardAbsoluteDeviation(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

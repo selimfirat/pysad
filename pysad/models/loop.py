@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.spatial.distance import cdist
 from scipy.special import erf
 
@@ -18,7 +19,9 @@ class LocalOutlierProbability(BaseModel):
         extent (int): The statistical extent lambda, the number of standard deviations from the mean that the probabilistic distance covers, usually 1, 2 or 3 (Default=3).
     """
 
-    def __init__(self, initial_X: np.ndarray, num_neighbors: int = 10, extent: int = 3) -> None:
+    def __init__(
+        self, initial_X: NDArray[np.float64], num_neighbors: int = 10, extent: int = 3
+    ) -> None:
         # Adapted from LocalOutlierProbability.fit of PyNomaly 0.4.0 (PyNomaly/loop.py,
         # https://github.com/vc1492a/PyNomaly) for a single cluster. For licensing information,
         # see the end of this file.
@@ -38,14 +41,14 @@ class LocalOutlierProbability(BaseModel):
 
     @staticmethod
     def _prob_outlier_factor(
-        prob_distance: np.ndarray | float, prob_distance_ev: np.ndarray | float
-    ) -> np.ndarray | float:
+        prob_distance: NDArray[np.float64] | float, prob_distance_ev: NDArray[np.float64] | float
+    ) -> NDArray[np.float64] | float:
         if np.all(prob_distance == prob_distance_ev):
             return np.zeros(np.shape(prob_distance))
         prob_distance_ev = np.where(prob_distance_ev == 0.0, 1.0e-8, prob_distance_ev)
         return prob_distance / prob_distance_ev - 1.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> LocalOutlierProbability:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> LocalOutlierProbability:
         """Updates the model with the next instance.
 
         Args:
@@ -57,7 +60,7 @@ class LocalOutlierProbability(BaseModel):
         """
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

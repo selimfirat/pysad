@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import scipy
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.models._window import _RadiusCalibrator
@@ -85,7 +86,7 @@ class MCOD(BaseModel):
         self.cluster_[i] = c
         self.sizes_[c] += 1
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> MCOD:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> MCOD:
         """Updates the model with the next instance. The oldest instance of a full window expires.
 
         Args:
@@ -198,7 +199,7 @@ class MCOD(BaseModel):
         self._remove_pd(i)
         self._add_to_cluster(c, i)
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance as if it arrived, without adding it to the window.
 
         When the instance arrives, the oldest instance of a full window expires, so the instance is scored against the `window_size - 1` most recent instances. This gives the same score as `fit_score_partial`.

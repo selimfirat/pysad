@@ -3,9 +3,10 @@ from __future__ import annotations
 import numbers
 from collections import deque
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 from pysad.core.base_transformer import BaseTransformer
 
@@ -36,14 +37,14 @@ class ShingleTransformer(BaseTransformer):
             raise ValueError(f"shingle_size must be at least 1, got {shingle_size}.")
         super().__init__(0)
         self.shingle_size = int(shingle_size)
-        self.recent: deque[np.ndarray] = deque(maxlen=self.shingle_size - 1)
+        self.recent: deque[NDArray[Any]] = deque(maxlen=self.shingle_size - 1)
 
     @property
     def full(self) -> bool:
         """Whether the history holds ``shingle_size - 1`` points, so that a shingle needs no copies."""
         return len(self.recent) == self.shingle_size - 1
 
-    def _point(self, X: ArrayLike) -> np.ndarray:
+    def _point(self, X: ArrayLike) -> NDArray[Any]:
         x = np.asarray(X, dtype=np.float64)
         if x.ndim > 1 or x.size == 0:
             raise ValueError(
@@ -59,7 +60,7 @@ class ShingleTransformer(BaseTransformer):
             )
         return x
 
-    def fit_partial(self, X: np.ndarray) -> ShingleTransformer:
+    def fit_partial(self, X: NDArray[Any]) -> ShingleTransformer:
         """Adds the next point to the history.
 
         Args:
@@ -75,7 +76,7 @@ class ShingleTransformer(BaseTransformer):
         self.recent.append(self._point(X).copy())
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Returns the shingle that ends with the next point.
 
         The shingle holds the last ``shingle_size - 1`` fitted points, and then the point. This method does not change the history.
@@ -95,7 +96,7 @@ class ShingleTransformer(BaseTransformer):
         missing = self.shingle_size - 1 - len(earlier)
         return np.concatenate([*[earlier[0] if earlier else x] * missing, *earlier, x])
 
-    def fit_transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Returns the shingle that ends with the next point. Then adds the point to the history.
 
         Args:
@@ -112,7 +113,7 @@ class ShingleTransformer(BaseTransformer):
         self.fit_partial(X)
         return shingle
 
-    def _validate_batch(self, X: np.ndarray) -> np.ndarray | None:
+    def _validate_batch(self, X: NDArray[Any]) -> NDArray[Any] | None:
         if not isinstance(X, np.ndarray) or X.dtype == object or X.ndim == 0:
             return None
         if X.ndim > 2:
@@ -135,7 +136,7 @@ class ShingleTransformer(BaseTransformer):
                 )
         return arr
 
-    def fit(self, X: np.ndarray) -> ShingleTransformer:
+    def fit(self, X: NDArray[Any]) -> ShingleTransformer:
         """Adds all points in the batch to the history, keeping the last ``shingle_size - 1``."""
         arr = self._validate_batch(X)
         if arr is None:
@@ -146,7 +147,7 @@ class ShingleTransformer(BaseTransformer):
                 self.recent.append(row.copy())
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Returns the shingles for all points in the batch without changing the history."""
         arr = self._validate_batch(X)
         if arr is None:
@@ -169,7 +170,7 @@ class ShingleTransformer(BaseTransformer):
         out[:, (k - 1) * d :] = arr
         return out
 
-    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Builds shingles for all points in stream order and updates the history."""
         arr = self._validate_batch(X)
         if arr is None:
@@ -199,8 +200,8 @@ class ShingleTransformer(BaseTransformer):
         return out
 
     def _transform_all(
-        self, X: np.ndarray, transform_partial: Callable[[np.ndarray], np.ndarray]
-    ) -> np.ndarray:
+        self, X: NDArray[Any], transform_partial: Callable[[NDArray[Any]], NDArray[Any]]
+    ) -> NDArray[Any]:
         # The width of a shingle depends on the number of features of the input.
         X = np.asarray(X)
         self.output_dims = self.shingle_size * (1 if X.ndim == 1 else X.shape[1])

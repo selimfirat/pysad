@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import numbers
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.transform.stream_generators._base import _AdversarialStream
 
@@ -67,7 +69,7 @@ class StealthBurstStream(_AdversarialStream):
         self.magnitude = float(magnitude)
         self._t = 0
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Returns the next base point, either unchanged or part of a burst.
 
         Args:
@@ -96,5 +98,5 @@ class StealthBurstStream(_AdversarialStream):
         else:
             out = x.copy()
             self._is_anomaly = False
-        res: np.ndarray = out
+        res: NDArray[Any] = out
         return res

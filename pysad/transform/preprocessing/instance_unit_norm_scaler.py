@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_transformer import BaseTransformer
 
@@ -18,7 +21,7 @@ class InstanceUnitNormScaler(BaseTransformer):
         super().__init__(-1)
         self.pow = pow
 
-    def fit_partial(self, X: np.ndarray) -> InstanceUnitNormScaler:
+    def fit_partial(self, X: NDArray[Any]) -> InstanceUnitNormScaler:
         """Fits particular (next) timestep's features to train the scaler.
 
         Args:
@@ -29,7 +32,7 @@ class InstanceUnitNormScaler(BaseTransformer):
         """
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scales particular (next) timestep's vector.
 
         Args:
@@ -42,14 +45,14 @@ class InstanceUnitNormScaler(BaseTransformer):
         if X_norm == 0:
             return X.astype(np.float64)
 
-        scaled: np.ndarray = X / X_norm
+        scaled: NDArray[Any] = X / X_norm
         return scaled
 
-    def fit(self, X: np.ndarray) -> InstanceUnitNormScaler:
+    def fit(self, X: NDArray[Any]) -> InstanceUnitNormScaler:
         """Returns the scaler unchanged without iterating the batch."""
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scales each row of a 2-D feature batch to unit norm."""
         if isinstance(X, np.ndarray) and X.ndim == 2:
             if X.shape[0] == 0 or X.shape[1] == 0:
@@ -59,6 +62,6 @@ class InstanceUnitNormScaler(BaseTransformer):
             return np.asarray(X / norms, dtype=np.float64)
         return super().transform(X)
 
-    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Scales each row of a 2-D feature batch to unit norm."""
         return self.transform(X)

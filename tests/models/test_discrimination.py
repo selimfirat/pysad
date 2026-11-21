@@ -113,7 +113,7 @@ def _model_params(model_name, X):
         "HTM": {
             "min_val": feature_mins[-1],
             "max_val": feature_maxes[-1],
-            "num_columns": 128,
+            "num_columns": 64,
             # The anomaly likelihood needs a longer stream than this one to settle.
             "likelihood": False,
         },
@@ -151,8 +151,8 @@ def _model_params(model_name, X):
         # Half a period, and batches that end with the warmup.
         "SAND": {"subsequence_length": 12, "batch_size": 100},
         # The spikes go in both directions.
-        "SeasonalESD": {"period": 24, "window_size": 96, "direction": "both"},
-        "SeasonalHybridESD": {"period": 24, "window_size": 96, "direction": "both"},
+        "SeasonalESD": {"period": 24, "window_size": 72, "direction": "both"},
+        "SeasonalHybridESD": {"period": 24, "window_size": 72, "direction": "both"},
         "ModelEnsemble": {
             "models": [
                 pysad.models.LODA(num_random_cuts=20, random_state=0)

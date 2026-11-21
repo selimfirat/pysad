@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -128,25 +129,25 @@ class HTM(BaseModel):
         self.value_max_: float | None = None
         self._input = np.zeros(TIME_OF_DAY_SIZE + _VALUE_SIZE, dtype=bool)
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> dict[str, Any]:
         # NumPy's global random state is not restored from the pickle, so that the restored model
         # keeps drawing from it.
         state = self.__dict__.copy()
         state["_rng"] = None if self._rng is np.random.mtrand._rand else self._rng
         return state
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         self.__dict__.update(state)
         self._rng = check_random_state(self._rng)
         self.encoder_._rng = self.temporal_memory_._rng = self._rng
 
-    def _active_columns(self, timestamp: float, value: float, learn: bool) -> np.ndarray:
+    def _active_columns(self, timestamp: float, value: float, learn: bool) -> NDArray[np.intp]:
         self._input[:] = False
         self._input[encode_time_of_day(timestamp)] = True
         self._input[TIME_OF_DAY_SIZE + self.encoder_.encode(value, learn=learn)] = True
         return self.spatial_pooler_.compute(self._input, learn=learn)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> HTM:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> HTM:
         """Learns the next instance.
 
         Args:
@@ -167,7 +168,7 @@ class HTM(BaseModel):
             self.value_max_ = float(value)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next instance with the predictions of the earlier instances.
 
         Args:
@@ -186,7 +187,7 @@ class HTM(BaseModel):
         raw_score = self.temporal_memory_.score(self._active_columns(timestamp, value, learn=False))
         return self.calibrator_.transform_partial(raw_score) if self.likelihood else raw_score
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the next instance against earlier predictions and then learns it in one pass.
 
         Args:

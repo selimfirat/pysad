@@ -56,6 +56,7 @@ class PEWMA(BaseModel):
   pages={377--380},
   year={2012},
   doi={10.1109/SSP.2012.6319708}
+}
 """
 
     def __init__(self, alpha: float = 0.99, beta: float = 1.0, training_period: int = 14) -> None:

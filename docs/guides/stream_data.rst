@@ -176,6 +176,36 @@ This warm-up is an example choice. The model learns from all points, including a
 Replace the generated values with your stream.
 For benchmark data from :class:`~pysad.utils.Data`, select one feature with ``X[:, :1]`` to preserve the batch shape for ``ArrayStreamer``.
 
+Generate a synthetic stream
+---------------------------
+
+:func:`~pysad.utils.generate_stream` creates a labeled stream with point anomalies, bursts and drifts. It needs no download, so it suits quick tests and unit tests.
+
+.. code-block:: python
+
+   from pysad.utils import generate_stream
+   from pysad.models import LODA
+   from pysad.evaluation import AUROCMetric
+   from pysad.utils import ArrayStreamer
+
+   X, y = generate_stream(num_instances=2000, num_features=2, random_state=0)
+
+   model = LODA(random_state=0)
+   metric = AUROCMetric()
+
+   for x, label in ArrayStreamer().iter(X, y):
+       score = model.fit_score_partial(x)
+       metric.update(label, score)
+
+   print(f"AUROC: {metric.get():.3f}")
+
+The stream starts with normal instances so that a detector can learn the normal distribution first. Anomalies are placed after the first tenth of the stream and do not overlap. The parameters control the anomaly types:
+
+- ``num_points`` adds single-point anomalies.
+- ``num_bursts`` and ``burst_length`` add consecutive anomalies that share one offset.
+- ``num_drifts`` and ``drift_length`` add slow drifts whose offset grows linearly.
+- ``magnitude`` sets the anomaly offset in standard deviations of the normal distribution.
+
 Load a benchmark dataset
 ------------------------
 

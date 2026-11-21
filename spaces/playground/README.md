@@ -31,6 +31,6 @@ python spaces/playground/app.py
 
 ```bash
 hf auth login
-hf repo create selimfirat/pysad-playground --repo-type space --space_sdk gradio --exist-ok
+hf repos create selimfirat/pysad-playground --repo-type space --space_sdk gradio --exist-ok
 hf upload selimfirat/pysad-playground spaces/playground --repo-type=space
 ```

@@ -196,19 +196,20 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    concepts
 
 .. toctree::
-   :hidden:
-   :caption: How-to guides
+    :hidden:
+    :caption: How-to guides
 
-   guides/index
-   guides/stream_data
-   guides/choose_detector
-   guides/alerts
-   guides/evaluate
-   guides/pipelines
-   guides/seasonal
-   guides/pyod
-   guides/production
-   guides/custom_model
+    guides/index
+    guides/stream_data
+    guides/choose_detector
+    guides/alerts
+    guides/evaluate
+    guides/pipelines
+    guides/seasonal
+    guides/pyod
+    guides/production
+    guides/serving
+    guides/custom_model
 
 .. toctree::
    :hidden:

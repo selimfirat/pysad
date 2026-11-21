@@ -4,6 +4,7 @@ from bisect import bisect_left, insort
 from collections import deque
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import check_univariate
@@ -36,7 +37,7 @@ class MedianAbsoluteDeviation(BaseModel):
         self.window: deque[float] = deque()
         self._sorted: list[float] = []
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> MedianAbsoluteDeviation:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> MedianAbsoluteDeviation:
         """Updates the model with the next instance.
 
         Args:
@@ -55,7 +56,7 @@ class MedianAbsoluteDeviation(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

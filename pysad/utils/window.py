@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import deque
 from collections.abc import Iterator, Sequence
 from typing import Any, cast
 
@@ -185,7 +184,7 @@ class Window:
     drops the oldest item in constant time, independent of the window size.
 
     This implementation uses a ring buffer for better cache locality and vectorized access
-    compared to a Python ``deque``.
+    compared to a Python list.
 
     Args:
         window_size (int): The size of the window. Must be at least 1.
@@ -226,16 +225,3 @@ class Window:
     def __iter__(self) -> Iterator[float]:
         """Iterates over the items in the window, oldest first."""
         return iter(cast(list[float], self._buffer.window_view().tolist()))
-
-    @property
-    def window(self) -> deque[float]:
-        """Returns a deque view for backward compatibility with code that accesses ``window.window`` directly.
-
-        Note: This creates a new deque on each access. Prefer using ``len(self)``, ``self.get()``,
-        or ``self._buffer.oldest()`` for better performance.
-        """
-        from collections import deque
-
-        return deque(
-            cast(list[float], self._buffer.window_view().tolist()), maxlen=self.window_size
-        )

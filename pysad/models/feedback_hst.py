@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import numbers
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.sparse import csr_matrix
 from sklearn.utils import check_random_state
 
@@ -146,8 +148,8 @@ class FeedbackHST(BaseModel):
     _input_kind = "multivariate"
 
     # Configuration parameters
-    feature_mins: np.ndarray
-    feature_maxes: np.ndarray
+    feature_mins: NDArray[np.float64]
+    feature_maxes: NDArray[np.float64]
     window_size: int
     max_depth: int
     num_trees: int
@@ -172,37 +174,36 @@ class FeedbackHST(BaseModel):
 
     # Active learning state
     _feedback_used: int
-    _labeled_X: list[np.ndarray]
+    _labeled_X: list[NDArray[np.float64]]
     _labeled_y: list[int]
-    _unlabeled_buffer: list[np.ndarray]
+    _unlabeled_buffer: list[NDArray[np.float64]]
     _unlabeled_scores: list[float]
     _feedback_started: bool
     _instances_since_feedback: int
 
     # Ensemble weights
-    _region_weights: np.ndarray | None
-    _uniform_weights: np.ndarray | None
-    _region_scores: np.ndarray | None
+    _region_weights: NDArray[np.float64] | None
+    _uniform_weights: NDArray[np.float64] | None
+    _region_scores: NDArray[np.float64] | None
 
     # Drift detection state
-    _ref_node_dists: np.ndarray | None
-    _kl_q_alpha: np.ndarray | None
+    _ref_node_dists: NDArray[np.float32] | None
+    _kl_q_alpha: NDArray[np.float32] | None
     _drift_ref_initialized: bool
 
     # Streaming buffer
-    _stream_buffer: list[np.ndarray]
-    _initial_window_X: np.ndarray | None
+    _stream_buffer: list[NDArray[np.float64]]
 
     def __init__(
         self,
-        feature_mins: np.ndarray | list[float] | tuple[float, ...],
-        feature_maxes: np.ndarray | list[float] | tuple[float, ...],
+        feature_mins: NDArray[np.float64] | list[float] | tuple[float, ...],
+        feature_maxes: NDArray[np.float64] | list[float] | tuple[float, ...],
         window_size: int = 250,
         num_trees: int = 25,
         max_depth: int = 15,
         feedback_budget: int = 30,
         tau: float = 0.05,
-        initial_window_X: np.ndarray | None = None,
+        initial_window_X: NDArray[np.float64] | None = None,
         random_work_space: bool = True,
         check_kl_divergence: bool = True,
         kl_alpha: float = 0.05,
@@ -310,36 +311,33 @@ class FeedbackHST(BaseModel):
 
         # Active learning state
         self._feedback_used = 0
-        self._labeled_X: list[np.ndarray] = []
+        self._labeled_X: list[NDArray[np.float64]] = []
         self._labeled_y: list[int] = []
-        self._unlabeled_buffer: list[np.ndarray] = []
+        self._unlabeled_buffer: list[NDArray[np.float64]] = []
         self._unlabeled_scores: list[float] = []
 
         # Ensemble weights (one per tree leaf region). Initialized after first window.
-        self._region_weights: np.ndarray | None = None
-        self._uniform_weights: np.ndarray | None = None
+        self._region_weights: NDArray[np.float64] | None = None
+        self._uniform_weights: NDArray[np.float64] | None = None
 
         # Region scores (d) for each leaf region: -frac_insts * 2^path_length
-        self._region_scores: np.ndarray | None = None
+        self._region_scores: NDArray[np.float64] | None = None
 
         # Drift detection state
-        self._ref_node_dists: np.ndarray | None = None
-        self._kl_q_alpha: np.ndarray | None = None
+        self._ref_node_dists: NDArray[np.float32] | None = None
+        self._kl_q_alpha: NDArray[np.float32] | None = None
 
         # Score transition state
         self._feedback_started = False
         self._instances_since_feedback = 0
 
         # Streaming buffer for tree updates
-        self._stream_buffer: list[np.ndarray] = []
-
-        # Store initial window for drift reference initialization
-        self._initial_window_X = initial_window_X
+        self._stream_buffer: list[NDArray[np.float64]] = []
 
         # Track if we've initialized drift reference from initial window
         self._drift_ref_initialized = False
 
-    def _get_leaf_indices(self, X: np.ndarray) -> np.ndarray:
+    def _get_leaf_indices(self, X: NDArray[np.float64]) -> NDArray[np.intp]:
         """Route instances down all trees and return leaf node indices.
 
         Returns array of shape (n, num_trees) where each entry is the leaf index
@@ -378,10 +376,10 @@ class FeedbackHST(BaseModel):
 
         # u now holds heap indices of leaves (2^max_depth to 2^(max_depth+1)-1)
         # Convert to 0-based leaf indices
-        leaf_indices: np.ndarray = u - (2**self.max_depth)
+        leaf_indices: NDArray[np.intp] = u - (2**self.max_depth)
         return leaf_indices  # shape (n, num_trees)
 
-    def _compute_region_scores(self, X: np.ndarray) -> np.ndarray:
+    def _compute_region_scores(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """Compute region scores for all leaf regions: -frac_insts * 2^path_length.
 
         This matches the HST_SCORE_TYPE from the reference implementation.
@@ -411,7 +409,7 @@ class FeedbackHST(BaseModel):
         self._region_weights = np.ones(m, dtype=np.float64) / np.sqrt(m)
         self._uniform_weights = self._region_weights.copy()
 
-    def _transform_to_ensemble_features(self, X: np.ndarray) -> csr_matrix:
+    def _transform_to_ensemble_features(self, X: NDArray[np.float64]) -> csr_matrix:
         """Transform X to ensemble feature space using region scores.
 
         Each instance activates exactly one leaf per tree, with the feature value
@@ -441,9 +439,9 @@ class FeedbackHST(BaseModel):
 
     def _update_weights_from_feedback(
         self,
-        X_labeled: np.ndarray,
-        y_labeled: np.ndarray,
-        X_unlabeled: np.ndarray,
+        X_labeled: NDArray[np.float64],
+        y_labeled: NDArray[Any],
+        X_unlabeled: NDArray[np.float64],
     ) -> None:
         """Update ensemble weights using labeled feedback (AAD linear loss).
 
@@ -465,10 +463,6 @@ class FeedbackHST(BaseModel):
         # Transform to ensemble feature space (sparse)
         X_feat = self._transform_to_ensemble_features(X_all)
 
-        # Labels: 1 for anomaly, 0 for nominal, NaN for unlabeled
-        y_all = np.full(n_total, np.nan)
-        y_all[:n_labeled] = y_labeled
-
         # Indices of labeled anomalies and nominals
         ha = np.where(y_labeled == 1)[0]
         hn = np.where(y_labeled == 0)[0]
@@ -479,6 +473,7 @@ class FeedbackHST(BaseModel):
 
         # RMSProp optimization (as in reference)
         assert self._region_weights is not None
+        assert self._uniform_weights is not None
         w = self._region_weights.copy()
         cache = np.zeros_like(w)
         decay = self.rmsprop_decay
@@ -536,7 +531,7 @@ class FeedbackHST(BaseModel):
 
         self._region_weights = w
 
-    def _compute_node_distributions(self, X: np.ndarray) -> np.ndarray:
+    def _compute_node_distributions(self, X: NDArray[np.float64]) -> NDArray[np.float32]:
         """Compute per-leaf node sample distributions for KL-divergence.
 
         Returns normalized distribution per tree (probabilities sum to 1 per tree).
@@ -550,7 +545,7 @@ class FeedbackHST(BaseModel):
         leaf_indices = self._get_leaf_indices(X)
 
         # Count samples per leaf per tree using bincount
-        dists = np.ones(m, dtype=np.float32) * delta
+        dists = np.full(m, delta, dtype=np.float32)
         for tree_idx in range(self.num_trees):
             start = tree_idx * num_leaves
             counts = np.bincount(leaf_indices[:, tree_idx], minlength=num_leaves)
@@ -565,7 +560,7 @@ class FeedbackHST(BaseModel):
 
         return dists
 
-    def _initialize_drift_reference(self, X: np.ndarray, n_splits: int = 30) -> None:
+    def _initialize_drift_reference(self, X: NDArray[np.float64], n_splits: int = 30) -> None:
         """Initialize KL-divergence reference distributions by repeated random splits.
 
         This matches the reference implementation's get_KL_divergence_distribution
@@ -600,7 +595,7 @@ class FeedbackHST(BaseModel):
         for i in range(self.num_trees):
             self._kl_q_alpha[i] = float(np.quantile(kl_samples[:, i], 1 - self.kl_alpha))
 
-    def _check_drift_and_replace(self, X_new: np.ndarray) -> bool:
+    def _check_drift_and_replace(self, X_new: NDArray[np.float64]) -> bool:
         """Check for drift using KL-divergence and replace trees if needed."""
         if not self._drift_ref_initialized:
             self._initialize_drift_reference(X_new)
@@ -612,6 +607,7 @@ class FeedbackHST(BaseModel):
         kl_trees, _ = self._compute_kl_divergence(self._ref_node_dists, new_dists)
 
         if self.check_kl_divergence:
+            assert self._kl_q_alpha is not None
             replace_mask = kl_trees > self._kl_q_alpha
             n_replace = int(np.sum(replace_mask))
             n_threshold = int(2 * self.kl_alpha * self.num_trees)
@@ -625,14 +621,15 @@ class FeedbackHST(BaseModel):
 
         if do_replace:
             self._replace_trees(replace_mask, X_new)
-            self._ref_node_dists = self._compute_node_distributions(X_new)
             # Re-initialize KL threshold from new reference using multiple splits
             self._initialize_drift_reference(X_new)
             return True
 
         return False
 
-    def _compute_kl_divergence(self, p: np.ndarray, q: np.ndarray) -> tuple[np.ndarray, float]:
+    def _compute_kl_divergence(
+        self, p: NDArray[np.float32], q: NDArray[np.float32]
+    ) -> tuple[NDArray[np.float32], float]:
         """Compute KL(p || q) per tree."""
         num_leaves = 2**self.max_depth
         kl_trees = np.zeros(self.num_trees, dtype=np.float32)
@@ -645,7 +642,7 @@ class FeedbackHST(BaseModel):
             kl_trees[tree] = kl
         return kl_trees, float(np.mean(kl_trees))
 
-    def _replace_trees(self, replace_mask: np.ndarray, X_new: np.ndarray) -> None:
+    def _replace_trees(self, replace_mask: NDArray[np.bool_], X_new: NDArray[np.float64]) -> None:
         """Rebuild trees marked for replacement using new window data.
 
         This matches the reference implementation which constructs new trees
@@ -710,7 +707,7 @@ class FeedbackHST(BaseModel):
         self._hst.is_first_window = True
         self._hst.step = 0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> FeedbackHST:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> FeedbackHST:
         """Update the model with the next instance.
 
         Args:
@@ -732,7 +729,7 @@ class FeedbackHST(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Score the anomalousness of the next instance using weighted ensemble.
 
         If no feedback has been provided yet, uses base HST score. After feedback
@@ -771,7 +768,7 @@ class FeedbackHST(BaseModel):
         # After transition, use ensemble score
         return ensemble_score
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Score then fit the instance (prequential)."""
         score = self.score_partial(X)
         self.fit_partial(X, y)
@@ -781,7 +778,7 @@ class FeedbackHST(BaseModel):
         """Return True if the model can request a label (feedback budget not exhausted)."""
         return self._feedback_used < self.feedback_budget
 
-    def request_feedback(self, X: np.ndarray) -> bool:
+    def request_feedback(self, X: NDArray[np.float64]) -> bool:
         """Determine if the given instance should be queried for a label.
 
         Simple strategy (QUERY_TYPE=1 in reference): query if score is in top
@@ -810,7 +807,7 @@ class FeedbackHST(BaseModel):
 
         return False
 
-    def provide_feedback(self, X: np.ndarray, label: int) -> None:
+    def provide_feedback(self, X: NDArray[np.float64], label: int) -> None:
         """Provide a label for a previously queried instance and update weights.
 
         Args:
@@ -840,7 +837,7 @@ class FeedbackHST(BaseModel):
             X_unlabeled = np.array(self._unlabeled_buffer)
             self._update_weights_from_feedback(X_labeled, y_labeled, X_unlabeled)
 
-    def explain_partial(self, X: np.ndarray) -> np.ndarray:
+    def explain_partial(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """Return per-feature attribution (delegates to base HST)."""
         return self._hst.explain_partial(X)
 

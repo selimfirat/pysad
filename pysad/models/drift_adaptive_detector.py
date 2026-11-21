@@ -3,9 +3,9 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from copy import deepcopy
-from typing import ClassVar
+from typing import Any, ClassVar
 
-import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.statistics import PageHinkleyMeter
@@ -78,7 +78,7 @@ class DriftAdaptiveDetector(BaseModel):
         self.drift_detected_ = False
         self.num_resets_ = 0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> DriftAdaptiveDetector:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> DriftAdaptiveDetector:
         """Updates the drift monitor and fits the instance after any reset.
 
         Args:
@@ -91,7 +91,7 @@ class DriftAdaptiveDetector(BaseModel):
         self.fit_score_partial(X, y)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Returns the detector's score without learning or updating the meter.
 
         Args:
@@ -102,7 +102,7 @@ class DriftAdaptiveDetector(BaseModel):
         """
         return self.model_.score_partial(X)
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[Any], y: int | None = None) -> float:
         """Scores the instance before updating the meter and detector.
 
         Args:

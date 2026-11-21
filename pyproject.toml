@@ -232,6 +232,13 @@ extra_checks = true
 [[tool.mypy.overrides]]
 module = [
     "pysad.core.*",
+    "pysad.models.cost_sensitive_stream",
+    "pysad.models.drift_adaptive_detector",
+    "pysad.models.feedback_hst",
+    "pysad.models.milof",
+    "pysad.models.model_ensemble",
+    "pysad.models.sand",
+    "pysad.models.streaming_autoregressive",
     "pysad.evaluation.*",
     "pysad.statistics.*",
     "pysad.evaluation.metrics",

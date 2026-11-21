@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.linalg import toeplitz
 
 from pysad.core.base_model import BaseModel
@@ -24,8 +25,8 @@ class _StreamingAR:
         self.discount = discount
         self.history: deque[float] = deque(maxlen=order)  # The last values, oldest first.
         self.mean = 0.0
-        self.autocovariances = np.zeros(order + 1)  # C_0, ..., C_k
-        self.coefficients = np.zeros(order)  # omega_1, ..., omega_k
+        self.autocovariances: NDArray[np.float64] = np.zeros(order + 1)  # C_0, ..., C_k
+        self.coefficients: NDArray[np.float64] = np.zeros(order)  # omega_1, ..., omega_k
         self.variance = 1.0
 
     def _prediction(self) -> float:
@@ -105,7 +106,9 @@ class StreamingAutoregressiveDetector(BaseModel):
 
         self._model = _StreamingAR(self.order, self.discount)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> StreamingAutoregressiveDetector:
+    def fit_partial(
+        self, X: NDArray[np.float64], y: int | None = None
+    ) -> StreamingAutoregressiveDetector:
         """Updates the AR model with the next value.
 
         Args:
@@ -119,7 +122,7 @@ class StreamingAutoregressiveDetector(BaseModel):
         self._model.update(x)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next value by its absolute forecasting residual under the current AR model.
 
         Args:

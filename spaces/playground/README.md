@@ -9,14 +9,14 @@ license: bsd-3-clause
 short_description: Live streaming anomaly detection playground with PySAD.
 ---
 
-# PySAD Interactive Playground
+# PySAD Playground
 
-Explore real-time streaming anomaly detection with [PySAD](https://github.com/selimfirat/pysad) running directly in your browser via WebAssembly ([Pyodide](https://pyodide.org)):
+Run prequential streaming anomaly detection with [PySAD](https://github.com/selimfirat/pysad) directly in the browser through WebAssembly ([Pyodide](https://pyodide.org)).
 
-- **Stream presets & CSV upload**: Test a 4-sensor synthetic drift stream, NAB's NYC Taxi demand series, ODDS Arrhythmia (274 features), or your own CSV (kept in browser memory).
-- **Side-by-side detector comparison**: Race up to 3 detectors simultaneously (`LODA`, `HalfSpaceTrees`, `RobustRandomCutForest`, `SeasonalHybridESD`, `MedianAbsoluteDeviation`, `xStream`).
-- **Live calibration & anomaly injection**: Compare `ConformalProbabilityCalibrator` and `SPOTProbabilityCalibrator`, adjust the alert threshold slider, and inject custom spikes into any feature.
-- **Feature attribution**: Inspect `LODA.explain_partial()` contributions at any point in the stream.
+- **Stream presets and CSV upload**: Evaluate the 4-sensor synthetic drift stream, NAB NYC Taxi passenger series, ODDS Arrhythmia (274 features), or a user-supplied CSV processed locally in browser memory.
+- **Benchmark-ranked detector comparison**: Compare 1 to 3 detectors simultaneously (`LocalOutlierProbability`, `RSHash`, `LODA`, `SmartSifter`, `RobustRandomCutForest`, `HalfSpaceTrees`, `KNNCAD`, `SeasonalHybridESD`), initialized with the top ODDS benchmark trio (`LocalOutlierProbability`, `RSHash`, `LODA`).
+- **Probability calibration and anomaly injection**: Switch between `ConformalProbabilityCalibrator` and `SPOTProbabilityCalibrator`, adjust the alert threshold slider, and inject point spikes into any feature.
+- **Feature attribution**: Inspect `LODA.explain_partial()` contributions at any stream step.
 
 ## Run locally
 

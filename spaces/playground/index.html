@@ -3,171 +3,251 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PySAD — Streaming Anomaly Detection Playground</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230741ad'/%3E%3Cpath d='M4 18h6l3-9 4 14 3-7h8' fill='none' stroke='%23fffef7' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <title>PySAD Playground: Streaming Anomaly Detection</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231849a9'/%3E%3Cpath d='M4 18h6l3-9 4 14 3-7h8' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js" defer></script>
   <style>
     :root {
-      --bg: #f8f6f0;
-      --surface: #fffef7;
-      --surface-alt: #efebdf;
-      --border: #e2ddcd;
-      --ink: #0e1a33;
-      --muted: #5a6478;
-      --primary: #0741ad;
-      --primary-hover: #053288;
-      --danger: #e11d48;
-      --emerald: #0f766e;
-      --amber: #b45309;
+      --bg: #f6f5f1;
+      --surface: #ffffff;
+      --surface-rail: #f1efe9;
+      --surface-code: #f6f5f0;
+      --border: #e2dfd6;
+      --border-strong: #ccc7ba;
+      --ink: #14171f;
+      --ink-secondary: #475060;
+      --muted: #5f6776;
+      --accent: #1849a9;
+      --accent-hover: #123780;
+      --accent-soft: #eef3fc;
+      --focus-ring: 0 0 0 3px rgba(24, 73, 169, 0.22);
+      --danger: #c81e3a;
+      --danger-bg: #fef2f4;
+      --danger-border: #f5c2cb;
+      --danger-ink: #9b142c;
+      --success: #0f766e;
       --radius: 12px;
-      --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --radius-sm: 8px;
+      --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
       --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
+
+    ::selection {
+      background: rgba(24, 73, 169, 0.14);
+      color: var(--ink);
+    }
+
+    html {
+      font-size: 16px;
+      scrollbar-color: var(--border-strong) transparent;
+      scrollbar-width: thin;
+    }
 
     body {
       margin: 0;
       font-family: var(--font-sans);
+      font-size: 0.875rem;
+      line-height: 1.5;
       color: var(--ink);
       background: var(--bg);
-      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--accent);
+      text-underline-offset: 3px;
     }
 
     .container {
-      max-width: 1420px;
+      max-width: 1440px;
       margin: 0 auto;
-      padding: 16px 20px 28px;
+      padding: 0 20px 32px;
     }
 
-    .header-card {
-      padding: 18px 22px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-alt) 100%);
-      margin-bottom: 16px;
+    .topbar {
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
+      align-items: flex-end;
       justify-content: space-between;
       gap: 16px;
+      padding: 18px 0 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 18px;
     }
 
-    .header-card > div:first-child {
+    .brand-block {
       flex: 1 1 520px;
       min-width: 0;
     }
 
-    .header-card h1 {
-      margin: 0 0 4px;
-      font-size: 1.45rem;
-      font-weight: 700;
-      letter-spacing: -0.015em;
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
     }
 
-    .header-card p {
+    .brand-mark {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .topbar h1 {
       margin: 0;
-      color: var(--muted);
-      font-size: 0.94rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      color: var(--ink);
     }
 
-    .header-right {
+    .topbar-subtitle {
+      margin: 0;
+      max-width: 68ch;
+      font-size: 0.875rem;
+      color: var(--ink-secondary);
+    }
+
+    .topbar-meta {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 8px;
+      gap: 6px;
     }
 
-    .wasm-pill {
+    .runtime-status {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
+      gap: 7px;
       font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--primary);
+      font-weight: 500;
+      color: var(--ink-secondary);
     }
 
-    .links {
+    .runtime-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
+      flex-shrink: 0;
+      transition: background-color 180ms var(--ease);
+    }
+
+    .runtime-dot.ready { background: var(--success); }
+    .runtime-dot.error { background: var(--danger); }
+
+    .nav-links {
       display: flex;
       flex-wrap: wrap;
       gap: 14px;
-      font-size: 0.88rem;
+      font-size: 0.84rem;
+      font-weight: 500;
     }
 
-    .links a {
-      color: var(--primary);
-      font-weight: 600;
+    .nav-links a {
+      color: var(--accent);
       text-decoration: none;
+      border-radius: 4px;
+      transition: color 150ms var(--ease);
     }
 
-    .links a:hover { text-decoration: underline; }
+    .nav-links a:hover {
+      color: var(--accent-hover);
+      text-decoration: underline;
+    }
+
+    .nav-links a:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
 
     .layout {
       display: grid;
-      grid-template-columns: 335px minmax(0, 1fr);
-      gap: 16px;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 18px;
       align-items: start;
     }
 
-    @media (max-width: 980px) {
+    @media (max-width: 960px) {
       .layout { grid-template-columns: 1fr; }
-      .header-right { align-items: flex-start; }
+      .topbar-meta { align-items: flex-start; }
+    }
+
+    .sidebar {
+      background: var(--surface-rail);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
     .panel {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 16px;
-    }
-
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      padding: 16px 18px;
     }
 
     .control-group {
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 14px;
+      padding: 0;
     }
 
-    .control-group:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
+    .control-divider {
+      border: 0;
+      border-top: 1px solid var(--border);
+      margin: 0;
+      height: 0;
+    }
+
+    .group-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
     }
 
     .group-title {
-      font-size: 0.84rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      color: var(--primary);
-      margin: 0 0 10px;
+      margin: 0;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .count-readout {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
     }
 
     label.field-label {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.86rem;
-      font-weight: 600;
-      margin: 8px 0 4px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--ink-secondary);
+      margin: 10px 0 5px;
     }
 
     .val-badge {
       font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: var(--primary);
-      background: #eef4ff;
+      font-size: 0.76rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid #d6e2f8;
       padding: 1px 6px;
       border-radius: 6px;
     }
@@ -175,18 +255,52 @@
     select, input[type="file"] {
       width: 100%;
       padding: 7px 10px;
-      border-radius: 8px;
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
       color: var(--ink);
+      caret-color: var(--accent);
       font-family: var(--font-sans);
-      font-size: 0.88rem;
+      font-size: 0.84rem;
+      transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+    }
+
+    select:hover:not(:disabled), input[type="file"]:hover:not(:disabled) {
+      border-color: #a9a294;
+    }
+
+    select:focus-visible, input[type="file"]:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: var(--focus-ring);
+    }
+
+    select:disabled, input[type="file"]:disabled {
+      background: #eceae3;
+      color: var(--muted);
+      cursor: not-allowed;
     }
 
     input[type="range"] {
       width: 100%;
-      accent-color: var(--primary);
+      margin: 2px 0;
+      accent-color: var(--accent);
       cursor: pointer;
+    }
+
+    input[type="range"]:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+      border-radius: 6px;
+    }
+
+    input[type="range"]:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .field-wrap.is-disabled {
+      opacity: 0.55;
     }
 
     .checkbox-grid {
@@ -198,19 +312,86 @@
     .check-item {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 8px;
-      padding: 6px 8px;
+      padding: 7px 10px;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      background: #ffffff;
-      font-size: 0.85rem;
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      font-size: 0.83rem;
       font-weight: 500;
+      color: var(--ink);
+      cursor: pointer;
+      transition: border-color 150ms var(--ease), background-color 150ms var(--ease);
+    }
+
+    .check-item:hover:not(.disabled) {
+      border-color: var(--border-strong);
+      background: #faf9f6;
+    }
+
+    .check-item.is-selected {
+      background: #f8faff;
+      border-color: #b8cae8;
+    }
+
+    .check-item.disabled {
+      opacity: 0.52;
+      cursor: not-allowed;
+    }
+
+    .check-main {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .check-main input {
+      margin: 0;
+      flex-shrink: 0;
+      accent-color: var(--accent);
       cursor: pointer;
     }
 
-    .check-item input { accent-color: var(--primary); cursor: pointer; }
+    .check-main input:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
 
-    .check-item.disabled { opacity: 0.55; cursor: not-allowed; }
+    .check-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .check-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .rank-tag {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+    }
+
+    .swatch-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: inline-block;
+      opacity: 0;
+      transition: opacity 150ms var(--ease);
+    }
+
+    .swatch-dot.visible {
+      opacity: 1;
+    }
 
     .radio-stack {
       display: flex;
@@ -218,56 +399,126 @@
       gap: 6px;
     }
 
+    .radio-item {
+      justify-content: flex-start;
+    }
+
+    .radio-copy {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.25;
+      min-width: 0;
+    }
+
+    .radio-cls {
+      font-family: var(--font-mono);
+      font-size: 0.71rem;
+      color: var(--muted);
+    }
+
+    .control-details > summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      padding: 2px 0;
+      border-radius: 6px;
+    }
+
+    .control-details > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .control-details > summary:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .chevron-icon {
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      transition: transform 150ms var(--ease);
+    }
+
+    .control-details[open] .chevron-icon {
+      transform: rotate(180deg);
+    }
+
+    .details-body {
+      padding-top: 6px;
+    }
+
     .btn-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1.4fr 1fr;
       gap: 8px;
-      margin-top: 10px;
+      margin-top: 12px;
     }
 
     button {
       border: 1px solid transparent;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       padding: 8px 12px;
       font-family: var(--font-sans);
-      font-size: 0.86rem;
+      font-size: 0.83rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s ease;
+      transition: background-color 150ms var(--ease), border-color 150ms var(--ease), color 150ms var(--ease);
     }
 
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    button:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
 
     .btn-primary {
-      background: var(--primary);
+      background: var(--accent);
       color: #ffffff;
     }
 
-    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
 
     .btn-secondary {
-      background: #ffffff;
-      border-color: #cbd5e1;
+      background: var(--surface);
+      border-color: var(--border-strong);
       color: var(--ink);
     }
 
-    .btn-secondary:hover:not(:disabled) { background: var(--surface-alt); }
+    .btn-secondary:hover:not(:disabled) {
+      background: #f5f3ed;
+      border-color: #b4ae9f;
+    }
 
     .muted-note {
-      font-size: 0.82rem;
+      font-size: 0.79rem;
+      line-height: 1.45;
       color: var(--muted);
-      margin: 6px 0 0;
+      margin: 8px 0 0;
     }
 
     .main-stack {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
+      min-width: 0;
     }
 
     .boot-bar {
-      border: 1px solid #bfdbfe;
-      background: #eff6ff;
+      border: 1px solid #c7d7f4;
+      background: #f4f7fd;
       border-radius: var(--radius);
       padding: 12px 16px;
     }
@@ -278,24 +529,27 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.88rem;
-      font-weight: 600;
+      gap: 12px;
+      font-size: 0.84rem;
+      font-weight: 500;
       color: var(--ink);
       margin-bottom: 8px;
     }
 
     .progress-track {
-      height: 8px;
+      height: 6px;
       border-radius: 999px;
-      background: #dbeafe;
+      background: #dce7fa;
       overflow: hidden;
     }
 
     .progress-fill {
       height: 100%;
-      width: 8%;
-      background: var(--primary);
-      transition: width 0.25s ease;
+      width: 100%;
+      background: var(--accent);
+      transform-origin: left center;
+      transform: scaleX(0.1);
+      transition: transform 220ms var(--ease);
     }
 
     .status-strip {
@@ -303,97 +557,193 @@
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 8px;
-      font-size: 0.9rem;
+      gap: 10px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      color: var(--ink-secondary);
     }
 
     .running-tag {
       display: none;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 600;
-      color: var(--primary);
-      background: #eef4ff;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid #d6e2f8;
       padding: 2px 8px;
       border-radius: 999px;
     }
 
     .running-tag.active { display: inline-block; }
 
-    .table-wrap { overflow-x: auto; }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .card-subtitle {
+      font-size: 0.79rem;
+      color: var(--muted);
+    }
+
+    .card-subtitle.mono {
+      font-family: var(--font-mono);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.86rem;
+      font-size: 0.84rem;
+      font-variant-numeric: tabular-nums;
     }
 
     th, td {
-      padding: 8px 10px;
+      padding: 9px 10px;
       border-bottom: 1px solid var(--border);
       text-align: right;
       white-space: nowrap;
     }
 
-    th:first-child, td:first-child { text-align: left; font-weight: 600; }
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover td {
+      background: #faf9f5;
+    }
+
+    th:first-child, td:first-child {
+      text-align: left;
+      font-weight: 500;
+      color: var(--ink);
+    }
 
     th {
       font-size: 0.78rem;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
+      font-weight: 600;
       color: var(--muted);
-      background: var(--surface-alt);
+      background: #faf9f6;
     }
 
-    .code-header {
-      display: flex;
-      justify-content: space-between;
+    .detector-cell {
+      display: inline-flex;
       align-items: center;
-      margin-bottom: 8px;
+      gap: 8px;
     }
 
-    .code-header h2 {
-      margin: 0;
-      font-size: 0.96rem;
-      font-weight: 700;
+    .cell-na {
+      color: var(--muted);
+    }
+
+    .skeleton-bar {
+      display: inline-block;
+      height: 12px;
+      border-radius: 4px;
+      background: #eae7de;
+      vertical-align: middle;
+    }
+
+    .plot-frame {
+      position: relative;
+      width: 100%;
+    }
+
+    .plot-skeleton {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-sm);
+      background: #fcfbf8;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .plot-skeleton.hidden { display: none; }
+
+    .stream-plot-box { width: 100%; height: 520px; }
+    .explain-plot-box { width: 100%; height: 270px; }
+
+    @media (max-width: 640px) {
+      .container { padding: 0 12px 24px; }
+      .panel { padding: 14px; }
+      th, td { padding: 7px 8px; }
+      .stream-plot-box { height: 520px; }
     }
 
     pre {
       margin: 0;
-      padding: 12px 14px;
-      border-radius: 8px;
-      background: #0e1a33;
-      color: #f8fafc;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface-code);
+      color: var(--ink);
       font-family: var(--font-mono);
-      font-size: 0.8rem;
-      line-height: 1.5;
+      font-size: 0.79rem;
+      line-height: 1.55;
       overflow-x: auto;
-    }
-
-    .card-title {
-      margin: 0 0 8px;
-      font-size: 0.96rem;
-      font-weight: 700;
     }
 
     .hidden { display: none; }
 
     .error-banner {
-      border-color: #fecdd3;
-      background: #fff1f2;
-      color: #9f1239;
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
+      color: var(--danger-ink);
+    }
+
+    .site-footer {
+      margin-top: 22px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <header class="header-card">
-      <div>
-        <h1>PySAD — Streaming Anomaly Detection Playground</h1>
-        <p>Score and learn from every point in real time, compare detectors side by side, tune calibrated alerts, inject live anomalies, and inspect feature explanations.</p>
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="title-row">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="#1849a9" />
+            <path d="M5 18h5l3-9 4 14 3-7h7" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <h1>PySAD Playground</h1>
+        </div>
+        <p class="topbar-subtitle">Compare streaming anomaly detectors step by step, calibrate alert thresholds, inject anomalies, and inspect feature attribution.</p>
       </div>
-      <div class="header-right">
-        <span class="wasm-pill">Runs 100% locally in Pyodide WebAssembly</span>
-        <nav class="links">
+      <div class="topbar-meta">
+        <div class="runtime-status">
+          <span id="runtimeDot" class="runtime-dot" aria-hidden="true"></span>
+          <span id="runtimeLabel">Pyodide WebAssembly (client-side)</span>
+        </div>
+        <nav class="nav-links" aria-label="Project links">
           <a href="https://github.com/selimfirat/pysad" target="_blank" rel="noopener">GitHub</a>
           <a href="https://pysad.readthedocs.io/en/stable/" target="_blank" rel="noopener">Documentation</a>
           <a href="https://pysad.readthedocs.io/en/stable/benchmark.html" target="_blank" rel="noopener">Benchmarks</a>
@@ -403,20 +753,22 @@
     </header>
 
     <div class="layout">
-      <aside class="panel sidebar">
+      <aside class="sidebar" aria-label="Experiment controls">
         <section class="control-group">
-          <h2 class="group-title">1. Data Stream</h2>
-          <select id="streamSelect" aria-label="Data Stream" disabled>
+          <div class="group-head">
+            <h2 class="group-title">Data stream</h2>
+          </div>
+          <select id="streamSelect" aria-label="Data stream" disabled>
             <option value="Synthetic Drift + Spikes (4 sensors)" selected>Synthetic Drift + Spikes (4 sensors)</option>
             <option value="NYC Taxi Demand (NAB, univariate)">NYC Taxi Demand (NAB, univariate)</option>
             <option value="Arrhythmia (ODDS, 274 features)">Arrhythmia (ODDS, 274 features)</option>
             <option value="Upload CSV">Upload CSV</option>
           </select>
 
-          <div id="csvUploadWrap" class="hidden" style="margin-top: 8px;">
+          <div id="csvUploadWrap" class="hidden">
             <label class="field-label" for="csvFileInput">Upload CSV (numeric + optional label)</label>
             <input id="csvFileInput" type="file" accept=".csv" disabled />
-            <p class="muted-note">CSV stays strictly in your browser memory.</p>
+            <p class="muted-note">Processed locally in browser memory.</p>
           </div>
 
           <label class="field-label" for="numPointsSlider">
@@ -426,74 +778,153 @@
           <input id="numPointsSlider" type="range" min="400" max="2500" step="100" value="1200" disabled />
         </section>
 
-        <section class="control-group">
-          <h2 class="group-title">2. Streaming Detectors (1–3)</h2>
-          <div id="detectorGroup" class="checkbox-grid">
-            <label class="check-item"><input type="checkbox" value="LODA" checked disabled /> LODA</label>
-            <label class="check-item"><input type="checkbox" value="HalfSpaceTrees" checked disabled /> HalfSpaceTrees</label>
-            <label class="check-item"><input type="checkbox" value="RobustRandomCutForest" checked disabled /> RobustRandomCutForest</label>
-            <label class="check-item"><input type="checkbox" value="SeasonalHybridESD" disabled /> SeasonalHybridESD</label>
-            <label class="check-item"><input type="checkbox" value="MedianAbsoluteDeviation" disabled /> MedianAbsoluteDeviation</label>
-            <label class="check-item"><input type="checkbox" value="xStream" disabled /> xStream</label>
-          </div>
-        </section>
+        <hr class="control-divider" />
 
         <section class="control-group">
-          <h2 class="group-title">3. Score Calibrator</h2>
-          <div class="radio-stack">
+          <div class="group-head">
+            <h2 class="group-title">Detectors (1 to 3)</h2>
+            <span id="detectorCount" class="count-readout">3 / 3</span>
+          </div>
+          <div id="detectorGroup" class="checkbox-grid">
             <label class="check-item">
-              <input type="radio" name="calibrator" value="Conformal (ConformalProbabilityCalibrator)" checked disabled />
-              Conformal (ConformalProbabilityCalibrator)
+              <span class="check-main">
+                <input type="checkbox" value="LocalOutlierProbability" checked disabled />
+                <span class="check-label">LocalOutlierProbability</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">ODDS #1</span><span class="swatch-dot"></span></span>
             </label>
             <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="RSHash" checked disabled />
+                <span class="check-label">RSHash</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">ODDS #2</span><span class="swatch-dot"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="LODA" checked disabled />
+                <span class="check-label">LODA</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">ODDS #4</span><span class="swatch-dot"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="SmartSifter" disabled />
+                <span class="check-label">SmartSifter</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">Drift #2</span><span class="swatch-dot"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="RobustRandomCutForest" disabled />
+                <span class="check-label">RobustRandomCutForest</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">Drift #1</span><span class="swatch-dot"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="HalfSpaceTrees" disabled />
+                <span class="check-label">HalfSpaceTrees</span>
+              </span>
+              <span class="check-meta"><span class="swatch-dot"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="KNNCAD" disabled />
+                <span class="check-label">KNNCAD</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">NAB #4</span><span class="swatch-dot"></span></span>
+            </label>
+            <label class="check-item">
+              <span class="check-main">
+                <input type="checkbox" value="SeasonalHybridESD" disabled />
+                <span class="check-label">SeasonalHybridESD</span>
+              </span>
+              <span class="check-meta"><span class="rank-tag">Seasonal</span><span class="swatch-dot"></span></span>
+            </label>
+          </div>
+          <p class="muted-note">Defaults load top-ranked ODDS detectors (mean AUROC 0.842, 0.817, 0.790).</p>
+        </section>
+
+        <hr class="control-divider" />
+
+        <section class="control-group">
+          <div class="group-head">
+            <h2 class="group-title">Alert calibration</h2>
+          </div>
+          <div class="radio-stack">
+            <label class="check-item radio-item">
+              <input type="radio" name="calibrator" value="Conformal (ConformalProbabilityCalibrator)" checked disabled />
+              <span class="radio-copy">
+                <span>Conformal</span>
+                <span class="radio-cls">ConformalProbabilityCalibrator</span>
+              </span>
+            </label>
+            <label class="check-item radio-item">
               <input type="radio" name="calibrator" value="SPOT / EVT (SPOTProbabilityCalibrator)" disabled />
-              SPOT / EVT (SPOTProbabilityCalibrator)
+              <span class="radio-copy">
+                <span>SPOT / EVT</span>
+                <span class="radio-cls">SPOTProbabilityCalibrator</span>
+              </span>
             </label>
           </div>
 
           <label class="field-label" for="thresholdSlider">
-            <span>Alert threshold ([0, 1])</span>
+            <span>Alert threshold</span>
             <span id="thresholdValue" class="val-badge">0.985</span>
           </label>
           <input id="thresholdSlider" type="range" min="0.900" max="0.999" step="0.001" value="0.985" disabled />
 
-          <label class="field-label" for="calWindowSlider">
-            <span>Conformal window size</span>
-            <span id="calWindowValue" class="val-badge">350</span>
-          </label>
-          <input id="calWindowSlider" type="range" min="100" max="1000" step="50" value="350" disabled />
+          <div id="calWindowWrap" class="field-wrap">
+            <label class="field-label" for="calWindowSlider">
+              <span>Conformal window</span>
+              <span id="calWindowValue" class="val-badge">350</span>
+            </label>
+            <input id="calWindowSlider" type="range" min="100" max="1000" step="50" value="350" disabled />
+          </div>
         </section>
 
+        <hr class="control-divider" />
+
         <section class="control-group">
-          <h2 class="group-title">4. Inject Anomaly &amp; Explain</h2>
-          <label class="field-label" for="featureSelect">Target feature</label>
-          <select id="featureSelect" disabled>
-            <option value="sensor_1">sensor_1</option>
-          </select>
+          <details open class="control-details">
+            <summary>
+              <h2 class="group-title">Anomaly injection and attribution</h2>
+              <svg class="chevron-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </summary>
+            <div class="details-body">
+              <label class="field-label" for="featureSelect">Target feature</label>
+              <select id="featureSelect" disabled>
+                <option value="sensor_1">sensor_1</option>
+              </select>
 
-          <label class="field-label" for="injectStepSlider">
-            <span>Inject at step t</span>
-            <span id="injectStepValue" class="val-badge">720</span>
-          </label>
-          <input id="injectStepSlider" type="range" min="60" max="1199" step="1" value="720" disabled />
+              <label class="field-label" for="injectStepSlider">
+                <span>Inject at step</span>
+                <span id="injectStepValue" class="val-badge">720</span>
+              </label>
+              <input id="injectStepSlider" type="range" min="60" max="1199" step="1" value="720" disabled />
 
-          <label class="field-label" for="injectSigmaSlider">
-            <span>Magnitude (&sigma;)</span>
-            <span id="injectSigmaValue" class="val-badge">+5.5</span>
-          </label>
-          <input id="injectSigmaSlider" type="range" min="-8" max="8" step="0.5" value="5.5" disabled />
+              <label class="field-label" for="injectSigmaSlider">
+                <span>Magnitude (&sigma;)</span>
+                <span id="injectSigmaValue" class="val-badge">+5.5</span>
+              </label>
+              <input id="injectSigmaSlider" type="range" min="-8" max="8" step="0.5" value="5.5" disabled />
 
-          <div class="btn-row">
-            <button id="injectBtn" type="button" class="btn-primary" disabled>Inject Anomaly</button>
-            <button id="clearBtn" type="button" class="btn-secondary" disabled>Clear Injected</button>
-          </div>
-          <p id="injectedSummary" class="muted-note">Injected anomalies: none</p>
+              <div class="btn-row">
+                <button id="injectBtn" type="button" class="btn-primary" disabled>Inject anomaly</button>
+                <button id="clearBtn" type="button" class="btn-secondary" disabled>Clear</button>
+              </div>
+              <p id="injectedSummary" class="muted-note">Injected anomalies: none</p>
 
-          <label class="field-label" for="inspectStepSlider">
-            <span>Explain step t</span>
-            <span id="inspectStepValue" class="val-badge">468</span>
-          </label>
-          <input id="inspectStepSlider" type="range" min="60" max="1199" step="1" value="468" disabled />
+              <label class="field-label" for="inspectStepSlider">
+                <span>Explain step</span>
+                <span id="inspectStepValue" class="val-badge">468</span>
+              </label>
+              <input id="inspectStepSlider" type="range" min="60" max="1199" step="1" value="468" disabled />
+            </div>
+          </details>
         </section>
       </aside>
 
@@ -508,13 +939,16 @@
           </div>
         </div>
 
-        <section id="statusCard" class="panel status-strip">
-          <span id="statusText">Initializing PySAD in your browser (first load downloads Pyodide + numpy + scipy + scikit-learn)...</span>
-          <span id="runningTag" class="running-tag">Running...</span>
+        <section id="statusCard" class="panel status-strip" aria-live="polite">
+          <span id="statusText">Loading Pyodide, numpy, scipy, scikit-learn, and PySAD in browser memory...</span>
+          <span id="runningTag" class="running-tag">Updating...</span>
         </section>
 
         <section class="panel">
-          <h2 class="card-title">Live Prequential Metrics &amp; Throughput</h2>
+          <div class="card-header">
+            <h2 class="card-title">Prequential metrics</h2>
+            <span class="card-subtitle">Post-warmup evaluation</span>
+          </div>
           <div class="table-wrap">
             <table>
               <thead>
@@ -526,39 +960,91 @@
                   <th>Precision</th>
                   <th>Recall</th>
                   <th>Injected</th>
-                  <th style="text-transform: none;">&micro;s / pt</th>
-                  <th style="text-transform: none;">pts / s</th>
+                  <th>&micro;s / pt</th>
+                  <th>pts / s</th>
                 </tr>
               </thead>
-              <tbody id="metricsBody"></tbody>
+              <tbody id="metricsBody">
+                <tr>
+                  <td><span class="skeleton-bar" style="width: 140px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 28px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 32px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 44px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 48px;"></span></td>
+                </tr>
+                <tr>
+                  <td><span class="skeleton-bar" style="width: 90px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 28px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 32px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 44px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 48px;"></span></td>
+                </tr>
+                <tr>
+                  <td><span class="skeleton-bar" style="width: 72px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 28px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 42px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 32px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 44px;"></span></td>
+                  <td><span class="skeleton-bar" style="width: 48px;"></span></td>
+                </tr>
+              </tbody>
             </table>
           </div>
         </section>
 
         <section class="panel">
-          <div id="streamPlot" style="width: 100%; height: 540px;"></div>
-          <p class="muted-note">Click any stream position in the chart above to inspect LODA.explain_partial() feature attribution at that step.</p>
+          <div class="card-header">
+            <h2 class="card-title">Stream and calibrated scores</h2>
+            <span class="card-subtitle">Click any step to inspect attribution</span>
+          </div>
+          <div class="plot-frame">
+            <div id="streamSkeleton" class="plot-skeleton">Waiting for initial prequential stream run...</div>
+            <div id="streamPlot" class="stream-plot-box"></div>
+          </div>
         </section>
 
         <section class="panel">
-          <div id="explainPlot" style="width: 100%; height: 290px;"></div>
+          <div class="card-header">
+            <h2 class="card-title">Feature attribution</h2>
+            <span class="card-subtitle mono">LODA.explain_partial()</span>
+          </div>
+          <div class="plot-frame">
+            <div id="explainSkeleton" class="plot-skeleton">Feature contributions appear after initialization.</div>
+            <div id="explainPlot" class="explain-plot-box"></div>
+          </div>
           <p id="explainNote" class="muted-note"></p>
         </section>
 
         <section class="panel">
-          <div class="code-header">
-            <h2>Reproducible PySAD Pipeline Code</h2>
+          <div class="card-header">
+            <h2 class="card-title">Reproducible PySAD pipeline</h2>
             <button id="copyCodeBtn" type="button" class="btn-secondary">Copy</button>
           </div>
-          <pre><code id="pipelineCode"></code></pre>
+          <pre><code id="pipelineCode"># Pipeline snippet updates after the first run.</code></pre>
         </section>
       </main>
     </div>
+
+    <footer class="site-footer">
+      <span>Default detectors follow PySAD ODDS benchmark rankings.</span>
+      <a href="https://pysad.readthedocs.io/en/stable/benchmark.html" target="_blank" rel="noopener">View full benchmarks</a>
+    </footer>
   </div>
 
   <script>
-    const DETECTOR_COLORS = ["#0741ad", "#0f766e", "#b45309"];
-    const FEATURE_COLORS = ["#3f6fd0", "#64748b", "#8aa8e6", "#94a3b8"];
+    const DETECTOR_COLORS = ["#1849a9", "#0f766e", "#b45309"];
+    const FEATURE_COLORS = ["#3b66b0", "#2a857c", "#64748b", "#9a6b2f"];
 
     const state = {
       pyodide: null,
@@ -573,19 +1059,10 @@
     const $ = (id) => document.getElementById(id);
 
     function setBootProgress(pct, text) {
-      $("bootProgressFill").style.width = `${pct}%`;
+      const clamped = Math.max(2, Math.min(100, Number(pct)));
+      $("bootProgressFill").style.transform = `scaleX(${clamped / 100})`;
       $("bootPercent").textContent = `${pct}%`;
       $("bootStatus").textContent = text;
-    }
-
-    function setControlsEnabled(enabled) {
-      const selector = "aside input, aside select, aside button";
-      document.querySelectorAll(selector).forEach((el) => {
-        el.disabled = !enabled;
-      });
-      if (enabled) {
-        enforceDetectorBounds();
-      }
     }
 
     function getSelectedDetectors() {
@@ -598,6 +1075,32 @@
       return checked ? checked.value : "Conformal (ConformalProbabilityCalibrator)";
     }
 
+    function syncDetectorRowStyles() {
+      const boxes = Array.from(document.querySelectorAll('#detectorGroup input[type="checkbox"]'));
+      const checked = boxes.filter((cb) => cb.checked);
+      $("detectorCount").textContent = `${checked.length} / 3`;
+      let activeIdx = 0;
+      boxes.forEach((cb) => {
+        const row = cb.closest(".check-item");
+        const swatch = row.querySelector(".swatch-dot");
+        if (cb.checked) {
+          const color = DETECTOR_COLORS[activeIdx % DETECTOR_COLORS.length];
+          row.classList.add("is-selected");
+          if (swatch) {
+            swatch.style.backgroundColor = color;
+            swatch.classList.add("visible");
+          }
+          activeIdx += 1;
+        } else {
+          row.classList.remove("is-selected");
+          if (swatch) {
+            swatch.style.backgroundColor = "transparent";
+            swatch.classList.remove("visible");
+          }
+        }
+      });
+    }
+
     function enforceDetectorBounds() {
       const boxes = Array.from(document.querySelectorAll('#detectorGroup input[type="checkbox"]'));
       const checked = boxes.filter((cb) => cb.checked);
@@ -605,15 +1108,36 @@
         const lockUncheck = checked.length === 1 && cb.checked;
         const lockAdd = checked.length >= 3 && !cb.checked;
         cb.disabled = !state.ready || lockUncheck || lockAdd;
-        cb.closest(".check-item").classList.toggle("disabled", lockUncheck || lockAdd);
+        cb.closest(".check-item").classList.toggle("disabled", !state.ready || lockUncheck || lockAdd);
       });
+      syncDetectorRowStyles();
+    }
+
+    function syncCalibrationControls() {
+      const isConformal = getSelectedCalibrator().startsWith("Conformal");
+      $("calWindowWrap").classList.toggle("is-disabled", !isConformal);
+      $("calWindowSlider").disabled = !state.ready || !isConformal;
+    }
+
+    function syncInjectionButtons() {
+      $("clearBtn").disabled = !state.ready || state.injected.length === 0;
+    }
+
+    function setControlsEnabled(enabled) {
+      document.querySelectorAll("aside input, aside select, aside button").forEach((el) => {
+        el.disabled = !enabled;
+      });
+      enforceDetectorBounds();
+      syncCalibrationControls();
+      syncInjectionButtons();
     }
 
     function fmtMetric(v) {
-      return v === null || v === undefined ? "—" : Number(v).toFixed(3);
+      return v === null || v === undefined ? "n/a" : Number(v).toFixed(3);
     }
 
     function updateInjectedSummary() {
+      syncInjectionButtons();
       if (!state.injected.length) {
         $("injectedSummary").textContent = "Injected anomalies: none";
         return;
@@ -623,18 +1147,32 @@
         .map((item) => {
           const fname = state.featureNames[item.feature_idx];
           const sign = item.magnitude_sigma >= 0 ? "+" : "";
-          return `t=${item.index} (${fname}, ${sign}${Number(item.magnitude_sigma).toFixed(1)}σ)`;
+          return `t=${item.index} (${fname}, ${sign}${Number(item.magnitude_sigma).toFixed(1)}\u03c3)`;
         });
       $("injectedSummary").textContent = `Injected anomalies: ${parts.join("; ")}`;
     }
 
     function renderMetricsTable(traces) {
       const tbody = $("metricsBody");
-      const rows = traces.map((tr) => {
+      const rows = traces.map((tr, idx) => {
         const row = document.createElement("tr");
-        const injText = tr.injected_total > 0 ? `${tr.injected_caught} / ${tr.injected_total}` : "—";
+        const color = DETECTOR_COLORS[idx % DETECTOR_COLORS.length];
+
+        const firstTd = document.createElement("td");
+        const nameWrap = document.createElement("span");
+        nameWrap.className = "detector-cell";
+        const dot = document.createElement("span");
+        dot.className = "swatch-dot visible";
+        dot.style.backgroundColor = color;
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = tr.display_name;
+        nameWrap.appendChild(dot);
+        nameWrap.appendChild(nameSpan);
+        firstTd.appendChild(nameWrap);
+        row.appendChild(firstTd);
+
+        const injText = tr.injected_total > 0 ? `${tr.injected_caught} / ${tr.injected_total}` : "n/a";
         const cells = [
-          tr.display_name,
           fmtMetric(tr.auroc),
           fmtMetric(tr.aupr),
           String(tr.alerts_count),
@@ -647,6 +1185,9 @@
         cells.forEach((txt) => {
           const td = document.createElement("td");
           td.textContent = txt;
+          if (txt === "n/a") {
+            td.className = "cell-na";
+          }
           row.appendChild(td);
         });
         return row;
@@ -669,7 +1210,7 @@
           xaxis: "x",
           yaxis: "y",
           line: { width: 1.4, color: FEATURE_COLORS[pos % FEATURE_COLORS.length] },
-          opacity: 0.88,
+          opacity: 0.9,
         });
       });
 
@@ -682,7 +1223,7 @@
           name: "Labeled anomaly",
           xaxis: "x",
           yaxis: "y",
-          marker: { color: "#e11d48", size: 6, symbol: "circle-open", line: { width: 2 } },
+          marker: { color: "#c81e3a", size: 6, symbol: "circle-open", line: { width: 1.8 } },
         });
       }
 
@@ -696,7 +1237,7 @@
           name: tr.display_name,
           xaxis: "x2",
           yaxis: "y2",
-          line: { width: 1.8, color },
+          line: { width: 1.9, color },
         });
         if (tr.alert_indices.length > 0) {
           plotTraces.push({
@@ -708,7 +1249,7 @@
             showlegend: false,
             xaxis: "x2",
             yaxis: "y2",
-            marker: { color: "#e11d48", size: 6, symbol: "diamond" },
+            marker: { color: "#c81e3a", size: 6, symbol: "diamond" },
           });
         }
       });
@@ -719,53 +1260,62 @@
       const inspectX = xAxis[explanation.step];
 
       const shapes = [
-        { type: "rect", xref: "x", yref: "y domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.14)", line: { width: 0 } },
-        { type: "rect", xref: "x2", yref: "y2 domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.14)", line: { width: 0 } },
-        { type: "line", xref: "x2", yref: "y2", x0, x1: xEnd, y0: threshold, y1: threshold, line: { color: "#e11d48", width: 1.5, dash: "dash" } },
-        { type: "line", xref: "x", yref: "y domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: "#0741ad", width: 1.4, dash: "dash" } },
-        { type: "line", xref: "x2", yref: "y2 domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: "#0741ad", width: 1.4, dash: "dash" } },
+        { type: "rect", xref: "x", yref: "y domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.12)", line: { width: 0 } },
+        { type: "rect", xref: "x2", yref: "y2 domain", x0, x1: x1Warm, y0: 0, y1: 1, fillcolor: "rgba(148, 163, 184, 0.12)", line: { width: 0 } },
+        { type: "line", xref: "x2", yref: "y2", x0, x1: xEnd, y0: threshold, y1: threshold, line: { color: "#c81e3a", width: 1.4, dash: "dash" } },
+        { type: "line", xref: "x", yref: "y domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: "#1849a9", width: 1.3, dash: "dash" } },
+        { type: "line", xref: "x2", yref: "y2 domain", x0: inspectX, x1: inspectX, y0: 0, y1: 1, line: { color: "#1849a9", width: 1.3, dash: "dash" } },
       ];
 
       injected_indices.forEach((idx) => {
         const ix = xAxis[idx];
-        shapes.push({ type: "line", xref: "x", yref: "y domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: "#e11d48", width: 1.4, dash: "dot" } });
-        shapes.push({ type: "line", xref: "x2", yref: "y2 domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: "#e11d48", width: 1.4, dash: "dot" } });
+        shapes.push({ type: "line", xref: "x", yref: "y domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: "#c81e3a", width: 1.3, dash: "dot" } });
+        shapes.push({ type: "line", xref: "x2", yref: "y2 domain", x0: ix, x1: ix, y0: 0, y1: 1, line: { color: "#c81e3a", width: 1.3, dash: "dot" } });
       });
 
+      const compact = window.innerWidth < 640;
       const annotations = [
         {
-          text: `Stream Values — ${stream.name}`,
-          xref: "paper", yref: "paper", x: 0.5, y: 1.02,
-          showarrow: false, font: { size: 13.5, color: "#0e1a33", weight: 700 },
+          text: compact ? "Stream values" : `Stream values: ${stream.name}`,
+          xref: "paper", yref: "paper", x: 0.0, xanchor: "left", y: compact ? 0.99 : 1.015,
+          showarrow: false, font: { size: compact ? 12 : 12.5, color: "#14171f", weight: 600 },
         },
         {
-          text: `Calibrated Anomaly Scores — ${calibrator_name}`,
-          xref: "paper", yref: "paper", x: 0.5, y: 0.49,
-          showarrow: false, font: { size: 13.5, color: "#0e1a33", weight: 700 },
+          text: compact ? "Calibrated scores" : `Calibrated anomaly scores: ${calibrator_name}`,
+          xref: "paper", yref: "paper", x: 0.0, xanchor: "left", y: compact ? 0.455 : 0.465,
+          showarrow: false, font: { size: compact ? 12 : 12.5, color: "#14171f", weight: 600 },
+        },
+        {
+          text: "warm-up",
+          xref: "x", yref: "y domain", x: x0, xanchor: "left", xshift: 6, y: 0.94, yanchor: "top",
+          showarrow: false, font: { size: 11, color: "#5f6776" },
         },
         {
           text: `threshold = ${Number(threshold).toFixed(3)}`,
           xref: "x2 domain", yref: "y2", x: 0.99, y: threshold,
           xanchor: "right", yanchor: "bottom",
-          showarrow: false, font: { size: 11, color: "#e11d48" },
+          bgcolor: "rgba(255, 255, 255, 0.88)",
+          borderpad: 2,
+          showarrow: false, font: { size: 11, color: "#c81e3a" },
         },
       ];
 
       const layout = {
         template: "plotly_white",
-        paper_bgcolor: "#fffef7",
+        paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
-        font: { family: "Inter, ui-sans-serif, sans-serif", color: "#0e1a33", size: 12 },
-        legend: { orientation: "h", yanchor: "bottom", y: 1.07, x: 0.0 },
-        margin: { l: 56, r: 24, t: 88, b: 48 },
-        xaxis: { matches: "x2", showticklabels: false },
-        yaxis: { title: "Value", domain: [0.56, 0.97] },
-        xaxis2: { title: stream.timestamps ? "Timestamp" : "Stream position", anchor: "y2" },
-        yaxis2: { title: "Calibrated score", range: [-0.02, 1.06], domain: [0.0, 0.43] },
+        font: { family: "IBM Plex Sans, ui-sans-serif, sans-serif", color: "#14171f", size: 12 },
+        legend: { orientation: "h", yanchor: "bottom", y: compact ? 1.05 : 1.07, x: 0.0, font: { size: compact ? 10.5 : 11 } },
+        margin: { l: compact ? 44 : 52, r: compact ? 10 : 16, t: compact ? 132 : 90, b: 44 },
+        xaxis: { matches: "x2", showticklabels: false, gridcolor: "#eeece6", zeroline: false },
+        yaxis: { title: "Value", domain: compact ? [0.56, 0.94] : [0.57, 0.97], gridcolor: "#eeece6", zerolinecolor: "#e2dfd6" },
+        xaxis2: { title: stream.timestamps ? "Timestamp" : "Stream step", anchor: "y2", gridcolor: "#eeece6", zeroline: false },
+        yaxis2: { title: "Calibrated score", range: [-0.02, 1.08], domain: [0.0, 0.41], gridcolor: "#eeece6", zerolinecolor: "#e2dfd6" },
         shapes,
         annotations,
       };
 
+      $("streamSkeleton").classList.add("hidden");
       const plotDiv = $("streamPlot");
       Plotly.react(plotDiv, plotTraces, layout, { responsive: true, displaylogo: false });
       plotDiv.removeAllListeners?.("plotly_click");
@@ -783,9 +1333,10 @@
     }
 
     function renderExplanationPlot(exp) {
+      const compact = window.innerWidth < 640;
       const vals = exp.contributions;
       const names = exp.feature_names;
-      const colors = vals.map((v, idx) => (idx >= vals.length - 2 && v > 0 ? "#e11d48" : "#0741ad"));
+      const colors = vals.map((v, idx) => (idx >= vals.length - 2 && v > 0 ? "#c81e3a" : "#1849a9"));
       const xMin = Math.min(0, ...vals);
       const xMax = Math.max(0, ...vals);
       const span = Math.max(xMax - xMin, 1.0);
@@ -798,23 +1349,34 @@
         marker: { color: colors },
         text: vals.map((v) => Number(v).toFixed(2)),
         textposition: "outside",
+        constraintext: "none",
       };
 
       const layout = {
-        title: { text: `Feature Attribution at Step ${exp.step} (LODA raw score: ${Number(exp.loda_raw_score).toFixed(2)})`, font: { size: 14 } },
-        xaxis: {
-          title: "Contribution (LODA.explain_partial t-statistic)",
-          range: [xMin - 0.18 * span, xMax + 0.16 * span],
-          zeroline: true,
-          zerolinecolor: "#cbd5e1",
+        title: {
+          text: compact
+            ? `Step ${exp.step} (LODA score: ${Number(exp.loda_raw_score).toFixed(2)})`
+            : `Attribution at step ${exp.step} (LODA raw score: ${Number(exp.loda_raw_score).toFixed(2)})`,
+          x: 0.0,
+          xanchor: "left",
+          font: { size: compact ? 12 : 13, color: "#14171f", weight: 600 },
         },
+        xaxis: {
+          title: "Contribution (t-statistic)",
+          range: [xMin - (compact ? 0.34 : 0.24) * span, xMax + (compact ? 0.28 : 0.20) * span],
+          zeroline: true,
+          zerolinecolor: "#ccc7ba",
+          gridcolor: "#eeece6",
+        },
+        yaxis: { gridcolor: "#eeece6", automargin: true },
         template: "plotly_white",
-        paper_bgcolor: "#fffef7",
+        paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
-        font: { family: "Inter, ui-sans-serif, sans-serif", color: "#0e1a33", size: 12 },
-        margin: { l: 112, r: 48, t: 46, b: 42 },
+        font: { family: "IBM Plex Sans, ui-sans-serif, sans-serif", color: "#14171f", size: 12 },
+        margin: { l: compact ? 84 : 112, r: compact ? 20 : 36, t: 42, b: 42 },
       };
 
+      $("explainSkeleton").classList.add("hidden");
       Plotly.react($("explainPlot"), [trace], layout, { responsive: true, displaylogo: false });
       $("explainNote").textContent = exp.note;
     }
@@ -838,7 +1400,7 @@
       const streamName = $("streamSelect").value;
       if (streamName === "Upload CSV" && !state.csvBytes) {
         $("statusCard").classList.remove("error-banner");
-        $("statusText").textContent = "Select a local CSV file (numeric columns + optional binary label column) to evaluate.";
+        $("statusText").textContent = "Select a local CSV file (numeric columns plus optional binary label column) to evaluate.";
         return;
       }
 
@@ -861,11 +1423,7 @@
           injected: state.injected,
           inspect_step: state.inspectStep,
         }));
-        if (state.csvBytes) {
-          py.globals.set("_csv_u8", state.csvBytes);
-        } else {
-          py.globals.set("_csv_u8", null);
-        }
+        py.globals.set("_csv_u8", state.csvBytes || null);
 
         const outJson = py.runPython(`
 import json
@@ -915,6 +1473,10 @@ engine.run_playground_json(
     }
 
     function wireUI() {
+      syncDetectorRowStyles();
+      syncCalibrationControls();
+      syncInjectionButtons();
+
       $("streamSelect").addEventListener("change", () => {
         state.injected = [];
         state.inspectStep = null;
@@ -949,7 +1511,10 @@ engine.run_playground_json(
       });
 
       document.querySelectorAll('input[name="calibrator"]').forEach((rb) => {
-        rb.addEventListener("change", () => evaluate());
+        rb.addEventListener("change", () => {
+          syncCalibrationControls();
+          evaluate();
+        });
       });
 
       $("thresholdSlider").addEventListener("input", () => {
@@ -1004,7 +1569,7 @@ engine.run_playground_json(
           $("copyCodeBtn").textContent = "Copied";
           setTimeout(() => { $("copyCodeBtn").textContent = "Copy"; }, 1400);
         } catch {
-          $("copyCodeBtn").textContent = "Select & Copy";
+          $("copyCodeBtn").textContent = "Select manually";
         }
       });
     }
@@ -1012,7 +1577,7 @@ engine.run_playground_json(
     async function boot() {
       wireUI();
       try {
-        setBootProgress(15, "Loading Pyodide 0.27.5 & fetching playground files...");
+        setBootProgress(15, "Loading Pyodide 0.27.5 and fetching playground files...");
         const pyodidePromise = loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/" });
         const assetsPromise = Promise.all([
           fetch("./engine.py").then((r) => { if (!r.ok) throw new Error(`Failed to fetch engine.py (${r.status})`); return r.text(); }),
@@ -1025,7 +1590,7 @@ engine.run_playground_json(
         const [pyodide, [engineCode, taxiCsv, nabWindows, arrhythmiaBuf, manifest]] = await Promise.all([pyodidePromise, assetsPromise]);
         state.pyodide = pyodide;
 
-        setBootProgress(45, "Mounting bundled NAB & ODDS datasets in WebAssembly FS...");
+        setBootProgress(45, "Mounting bundled NAB and ODDS datasets in WebAssembly FS...");
         pyodide.FS.mkdirTree("/home/pyodide/data/nab/realKnownCause");
         pyodide.FS.writeFile("/home/pyodide/engine.py", engineCode);
         if (taxiCsv) pyodide.FS.writeFile("/home/pyodide/data/nab/realKnownCause/nyc_taxi.csv", taxiCsv);
@@ -1050,18 +1615,21 @@ else:
 import engine
         `);
 
-        setBootProgress(96, "Running initial live PySAD comparison...");
+        setBootProgress(96, "Running initial benchmark-ranked PySAD comparison...");
         state.ready = true;
         setControlsEnabled(true);
         await evaluate();
         setBootProgress(100, "Ready");
         $("bootBar").classList.add("hidden");
+        $("runtimeDot").classList.add("ready");
         window.__pysadPlaygroundReady = true;
       } catch (err) {
         $("bootStatus").textContent = `Initialization failed: ${err.message || String(err)}`;
         $("bootBar").classList.add("error-banner");
         $("statusCard").classList.add("error-banner");
         $("statusText").textContent = `Failed to initialize PySAD playground: ${err.message || String(err)}`;
+        $("runtimeDot").classList.add("error");
+        $("runtimeLabel").textContent = "Pyodide WebAssembly (initialization failed)";
       }
     }
 

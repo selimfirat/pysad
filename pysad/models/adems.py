@@ -6,6 +6,19 @@ from scipy.linalg import norm
 
 from pysad.core.base_model import BaseModel
 
+__bibtex__ = r"""
+@article{huang2015streaming,
+  title={Streaming anomaly detection using randomized matrix sketching},
+  author={Huang, Hao and Kasiviswanathan, Shiva Prasad},
+  journal={Proceedings of the VLDB Endowment},
+  volume={9},
+  number={3},
+  pages={192--203},
+  year={2015},
+  doi={10.14778/2850583.2850593}
+}
+"""
+
 
 class ADeMS(BaseModel):
     """Scores each instance by how badly a Frequent Directions sketch of the earlier normal instances reconstructs it :cite:`huang2015streaming`.

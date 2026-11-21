@@ -967,4 +967,31 @@ MemStream trains a denoising autoencoder on a small normal calibration block, th
 .. literalinclude:: ../examples/example_memstream.py
    :language: python
 
+Kafka/Redpanda consumer worker
+------------------------------
+
+This recipe shows a streaming anomaly detection worker that consumes JSON messages from a Kafka or Redpanda topic, scores each point with LODA before learning from it, and periodically checkpoints the model state to disk using pickle (zero external dependencies). It resumes from the latest checkpoint on restart. If Kafka is not available, it falls back to a synthetic stream so it runs anywhere for demonstration.
+
+.. literalinclude:: ../examples/example_kafka_consumer.py
+   :language: python
+
+It prints (when Kafka is unavailable and the synthetic fallback runs):
+
+.. code-block:: text
+
+   No checkpoint found, starting fresh.
+   Kafka not available (confluent-kafka not installed or brokers unreachable).
+   Running synthetic stream with 1000 points...
+     [100] score=1.6280 label=0 AUROC=N/A (single class so far)
+     [200] score=1.6046 label=0 AUROC=N/A (single class so far)
+     [300] score=2.2207 label=0 AUROC=N/A (single class so far)
+     [400] score=1.5719 label=0 AUROC=0.989
+     [500] score=1.8456 label=1 AUROC=0.753
+     [600] score=1.4624 label=0 AUROC=0.819
+     [700] score=3.2501 label=1 AUROC=0.818
+     [800] score=1.8571 label=0 AUROC=0.835
+     [900] score=2.1205 label=0 AUROC=0.837
+     [1000] score=2.1387 label=0 AUROC=0.839
+   Finished synthetic stream. Final AUROC: 0.839
+
 .. auto-examples::

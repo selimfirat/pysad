@@ -283,6 +283,7 @@ def short_stream_params(name: str, num_features: int = 3) -> dict[str, Any]:
             "warmup_windows": 2,
             "ema_alpha": 0.1,
         },
+        "ZeroShotEmbeddingDetector": {"semantic_anchors": np.random.RandomState(0).rand(10, 3)},
     }
     if name in params:
         return params[name]

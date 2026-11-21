@@ -61,6 +61,7 @@ from .streaming_autoregressive import StreamingAutoregressiveDetector
 from .teda import TEDA
 from .thresh_leap import ThreshLEAP
 from .xstream import xStream
+from .zero_shot_embedding_detector import ZeroShotEmbeddingDetector
 
 __all__ = [
     "ADeMS",
@@ -125,4 +126,5 @@ __all__ = [
     "TEDA",
     "ThreshLEAP",
     "xStream",
+    "ZeroShotEmbeddingDetector",
 ]

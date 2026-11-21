@@ -43,6 +43,7 @@ KNOWN_FAILURES = {
         "Model requires pre-trained foundation model weights for effective anomaly detection; "
         "randomly initialized weights do not produce meaningful embeddings for this test stream."
     ),
+    "ZeroShotEmbeddingDetector": "Zero-shot detector requires meaningful anchors; random anchors don't match test stream structure.",
 }
 
 
@@ -173,6 +174,18 @@ def _model_params(model_name, X):
                 ZScorePostprocessor(window_size=WARMUP),
                 ConformalProbabilityCalibrator(window_size=WARMUP),
             ],
+        },
+        "FoundationFeatureDetector": {
+            "model_name": "patchtst",
+            "model_size": "small",
+            "context_length": 16,
+            "patch_length": 4,
+            "patch_stride": 2,
+            "warmup_windows": 2,
+            "ema_alpha": 0.1,
+        },
+        "ZeroShotEmbeddingDetector": {
+            "semantic_anchors": np.random.RandomState(SEED).rand(10, NUM_FEATURES)
         },
     }
 

@@ -248,6 +248,8 @@ module = [
     "pysad.transform",
     "pysad.transform.*",
     "pysad.utils.window",
+    "pysad.integrations",
+    "pysad.integrations.*",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true

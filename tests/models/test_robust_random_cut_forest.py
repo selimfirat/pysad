@@ -192,3 +192,111 @@ def test_rrcf_high_dimensional_and_boundary_cuts():
     outlier_score = model.score_partial(outlier)
     normal_score = model.score_partial(np.zeros(d))
     assert outlier_score > normal_score
+
+
+def test_rrcf_score_explain_partial_returns_score_and_shap():
+    import numpy as np
+
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in np.random.RandomState(0).rand(40, 2):
+        model.fit_partial(x)
+
+    score, shap = model.score_explain_partial(np.random.RandomState(1).rand(2))
+
+    assert isinstance(score, float)
+    # SHAP values are in shingled space: shingle_size * num_features = 2 * 2 = 4
+    assert shap.shape == (4,)
+    assert shap.dtype == np.float64
+
+
+def test_rrcf_score_explain_partial_does_not_change_state():
+    import numpy as np
+
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in np.random.RandomState(0).rand(40, 2):
+        model.fit_partial(x)
+
+    test_x = np.random.RandomState(1).rand(2)
+    # score_explain_partial should not change the model's RNG state
+    rng_state_before = model.rng.get_state()
+    score1, _ = model.score_explain_partial(test_x)
+    rng_state_after = model.rng.get_state()
+    assert rng_state_before[1].tobytes() == rng_state_after[1].tobytes()
+    # Calling it again with the same RNG state should give the same score
+    score2, _ = model.score_explain_partial(test_x)
+    assert score1 == score2
+
+
+def test_rrcf_score_explain_partial_is_reproducible():
+    import numpy as np
+
+    from pysad.models import RobustRandomCutForest
+
+    X = np.random.RandomState(0).rand(40, 2)
+    test_x = np.random.RandomState(1).rand(2)
+
+    model_a = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in X:
+        model_a.fit_partial(x)
+    score_a, shap_a = model_a.score_explain_partial(test_x)
+
+    model_b = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in X:
+        model_b.fit_partial(x)
+    score_b, shap_b = model_b.score_explain_partial(test_x)
+
+    assert score_a == score_b
+    np.testing.assert_array_equal(shap_a, shap_b)
+
+
+def test_rrcf_score_explain_partial_shap_depends_on_instance():
+    import numpy as np
+
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in np.random.RandomState(0).rand(40, 2):
+        model.fit_partial(x)
+
+    normal_score, normal_shap = model.score_explain_partial(np.random.RandomState(1).rand(2))
+    outside_score, outside_shap = model.score_explain_partial(np.array([100.0, -50.0]))
+
+    assert normal_score != outside_score
+    assert not np.allclose(normal_shap, outside_shap)
+
+
+def test_rrcf_score_explain_partial_returns_zeros_before_shingle():
+    import numpy as np
+
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=4, shingle_size=3, tree_size=16, random_state=0)
+    # Fit fewer than shingle_size instances
+    for _ in range(2):
+        model.fit_partial(np.random.RandomState(0).rand(2))
+
+    score, shap = model.score_explain_partial(np.random.RandomState(1).rand(2))
+
+    assert score == 0.0
+    assert shap.shape == (6,)  # shingle_size * num_features = 3 * 2 = 6
+    assert np.all(shap == 0.0)
+
+
+def test_rrcf_score_explain_partial_rejects_nan():
+    import numpy as np
+    import pytest
+
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in np.random.RandomState(0).rand(40, 2):
+        model.fit_partial(x)
+
+    anomalous = np.array([0.3, 0.6])
+    anomalous[1] = np.nan
+    with pytest.raises(ValueError, match="RobustRandomCutForest does not accept NaN values"):
+        model.score_explain_partial(anomalous)

@@ -219,7 +219,7 @@ class xStream(BaseModel):
         score = self.score_partial(X)
 
         if self.step == 0:
-            return score, np.zeros(self.hs_chains.nchains, dtype=np.float64)
+            return score, np.zeros(self.streamhash.n_components, dtype=np.float64)
 
         # Project the instance
         projected = self.streamhash.fit_transform_partial(x).reshape(1, -1)[0]
@@ -253,7 +253,7 @@ class xStream(BaseModel):
             trees_left,
             trees_right,
             trees_values,
-            self.hs_chains.nchains,  # num_features in projected space = nchains? No, it's num_components
+            len(projected),
             trees_left_fractions=trees_left_fractions,
         )
 

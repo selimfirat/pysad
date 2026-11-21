@@ -208,3 +208,107 @@ def test_loda_subnormal_difference_does_not_hang():
     model = LODA(num_bins=10, num_random_cuts=5, random_state=0)
     assert np.isfinite(model.fit_score_partial(np.array([0.0])))
     assert np.isfinite(model.fit_score_partial(np.array([5e-324])))
+
+
+def test_loda_score_explain_partial_returns_score_and_t_stats():
+    import numpy as np
+
+    from pysad.models import LODA
+    from pysad.utils import fix_seed
+
+    fix_seed(61)
+    X = np.random.randn(200, 5)
+    model = LODA(num_bins=5, num_random_cuts=20, random_state=61).fit(X[:100])
+
+    score, t_stats = model.score_explain_partial(X[101])
+
+    assert isinstance(score, float)
+    assert t_stats.shape == (5,)
+    assert t_stats.dtype == np.float64
+
+
+def test_loda_score_explain_partial_does_not_change_state():
+    import numpy as np
+
+    from pysad.models import LODA
+    from pysad.utils import fix_seed
+
+    fix_seed(61)
+    X = np.random.randn(200, 5)
+    model = LODA(num_bins=5, num_random_cuts=20, random_state=61).fit(X[:100])
+
+    before = model.score_partial(X[101])
+    score, _ = model.score_explain_partial(X[101])
+    after = model.score_partial(X[101])
+
+    assert before == after
+    assert score == before
+
+
+def test_loda_score_explain_partial_is_reproducible():
+    import numpy as np
+
+    from pysad.models import LODA
+    from pysad.utils import fix_seed
+
+    fix_seed(61)
+    X = np.random.randn(200, 5)
+
+    model_a = LODA(num_bins=5, num_random_cuts=20, random_state=61)
+    model_a.fit(X[:100])
+    score_a, t_stats_a = model_a.score_explain_partial(X[101])
+
+    model_b = LODA(num_bins=5, num_random_cuts=20, random_state=61)
+    model_b.fit(X[:100])
+    score_b, t_stats_b = model_b.score_explain_partial(X[101])
+
+    assert score_a == score_b
+    np.testing.assert_array_equal(t_stats_a, t_stats_b)
+
+
+def test_loda_score_explain_partial_t_stats_depend_on_instance():
+    import numpy as np
+
+    from pysad.models import LODA
+    from pysad.utils import fix_seed
+
+    fix_seed(61)
+    X = np.random.randn(200, 5)
+    model = LODA(num_bins=5, num_random_cuts=20, random_state=61).fit(X[:100])
+
+    normal_score, normal_t = model.score_explain_partial(X[101])
+    shifted = X[101].copy()
+    shifted[0] += 8.0
+    shifted_score, shifted_t = model.score_explain_partial(shifted)
+
+    assert normal_score != shifted_score
+    assert not np.allclose(normal_t, shifted_t, equal_nan=True)
+
+
+def test_loda_score_explain_partial_returns_score_and_t_stats_before_fit():
+    import numpy as np
+
+    from pysad.models import LODA
+
+    model = LODA(num_bins=5, num_random_cuts=10, random_state=0)
+    score, t_stats = model.score_explain_partial(np.array([0.3, 0.6, 0.1, 0.5, 0.2]))
+
+    assert isinstance(score, float)
+    assert t_stats.shape == (5,)
+    assert t_stats.dtype == np.float64
+
+
+def test_loda_score_explain_partial_rejects_nan():
+    import numpy as np
+    import pytest
+
+    from pysad.models import LODA
+    from pysad.utils import fix_seed
+
+    fix_seed(61)
+    model = LODA(num_bins=5, num_random_cuts=20, random_state=61).fit(np.random.randn(200, 5))
+
+    anomalous = np.array([0.3, 0.6, 0.1, 0.5, 0.2])
+    anomalous[1] = np.nan
+    with pytest.raises(ValueError, match="LODA does not accept NaN values"):
+        model.score_explain_partial(anomalous)

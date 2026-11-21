@@ -792,11 +792,13 @@ class RobustRandomCutForest(BaseModel):
 
         Like ``score_partial``, it does not update the model or record the instance. Before
         the first shingle is fitted, the method returns 0.0 and zeros of shape
-        ``(num_features,)``.
+        ``(shingle_size * num_features,)``.
 
         Note: The explanation uses the current tree structure without the random cuts that
         ``score_partial`` draws during hypothetical insertion. The SHAP values approximate
-        the feature contributions to the CoDisp-based anomaly score.
+        the feature contributions to the CoDisp-based anomaly score. The explanation operates
+        in the shingled feature space (shape ``shingle_size * num_features``), not the original
+        feature space.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score and explain.
@@ -804,9 +806,9 @@ class RobustRandomCutForest(BaseModel):
         Returns:
             tuple: (score, shap_values) where
                 score (float): The anomalousness score of the input instance (from ``score_partial``).
-                shap_values (np.float64 array of shape (num_features,)): SHAP values, one per
-                feature. Positive values mean the feature increases the anomaly score
-                (more anomalous), negative values mean it decreases the anomaly score
+                shap_values (np.float64 array of shape (shingle_size * num_features,)): SHAP values
+                in the shingled feature space. Positive values mean the feature increases the
+                anomaly score (more anomalous), negative values mean it decreases the anomaly score
                 (more normal). Returns zeros before any shingle is fitted.
 
         Raises:

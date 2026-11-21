@@ -63,7 +63,11 @@ class MedianAbsoluteDeviation(BaseModel):
             X (np.float64 array of shape (1,)): The instance to score. This model is univariate.
 
         Returns:
-            float: The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance. Higher scores represent
+                more anomalous instances when ``absolute`` is ``True``; when ``absolute`` is
+                ``False``, positive scores indicate the instance is above the median and negative
+                scores indicate it is below, with higher absolute values indicating more
+                anomalous behavior.
         """
         if not self._sorted:  # there is no median before the first value
             return 0.0

@@ -294,6 +294,7 @@ class SeasonalESD(BaseModel):
 
         Returns:
             float: The ESD test statistic of ``X`` if the test flags it as an anomaly, else 0.0.
+            Higher scores represent more anomalous instances.
         """
         value = self._as_value(X)
         if len(self._window) + 1 < self.window_size:

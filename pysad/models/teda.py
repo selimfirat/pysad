@@ -79,7 +79,9 @@ class TEDA(BaseModel):
             X (np.float64 array of shape (num_features,)): The instance to score.
 
         Returns:
-            float: The squared distance of the instance to the mean, divided by the variance. A score above :math:`m^2` means that the paper flags the instance with the threshold :math:`m`.
+            float: The squared distance of the instance to the mean, divided by the variance.
+            A score above :math:`m^2` means that the paper flags the instance with the threshold
+            :math:`m`. Higher scores represent more anomalous instances.
         """
         _, _, variance, sq_dist = self._updated(X)
 

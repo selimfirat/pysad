@@ -230,7 +230,8 @@ class SAND(BaseModel):
             X (np.float64 array of shape (1,)): The instance to score. This model is univariate.
 
         Returns:
-            float: The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance. Higher scores represent
+                more anomalous instances.
         """
         value = check_univariate(X, "SAND")
         if self.centroids_ is None:

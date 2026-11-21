@@ -130,7 +130,8 @@ class LocalPolynomialDetector(BaseModel):
 
         Returns:
             float: The squared prediction error. Returns 0.0 if the window has fewer
-                than degree + 2 points or the polynomial is not yet fitted.
+                than degree + 2 points or the polynomial is not yet fitted. Higher scores
+                represent more anomalous instances.
         """
         x = check_univariate(X, "LocalPolynomialDetector")
         if self._window.count < self.degree + 2 or self._coeffs is None:

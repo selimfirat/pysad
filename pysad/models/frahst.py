@@ -166,7 +166,8 @@ class FRAHST(BaseModel):
             X (np.ndarray): Input with shape (num_features,).
 
         Returns:
-            float: One for an unsuppressed rank increase, otherwise zero.
+            float: Decision score: ``1.0`` for an unsuppressed rank increase, otherwise ``0.0``.
+                Higher scores indicate more anomalous rank behavior.
         """
         if self.basis_ is None or self.count_ + 1 <= self.last_increase_ + 1:
             return 0.0

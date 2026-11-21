@@ -172,10 +172,13 @@ class HTM(BaseModel):
         """Scores the next instance with the predictions of the earlier instances.
 
         Args:
-            X (np.float64 array of shape (2,)): The timestamp in seconds since the Unix epoch and the value.
+            X (np.float64 array of shape (2,)): The timestamp in seconds since the Unix epoch
+                and the value.
 
         Returns:
-            float: The anomaly likelihood of the instance, its raw anomaly score if ``likelihood`` is False, or 1.0 for a spatial anomaly.
+            float: The anomaly likelihood of the instance, its raw anomaly score if
+                ``likelihood`` is ``False``, or ``1.0`` for a spatial anomaly. Higher
+                scores represent more anomalous instances.
         """
         timestamp, value = X
         if self.value_min_ is not None and self.value_max_ is not None:

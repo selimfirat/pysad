@@ -96,7 +96,7 @@
 
 #### 融入现有机器学习栈
 
-通过 `ReferenceWindowModel` 在滑动窗口上运行任意 [PyOD](https://github.com/yzhao062/pyod) 批处理检测器，通过 `RiverAnomalyDetector` / `SklearnAnomalyDetector` 嵌入 [River](https://github.com/online-ml/river) 或 scikit-learn 流水线，或通过 `PredictiveAnomalyDetector` 为 River 预测器打分。
+通过 `ReferenceWindowModel` 在滑动窗口上运行任意 [PyOD](https://github.com/yzhao062/pyod) 批处理检测器，通过 `PySADToRiverAdapter` / `PySADToScikitLearnAdapter` 嵌入 [River](https://github.com/online-ml/river) 或 scikit-learn 流水线，或通过 `PredictiveAnomalyDetector` 为 River 预测器打分。
 
 </td>
 </tr>
@@ -223,7 +223,7 @@ for x in ArrayStreamer().iter(X[100:]):
     score = model.fit_score_partial(x)
 ```
 
-PySAD 还提供 `RiverAnomalyDetector` 与 `PredictiveAnomalyDetector` 以接入 [River](https://github.com/online-ml/river) 流水线，以及 `SklearnAnomalyDetector` 以接入 [scikit-learn](https://scikit-learn.org/) 流水线。更多完整流程请参阅[入门教程](https://pysad.readthedocs.io/en/stable/getting_started.html)、[操作指南](https://pysad.readthedocs.io/en/stable/guides/index.html)与[API 参考](https://pysad.readthedocs.io/en/stable/api.html)。
+PySAD 还提供 `PySADToRiverAdapter` 与 `PredictiveAnomalyDetector` 以接入 [River](https://github.com/online-ml/river) 流水线，以及 `PySADToScikitLearnAdapter` 以接入 [scikit-learn](https://scikit-learn.org/) 流水线。更多完整流程请参阅[入门教程](https://pysad.readthedocs.io/en/stable/getting_started.html)、[操作指南](https://pysad.readthedocs.io/en/stable/guides/index.html)与[API 参考](https://pysad.readthedocs.io/en/stable/api.html)。
 
 ## 基准测试与库对比
 
@@ -353,7 +353,7 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | 后处理 | 累计及窗口化的分数均值、最大值、中位数、z 分数，`DynamicThresholdPostprocessor`（Telemanom），`ThresholdFilter`，`QuantileFilter` |
 | 校准 | `AnomalyLikelihoodProbabilityCalibrator`、`ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |
 | 组合与漂移 | `StreamPipeline`（`\|`）、`ModelEnsemble`（`&`，含 5 种分数集成器）、`DriftAdaptiveDetector` 以及 10 种漂移检测器（`ADWINMeter`、`PageHinkleyMeter`、`KSWINMeter`、`DDMMeter`、`EDDMMeter`、`FHDDMMeter`、`HDDMAMeter`、`HDDMWMeter`） |
-| 生态集成 | `ReferenceWindowModel`、`OneFitModel`（PyOD），`RiverAnomalyDetector`、`PredictiveAnomalyDetector`（River），`SklearnAnomalyDetector`（scikit-learn） |
+| 生态集成 | `ReferenceWindowModel`、`OneFitModel`（PyOD），`PySADToRiverAdapter`、`PredictiveAnomalyDetector`（River），`PySADToScikitLearnAdapter`（scikit-learn） |
 | 评估与可视化 | `evaluate_stream`、`AUROCMetric`、`AUPRMetric`、`PrecisionMetric`、`RecallMetric`、`WindowedMetric`、`RollingMetric`、`plot_stream` |
 | 流式数据与统计量 | `ArrayStreamer`、`PandasStreamer`、`PolarsStreamer`、`CSVStreamer`、`Data`（17 个 ODDS 数据集、58 条 NAB 序列、ULB 信用卡欺诈），以及在线统计量（`AverageMeter`、`VarianceMeter`、`DDSketchMeter`、`OnlinePeriodicityMeter` 等） |
 

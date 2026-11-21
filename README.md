@@ -96,7 +96,7 @@ Chain preprocessing, projections, log parsing (`DrainLogParser`), detection, pos
 
 #### Fits your existing ML stack
 
-Wrap any [PyOD](https://github.com/yzhao062/pyod) detector on a sliding window (`ReferenceWindowModel`), drop PySAD detectors into [River](https://github.com/online-ml/river) (`RiverAnomalyDetector`) or scikit-learn (`SklearnAnomalyDetector`) pipelines, or score River forecasters (`PredictiveAnomalyDetector`).
+Wrap any [PyOD](https://github.com/yzhao062/pyod) detector on a sliding window (`ReferenceWindowModel`), drop PySAD detectors into [River](https://github.com/online-ml/river) (`PySADToRiverAdapter`) or scikit-learn (`PySADToScikitLearnAdapter`) pipelines, or score River forecasters (`PredictiveAnomalyDetector`).
 
 </td>
 </tr>
@@ -223,7 +223,7 @@ for x in ArrayStreamer().iter(X[100:]):
     score = model.fit_score_partial(x)
 ```
 
-PySAD also provides `RiverAnomalyDetector` and `PredictiveAnomalyDetector` for [River](https://github.com/online-ml/river) pipelines, and `SklearnAnomalyDetector` for [scikit-learn](https://scikit-learn.org/) pipelines. Follow the [getting started tutorial](https://pysad.readthedocs.io/en/stable/getting_started.html), [how-to guides](https://pysad.readthedocs.io/en/stable/guides/index.html), and [API reference](https://pysad.readthedocs.io/en/stable/api.html) for full workflows.
+PySAD also provides `PySADToRiverAdapter` and `PredictiveAnomalyDetector` for [River](https://github.com/online-ml/river) pipelines, and `PySADToScikitLearnAdapter` for [scikit-learn](https://scikit-learn.org/) pipelines. Follow the [getting started tutorial](https://pysad.readthedocs.io/en/stable/getting_started.html), [how-to guides](https://pysad.readthedocs.io/en/stable/guides/index.html), and [API reference](https://pysad.readthedocs.io/en/stable/api.html) for full workflows.
 
 ## Benchmarks & library comparisons
 
@@ -353,7 +353,7 @@ These starting points come from the design of each method. They are not benchmar
 | Postprocessing | Running and windowed average, max, median and z-score of scores, `DynamicThresholdPostprocessor` (Telemanom), `ThresholdFilter`, `QuantileFilter` |
 | Calibration | `AnomalyLikelihoodProbabilityCalibrator`, `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
 | Composition & Drift | `StreamPipeline` (`\|`), `ModelEnsemble` (`&`) with 5 score ensemblers (`Average`, `Maximum`, `Median`, `AOM`, `MOA`), `DriftAdaptiveDetector`, and 10 drift meters (`ADWINMeter`, `PageHinkleyMeter`, `KSWINMeter`, `DDMMeter`, `EDDMMeter`, `FHDDMMeter`, `HDDMAMeter`, `HDDMWMeter`) |
-| Integrations | `ReferenceWindowModel`, `OneFitModel` (PyOD), `RiverAnomalyDetector`, `PredictiveAnomalyDetector` (River), `SklearnAnomalyDetector` (scikit-learn) |
+| Integrations | `ReferenceWindowModel`, `OneFitModel` (PyOD), `PySADToRiverAdapter`, `PredictiveAnomalyDetector` (River), `PySADToScikitLearnAdapter` (scikit-learn) |
 | Evaluation & Plotting | `evaluate_stream`, `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric`, `RollingMetric`, `plot_stream` |
 | Streaming data & Stats | `ArrayStreamer`, `PandasStreamer`, `PolarsStreamer`, `CSVStreamer`, `Data` (17 labeled ODDS datasets, 58 NAB series, ULB credit-card fraud), and running statistics (`AverageMeter`, `VarianceMeter`, `DDSketchMeter`, `OnlinePeriodicityMeter`, etc.) |
 

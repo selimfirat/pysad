@@ -57,7 +57,7 @@ Yes. :class:`~pysad.integrations.ReferenceWindowModel` trains a PyOD detector on
 Does PySAD work with scikit-learn or River?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use :class:`~pysad.integrations.SklearnAnomalyDetector` to score batches with a fitted PySAD model in a scikit-learn ``Pipeline``.
+Use :class:`~pysad.integrations.PySADToScikitLearnAdapter` to score batches with a fitted PySAD model in a scikit-learn ``Pipeline``.
 Its ``fit`` method does not train the model. It supports fitted inference, not ``GridSearchCV``.
 ``score_samples`` returns negative PySAD scores, so lower values mean more anomalous instances.
 Set ``threshold`` in PySAD score units for ``decision_function`` and ``predict``.
@@ -84,7 +84,7 @@ To use a scikit-learn transformer, fit it to historical data. Then transform eac
        x = scaler.transform(x.reshape(1, -1))[0]  # one row in, one row out
        score = model.fit_score_partial(x)
 
-Use :class:`~pysad.integrations.RiverAnomalyDetector` to run a PySAD detector in a River pipeline.
+Use :class:`~pysad.integrations.PySADToRiverAdapter` to run a PySAD detector in a River pipeline.
 It maps feature dictionaries to arrays in a fixed feature order. For the stages that PySAD has for each point, see :doc:`guides/pipelines`. To score a univariate stream by the forecast errors of a River forecaster, wrap the forecaster in :class:`~pysad.integrations.PredictiveAnomalyDetector`.
 
 .. _faq-input:

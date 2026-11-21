@@ -8,11 +8,11 @@ pytest.importorskip("river", minversion="0.26.1")
 
 
 def test_scores_match_pysad_before_learning():
-    from pysad.integrations import RiverAnomalyDetector
+    from pysad.integrations import PySADToRiverAdapter
     from pysad.models import StandardAbsoluteDeviation
 
     direct = StandardAbsoluteDeviation()
-    detector = RiverAnomalyDetector(StandardAbsoluteDeviation)
+    detector = PySADToRiverAdapter(StandardAbsoluteDeviation)
     wrapped = detector.model_
     for value in [1.0, 3.0, 2.0, 10.0, -5.0]:
         expected = direct.fit_score_partial(np.array([value]))
@@ -27,10 +27,10 @@ def test_scores_match_pysad_before_learning():
 @pytest.mark.parametrize("first_method", ["score_one", "learn_one"])
 @pytest.mark.parametrize("feature_names", [None, ("b", 1)])
 def test_dictionary_order_does_not_change_feature_positions(first_method, feature_names):
-    from pysad.integrations import RiverAnomalyDetector
+    from pysad.integrations import PySADToRiverAdapter
     from pysad.models import LODA
 
-    detector = RiverAnomalyDetector(partial(LODA, random_state=42), feature_names=feature_names)
+    detector = PySADToRiverAdapter(partial(LODA, random_state=42), feature_names=feature_names)
     direct = LODA(random_state=42)
     getattr(detector, first_method)({"b": 2.0, 1: 10.0})
     if first_method == "learn_one":
@@ -44,11 +44,11 @@ def test_dictionary_order_does_not_change_feature_positions(first_method, featur
 
 
 def test_explicit_order_matches_model_columns():
-    from pysad.integrations import RiverAnomalyDetector
+    from pysad.integrations import PySADToRiverAdapter
     from pysad.models import LODA
 
     model = LODA(random_state=42).fit(np.array([[2.0, 10.0], [4.0, 11.0], [1.0, 13.0]]))
-    detector = RiverAnomalyDetector(partial(LODA, random_state=42), feature_names=("b", "a"))
+    detector = PySADToRiverAdapter(partial(LODA, random_state=42), feature_names=("b", "a"))
     for b, a in [(2.0, 10.0), (4.0, 11.0), (1.0, 13.0)]:
         detector.learn_one({"a": a, "b": b})
     assert detector.score_one({"a": 20.0, "b": 10.0}) == model.score_partial(np.array([10.0, 20.0]))
@@ -57,10 +57,10 @@ def test_explicit_order_matches_model_columns():
 @pytest.mark.parametrize("method", ["score_one", "learn_one"])
 @pytest.mark.parametrize("x", [{"a": 2.0}, {"a": 2.0, "c": 1.0}, {"a": 2.0, "b": 1.0, "c": 3.0}])
 def test_changed_feature_sets_are_rejected(method, x):
-    from pysad.integrations import RiverAnomalyDetector
+    from pysad.integrations import PySADToRiverAdapter
     from pysad.models import LODA
 
-    detector = RiverAnomalyDetector(partial(LODA, random_state=42))
+    detector = PySADToRiverAdapter(partial(LODA, random_state=42))
     detector.learn_one({"a": 1.0, "b": 2.0})
     original = pickle.loads(pickle.dumps(detector))
     with pytest.raises(ValueError, match="feature"):
@@ -69,20 +69,20 @@ def test_changed_feature_sets_are_rejected(method, x):
 
 
 def test_duplicate_feature_names_are_rejected():
-    from pysad.integrations import RiverAnomalyDetector
+    from pysad.integrations import PySADToRiverAdapter
     from pysad.models import NullModel
 
     with pytest.raises(ValueError, match="feature_names"):
-        RiverAnomalyDetector(NullModel, feature_names=("a", "a"))
+        PySADToRiverAdapter(NullModel, feature_names=("a", "a"))
 
 
 def test_river_pipeline_scores_before_learning_and_survives_pickling():
     from river import base, preprocessing
 
-    from pysad.integrations import RiverAnomalyDetector
+    from pysad.integrations import PySADToRiverAdapter
     from pysad.models import StandardAbsoluteDeviation
 
-    detector = RiverAnomalyDetector(StandardAbsoluteDeviation)
+    detector = PySADToRiverAdapter(StandardAbsoluteDeviation)
     assert isinstance(detector, base.AnomalyDetector)
     pipeline = preprocessing.StandardScaler() | detector
     direct = StandardAbsoluteDeviation()
@@ -108,11 +108,11 @@ def test_river_pipeline_scores_before_learning_and_survives_pickling():
 def test_default_clone_is_untrained(pipeline):
     from river import preprocessing
 
-    from pysad.integrations import RiverAnomalyDetector
+    from pysad.integrations import PySADToRiverAdapter
     from pysad.models import StandardAbsoluteDeviation
 
-    detector = RiverAnomalyDetector(StandardAbsoluteDeviation)
-    fresh = RiverAnomalyDetector(StandardAbsoluteDeviation)
+    detector = PySADToRiverAdapter(StandardAbsoluteDeviation)
+    fresh = PySADToRiverAdapter(StandardAbsoluteDeviation)
     if pipeline:
         detector = preprocessing.StandardScaler() | detector
         fresh = preprocessing.StandardScaler() | fresh
@@ -133,12 +133,12 @@ def test_default_clone_is_untrained(pipeline):
 def test_default_clone_resets_loda_with_configured_parameters(pipeline, feature_names):
     from river import preprocessing
 
-    from pysad.integrations import RiverAnomalyDetector
+    from pysad.integrations import PySADToRiverAdapter
     from pysad.models import LODA
 
     factory = partial(LODA, num_bins=6, num_random_cuts=11, random_state=42)
-    detector = RiverAnomalyDetector(factory, feature_names=feature_names)
-    fresh = RiverAnomalyDetector(factory, feature_names=feature_names)
+    detector = PySADToRiverAdapter(factory, feature_names=feature_names)
+    fresh = PySADToRiverAdapter(factory, feature_names=feature_names)
     if pipeline:
         detector = preprocessing.StandardScaler() | detector
         fresh = preprocessing.StandardScaler() | fresh
@@ -159,10 +159,10 @@ def test_default_clone_resets_loda_with_configured_parameters(pipeline, feature_
 def test_clone_with_attributes_preserves_scores_and_feature_order(pipeline, feature_names):
     from river import preprocessing
 
-    from pysad.integrations import RiverAnomalyDetector
+    from pysad.integrations import PySADToRiverAdapter
     from pysad.models import LODA
 
-    detector = RiverAnomalyDetector(partial(LODA, random_state=42), feature_names=feature_names)
+    detector = PySADToRiverAdapter(partial(LODA, random_state=42), feature_names=feature_names)
     if pipeline:
         detector = preprocessing.StandardScaler() | detector
     for b, a in [(2.0, 10.0), (4.0, 11.0), (1.0, 13.0)]:

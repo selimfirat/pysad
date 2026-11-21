@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from pysad.integrations import SklearnAnomalyDetector
+from pysad.integrations import PySADToScikitLearnAdapter
 from pysad.models import LODA
 from pysad.utils import Data
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     pipeline = Pipeline(
         steps=[
             ("scale", scaler),
-            ("detect", SklearnAnomalyDetector(model, threshold=threshold)),
+            ("detect", PySADToScikitLearnAdapter(model, threshold=threshold)),
         ]
     )
     scores = pipeline.score_samples(batch)

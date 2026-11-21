@@ -236,7 +236,7 @@ def test_rejects_negative_probationary_period():
 
 
 def test_forecaster_return_shape_validation():
-    """Forecaster returning wrong shape raises ValueError."""
+    """Forecaster returning wrong shape raises ValueError on buffer refill."""
 
     def bad_forecaster(context: np.ndarray, horizon: int) -> np.ndarray:
         return np.zeros(horizon + 1)  # Wrong shape
@@ -244,10 +244,9 @@ def test_forecaster_return_shape_validation():
     model = AmortizedBlockForecaster(bad_forecaster, context_length=3, horizon=2)
     model.fit_partial(np.array([1.0]))
     model.fit_partial(np.array([2.0]))
-    model.fit_partial(np.array([3.0]))
 
     with pytest.raises(ValueError, match="shape"):
-        model.fit_score_partial(np.array([4.0]))
+        model.fit_partial(np.array([3.0]))
 
 
 def test_known_sequence_with_linear_forecaster():

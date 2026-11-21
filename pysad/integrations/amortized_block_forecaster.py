@@ -8,6 +8,24 @@ import numpy as np
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _int_at_least, check_univariate
 
+__bibtex__ = """
+@inproceedings{ansari2024chronos,
+  title={Chronos: Learning the Language of Time Series},
+  author={Ansari, Abdul Fatir and Stella, Lorenzo and Turkmen, Caner and Zhang, Xiyuan and Mercado, Pedro and Shen, Huibin and Shchur, Oleksandr and Rangapuram, Syama Sundar and Pineda Arango, Sebastian and Kapoor, Shubham and Zschiegner, Jasper and Maddix, Danielle C. and Mahoney, Michael W. and Torkkola, Kari and Gordon Wilson, Andrew and Bohlke-Schneider, Michael and Wang, Yuyang},
+  booktitle={Proceedings of the 41st International Conference on Machine Learning},
+  year={2024},
+  url={https://openreview.net/forum?id=gerNCVqqtR}
+}
+
+@inproceedings{das2024timesfm,
+  title={A decoder-only foundation model for time-series forecasting},
+  author={Das, Abhimanyu and Kong, Weihao and Sen, Rajat and Zhou, Yichen},
+  booktitle={Proceedings of the 41st International Conference on Machine Learning},
+  year={2024},
+  url={https://arxiv.org/abs/2310.10688}
+}
+"""
+
 
 class AmortizedBlockForecaster(BaseModel):
     """Scores each value of a univariate stream by its deviation from the forecast of a foundation model forecaster,
@@ -87,8 +105,15 @@ class AmortizedBlockForecaster(BaseModel):
             )
         self._buffer_index = 0
 
+    def _is_active(self) -> bool:
+        """Returns True if the model is in the active scoring phase (past probationary period and context full)."""
+        return (
+            self.num_values_ >= self.probationary_period
+            and self._context_filled == self.context_length
+        )
+
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> AmortizedBlockForecaster:
-        """Updates the context window with the next value.
+        """Updates the context window with the next value and advances the forecast buffer.
 
         Args:
             X (np.float64 array of shape (1,)): The next univariate value.
@@ -98,44 +123,82 @@ class AmortizedBlockForecaster(BaseModel):
             object: The model itself.
         """
         x = check_univariate(X, "AmortizedBlockForecaster")
+
+        is_active_now = self.num_values_ >= self.probationary_period
+
         if self._context_filled < self.context_length:
             self._context[self._context_filled] = x
             self._context_filled += 1
+            if self._context_filled == self.context_length and is_active_now:
+                self._refill_buffer()
         else:
             self._context = np.roll(self._context, -1)
             self._context[-1] = x
+            if is_active_now:
+                if self._forecast_buffer is None:
+                    self._refill_buffer()
+                else:
+                    self._buffer_index += 1
+                    if self._buffer_index >= self.horizon:
+                        self._refill_buffer()
+
         self.num_values_ += 1
+
+        # After increment, if we just finished the probationary period and context is full,
+        # refill the buffer so the next score_partial uses a current forecast.
+        if (
+            self.num_values_ == self.probationary_period
+            and self._context_filled == self.context_length
+        ):
+            self._refill_buffer()
+
         return self
 
     def score_partial(self, X: np.ndarray) -> float:
-        """Scores the next value by its deviation from the forecast in the buffer.
+        """Scores the next value by its deviation from the forecast in the buffer (read-only).
 
         Args:
             X (np.float64 array of shape (1,)): The next univariate value. Higher scores represent
                 more anomalous values.
 
         Returns:
-            float: The anomalousness score of the input value, or 0.0 during the probationary period.
+            float: The anomalousness score of the input value, or 0.0 during the probationary period
+            or while the context window is filling.
         """
         value = check_univariate(X, "AmortizedBlockForecaster")
 
-        if self.num_values_ < self.probationary_period:
-            return 0.0
-
-        if self._context_filled < self.context_length:
+        if not self._is_active():
             return 0.0
 
         if self._forecast_buffer is None or self._buffer_index >= self.horizon:
-            self._refill_buffer()
+            return 0.0
 
-        forecast_buffer = self._forecast_buffer
-        assert forecast_buffer is not None
-        forecast = forecast_buffer[self._buffer_index]
-        self._buffer_index += 1
-
+        forecast = self._forecast_buffer[self._buffer_index]
         error = abs(value - forecast)
         if self.relative:
             if forecast == 0.0:
                 raise ZeroDivisionError("Forecast is zero; cannot compute relative error.")
             return float(error / abs(forecast))
         return float(error)
+
+    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+        """Scores the next instance with the model from earlier instances, then updates the model with it.
+
+        This override ensures atomic score-then-fit semantics: the score uses the current buffer position,
+        and the fit advances the buffer after updating the context.
+
+        Args:
+            X (np.float64 array of shape (1,)): The instance to fit and score.
+            y (int or None): The label of the instance (ignored).
+
+        Returns:
+            float: The anomalousness score of the input instance.
+        """
+        from pysad.core.base_model import _has_nan, _to_float_score
+
+        if _has_nan(X):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        score = self.score_partial(X)
+        self.fit_partial(X, y)
+        return score if type(score) is float else _to_float_score(score)

@@ -92,7 +92,7 @@ Preprocessors, projectors, postprocessors, ensemblers and calibrators follow the
 Calling only ``score_partial`` after training freezes the model while continuing to score new points.
 
 Higher means more anomalous
---------------------------
+---------------------------
 
 Higher values mean more anomalous points across all PySAD components: detectors, postprocessors, score ensemblers, and probability calibrators. The alert rule stays the same when components change: raise an alert at or above the threshold.
 

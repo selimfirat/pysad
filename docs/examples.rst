@@ -145,7 +145,7 @@ It prints:
      Number of anomaly groups: 13
 
 Compare detectors on a synthetic stream
---------------------------------------
+-----------------------------------------
 
 This script runs several detectors on the same synthetic stream and prints their AUROC scores.
 

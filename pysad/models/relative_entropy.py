@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -26,6 +26,8 @@ class RelativeEntropy(BaseModel):
         c_th (int): The paper's rarity threshold. A window that agrees with a hypothesis scores 1.0 if fewer than `c_th` earlier windows created or agreed with that hypothesis, so a new state keeps being flagged until it has recurred. The default `1`, as in NAB, never flags a window that agrees with a hypothesis. Counts go up once per tested window, so with the default `step=1` they count values rather than the paper's non-overlapping windows. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1 (Default=1).
         alpha (float): Significance level of the goodness-of-fit test. The threshold `T` is the `1 - alpha` quantile of the chi-squared distribution with `num_bins - 1` degrees of freedom, and a window agrees with a hypothesis when its test statistic is below `T`. The paper sets `T` at 0.95 or 0.99, i.e. `alpha=0.05` or `alpha=0.01` (the default, as in NAB). A larger `alpha` lowers `T`, so smaller changes in the distribution of the values are flagged. Treat it as a sensitivity setting rather than a false alarm rate: each hypothesis is learned from a single window, so a window drawn from the same distribution disagrees with it far more often than `alpha`. Must be a finite real number strictly between 0 and 1 (a NumPy number is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for other values (Default=0.01).
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "decision"
 
     def __init__(
         self,

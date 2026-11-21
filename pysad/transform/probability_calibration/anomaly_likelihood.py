@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -33,6 +33,8 @@ class AnomalyLikelihoodProbabilityCalibrator(BasePostprocessor):
     Raises:
         ValueError: If window_size is less than num_estimation_samples.
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
 
     def __init__(
         self,

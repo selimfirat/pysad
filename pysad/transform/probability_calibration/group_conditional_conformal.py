@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from bisect import bisect_left, insort
 from collections import OrderedDict
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -51,6 +51,8 @@ class GroupConditionalConformalCalibrator(BasePostprocessor):
         window_size (int): Scores kept per regime.
         max_regimes (int): Maximum number of regimes tracked at once.
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
 
     def __init__(self, window_size: int = 500, max_regimes: int = 64) -> None:
         if window_size < 1:

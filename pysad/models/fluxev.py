@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from collections import deque
+from typing import ClassVar
 
 import numpy as np
 
@@ -57,6 +58,8 @@ class FluxEV(BaseModel):
         alpha (float): EWMA weight in (0, 1] (Default=0.2).
         risk (float): Tail probability q in (0, 0.02) (Default=0.001).
     """
+
+    _has_decision_rule: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -195,3 +198,6 @@ class FluxEV(BaseModel):
             float: The nonnegative fluctuation S, or zero during the smoothing warmup.
         """
         return self._features(check_univariate(X, "FluxEV"))[2]
+
+    def _decide_from_score(self, score: float) -> int:
+        return 1 if score > self.threshold_ else 0

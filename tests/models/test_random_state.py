@@ -12,68 +12,11 @@ from tests.models.conftest import (
     TIMESTAMPED_MODELS,
     UNIVARIATE_MODELS,
     active_model_names,
+    num_features_for,
+    short_stream_params,
 )
 
 NUM_FEATURES = 3
-
-MODEL_PARAMS = {
-    "ApproxStorm": {
-        "window_size": 20,
-        "max_radius": 0.5,
-        "num_neighbors": 3,
-        "sample_fraction": 0.25,
-    },
-    "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.3},
-    "EXPoSE": {"num_random_features": 50},
-    "FeedbackHST": {
-        "feature_mins": [0.0] * NUM_FEATURES,
-        "feature_maxes": [1.0] * NUM_FEATURES,
-        "window_size": 10,
-        "num_trees": 4,
-        "max_depth": 4,
-        "feedback_budget": 10,
-    },
-    "HalfSpaceTrees": {
-        "feature_mins": [0.0] * NUM_FEATURES,
-        "feature_maxes": [1.0] * NUM_FEATURES,
-        "window_size": 10,
-        "num_trees": 4,
-        "max_depth": 4,
-    },
-    "HTM": {
-        "min_val": 0.0,
-        "max_val": 1.0,
-        "probationary_period": 15,
-        "num_columns": 64,
-        "num_cells_per_column": 4,
-    },
-    "IDKS": {
-        "input_shape": NUM_FEATURES,
-        "window_size": 20,
-        "num_samples": 4,
-        "num_partitions": 10,
-    },
-    "IForestASD": {"window_size": 20, "n_estimators": 5},
-    "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 16, "initial_size": 15},
-    # Short grace periods, so that the autoencoders are built and trained within the data.
-    "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 15},
-    "LODA": {"num_random_cuts": 10},
-    "MIDAS": {"num_buckets": 4, "tick_size": 5},
-    "MiLOF": {"num_neighbors": 5, "window_size": 20, "num_summaries": 5},
-    "MemStream": {"window_size": 8, "num_epochs": 20},
-    "OeSNNUAD": {"window_size": 10},
-    "PCBIsolationForest": {"num_trees": 5, "window_size": 20, "stat_size": 6},
-    "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 20},
-    "RobustRandomCutForest": {"num_trees": 4, "tree_size": 16},
-    "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 6},
-    "RSHash": {
-        "feature_mins": [0.0] * NUM_FEATURES,
-        "feature_maxes": [1.0] * NUM_FEATURES,
-        "num_components": 10,
-    },
-    "SAND": {"subsequence_length": 4, "batch_size": 24},
-    "xStream": {"num_components": 10, "n_chains": 5, "depth": 5, "window_size": 10},
-}
 
 NAMES = [
     name
@@ -82,7 +25,11 @@ NAMES = [
 ]
 ACTIVE_NAMES = [name for name in NAMES if name in set(active_model_names())]
 MODELS = {
-    name: (lambda name=name, **kw: getattr(pysad.models, name)(**MODEL_PARAMS.get(name, {}), **kw))
+    name: (
+        lambda name=name, **kw: getattr(pysad.models, name)(
+            **{**short_stream_params(name, num_features_for(name, NUM_FEATURES)), **kw}
+        )
+    )
     for name in NAMES
 }
 

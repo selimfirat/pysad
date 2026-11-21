@@ -28,6 +28,7 @@ from collections import deque
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -54,7 +55,7 @@ class _OnlineIsolationNode:
         "threshold",
     )
 
-    def __init__(self, data: np.ndarray, depth: int, threshold: int) -> None:
+    def __init__(self, data: NDArray[Any], depth: int, threshold: int) -> None:
         self.data_size = len(data)
         self.depth = depth
         self.threshold = threshold
@@ -63,10 +64,10 @@ class _OnlineIsolationNode:
         self.children: list[_OnlineIsolationNode] | None = None
         self.dim = 0
         self.split_val = 0.0
-        self.split_values: np.ndarray | None = None
+        self.split_values: NDArray[Any] | None = None
         self.slot = 0
 
-    def child_index(self, X: np.ndarray) -> int:
+    def child_index(self, X: NDArray[Any]) -> int:
         if self.split_values is None or len(self.split_values) == 1:
             return 1 if X[self.dim] >= self.split_val else 0
         return int(np.searchsorted(self.split_values, X[self.dim], side="right"))
@@ -93,7 +94,7 @@ class _OnlineIsolationTree:
         return self.max_leaf_samples << depth if self._adaptive else self.max_leaf_samples
 
     def learn_one(
-        self, X: np.ndarray, rng: np.random.RandomState
+        self, X: NDArray[Any], rng: np.random.RandomState
     ) -> tuple[bool, bool, _OnlineIsolationNode | None]:
         """Returns (selected, structure_changed, touched_leaf)."""
         if rng.random_sample() >= self.subsample:
@@ -124,7 +125,7 @@ class _OnlineIsolationTree:
         return self._learn_path(X, rng)
 
     def _learn_path(
-        self, X: np.ndarray, rng: np.random.RandomState
+        self, X: NDArray[Any], rng: np.random.RandomState
     ) -> tuple[bool, bool, _OnlineIsolationNode | None]:
         assert self.root is not None
         curr = self.root
@@ -160,7 +161,7 @@ class _OnlineIsolationTree:
         return True, False, curr
 
     def _learn_all(
-        self, node: _OnlineIsolationNode, X: np.ndarray | None, rng: np.random.RandomState
+        self, node: _OnlineIsolationNode, X: NDArray[Any] | None, rng: np.random.RandomState
     ) -> tuple[_OnlineIsolationNode, bool]:
         if X is not None:
             node.data_size += 1
@@ -189,7 +190,7 @@ class _OnlineIsolationTree:
         return node, changed
 
     def _build(
-        self, samples: np.ndarray, depth: int, rng: np.random.RandomState
+        self, samples: NDArray[Any], depth: int, rng: np.random.RandomState
     ) -> _OnlineIsolationNode:
         threshold = self._threshold(depth)
         node = _OnlineIsolationNode(samples, depth, threshold)
@@ -229,7 +230,7 @@ class _OnlineIsolationTree:
         return node
 
     def unlearn_one(
-        self, X: np.ndarray, rng: np.random.RandomState, selected: bool
+        self, X: NDArray[Any], rng: np.random.RandomState, selected: bool
     ) -> tuple[bool, _OnlineIsolationNode | None]:
         """Returns (structure_changed, touched_leaf)."""
         # Keep the reference's draw order, but expire the original selection.
@@ -247,7 +248,7 @@ class _OnlineIsolationTree:
         return self._unlearn(self.root, X)
 
     def _unlearn(
-        self, node: _OnlineIsolationNode, X: np.ndarray
+        self, node: _OnlineIsolationNode, X: NDArray[Any]
     ) -> tuple[bool, _OnlineIsolationNode | None]:
         binary = self.branching_factor == 2
         curr = node
@@ -284,7 +285,7 @@ class _OnlineIsolationTree:
         self._refresh_bounds(node)
         node.children = None
 
-    def predict_one(self, X: np.ndarray) -> float:
+    def predict_one(self, X: NDArray[Any]) -> float:
         node = self.root
         if node is None:
             return 0.0
@@ -441,7 +442,7 @@ class OnlineIsolationForest(BaseModel):
             )
             for _ in range(num_trees)
         ]
-        self.window_: deque[tuple[np.ndarray, np.ndarray | None]] = deque()
+        self.window_: deque[tuple[NDArray[Any], NDArray[Any] | None]] = deque()
 
         # Packed 2D arrays across trees for fast vectorized binary-tree scoring.
         cap = 16
@@ -540,7 +541,7 @@ class OnlineIsolationForest(BaseModel):
                 p_right[s] = u.children[1].slot
                 p_leaf_pl[s] = 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> OnlineIsolationForest:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> OnlineIsolationForest:
         """Learns one instance, then forgets the oldest if the window is full.
 
         Args:
@@ -601,7 +602,7 @@ class OnlineIsolationForest(BaseModel):
         )
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores an instance without learning it.
 
         Args:
@@ -640,7 +641,7 @@ class OnlineIsolationForest(BaseModel):
         depth = sum(tree.predict_one(X) for tree in self.trees_) / self.num_trees
         return float(2.0 ** (-depth / (self.normalization_ + np.finfo(float).eps)))
 
-    def explain_partial(self, X: np.ndarray) -> np.ndarray:
+    def explain_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Returns per-feature SHAP values for the anomaly score of the next instance.
 
         Uses the TreeSHAP algorithm :cite:`lundberg2020consistent` to compute exact SHAP values
@@ -677,12 +678,12 @@ class OnlineIsolationForest(BaseModel):
 
         # Extract tree structures from packed representation.
         num_features = x.shape[0]
-        trees_features: list[np.ndarray] = []
-        trees_thresholds: list[np.ndarray] = []
-        trees_left: list[np.ndarray] = []
-        trees_right: list[np.ndarray] = []
-        trees_values: list[np.ndarray] = []
-        trees_left_fractions: list[np.ndarray] = []
+        trees_features: list[NDArray[Any]] = []
+        trees_thresholds: list[NDArray[Any]] = []
+        trees_left: list[NDArray[Any]] = []
+        trees_right: list[NDArray[Any]] = []
+        trees_values: list[NDArray[Any]] = []
+        trees_left_fractions: list[NDArray[Any]] = []
 
         for t_idx in range(self.num_trees):
             max_d = self.trees_[t_idx].max_depth

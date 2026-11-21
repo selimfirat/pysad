@@ -277,3 +277,18 @@ warn_unused_ignores = false
 [[tool.mypy.overrides]]
 module = ["pandas.*", "polars.*", "river.*", "scipy.*", "sklearn.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pysad.models.online_isolation_forest",
+    "pysad.models.online_one_class_svm",
+    "pysad.models.pcb_isolation_forest",
+    "pysad.models.relative_entropy",
+    "pysad.models.rs_forest",
+]
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+implicit_reexport = false
+warn_unused_ignores = false

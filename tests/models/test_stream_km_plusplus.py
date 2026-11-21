@@ -242,3 +242,34 @@ def test_stream_km_plusplus_first_center_is_uniform_over_non_dummy_points():
     picks = np.array(picks)
     assert (picks == 3.0).sum() == 0
     assert (picks == 1.0).mean() > 0.10
+
+
+def test_stream_km_plusplus_pickle_round_trip_keeps_rng():
+    import pickle
+
+    import numpy as np
+
+    from pysad.models import StreamKMPlusPlus
+
+    X = np.random.RandomState(0).rand(50, 2)
+
+    # An integer seed keeps its stream position across a pickle round trip.
+    model = StreamKMPlusPlus(num_clusters=3, coreset_size=10, random_state=0)
+    model.fit(X[:25])
+    before = model.score_partial(X[25])
+    restored = pickle.loads(pickle.dumps(model))
+    assert restored.score_partial(X[25]) == before
+
+    # A None seed draws from NumPy's global state and must survive a round trip
+    # even if the global RandomState object has been replaced since pickling.
+    np.random.seed(1)
+    model = StreamKMPlusPlus(num_clusters=3, coreset_size=10, random_state=None)
+    model.fit(X[:25])
+    pickled = pickle.dumps(model)
+    old_rand = np.random.mtrand._rand
+    try:
+        np.random.mtrand._rand = np.random.RandomState(99)
+        restored = pickle.loads(pickled)
+        assert np.isfinite(restored.score_partial(X[25]))
+    finally:
+        np.random.mtrand._rand = old_rand

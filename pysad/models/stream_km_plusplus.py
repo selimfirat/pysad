@@ -87,13 +87,17 @@ class StreamKMPlusPlus(BaseModel):
 
     def __getstate__(self) -> dict:
         state = self.__dict__.copy()
-        if self.rng_ is np.random.mtrand._rand:
+        if self.random_state is None:
+            # The RNG draws from NumPy's global state, which is not pickled.
             state["rng_"] = None
         return state
 
     def __setstate__(self, state: dict) -> None:
         self.__dict__.update(state)
-        self.rng_ = check_random_state(self.rng_)
+        if self.rng_ is None:
+            self.rng_ = check_random_state(self.random_state)
+        else:
+            self.rng_ = check_random_state(self.rng_)
 
     def _coreset(self, points: np.ndarray, weights: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Reduces `points` with `weights` to a weighted coreset of at most `coreset_size` points.

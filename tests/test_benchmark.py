@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from sklearn.metrics import average_precision_score, roc_auc_score
 
+from pysad.core.base_model import BaseModel
 from tests.test_dimensionality import load_benchmark
 
 
@@ -816,3 +817,259 @@ def test_base_cache_dir_and_compare_dirs(tmp_path, monkeypatch, capsys):
     empty_base.mkdir()
     benchmark.compare_ci_dirs(empty_base, head_dir)
     assert "No base benchmark results to compare" in capsys.readouterr().out
+
+
+class NotAModel:
+    """A class that does not inherit from BaseModel."""
+
+    def __init__(self, random_state=None):
+        self.random_state = random_state
+
+
+def _write_custom_model(tmp_path, class_name, source):
+    path = tmp_path / "custom_model.py"
+    path.write_text(source, encoding="utf-8")
+    return path
+
+
+def test_load_custom_model_loads_valid_model(tmp_path):
+    benchmark = load_benchmark()
+    source = (
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomMultivariateDetector(BaseModel):\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return 0.0\n"
+    )
+    path = _write_custom_model(tmp_path, "CustomMultivariateDetector", source)
+    cls = benchmark._load_custom_model(f"{path}:CustomMultivariateDetector")
+    assert cls is not None
+    assert cls.__name__ == "CustomMultivariateDetector"
+    assert issubclass(cls, benchmark.BaseModel)
+
+
+@pytest.mark.parametrize("spec", ["no_colon", "just_a_path.py", "a:b:c"])
+def test_load_custom_model_rejects_bad_spec(spec):
+    benchmark = load_benchmark()
+    try:
+        benchmark._load_custom_model(spec)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(f"expected ValueError for spec {spec!r}")
+
+
+def test_load_custom_model_rejects_missing_file(tmp_path):
+    benchmark = load_benchmark()
+    try:
+        benchmark._load_custom_model(str(tmp_path / "does_not_exist.py:MyModel"))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError for missing file")
+
+
+def test_load_custom_model_rejects_missing_class(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "OtherClass",
+        "from pysad.core.base_model import BaseModel\nclass OtherClass(BaseModel):\n    def fit_partial(self, X, y=None): return self\n    def score_partial(self, X): return 0.0\n",
+    )
+    try:
+        benchmark._load_custom_model(f"{path}:NotInFile")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError for missing class")
+
+
+def test_load_custom_model_rejects_non_model(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path, "NotAModel", "class NotAModel:\n    def __init__(self): pass\n"
+    )
+    try:
+        benchmark._load_custom_model(f"{path}:NotAModel")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError for non-BaseModel class")
+
+
+def test_custom_factory_multivariate(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "CustomMultivariateDetector",
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomMultivariateDetector(BaseModel):\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return 0.0\n",
+    )
+    cls = benchmark._load_custom_model(f"{path}:CustomMultivariateDetector")
+    factory = benchmark._make_custom_factory(cls, "multivariate")
+    model = factory(np.zeros((20, 3)), 7)
+    assert isinstance(model, BaseModel)
+    assert model.window_size == 50
+    assert model.random_state == 7
+
+
+def test_custom_factory_univariate(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "CustomUnivariateDetector",
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomUnivariateDetector(BaseModel):\n"
+        "    _input_kind = 'univariate'\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return 0.0\n",
+    )
+    cls = benchmark._load_custom_model(f"{path}:CustomUnivariateDetector")
+    factory = benchmark._make_custom_factory(cls, "univariate")
+    model = factory(200, 24)
+    assert isinstance(model, BaseModel)
+    assert model.window_size == 50
+    assert model.random_state == 0
+
+
+def test_custom_factory_uses_defaults_for_optional_params(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "CustomMultivariateDetector",
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomMultivariateDetector(BaseModel):\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return 0.0\n",
+    )
+    cls = benchmark._load_custom_model(f"{path}:CustomMultivariateDetector")
+    factory = benchmark._make_custom_factory(cls, "multivariate")
+    model = factory(np.zeros((20, 3)), 7)
+    assert model.window_size == 50
+
+
+def test_write_latex_summary_ranks_and_marks(tmp_path):
+    benchmark = load_benchmark()
+    results = {
+        ("arrhythmia", "LODA", 0): {
+            "dataset": "arrhythmia",
+            "detector": "LODA",
+            "seed": 0,
+            "auroc": 0.7722,
+        },
+        ("arrhythmia", "RSHash", 0): {
+            "dataset": "arrhythmia",
+            "detector": "RSHash",
+            "seed": 0,
+            "auroc": 0.7366,
+        },
+        ("cardio", "LODA", 0): {
+            "dataset": "cardio",
+            "detector": "LODA",
+            "seed": 0,
+            "auroc": 0.93,
+        },
+        ("cardio", "RSHash", 0): {
+            "dataset": "cardio",
+            "detector": "RSHash",
+            "seed": 0,
+            "auroc": 0.9261,
+        },
+    }
+    out_path = tmp_path / "summary.tex"
+    benchmark._write_latex_summary(results, ["LODA", "RSHash"], out_path)
+    text = out_path.read_text(encoding="utf-8")
+    assert "\\begin{table}[htbp]" in text
+    assert "\\caption{Benchmark AUROC summary (higher is better).}" in text
+    assert "arrhythmia" in text and "cardio" in text
+    assert "LODA" in text and "RSHash" in text
+    assert "\\textbf{0.772}" in text
+    assert "\\begin{tabular}" in text and "\\end{tabular}" in text
+
+
+def test_write_latex_summary_handles_nan_and_chance(tmp_path):
+    benchmark = load_benchmark()
+    results = {
+        ("arrhythmia", "LODA", 0): {
+            "dataset": "arrhythmia",
+            "detector": "LODA",
+            "seed": 0,
+            "auroc": 0.5,
+        },
+        ("arrhythmia", "RSHash", 0): {
+            "dataset": "arrhythmia",
+            "detector": "RSHash",
+            "seed": 0,
+            "auroc": 0.8,
+        },
+        ("cardio", "LODA", 0): {
+            "dataset": "cardio",
+            "detector": "LODA",
+            "seed": 0,
+            "auroc": float("nan"),
+        },
+        ("cardio", "RSHash", 0): {
+            "dataset": "cardio",
+            "detector": "RSHash",
+            "seed": 0,
+            "auroc": 0.8,
+        },
+    }
+    out_path = tmp_path / "summary.tex"
+    benchmark._write_latex_summary(results, ["LODA", "RSHash"], out_path)
+    text = out_path.read_text(encoding="utf-8")
+    assert "\\textit{0.500}" in text
+    assert "--" in text
+
+
+def test_custom_model_runs_on_stream(tmp_path, monkeypatch):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "CustomMultivariateDetector",
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomMultivariateDetector(BaseModel):\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "        self._seen = 0\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        self._seen += 1\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return float(self._seen)\n",
+    )
+    cls = benchmark._load_custom_model(f"{path}:CustomMultivariateDetector")
+    factory = benchmark._make_custom_factory(cls, "multivariate")
+    X = np.zeros((50, 2))
+    model = factory(X, 0)
+    scores, ms = benchmark.score_stream(model, X)
+    assert len(scores) == 50
+    assert ms > 0
+    assert float(scores[-1]) == 49.0

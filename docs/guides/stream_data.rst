@@ -241,6 +241,28 @@ The first load downloads the ARFF file into the shared dataset cache and verifie
 .. literalinclude:: ../../examples/example_creditcard.py
    :language: python
 
+Server Machine Dataset (SMD)
+----------------------------
+
+``Data.datasets("smd")`` lists the 28 test halves of the Server Machine Dataset :cite:`su2019robust`, for example ``smd/machine-1-1.txt``. Each machine has 38 features collected at one-minute intervals. The source is the `OmniAnomaly repository <https://github.com/NetManAIOps/OmniAnomaly>`_ (MIT license).
+
+``get_data`` returns the test half of a machine in its original time order. The labels come from the corresponding ``test_label`` file. Use ``get_iterator(..., shuffle=False)`` to stream in time order; ``get_iterator`` and ``get_stream`` shuffle by default.
+
+.. literalinclude:: ../../examples/example_smd.py
+   :language: python
+
+NASA SMAP and MSL telemetry
+---------------------------
+
+``Data.datasets("smap")`` lists the 54 test halves of the SMAP satellite telemetry channels, and ``Data.datasets("msl")`` lists the 27 test halves of the MSL rover Curiosity telemetry channels. Both come from the `Telemanom paper <https://arxiv.org/abs/1802.04431>`_ :cite:`hundman2018detecting`, hosted in the `TranAD repository <https://github.com/imperial-qore/TranAD>`_ (BSD-3-Clause license).
+
+Each SMAP channel has 25 features: the first is the telemetry value, and the remaining 24 are one-hot encoded spacecraft commands. Each MSL channel has 55 features in the same layout. The labels are the anomaly ranges from Telemanom's ``labeled_anomalies.csv``; a channel can have multiple ranges, and all are applied.
+
+``get_data`` returns the test half of a channel in its original time order with labels from the anomaly ranges. Use ``get_iterator(..., shuffle=False)`` to stream in time order; ``get_iterator`` and ``get_stream`` shuffle by default.
+
+.. literalinclude:: ../../examples/example_smap_msl.py
+   :language: python
+
 Next steps
 ----------
 

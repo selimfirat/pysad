@@ -129,21 +129,26 @@ class DenStream(BaseModel):
     (which depends on their age and the decaying factor) are removed.
 
     Micro-cluster prune rule (RFC):
+
     - Prune every `prune_interval_` time units (T_p). When not given, T_p is computed as
       ceil((1 / lambda) * ln((beta * mu) / (beta * mu - 1))), the number of time units after which
       a micro-cluster of weight beta * mu would fade below the core threshold.
+
     - P-micro-clusters: removed when their faded weight at the current time is below beta * mu.
-    - O-micro-clusters: removed when their faded weight is below xi, where
-      xi = (2^(-lambda * (t - creation_time + T_p)) - 1) / (2^(-lambda * T_p) - 1), with t the
-      current time. This keeps an o-micro-cluster only while its weight can still grow above the
-      core threshold before the next prune, and prunes it once it is unlikely to become dense.
+
+    - O-micro-clusters: removed when their faded weight is below xi, where xi equals
+      (2^(-lambda * (t - creation_time + T_p)) - 1) / (2^(-lambda * T_p) - 1) with t the current
+      time. This keeps an o-micro-cluster only while its weight can still grow above the core
+      threshold before the next prune, and prunes it once it is unlikely to become dense.
 
     Deviations from the paper:
+
     - The paper defines micro-cluster assignment (p-cluster, o-cluster, or new o-cluster) but not a
-      scalar anomaly score. This implementation maps that assignment to a continuous score in [0.0,
-      1.5]: normalized distance for p-cluster merges, normalized distance plus a penalty for
+      scalar anomaly score. This implementation maps that assignment to a continuous score in
+      [0.0, 1.5]: normalized distance for p-cluster merges, normalized distance plus a penalty for
       o-cluster merges, and 1.0 for new o-clusters. This mapping is a PySAD interface choice, not
       part of the paper.
+
     - The micro-cluster radius is the square root of the trace of the covariance (the root-sum of
       per-feature variances), a common interpretation of the paper's cluster radius.
 
@@ -170,11 +175,6 @@ class DenStream(BaseModel):
         o_micro_clusters_ (list[_DenStreamMicroCluster]): The outlier micro-clusters.
         timestamp_ (int): The current time step.
         prune_interval_ (int): The interval between pruning steps.
-
-    References:
-        .. [1] Cao, F., Ester, M., Qian, W., & Zhou, A. (2006). Density-Based Clustering over an
-           Evolving Data Stream with Noise. In *Proceedings of the Sixth SIAM International
-           Conference on Data Mining* (pp. 328-339). SIAM.
     """
 
     __bibtex__ = """

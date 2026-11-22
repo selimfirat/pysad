@@ -32,6 +32,27 @@ PySAD
 
    .. container:: actions
 
+      .. image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fthroughput.json&style=flat-square&labelColor=0d1b22
+         :target: benchmark.html
+         :alt: Median throughput
+
+      .. image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmemory.json&style=flat-square&labelColor=0d1b22
+         :target: benchmarks/multivariate.html#memory-stability
+         :alt: Maximum traced memory growth in three measured detectors
+
+      .. image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Funivariate_detectors.json&style=flat-square&labelColor=0d1b22
+         :target: detectors.html
+         :alt: Univariate detectors
+
+      .. image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmultivariate_detectors.json&style=flat-square&labelColor=0d1b22
+         :target: detectors.html
+         :alt: Multivariate detectors
+
+   Throughput: median across recorded ODDS runs.
+   Memory: maximum traced growth in three detectors over 1M points after warmup.
+
+   .. container:: actions
+
       .. image:: https://img.shields.io/badge/Hugging%20Face-Open%20in%20Spaces-00757a?style=flat-square&logo=huggingface&logoColor=white&labelColor=0d1b22
          :target: https://huggingface.co/spaces/selimfirat/pysad-playground
          :alt: Open in Hugging Face Spaces

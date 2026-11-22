@@ -19,6 +19,7 @@ the start, so one-time setup allocations do not count as a leak.
 from __future__ import annotations
 
 import argparse
+import csv
 import sys
 import time
 import tracemalloc
@@ -135,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
         default=512.0,
         help="Allowed traced memory growth in KiB between the second and last checkpoints.",
     )
+    parser.add_argument("--output", type=Path, help="Write the measurements to a CSV file.")
     args = parser.parse_args(argv)
 
     if args.checkpoint <= 0:
@@ -152,8 +154,10 @@ def main(argv: list[str] | None = None) -> int:
     header = f"{'detector':<28} {'points':>9} {'seconds':>9} "
     header += f"{'peak KiB':>10} {'growth KiB':>11}  result"
     print(header)
+    rows = []
     for name, detector in detectors.items():
         result = run_detector(name, detector, args.points, args.checkpoint)
+        rows.append({"detector": name, **result})
         passed = result["growth_kb"] <= args.max_growth_kb
         failed = failed or not passed
         print(
@@ -161,6 +165,16 @@ def main(argv: list[str] | None = None) -> int:
             f"{result['peak_kb']:>10.1f} {result['growth_kb']:>11.1f}  "
             f"{'PASS' if passed else 'FAIL'}"
         )
+
+    if args.output is not None:
+        with args.output.open("w", newline="") as handle:
+            writer = csv.DictWriter(
+                handle,
+                fieldnames=["detector", "points", "seconds", "peak_kb", "growth_kb"],
+                extrasaction="ignore",
+            )
+            writer.writeheader()
+            writer.writerows(rows)
 
     if failed:
         print(f"Memory grew by more than {args.max_growth_kb} KiB for at least one detector.")

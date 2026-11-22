@@ -77,6 +77,7 @@ mcp = ["mcp>=1.26.0,<2"]
 
 [project.scripts]
 pysad-live = "pysad.live.cli:main"
+pysad-mcp = "pysad.mcp.server:main"
 
 # PEP 735 dependency groups. The runtime dependencies use ranges in [project]; these
 # groups pin what CI, Read the Docs and contributors install, and Dependabot bumps them.

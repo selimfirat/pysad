@@ -67,6 +67,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`mcp`
+
+      Run PySAD detectors, drift meters, and explainability from AI assistants via MCP.
+
+   .. container:: card
+
       :doc:`/examples`
 
       Complete scripts that run end to end.

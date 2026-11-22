@@ -80,6 +80,7 @@ fast = ["pysad_kernels>=0.1.0; sys_platform != 'win32' or python_version < '3.14
 
 [project.scripts]
 pysad-live = "pysad.live.cli:main"
+pysad-mcp = "pysad.mcp.server:main"
 
 # PEP 735 dependency groups. The runtime dependencies use ranges in [project]; these
 # groups pin what CI, Read the Docs and contributors install, and Dependabot bumps them.

@@ -1,20 +1,29 @@
 """MCP server for PySAD streaming anomaly detection.
 
-This module provides an MCP (Model Context Protocol) server that exposes
-PySAD's streaming anomaly detection capabilities as tools for LLM clients.
+This module provides a Model Context Protocol (MCP) server that exposes PySAD's
+streaming anomaly detectors, drift meters, and explainability tools to AI assistants.
+
+It provides two interfaces:
+1. Session-based API (backward compatible): initialize_detector, score_point, etc.
+2. Auto-discovered tools: One tool per detector/statistic with explicit parameters.
+
+Usage:
+    python -m pysad.mcp.server
+
+Or via the console script:
+    pysad-mcp
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 from mcp.server.fastmcp import Context, FastMCP
 
+from pysad.mcp.tools import register_all_tools
 from pysad.utils import ArrayStreamer, Data, generate_stream
 
 
@@ -46,18 +55,19 @@ def create_mcp_server() -> FastMCP:
     """Create and configure the PySAD MCP server.
 
     Returns:
-        Configured FastMCP server instance.
+        Configured FastMCP server instance with both session-based and
+        auto-discovered tools.
     """
     mcp = FastMCP(
         name="PySAD Streaming Anomaly Detection",
         instructions=(
             "PySAD MCP server for streaming anomaly detection. "
-            "Provides tools to initialize detectors, calibrators, and data streams, "
-            "and to score data points in real-time."
+            "Provides session-based tools (initialize_detector, score_point, etc.) "
+            "and auto-discovered tools for every detector, drift meter, and statistic."
         ),
     )
 
-    # Register tools
+    # Register session-based tools (backward compatible)
     mcp.add_tool(initialize_detector)
     mcp.add_tool(initialize_calibrator)
     mcp.add_tool(initialize_stream)
@@ -69,10 +79,13 @@ def create_mcp_server() -> FastMCP:
     mcp.add_tool(list_calibrators)
     mcp.add_tool(list_data_sources)
 
+    # Register auto-discovered tools for all detectors, drift meters, etc.
+    register_all_tools(mcp)
+
     return mcp
 
 
-# Tool definitions
+# Session-based tool definitions (backward compatible)
 async def initialize_detector(
     detector_name: str = "loda",
     detector_kwargs: str = "{}",
@@ -677,15 +690,10 @@ async def list_data_sources(ctx: Context | None = None) -> dict[str, Any]:
 mcp_server = create_mcp_server()
 
 
-@asynccontextmanager
-async def lifespan(server: FastMCP) -> AsyncIterator[None]:
-    """Lifespan context manager for the MCP server."""
-    # Startup
-    yield None
-    # Shutdown
-    pass
+def main() -> None:
+    """Entry point for the pysad-mcp console script."""
+    mcp_server.run(transport="stdio")
 
 
 if __name__ == "__main__":
-    # Run the server with stdio transport
-    mcp_server.run(transport="stdio")
+    main()

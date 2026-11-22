@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from pysad.utils import _iterate
+from pysad.core._iterate import _iterate
 
 
 class BaseTransformer(ABC):
@@ -98,7 +98,36 @@ class BaseTransformer(ABC):
         return self._transform_all(X, self.fit_transform_partial)
 
     def __or__(self, other: BaseTransformer) -> _TransformerChain:
-        """Chains this transformer with another transformer."""
+        """Chain this transformer with another transformer, left to right.
+
+        ``a | b`` passes each instance through ``a`` first and then through
+        ``b``. Longer chains work the same way: ``a | b | c`` runs ``a``,
+        then ``b``, then ``c``.
+
+        Fitting a chain trains each step on the output of the previous
+        steps. ``fit`` (and ``fit_partial``) fit every step except the last
+        one with ``fit_transform`` (``fit_transform_partial``), so the last
+        step is fitted on data already transformed by the earlier steps.
+        ``transform`` (and ``transform_partial``) only transform: they pass
+        each instance through every step in order and never update any
+        step. ``fit_transform`` (and ``fit_transform_partial``) do both in
+        one pass, fitting and transforming each instance as it flows
+        through, so an early instance is transformed with the statistics
+        learned so far, while ``fit`` followed by ``transform`` transforms
+        every instance with the fully fitted state.
+
+        For example, standardize each feature and then rescale it to the
+        running range::
+
+            chain = StandardScaler() | MinMaxScaler()
+            chain.fit_transform(X)
+
+        Args:
+            other (BaseTransformer): The transformer to run after this one.
+
+        Returns:
+            A chain that runs this transformer first and ``other`` second.
+        """
         if isinstance(other, BaseTransformer):
             left = self.steps if isinstance(self, _TransformerChain) else (self,)
             right = other.steps if isinstance(other, _TransformerChain) else (other,)

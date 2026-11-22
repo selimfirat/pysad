@@ -49,6 +49,9 @@ Each page lists the public classes and functions of one module. Each name has a 
    * - :doc:`api/core`
      - Abstract base classes
      - ``pysad.core``
+   * - :doc:`api/live`
+     - Live CLI and dashboard entry point
+     - ``pysad.live``
 
 .. toctree::
    :hidden:
@@ -66,3 +69,4 @@ Each page lists the public classes and functions of one module. Each name has a 
    api/explainability
    api/utils
    api/core
+   api/live

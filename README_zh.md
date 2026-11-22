@@ -320,6 +320,7 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | `FeedbackHST` | 带主动人机协同标签反馈的 Half-Space Trees (Tan et al., 2011; Das et al., JAIR 2024) |
 | `StreamKMPlusPlus` | 基于 StreamKM++ 流式核心集聚类的最近中心距离 (Ackermann et al., ACM JEA 2012) |
 | `ZeroShotEmbeddingDetector` | 基于语义锚点最大概念匹配的零样本分布外检测 (Ming et al., NeurIPS 2022) |
+| `ABSAD` | 基于角度的子空间异常检测 (ABSAD) (Zhang et al., 2017) |
 
 **单变量**
 
@@ -342,6 +343,7 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | `StandardAbsoluteDeviation` | 在线 3-sigma 规则 (Hochenbaum et al., 2017) |
 | `OeSNNUAD` | 用于无监督异常检测的在线演化脉冲神经网络 (Maciąg et al., *Neural Networks* 2021) |
 | `PEWMA` | 概率指数加权移动平均 (Carter & Streilein, SSP 2012) |
+| `LocalPolynomialDetector` | 基于局部多项式拟合的离群点与变化点检测器 (Li et al., 2007) |
 
 `ReferenceWindowModel` 和 `OneFitModel` 可以在数据流上运行任意 [PyOD](https://github.com/yzhao062/pyod) 检测器。[检测器目录](https://pysad.readthedocs.io/en/stable/detectors.html) 列出了每个检测器的输入、配置和内存占用，[API 参考](https://pysad.readthedocs.io/en/stable/api.html) 列出了所有参数。
 

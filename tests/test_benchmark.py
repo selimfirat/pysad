@@ -66,6 +66,29 @@ def test_sand_registration_and_fixed_configuration():
         assert model.random_state == 0
 
 
+@pytest.mark.parametrize("detector", ["HoltWinters", "FluxEV"])
+@pytest.mark.parametrize("period", [24, 288])
+def test_seasonal_benchmark_keeps_default_window(detector, period):
+    from pysad import models
+
+    benchmark = load_benchmark()
+    X = np.sin(np.arange(4 * period) * 2 * np.pi / period).reshape(-1, 1)
+    X[3 * period : 3 * period + 10] += 4.0
+    model = benchmark.UNIVARIATE[detector](len(X), period)
+    expected = getattr(models, detector)(period=period)
+    assert model.window_size == expected.window_size
+    np.testing.assert_array_equal(model.fit_score(X), expected.fit_score(X))
+
+
+@pytest.mark.parametrize("detector", ["SeasonalESD", "SeasonalHybridESD"])
+@pytest.mark.parametrize("period", [24, 288])
+def test_seasonal_esd_benchmark_window_covers_three_periods(detector, period):
+    benchmark = load_benchmark()
+    model = benchmark.UNIVARIATE[detector](2000, period)
+    assert model.period == period
+    assert model.window_size == 3 * period + 1
+
+
 def test_sdostream_registration_and_seeding():
     from pysad.models import SDOstream
 

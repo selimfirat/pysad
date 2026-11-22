@@ -97,9 +97,34 @@ def _create_predictive_anomaly_detector(*args, **kwargs):
         pytest.skip("River not installed")
 
 
+class _SimpleForecaster:
+    """Simple forecaster implementing ForecasterProtocol for testing."""
+
+    def __init__(self, window: int = 5):
+        self.window = window
+        self.history = []
+
+    def forecast(self, horizon: int = 1) -> list[float]:
+        if not self.history:
+            return [0.0]
+        return [sum(self.history[-self.window :]) / min(len(self.history), self.window)]
+
+    def learn_one(self, y: float) -> None:
+        self.history.append(y)
+
+
+def _create_forecasting_anomaly_detector(*args, **kwargs):
+    """Create a ForecastingAnomalyDetector with a simple forecaster for testing."""
+    return {
+        "forecaster": _SimpleForecaster(window=5),
+        "relative": False,
+        "probationary_period": 2,
+    }
+
+
 def _get_warmup_length(name: str, params: dict[str, Any], is_fit_then_score: bool = False) -> int:
     """Get the actual warmup length for an integration model from its parameters."""
-    if name == "PredictiveAnomalyDetector":
+    if name in ("PredictiveAnomalyDetector", "ForecastingAnomalyDetector"):
         warmup = params.get("probationary_period", 0)
         if is_fit_then_score:
             # In fit_then_score mode, fit_partial increments num_values_ before score_partial checks it,
@@ -112,25 +137,31 @@ def _get_warmup_length(name: str, params: dict[str, Any], is_fit_then_score: boo
 
 def _has_constant_warmup(name: str, params: dict[str, Any]) -> bool:
     """Check if a model returns a constant score during its entire warmup period."""
-    if name == "PredictiveAnomalyDetector":
+    if name in ("PredictiveAnomalyDetector", "ForecastingAnomalyDetector"):
         return params.get("probationary_period", 0) > 0
     return False
 
 
 def _warmup_score(name: str, params: dict[str, Any] | None = None) -> float:
     """Expected score during warmup period for a model with constant warmup."""
-    if name == "PredictiveAnomalyDetector":
+    if name in ("PredictiveAnomalyDetector", "ForecastingAnomalyDetector"):
         return 0.0
     return 0.0
 
 
-INTEGRATION_MODELS = ["OneFitModel", "ReferenceWindowModel", "PredictiveAnomalyDetector"]
+INTEGRATION_MODELS = [
+    "OneFitModel",
+    "ReferenceWindowModel",
+    "PredictiveAnomalyDetector",
+    "ForecastingAnomalyDetector",
+]
 
-# PredictiveAnomalyDetector is univariate, others use 3 features by default
+# PredictiveAnomalyDetector and ForecastingAnomalyDetector are univariate, others use 3 features by default
 MODEL_NUM_FEATURES = {
     "OneFitModel": 3,
     "ReferenceWindowModel": 3,
     "PredictiveAnomalyDetector": 1,
+    "ForecastingAnomalyDetector": 1,
 }
 
 
@@ -461,6 +492,8 @@ for _name in INTEGRATION_MODELS:
         _params_factory = functools.partial(_create_reference_window_model, _num_features, SEED)
     elif _name == "PredictiveAnomalyDetector":
         _params_factory = _create_predictive_anomaly_detector
+    elif _name == "ForecastingAnomalyDetector":
+        _params_factory = _create_forecasting_anomaly_detector
     else:
         continue
 
@@ -490,6 +523,8 @@ def test_constant_warmup_period_behavior(model_name):
         params = _create_reference_window_model(num_features, SEED)
     elif model_name == "PredictiveAnomalyDetector":
         params = _create_predictive_anomaly_detector()
+    elif model_name == "ForecastingAnomalyDetector":
+        params = _create_forecasting_anomaly_detector()
     else:
         pytest.skip(f"Unknown model: {model_name}")
 
@@ -527,6 +562,8 @@ def test_sequential_vs_batch_equivalence(model_name):
         params = _create_reference_window_model(num_features, SEED)
     elif model_name == "PredictiveAnomalyDetector":
         params = _create_predictive_anomaly_detector()
+    elif model_name == "ForecastingAnomalyDetector":
+        params = _create_forecasting_anomaly_detector()
     else:
         pytest.skip(f"Unknown model: {model_name}")
 
@@ -569,6 +606,8 @@ def test_fit_then_score_vs_batch_equivalence(model_name):
         params = _create_reference_window_model(num_features, SEED)
     elif model_name == "PredictiveAnomalyDetector":
         params = _create_predictive_anomaly_detector()
+    elif model_name == "ForecastingAnomalyDetector":
+        params = _create_forecasting_anomaly_detector()
     else:
         pytest.skip(f"Unknown model: {model_name}")
 
@@ -615,6 +654,8 @@ def test_state_reset_equivalence(model_name):
         params = _create_reference_window_model(num_features, SEED)
     elif model_name == "PredictiveAnomalyDetector":
         params = _create_predictive_anomaly_detector()
+    elif model_name == "ForecastingAnomalyDetector":
+        params = _create_forecasting_anomaly_detector()
     else:
         pytest.skip(f"Unknown model: {model_name}")
 
@@ -645,3 +686,84 @@ def test_state_reset_equivalence(model_name):
         atol=1e-12,
         err_msg=f"{model_name}: state reset scores != original sequential scores",
     )
+
+
+# Focused tests for TSFMResidualAdapter
+
+
+def test_tsfm_residual_adapter_returns_float():
+    """transform_partial returns a float."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    adapter = TSFMResidualAdapter(window_size=10, min_std=1e-8)
+    result = adapter.fit_partial(1.0).transform_partial(0.5)
+    assert isinstance(result, float)
+
+
+def test_tsfm_residual_adapter_normalizes_by_rolling_mean_and_std():
+    """transform_partial normalizes by rolling mean and std after enough data."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    adapter = TSFMResidualAdapter(window_size=5, min_std=1e-8)
+    # Feed 5 values to fill the window: [1.0, 2.0, 3.0, 4.0, 5.0]
+    # Mean = 3.0, Std = sqrt(2.0) = 1.414...
+    for v in [1.0, 2.0, 3.0, 4.0, 5.0]:
+        adapter.fit_partial(v)
+    # Next value 6.0 -> (6.0 - 3.0) / 1.414... = 2.121...
+    result = adapter.transform_partial(6.0)
+    expected = (6.0 - 3.0) / np.sqrt(2.0)
+    assert np.isclose(result, expected)
+
+
+def test_tsfm_residual_adapter_returns_zero_before_enough_data():
+    """transform_partial returns 0.0 before at least 2 values are seen."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    adapter = TSFMResidualAdapter(window_size=5, min_std=1e-8)
+    # First value: num_seen_ = 1
+    result1 = adapter.fit_partial(1.0).transform_partial(1.0)
+    assert result1 == 0.0
+    # Second value: num_seen_ = 2, variance = 0 (all same), min_std prevents division
+    result2 = adapter.fit_partial(1.0).transform_partial(1.0)
+    assert result2 == 0.0
+    # Third value: now we have variance
+    result3 = adapter.fit_partial(2.0).transform_partial(2.0)
+    assert result3 != 0.0
+
+
+def test_tsfm_residual_adapter_raises_on_invalid_window_size():
+    """ValueError raised when window_size < 2."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    try:
+        TSFMResidualAdapter(window_size=1)
+    except ValueError as e:
+        assert "window_size must be at least 2" in str(e)
+    else:
+        raise AssertionError("Expected ValueError for window_size=1")
+
+    try:
+        TSFMResidualAdapter(window_size=0)
+    except ValueError as e:
+        assert "window_size must be at least 2" in str(e)
+    else:
+        raise AssertionError("Expected ValueError for window_size=0")
+
+
+def test_tsfm_residual_adapter_raises_on_non_positive_min_std():
+    """ValueError raised when min_std <= 0."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    try:
+        TSFMResidualAdapter(window_size=10, min_std=0.0)
+    except ValueError as e:
+        assert "min_std must be positive" in str(e)
+    else:
+        raise AssertionError("Expected ValueError for min_std=0.0")
+
+    try:
+        TSFMResidualAdapter(window_size=10, min_std=-1e-8)
+    except ValueError as e:
+        assert "min_std must be positive" in str(e)
+    else:
+        raise AssertionError("Expected ValueError for min_std=-1e-8")

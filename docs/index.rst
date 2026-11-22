@@ -73,6 +73,29 @@ PySAD
 
    AUROC: 0.946
 
+Live dashboard, MCP, and optional kernels
+-----------------------------------------
+
+If you use uv, run the live dashboard with ``uvx``:
+
+.. code-block:: console
+
+   $ uvx --from pysad pysad-live --source synthetic
+
+- The :doc:`live dashboard <api/live>` displays streaming scores and alerts in your terminal. Add ``--web`` to open the web dashboard, or use ``--source data.csv`` for your own data.
+- :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp`` to connect an MCP client.
+- The optional PyO3 Rust extension ``pysad_kernels`` provides tree traversal kernels for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy.
+
+Migration guides
+----------------
+
+Use these guides to map your existing workflow to PySAD:
+
+- :doc:`Azure AI Anomaly Detector and Metrics Advisor <guides/migrate_azure>`
+- :doc:`AWS Lookout for Equipment and Kinesis RCF <guides/migrate_aws>`
+- :doc:`Salesforce Merlion <guides/migrate_merlion>`
+- :doc:`Alibi Detect <guides/migrate_alibi_detect>`
+
 .. container:: stream-figure
 
    .. image:: images/stream-light.svg

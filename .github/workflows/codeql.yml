@@ -5,16 +5,26 @@ name: codeql
 on:
   push:
     branches: [master]
+    paths:
+      - "pysad/**/*.py"
+      - "benchmarks/**/*.py"
+      - "scripts/**/*.py"
+      - "spaces/**/*.py"
+      - "docs/*.py"
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+      - ".github/actions/**"
   pull_request:
     branches: [master]
     paths:
-      - "pysad/**"
-      - ".github/**"
-      - "benchmarks/**"
-      - "scripts/**"
-      - "spaces/**"
+      - "pysad/**/*.py"
+      - "benchmarks/**/*.py"
+      - "scripts/**/*.py"
+      - "spaces/**/*.py"
       - "docs/*.py"
-      - "pyproject.toml"
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+      - ".github/actions/**"
   schedule:
     # Weekly, so new queries also run against code that has not changed.
     - cron: "41 5 * * 1"
@@ -29,44 +39,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  plan:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      languages: ${{ steps.plan.outputs.languages }}
-      has_languages: ${{ steps.plan.outputs.has_languages }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Select affected CodeQL languages
-        id: plan
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          if [ -n "$BASE_REF" ]; then
-            git fetch --depth=1 origin "$BASE_REF"
-            python3 scripts/ci_affected.py codeql "origin/$BASE_REF" > "$RUNNER_TEMP/codeql-plan.json"
-            python3 -c '
-          import json, os
-          from pathlib import Path
-          plan = json.loads(Path(os.environ["RUNNER_TEMP"], "codeql-plan.json").read_text(encoding="utf-8"))
-          langs = plan["languages"]
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
-              f.write("languages=" + json.dumps(langs, separators=(",", ":")) + "\n")
-              f.write("has_languages=" + ("true" if langs else "false") + "\n")
-          '
-          else
-            {
-              echo 'languages=["python","actions"]'
-              echo 'has_languages=true'
-            } >> "$GITHUB_OUTPUT"
-          fi
-
   analyze:
-    needs: plan
-    if: needs.plan.outputs.has_languages == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -76,8 +49,11 @@ jobs:
       actions: read
     strategy:
       fail-fast: false
+      # Both languages always upload together so PR SARIF categories match master
+      # (avoiding GitHub Code Scanning's "1 configuration not found" warning),
+      # while actions finishes in parallel before python.
       matrix:
-        language: ${{ fromJson(needs.plan.outputs.languages) }}
+        language: [python, actions]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

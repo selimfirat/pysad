@@ -1,4 +1,4 @@
-"""Pure-stdlib change impact analyzer for incremental pytest, examples, and CodeQL selection."""
+"""Pure-stdlib change impact analyzer for incremental pytest and examples selection."""
 
 from __future__ import annotations
 
@@ -520,30 +520,14 @@ def examples_plan(base: str) -> dict[str, object]:
     return {"count": len(affected), "files": affected}
 
 
-def codeql_plan(base: str) -> dict[str, object]:
-    """Return `{python, actions, languages}` needing CodeQL analysis relative to `base`."""
-    changed = _changed_files_since(base)
-    need_python = any(f.endswith((".py", ".ipynb")) or f == "pyproject.toml" for f in changed)
-    need_actions = any(f.startswith(".github/") for f in changed)
-    languages = [
-        lang for lang, enabled in (("python", need_python), ("actions", need_actions)) if enabled
-    ]
-    return {"python": need_python, "actions": need_actions, "languages": languages}
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="kind", required=True)
-    for cmd in ("tests", "examples", "codeql"):
+    for cmd in ("tests", "examples"):
         p = sub.add_parser(cmd)
         p.add_argument("base", help="Git ref to diff against (e.g., origin/master)")
     args = parser.parse_args(argv)
-    if args.kind == "tests":
-        result = tests_plan(args.base)
-    elif args.kind == "examples":
-        result = examples_plan(args.base)
-    else:
-        result = codeql_plan(args.base)
+    result = tests_plan(args.base) if args.kind == "tests" else examples_plan(args.base)
     print(json.dumps(result))
     return 0
 

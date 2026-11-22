@@ -92,6 +92,8 @@ def _add_seo_context(
 
     context["seo_has_meta_description"] = has_meta_description
     context["seo_description"] = extracted_description or _DEFAULT_SEO_DESCRIPTION
+    rtd_version = os.environ.get("READTHEDOCS_VERSION", "")
+    context["seo_noindex"] = bool(rtd_version and rtd_version != "stable")
 
     if pagename == "index":
         canonical_url = str(context.get("pageurl") or "https://pysad.readthedocs.io/en/stable/")
@@ -234,8 +236,12 @@ copybutton_prompt_is_regexp = True
 
 html_theme = "furo"
 html_title = f"PySAD {release}"
-# Read the Docs gives the URL of the version that it builds. The links in llms.txt start with it.
-html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
+# Read the Docs builds consolidate canonical URLs on /en/stable/ so older versions do not outrank it.
+html_baseurl = (
+    "https://pysad.readthedocs.io/en/stable/"
+    if os.environ.get("READTHEDOCS")
+    else os.environ.get("READTHEDOCS_CANONICAL_URL", "")
+)
 html_favicon = "favicon.svg"
 html_static_path = ["_static"]
 html_css_files = [

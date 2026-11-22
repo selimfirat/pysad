@@ -260,15 +260,24 @@ class TerminalDashboard:
         state = self.state
 
         # Header
-        header = (
-            f"{BRIGHT_WHITE}╔{'═' * (cfg.width - 2)}╗{RESET}\n"
-            f"{BRIGHT_WHITE}║{RESET} "
+        plain_header = (
+            f"PySAD Live Anomaly Detection │ "
+            f"{state.detector_name} + {state.calibrator_name} │ "
+            f"Step: {state.step} │ "
+            f"Threshold: {state.threshold:.3f}"
+        )
+        colored_header = (
             f"{BRIGHT_CYAN}PySAD Live Anomaly Detection{RESET} │ "
             f"{CYAN}{state.detector_name}{RESET} + {CYAN}{state.calibrator_name}{RESET} │ "
             f"{YELLOW}Step: {state.step}{RESET} │ "
             f"{RED}Threshold: {state.threshold:.3f}{RESET}"
-            f" {BRIGHT_WHITE}║{RESET}\n"
-            f"{BRIGHT_WHITE}╚{'═' * (cfg.width - 2)}╝{RESET}"
+        )
+        box_width = max(cfg.width, len(plain_header) + 4)
+        pad = " " * (box_width - 4 - len(plain_header))
+        header = (
+            f"{BRIGHT_WHITE}╔{'═' * (box_width - 2)}╗{RESET}\n"
+            f"{BRIGHT_WHITE}║{RESET} {colored_header}{pad} {BRIGHT_WHITE}║{RESET}\n"
+            f"{BRIGHT_WHITE}╚{'═' * (box_width - 2)}╝{RESET}"
         )
         lines.append(header)
 
@@ -302,13 +311,12 @@ class TerminalDashboard:
             current_score = state.calibrated_scores[-1]
             is_alert = current_score > state.threshold
 
+            alert_badge = f" {BRIGHT_RED}🔔 ALERT{RESET}" if is_alert else ""
             score_line = (
                 f"  {SCORE_COLOR}Score:{RESET}      "
                 f"{self._render_score_bar(current_score, state.threshold, cfg.width - 25)} "
-                f"{ALERT_COLOR if is_alert else SCORE_COLOR}{current_score:.4f}{RESET} "
-                f"{BRIGHT_RED}🔔 ALERT{RESET}"
-                if is_alert
-                else ""
+                f"{ALERT_COLOR if is_alert else SCORE_COLOR}{current_score:.4f}{RESET}"
+                f"{alert_badge}"
             )
             lines.append(score_line)
 

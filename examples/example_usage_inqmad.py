@@ -7,7 +7,7 @@ from pysad.utils import ArrayStreamer, Data
 if __name__ == "__main__":
     X, y = Data().get_data("arrhythmia.mat")
 
-    # Inqmad scales the points with its first 256 points, so it takes raw features.
+    # Inqmad scales the points with its first 500 points, so it takes raw features.
     model = Inqmad(input_shape=X.shape[1], random_state=0)
     metric = AUROCMetric()
 

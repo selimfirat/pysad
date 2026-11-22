@@ -16,13 +16,27 @@ Run prequential streaming anomaly detection with [PySAD](https://github.com/seli
 - **Stream presets and CSV upload**: Evaluate the 4-sensor synthetic drift stream, NAB NYC Taxi passenger series, ODDS Arrhythmia (274 features), or a user-supplied CSV processed locally in browser memory.
 - **Benchmark-ranked detector comparison**: Compare 1 to 3 detectors simultaneously (`LocalOutlierProbability`, `RSHash`, `LODA`, `SmartSifter`, `RobustRandomCutForest`, `HalfSpaceTrees`, `KNNCAD`, `SeasonalHybridESD`), initialized with the top ODDS benchmark trio (`LocalOutlierProbability`, `RSHash`, `LODA`).
 - **Probability calibration and anomaly injection**: Switch between `ConformalProbabilityCalibrator` and `SPOTProbabilityCalibrator`, adjust the alert threshold slider, and inject point spikes into any feature.
+- **Live canvas**: Score new points in a worker and draw values, calibrated scores, and alert markers. Pause, resume, or reset the selected stream.
 - **Feature attribution**: Inspect `LODA.explain_partial()` contributions at any stream step.
+
+## Live stream
+
+Select a stream, detectors, and calibration. Click **Start live** to score points in order.
+Click **Pause live** to pause. Click **Resume live** to continue with the same model state.
+Click **Reset live** to clear the chart. The next start creates fresh models.
+If you change experiment settings, the live session stops. Start again to use the new settings.
+
+The canvas targets 60 FPS through `requestAnimationFrame`. It shows the measured frame rate during playback.
+A worker runs Pyodide and scores batches of eight points. The canvas keeps the latest 600 points.
+The stream targets 60 points per second. Slow models can reduce this rate without blocking canvas rendering.
+At the end of the selected stream, playback stops. Click **Start live** to run it again.
+Frame rates depend on your browser, display, and device. Background tabs can pause rendering.
 
 ## Run locally
 
 ```bash
 rm -rf /tmp/pysad-space && mkdir -p /tmp/pysad-space/data
-cp spaces/playground/index.html spaces/playground/engine.py spaces/playground/README.md /tmp/pysad-space/
+cp spaces/playground/index.html spaces/playground/worker.js spaces/playground/engine.py spaces/playground/README.md /tmp/pysad-space/
 cp -r examples/data/nab /tmp/pysad-space/data/
 cp examples/data/arrhythmia.mat /tmp/pysad-space/data/
 uv build --wheel --out-dir /tmp/pysad-space

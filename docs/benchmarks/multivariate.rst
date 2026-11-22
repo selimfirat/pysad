@@ -41,6 +41,8 @@ The next table gives the AUPR on each dataset. Its first column is the fraction 
    :stub-columns: 1
    :class: benchmark-table
 
+.. include:: ../benchmark/kitnet.rst
+
 Streams with drift
 ------------------
 

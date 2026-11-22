@@ -171,7 +171,6 @@ def _make_univariate_factory(cls):
     sig = inspect.signature(cls.__init__)
     required = _required_param_names(cls)
     has_period = "period" in sig.parameters
-    has_window_size = "window_size" in sig.parameters
     seeded = _accepts_random_state(sig)
 
     def factory(n, period):
@@ -199,10 +198,6 @@ def _make_univariate_factory(cls):
         # The benchmark only runs these on series with a known period.
         if has_period and "period" not in kwargs:
             kwargs["period"] = period
-        # Pass window_size for detectors that have it and are seasonal, even if it has a default.
-        # Seasonal detectors need a window of at least 3 periods for STL.
-        if has_period and has_window_size and "window_size" not in kwargs:
-            kwargs["window_size"] = 3 * period + 1
         if seeded:
             kwargs["random_state"] = 0
         return cls(**kwargs)
@@ -220,6 +215,11 @@ UNIVARIATE_OVERRIDES = {
     # HTM learns during NAB's probationary period, as in NAB.
     "HTM": lambda n, period: models.HTM(
         min_val=0.0, max_val=1.0, probationary_period=nab_probation(n), random_state=0
+    ),
+    # STL needs more than two periods. An odd window matches R's robust STL.
+    "SeasonalESD": lambda n, period: models.SeasonalESD(period=period, window_size=3 * period + 1),
+    "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(
+        period=period, window_size=3 * period + 1
     ),
     # Fix the length without labels, as for shingles, and initialize in the standard warm-up.
     "SAND": lambda n, period: models.SAND(

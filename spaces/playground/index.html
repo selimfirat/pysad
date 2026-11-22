@@ -11,10 +11,8 @@
   <link rel="preconnect" href="https://cdn.plot.ly" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preload" href="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.asm.wasm" as="fetch" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js" defer></script>
   <style>
     :root {
       --bg: #f2f4f2;
@@ -633,6 +631,9 @@
 
     .plot-skeleton.hidden { display: none; }
 
+    #liveCanvas { width: 100%; height: 300px; display: block; }
+    .live-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
     .stream-plot-box { width: 100%; height: 520px; }
     .explain-plot-box { width: 100%; height: 270px; }
 
@@ -928,6 +929,22 @@
           <span id="runningTag" class="running-tag">Updating...</span>
         </section>
 
+        <section class="panel" aria-labelledby="liveTitle">
+          <div class="card-header">
+            <h2 id="liveTitle" class="card-title">Live detector stream</h2>
+            <span class="card-subtitle">Canvas target: 60 FPS. Stream rate: 60 points/s.</span>
+          </div>
+          <p class="muted-note">Use the selected stream, detectors, and calibration. The chart keeps the latest 600 points.</p>
+          <canvas id="liveCanvas" role="img" aria-label="Live feature values above calibrated anomaly scores. Red dots mark alerts.">
+            Live feature values and calibrated scores. Use the metrics table for stream results.
+          </canvas>
+          <div class="live-controls">
+            <button id="liveStart" type="button" class="btn-primary" disabled>Start live</button>
+            <button id="liveReset" type="button" class="btn-secondary">Reset live</button>
+            <span id="liveStatus" class="muted-note" role="status">Ready after runtime loading. Start live to score new points.</span>
+          </div>
+        </section>
+
         <section class="panel">
           <div class="card-header">
             <h2 class="card-title">Prequential metrics</h2>
@@ -1062,14 +1079,14 @@
     }
 
     const state = {
-      pyodide: null,
+      worker: null,
       ready: false,
       running: false,
+      evaluateAgain: false,
       injected: [],
       inspectStep: null,
       csvBytes: null,
       featureNames: ["sensor_1"],
-      loadedDatasets: new Set(),
       lastPayload: null,
     };
 
@@ -1453,34 +1470,36 @@
       $("pipelineCode").textContent = data.pipeline_code;
     }
 
-    async function ensureStreamDataset(streamName) {
-      const py = state.pyodide;
-      if (!py) return;
-      if (streamName === "NYC Taxi Demand (NAB, univariate)" && !state.loadedDatasets.has("nab")) {
-        $("statusText").textContent = "Fetching NAB NYC Taxi dataset...";
-        const [taxiRes, winRes] = await Promise.all([
-          fetch("./data/nab/realKnownCause/nyc_taxi.csv"),
-          fetch("./data/nab/combined_windows.json"),
-        ]);
-        if (!taxiRes.ok) throw new Error(`Failed to fetch NYC Taxi dataset (${taxiRes.status})`);
-        py.FS.mkdirTree("/home/pyodide/data/nab/realKnownCause");
-        py.FS.writeFile("/home/pyodide/data/nab/realKnownCause/nyc_taxi.csv", await taxiRes.text());
-        if (winRes.ok) {
-          py.FS.writeFile("/home/pyodide/data/nab/combined_windows.json", await winRes.text());
-        }
-        state.loadedDatasets.add("nab");
-      } else if (streamName === "Arrhythmia (ODDS, 274 features)" && !state.loadedDatasets.has("arrhythmia")) {
-        $("statusText").textContent = "Fetching ODDS Arrhythmia dataset...";
-        const res = await fetch("./data/arrhythmia.mat");
-        if (!res.ok) throw new Error(`Failed to fetch Arrhythmia dataset (${res.status})`);
-        py.FS.mkdirTree("/home/pyodide/data");
-        py.FS.writeFile("/home/pyodide/data/arrhythmia.mat", new Uint8Array(await res.arrayBuffer()));
-        state.loadedDatasets.add("arrhythmia");
-      }
+    let requestId = 0;
+    const pending = new Map();
+    function callWorker(method, options) {
+      return new Promise((resolve, reject) => {
+        const id = ++requestId;
+        pending.set(id, {resolve, reject});
+        state.worker.postMessage({id, method, options, csvBytes: options ? state.csvBytes : null});
+      });
+    }
+
+    function getOptions() {
+      return {
+        stream_name: $("streamSelect").value,
+        max_points: Number($("numPointsSlider").value),
+        detectors: getSelectedDetectors(),
+        calibrator_name: getSelectedCalibrator(),
+        threshold: Number($("thresholdSlider").value),
+        calibrator_window: Number($("calWindowSlider").value),
+        primary_feature_name: $("featureSelect").value || null,
+        injected: state.injected,
+      };
     }
 
     async function evaluate() {
-      if (!state.ready || state.running) return;
+      if (!state.ready) return;
+      if (state.running) {
+        state.evaluateAgain = true;
+        return;
+      }
+      stopLive();
       const streamName = $("streamSelect").value;
       if (streamName === "Upload CSV" && !state.csvBytes) {
         $("statusCard").classList.remove("error-banner");
@@ -1495,55 +1514,191 @@
       await new Promise((r) => setTimeout(r, 8));
 
       try {
-        await ensureStreamDataset(streamName);
-        const py = state.pyodide;
-        py.globals.set("_req_json", JSON.stringify({
-          stream_name: streamName,
-          num_points: Number($("numPointsSlider").value),
-          detectors: getSelectedDetectors(),
-          calibrator_name: getSelectedCalibrator(),
-          threshold: Number($("thresholdSlider").value),
-          calibrator_window: Number($("calWindowSlider").value),
-          primary_feature: $("featureSelect").value || null,
-          injected: state.injected,
-          inspect_step: state.inspectStep,
-        }));
-        py.globals.set("_csv_u8", state.csvBytes || null);
-
-        const outJson = py.runPython(`
-import json
-import engine
-req = json.loads(_req_json)
-csv_bytes = _csv_u8.to_bytes() if _csv_u8 is not None else None
-engine.run_playground_json(
-    stream_name=req["stream_name"],
-    detectors=req["detectors"],
-    calibrator_name=req["calibrator_name"],
-    threshold=float(req["threshold"]),
-    calibrator_window=int(req["calibrator_window"]),
-    max_points=int(req["num_points"]),
-    csv_data=csv_bytes,
-    injected=req["injected"],
-    inspect_step=req["inspect_step"],
-    primary_feature_name=req["primary_feature"],
-)
-        `);
-        applyPayload(JSON.parse(outJson));
+        const data = await callWorker("evaluate", {...getOptions(), inspect_step: state.inspectStep});
+        applyPayload(data);
       } catch (err) {
         $("statusCard").classList.add("error-banner");
         $("statusText").textContent = `Error: ${err.message || String(err)}`;
       } finally {
         state.running = false;
         $("runningTag").classList.remove("active");
+        if (state.evaluateAgain) {
+          state.evaluateAgain = false;
+          evaluate();
+        }
       }
     }
 
+    const live = {
+      active: false, generation: 0, frame: null, fetching: false,
+      queue: [], history: [], done: false, lastPoint: 0,
+      frames: 0, measuredAt: 0, names: [], threshold: 0.985,
+    };
+
+    function stopLive() {
+      live.active = false;
+      live.generation++;
+      cancelAnimationFrame(live.frame);
+      live.queue = [];
+      live.history = [];
+      live.fetching = false;
+      live.done = false;
+      $("liveStart").textContent = "Start live";
+      $("liveStatus").textContent = "Start live to score new points.";
+      drawLive(0);
+    }
+
+    function drawLive(offset) {
+      const canvas = $("liveCanvas");
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const ratio = window.devicePixelRatio || 1;
+      if (canvas.width !== Math.round(width * ratio) || canvas.height !== Math.round(height * ratio)) {
+        canvas.width = Math.round(width * ratio);
+        canvas.height = Math.round(height * ratio);
+      }
+      const ctx = canvas.getContext("2d");
+      const pal = getPlotPalette();
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.fillStyle = pal.paper;
+      ctx.fillRect(0, 0, width, height);
+      ctx.font = "12px sans-serif";
+      ctx.fillStyle = pal.muted;
+      ctx.fillText($("featureSelect").value || "Feature", 8, 18);
+      live.names.forEach((name, i) => {
+        ctx.fillStyle = pal.detectors[i];
+        ctx.fillText(name, 8, 157 + 16 * i);
+      });
+      const points = live.history;
+      if (!points.length) return;
+      let low = Infinity, high = -Infinity;
+      for (const point of points) {
+        low = Math.min(low, point.value);
+        high = Math.max(high, point.value);
+      }
+      const span = high - low || 1;
+      const x = i => 8 + (width - 16) * (600 - points.length + i - offset) / 600;
+      const valueY = p => 125 - 95 * (p.value - low) / span;
+      const scoreY = score => height - 16 - score * 85;
+      function line(y, color) {
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        points.forEach((point, i) => {
+          if (i === 0) ctx.moveTo(x(i), y(point));
+          else ctx.lineTo(x(i), y(point));
+        });
+        ctx.stroke();
+      }
+      line(valueY, pal.accent);
+      ctx.strokeStyle = pal.muted;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(8, scoreY(live.threshold));
+      ctx.lineTo(width - 8, scoreY(live.threshold));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      live.names.forEach((_, j) => {
+        line(p => scoreY(p.scores[j]), pal.detectors[j]);
+        ctx.fillStyle = pal.alert;
+        points.forEach((point, i) => {
+          if (!point.alerts[j]) return;
+          ctx.beginPath();
+          ctx.arc(x(i), scoreY(point.scores[j]), 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      });
+    }
+
+    async function fillLive() {
+      if (live.fetching || live.done || live.queue.length >= 16) return;
+      const generation = live.generation;
+      live.fetching = true;
+      try {
+        const batch = await callWorker("next");
+        if (generation !== live.generation) return;
+        live.queue.push(...batch.points);
+        live.done = batch.done;
+      } catch (error) {
+        if (generation !== live.generation) return;
+        stopLive();
+        $("liveStatus").textContent = `Live stream error: ${error.message}`;
+      } finally {
+        if (generation === live.generation) live.fetching = false;
+      }
+    }
+
+    function animateLive(now) {
+      if (!live.active) return;
+      // Drop elapsed time after a hidden tab resumes. Never build a catch-up queue.
+      if (now - live.lastPoint >= 1000 / 60 && live.queue.length) {
+        live.history.push(live.queue.shift());
+        if (live.history.length > 600) live.history.shift();
+        live.lastPoint = now - ((now - live.lastPoint) % (1000 / 60));
+      }
+      const offset = Math.min(1, (now - live.lastPoint) / (1000 / 60));
+      drawLive(offset);
+      live.frames++;
+      const elapsed = now - live.measuredAt;
+      if (elapsed >= 1000) {
+        const step = live.history.at(-1)?.step;
+        $("liveStatus").textContent = `${step == null ? 0 : step + 1} points | ${Math.round(live.frames * 1000 / elapsed)} FPS`;
+        live.frames = 0;
+        live.measuredAt = now;
+      }
+      if (live.done && !live.queue.length) {
+        live.active = false;
+        $("liveStart").textContent = "Start live";
+        $("liveStatus").textContent = `Stream complete: ${live.history.at(-1)?.step + 1} points.`;
+        return;
+      }
+      fillLive();
+      live.frame = requestAnimationFrame(animateLive);
+    }
+
+    async function toggleLive() {
+      if (!state.ready || state.running) return;
+      if (live.active) {
+        live.active = false;
+        cancelAnimationFrame(live.frame);
+        $("liveStart").textContent = "Resume live";
+        $("liveStatus").textContent = "Paused.";
+        return;
+      }
+      if (!live.history.length || (live.done && !live.queue.length)) {
+        stopLive();
+        const generation = live.generation;
+        $("liveStart").disabled = true;
+        try {
+          const options = getOptions();
+          live.names = options.detectors;
+          live.threshold = options.threshold;
+          await callWorker("start", options);
+          if (generation !== live.generation) return;
+        } catch (error) {
+          $("liveStatus").textContent = `Live stream error: ${error.message}`;
+          return;
+        } finally {
+          $("liveStart").disabled = false;
+        }
+      }
+      live.active = true;
+      live.lastPoint = live.measuredAt = performance.now();
+      live.frames = 0;
+      $("liveStart").textContent = "Pause live";
+      live.frame = requestAnimationFrame(animateLive);
+    }
+
     function wireUI() {
+      $("liveStart").addEventListener("click", toggleLive);
+      $("liveReset").addEventListener("click", stopLive);
+      window.addEventListener("resize", () => { if (!live.active) drawLive(0); });
+      drawLive(0);
       syncDetectorRowStyles();
       syncCalibrationControls();
       syncInjectionButtons();
       darkMedia?.addEventListener?.("change", () => {
         syncDetectorRowStyles();
+        drawLive(0);
         if (state.lastPayload) {
           renderMetricsTable(state.lastPayload.traces);
           renderStreamPlot(state.lastPayload);
@@ -1664,47 +1819,28 @@ engine.run_playground_json(
           }
         });
 
-        const wheelBufPromise = fetch("./manifest.json")
-          .then((r) => (r.ok ? r.json() : null))
-          .then((m) => (m && m.wheel ? fetch(`./${m.wheel}`).then((rw) => (rw.ok ? rw.arrayBuffer() : null)) : null))
-          .catch(() => null);
-
-        const enginePromise = fetch("./engine.py").then((r) => {
-          if (!r.ok) throw new Error(`Failed to fetch engine.py (${r.status})`);
-          return r.text();
-        });
-
-        const pyodidePromise = loadPyodide({
-          indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/",
-          packages: ["numpy", "scipy", "scikit-learn"],
-        });
-
-        const [pyodide, engineCode, wheelBuf] = await Promise.all([
-          pyodidePromise,
-          enginePromise,
-          wheelBufPromise,
-        ]);
-        state.pyodide = pyodide;
-
-        setBootProgress(70, "Unpacking PySAD package in WebAssembly...");
-        if (wheelBuf) {
-          pyodide.unpackArchive(wheelBuf, "zip", { extractDir: "/home/pyodide" });
-        } else {
-          await pyodide.loadPackage("micropip");
-          await pyodide.runPythonAsync("import micropip; await micropip.install('pysad')");
-        }
-        pyodide.FS.writeFile("/home/pyodide/engine.py", engineCode);
-
-        setBootProgress(85, "Importing PySAD detectors...");
-        pyodide.runPython(`
-import sys
-if "/home/pyodide" not in sys.path:
-    sys.path.insert(0, "/home/pyodide")
-import engine
-        `);
+        state.worker = new Worker("./worker.js");
+        state.worker.onmessage = ({data}) => {
+          const request = pending.get(data.id);
+          if (!request) return;
+          pending.delete(data.id);
+          if (data.error) request.reject(new Error(data.error));
+          else request.resolve(data.result);
+        };
+        state.worker.onerror = (event) => {
+          state.ready = false;
+          $("liveStart").disabled = true;
+          setControlsEnabled(false);
+          for (const request of pending.values()) request.reject(new Error(event.message));
+          pending.clear();
+          stopLive();
+          $("liveStatus").textContent = "Runtime error. Reload the page to retry.";
+        };
+        await callWorker("init");
 
         setBootProgress(94, "Measuring client-side execution speed...");
         state.ready = true;
+        $("liveStart").disabled = false;
         setControlsEnabled(true);
         await evaluate();
 

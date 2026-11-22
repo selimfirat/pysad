@@ -770,6 +770,95 @@ def generate_pipeline_code(
     return "\n".join(lines)
 
 
+class LiveSession:
+    """Score a finite stream in batches without restarting the models.
+
+    Args:
+        stream_name (str): Stream preset or CSV input.
+        detectors (list[str]): Names of up to three detectors.
+        calibrator_name (str): Probability calibrator name.
+        threshold (float): Alert threshold (Default=0.985).
+        calibrator_window (int): Calibration window size (Default=350).
+        max_points (int): Stream length limit (Default=1200).
+        csv_data (bytes | str | None): CSV content (Default=None).
+        injected (list[dict[str, Any]] | None): Spike settings (Default=None).
+        primary_feature_name (str | None): Feature to plot (Default=None).
+    """
+
+    def __init__(
+        self,
+        stream_name: str,
+        detectors: list[str],
+        calibrator_name: str,
+        threshold: float = 0.985,
+        calibrator_window: int = 350,
+        max_points: int = 1200,
+        csv_data: bytes | str | None = None,
+        injected: list[dict[str, Any]] | None = None,
+        primary_feature_name: str | None = None,
+    ) -> None:
+        base = load_stream(stream_name, max_points=max_points, csv_data=csv_data)
+        self.stream, _ = apply_injected_anomalies(base, injected or [])
+        n = self.stream.num_points
+        self.warmup = min(max(60, n // 6), max(60, n - 40))
+        self.feature_idx = (
+            self.stream.feature_names.index(primary_feature_name)
+            if primary_feature_name in self.stream.feature_names
+            else 0
+        )
+        self.threshold = threshold
+        self.step = 0
+        selected = [d for d in detectors if d in _SUPPORTED_DETECTORS][:3]
+        self.models = []
+        for name in selected or ["LocalOutlierProbability"]:
+            model, _, feature_idx = _make_detector(
+                name,
+                self.stream.X,
+                warmup=self.warmup,
+                seasonal_period=self.stream.seasonal_period,
+                primary_feature_idx=self.feature_idx,
+            )
+            calibrator = _make_calibrator(
+                calibrator_name,
+                calibrator_window=calibrator_window,
+                threshold=threshold,
+                warmup=self.warmup,
+                num_points=n,
+            )
+            self.models.append((model, calibrator, feature_idx))
+
+    def next_batch(self, size: int = 8) -> dict[str, Any]:
+        """Return new values, calibrated scores, and alerts in stream order.
+
+        Args:
+            size (int): Maximum points to score (Default=8).
+
+        Returns:
+            dict[str, Any]: Points and a flag for the end of the stream.
+        """
+        points = []
+        end = min(self.step + size, self.stream.num_points)
+        while self.step < end:
+            x = self.stream.X[self.step]
+            scores = []
+            for model, calibrator, feature_idx in self.models:
+                sample = x if feature_idx is None else x[feature_idx : feature_idx + 1]
+                raw = float(model.fit_score_partial(sample))
+                scores.append(float(calibrator.fit_transform_partial(raw)))
+            points.append(
+                {
+                    "step": self.step,
+                    "value": float(x[self.feature_idx]),
+                    "scores": scores,
+                    "alerts": [
+                        self.step >= self.warmup and score >= self.threshold for score in scores
+                    ],
+                }
+            )
+            self.step += 1
+        return {"points": points, "done": self.step == self.stream.num_points}
+
+
 def run_playground(
     stream_name: str,
     detectors: list[str],

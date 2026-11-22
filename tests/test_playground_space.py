@@ -230,12 +230,14 @@ def test_static_space_bundle_metadata():
     readme = (space_dir / "README.md").read_text(encoding="utf-8")
     index_html = (space_dir / "index.html").read_text(encoding="utf-8")
     assert "sdk: static" in readme
-    assert "./engine.py" in index_html
-    assert "./data/nab/realKnownCause/nyc_taxi.csv" in index_html
-    assert "./data/arrhythmia.mat" in index_html
+    worker_js = (space_dir / "worker.js").read_text(encoding="utf-8")
+    assert "./worker.js" in index_html
+    assert "./engine.py" in worker_js
+    assert "./data/nab/realKnownCause/nyc_taxi.csv" in worker_js
+    assert "./data/arrhythmia.mat" in worker_js
     assert "./initial_snapshot.json" in index_html
     assert "plotly-basic-" in index_html
-    assert "unpackArchive" in index_html
+    assert "unpackArchive" in worker_js
     for default_detector in ("LocalOutlierProbability", "RSHash", "LODA"):
         assert f'value="{default_detector}" checked' in index_html
 
@@ -261,3 +263,32 @@ def test_playground_files_have_no_em_or_en_dashes():
         content = (space_dir / filename).read_text(encoding="utf-8")
         for token in forbidden:
             assert token not in content, f"Found {token!r} in {filename}"
+
+
+@pytest.mark.parametrize("calibrator", engine.CALIBRATOR_CHOICES)
+def test_live_batches_match_prequential_run(calibrator):
+    """Live batches return the same scores and alerts as a full run."""
+    options = dict(
+        stream_name=engine.STREAM_SYNTHETIC,
+        detectors=["LODA", "HalfSpaceTrees"],
+        calibrator_name=calibrator,
+        max_points=300,
+        injected=[{"index": 250, "feature_idx": 0, "magnitude_sigma": 7.0}],
+    )
+    expected = engine.run_playground(**options)
+    session = engine.LiveSession(**options)
+    rows = []
+    while True:
+        batch = session.next_batch(8)
+        rows.extend(batch["points"])
+        if batch["done"]:
+            break
+    assert len(rows) == 300
+    assert [row["step"] for row in rows] == list(range(300))
+    np.testing.assert_allclose([row["value"] for row in rows], expected.stream.X[:, 0])
+    for i, trace in enumerate(expected.traces):
+        np.testing.assert_allclose([row["scores"][i] for row in rows], trace.calibrated_scores)
+        assert [row["alerts"][i] for row in rows] == trace.alerts.tolist()
+    assert session.next_batch(8) == {"points": [], "done": True}
+    restarted = engine.LiveSession(**options)
+    assert restarted.next_batch(8)["points"] == rows[:8]

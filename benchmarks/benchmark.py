@@ -13,6 +13,7 @@ Run it from the repository root:
     python benchmarks/benchmark.py --check origin/master  # rerun what changed, compare with the results
     python benchmarks/benchmark.py --parts drift          # only the streams with drift
     python benchmarks/benchmark.py --ci base.csv --since origin/master  # the short run of CI
+    python benchmarks/benchmark.py --custom path.py:MyModel --latex  # custom model with LaTeX output
 
 The results go to docs/benchmark/, which the pages in docs/benchmarks/ show.
 The dimensionality sweep writes docs/benchmark/dimensions.csv and
@@ -25,6 +26,7 @@ import ast
 import csv
 import functools
 import hashlib
+import importlib.util
 import inspect
 import json
 import os
@@ -361,6 +363,177 @@ FIELDS = [
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
 
 
+def _load_custom_model(spec):
+    """Load a custom model class from a file path and class name.
+
+    Args:
+        spec (str): Specification in the format "path/to/file.py:ClassName".
+
+    Returns:
+        type: The model class.
+
+    Raises:
+        ValueError: If the spec format is invalid, the file does not exist,
+            the class is not found, or the class does not inherit from BaseModel.
+    """
+    if ":" not in spec:
+        raise ValueError(
+            f"Custom model spec must be in format 'path/to/file.py:ClassName', got '{spec}'"
+        )
+    file_path, class_name = spec.rsplit(":", 1)
+    path = Path(file_path).resolve()
+    if not path.is_file():
+        raise ValueError(f"Custom model file not found: {path}")
+    module_name = path.stem
+    spec_obj = importlib.util.spec_from_file_location(module_name, path)
+    if spec_obj is None or spec_obj.loader is None:
+        raise ValueError(f"Could not load module from {path}")
+    module = importlib.util.module_from_spec(spec_obj)
+    sys.modules[module_name] = module
+    spec_obj.loader.exec_module(module)
+    if not hasattr(module, class_name):
+        raise ValueError(f"Class '{class_name}' not found in {path}")
+    cls = getattr(module, class_name)
+    if not issubclass(cls, BaseModel):
+        raise ValueError(f"Class '{class_name}' must inherit from BaseModel")
+    return cls
+
+
+def _make_custom_factory(cls, input_kind):
+    """Create a factory function for a custom model.
+
+    Args:
+        cls (type): The model class.
+        input_kind (str): The input kind ("multivariate" or "univariate").
+
+    Returns:
+        callable: A factory function that creates model instances.
+    """
+    sig = inspect.signature(cls.__init__)
+    required = _required_param_names(cls)
+    seeded = _accepts_random_state(sig)
+
+    if input_kind == "multivariate":
+
+        def factory(X, seed):
+            kwargs = {}
+            for param in required:
+                if param == "feature_mins":
+                    kwargs["feature_mins"] = np.zeros(X.shape[1])
+                elif param == "feature_maxes":
+                    kwargs["feature_maxes"] = np.ones(X.shape[1])
+                elif param == "input_shape":
+                    kwargs["input_shape"] = X.shape[1]
+                elif param == "initial_X":
+                    kwargs["initial_X"] = X[: warmup(len(X))]
+                else:
+                    raise TypeError(
+                        f"{cls.__name__} requires {param!r}; pass it via constructor defaults."
+                    )
+            if seeded:
+                kwargs["random_state"] = seed
+            return cls(**kwargs)
+
+    else:  # univariate or timestamped
+
+        def factory(n, period):
+            kwargs = {}
+            for param in required:
+                if param == "min_val":
+                    kwargs["min_val"] = 0.0
+                elif param == "max_val":
+                    kwargs["max_val"] = 1.0
+                elif param == "period":
+                    kwargs["period"] = period
+                elif param in ("window_length", "subsequence_length"):
+                    kwargs[param] = SHINGLE_SIZE
+                elif param == "window_size":
+                    has_period = "period" in sig.parameters
+                    kwargs["window_size"] = 3 * period + 1 if has_period else WARMUP_POINTS
+                elif param == "probationary_period":
+                    kwargs["probationary_period"] = nab_probation(n)
+                else:
+                    raise TypeError(
+                        f"{cls.__name__} requires {param!r}; pass it via constructor defaults."
+                    )
+            if hasattr(cls, "period") and "period" not in kwargs and period is not None:
+                kwargs["period"] = period
+            if seeded:
+                kwargs["random_state"] = 0
+            return cls(**kwargs)
+
+    return factory
+
+
+def _write_latex_summary(results, detectors, out_path):
+    """Write a LaTeX summary table of AUROC results.
+
+    Args:
+        results (dict): Benchmark results keyed by (dataset, detector, seed).
+        detectors (list): List of detector names in summary order (from write_ranking).
+        out_path (Path): Output file path for the LaTeX table.
+    """
+    # Get all detectors from results, not just built-in ones
+    all_detectors = sorted({k[1].removesuffix(SHINGLED) for k in results if k[0] in DATASETS})
+    if not all_detectors:
+        return
+
+    datasets = [ds for ds in DATASETS if any(k[0] == ds for k in results)]
+    if not datasets:
+        return
+
+    def mean_auroc(dataset, detector):
+        vals = []
+        for k, r in results.items():
+            if k[:2] == (dataset, detector):
+                auroc_val = r.get("auroc")
+                if auroc_val is not None and auroc_val != "":
+                    try:
+                        val = float(auroc_val)
+                        if not np.isnan(val):
+                            vals.append(val)
+                    except (ValueError, TypeError):
+                        pass
+        return np.mean(vals) if vals else np.nan
+
+    table = np.array([[mean_auroc(ds, d) for d in all_detectors] for ds in datasets])
+
+    mean_auroc_vals = np.nanmean(table, axis=0)
+    order = np.argsort(-mean_auroc_vals)
+
+    lines = []
+    lines.append(r"\begin{table}[htbp]")
+    lines.append(r"\centering")
+    lines.append(r"\caption{Benchmark AUROC summary (higher is better).}")
+    lines.append(r"\label{tab:benchmark-auroc}")
+    cols = "l" + "c" * len(all_detectors)
+    lines.append(rf"\begin{{tabular}}{{{cols}}}")
+    lines.append(r"\toprule")
+    header = ["Dataset"] + [SHORT_NAMES.get(all_detectors[i], all_detectors[i]) for i in order]
+    lines.append(" & ".join(header) + r" \\")
+    lines.append(r"\midrule")
+    for j, ds in enumerate(datasets):
+        row = [ds]
+        for i in order:
+            val = table[j, i]
+            if np.isnan(val):
+                row.append("--")
+            else:
+                cell = f"{val:.3f}"
+                if val == np.nanmax(table[j]) and not np.isnan(np.nanmax(table[j])):
+                    cell = rf"\textbf{{{cell}}}"
+                if val <= 0.5:
+                    cell = rf"\textit{{{cell}}}"
+                row.append(cell)
+        lines.append(" & ".join(row) + r" \\")
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\end{table}")
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines) + "\n")
+
+
 def significant(scores):
     """The scores rounded to SIGNIFICANT_DIGITS significant digits.
 
@@ -573,19 +746,27 @@ def _load_univariate_raw(series, timestamps):
     return X, y
 
 
-def run_univariate(series, detector, points=None, ci=False):
+def run_univariate(
+    series, detector, points=None, ci=False, model_type=None, input_kind=None, custom_spec=None
+):
     X, y = _load_univariate_raw(series, detector in TIMESTAMPED)
     X, y = X[:points].copy(), y[:points]
     values = X[:, -1]  # the timestamps, if any, come first
     span = values.max() - values.min()
     X[:, -1] = (values - values.min()) / (span if span > 0 else 1.0)
-    if detector in UNIVARIATE:
+
+    if model_type == "custom":
+        cls = _load_custom_model(custom_spec)
+        factory = _make_custom_factory(cls, input_kind)
+        model = factory(len(X), PERIODS.get(series))
+    elif detector in UNIVARIATE:
         model = UNIVARIATE[detector](len(X), PERIODS.get(series))
     else:
         if detector.endswith(SHINGLED):
             X = ShingleTransformer(SHINGLE_SIZE).fit_transform(X)
         fix_seed(0)
         model = DETECTORS[detector.removesuffix(SHINGLED)](X, 0)
+
     scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     if not ci:
@@ -609,12 +790,19 @@ def run_univariate(series, detector, points=None, ci=False):
     return row
 
 
-def run_ucr(series, detector):
+def run_ucr(series, detector, model_type=None, input_kind=None, custom_spec=None):
     """Runs a detector on a UCR series, with the arguments that it gets on NAB, and the raw scores."""
     X, y = Data().get_data(series)
     span = X.max() - X.min()
     X = (X - X.min()) / (span if span > 0 else 1.0)
-    model = UNIVARIATE[detector](len(X), None)
+
+    if model_type == "custom":
+        cls = _load_custom_model(custom_spec)
+        factory = _make_custom_factory(cls, input_kind)
+        model = factory(len(X), None)
+    else:
+        model = UNIVARIATE[detector](len(X), None)
+
     scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     train = int(series.split("_")[-3])  # the training part has no anomalies, so it does not count
@@ -637,20 +825,53 @@ def run_ucr(series, detector):
 def run(job):
     dataset, detector, seed, points, *rest = job
     ci = bool(rest[0]) if rest else False
+    model_type = rest[1] if len(rest) > 1 else None
+    input_kind = rest[2] if len(rest) > 2 else None
+    custom_spec = rest[3] if len(rest) > 3 else None
     # One thread for BLAS and OpenMP in each worker, so that the workers do not compete for the cores
     # and the times per point stay comparable. The scores do not change.
     with threadpool_limits(1):
-        return _run(dataset, detector, seed, points, ci=ci)
+        return _run(
+            dataset,
+            detector,
+            seed,
+            points,
+            ci=ci,
+            model_type=model_type,
+            input_kind=input_kind,
+            custom_spec=custom_spec,
+        )
 
 
-def _run(dataset, detector, seed, points, ci=False):
+def _run(
+    dataset, detector, seed, points, ci=False, model_type=None, input_kind=None, custom_spec=None
+):
     if dataset.startswith("ucr/"):
-        return run_ucr(dataset, detector)
+        return run_ucr(
+            dataset, detector, model_type=model_type, input_kind=input_kind, custom_spec=custom_spec
+        )
     if dataset.startswith("nab/"):
-        return run_univariate(dataset, detector, points, ci=ci)
+        return run_univariate(
+            dataset,
+            detector,
+            points,
+            ci=ci,
+            model_type=model_type,
+            input_kind=input_kind,
+            custom_spec=custom_spec,
+        )
+
     X, y = load(dataset, seed, points)
     fix_seed(seed)
-    model = DETECTORS[detector](X, seed)
+
+    if model_type == "custom":
+        # Custom model: load from spec in worker
+        cls = _load_custom_model(custom_spec)
+        factory = _make_custom_factory(cls, input_kind)
+        model = factory(X, seed)
+    else:
+        model = DETECTORS[detector](X, seed)
+
     scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     row = {"dataset": dataset, "detector": detector, "seed": seed}
@@ -1578,6 +1799,16 @@ def main():
         default=DIMENSION_POINTS,
         help="points per detector and dimension in the dimensionality sweep",
     )
+    parser.add_argument(
+        "--custom",
+        metavar="SPEC",
+        help="custom model to benchmark, as 'path/to/file.py:ClassName'",
+    )
+    parser.add_argument(
+        "--latex",
+        action="store_true",
+        help="write a LaTeX summary table to docs/benchmark/summary.tex",
+    )
     args = parser.parse_args()
     if args.compare_dirs:
         compare_ci_dirs(Path(args.compare_dirs[0]), Path(args.compare_dirs[1]))
@@ -1605,6 +1836,17 @@ def main():
     ci_mode = bool(args.ci)
     points = CI_POINTS if ci_mode else None
 
+    # Load custom model if specified
+    custom_model = None
+    custom_name = None
+    custom_input_kind = None
+    if args.custom:
+        custom_model = _load_custom_model(args.custom)
+        custom_name = custom_model.__name__
+        custom_input_kind = custom_model._input_kind
+        if custom_input_kind not in ("multivariate", "univariate", "timestamped"):
+            custom_input_kind = "multivariate"
+
     detectors = args.detectors.split(",") if args.detectors else [*DETECTORS, *UNIVARIATE]
     if args.check or args.since:
         detectors = changed_detectors(
@@ -1621,6 +1863,14 @@ def main():
     parts = args.parts.split(",") if args.parts else PARTS
     if set(parts) - set(PARTS):
         parser.error(f"unknown parts: {', '.join(sorted(set(parts) - set(PARTS)))}")
+
+    # Create factory for custom model
+    custom_is_multivariate = False
+    custom_is_univariate = False
+    if custom_model:
+        _make_custom_factory(custom_model, custom_input_kind)  # validate factory creation
+        custom_is_multivariate = custom_input_kind == "multivariate"
+        custom_is_univariate = custom_input_kind in ("univariate", "timestamped")
 
     # Each part downloads its data once, before the workers start. Every part runs once, with seed 0.
     cache_dir = Path(args.base_cache_dir) if (ci_mode and args.base_cache_dir) else None
@@ -1640,36 +1890,74 @@ def main():
     jobs = []
     multivariate = [d for d in run_detectors if d in DETECTORS]
     univariate = [d for d in run_detectors if d in UNIVARIATE]
-    if "odds" in parts and multivariate:
+
+    if "odds" in parts and (multivariate or custom_is_multivariate):
         for dataset in DATASETS:
             Data().get_data(f"{dataset}.mat")
         jobs += [(ds, d, 0, points, ci_mode) for d in multivariate for ds in DATASETS]
+        if custom_is_multivariate:
+            jobs += [
+                (ds, custom_name, 0, points, ci_mode, "custom", custom_input_kind, args.custom)
+                for ds in DATASETS
+            ]
     if {"univariate", "nab", "shingles"} & set(parts) and (
-        univariate or ({"nab", "shingles"} & set(parts) and multivariate)
+        univariate
+        or ({"nab", "shingles"} & set(parts) and multivariate)
+        or custom_is_univariate
+        or ({"nab", "shingles"} & set(parts) and custom_is_multivariate)
     ):
         for series in nab_series():
             Data().get_data(series)
-    if "univariate" in parts and univariate:
+    if "univariate" in parts and (univariate or custom_is_univariate):
         jobs += [(series, d, 0, points, ci_mode) for d in univariate for series in series_of(d)]
-        if not ci_mode:  # the training part of most UCR series is longer than CI_POINTS
+        if custom_is_univariate:
+            jobs += [
+                (series, custom_name, 0, points, ci_mode, "custom", custom_input_kind, args.custom)
+                for series in nab_series()
+            ]
+        if not ci_mode:
             jobs += [
                 (s, d, 0, None, ci_mode)
                 for d in univariate
                 if d not in SEASONAL + TIMESTAMPED
                 for s in ucr_series()
             ]
-    if "drift" in parts and multivariate:
+    if "drift" in parts and (multivariate or custom_is_multivariate):
         for stream in DRIFT:
             Data().get_data(stream)
         jobs += [(stream, d, 0, points, ci_mode) for d in multivariate for stream in DRIFT]
-    if "nab" in parts and multivariate:
+        if custom_is_multivariate:
+            jobs += [
+                (stream, custom_name, 0, points, ci_mode, "custom", custom_input_kind, args.custom)
+                for stream in DRIFT
+            ]
+    if "nab" in parts and (multivariate or custom_is_multivariate):
         jobs += [(series, d, 0, points, ci_mode) for d in multivariate for series in nab_series()]
-    if "shingles" in parts and multivariate:
+        if custom_is_multivariate:
+            jobs += [
+                (series, custom_name, 0, points, ci_mode, "custom", custom_input_kind, args.custom)
+                for series in nab_series()
+            ]
+    if "shingles" in parts and (multivariate or custom_is_multivariate):
         jobs += [
             (series, d + SHINGLED, 0, points, ci_mode)
             for d in multivariate
             for series in nab_series()
         ]
+        if custom_is_multivariate:
+            jobs += [
+                (
+                    series,
+                    custom_name + SHINGLED,
+                    0,
+                    points,
+                    ci_mode,
+                    "custom",
+                    custom_input_kind,
+                    args.custom,
+                )
+                for series in nab_series()
+            ]
     cell_weights, part_weights = _detector_weights()
     drift_keys = set(DRIFT)
 
@@ -1775,7 +2063,10 @@ def main():
         NAB_FIELDS,
         [[nab[d].get(f, "") for f in NAB_FIELDS] for d in NAB_DETECTORS if d in nab],
     )
-    write_tables(results, nab)
+    detectors_order = write_tables(results, nab)
+    if args.latex:
+        _write_latex_summary(results, detectors_order, OUT / "summary.tex")
+        print(f"LaTeX summary written to {OUT / 'summary.tex'}")
 
 
 if __name__ == "__main__":

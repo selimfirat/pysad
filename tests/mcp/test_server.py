@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from mcp.server.fastmcp import Context
 
 from pysad.mcp.server import (
+    SessionState,
     create_mcp_server,
     get_status,
     initialize_calibrator,
@@ -27,10 +29,12 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-@pytest.fixture(autouse=True)
-async def reset_server_state() -> None:
-    """Start each test with an empty MCP session."""
-    await reset_session()
+@pytest.fixture
+def mock_context() -> Context:
+    """Create a mock context with session state."""
+    ctx = Context()
+    ctx._pysad_state = SessionState()
+    return ctx
 
 
 async def test_server_registers_all_tools() -> None:
@@ -52,12 +56,13 @@ async def test_server_registers_all_tools() -> None:
     }
 
 
-async def test_initialize_detector_returns_public_configuration() -> None:
+async def test_initialize_detector_returns_public_configuration(mock_context) -> None:
     """Detector initialization returns the selected class and parameters."""
     result = await initialize_detector(
         detector_name="loda",
         detector_kwargs='{"num_bins": 20}',
         random_state=42,
+        ctx=mock_context,
     )
 
     assert result == {
@@ -67,28 +72,29 @@ async def test_initialize_detector_returns_public_configuration() -> None:
     }
 
 
-async def test_initialize_detector_rejects_unknown_name() -> None:
+async def test_initialize_detector_rejects_unknown_name(mock_context) -> None:
     """An unknown detector returns an error without raising an exception."""
-    result = await initialize_detector(detector_name="unknown")
+    result = await initialize_detector(detector_name="unknown", ctx=mock_context)
 
     assert result["success"] is False
     assert "Unknown detector" in result["error"]
 
 
-async def test_initialize_detector_reports_invalid_configuration() -> None:
+async def test_initialize_detector_reports_invalid_configuration(mock_context) -> None:
     """Invalid detector JSON returns an error without raising an exception."""
-    result = await initialize_detector(detector_kwargs="not-json")
+    result = await initialize_detector(detector_kwargs="not-json", ctx=mock_context)
 
     assert result["success"] is False
     assert result["error"]
 
 
-async def test_initialize_calibrator_returns_public_configuration() -> None:
+async def test_initialize_calibrator_returns_public_configuration(mock_context) -> None:
     """Calibrator initialization returns the selected class and parameters."""
     result = await initialize_calibrator(
         calibrator_name="conformal",
         calibrator_kwargs="{}",
         window_size=50,
+        ctx=mock_context,
     )
 
     assert result == {
@@ -98,25 +104,25 @@ async def test_initialize_calibrator_returns_public_configuration() -> None:
     }
 
 
-async def test_initialize_calibrator_rejects_unknown_name() -> None:
+async def test_initialize_calibrator_rejects_unknown_name(mock_context) -> None:
     """An unknown calibrator returns an error without raising an exception."""
-    result = await initialize_calibrator(calibrator_name="unknown")
+    result = await initialize_calibrator(calibrator_name="unknown", ctx=mock_context)
 
     assert result["success"] is False
     assert "Unknown calibrator" in result["error"]
 
 
-async def test_initialize_calibrator_reports_invalid_configuration() -> None:
+async def test_initialize_calibrator_reports_invalid_configuration(mock_context) -> None:
     """Invalid calibrator JSON returns an error without raising an exception."""
-    result = await initialize_calibrator(calibrator_kwargs="not-json")
+    result = await initialize_calibrator(calibrator_kwargs="not-json", ctx=mock_context)
 
     assert result["success"] is False
     assert result["error"]
 
 
-async def test_initialize_synthetic_stream() -> None:
+async def test_initialize_synthetic_stream(mock_context) -> None:
     """Synthetic stream initialization returns its size and feature count."""
-    result = await initialize_stream(source="synthetic", max_points=300)
+    result = await initialize_stream(source="synthetic", max_points=300, ctx=mock_context)
 
     assert result["success"] is True
     assert result["num_points"] == 300
@@ -124,15 +130,15 @@ async def test_initialize_synthetic_stream() -> None:
     assert result["has_labels"] is True
 
 
-async def test_initialize_synthetic_stream_keeps_minimum_size() -> None:
+async def test_initialize_synthetic_stream_keeps_minimum_size(mock_context) -> None:
     """Synthetic streams always contain at least 200 points."""
-    result = await initialize_stream(source="synthetic", max_points=10)
+    result = await initialize_stream(source="synthetic", max_points=10, ctx=mock_context)
 
     assert result["success"] is True
     assert result["num_points"] == 200
 
 
-async def test_initialize_csv_stream(tmp_path) -> None:
+async def test_initialize_csv_stream(mock_context, tmp_path) -> None:
     """CSV stream initialization reads selected feature columns."""
     path = tmp_path / "stream.csv"
     path.write_text("a,b\n1,2\n3,4\n", encoding="utf-8")
@@ -141,6 +147,7 @@ async def test_initialize_csv_stream(tmp_path) -> None:
         source=str(path),
         max_points=1,
         feature_columns="0,1",
+        ctx=mock_context,
     )
 
     assert result["success"] is True
@@ -148,51 +155,51 @@ async def test_initialize_csv_stream(tmp_path) -> None:
     assert result["num_features"] == 2
 
 
-async def test_initialize_stream_rejects_unknown_source() -> None:
+async def test_initialize_stream_rejects_unknown_source(mock_context) -> None:
     """An unknown data source returns an error without raising an exception."""
-    result = await initialize_stream(source="unknown")
+    result = await initialize_stream(source="unknown", ctx=mock_context)
 
     assert result["success"] is False
     assert "Unknown data source" in result["error"]
 
 
-async def test_score_point_requires_a_detector() -> None:
+async def test_score_point_requires_a_detector(mock_context) -> None:
     """Point scoring fails when no detector is active."""
-    result = await score_point(features=[1.0, 2.0])
+    result = await score_point(features=[1.0, 2.0], ctx=mock_context)
 
     assert result["success"] is False
     assert "Detector not initialized" in result["error"]
 
 
-async def test_score_point_returns_score_and_advances_session() -> None:
+async def test_score_point_returns_score_and_advances_session(mock_context) -> None:
     """Point scoring returns the score and advances the stream position."""
-    await initialize_detector()
+    await initialize_detector(ctx=mock_context)
 
-    result = await score_point(features=[1.0, 2.0])
+    result = await score_point(features=[1.0, 2.0], ctx=mock_context)
 
     assert result["success"] is True
     assert isinstance(result["score"], float)
     assert result["features"] == [1.0, 2.0]
     assert result["step"] == 0
-    assert (await get_status())["step"] == 1
+    assert (await get_status(ctx=mock_context))["step"] == 1
 
 
-async def test_score_point_requires_features_without_a_stream() -> None:
+async def test_score_point_requires_features_without_a_stream(mock_context) -> None:
     """Point scoring fails when no features or stream are available."""
-    await initialize_detector()
+    await initialize_detector(ctx=mock_context)
 
-    result = await score_point()
+    result = await score_point(ctx=mock_context)
 
     assert result["success"] is False
     assert "Features must be provided" in result["error"]
 
 
-async def test_score_point_applies_calibration_and_alert_threshold() -> None:
+async def test_score_point_applies_calibration_and_alert_threshold(mock_context) -> None:
     """Point scoring returns a calibrated score and alert decision."""
-    await initialize_detector()
-    await initialize_calibrator()
+    await initialize_detector(ctx=mock_context)
+    await initialize_calibrator(ctx=mock_context)
 
-    result = await score_point(features=[1.0, 2.0], threshold=0.5)
+    result = await score_point(features=[1.0, 2.0], threshold=0.5, ctx=mock_context)
 
     assert result["success"] is True
     assert isinstance(result["calibrated_score"], float)
@@ -200,13 +207,13 @@ async def test_score_point_applies_calibration_and_alert_threshold() -> None:
     assert result["threshold"] == 0.5
 
 
-async def test_score_point_consumes_initialized_stream() -> None:
+async def test_score_point_consumes_initialized_stream(mock_context) -> None:
     """Point scoring uses the next point from an initialized stream."""
-    await initialize_detector()
-    await initialize_stream(source="synthetic", max_points=200)
+    await initialize_detector(ctx=mock_context)
+    await initialize_stream(source="synthetic", max_points=200, ctx=mock_context)
 
-    first = await score_point(use_stream=True)
-    second = await score_point(use_stream=True)
+    first = await score_point(use_stream=True, ctx=mock_context)
+    second = await score_point(use_stream=True, ctx=mock_context)
 
     assert first["success"] is True
     assert second["success"] is True
@@ -214,32 +221,32 @@ async def test_score_point_consumes_initialized_stream() -> None:
     assert second["step"] == 1
 
 
-async def test_score_point_reports_exhausted_stream() -> None:
+async def test_score_point_reports_exhausted_stream(mock_context) -> None:
     """Point scoring fails after the initialized stream is exhausted."""
-    await initialize_detector()
-    await initialize_stream(source="synthetic", max_points=200)
+    await initialize_detector(ctx=mock_context)
+    await initialize_stream(source="synthetic", max_points=200, ctx=mock_context)
     for _ in range(200):
-        await score_point(use_stream=True)
+        await score_point(use_stream=True, ctx=mock_context)
 
-    result = await score_point(use_stream=True)
+    result = await score_point(use_stream=True, ctx=mock_context)
 
     assert result["success"] is False
     assert "No more data in stream" in result["error"]
 
 
-async def test_score_batch_requires_a_detector() -> None:
+async def test_score_batch_requires_a_detector(mock_context) -> None:
     """Batch scoring fails when no detector is active."""
-    result = await score_batch(features_list=[[1.0, 2.0]])
+    result = await score_batch(features_list=[[1.0, 2.0]], ctx=mock_context)
 
     assert result["success"] is False
     assert "Detector not initialized" in result["error"]
 
 
-async def test_score_batch_returns_one_result_per_point() -> None:
+async def test_score_batch_returns_one_result_per_point(mock_context) -> None:
     """Batch scoring returns scores for every input point."""
-    await initialize_detector()
+    await initialize_detector(ctx=mock_context)
 
-    result = await score_batch(features_list=[[1.0, 2.0], [3.0, 4.0]])
+    result = await score_batch(features_list=[[1.0, 2.0], [3.0, 4.0]], ctx=mock_context)
 
     assert result["success"] is True
     assert len(result["results"]) == 2
@@ -247,12 +254,12 @@ async def test_score_batch_returns_one_result_per_point() -> None:
     assert [item["step"] for item in result["results"]] == [0, 1]
 
 
-async def test_score_batch_applies_calibration() -> None:
+async def test_score_batch_applies_calibration(mock_context) -> None:
     """Batch scoring returns calibrated scores and alert decisions."""
-    await initialize_detector()
-    await initialize_calibrator()
+    await initialize_detector(ctx=mock_context)
+    await initialize_calibrator(ctx=mock_context)
 
-    result = await score_batch(features_list=[[1.0, 2.0]], threshold=0.5)
+    result = await score_batch(features_list=[[1.0, 2.0]], threshold=0.5, ctx=mock_context)
 
     assert result["success"] is True
     assert isinstance(result["results"][0]["calibrated_score"], float)
@@ -260,13 +267,13 @@ async def test_score_batch_applies_calibration() -> None:
     assert result["threshold"] == 0.5
 
 
-async def test_get_status_reports_session_state() -> None:
+async def test_get_status_reports_session_state(mock_context) -> None:
     """Status reports the active detector, calibrator, and stream position."""
-    await initialize_detector()
-    await initialize_calibrator()
-    await initialize_stream(source="synthetic", max_points=200)
+    await initialize_detector(ctx=mock_context)
+    await initialize_calibrator(ctx=mock_context)
+    await initialize_stream(source="synthetic", max_points=200, ctx=mock_context)
 
-    result = await get_status()
+    result = await get_status(ctx=mock_context)
 
     assert result["success"] is True
     assert result["initialized"] is True
@@ -277,15 +284,15 @@ async def test_get_status_reports_session_state() -> None:
     assert result["has_stream"] is True
 
 
-async def test_reset_session_clears_active_components() -> None:
+async def test_reset_session_clears_active_components(mock_context) -> None:
     """Reset removes the detector, calibrator, and stream."""
-    await initialize_detector()
-    await initialize_calibrator()
-    await initialize_stream(source="synthetic", max_points=200)
-    await score_point(features=[1.0, 2.0])
+    await initialize_detector(ctx=mock_context)
+    await initialize_calibrator(ctx=mock_context)
+    await initialize_stream(source="synthetic", max_points=200, ctx=mock_context)
+    await score_point(features=[1.0, 2.0], ctx=mock_context)
 
-    result = await reset_session()
-    status = await get_status()
+    result = await reset_session(ctx=mock_context)
+    status = await get_status(ctx=mock_context)
 
     assert result["success"] is True
     assert status["initialized"] is False
@@ -293,9 +300,9 @@ async def test_reset_session_clears_active_components() -> None:
     assert status["stream_position"] == 0
 
 
-async def test_list_detectors_returns_names_and_descriptions() -> None:
+async def test_list_detectors_returns_names_and_descriptions(mock_context) -> None:
     """The detector list includes the documented detector choices."""
-    result = await list_detectors()
+    result = await list_detectors(ctx=mock_context)
 
     assert result["success"] is True
     names = {item["name"] for item in result["detectors"]}
@@ -303,9 +310,9 @@ async def test_list_detectors_returns_names_and_descriptions() -> None:
     assert all(item["description"] for item in result["detectors"])
 
 
-async def test_list_calibrators_returns_names_and_descriptions() -> None:
+async def test_list_calibrators_returns_names_and_descriptions(mock_context) -> None:
     """The calibrator list includes the documented calibrator choices."""
-    result = await list_calibrators()
+    result = await list_calibrators(ctx=mock_context)
 
     assert result["success"] is True
     names = {item["name"] for item in result["calibrators"]}
@@ -313,11 +320,32 @@ async def test_list_calibrators_returns_names_and_descriptions() -> None:
     assert all(item["description"] for item in result["calibrators"])
 
 
-async def test_list_data_sources_returns_names_and_descriptions() -> None:
+async def test_list_data_sources_returns_names_and_descriptions(mock_context) -> None:
     """The data source list includes the documented source choices."""
-    result = await list_data_sources()
+    result = await list_data_sources(ctx=mock_context)
 
     assert result["success"] is True
     names = {item["name"] for item in result["sources"]}
     assert {"synthetic", "nyc_taxi", "arrhythmia", "creditcard", "csv_file"} <= names
     assert all(item["description"] for item in result["sources"])
+
+
+async def test_session_state_isolation() -> None:
+    """Different contexts have independent session state."""
+    ctx1 = Context()
+    ctx1._pysad_state = SessionState()  # type: ignore[attr-defined]
+    ctx2 = Context()
+    ctx2._pysad_state = SessionState()  # type: ignore[attr-defined]
+
+    await initialize_detector(detector_name="loda", ctx=ctx1)
+    await initialize_detector(
+        detector_name="half_space_trees",
+        detector_kwargs='{"feature_mins": [0, 0], "feature_maxes": [1, 1]}',
+        ctx=ctx2,
+    )
+
+    status1 = await get_status(ctx=ctx1)
+    status2 = await get_status(ctx=ctx2)
+
+    assert status1["detector"] == "LODA"
+    assert status2["detector"] == "HalfSpaceTrees"

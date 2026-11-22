@@ -9,7 +9,6 @@ dynamic = ["version"]
 # The SciPy and scikit-learn floors support NumPy 2.
 # These floors prevent NumPy 2 from loading older builds compiled for NumPy 1.
 dependencies = [
-  "mcp>=1.26.0,<2",
   "numpy>=1.23",
   "scikit-learn>=1.4.2",
   "scipy>=1.13.0",
@@ -72,6 +71,9 @@ Repository = "https://github.com/selimfirat/pysad.git"
 Discussions = "https://github.com/selimfirat/pysad/discussions"
 Changelog = "https://github.com/selimfirat/pysad/releases"
 
+[project.optional-dependencies]
+mcp = ["mcp>=1.26.0,<2"]
+
 [project.scripts]
 pysad-live = "pysad.live.cli:main"
 
@@ -81,11 +83,13 @@ pysad-live = "pysad.live.cli:main"
 [dependency-groups]
 # Pinned runtime dependencies, so tests and docs run against known versions.
 runtime = [
-  "mcp==1.26.0",
   "numpy==2.2.6",
   "scikit-learn==1.7.2",
   "scipy>=1.15.4",
   "setuptools>=84.0.0,<85.0.0",
+]
+mcp = [
+  "mcp==1.26.0",
 ]
 test = [
   # PandasStreamer takes DataFrames.
@@ -148,6 +152,7 @@ jupyterlite = [
 ]
 dev = [
   {include-group = "runtime"},
+  {include-group = "mcp"},
   {include-group = "test"},
   {include-group = "docs"},
   {include-group = "lint"},

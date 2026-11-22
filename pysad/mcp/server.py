@@ -18,14 +18,12 @@ from mcp.server.fastmcp import Context, FastMCP
 from pysad.utils import ArrayStreamer, Data, generate_stream
 
 
-# Global state for the MCP server
 @dataclass
-class MCPState:
-    """Global state for the MCP server session."""
+class SessionState:
+    """Per-session state for the MCP server."""
 
     detector: Any = None
     calibrator: Any = None
-    streamer: Any = None
     stream_data: list[np.ndarray] = field(default_factory=list)
     stream_labels: list[int] | None = field(default_factory=list)
     step: int = 0
@@ -35,7 +33,11 @@ class MCPState:
     initialized: bool = False
 
 
-STATE = MCPState()
+def _get_state(ctx: Context) -> SessionState:
+    """Get or create session state from MCP context."""
+    if not hasattr(ctx, "_pysad_state"):
+        ctx._pysad_state = SessionState()  # type: ignore[attr-defined]
+    return ctx._pysad_state  # type: ignore[attr-defined,no-any-return]
 
 
 def create_mcp_server() -> FastMCP:
@@ -51,8 +53,6 @@ def create_mcp_server() -> FastMCP:
             "Provides tools to initialize detectors, calibrators, and data streams, "
             "and to score data points in real-time."
         ),
-        host="127.0.0.1",
-        port=8000,
     )
 
     # Register tools
@@ -91,7 +91,13 @@ async def initialize_detector(
         Dictionary with initialization status and detector info.
     """
     if ctx:
-        await ctx.info(f"Initializing detector: {detector_name}")
+        state = _get_state(ctx)
+        try:
+            await ctx.info(f"Initializing detector: {detector_name}")
+        except Exception:
+            pass
+    else:
+        state = SessionState()
 
     detectors = {
         "loda": ("pysad.models", "LODA"),
@@ -122,12 +128,15 @@ async def initialize_detector(
         module = __import__(module_name, fromlist=[class_name])
         detector_class = getattr(module, class_name)
 
-        STATE.detector = detector_class(**kwargs)
-        STATE.detector_name = class_name
-        STATE.initialized = True
+        state.detector = detector_class(**kwargs)
+        state.detector_name = class_name
+        state.initialized = True
 
         if ctx:
-            await ctx.info(f"Detector {class_name} initialized successfully")
+            try:
+                await ctx.info(f"Detector {class_name} initialized successfully")
+            except Exception:
+                pass
 
         return {
             "success": True,
@@ -136,7 +145,10 @@ async def initialize_detector(
         }
     except Exception as e:
         if ctx:
-            await ctx.error(f"Failed to initialize detector: {e}")
+            try:
+                await ctx.error(f"Failed to initialize detector: {e}")
+            except Exception:
+                pass
         return {"success": False, "error": str(e)}
 
 
@@ -159,7 +171,13 @@ async def initialize_calibrator(
         Dictionary with initialization status and calibrator info.
     """
     if ctx:
-        await ctx.info(f"Initializing calibrator: {calibrator_name}")
+        state = _get_state(ctx)
+        try:
+            await ctx.info(f"Initializing calibrator: {calibrator_name}")
+        except Exception:
+            pass
+    else:
+        state = SessionState()
 
     calibrators = {
         "conformal": ("pysad.transform.probability_calibration", "ConformalProbabilityCalibrator"),
@@ -202,11 +220,14 @@ async def initialize_calibrator(
         module = __import__(module_name, fromlist=[class_name])
         calibrator_class = getattr(module, class_name)
 
-        STATE.calibrator = calibrator_class(**kwargs)
-        STATE.calibrator_name = class_name
+        state.calibrator = calibrator_class(**kwargs)
+        state.calibrator_name = class_name
 
         if ctx:
-            await ctx.info(f"Calibrator {class_name} initialized successfully")
+            try:
+                await ctx.info(f"Calibrator {class_name} initialized successfully")
+            except Exception:
+                pass
 
         return {
             "success": True,
@@ -215,7 +236,10 @@ async def initialize_calibrator(
         }
     except Exception as e:
         if ctx:
-            await ctx.error(f"Failed to initialize calibrator: {e}")
+            try:
+                await ctx.error(f"Failed to initialize calibrator: {e}")
+            except Exception:
+                pass
         return {"success": False, "error": str(e)}
 
 
@@ -243,7 +267,13 @@ async def initialize_stream(
         Dictionary with initialization status and stream info.
     """
     if ctx:
-        await ctx.info(f"Initializing stream from source: {source}")
+        state = _get_state(ctx)
+        try:
+            await ctx.info(f"Initializing stream from source: {source}")
+        except Exception:
+            pass
+    else:
+        state = SessionState()
 
     try:
         # CSVStreamer uses integer column indices
@@ -260,8 +290,8 @@ async def initialize_stream(
         if source == "synthetic":
             n_instances = max(max_points or 1000, 200)
             X, y = generate_stream(num_instances=n_instances)
-            STATE.stream_data = [x for x in ArrayStreamer().iter(X)]
-            STATE.stream_labels = y.tolist() if y is not None else None
+            state.stream_data = [x for x in ArrayStreamer().iter(X)]
+            state.stream_labels = y.tolist() if y is not None else None
 
         elif source == "nyc_taxi":
             data = Data()
@@ -270,8 +300,8 @@ async def initialize_stream(
             if max_points:
                 X = X[:max_points]
                 y = y[:max_points] if y is not None else None
-            STATE.stream_data = [x for x in ArrayStreamer().iter(X)]
-            STATE.stream_labels = y.tolist() if y is not None else None
+            state.stream_data = [x for x in ArrayStreamer().iter(X)]
+            state.stream_labels = y.tolist() if y is not None else None
 
         elif source == "arrhythmia":
             data = Data()
@@ -279,8 +309,8 @@ async def initialize_stream(
             if max_points:
                 X = X[:max_points]
                 y = y[:max_points] if y is not None else None
-            STATE.stream_data = [x for x in ArrayStreamer().iter(X)]
-            STATE.stream_labels = y.tolist() if y is not None else None
+            state.stream_data = [x for x in ArrayStreamer().iter(X)]
+            state.stream_labels = y.tolist() if y is not None else None
 
         elif source == "creditcard":
             data = Data()
@@ -288,8 +318,8 @@ async def initialize_stream(
             if max_points:
                 X = X[:max_points]
                 y = y[:max_points] if y is not None else None
-            STATE.stream_data = [x for x in ArrayStreamer().iter(X)]
-            STATE.stream_labels = y.tolist() if y is not None else None
+            state.stream_data = [x for x in ArrayStreamer().iter(X)]
+            state.stream_labels = y.tolist() if y is not None else None
 
         elif source.endswith(".csv"):
             from pysad.utils import CSVStreamer
@@ -300,37 +330,43 @@ async def initialize_stream(
                 has_header=csv_has_header,
             )
             count = 0
-            STATE.stream_data = []
-            STATE.stream_labels = []
+            state.stream_data = []
+            state.stream_labels = []
             for item in csv_streamer.iter(source):
                 if max_points and count >= max_points:
                     break
                 if isinstance(item, tuple):
                     x_arr, y_val = item
-                    STATE.stream_labels.append(int(y_val) if y_val is not None else 0)
+                    state.stream_labels.append(int(y_val) if y_val is not None else 0)
                 else:
                     x_arr = item
-                    STATE.stream_labels.append(0)
-                STATE.stream_data.append(x_arr)
+                    state.stream_labels.append(0)
+                state.stream_data.append(x_arr)
                 count += 1
 
         else:
             return {"success": False, "error": f"Unknown data source: {source}"}
 
-        STATE.step = 0
+        state.step = 0
 
         if ctx:
-            await ctx.info(f"Stream initialized with {len(STATE.stream_data)} points")
+            try:
+                await ctx.info(f"Stream initialized with {len(state.stream_data)} points")
+            except Exception:
+                pass
 
         return {
             "success": True,
-            "num_points": len(STATE.stream_data),
-            "num_features": len(STATE.stream_data[0]) if STATE.stream_data else 0,
-            "has_labels": STATE.stream_labels is not None and len(STATE.stream_labels) > 0,
+            "num_points": len(state.stream_data),
+            "num_features": len(state.stream_data[0]) if state.stream_data else 0,
+            "has_labels": state.stream_labels is not None and len(state.stream_labels) > 0,
         }
     except Exception as e:
         if ctx:
-            await ctx.error(f"Failed to initialize stream: {e}")
+            try:
+                await ctx.error(f"Failed to initialize stream: {e}")
+            except Exception:
+                pass
         return {"success": False, "error": str(e)}
 
 
@@ -352,21 +388,27 @@ async def score_point(
     Returns:
         Dictionary with anomaly score, calibrated score, alert status, and metadata.
     """
-    if STATE.detector is None:
+    if ctx:
+        state = _get_state(ctx)
+        try:
+            await ctx.info("Scoring data point")
+        except Exception:
+            pass
+    else:
+        state = SessionState()
+
+    if state.detector is None:
         return {
             "success": False,
             "error": "Detector not initialized. Call initialize_detector first.",
         }
 
-    if ctx:
-        await ctx.info("Scoring data point")
-
     try:
         if use_stream:
-            if not STATE.stream_data or STATE.step >= len(STATE.stream_data):
+            if not state.stream_data or state.step >= len(state.stream_data):
                 return {"success": False, "error": "No more data in stream"}
-            x = STATE.stream_data[STATE.step]
-            label = STATE.stream_labels[STATE.step] if STATE.stream_labels else None
+            x = state.stream_data[state.step]
+            label = state.stream_labels[state.step] if state.stream_labels else None
         else:
             if features is None:
                 return {
@@ -377,43 +419,49 @@ async def score_point(
             label = None
 
         # Score the point
-        score = STATE.detector.fit_score_partial(x)
+        score = state.detector.fit_score_partial(x)
 
         result = {
             "success": True,
-            "step": STATE.step,
+            "step": state.step,
             "features": x.tolist(),
             "score": float(score),
             "label": label,
         }
 
         # Apply calibrator if available
-        if STATE.calibrator is not None:
-            calibrated = STATE.calibrator.fit_transform_partial(score)
+        if state.calibrator is not None:
+            calibrated = state.calibrator.fit_transform_partial(score)
             result["calibrated_score"] = float(calibrated)
 
             # Check alert
-            thresh = threshold if threshold is not None else STATE.threshold
+            thresh = threshold if threshold is not None else state.threshold
             alert = calibrated > thresh
             result["alert"] = bool(alert)
             result["threshold"] = thresh
 
-        STATE.step += 1
+        state.step += 1
 
         if ctx:
-            await ctx.info(
-                f"Score: {score:.4f}"
-                + (
-                    f", Calibrated: {result.get('calibrated_score', 'N/A'):.4f}"
-                    if "calibrated_score" in result
-                    else ""
+            try:
+                await ctx.info(
+                    f"Score: {score:.4f}"
+                    + (
+                        f", Calibrated: {result.get('calibrated_score', 'N/A'):.4f}"
+                        if "calibrated_score" in result
+                        else ""
+                    )
                 )
-            )
+            except Exception:
+                pass
 
         return result
     except Exception as e:
         if ctx:
-            await ctx.error(f"Failed to score point: {e}")
+            try:
+                await ctx.error(f"Failed to score point: {e}")
+            except Exception:
+                pass
         return {"success": False, "error": str(e)}
 
 
@@ -432,41 +480,50 @@ async def score_batch(
     Returns:
         Dictionary with list of results for each point.
     """
-    if STATE.detector is None:
+    if ctx:
+        state = _get_state(ctx)
+        try:
+            await ctx.info(f"Scoring batch of {len(features_list)} points")
+        except Exception:
+            pass
+    else:
+        state = SessionState()
+
+    if state.detector is None:
         return {
             "success": False,
             "error": "Detector not initialized. Call initialize_detector first.",
         }
 
-    if ctx:
-        await ctx.info(f"Scoring batch of {len(features_list)} points")
-
     try:
         results = []
-        thresh = threshold if threshold is not None else STATE.threshold
+        thresh = threshold if threshold is not None else state.threshold
 
         for features in features_list:
             x = np.asarray(features, dtype=float)
-            score = STATE.detector.fit_score_partial(x)
+            score = state.detector.fit_score_partial(x)
 
             result = {
-                "step": STATE.step,
+                "step": state.step,
                 "features": x.tolist(),
                 "score": float(score),
             }
 
-            if STATE.calibrator is not None:
-                calibrated = STATE.calibrator.fit_transform_partial(score)
+            if state.calibrator is not None:
+                calibrated = state.calibrator.fit_transform_partial(score)
                 result["calibrated_score"] = float(calibrated)
                 result["alert"] = bool(calibrated > thresh)
 
             results.append(result)
-            STATE.step += 1
+            state.step += 1
 
         if ctx:
-            await ctx.info(
-                f"Batch scoring complete. Alerts: {sum(1 for r in results if r.get('alert', False))}"
-            )
+            try:
+                await ctx.info(
+                    f"Batch scoring complete. Alerts: {sum(1 for r in results if r.get('alert', False))}"
+                )
+            except Exception:
+                pass
 
         return {
             "success": True,
@@ -475,7 +532,10 @@ async def score_batch(
         }
     except Exception as e:
         if ctx:
-            await ctx.error(f"Failed to score batch: {e}")
+            try:
+                await ctx.error(f"Failed to score batch: {e}")
+            except Exception:
+                pass
         return {"success": False, "error": str(e)}
 
 
@@ -488,16 +548,21 @@ async def get_status(ctx: Context | None = None) -> dict[str, Any]:
     Returns:
         Dictionary with current session status.
     """
+    if ctx:
+        state = _get_state(ctx)
+    else:
+        state = SessionState()
+
     return {
         "success": True,
-        "initialized": STATE.initialized,
-        "detector": STATE.detector_name,
-        "calibrator": STATE.calibrator_name,
-        "step": STATE.step,
-        "threshold": STATE.threshold,
-        "stream_length": len(STATE.stream_data),
-        "stream_position": STATE.step,
-        "has_stream": len(STATE.stream_data) > 0,
+        "initialized": state.initialized,
+        "detector": state.detector_name,
+        "calibrator": state.calibrator_name,
+        "step": state.step,
+        "threshold": state.threshold,
+        "stream_length": len(state.stream_data),
+        "stream_position": state.step,
+        "has_stream": len(state.stream_data) > 0,
     }
 
 
@@ -511,16 +576,22 @@ async def reset_session(ctx: Context | None = None) -> dict[str, Any]:
         Dictionary with reset status.
     """
     if ctx:
-        await ctx.info("Resetting session")
+        state = _get_state(ctx)
+        try:
+            await ctx.info("Resetting session")
+        except Exception:
+            pass
+    else:
+        state = SessionState()
 
-    STATE.detector = None
-    STATE.calibrator = None
-    STATE.stream_data = []
-    STATE.stream_labels = None
-    STATE.step = 0
-    STATE.detector_name = "LODA"
-    STATE.calibrator_name = "ConformalProbabilityCalibrator"
-    STATE.initialized = False
+    state.detector = None
+    state.calibrator = None
+    state.stream_data = []
+    state.stream_labels = None
+    state.step = 0
+    state.detector_name = "LODA"
+    state.calibrator_name = "ConformalProbabilityCalibrator"
+    state.initialized = False
 
     return {"success": True, "message": "Session reset successfully"}
 
@@ -614,5 +685,5 @@ async def lifespan(server: FastMCP) -> AsyncIterator[None]:
 
 
 if __name__ == "__main__":
-    # Run the server
+    # Run the server with stdio transport
     mcp_server.run(transport="stdio")

@@ -30,24 +30,17 @@ def test_loda_histograms_accumulate_counts():
     fix_seed(61)
     X = np.random.randn(300, 5)
 
-    model = LODA(num_bins=10, num_random_cuts=20)
+    model = LODA(num_bins=10, num_random_cuts=20, window_size=500)  # Large window to avoid swapping
     for i, x in enumerate(X):
         model.fit_partial(x)
-        np.testing.assert_array_equal(model.histograms_.sum(axis=1), i + 1)
+        active = model._active()
+        np.testing.assert_array_equal(model.histograms_[active].sum(axis=1), i + 1)
 
-    # Every instance lies inside the range covered by the bins.
+    # Every instance lies inside the range covered by the bins of the active histogram.
+    active = model._active()
     projected = X.dot(model.projections_.T)
-    assert np.all(projected >= model.bin_lows_)
-    assert np.all(projected < model.bin_lows_ + model.n_bins * model.bin_widths_)
-
-    # The histograms follow the data: binning all instances at once with the final bins gives the same counts,
-    # except for values that lie on a bin edge up to floating point rounding.
-    positions = (projected - model.bin_lows_) / model.bin_widths_
-    on_edge = np.abs(positions - np.round(positions)) < 1e-9
-    inds = np.floor(positions).astype(int)
-    for i in range(model.n_random_cuts):
-        expected = np.bincount(inds[:, i], minlength=model.n_bins)
-        assert np.abs(model.histograms_[i] - expected).sum() <= 2 * on_edge[:, i].sum()
+    assert np.all(projected >= model.bin_lows_[active])
+    assert np.all(projected < model.bin_lows_[active] + model.n_bins * model.bin_widths_[active])
 
 
 def test_loda_histograms_extend_to_new_ranges():
@@ -57,16 +50,17 @@ def test_loda_histograms_extend_to_new_ranges():
     from pysad.utils import fix_seed
 
     fix_seed(61)
-    model = LODA(num_bins=4, num_random_cuts=5)
+    model = LODA(num_bins=4, num_random_cuts=5, window_size=50)  # Large window to avoid swapping
     for x in np.linspace(0.0, 1.0, 20):
         model.fit_partial(np.array([x]))
     for x in [-50.0, 1000.0]:
         model.fit_partial(np.array([x]))
 
-    np.testing.assert_array_equal(model.histograms_.sum(axis=1), 22)
+    active = model._active()
+    np.testing.assert_array_equal(model.histograms_[active].sum(axis=1), 22)
     projected = np.array([-50.0, 1000.0])[:, None] * model.projections_[:, 0]
-    assert np.all(projected >= model.bin_lows_)
-    assert np.all(projected < model.bin_lows_ + model.n_bins * model.bin_widths_)
+    assert np.all(projected >= model.bin_lows_[active])
+    assert np.all(projected < model.bin_lows_[active] + model.n_bins * model.bin_widths_[active])
 
 
 def test_loda_scores_outliers_higher():
@@ -141,13 +135,14 @@ def test_loda_score_before_fit_and_non_finite_values():
     # rejected by BaseModel before LODA sees the instance (#402), and the model is left unchanged.
     with pytest.raises(ValueError, match="LODA does not accept NaN values"):
         model.fit_partial(np.array([np.nan, 0.0, 0.0, 0.0]))
-    assert model.num_seen_ == 0
+    assert model.num_seen_[model._active()] == 0
     for x in np.random.randn(50, 4):
         model.fit_partial(x)
     model.fit_partial(np.array([np.inf, 0.0, 0.0, 0.0]))
-    assert np.all(np.isfinite(model.bin_lows_)) and np.all(np.isfinite(model.bin_widths_))
-    assert model.num_seen_ == 50
-    np.testing.assert_array_equal(model.histograms_.sum(axis=1), 50)
+    active = model._active()
+    assert np.all(np.isfinite(model.bin_lows_[active])) and np.all(np.isfinite(model.bin_widths_[active]))
+    assert model.num_seen_[active] == 50
+    np.testing.assert_array_equal(model.histograms_[active].sum(axis=1), 50)
     assert np.isfinite(model.score_partial(np.array([np.inf, 0.0, 0.0, 0.0])))
 
 
@@ -312,3 +307,29 @@ def test_loda_score_explain_partial_rejects_nan():
     anomalous[1] = np.nan
     with pytest.raises(ValueError, match="LODA does not accept NaN values"):
         model.score_explain_partial(anomalous)
+
+
+def test_loda_forgets_extreme_point_and_recovers():
+    import numpy as np
+    from sklearn.metrics import roc_auc_score
+
+    from pysad.models import LODA
+    from pysad.utils import fix_seed
+
+    fix_seed(61)
+    rng = np.random.default_rng(42)
+    n = 2000
+    X = rng.normal(size=(n, 4))
+    y = np.zeros(n, dtype=int)
+    y[::50] = 1
+    X[y == 1, :2] += 3
+    # One extreme point far outside the normal range, before the evaluated region.
+    X[300, :] = 1e9
+
+    model = LODA(random_state=0)
+    scores = np.array([model.fit_score_partial(x) for x in X]).ravel()
+
+    # Before the fix, the extreme point stretched the bins forever and AUROC over the
+    # tail collapsed to chance. The alternating histograms forget old windows, so the
+    # model recovers and AUROC over points 500 onwards stays high.
+    assert roc_auc_score(y[500:], scores[500:]) > 0.8

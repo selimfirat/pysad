@@ -141,21 +141,21 @@ def run_benchmark(
     split_atts = model.split_atts.astype(np.uint16, copy=False)
     split_values = model.split_values
 
-    numpy_path = model._path(points[0]).copy()
+    numpy_path = model._path_numpy(points[0]).copy()
     rust_result = np.asarray(rust_path(points[0], split_atts, split_values, max_depth))
     if not np.array_equal(numpy_path, rust_result):
         raise RuntimeError("The Rust and NumPy traversal paths differ.")
 
     def run_numpy() -> None:
         for point in points:
-            model._path(point)
+            model._path_numpy(point)
 
     def run_rust() -> None:
         for point in points:
             rust_path(point, split_atts, split_values, max_depth)
 
     for point in points[:10]:
-        model._path(point)
+        model._path_numpy(point)
         rust_path(point, split_atts, split_values, max_depth)
 
     numpy_ms = _time_calls(run_numpy, repeats, num_points)

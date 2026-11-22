@@ -1,10 +1,11 @@
 .. meta::
-   :description: Serve PySAD streaming anomaly detectors in production with Kafka consumers, FastAPI endpoints, and Redis or disk state checkpointing.
+   :description: Run PySAD with Prometheus alerts, OpenTelemetry metrics, Polars batches, Bytewax, PyFlink, Kafka, FastAPI, and state checkpoints.
 
 Serve detectors in production
 =============================
 
-This guide shows how to run PySAD detectors behind common production patterns: consuming from Kafka or Redpanda, exposing a FastAPI streaming endpoint, and checkpointing model state to disk or Redis.
+This guide covers alert metrics, file batches, stream processors, HTTP endpoints, and state checkpoints.
+All recipes call the public PySAD API. External clients belong in your application environment, not in PySAD dependencies.
 
 The examples use synthetic data. Replace it with your own stream and infrastructure.
 
@@ -13,7 +14,6 @@ The examples use synthetic data. Replace it with your own stream and infrastruct
    import numpy as np
 
    rng = np.random.default_rng(0)
-   X_history = rng.normal(size=(1000, 4))
    stream = rng.normal(size=(500, 4))
 
 Kafka / Redpanda consumer
@@ -162,6 +162,7 @@ This endpoint accepts a stream of JSON points and returns anomaly scores as Serv
        values: list[float]
        timestamp: float | None = None
 
+   points_seen = 0
    model: LODA | None = None
    calibrator: ConformalProbabilityCalibrator | None = None
 
@@ -188,6 +189,7 @@ This endpoint accepts a stream of JSON points and returns anomaly scores as Serv
    app = FastAPI(lifespan=lifespan)
 
    async def score_stream(request: Request):
+       global points_seen
        async for line in request.stream().__aiter__():
            if not line:
                continue
@@ -200,8 +202,9 @@ This endpoint accepts a stream of JSON points and returns anomaly scores as Serv
            yield f"data: {json.dumps({'score': float(score), 'probability': float(prob)})}\n\n"
 
            # Checkpoint every 1000 points
-           if model.n_instances_seen % 1000 == 0:
-               with open(CHECKPOINT_DIR / f"state_{model.n_instances_seen}.pkl", "wb") as f:
+           points_seen += 1
+           if points_seen % 1000 == 0:
+               with open(CHECKPOINT_DIR / f"state_{points_seen}.pkl", "wb") as f:
                    pickle.dump({"model": model, "calibrator": calibrator}, f)
 
    @app.post("/score")
@@ -236,7 +239,7 @@ Client example:
 
 .. note::
 
-   The ``model.n_instances_seen`` attribute is available on all PySAD detectors after the first ``fit_partial`` call. Use it to trigger periodic checkpoints.
+   Keep a counter in the application to trigger checkpoints. PySAD detectors do not expose a shared instance counter.
 
 WebSocket endpoint for bidirectional streaming
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -251,7 +254,6 @@ For lower latency, use a WebSocket:
 
    import numpy as np
    from fastapi import FastAPI, WebSocket
-   from fastapi.responses import HTMLResponse
 
    from pysad.models import LODA
    from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
@@ -267,6 +269,7 @@ For lower latency, use a WebSocket:
    @app.websocket("/ws/score")
    async def websocket_score(websocket: WebSocket):
        await websocket.accept()
+       points_seen = 0
        try:
            while True:
                data = await websocket.receive_text()
@@ -278,8 +281,9 @@ For lower latency, use a WebSocket:
 
                await websocket.send_text(json.dumps({"score": float(score), "probability": float(prob)}))
 
-               if model.n_instances_seen % 1000 == 0:
-                   with open(CHECKPOINT_DIR / f"state_{model.n_instances_seen}.pkl", "wb") as f:
+               points_seen += 1
+               if points_seen % 1000 == 0:
+                   with open(CHECKPOINT_DIR / f"state_{points_seen}.pkl", "wb") as f:
                        pickle.dump({"model": model, "calibrator": calibrator}, f)
        except Exception:
            await websocket.close()
@@ -314,27 +318,15 @@ Avoid partial writes by writing to a temporary file and renaming:
 Checkpoint rotation
 ~~~~~~~~~~~~~~~~~~~
 
-Keep only the last N checkpoints to bound disk usage:
+Reuse ``save_state`` above and keep the last five checkpoints. Pass the application counter as ``points_seen``:
 
 .. code-block:: python
 
-   import glob
-   import os
-   import pickle
-   import tempfile
-   from pathlib import Path
+   def save_state_rotating(model, calibrator, base_path: Path, points_seen: int, keep: int = 5):
+       path = base_path.parent / f"{base_path.name}_{points_seen:020d}.pkl"
+       save_state(model, calibrator, path)
 
-   def save_state_rotating(model, calibrator, base_path: Path, keep: int = 5):
-       base_path.parent.mkdir(parents=True, exist_ok=True)
-       timestamp = int(model.n_instances_seen)
-       path = base_path.parent / f"{base_path.name}_{timestamp}.pkl"
-
-       with tempfile.NamedTemporaryFile(mode="wb", dir=base_path.parent, delete=False) as tmp:
-           pickle.dump({"model": model, "calibrator": calibrator}, tmp)
-           tmp_path = Path(tmp.name)
-       tmp_path.replace(path)
-
-       # Remove old checkpoints
+       # Remove old checkpoints.
        checkpoints = sorted(base_path.parent.glob(f"{base_path.name}_*.pkl"))
        for old in checkpoints[:-keep]:
            old.unlink()
@@ -427,11 +419,11 @@ Store model state in Redis with a TTL for automatic expiry:
        calibrator = ConformalProbabilityCalibrator(window_size=1000)
 
    # In your scoring loop
-   for x in stream:
+   for points_seen, x in enumerate(stream, start=1):
        score = model.fit_score_partial(x)
        prob = calibrator.fit_transform_partial(score)
 
-       if model.n_instances_seen % 1000 == 0:
+       if points_seen % 1000 == 0:
            save_to_redis(model, calibrator)
 
 Per-source checkpoints in Redis
@@ -464,6 +456,7 @@ When running one detector per source (e.g., per server), use a Redis hash:
    # In your scoring loop
    detectors = {}
    calibrators = {}
+   points_seen = {}
 
    for source_id, x in stream_with_source_ids():
        if source_id not in detectors:
@@ -481,7 +474,8 @@ When running one detector per source (e.g., per server), use a Redis hash:
        score = model.fit_score_partial(x)
        prob = calibrator.fit_transform_partial(score)
 
-       if model.n_instances_seen % 1000 == 0:
+       points_seen[source_id] = points_seen.get(source_id, 0) + 1
+       if points_seen[source_id] % 1000 == 0:
            save_detector(source_id, model, calibrator)
 
 Redis with atomic operations
@@ -502,6 +496,241 @@ Use Redis transactions for consistency when updating multiple keys:
            state = pickle.dumps({"model": model, "calibrator": calibrators[source_id]})
            pipe.hset("anomaly_detectors", source_id, state)
        pipe.execute()
+
+Prometheus alerting
+-------------------
+
+Prometheus collects metrics from an HTTP endpoint. A counter records a total that increases with each event.
+Run this recipe in one scoring process. Keep port 8001 reachable from your Prometheus server.
+Use the `Prometheus Python client <https://prometheus.github.io/client_python/getting-started/three-step-demo/>`_ in your application environment.
+
+.. code-block:: python
+
+   from prometheus_client import Counter, start_http_server
+
+   from pysad.models import LODA
+   from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+   model = LODA(random_state=0)
+   calibrator = ConformalProbabilityCalibrator(window_size=1000)
+   points = Counter("pysad_points_total", "Points scored")
+   alerts = Counter("pysad_alerts_total", "Points above the alert threshold")
+   start_http_server(port=8001, addr="127.0.0.1")
+
+   for index, x in enumerate(stream):
+       score = model.fit_score_partial(x)
+       probability = calibrator.fit_transform_partial(score)
+       points.inc()
+       if index >= 200 and probability >= 0.99:
+           alerts.inc()
+
+The recipe uses the synthetic ``stream`` from the start of this guide.
+For continuous collection, replace it with your live input loop and keep the process running.
+The first 200 points train the model and calibrator without alerts.
+See :doc:`alerts` for threshold selection. The calibrated value measures a score rank, not the probability of a fault.
+Keep metric labels fixed. Do not use timestamps, record IDs, or unbounded source IDs as labels.
+
+Save this Prometheus configuration as ``prometheus.yml``. Save the rule below as ``pysad_alerts.yml`` beside it.
+Start Prometheus with ``prometheus --config.file=prometheus.yml``.
+If Prometheus runs on another host, change the target and the HTTP bind address.
+
+.. code-block:: yaml
+
+   global:
+     scrape_interval: 15s
+     evaluation_interval: 15s
+   rule_files:
+     - pysad_alerts.yml
+   scrape_configs:
+     - job_name: pysad
+       static_configs:
+         - targets: ["127.0.0.1:8001"]
+   alerting:
+     alertmanagers:
+       - static_configs:
+           - targets: ["127.0.0.1:9093"]
+
+This `alert rule <https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/>`_
+fires when at least one threshold crossing occurs within five minutes.
+The condition must stay true for one minute. Alertmanager on port 9093 routes notifications through your configured receivers.
+Prometheus can evaluate the rule without Alertmanager, but it cannot deliver notifications through it.
+
+.. code-block:: yaml
+
+   groups:
+     - name: pysad
+       rules:
+         - alert: PySADAnomaly
+           expr: sum by (job, instance) (increase(pysad_alerts_total[5m])) > 0
+           for: 1m
+           labels:
+             severity: warning
+           annotations:
+             summary: "PySAD detected an anomaly on {{ $labels.instance }}"
+
+OpenTelemetry metrics
+---------------------
+
+OpenTelemetry can export the same counters through a Prometheus endpoint.
+Use this recipe instead of the Prometheus client recipe in a separate process.
+It uses ``opentelemetry-api``, ``opentelemetry-sdk``, ``opentelemetry-exporter-prometheus``, and ``prometheus-client`` in your application environment.
+The `OpenTelemetry Prometheus exporter <https://opentelemetry-python.readthedocs.io/en/latest/exporter/prometheus/prometheus.html>`_
+connects the meter to the HTTP endpoint.
+
+.. code-block:: python
+
+   from opentelemetry.exporter.prometheus import PrometheusMetricReader
+   from opentelemetry.sdk.metrics import MeterProvider
+   from prometheus_client import start_http_server
+
+   from pysad.models import LODA
+   from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+   provider = MeterProvider(metric_readers=[PrometheusMetricReader()])
+   meter = provider.get_meter("pysad.serving")
+   points = meter.create_counter("pysad_points", description="Points scored")
+   alerts = meter.create_counter("pysad_alerts", description="Points above the alert threshold")
+   model = LODA(random_state=0)
+   calibrator = ConformalProbabilityCalibrator(window_size=1000)
+   start_http_server(port=8001, addr="127.0.0.1")
+
+   try:
+       for index, x in enumerate(stream):
+           score = model.fit_score_partial(x)
+           probability = calibrator.fit_transform_partial(score)
+           points.add(1)
+           if index >= 200 and probability >= 0.99:
+               alerts.add(1)
+   finally:
+       provider.shutdown()
+
+The exporter adds ``_total`` to these counter names.
+Use the same Prometheus configuration and alert rule above.
+Keep the process running with a live input loop so Prometheus can collect the counters.
+
+Polars streaming batches
+------------------------
+
+A lazy Polars query can yield batches without collecting the full result into one DataFrame.
+This recipe reads a CSV with numeric columns ``cpu``, ``memory``, and ``latency`` in stream order.
+Keep the detector outside the batch loop so it learns across batch boundaries.
+
+.. code-block:: python
+
+   import polars as pl
+
+   from pysad.models import LODA
+   from pysad.utils import PolarsStreamer
+
+   model = LODA(random_state=0)
+   streamer = PolarsStreamer()
+   query = pl.scan_csv("metrics.csv").select("cpu", "memory", "latency")
+   for batch in query.collect_batches(chunk_size=1024, maintain_order=True):
+       for x in streamer.iter(batch):
+           score = model.fit_score_partial(x)
+           print(score)
+
+`collect_batches <https://docs.pola.rs/api/python/stable/reference/lazyframe/api/polars.LazyFrame.collect_batches.html>`_
+is an unstable Polars API. Use a Polars version that supports it in your application environment.
+Consume the batch iterator to completion.
+Keep feature order fixed and handle null values before scoring.
+For an existing DataFrame, see :doc:`stream_data`.
+
+Bytewax keyed state
+-------------------
+
+Bytewax routes each string key to its own state.
+Use ``stateful_map`` to keep one detector per source.
+This recipe needs Bytewax in your application environment.
+Save it as ``bytewax_serving.py`` and run ``python -m bytewax.run bytewax_serving:flow``.
+
+.. code-block:: python
+
+   import bytewax.operators as op
+   import numpy as np
+   from bytewax.connectors.stdio import StdOutSink
+   from bytewax.dataflow import Dataflow
+   from bytewax.testing import TestingSource
+
+   from pysad.models import LODA
+
+   def score_point(model: LODA | None, values: list[float]) -> tuple[LODA, float]:
+       if model is None:
+           model = LODA(random_state=0)
+       score = model.fit_score_partial(np.asarray(values, dtype=float))
+       return model, score
+
+   flow = Dataflow("pysad_serving")
+   source = op.input(
+       "source",
+       flow,
+       TestingSource([("server-a", [0.1, 0.2]), ("server-b", [0.3, 0.4])]),
+   )
+   scores = op.stateful_map("score", source, score_point)
+   op.output("scores", scores, StdOutSink())
+
+The `stateful_map operator <https://github.com/bytewax/bytewax/blob/main/pysrc/bytewax/operators/__init__.py>`_
+returns the updated state and one output value. Bytewax keeps the key on the output.
+Replace ``TestingSource`` and ``StdOutSink`` with your application connectors.
+For restart recovery, configure Bytewax recovery storage and a replayable input source.
+The standard output sink does not provide exactly-once delivery.
+Limit active keys or remove idle state to bound the total number of detectors.
+
+PyFlink keyed state
+-------------------
+
+PyFlink provides a Python DataStream API for Apache Flink.
+Use Flink-managed keyed state so checkpoints include each detector.
+This recipe needs a matching Flink and PyFlink installation, Java, and PySAD on every Python worker.
+
+Save the recipe as ``flink_serving.py`` and run it with your configured Flink Python environment.
+For example, use ``flink run --python flink_serving.py``.
+The `Flink state guide <https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/datastream/fault-tolerance/state/>`_
+covers keyed state and expiration.
+
+.. code-block:: python
+
+   import numpy as np
+   from pyflink.common import Types
+   from pyflink.datastream import KeyedProcessFunction, StreamExecutionEnvironment
+   from pyflink.datastream.state import ValueStateDescriptor
+
+   from pysad.models import LODA
+
+   class ScorePoint(KeyedProcessFunction):
+       def open(self, runtime_context):
+           descriptor = ValueStateDescriptor("detector", Types.PICKLED_BYTE_ARRAY())
+           self.model_state = runtime_context.get_state(descriptor)
+
+       def process_element(self, value, ctx):
+           model = self.model_state.value()
+           if model is None:
+               model = LODA(random_state=0)
+           score = model.fit_score_partial(np.asarray(value[1], dtype=float))
+           self.model_state.update(model)
+           yield value[0], score
+
+   env = StreamExecutionEnvironment.get_execution_environment()
+   env.enable_checkpointing(10_000)
+   source = env.from_collection(
+       collection=[("server-a", [0.1, 0.2]), ("server-b", [0.3, 0.4])],
+       type_info=Types.TUPLE([Types.STRING(), Types.LIST(Types.DOUBLE())]),
+   )
+   scores = source.key_by(lambda value: value[0], key_type=Types.STRING()).process(
+       ScorePoint(),
+       output_type=Types.TUPLE([Types.STRING(), Types.DOUBLE()]),
+   )
+   scores.print()
+   env.execute("PySAD serving")
+
+The recipe updates state before emitting each score.
+``Types.PICKLED_BYTE_ARRAY()`` serializes the Python model for Flink state.
+Use trusted checkpoints and the same PySAD version on all workers.
+For a live job, replace the collection source and print sink with your connectors.
+Configure durable checkpoint storage and source replay before relying on restart recovery.
+The print sink does not provide exactly-once delivery.
+Set state expiration or limit active keys to bound the total number of detectors.
+See :doc:`alerts` to calibrate scores before applying an alert threshold.
 
 Next steps
 ----------

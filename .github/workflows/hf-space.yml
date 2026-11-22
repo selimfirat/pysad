@@ -51,7 +51,7 @@ jobs:
             exit 0
           fi
           stage_dir="$(mktemp -d)"
-          cp spaces/playground/index.html spaces/playground/engine.py spaces/playground/README.md "$stage_dir"/
+          cp spaces/playground/index.html spaces/playground/worker.js spaces/playground/engine.py spaces/playground/README.md "$stage_dir"/
           mkdir -p "$stage_dir/data/nab"
           cp -r examples/data/nab/. "$stage_dir/data/nab"/
           cp examples/data/arrhythmia.mat "$stage_dir/data/arrhythmia.mat"

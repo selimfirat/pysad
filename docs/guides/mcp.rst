@@ -227,7 +227,7 @@ You can also use the MCP server programmatically in Python:
 
    async def main():
        server = create_mcp_server()
-       
+
        # Call a detector tool directly
        result = await server.call_tool("pysad_loda", {
            "data": [[1.0, 2.0], [2.0, 3.0], [10.0, 20.0]],
@@ -236,7 +236,7 @@ You can also use the MCP server programmatically in Python:
            "num_random_cuts": 100
        })
        print(result)
-       
+
        # Call a drift meter
        result = await server.call_tool("pysad_adwinmeter", {
            "data": [1.0, 1.1, 1.0, 1.05, 5.0, 5.1, 5.0]

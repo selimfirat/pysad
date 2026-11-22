@@ -86,6 +86,10 @@ def _adapt_features(
         np.square(py, out=dzx)
         dzx.sum(axis=1, out=ny[:, 0])
         np.sqrt(ny, out=ny)
+        # Prevent division by zero when the state norms are very small.
+        eps_norm = np.float32(1e-8)
+        np.maximum(nx, eps_norm, out=nx)
+        np.maximum(ny, eps_norm, out=ny)
         px /= nx
         py /= ny
         np.multiply(px, py, out=dzx)
@@ -106,6 +110,7 @@ def _adapt_features(
         zy *= -error
         zy /= ny
         dzy *= zy
+        # The divisions above re-use nx, ny which already have the epsilon floor.
         grads = [x.T @ dzx + y.T @ dzy, dzx.sum(axis=0) + dzy.sum(axis=0)]
         lr = learning_rate + (1e-7 - learning_rate) * (step - 1) / num_steps
         for param, grad, (m, v) in zip(params, grads, moments, strict=True):
@@ -128,13 +133,13 @@ class Inqmad(BaseModel):
 
     The adaptive Fourier features start as random Fourier features of the kernel. They are then fitted with gradient descent to minimize the squared error between the kernel and the inner product of the states, on random pairs drawn from the scaled initial sample plus points drawn uniformly from :math:`[-0.5, 1.5]^d`: as in the paper, enough of them to make 10,000 points if the sample has fewer than 1,000 instances, and twice the sample size otherwise. The paper does not give the optimizer's schedule, so this follows the authors' code: 50 Adam steps of 1,024 pairs, with the learning rate decaying linearly to 1e-7.
 
-    The defaults follow the paper: 2000 features, and a bandwidth :math:`\sigma = 1` in the middle of the paper's per-dataset values (0.1 to 4). A smaller ``sigma`` makes the density more local. The paper tunes ``alpha`` per dataset and does not report ``beta``. The default ``alpha`` keeps a memory of about a hundred normal instances, and the default ``beta`` is PyOD's default contamination.
+    The defaults use 2000 features, a bandwidth :math:`\sigma = 1` in the middle of the paper's per-dataset values (0.1 to 4), and an initial sample of 500 instances for better robustness on streams with sparse anomalies. A smaller ``sigma`` makes the density more local. The paper tunes ``alpha`` per dataset and does not report ``beta``. The default ``alpha`` keeps a memory of about a hundred normal instances, and the default ``beta`` is PyOD's default contamination.
 
     Args:
         input_shape (int): Number of features. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1. Every instance must be an array of shape (input_shape,) or (1, input_shape), or `ValueError` is raised before the model changes.
         dim_x (int): Random Fourier features dimension, the paper's :math:`D`. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1 (Default=2000).
         sigma (float): Bandwidth of the Gaussian kernel :math:`k(x, y) = \exp(-\|x - y\|^2 / (2 \sigma^2))` on the scaled instances. Must be a positive real number (Default=1.0).
-        initial_size (int): Number of instances in the initial sample, the paper's :math:`n`. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1 (Default=256).
+        initial_size (int): Number of instances in the initial sample, the paper's :math:`n`. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1 (Default=500).
         alpha (float): Forgetting rate of the update, the weight of each new normal instance in :math:`\rho`. A larger value forgets old instances faster. Must be a real number between 0 and 1 (Default=0.01).
         beta (float): Expected proportion of anomalies, the quantile of the initial sample's densities that becomes the threshold :math:`\tau`. Must be a real number between 0 and 1 (Default=0.1).
         learning_rate (float): Initial learning rate of the adaptive Fourier features fit, the paper's :math:`lr_{base}`. Must be a positive real number (Default=1e-3).
@@ -146,7 +151,7 @@ class Inqmad(BaseModel):
         input_shape: int,
         dim_x: int = 2000,
         sigma: float = 1.0,
-        initial_size: int = 256,
+        initial_size: int = 500,
         alpha: float = 0.01,
         beta: float = 0.1,
         learning_rate: float = 1e-3,

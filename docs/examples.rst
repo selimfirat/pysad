@@ -626,7 +626,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.739
+   AUROC: 0.760
 
 Use an incremental distributional kernel detector
 -------------------------------------------------

@@ -7,6 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
+from pysad import _kernels
 from pysad.core.base_model import BaseModel
 from pysad.explainability import treeshap_ensemble
 from pysad.transform.preprocessing import ShingleTransformer
@@ -98,6 +99,19 @@ class _ForestArena:
     def find_duplicate_batch(
         self, point: NDArray[np.float64], roots_sub: NDArray[np.int32]
     ) -> tuple[NDArray[np.int32], NDArray[np.bool_]]:
+        rust_route = _kernels.rrcf_route_to_leaf
+        if rust_route is not None and point.ndim == 1 and point.shape[0] >= self.num_features:
+            leaves = rust_route(
+                np.asarray(point, dtype=np.float64),
+                roots_sub.astype(np.int32, copy=False),
+                self.dim,
+                self.cut,
+                self.left,
+                self.right,
+            )
+            is_dup = (self.bbox_low[leaves] == point).all(axis=1)
+            return leaves, is_dup
+
         m = len(roots_sub)
         if m > len(self._iota):
             self._iota = np.arange(m, dtype=np.intp)
@@ -176,6 +190,18 @@ class _ForestArena:
         return dims, cuts, stopped
 
     def codisp_sum(self, slots: NDArray[np.int32], init_counts: NDArray[np.int32]) -> float:
+        rust_codisp = _kernels.rrcf_codisp_sum
+        if rust_codisp is not None:
+            return float(
+                rust_codisp(
+                    slots.astype(np.int32, copy=False),
+                    init_counts.astype(np.int32, copy=False),
+                    self.parent,
+                    self.sibling,
+                    self.count,
+                )
+            )
+
         m = len(slots)
         if m > len(self._iota):
             self._iota = np.arange(m, dtype=np.intp)

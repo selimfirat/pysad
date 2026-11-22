@@ -7,6 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
+from pysad import _kernels
 from pysad.core.base_model import BaseModel
 from pysad.explainability import treeshap_ensemble
 from pysad.utils.validation import check_feature_bounds
@@ -115,6 +116,7 @@ class HalfSpaceTrees(BaseModel):
         self._val_buf: NDArray[np.float64] = np.empty(self.num_trees)
         self._x_buf: NDArray[np.float64] = np.empty(self.num_trees)
         self._goes_right_buf: NDArray[np.bool_] = np.empty(self.num_trees, dtype=np.bool_)
+        self._split_atts_u16: NDArray[np.uint16] | None = None
 
         self.is_first_window = True
         self.step = 0
@@ -172,6 +174,22 @@ class HalfSpaceTrees(BaseModel):
 
     def _path(self, X: NDArray[np.float64]) -> NDArray[np.intp]:
         """Returns the flat index into the mass arrays of the max_depth + 1 nodes that `X` visits in each tree."""
+        rust_path = _kernels.half_space_trees_path
+        if rust_path is not None and self.num_dimensions <= 65536:
+            x = np.asarray(X, dtype=np.float64)
+            if x.ndim == 1 and x.shape[0] >= self.num_dimensions:
+                split_atts_u16 = self._split_atts_u16
+                if split_atts_u16 is None:
+                    split_atts_u16 = self.split_atts.astype(np.uint16, copy=False)
+                    self._split_atts_u16 = split_atts_u16
+                return np.asarray(
+                    rust_path(x, split_atts_u16, self.split_values, self.max_depth),
+                    dtype=np.intp,
+                )
+
+        return self._path_numpy(X)
+
+    def _path_numpy(self, X: NDArray[np.float64]) -> NDArray[np.intp]:
         X = np.asarray(X)
         # A float64 X can be gathered through a reusable buffer; other dtypes (a float32 or an int
         # point, for example) would not cast into it, so they take the allocating path.

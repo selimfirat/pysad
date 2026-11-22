@@ -119,7 +119,7 @@ Every detector in ``pysad.models.__all__`` is exposed as a tool named
 - ``pysad_onlineisolationforest``: OnlineIsolationForest detector
 - ``pysad_rshash``: RSHash detector
 - ``pysad_robustrandomcutforest``: RobustRandomCutForest detector
-- And 60+ more...
+- And all other detectors from ``pysad.models.__all__`` (excluding base classes)
 
 Each detector tool accepts:
 

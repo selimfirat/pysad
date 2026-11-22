@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 import pysad.utils.data
+from pysad.utils._datasets import _NASA, _NASA_LABELS_URL, _SMD
 from pysad.utils.data import Data
 
 
@@ -1014,3 +1015,323 @@ def test_dataset_structure_msl(monkeypatch, tmp_path):
 def test_dataset_structure_creditcard(monkeypatch, tmp_path):
     """Test that credit-card ARFF dataset loads correctly and has expected structure."""
     _load_creditcard_arff(monkeypatch, str(tmp_path))
+
+
+def test_smd_streaming_iterator_preserves_labels_and_shuffles(tmp_path, monkeypatch):
+    """Test that get_iterator for SMD streams preserves labels and supports shuffling with random_state."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_SMD", _SMD)
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+    _serve(
+        monkeypatch,
+        {
+            _SMD + "test/machine-1-1.txt": b"0.1,0.2\n0.3,0.4\n0.5,0.6\n0.7,0.8\n",
+            _SMD + "test_label/machine-1-1.txt": b"0\n1\n0\n1\n",
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Test shuffle=False preserves order
+    stream = list(data.get_iterator("smd/machine-1-1.txt", shuffle=False))
+    X_stream = np.array([x for x, _ in stream])
+    y_stream = np.array([y for _, y in stream])
+    np.testing.assert_array_equal(X_stream, [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]])
+    np.testing.assert_array_equal(y_stream, [0, 1, 0, 1])
+
+    # Test shuffle=True with random_state gives deterministic order
+    stream1 = list(data.get_iterator("smd/machine-1-1.txt", shuffle=True, random_state=42))
+    stream2 = list(data.get_iterator("smd/machine-1-1.txt", shuffle=True, random_state=42))
+    y1 = [y for _, y in stream1]
+    y2 = [y for _, y in stream2]
+    assert y1 == y2, "Same random_state must give same shuffle order"
+    assert sorted(y1) == [0, 0, 1, 1], "Shuffle must preserve all labels"
+
+    # Test different random_state gives different order (with high probability)
+    stream3 = list(data.get_iterator("smd/machine-1-1.txt", shuffle=True, random_state=123))
+    y3 = [y for _, y in stream3]
+    # Very unlikely to be same order with different seeds for 4 items
+    assert y1 != y3 or y1 == [0, 0, 1, 1], (
+        "Different random_state should typically give different order"
+    )
+
+
+def test_smap_streaming_iterator_preserves_labels_and_shuffles(tmp_path, monkeypatch):
+    """Test that get_iterator for SMAP streams preserves labels and supports shuffling with random_state."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    smap_data = np.arange(20.0).reshape(10, 2)
+    labels = (
+        'chan_id,spacecraft,anomaly_sequences,class,num_values\nP-1,SMAP,"[[2, 4]]",[point],10\n'
+    )
+    _serve(
+        monkeypatch,
+        {
+            _NASA + "P-1.npy": npy(smap_data),
+            _NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Expected labels: points 2,3,4 are anomalies (0-indexed: indices 2,3,4)
+    expected_y = np.array([0, 0, 1, 1, 1, 0, 0, 0, 0, 0])
+
+    # Test shuffle=False preserves order
+    stream = list(data.get_iterator("smap/P-1.npy", shuffle=False))
+    X_stream = np.array([x for x, _ in stream])
+    y_stream = np.array([y for _, y in stream])
+    np.testing.assert_array_equal(X_stream, smap_data)
+    np.testing.assert_array_equal(y_stream, expected_y)
+
+    # Test shuffle=True with random_state gives deterministic order
+    stream1 = list(data.get_iterator("smap/P-1.npy", shuffle=True, random_state=42))
+    stream2 = list(data.get_iterator("smap/P-1.npy", shuffle=True, random_state=42))
+    y1 = [y for _, y in stream1]
+    y2 = [y for _, y in stream2]
+    assert y1 == y2, "Same random_state must give same shuffle order"
+    assert sorted(y1) == sorted(expected_y), "Shuffle must preserve all labels"
+
+
+def test_msl_streaming_iterator_preserves_labels_and_shuffles(tmp_path, monkeypatch):
+    """Test that get_iterator for MSL streams preserves labels and supports shuffling with random_state."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    msl_data = np.arange(15.0).reshape(5, 3)
+    labels = 'chan_id,spacecraft,anomaly_sequences,class,num_values\nM-1,MSL,"[[0, 1]]",[point],5\n'
+    _serve(
+        monkeypatch,
+        {
+            _NASA + "M-1.npy": npy(msl_data),
+            _NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Expected labels: points 0,1 are anomalies
+    expected_y = np.array([1, 1, 0, 0, 0])
+
+    # Test shuffle=False preserves order
+    stream = list(data.get_iterator("msl/M-1.npy", shuffle=False))
+    X_stream = np.array([x for x, _ in stream])
+    y_stream = np.array([y for _, y in stream])
+    np.testing.assert_array_equal(X_stream, msl_data)
+    np.testing.assert_array_equal(y_stream, expected_y)
+
+    # Test shuffle=True with random_state gives deterministic order
+    stream1 = list(data.get_iterator("msl/M-1.npy", shuffle=True, random_state=42))
+    stream2 = list(data.get_iterator("msl/M-1.npy", shuffle=True, random_state=42))
+    y1 = [y for _, y in stream1]
+    y2 = [y for _, y in stream2]
+    assert y1 == y2, "Same random_state must give same shuffle order"
+    assert sorted(y1) == sorted(expected_y), "Shuffle must preserve all labels"
+
+
+def test_smd_streaming_get_stream_shuffles_scales_and_limits(tmp_path, monkeypatch):
+    """Test that get_stream for SMD shuffles, scales to [0,1], and limits to max_points."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_SMD", _SMD)
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+    _serve(
+        monkeypatch,
+        {
+            _SMD + "test/machine-1-1.txt": b"0.0,10.0\n2.0,20.0\n4.0,30.0\n6.0,40.0\n8.0,50.0\n",
+            _SMD + "test_label/machine-1-1.txt": b"0\n1\n0\n1\n0\n",
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Test max_points limits the stream
+    Xs, ys = data.get_stream("smd/machine-1-1.txt", random_state=1, max_points=3, scale=False)
+    assert Xs.shape == (3, 2)
+    assert ys.shape == (3,)
+    assert set(ys).issubset({0, 1})
+
+    # Test scale=True scales features to [0, 1]
+    Xs_scaled, ys_scaled = data.get_stream(
+        "smd/machine-1-1.txt", random_state=1, max_points=3, scale=True
+    )
+    assert Xs_scaled.shape == (3, 2)
+    # First feature: original values [0, 2, 4, 6, 8] -> shuffled subset scaled to [0, 1]
+    # Second feature: original values [10, 20, 30, 40, 50] -> shuffled subset scaled to [0, 1]
+    assert np.all(Xs_scaled >= 0.0) and np.all(Xs_scaled <= 1.0), (
+        "Scaled features must be in [0, 1]"
+    )
+
+    # Test random_state gives deterministic shuffle
+    Xs1, ys1 = data.get_stream("smd/machine-1-1.txt", random_state=42, max_points=3, scale=False)
+    Xs2, ys2 = data.get_stream("smd/machine-1-1.txt", random_state=42, max_points=3, scale=False)
+    np.testing.assert_array_equal(Xs1, Xs2)
+    np.testing.assert_array_equal(ys1, ys2)
+
+
+def test_smap_streaming_get_stream_shuffles_scales_and_limits(tmp_path, monkeypatch):
+    """Test that get_stream for SMAP shuffles, scales to [0,1], and limits to max_points."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    smap_data = np.array(
+        [
+            [0.0, 10.0],
+            [2.0, 20.0],
+            [4.0, 30.0],
+            [6.0, 40.0],
+            [8.0, 50.0],
+            [10.0, 60.0],
+            [12.0, 70.0],
+            [14.0, 80.0],
+            [16.0, 90.0],
+            [18.0, 100.0],
+        ]
+    )
+    labels = (
+        'chan_id,spacecraft,anomaly_sequences,class,num_values\nP-1,SMAP,"[[2, 4]]",[point],10\n'
+    )
+    _serve(
+        monkeypatch,
+        {
+            _NASA + "P-1.npy": npy(smap_data),
+            _NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Test max_points limits the stream
+    Xs, ys = data.get_stream("smap/P-1.npy", random_state=1, max_points=4, scale=False)
+    assert Xs.shape == (4, 2)
+    assert ys.shape == (4,)
+    assert set(ys).issubset({0, 1})
+
+    # Test scale=True scales features to [0, 1]
+    Xs_scaled, ys_scaled = data.get_stream("smap/P-1.npy", random_state=1, max_points=4, scale=True)
+    assert Xs_scaled.shape == (4, 2)
+    assert np.all(Xs_scaled >= 0.0) and np.all(Xs_scaled <= 1.0), (
+        "Scaled features must be in [0, 1]"
+    )
+
+    # Test random_state gives deterministic shuffle
+    Xs1, ys1 = data.get_stream("smap/P-1.npy", random_state=42, max_points=4, scale=False)
+    Xs2, ys2 = data.get_stream("smap/P-1.npy", random_state=42, max_points=4, scale=False)
+    np.testing.assert_array_equal(Xs1, Xs2)
+    np.testing.assert_array_equal(ys1, ys2)
+
+
+def test_msl_streaming_get_stream_shuffles_scales_and_limits(tmp_path, monkeypatch):
+    """Test that get_stream for MSL shuffles, scales to [0,1], and limits to max_points."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    msl_data = np.array(
+        [
+            [0.0, 10.0, 100.0],
+            [2.0, 20.0, 200.0],
+            [4.0, 30.0, 300.0],
+            [6.0, 40.0, 400.0],
+            [8.0, 50.0, 500.0],
+        ]
+    )
+    labels = 'chan_id,spacecraft,anomaly_sequences,class,num_values\nM-1,MSL,"[[0, 1]]",[point],5\n'
+    _serve(
+        monkeypatch,
+        {
+            _NASA + "M-1.npy": npy(msl_data),
+            _NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Test max_points limits the stream
+    Xs, ys = data.get_stream("msl/M-1.npy", random_state=1, max_points=3, scale=False)
+    assert Xs.shape == (3, 3)
+    assert ys.shape == (3,)
+    assert set(ys).issubset({0, 1})
+
+    # Test scale=True scales features to [0, 1]
+    Xs_scaled, ys_scaled = data.get_stream("msl/M-1.npy", random_state=1, max_points=3, scale=True)
+    assert Xs_scaled.shape == (3, 3)
+    assert np.all(Xs_scaled >= 0.0) and np.all(Xs_scaled <= 1.0), (
+        "Scaled features must be in [0, 1]"
+    )
+
+    # Test random_state gives deterministic shuffle
+    Xs1, ys1 = data.get_stream("msl/M-1.npy", random_state=42, max_points=3, scale=False)
+    Xs2, ys2 = data.get_stream("msl/M-1.npy", random_state=42, max_points=3, scale=False)
+    np.testing.assert_array_equal(Xs1, Xs2)
+    np.testing.assert_array_equal(ys1, ys2)
+
+
+def test_smd_smap_msl_streaming_anomaly_rate_preserved(tmp_path, monkeypatch):
+    """Test that streaming preserves the anomaly rate of SMD, SMAP, and MSL datasets."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_SMD", _SMD)
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    _serve(
+        monkeypatch,
+        {
+            _SMD + "test/machine-1-1.txt": b"0.1,0.2\n0.3,0.4\n0.5,0.6\n0.7,0.8\n",
+            _SMD + "test_label/machine-1-1.txt": b"0\n1\n0\n1\n",
+            _NASA + "P-1.npy": npy(np.arange(20.0).reshape(10, 2)),
+            _NASA + "M-1.npy": npy(np.arange(15.0).reshape(5, 3)),
+            _NASA_LABELS_URL: (
+                b"chan_id,spacecraft,anomaly_sequences,class,num_values\n"
+                b'P-1,SMAP,"[[2, 4]]",[point],10\n'
+                b'M-1,MSL,"[[0, 1]]",[point],5\n'
+            ),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # SMD: 2 anomalies out of 4 = 0.5
+    X_smd, y_smd = data.get_data("smd/machine-1-1.txt")
+    smd_anomaly_rate = float(np.mean(y_smd))
+    stream_smd = list(data.get_iterator("smd/machine-1-1.txt", shuffle=False))
+    y_stream_smd = np.array([y for _, y in stream_smd])
+    assert float(np.mean(y_stream_smd)) == smd_anomaly_rate
+
+    # SMAP: 3 anomalies out of 10 = 0.3
+    X_smap, y_smap = data.get_data("smap/P-1.npy")
+    smap_anomaly_rate = float(np.mean(y_smap))
+    stream_smap = list(data.get_iterator("smap/P-1.npy", shuffle=False))
+    y_stream_smap = np.array([y for _, y in stream_smap])
+    assert float(np.mean(y_stream_smap)) == smap_anomaly_rate
+
+    # MSL: 2 anomalies out of 5 = 0.4
+    X_msl, y_msl = data.get_data("msl/M-1.npy")
+    msl_anomaly_rate = float(np.mean(y_msl))
+    stream_msl = list(data.get_iterator("msl/M-1.npy", shuffle=False))
+    y_stream_msl = np.array([y for _, y in stream_msl])
+    assert float(np.mean(y_stream_msl)) == msl_anomaly_rate
+
+    # Also test with get_stream (shuffled but same labels)
+    _, ys_smd = data.get_stream("smd/machine-1-1.txt", random_state=1, scale=False)
+    _, ys_smap = data.get_stream("smap/P-1.npy", random_state=1, scale=False)
+    _, ys_msl = data.get_stream("msl/M-1.npy", random_state=1, scale=False)
+    assert float(np.mean(ys_smd)) == smd_anomaly_rate
+    assert float(np.mean(ys_smap)) == smap_anomaly_rate
+    assert float(np.mean(ys_msl)) == msl_anomaly_rate

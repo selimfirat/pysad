@@ -23,7 +23,7 @@ from .terminal import (
 # Global state for the server
 class ServerState:
     def __init__(self) -> None:
-        self.clients: set[asyncio.Queue] = set()
+        self.clients: set[asyncio.Queue[dict[str, Any]]] = set()
         self.running = False
         self.stream_thread: threading.Thread | None = None
         self.detector = None
@@ -591,7 +591,7 @@ class SSEHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
         # Create a queue for this client
-        queue: asyncio.Queue = asyncio.Queue()
+        queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         STATE.clients.add(queue)
 
         try:

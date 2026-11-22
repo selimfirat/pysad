@@ -119,6 +119,14 @@ DETECTOR_DEFAULTS: dict[str, dict[str, Any]] = {
         "window_size": 100,
         "random_state": 42,
     },
+    "DenStream": {
+        "decaying_factor": 0.05,
+        "epsilon": 1.5,
+        "beta": 0.5,
+        "mu": 3.0,
+        "init_samples": 50,
+        "stream_speed": 1,
+    },
 }
 
 # Drift meter parameter defaults

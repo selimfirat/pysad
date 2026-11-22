@@ -244,6 +244,9 @@ extra_checks = true
 [[tool.mypy.overrides]]
 module = [
     "pysad.core.*",
+    "pysad.explainability.*",
+    "pysad.live.*",
+    "pysad.mcp.*",
     "pysad.models.absad",
     "pysad.models.adems",
     "pysad.models.anyout",
@@ -258,7 +261,7 @@ module = [
     "pysad.models.feedback_hst",
     "pysad.models.fluxev",
     "pysad.models.half_space_trees",
-    "pysad.models.htm.htm",
+    "pysad.models.htm.*",
     "pysad.models.holt_winters",
     "pysad.models.idks",
     "pysad.models.iforest_asd",

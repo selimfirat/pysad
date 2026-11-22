@@ -73,7 +73,10 @@ Changelog = "https://github.com/selimfirat/pysad/releases"
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.26.0,<2"]
-fast = ["pysad_kernels>=0.1.0"]
+# pysad_kernels is published on release via rust-wheels.yml. The marker below
+# avoids a resolution failure on Windows Python 3.14 before the first release.
+# Remove the marker after pysad_kernels 0.1.0 is on PyPI.
+fast = ["pysad_kernels>=0.1.0; not (sys_platform == 'win32' and python_version >= '3.14')"]
 
 [project.scripts]
 pysad-live = "pysad.live.cli:main"

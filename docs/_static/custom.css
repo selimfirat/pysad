@@ -31,16 +31,23 @@
   text-decoration: none;
 }
 
-.actions a:first-child {
+.actions a:first-child:not(:has(> img)) {
   background: var(--color-brand-primary);
   color: var(--color-background-primary);
 }
 
-/* The star-count badge after the buttons. */
+/* Shield and star-count badges inside action rows. */
 .actions a:has(> img) {
   padding: 0;
   border: 0;
+  border-radius: 0;
+  background: transparent;
+  line-height: 0;
   vertical-align: middle;
+}
+
+.actions a > img {
+  display: block;
 }
 
 .actions a:hover {

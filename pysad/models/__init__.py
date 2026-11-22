@@ -12,6 +12,7 @@ from .cost_sensitive_stream import CostSensitiveStreamModel
 from .cpod import CPOD
 from .d3 import D3
 from .damp import DAMP
+from .denstream import DenStream
 from .dilof import DILOF
 from .drift_adaptive_detector import DriftAdaptiveDetector
 from .exact_storm import ExactStorm
@@ -75,6 +76,7 @@ __all__ = [
     "CPOD",
     "D3",
     "DAMP",
+    "DenStream",
     "DILOF",
     "DriftAdaptiveDetector",
     "ExactStorm",

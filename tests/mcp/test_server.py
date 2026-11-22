@@ -349,7 +349,7 @@ async def test_list_detectors_returns_names_and_descriptions(mock_context) -> No
 
     assert result["success"] is True
     names = {item["name"] for item in result["detectors"]}
-    assert {"loda", "half_space_trees", "rs_hash"} <= names
+    assert {"loda", "halfspacetrees", "rshash"} <= names
     assert all(item["description"] for item in result["detectors"])
 
 
@@ -382,7 +382,7 @@ async def test_session_state_isolation() -> None:
 
     await initialize_detector(detector_name="loda", ctx=ctx1)
     await initialize_detector(
-        detector_name="half_space_trees",
+        detector_name="halfspacetrees",
         detector_kwargs='{"feature_mins": [0, 0], "feature_maxes": [1, 1]}',
         ctx=ctx2,
     )

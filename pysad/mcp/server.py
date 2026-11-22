@@ -24,7 +24,99 @@ import numpy as np
 from mcp.server.fastmcp import Context, FastMCP
 
 from pysad.mcp.tools import register_all_tools
+from pysad.models import __all__ as MODEL_NAMES
 from pysad.utils import ArrayStreamer, Data, generate_stream
+
+
+def _class_name_to_key(name: str) -> str:
+    """Convert a class name to a user-facing snake_case key.
+
+    Handles common acronyms (LODA, RS, KNN, etc.) as single words.
+    """
+    # Known acronyms that should stay together
+    acronyms = {
+        "LODA": "loda",
+        "RS": "rs",
+        "KNN": "knn",
+        "CAD": "cad",
+        "ESD": "esd",
+        "HTM": "htm",
+        "IDKS": "idks",
+        "KELOS": "kelos",
+        "MCOD": "mcod",
+        "MIDAS": "midas",
+        "NETS": "nets",
+        "OESNN": "oesnn",
+        "UAD": "uad",
+        "PCB": "pcb",
+        "PEWMA": "pewma",
+        "TEDA": "teda",
+        "SAND": "sand",
+        "SDO": "sdo",
+        "DILOF": "dilof",
+        "DAMP": "damp",
+        "CPOD": "cpod",
+        "D3": "d3",
+        "ABSAD": "absad",
+        "ADeMS": "adems",
+        "AnyOut": "anyout",
+        "EXPoSE": "expose",
+        "FluxEV": "fluxev",
+        "FRAHST": "frahst",
+        "GNGA": "gnga",
+        "IForestASD": "iforestasd",
+        "IncrementalLOF": "incrementallof",
+        "Inqmad": "inqmad",
+        "KitNet": "kitnet",
+        "MiLOF": "milof",
+        "MStream": "mstream",
+        "MemStream": "memstream",
+        "NullModel": "nullmodel",
+        "PerfectModel": "perfectmodel",
+        "RandomModel": "randommodel",
+        "ZeroShotEmbeddingDetector": "zeroshotembeddingdetector",
+        "StreamingAutoregressiveDetector": "streamingautoregressivedetector",
+        "StreamKMPlusPlus": "streamkmplusplus",
+        "StandardAbsoluteDeviation": "standardabsolutedeviation",
+        "MedianAbsoluteDeviation": "medianabsolutedeviation",
+        "LocalOutlierProbability": "localoutlierprobability",
+        "RobustRandomCutForest": "robustrandomcutforest",
+        "OnlineIsolationForest": "onlineisolationforest",
+        "OnlineOneClassSVM": "onlineoneclasssvm",
+        "HalfSpaceTrees": "halfspacetrees",
+        "SmartSifter": "smartsifter",
+        "SeasonalHybridESD": "seasonalhybrid_esd",
+        "xStream": "xstream",
+        "RSForest": "rsforest",
+        "RSHash": "rshash",
+        "RelativeEntropy": "relativeentropy",
+        "LocalPolynomialDetector": "localpolynomialdetector",
+        "MatrixProfile": "matrixprofile",
+        "ChangeFinder": "changefinder",
+        "CostSensitiveStreamModel": "costsensitivestreammodel",
+        "ApproxStorm": "approxstorm",
+        "ExactStorm": "exactstorm",
+        "DriftAdaptiveDetector": "driftadaptivedetector",
+        "FeedbackHST": "feedbackhst",
+        "HoltWinters": "holtwinters",
+        "SpectralResidual": "spectralresidual",
+        "ThreshLEAP": "threshleap",
+        "DenStream": "denstream",
+    }
+    if name in acronyms:
+        return acronyms[name]
+
+    # Default conversion: insert underscore before uppercase letters
+    # but handle consecutive uppercase as a single word
+    result = []
+    for i, c in enumerate(name):
+        if c.isupper():
+            if i > 0 and (name[i - 1].islower() or (i + 1 < len(name) and name[i + 1].islower())):
+                result.append("_")
+            result.append(c.lower())
+        else:
+            result.append(c)
+    return "".join(result)
 
 
 @dataclass
@@ -95,9 +187,10 @@ async def initialize_detector(
     """Initialize a streaming anomaly detector.
 
     Args:
-        detector_name: Name of the detector (loda, half_space_trees, rs_hash,
-            local_outlier_probability, robust_random_cut_forest, knncad,
-            smart_sifter, seasonal_hybrid_esd, xstream, median_absolute_deviation).
+        detector_name: Name of the detector (e.g., loda, halfspacetrees, rshash,
+            onlineisolationforest, localoutlierprobability, robustrandomcutforest,
+            knncad, smartsifter, seasonalhybrid_esd, xstream, medianabsolutedeviation,
+            and all other detectors from pysad.models).
         detector_kwargs: Additional detector arguments as JSON string.
         random_state: Random seed for reproducibility.
         ctx: MCP context for logging.
@@ -114,24 +207,22 @@ async def initialize_detector(
     else:
         state = SessionState()
 
-    detectors = {
-        "loda": ("pysad.models", "LODA"),
-        "half_space_trees": ("pysad.models", "HalfSpaceTrees"),
-        "rs_hash": ("pysad.models", "RSHash"),
-        "local_outlier_probability": ("pysad.models", "LocalOutlierProbability"),
-        "robust_random_cut_forest": ("pysad.models", "RobustRandomCutForest"),
-        "knncad": ("pysad.models", "KNNCAD"),
-        "smart_sifter": ("pysad.models", "SmartSifter"),
-        "seasonal_hybrid_esd": ("pysad.models", "SeasonalHybridESD"),
-        "xstream": ("pysad.models", "xStream"),
-        "median_absolute_deviation": ("pysad.models", "MedianAbsoluteDeviation"),
-    }
+    # Build detector map from pysad.models.__all__ dynamically
+    # Skip base classes and utilities
+    skip_names = {"BaseModel", "StreamPipeline", "ModelEnsemble"}
+    detectors = {}
+    for name in MODEL_NAMES:
+        if name in skip_names or name.startswith("_"):
+            continue
+        key = _class_name_to_key(name)
+        detectors[key] = ("pysad.models", name)
 
     name_lower = detector_name.lower().replace("-", "_")
     if name_lower not in detectors:
+        available = ", ".join(sorted(detectors.keys()))
         return {
             "success": False,
-            "error": f"Unknown detector: {detector_name}. Available: {list(detectors.keys())}",
+            "error": f"Unknown detector: {detector_name}. Available: {available}",
         }
 
     try:
@@ -620,22 +711,31 @@ async def list_detectors(ctx: Context | None = None) -> dict[str, Any]:
     Returns:
         Dictionary with list of available detectors and their descriptions.
     """
-    detectors = {
-        "loda": "Lightweight on-line detector of anomalies (Pevný, 2016)",
-        "half_space_trees": "Half-Space Trees (Tan et al., 2011)",
-        "rs_hash": "RS-Hash subspace outlier detection (Sathe & Aggarwal, 2016)",
-        "local_outlier_probability": "Local Outlier Probabilities (Kriegel et al., 2009)",
-        "robust_random_cut_forest": "Robust Random Cut Forest (Guha et al., 2016)",
-        "knncad": "Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016)",
-        "smart_sifter": "Finite mixtures with discounting learning (Yamanishi et al., 2000)",
-        "seasonal_hybrid_esd": "Seasonal Hybrid ESD (Hochenbaum et al., 2017)",
-        "xstream": "xStream (Manzoor et al., 2018)",
-        "median_absolute_deviation": "Median absolute deviation over sliding window",
-    }
+    # Build detector map from pysad.models.__all__ dynamically
+    skip_names = {"BaseModel", "StreamPipeline", "ModelEnsemble"}
+    detectors = {}
+    for name in MODEL_NAMES:
+        if name in skip_names or name.startswith("_"):
+            continue
+        key = _class_name_to_key(name)
+        # Get the class docstring for description
+        try:
+            module = __import__("pysad.models", fromlist=[name])
+            cls = getattr(module, name)
+            doc = cls.__doc__ or ""
+            # Extract first line of docstring as description
+            desc = (
+                doc.strip().split("\n")[0] if doc.strip() else f"{name} streaming anomaly detector"
+            )
+        except Exception:
+            desc = f"{name} streaming anomaly detector"
+        detectors[key] = desc
 
     return {
         "success": True,
-        "detectors": [{"name": name, "description": desc} for name, desc in detectors.items()],
+        "detectors": [
+            {"name": name, "description": desc} for name, desc in sorted(detectors.items())
+        ],
     }
 
 

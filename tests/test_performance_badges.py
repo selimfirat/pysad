@@ -1,4 +1,4 @@
-"""The README badges distinguish measured throughput and detector input types."""
+"""Performance badges report measurements and detector input types."""
 
 import json
 
@@ -8,6 +8,9 @@ from scripts import generate_performance_badges as badges
 def test_badges_report_median_throughput_and_separate_detector_counts(tmp_path, monkeypatch):
     results = tmp_path / "results.csv"
     results.write_text("ms_per_point\n1\n2\n4\n", encoding="utf-8")
+    memory = tmp_path / "memory.csv"
+    memory.write_text("growth_kb\n0.2\n0.7\n0.3\n", encoding="utf-8")
+    monkeypatch.setattr(badges, "MEMORY_RESULTS", memory)
     monkeypatch.setattr(badges, "RESULTS", results)
     monkeypatch.setattr(badges, "OUT_DIR", tmp_path / "badges")
     monkeypatch.setattr(
@@ -34,6 +37,7 @@ def test_badges_report_median_throughput_and_separate_detector_counts(tmp_path, 
     }
     assert set(generated) == {
         "throughput.json",
+        "memory.json",
         "univariate_detectors.json",
         "multivariate_detectors.json",
     }
@@ -43,3 +47,6 @@ def test_badges_report_median_throughput_and_separate_detector_counts(tmp_path, 
     assert generated["univariate_detectors.json"]["message"] == "2"
     assert generated["multivariate_detectors.json"]["label"] == "multivariate detectors"
     assert generated["multivariate_detectors.json"]["message"] == "2"
+
+    assert generated["memory.json"]["label"] == "max memory growth"
+    assert generated["memory.json"]["message"] == "0.7 KiB"

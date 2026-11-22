@@ -150,7 +150,7 @@ fn rrcf_route_to_leaf(
         }
     }
 
-    Ok(PyArray1::from_vec(_py, leaves)?.into())
+    Ok(PyArray1::from_vec(_py, leaves).into())
 }
 
 /// Compute the collusive displacement (CoDisp) for a set of leaf nodes.

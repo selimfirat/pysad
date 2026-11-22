@@ -184,34 +184,18 @@ def run_benchmark(
             final_slots[:nd] = dup_slots
             init_counts[:nd] = 0
             n_done = nd
-            active = non_empty_roots[~is_dup]
+            non_dup_leaves = cand_leaves[~is_dup]
         else:
-            active = non_empty_roots
+            non_dup_leaves = cand_leaves
 
-        # Route non-duplicate points
-        while len(active) > 1:
-            d_act = dim[active]
-            # Generate random cuts (simplified - we use existing cuts for routing)
-            # Actually for score_partial we route using existing cuts
-            active = np.where(
-                point[d_act] <= cut[active],
-                left[active],
-                right[active],
-            )
-
-        if len(active) == 1:
-            s = int(active[0])
-            while True:
-                d = int(dim[s])
-                if d < 0:
-                    break
-                s = int(left[s]) if point[d] <= cut[s] else int(right[s])
-            final_slots[n_done] = s
-            init_counts[n_done] = count[s]
+        if len(non_dup_leaves) > 0:
+            final_slots[n_done : n_done + len(non_dup_leaves)] = non_dup_leaves
+            init_counts[n_done : n_done + len(non_dup_leaves)] = count[non_dup_leaves]
+            n_done += len(non_dup_leaves)
 
         # Compute CoDisp sum
         total = 0.0
-        for i in range(len(final_slots)):
+        for i in range(n_done):
             leaf = final_slots[i]
             if leaf < 0:
                 continue

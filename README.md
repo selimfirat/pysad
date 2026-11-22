@@ -343,6 +343,7 @@ These starting points come from the design of each method. They are not benchmar
 | `StreamKMPlusPlus` | Distance to the nearest center of a StreamKM++ streaming coreset clustering (Ackermann et al., 2012) |
 | `ZeroShotEmbeddingDetector` | Zero-shot OOD detector using semantic anchors (Maximum Concept Matching) (Ming et al., 2022) |
 | `ABSAD` | Angle-Based Subspace Anomaly Detection (ABSAD) (Zhang et al., 2017) |
+| `DenStream` | DenStream density-based streaming anomaly detector (Cao et al., 2006) |
 
 **Univariate**
 

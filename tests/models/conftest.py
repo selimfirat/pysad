@@ -222,6 +222,7 @@ def short_stream_params(
         "CPOD": {"window_size": 20, "max_radius": 0.5},
         "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.3},
         "DAMP": {"window_length": 3, "probationary_period": 4, "history_size": 20},
+        "DenStream": {"decaying_factor": 0.05, "epsilon": 1.5, "beta": 0.5, "mu": 3},
         "DILOF": {"num_neighbors": 3, "window_size": 12},
         "DriftAdaptiveDetector": {
             "model_factory": functools.partial(

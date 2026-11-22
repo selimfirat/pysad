@@ -321,6 +321,7 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | `StreamKMPlusPlus` | 基于 StreamKM++ 流式核心集聚类的最近中心距离 (Ackermann et al., ACM JEA 2012) |
 | `ZeroShotEmbeddingDetector` | 基于语义锚点最大概念匹配的零样本分布外检测 (Ming et al., NeurIPS 2022) |
 | `ABSAD` | 基于角度的子空间异常检测 (ABSAD) (Zhang et al., 2017) |
+| `DenStream` | 密度基准流式异常检测器 (DenStream) (Cao et al., 2006) |
 
 **单变量**
 

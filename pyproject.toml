@@ -71,10 +71,13 @@ Repository = "https://github.com/selimfirat/pysad.git"
 Discussions = "https://github.com/selimfirat/pysad/discussions"
 Changelog = "https://github.com/selimfirat/pysad/releases"
 
+[project.optional-dependencies]
+mcp = ["mcp>=1.26.0,<2"]
+
 [project.scripts]
 pysad-live = "pysad.live.cli:main"
 
-# PEP 735 dependency groups. The runtime dependencies only have floors in [project]; these
+# PEP 735 dependency groups. The runtime dependencies use ranges in [project]; these
 # groups pin what CI, Read the Docs and contributors install, and Dependabot bumps them.
 # Install with `pip install -e . --group dev` (pip 25.1+) or `uv sync --group dev`.
 [dependency-groups]
@@ -84,6 +87,9 @@ runtime = [
   "scikit-learn==1.7.2",
   "scipy>=1.15.4",
   "setuptools>=84.0.0,<85.0.0",
+]
+mcp = [
+  "mcp==1.26.0",
 ]
 test = [
   # PandasStreamer takes DataFrames.
@@ -146,6 +152,7 @@ jupyterlite = [
 ]
 dev = [
   {include-group = "runtime"},
+  {include-group = "mcp"},
   {include-group = "test"},
   {include-group = "docs"},
   {include-group = "lint"},

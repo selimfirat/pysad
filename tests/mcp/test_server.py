@@ -3,24 +3,48 @@
 from __future__ import annotations
 
 import pytest
-from mcp.server.fastmcp import Context
 
-from pysad.mcp.server import (
-    SessionState,
-    create_mcp_server,
-    get_status,
-    initialize_calibrator,
-    initialize_detector,
-    initialize_stream,
-    list_calibrators,
-    list_data_sources,
-    list_detectors,
-    reset_session,
-    score_batch,
-    score_point,
-)
+try:
+    from mcp.server.fastmcp import Context
 
-pytestmark = pytest.mark.anyio
+    MCP_AVAILABLE = True
+except ImportError:  # pragma: no cover - mcp is an optional dependency
+    MCP_AVAILABLE = False
+    Context = None  # type: ignore[assignment,misc]
+
+try:
+    from pysad.mcp.server import (
+        SessionState,
+        create_mcp_server,
+        get_status,
+        initialize_calibrator,
+        initialize_detector,
+        initialize_stream,
+        list_calibrators,
+        list_data_sources,
+        list_detectors,
+        reset_session,
+        score_batch,
+        score_point,
+    )
+except ImportError:  # pragma: no cover - mcp is an optional dependency
+    SessionState = None  # type: ignore[assignment,misc]
+    create_mcp_server = None  # type: ignore[assignment,misc]
+    get_status = None  # type: ignore[assignment,misc]
+    initialize_calibrator = None  # type: ignore[assignment,misc]
+    initialize_detector = None  # type: ignore[assignment,misc]
+    initialize_stream = None  # type: ignore[assignment,misc]
+    list_calibrators = None  # type: ignore[assignment,misc]
+    list_data_sources = None  # type: ignore[assignment,misc]
+    list_detectors = None  # type: ignore[assignment,misc]
+    reset_session = None  # type: ignore[assignment,misc]
+    score_batch = None  # type: ignore[assignment,misc]
+    score_point = None  # type: ignore[assignment,misc]
+
+pytestmark = [
+    pytest.mark.anyio,
+    pytest.mark.skipif(not MCP_AVAILABLE, reason="mcp package not installed"),
+]
 
 
 @pytest.fixture

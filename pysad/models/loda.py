@@ -31,18 +31,6 @@ class LODA(BaseModel):
         random_state (int, np.random.RandomState or None): Seed or random number generator for the projections. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
     """
 
-    __bibtex__ = """
-@article{pevny2016loda,
-  title={Loda: Lightweight on-line detector of anomalies},
-  author={Pevn\'{y}, Tom\'{a}\v{s}},
-  journal={Machine Learning},
-  volume={102},
-  pages={275--304},
-  year={2016},
-  publisher={Springer}
-}
-"""
-
     def __init__(
         self,
         num_bins: int = 10,
@@ -50,6 +38,8 @@ class LODA(BaseModel):
         window_size: int = 256,
         random_state: int | np.random.RandomState | None = None,
     ) -> None:
+        if window_size <= 0:
+            raise ValueError("window_size must be a positive integer.")
         self.to_init = True
         self.n_bins = num_bins
         self.n_random_cuts = num_random_cuts

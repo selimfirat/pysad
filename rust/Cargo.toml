@@ -17,8 +17,8 @@ default = ["extension-module"]
 extension-module = ["pyo3/extension-module"]
 
 [dependencies]
-numpy = "0.23"
-pyo3 = { version = "0.23", features = ["abi3-py311"] }
+numpy = "0.30"
+pyo3 = { version = "0.30", features = ["abi3-py311"] }
 
 [profile.release]
 lto = true

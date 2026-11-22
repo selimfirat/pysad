@@ -35,9 +35,11 @@ class SessionState:
 
 def _get_state(ctx: Context) -> SessionState:
     """Get or create session state from MCP context."""
-    if not hasattr(ctx, "_pysad_state"):
-        ctx._pysad_state = SessionState()  # type: ignore[attr-defined]
-    return ctx._pysad_state  # type: ignore[attr-defined,no-any-return]
+    context: Any = ctx
+    if not hasattr(context, "_pysad_state"):
+        context._pysad_state = SessionState()
+    state: SessionState = context._pysad_state
+    return state
 
 
 def create_mcp_server() -> FastMCP:

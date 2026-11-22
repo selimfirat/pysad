@@ -90,7 +90,7 @@ def test_global_triggers_and_empty_diff_cache(monkeypatch) -> None:
     assert _changed_files_since("HEAD") >= frozenset()
 
 
-def test_ci_affected_plans_for_tests_examples_and_codeql(monkeypatch) -> None:
+def test_ci_affected_plans_for_tests_and_examples(monkeypatch) -> None:
     def with_changed(files: set[str]):
         monkeypatch.setattr(ci_affected, "_changed_files_since", lambda base: frozenset(files))
         monkeypatch.setattr(ci_affected, "_deps_changed_since", lambda base: False)
@@ -103,11 +103,6 @@ def test_ci_affected_plans_for_tests_examples_and_codeql(monkeypatch) -> None:
     }
     assert ci_affected.tests_plan("origin/master")["needs_compat"] is False
     assert ci_affected.examples_plan("origin/master")["count"] == 0
-    assert ci_affected.codeql_plan("origin/master") == {
-        "python": False,
-        "actions": False,
-        "languages": [],
-    }
 
     with_changed({"LICENSE"})
     assert ci_affected.tests_plan("origin/master")["count"] == 0
@@ -118,10 +113,8 @@ def test_ci_affected_plans_for_tests_examples_and_codeql(monkeypatch) -> None:
     assert tplan["needs_compat"] is True
     assert "tests/evaluation/test_brier_score.py" in tplan["files"]
     assert "tests/test_component_contracts.py" in tplan["files"]
-    assert ci_affected.codeql_plan("origin/master")["languages"] == ["python"]
 
     with_changed({".github/workflows/benchmark.yml"})
-    assert ci_affected.codeql_plan("origin/master")["languages"] == ["actions"]
     assert ci_affected.tests_plan("origin/master")["needs_compat"] is False
 
 

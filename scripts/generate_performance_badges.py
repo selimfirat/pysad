@@ -1,8 +1,7 @@
-"""Regenerate the JSON data behind the README performance badges.
+"""Regenerate the JSON data behind the performance badges.
 
-The badges show median throughput and separate univariate and multivariate detector counts. Their values come from
-the benchmark data in docs/benchmark/ and from the detector catalog, so they
-stay in sync with the measured performance of the library.
+The badges show median throughput, memory growth, and separate detector counts.
+Benchmark data and the detector catalog provide the values.
 
 Run it from the repository root:
 
@@ -12,11 +11,13 @@ Run it from the repository root:
 import csv
 import json
 from pathlib import Path
+from statistics import median
 
 from pysad import models
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "docs" / "benchmark" / "results.csv"
+MEMORY_RESULTS = ROOT / "docs" / "benchmark" / "memory.csv"
 OUT_DIR = ROOT / "docs" / "_static"
 
 
@@ -51,13 +52,7 @@ def _median_points_per_second() -> float:
             if ms_per_point > 0:
                 rates.append(1000.0 / ms_per_point)
 
-    rates.sort()
-    if not rates:
-        return 0.0
-    mid = len(rates) // 2
-    if len(rates) % 2 == 0:
-        return (rates[mid - 1] + rates[mid]) / 2.0
-    return rates[mid]
+    return median(rates) if rates else 0.0
 
 
 def _format_rate(rate: float) -> str:
@@ -82,7 +77,11 @@ def main() -> None:
     counts = _detector_counts()
     rate = _format_rate(_median_points_per_second())
 
+    with MEMORY_RESULTS.open(newline="") as handle:
+        growth = max(float(row["growth_kb"]) for row in csv.DictReader(handle))
+
     badges = {
+        "memory.json": _badge("max memory growth", f"{growth:.1f} KiB", "00757a"),
         "throughput.json": _badge("median throughput", rate, "00757a"),
         "univariate_detectors.json": _badge(
             "univariate detectors", str(counts["univariate"]), "00565a"

@@ -11,6 +11,8 @@ on:
       - "docs/**"
       - "examples/**"
       - "benchmarks/benchmark.py"
+      - "benchmarks/memory_stability.py"
+      - "scripts/generate_performance_badges.py"
       - "README.md"
       - "pyproject.toml"
       - ".readthedocs.yaml"
@@ -87,6 +89,12 @@ jobs:
         # Same dependency groups as python.install in .readthedocs.yaml. The package itself
         # is not installed; docs/conf.py puts the repository root on sys.path.
         run: uv pip install --system --group runtime --group docs
+      - name: Make sure that performance badges match their sources
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/generate_performance_badges.py
+          git diff --exit-code -- docs/_static/*throughput.json docs/_static/*memory.json docs/_static/*detectors.json
       - name: Build documentation
         env:
           PYSAD_DOCS_FAST: ${{ github.event_name == 'pull_request' && '1' || '0' }}

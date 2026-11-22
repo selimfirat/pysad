@@ -294,7 +294,7 @@ def test_best_values_at_chance_render_in_bold_and_italics(ranking_tables):
     (tmp_path / "index.rst").write_text(
         "Chance values\n============="
         "\n\n.. csv-table:: AUPR\n   :file: aupr.csv\n   :header-rows: 1\n"
-        "\n.. csv-table:: AUROC\n   :file: auroc.csv\n   :header-rows: 1\n"
+        ".. csv-table:: AUROC\n   :file: auroc.csv\n   :header-rows: 1\n"
     )
     warnings = StringIO()
     app = Sphinx(
@@ -1224,3 +1224,38 @@ def test_no_cache_bypasses_reads_and_writes(pair_benchmark, tmp_path, monkeypatc
     assert output.read_text() != expected
     invoke(*options)
     assert output.read_text() == expected
+
+
+def test_memory_benchmark_writes_measurements(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    output = tmp_path / "memory.csv"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/memory_stability.py",
+            "--detectors",
+            "StandardAbsoluteDeviation",
+            "--points",
+            "30",
+            "--checkpoint",
+            "10",
+            "--output",
+            str(output),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    with output.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["detector"] == "StandardAbsoluteDeviation"
+    assert float(row["points"]) == 30
+    assert float(row["seconds"]) > 0
+    assert float(row["peak_kb"]) >= 0
+    assert np.isfinite(float(row["growth_kb"]))

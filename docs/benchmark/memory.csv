@@ -1,0 +1,4 @@
+detector,points,seconds,peak_kb,growth_kb
+LODA,1000000,223.7,9.3,0.3
+MedianAbsoluteDeviation,1000000,488.2,15.7,0.3
+StandardAbsoluteDeviation,1000000,33.6,1.3,0.2

@@ -83,6 +83,30 @@ To check that detector memory stays bounded over a long stream, run ``benchmarks
 
 The script generates one point at a time, warms up on 1,000 points, and records ``tracemalloc`` memory every ``--checkpoint`` points (default 100,000) over ``--points`` points (default 1,000,000). It exits with a non-zero status if traced memory grows by more than ``--max-growth-kb`` KiB (default 512.0) between the second and last checkpoints.
 
+Performance badges
+------------------
+
+The README and documentation home page read badge values from ``docs/_static/*.json``.
+Throughput uses the median points per second across valid, positive timings in ``docs/benchmark/results.csv``.
+Detector counts use the public catalog and exclude helper models.
+Memory uses the largest traced growth in ``docs/benchmark/memory.csv``.
+The recorded memory measurements cover three detectors over 1,000,000 points after warmup.
+They do not measure total process memory or all detectors.
+
+If you update the memory measurements, write the CSV with this command:
+
+.. code-block:: console
+
+   $ python benchmarks/memory_stability.py --output docs/benchmark/memory.csv
+
+If you update benchmark results or the detector catalog, regenerate the badges:
+
+.. code-block:: console
+
+   $ python scripts/generate_performance_badges.py
+
+Commit the generated JSON files with their sources. The docs workflow rejects stale values.
+
 Check against ``master``
 ------------------------
 

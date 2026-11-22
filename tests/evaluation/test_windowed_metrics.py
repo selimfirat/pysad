@@ -106,13 +106,14 @@ def test_windowed_metric_empty_window():
 
     for metric_cls in (PrecisionMetric, RecallMetric):
         assert metric_cls().get() == 0.0
-        assert WindowedMetric(metric_cls, window_size=10).get() == 0.0
+        # WindowedMetric with no updates returns None because no valid windows exist yet
+        assert WindowedMetric(metric_cls, window_size=10).get() is None
 
     for metric_cls in (AUPRMetric, AUROCMetric):
         with pytest.raises(ValueError):
             metric_cls().get()
-        with pytest.raises(ValueError):
-            WindowedMetric(metric_cls, window_size=10).get()
+        # WindowedMetric with no updates returns None because no valid windows exist yet
+        assert WindowedMetric(metric_cls, window_size=10).get() is None
 
 
 def test_windowed_metric_various_metrics():
@@ -318,7 +319,7 @@ def test_windowed_metric_update_batch_across_windows_precision():
     assert metric_empty.score_meter.num_items == 0
     # get() would raise ZeroDivisionError, so we check num_items instead
 
-    # Test 8: Single item batch (partial window)
+    # Test 8: Single item batch (partial window) - skipped because window has only one class
     metric_single = WindowedMetric(
         PrecisionMetric, window_size=window_size, ignore_nonempty_last=True, threshold=0.5
     )
@@ -326,4 +327,5 @@ def test_windowed_metric_update_batch_across_windows_precision():
     assert metric_single.step == 1
     assert metric_single.num_windows == 1
     assert np.isclose(metric_single.metric.get(), 1.0)  # TP=1, FP=0
-    assert metric_single.get() == 1.0  # Only current window counts when no completed windows
+    # Window has only class 1 (no class 0), so it's skipped and get() returns None
+    assert metric_single.get() is None

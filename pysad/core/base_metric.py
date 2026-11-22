@@ -45,3 +45,11 @@ class BaseMetric(ABC):
             float: The current score.
         """
         return self.score
+
+    def has_both_classes(self) -> bool:
+        """Checks if both classes (0 and 1) have been observed.
+
+        Returns:
+            bool: True if both classes are present, False otherwise.
+        """
+        return True

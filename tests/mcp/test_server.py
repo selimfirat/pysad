@@ -62,11 +62,13 @@ def mock_context() -> Context:
 
 
 async def test_server_registers_all_tools() -> None:
-    """The server exposes every documented tool."""
+    """The server exposes session-based tools and auto-discovered tools."""
     server = create_mcp_server()
     tools = await server.list_tools()
+    tool_names = {tool.name for tool in tools}
 
-    assert {tool.name for tool in tools} == {
+    # Session-based tools (backward compatible)
+    session_tools = {
         "initialize_detector",
         "initialize_calibrator",
         "initialize_stream",
@@ -78,6 +80,23 @@ async def test_server_registers_all_tools() -> None:
         "list_calibrators",
         "list_data_sources",
     }
+
+    # Check that all session tools are present
+    assert session_tools.issubset(tool_names)
+
+    # Check that auto-discovered detector tools are present (at least key ones)
+    detector_tools = {name for name in tool_names if name.startswith("pysad_")}
+    assert "pysad_loda" in detector_tools
+    assert "pysad_halfspacetrees" in detector_tools
+    assert "pysad_onlineisolationforest" in detector_tools
+
+    # Check that auto-discovered statistic tools are present
+    assert "pysad_adwinmeter" in detector_tools
+    assert "pysad_ddmmeter" in detector_tools
+
+    # Check that explain and stream tools are present
+    assert "pysad_explain" in detector_tools
+    assert "pysad_stream" in detector_tools
 
 
 async def test_initialize_detector_returns_public_configuration(mock_context) -> None:

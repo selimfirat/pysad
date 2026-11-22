@@ -89,7 +89,9 @@ class LODA(BaseModel):
 
     def _bin_indices(self, projected: NDArray[np.float64], hist_idx: int) -> NDArray[np.float64]:
         with np.errstate(divide="ignore", invalid="ignore"):
-            indices: NDArray[np.float64] = np.floor((projected - self.bin_lows_[hist_idx]) / self.bin_widths_[hist_idx])
+            indices: NDArray[np.float64] = np.floor(
+                (projected - self.bin_lows_[hist_idx]) / self.bin_widths_[hist_idx]
+            )
             return indices
 
     def _extend(self, hist_idx: int, i: int, value: float) -> int:
@@ -101,7 +103,7 @@ class LODA(BaseModel):
 
             padded = np.zeros(2 * self.n_bins)
             if ind < 0:  # Extend to the left, the old bins become the right half.
-                padded[self.n_bins:] = self.histograms_[hist_idx, i]
+                padded[self.n_bins :] = self.histograms_[hist_idx, i]
                 self.bin_lows_[hist_idx, i] -= self.n_bins * self.bin_widths_[hist_idx, i]
             else:  # Extend to the right, the old bins become the left half.
                 padded[: self.n_bins] = self.histograms_[hist_idx, i]
@@ -115,7 +117,9 @@ class LODA(BaseModel):
         self.bin_widths_[hist_idx].fill(0.0)
         self.num_seen_[hist_idx] = 0
 
-    def _fit_projected(self, projected: NDArray[np.float64], inds: NDArray[np.float64], hist_idx: int) -> None:
+    def _fit_projected(
+        self, projected: NDArray[np.float64], inds: NDArray[np.float64], hist_idx: int
+    ) -> None:
         if self.num_seen_[hist_idx] == 0:
             self.bin_lows_[hist_idx] = projected
             self.histograms_[hist_idx, :, 0] = 1.0
@@ -155,7 +159,8 @@ class LODA(BaseModel):
 
         neg_log_densities = np.zeros(self.n_random_cuts)
         neg_log_densities[ready] = -np.log(
-            (counts[ready] + 1.0) / ((self.num_seen_[hist_idx] + self.n_bins) * self.bin_widths_[hist_idx, ready])
+            (counts[ready] + 1.0)
+            / ((self.num_seen_[hist_idx] + self.n_bins) * self.bin_widths_[hist_idx, ready])
         )
 
         return neg_log_densities

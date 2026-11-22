@@ -140,7 +140,9 @@ def test_loda_score_before_fit_and_non_finite_values():
         model.fit_partial(x)
     model.fit_partial(np.array([np.inf, 0.0, 0.0, 0.0]))
     active = model._active()
-    assert np.all(np.isfinite(model.bin_lows_[active])) and np.all(np.isfinite(model.bin_widths_[active]))
+    assert np.all(np.isfinite(model.bin_lows_[active])) and np.all(
+        np.isfinite(model.bin_widths_[active])
+    )
     assert model.num_seen_[active] == 50
     np.testing.assert_array_equal(model.histograms_[active].sum(axis=1), 50)
     assert np.isfinite(model.score_partial(np.array([np.inf, 0.0, 0.0, 0.0])))

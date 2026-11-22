@@ -100,6 +100,14 @@ class BaseSKLearnMetric(BaseMetric, metaclass=ABCMeta):
         """
         return self._evaluate(self.y_true, self.y_pred)
 
+    def has_both_classes(self) -> bool:
+        """Checks if both classes (0 and 1) have been observed in the recorded labels.
+
+        Returns:
+            bool: True if both classes are present, False otherwise.
+        """
+        return len(set(self.y_true)) > 1
+
     @abstractmethod
     def _evaluate(self, y_true: list[int], y_pred: list[float]) -> float:
         """Abstract method to be filled with the sklearn metric.
@@ -127,6 +135,8 @@ class BrierScoreMetric(BaseMetric):
         super().__init__()
         self.squared_error_sum_ = 0.0
         self.count_ = 0
+        self.positives_ = 0
+        self.negatives_ = 0
 
     def update(self, y_true: int, y_pred: float) -> None:
         """Record one binary label and anomaly probability.
@@ -144,6 +154,10 @@ class BrierScoreMetric(BaseMetric):
         error = float(y_pred) - float(y_true)
         self.squared_error_sum_ += error * error
         self.count_ += 1
+        if y_true == 1:
+            self.positives_ += 1
+        else:
+            self.negatives_ += 1
 
     def get(self) -> float:
         """Return the mean squared error, or 0.0 for an empty stream.
@@ -152,6 +166,14 @@ class BrierScoreMetric(BaseMetric):
             float: The current Brier score.
         """
         return self.squared_error_sum_ / self.count_ if self.count_ else 0.0
+
+    def has_both_classes(self) -> bool:
+        """Checks if both classes (0 and 1) have been observed.
+
+        Returns:
+            bool: True if both classes are present, False otherwise.
+        """
+        return self.positives_ > 0 and self.negatives_ > 0
 
 
 class ExpectedCalibrationErrorMetric(BaseMetric):
@@ -187,6 +209,8 @@ class ExpectedCalibrationErrorMetric(BaseMetric):
         self.probability_sums_ = np.zeros(num_bins, dtype=np.float64)
         self._edges = np.arange(1, num_bins, dtype=np.float64) / num_bins
         self.count_ = 0
+        self.positives_ = 0
+        self.negatives_ = 0
 
     def update(self, y_true: int, y_pred: float) -> None:
         """Record one binary label and anomaly probability.
@@ -206,6 +230,10 @@ class ExpectedCalibrationErrorMetric(BaseMetric):
         self.label_sums_[index] += float(y_true)
         self.probability_sums_[index] += float(y_pred)
         self.count_ += 1
+        if y_true == 1:
+            self.positives_ += 1
+        else:
+            self.negatives_ += 1
 
     def get(self) -> float:
         """Return the calibration error, or 0.0 for an empty stream.
@@ -216,6 +244,14 @@ class ExpectedCalibrationErrorMetric(BaseMetric):
         if not self.count_:
             return 0.0
         return float(np.abs(self.label_sums_ - self.probability_sums_).sum() / self.count_)
+
+    def has_both_classes(self) -> bool:
+        """Checks if both classes (0 and 1) have been observed.
+
+        Returns:
+            bool: True if both classes are present, False otherwise.
+        """
+        return self.positives_ > 0 and self.negatives_ > 0
 
 
 class _ConfusionMatrixMetric(BaseMetric, metaclass=ABCMeta):
@@ -276,6 +312,14 @@ class _ConfusionMatrixMetric(BaseMetric, metaclass=ABCMeta):
         self.fn_ += fn
         self.tn_ += tn
         return self
+
+    def has_both_classes(self) -> bool:
+        """Checks if both classes (0 and 1) have been observed in the recorded labels.
+
+        Returns:
+            bool: True if both classes are present, False otherwise.
+        """
+        return (self.tp_ + self.fn_) > 0 and (self.tn_ + self.fp_) > 0
 
 
 class PrecisionMetric(_ConfusionMatrixMetric):
@@ -435,6 +479,8 @@ class LogLossMetric(BaseMetric):
         self.eps = float(eps)
         self.total_loss_: float = 0.0
         self.count_: int = 0
+        self.positives_ = 0
+        self.negatives_ = 0
 
     def update(self, y_true: int, y_pred: float) -> LogLossMetric:
         """Updates the metric with given true class and predicted anomaly probability.
@@ -460,6 +506,10 @@ class LogLossMetric(BaseMetric):
 
         self.total_loss_ += float(loss)
         self.count_ += 1
+        if y_true == 1:
+            self.positives_ += 1
+        else:
+            self.negatives_ += 1
         self.score = self.total_loss_ / self.count_
         return self
 
@@ -470,3 +520,11 @@ class LogLossMetric(BaseMetric):
             float | None: The current running log loss, or None if no instances have been evaluated.
         """
         return self.score
+
+    def has_both_classes(self) -> bool:
+        """Checks if both classes (0 and 1) have been observed.
+
+        Returns:
+            bool: True if both classes are present, False otherwise.
+        """
+        return self.positives_ > 0 and self.negatives_ > 0

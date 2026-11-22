@@ -13,7 +13,7 @@ from pysad.statistics.basic import AverageMeter
 class WindowedMetric(BaseMetric):
     """Evaluates a metric on consecutive windows of the stream and averages the window results :cite:`xstream,gokcesu2017online`.
 
-    The distributions of the streaming model scores often change due to model collapse (i.e. becoming closer to the always loss=0) or appearing nonstationarities. Thus, the metrics such as ROC or AUC scores may change drastically. To prevent their effect, this class creates windows of size ``window_size``. It creates a new instance of ``metric_cls`` after every ``window_size`` instances. Lastly, the metrics from all windows are averaged.
+    The distributions of the streaming model scores often change due to model collapse (i.e. becoming closer to the always loss=0) or appearing nonstationarities. Thus, the metrics such as ROC or AUC scores may change drastically. To prevent their effect, this class creates windows of size ``window_size``. It creates a new instance of ``metric_cls`` after every ``window_size`` instances. Windows that contain only one class (no anomalies or only anomalies) are skipped and do not contribute to the average.
 
     Args:
         metric_cls (class): The metric class to be windowed.
@@ -48,10 +48,14 @@ class WindowedMetric(BaseMetric):
         return self.metric_cls(**kwargs)
 
     def _complete_window(self) -> None:
-        """Average the completed window score and start a new metric."""
+        """Average the completed window score and start a new metric.
+
+        Windows with only one class are skipped and do not contribute to the average.
+        """
         self.num_windows += 1
-        score = cast(float, self.metric.get())
-        self.score_meter.update(score)
+        if self.metric.has_both_classes():
+            score = cast(float, self.metric.get())
+            self.score_meter.update(score)
         self.metric = self._init_metric(**self.metric_kwargs)
 
     def update(self, y_true: int, y_pred: float) -> WindowedMetric:
@@ -95,12 +99,21 @@ class WindowedMetric(BaseMetric):
         """Obtains the averaged score.
 
         Returns:
-            float: The average score of the windows.
+            float: The average score of the windows that contain both classes.
+            Returns None if no windows with both classes have been completed.
         """
         if self.num_windows == 1:
-            return self.metric.get()
+            # No completed windows yet, return current metric if it has both classes
+            if self.metric.has_both_classes():
+                return self.metric.get()
+            return None
         elif not self.ignore_nonempty_last and self.step % self.window_size != 0:
-            last = cast(float, self.metric.get())
-            return (last + self.score_meter.get() * (self.num_windows - 1)) / self.num_windows
+            if self.metric.has_both_classes():
+                last = cast(float, self.metric.get())
+                valid_windows = self.score_meter.num_items
+                return (last + self.score_meter.get() * valid_windows) / (valid_windows + 1)
+            else:
+                # Last window is not valid, only count completed valid windows
+                return self.score_meter.get() if self.score_meter.num_items > 0 else None
         else:
-            return self.score_meter.get()
+            return self.score_meter.get() if self.score_meter.num_items > 0 else None

@@ -1092,6 +1092,106 @@
 
     const $ = (id) => document.getElementById(id);
 
+    function parseUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        stream: params.get("stream") || null,
+        detectors: params.get("detectors") ? params.get("detectors").split(",") : null,
+        calibrator: params.get("calibrator") || null,
+        threshold: params.get("threshold") ? Number(params.get("threshold")) : null,
+        calWindow: params.get("calWindow") ? Number(params.get("calWindow")) : null,
+        points: params.get("points") ? Number(params.get("points")) : null,
+        feature: params.get("feature") || null,
+        injected: params.get("injected") ? JSON.parse(params.get("injected")) : null,
+        inspect: params.get("inspect") ? Number(params.get("inspect")) : null,
+      };
+    }
+
+    function updateUrlParams() {
+      if (!state.ready) return;
+      const params = new URLSearchParams();
+      const streamVal = $("streamSelect").value;
+      if (streamVal && streamVal !== "Synthetic Drift + Spikes (4 sensors)") {
+        params.set("stream", streamVal);
+      }
+      const detectors = getSelectedDetectors();
+      if (detectors.length > 0 && JSON.stringify(detectors) !== JSON.stringify(["LocalOutlierProbability", "RSHash", "LODA"])) {
+        params.set("detectors", detectors.join(","));
+      }
+      const calibrator = getSelectedCalibrator();
+      if (calibrator && calibrator !== "Conformal (ConformalProbabilityCalibrator)") {
+        params.set("calibrator", calibrator);
+      }
+      const threshold = Number($("thresholdSlider").value);
+      if (threshold !== 0.985) {
+        params.set("threshold", threshold.toFixed(3));
+      }
+      const calWindow = Number($("calWindowSlider").value);
+      if (calWindow !== 350) {
+        params.set("calWindow", String(calWindow));
+      }
+      const points = Number($("numPointsSlider").value);
+      if (points !== 1200) {
+        params.set("points", String(points));
+      }
+      const feature = $("featureSelect").value;
+      if (feature && feature !== "sensor_1") {
+        params.set("feature", feature);
+      }
+      if (state.injected.length > 0) {
+        params.set("injected", JSON.stringify(state.injected));
+      }
+      if (state.inspectStep !== null) {
+        params.set("inspect", String(state.inspectStep));
+      }
+      const newUrl = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}${window.location.hash}`;
+      window.history.replaceState(null, "", newUrl);
+    }
+
+    function applyUrlParams(urlParams) {
+      if (urlParams.stream) {
+        const streamSelect = $("streamSelect");
+        const optionExists = Array.from(streamSelect.options).some((opt) => opt.value === urlParams.stream);
+        if (optionExists) {
+          streamSelect.value = urlParams.stream;
+          const isCsv = urlParams.stream === "Upload CSV";
+          $("csvUploadWrap").classList.toggle("hidden", !isCsv);
+        }
+      }
+      if (urlParams.detectors) {
+        document.querySelectorAll('#detectorGroup input[type="checkbox"]').forEach((cb) => {
+          cb.checked = urlParams.detectors.includes(cb.value);
+        });
+        enforceDetectorBounds();
+      }
+      if (urlParams.calibrator) {
+        const radio = document.querySelector(`input[name="calibrator"][value="${urlParams.calibrator}"]`);
+        if (radio) radio.checked = true;
+        syncCalibrationControls();
+      }
+      if (urlParams.threshold !== null) {
+        $("thresholdSlider").value = String(urlParams.threshold);
+        $("thresholdValue").textContent = urlParams.threshold.toFixed(3);
+      }
+      if (urlParams.calWindow !== null) {
+        $("calWindowSlider").value = String(urlParams.calWindow);
+        $("calWindowValue").textContent = String(urlParams.calWindow);
+      }
+      if (urlParams.points !== null) {
+        $("numPointsSlider").value = String(urlParams.points);
+        $("numPointsValue").textContent = String(urlParams.points);
+      }
+      if (urlParams.injected !== null) {
+        state.injected = urlParams.injected;
+        updateInjectedSummary();
+      }
+      if (urlParams.inspect !== null) {
+        state.inspectStep = urlParams.inspect;
+        $("inspectStepSlider").value = String(urlParams.inspect);
+        $("inspectStepValue").textContent = String(urlParams.inspect);
+      }
+    }
+
     function setBootProgress(pct, text) {
       const clamped = Math.max(4, Math.min(100, Number(pct)));
       $("bootProgressFill").style.transform = `scaleX(${clamped / 100})`;
@@ -1713,6 +1813,7 @@
         $("csvUploadWrap").classList.toggle("hidden", !isCsv);
         updateInjectedSummary();
         evaluate();
+        updateUrlParams();
       });
 
       $("csvFileInput").addEventListener("change", async (e) => {
@@ -1722,6 +1823,7 @@
         state.injected = [];
         state.inspectStep = null;
         evaluate();
+        updateUrlParams();
       });
 
       $("numPointsSlider").addEventListener("input", () => {
@@ -1730,12 +1832,14 @@
       $("numPointsSlider").addEventListener("change", () => {
         state.inspectStep = null;
         evaluate();
+        updateUrlParams();
       });
 
       document.querySelectorAll('#detectorGroup input[type="checkbox"]').forEach((cb) => {
         cb.addEventListener("change", () => {
           enforceDetectorBounds();
           evaluate();
+          updateUrlParams();
         });
       });
 
@@ -1743,20 +1847,30 @@
         rb.addEventListener("change", () => {
           syncCalibrationControls();
           evaluate();
+          updateUrlParams();
         });
       });
 
       $("thresholdSlider").addEventListener("input", () => {
         $("thresholdValue").textContent = Number($("thresholdSlider").value).toFixed(3);
       });
-      $("thresholdSlider").addEventListener("change", () => evaluate());
+      $("thresholdSlider").addEventListener("change", () => {
+        evaluate();
+        updateUrlParams();
+      });
 
       $("calWindowSlider").addEventListener("input", () => {
         $("calWindowValue").textContent = $("calWindowSlider").value;
       });
-      $("calWindowSlider").addEventListener("change", () => evaluate());
+      $("calWindowSlider").addEventListener("change", () => {
+        evaluate();
+        updateUrlParams();
+      });
 
-      $("featureSelect").addEventListener("change", () => evaluate());
+      $("featureSelect").addEventListener("change", () => {
+        evaluate();
+        updateUrlParams();
+      });
 
       $("injectStepSlider").addEventListener("input", () => {
         $("injectStepValue").textContent = $("injectStepSlider").value;
@@ -1773,6 +1887,7 @@
       $("inspectStepSlider").addEventListener("change", () => {
         state.inspectStep = Number($("inspectStepSlider").value);
         evaluate();
+        updateUrlParams();
       });
 
       $("injectBtn").addEventListener("click", () => {
@@ -1783,12 +1898,14 @@
         state.injected = [...state.injected, { index: step, feature_idx: featIdx, magnitude_sigma: sigma }];
         state.inspectStep = step;
         evaluate();
+        updateUrlParams();
       });
 
       $("clearBtn").addEventListener("click", () => {
         state.injected = [];
         state.inspectStep = null;
         evaluate();
+        updateUrlParams();
       });
 
       $("copyCodeBtn").addEventListener("click", async () => {
@@ -1805,6 +1922,8 @@
 
     async function boot() {
       wireUI();
+      const urlParams = parseUrlParams();
+      applyUrlParams(urlParams);
       try {
         setBootProgress(15, "Loading Pyodide runtime and preview...");
 
@@ -1843,6 +1962,7 @@
         $("liveStart").disabled = false;
         setControlsEnabled(true);
         await evaluate();
+        updateUrlParams();
 
         setBootProgress(100, "Pyodide WebAssembly (client-side)");
         $("bootProgressWrap").classList.add("is-done");

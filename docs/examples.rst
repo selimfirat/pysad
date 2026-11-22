@@ -17,7 +17,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.768
+   AUROC: 0.773
 
 Score a stream with LODA
 ------------------------
@@ -31,7 +31,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.946
+   AUROC: 0.936
 
 Score a stream with HalfSpaceTrees
 ----------------------------------
@@ -158,7 +158,7 @@ It prints:
 
    Comparing detectors on synthetic stream:
    Stream: 2000 instances, 2 features, 150 anomalies
-                LODA: AUROC 0.867
+                LODA: AUROC 0.869
              xStream: AUROC 0.841
        HalfSpaceTrees: AUROC 0.870
              RSForest: AUROC 0.634
@@ -184,7 +184,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.789
+   AUROC: 0.794
 
 Give a detector the recent history
 ----------------------------------
@@ -198,7 +198,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.627
+   AUROC: 0.546
 
 Build a full pipeline
 ---------------------
@@ -305,7 +305,7 @@ It prints:
 
 .. code-block:: text
 
-   27 alerts, 17 of them true anomalies
+   26 alerts, 16 of them true anomalies
 
 Label scores with a fixed threshold
 -----------------------------------
@@ -319,7 +319,7 @@ It prints:
 
 .. code-block:: text
 
-   Precision: 0.656, recall: 0.318
+   Precision: 0.625, recall: 0.303
 
 Raise alerts at a chosen risk
 -----------------------------
@@ -333,8 +333,8 @@ It prints:
 
 .. code-block:: text
 
-   32 alerts, 27 of them true anomalies
-   alarm threshold on the raw scores: 3.013
+   40 alerts, 30 of them true anomalies
+   alarm threshold on the raw scores: 2.937
 
 Raise alerts with the anomaly likelihood
 ----------------------------------------
@@ -386,7 +386,7 @@ It prints:
 
 .. code-block:: text
 
-   Precision: 0.381, recall: 0.636
+   Precision: 0.338, recall: 0.597
 
 Postprocess scores
 ------------------
@@ -414,7 +414,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.817
+   AUROC: 0.819
 
 Explain an anomaly
 ------------------
@@ -428,7 +428,7 @@ It prints:
 
 .. code-block:: text
 
-   Score: 3.46
+   Score: 2.81
    Features by contribution: [2, 5, 0, 1, 4, 3, 7, 6]
 
 Run a PyOD model

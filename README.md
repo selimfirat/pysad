@@ -116,7 +116,7 @@ Or with Conda / Mamba / Pixi:
 conda install -c conda-forge pysad
 ```
 
-PySAD supports Python 3.11 to 3.14 on Linux, macOS and Windows. Every detector works after installation, with no optional extras or JVM required.
+PySAD supports Python 3.11 to 3.14 on Linux, macOS and Windows. The core detectors need no optional extras or JVM.
 
 To install the latest development version from `master`:
 
@@ -125,6 +125,27 @@ pip install git+https://github.com/selimfirat/pysad.git
 ```
 
 For an editable installation with development dependencies, follow the [contributing guide](https://pysad.readthedocs.io/en/latest/contributing.html).
+
+## Live dashboard, MCP, and optional kernels
+
+If you use uv, run the live dashboard with `uvx`:
+
+```bash
+uvx --from pysad pysad-live --source synthetic
+```
+
+- The [live dashboard](https://pysad.readthedocs.io/en/stable/api/live.html) displays streaming scores and alerts in your terminal. Add `--web` to open the web dashboard, or use `--source data.csv` for your own data.
+- [`pysad.mcp`](https://pysad.readthedocs.io/en/stable/guides/mcp.html) exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install `pysad[mcp]`, then run `pysad-mcp` to connect an MCP client.
+- The optional PyO3 Rust extension `pysad_kernels` provides tree traversal kernels for `HalfSpaceTrees` and `RobustRandomCutForest`. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy.
+
+## Migration guides
+
+Use these guides to map your existing workflow to PySAD:
+
+- [Azure AI Anomaly Detector and Metrics Advisor](https://pysad.readthedocs.io/en/stable/guides/migrate_azure.html)
+- [AWS Lookout for Equipment and Kinesis RCF](https://pysad.readthedocs.io/en/stable/guides/migrate_aws.html)
+- [Salesforce Merlion](https://pysad.readthedocs.io/en/stable/guides/migrate_merlion.html)
+- [Alibi Detect](https://pysad.readthedocs.io/en/stable/guides/migrate_alibi_detect.html)
 
 ## Quick start
 

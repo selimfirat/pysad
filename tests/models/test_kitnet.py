@@ -34,28 +34,15 @@ def test_fit_partial_does_not_score_after_the_grace_periods():
 
 
 def test_scores_start_once_the_autoencoders_train():
-    """Regression test for #226: the instance that ended the feature mapping was scored by
-    autoencoders that had not trained yet, whose ranges for 0-1 normalization were still
-    (inf, -inf), so its score was nan.
-
-    Now matches KitNET-py behavior: scores are 0.0 during the entire feature mapping
-    grace period, and only become non-zero during the anomaly detector grace period
-    (when autoencoders are training) or after both grace periods.
-    """
+    """Feature mapping returns zero scores until the autoencoders train."""
     scores = KitNet(grace_feature_mapping=5, grace_anomaly_detector=5, random_state=0).fit_score(
         _stream()
     )
 
-    # The feature mapper learns from the first 5 instances (indices 0-4).
-    # During these, score is 0.0 and no autoencoder training occurs.
-    # The autoencoders train from indices 5-9.
-    # Since the stream is short, we only get partial training.
-    assert scores[0] == 0.0
+    # Prequential scoring includes the first autoencoder training point in the zero scores.
+    assert (scores[:6] == 0.0).all()
     assert np.isfinite(scores).all()
-    # First 5 scores are 0.0 (feature mapping grace period)
-    assert (scores[:5] == 0.0).all()
-    # Remaining scores may be 0.0 (if autoencoders not trained enough) or positive
-    # Just verify no NaN and finite
+    assert (scores[6:] > 0.0).all()
 
 
 def test_inputs_constant_in_training_are_not_scaled_by_1e16():

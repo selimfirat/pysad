@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import math
 
 import numpy as np
@@ -170,7 +169,7 @@ class _KitNET:
         elif self.output_layer is None:
             if self.feature_map is None:
                 self.feature_map = self.fm.cluster(self.m)
-            self._create_autoencoders(self.feature_map, temporary=False)
+            self._create_autoencoders(self.feature_map)
 
         if self.active_map is not None and self.output_layer is not None:
             scores_l1 = np.empty(len(self.ensemble_layer), dtype=np.float64)
@@ -188,12 +187,9 @@ class _KitNET:
             scores_l1[idx] = ae.execute(x[self.active_map[idx]])
         return self.output_layer.execute(scores_l1)
 
-    def _create_autoencoders(self, feature_map: list[list[int]], temporary: bool) -> None:
+    def _create_autoencoders(self, feature_map: list[list[int]]) -> None:
         rng = check_random_state(self.random_state)
-        if temporary:
-            rng = copy.deepcopy(rng)
         self.active_map = feature_map
-        self.temporary = temporary
         self.ensemble_layer = [
             _DenoisingAutoencoder(len(cluster), self.lr, self.hr, rng) for cluster in feature_map
         ]

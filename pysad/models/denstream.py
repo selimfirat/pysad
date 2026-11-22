@@ -295,8 +295,10 @@ class DenStream(BaseModel):
 
         new_o_clusters = []
         for cluster in self.o_micro_clusters_:
-            creation_weight = cluster.calc_creation_weight(self.timestamp_ + self.prune_interval_)
-            xi = (creation_weight - 1.0) / denom
+            # Paper's formula: xi depends only on age (t - creation_time) and lambda, T_p
+            # Not on the cluster's current weight
+            creation_fade = cluster._creation_fading_factor(self.timestamp_ + self.prune_interval_)
+            xi = (creation_fade - 1.0) / denom
             if cluster.calc_weight(self.timestamp_) >= xi:
                 new_o_clusters.append(cluster)
         self.o_micro_clusters_ = new_o_clusters

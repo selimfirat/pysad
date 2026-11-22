@@ -572,6 +572,10 @@ def _create_configured_machine(
             # DAMP's fit_partial increments num_values_ before score_partial,
             # so warmup is effectively one step shorter
             warmup_length = max(0, _get_warmup_length(model_name, params) - 1)
+        elif model_name == "FluxEV":
+            # FluxEV's fit_partial increments _count before score_partial,
+            # so warmup is effectively one step shorter
+            warmup_length = max(0, _get_warmup_length(model_name, params) - 1)
         elif model_name == "HTM":
             # HTM's fit_partial and score_partial both advance the calibrator,
             # so warmup is effectively half the probationary period

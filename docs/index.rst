@@ -246,6 +246,8 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    comparisons/pyod
    comparisons/alibi_detect
    comparisons/darts
+   comparisons/adtk
+   comparisons/statsforecast
 
 .. toctree::
    :hidden:

@@ -492,18 +492,12 @@ def _build_theme() -> gr.themes.Soft:
 
 def build_demo() -> gr.Blocks:
     """Create and wire the Gradio Blocks application."""
-    blocks_kwargs: dict[str, Any] = {
-        "title": "PySAD Playground: Streaming Anomaly Detection",
-    }
-    if _GRADIO_MAJOR < 6:
-        blocks_kwargs["theme"] = _build_theme()
-        blocks_kwargs["css"] = CUSTOM_CSS
-
-    with gr.Blocks(**blocks_kwargs) as demo:
+    with gr.Blocks(title="PySAD Playground: Streaming Anomaly Detection") as demo:
         injected_state = gr.State([])
 
         gr.HTML(
-            """
+            padding=False,
+            value="""
             <div class="pysad-header">
               <h1>PySAD Playground</h1>
               <p>Compare streaming anomaly detectors step by step, calibrate alert thresholds, inject anomalies, and inspect feature attribution.</p>
@@ -514,7 +508,7 @@ def build_demo() -> gr.Blocks:
                 <a href="https://pypi.org/project/pysad/" target="_blank">PyPI</a>
               </div>
             </div>
-            """
+            """,
         )
 
         with gr.Row():
@@ -604,6 +598,7 @@ def build_demo() -> gr.Blocks:
                     headers=METRICS_HEADERS,
                     column_widths=["25%", "8%", "8%", "8%", "10%", "8%", "11%", "11%", "11%"],
                     interactive=False,
+                    row_count=1,
                 )
                 stream_plot = gr.Plot(label="Stream & Calibrated Alert Scores")
                 explain_plot = gr.Plot(label="Per-Feature Attribution (LODA.explain_partial)")

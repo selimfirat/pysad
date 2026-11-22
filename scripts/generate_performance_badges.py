@@ -1,8 +1,7 @@
-"""Regenerate the JSON data behind the README performance badges.
+"""Regenerate the JSON data behind the performance badges.
 
-The badges show median throughput and separate univariate and multivariate detector counts. Their values come from
-the benchmark data in docs/benchmark/ and from the detector catalog, so they
-stay in sync with the measured performance of the library.
+The badges show median throughput, memory growth, and separate detector counts.
+Benchmark data and the detector catalog provide the values.
 
 Run it from the repository root:
 
@@ -17,6 +16,7 @@ from pysad import models
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "docs" / "benchmark" / "results.csv"
+MEMORY_RESULTS = ROOT / "docs" / "benchmark" / "memory.csv"
 OUT_DIR = ROOT / "docs" / "_static"
 
 

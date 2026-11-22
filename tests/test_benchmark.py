@@ -294,7 +294,7 @@ def test_best_values_at_chance_render_in_bold_and_italics(ranking_tables):
     (tmp_path / "index.rst").write_text(
         "Chance values\n============="
         "\n\n.. csv-table:: AUPR\n   :file: aupr.csv\n   :header-rows: 1\n"
-        "\n.. csv-table:: AUROC\n   :file: auroc.csv\n   :header-rows: 1\n"
+        ".. csv-table:: AUROC\n   :file: auroc.csv\n   :header-rows: 1\n"
     )
     warnings = StringIO()
     app = Sphinx(
@@ -758,6 +758,7 @@ def test_base_cache_dir_and_compare_dirs(tmp_path, monkeypatch, capsys):
             str(cache_dir),
             "--det-hashes",
             hashes1,
+            "--no-cache",
         ],
     )
     benchmark.main()
@@ -783,6 +784,7 @@ def test_base_cache_dir_and_compare_dirs(tmp_path, monkeypatch, capsys):
             str(cache_dir),
             "--det-hashes",
             hashes2,
+            "--no-cache",
         ],
     )
     benchmark.main()
@@ -1073,6 +1075,155 @@ def test_custom_model_runs_on_stream(tmp_path, monkeypatch):
     assert len(scores) == 50
     assert ms > 0
     assert float(scores[-1]) == 49.0
+
+
+@pytest.fixture
+def pair_benchmark(tmp_path, monkeypatch):
+    import sys
+
+    benchmark = load_benchmark()
+    monkeypatch.setattr(benchmark, "OUT", tmp_path / "output")
+    monkeypatch.setattr(benchmark, "DATASETS", ["synthetic"])
+    monkeypatch.setattr(benchmark, "DRIFT", {"drift/test.csv": "Synthetic"})
+    monkeypatch.setattr(benchmark, "nab_series", lambda: ["nab/synthetic.csv"])
+    X = np.arange(600, dtype=float).reshape(-1, 1) % 7
+    y = np.tile([0, 0, 1], 200)
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda *args, **kwargs: (X.copy(), y.copy()))
+    monkeypatch.setattr(
+        benchmark, "load", lambda ds, seed, points=None: (X[:points].copy(), y[:points].copy())
+    )
+    monkeypatch.setattr(benchmark, "commit", lambda: "abc123")
+    monkeypatch.setattr(benchmark, "warmup", lambda n: 5)
+    monkeypatch.setattr(benchmark, "series_of", lambda d: benchmark.nab_series())
+    # Run the real scoring code in this process, so each run uses the synthetic data.
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(benchmark, "ProcessPoolExecutor", ThreadPoolExecutor)
+
+    def invoke(*extra):
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "benchmark.py",
+                "--detectors",
+                "LODA",
+                "--jobs",
+                "1",
+                "--cache-dir",
+                str(tmp_path / "cache"),
+                *extra,
+            ],
+        )
+        benchmark.main()
+
+    return benchmark, invoke
+
+
+def test_pair_cache_reuses_ci_results_and_separates_settings(pair_benchmark, tmp_path, monkeypatch):
+    benchmark, invoke = pair_benchmark
+    output = tmp_path / "ci.csv"
+    invoke("--ci", str(output), "--parts", "drift")
+    expected = output.read_text()
+    original_run = benchmark.run
+
+    def fail_run(job):
+        pytest.fail("An unchanged pair ran again.")
+
+    monkeypatch.setattr(benchmark, "run", fail_run)
+    invoke("--ci", str(output), "--parts", "drift")
+    assert output.read_text() == expected
+    monkeypatch.setattr(benchmark, "run", original_run)
+    monkeypatch.setattr(benchmark, "CI_POINTS", 30)
+    invoke("--ci", str(output), "--parts", "drift")
+    assert output.read_text() != expected
+    invoke("--ci", str(output), "--parts", "drift", "--no-cache")
+
+
+def test_pair_cache_restores_full_rows_and_nab_scores(pair_benchmark, monkeypatch):
+    benchmark, invoke = pair_benchmark
+    invoke("--parts", "odds,nab,shingles")
+    expected = {p.name: p.read_bytes() for p in benchmark.OUT.glob("*.csv")}
+    assert {
+        r["detector"] for r in benchmark.read_results(benchmark.OUT / "results.csv").values()
+    } == {
+        "LODA",
+        "LODA" + benchmark.SHINGLED,
+    }
+    for p in benchmark.OUT.glob("*.csv"):
+        p.unlink()
+
+    def fail_run(job):
+        pytest.fail("An unchanged pair ran again.")
+
+    monkeypatch.setattr(benchmark, "run", fail_run)
+    invoke("--parts", "odds,nab,shingles")
+    assert {p.name: p.read_bytes() for p in benchmark.OUT.glob("*.csv")} == expected
+
+
+def test_pair_cache_invalidates_only_changed_detector(pair_benchmark, tmp_path, monkeypatch):
+    benchmark, invoke = pair_benchmark
+    package = tmp_path / "package" / "pysad"
+    package.mkdir(parents=True)
+    for name in ["common", "LODA", "xStream"]:
+        (package / f"{name}.py").write_text("original")
+    monkeypatch.setattr(benchmark.pysad, "__file__", str(package / "__init__.py"))
+
+    def dependencies(objects):
+        if len(objects) == 1 and objects[0].__name__ in {"LODA", "xStream"}:
+            return {f"pysad/{objects[0].__name__}.py"}
+        return {"pysad/common.py"}
+
+    monkeypatch.setattr(benchmark, "pysad_files", dependencies)
+    output = tmp_path / "ci.csv"
+    options = ["--ci", str(output), "--parts", "drift", "--detectors", "LODA,xStream"]
+    invoke(*options)
+    before = benchmark.read_results(output)
+    # Change the stream too, so reused metrics differ from metrics that run again.
+    X = np.arange(600, dtype=float).reshape(-1, 1) % 7
+    y = (X[:, 0] == 6).astype(int)
+    monkeypatch.setattr(benchmark, "load", lambda *args: (X.copy(), y.copy()))
+    (package / "xStream.py").write_text("changed")
+    invoke(*options)
+    after = benchmark.read_results(output)
+    assert after[("drift/test.csv", "LODA", 0)] == before[("drift/test.csv", "LODA", 0)]
+    assert after[("drift/test.csv", "xStream", 0)] != before[("drift/test.csv", "xStream", 0)]
+    (package / "common.py").write_text("changed")
+    invoke(*options)
+    assert (
+        benchmark.read_results(output)[("drift/test.csv", "LODA", 0)]
+        != before[("drift/test.csv", "LODA", 0)]
+    )
+
+
+def test_pair_cache_recovers_damaged_entry(pair_benchmark, tmp_path):
+    benchmark, invoke = pair_benchmark
+    output = tmp_path / "ci.csv"
+    options = ["--ci", str(output), "--parts", "drift"]
+    invoke(*options)
+    expected = output.read_text()
+    paths = list((tmp_path / "cache").glob("*.json"))
+    assert len(paths) == 1
+    for path in paths:
+        path.write_text("{broken")
+    invoke(*options)
+    assert output.read_text() == expected
+    assert benchmark.read_results(output)
+
+
+def test_no_cache_bypasses_reads_and_writes(pair_benchmark, tmp_path, monkeypatch):
+    benchmark, invoke = pair_benchmark
+    output = tmp_path / "ci.csv"
+    options = ["--ci", str(output), "--parts", "drift"]
+    invoke(*options)
+    expected = output.read_text()
+    X = np.arange(600, dtype=float).reshape(-1, 1) % 7
+    y = (X[:, 0] == 6).astype(int)
+    monkeypatch.setattr(benchmark, "load", lambda *args: (X.copy(), y.copy()))
+    invoke(*options, "--no-cache")
+    assert output.read_text() != expected
+    invoke(*options)
+    assert output.read_text() == expected
 
 
 def test_memory_benchmark_writes_measurements(tmp_path):

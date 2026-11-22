@@ -622,7 +622,7 @@ class RobustRandomCutForest(BaseModel):
         return self
 
     def score_partial(self, X: NDArray[np.float64]) -> float:
-        """Scores the shingle that ends with the next instance by the collusive displacement it would have in each tree if it were inserted there, averaged over the trees. The trees are not modified, so only the random cuts draw from the random number generator.
+        """Scores the shingle that ends with the next instance by the collusive displacement it would have in each tree if it were inserted there, averaged over the trees. The trees are not modified, and the random number generator state is restored afterwards so that scoring does not advance the model's RNG.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
@@ -630,65 +630,69 @@ class RobustRandomCutForest(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        point = self._shingle(X)
-        if point is None:
-            return 0.0
+        rng_state = self.rng.get_state()
+        try:
+            point = self._shingle(X)
+            if point is None:
+                return 0.0
 
-        arena = self._arena
-        roots = arena.roots
-        if len(roots) == 0:
-            return 0.0
-        non_empty = roots if roots.min() >= 0 else roots[roots >= 0]
-        m = len(non_empty)
-        if m == 0:
-            return 0.0
+            arena = self._arena
+            roots = arena.roots
+            if len(roots) == 0:
+                return 0.0
+            non_empty = roots if roots.min() >= 0 else roots[roots >= 0]
+            m = len(non_empty)
+            if m == 0:
+                return 0.0
 
-        cand_leaves, is_dup = arena.find_duplicate_batch(point, non_empty)
-        final_slots = self._final_slots[:m]
-        init_counts = self._init_counts[:m]
-        n_done = 0
+            cand_leaves, is_dup = arena.find_duplicate_batch(point, non_empty)
+            final_slots = self._final_slots[:m]
+            init_counts = self._init_counts[:m]
+            n_done = 0
 
-        if is_dup.any():
-            dup_slots = cand_leaves[is_dup]
-            nd = len(dup_slots)
-            final_slots[:nd] = dup_slots
-            init_counts[:nd] = 0
-            n_done = nd
-            active = non_empty[~is_dup]
-        else:
-            active = non_empty
+            if is_dup.any():
+                dup_slots = cand_leaves[is_dup]
+                nd = len(dup_slots)
+                final_slots[:nd] = dup_slots
+                init_counts[:nd] = 0
+                n_done = nd
+                active = non_empty[~is_dup]
+            else:
+                active = non_empty
 
-        while len(active) > 1:
-            _, _, stopped = arena.cut_slots(point, active, self.rng)
-            if stopped.any():
-                st_slots = active[stopped]
-                ns = len(st_slots)
-                final_slots[n_done : n_done + ns] = st_slots
-                init_counts[n_done : n_done + ns] = arena.count[st_slots]
-                n_done += ns
-                active = active[~stopped]
-                if len(active) == 0:
-                    break
-            d_act = arena.dim[active]
-            active = np.where(
-                point[d_act] <= arena.cut[active],
-                arena.left[active],
-                arena.right[active],
-            )
+            while len(active) > 1:
+                _, _, stopped = arena.cut_slots(point, active, self.rng)
+                if stopped.any():
+                    st_slots = active[stopped]
+                    ns = len(st_slots)
+                    final_slots[n_done : n_done + ns] = st_slots
+                    init_counts[n_done : n_done + ns] = arena.count[st_slots]
+                    n_done += ns
+                    active = active[~stopped]
+                    if len(active) == 0:
+                        break
+                d_act = arena.dim[active]
+                active = np.where(
+                    point[d_act] <= arena.cut[active],
+                    arena.left[active],
+                    arena.right[active],
+                )
 
-        if len(active) == 1:
-            s = int(active[0])
-            rng = self.rng
-            while True:
-                _, _, stop_1 = arena.cut_one_slot(point, s, rng)
-                if stop_1:
-                    break
-                nd = int(arena.dim[s])
-                s = int(arena.left[s]) if point[nd] <= arena.cut[s] else int(arena.right[s])
-            final_slots[n_done] = s
-            init_counts[n_done] = arena.count[s]
+            if len(active) == 1:
+                s = int(active[0])
+                rng = self.rng
+                while True:
+                    _, _, stop_1 = arena.cut_one_slot(point, s, rng)
+                    if stop_1:
+                        break
+                    nd = int(arena.dim[s])
+                    s = int(arena.left[s]) if point[nd] <= arena.cut[s] else int(arena.right[s])
+                final_slots[n_done] = s
+                init_counts[n_done] = arena.count[s]
 
-        return arena.codisp_sum(final_slots, init_counts) / self.num_trees
+            return arena.codisp_sum(final_slots, init_counts) / self.num_trees
+        finally:
+            self.rng.set_state(rng_state)
 
     def _collect_tree_structure(
         self, tree_id: int
@@ -844,12 +848,7 @@ class RobustRandomCutForest(BaseModel):
         if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
             raise ValueError(f"{type(self).__name__} does not accept NaN values.")
 
-        # Save RNG state to restore after score_partial (which advances RNG for random cuts)
-        rng_state = self.rng.get_state()
-        try:
-            score = self.score_partial(X)
-        finally:
-            self.rng.set_state(rng_state)
+        score = self.score_partial(X)
 
         # Check if we have any shingles fitted (shingler.full means at least one shingle)
         if not self.shingler.full:

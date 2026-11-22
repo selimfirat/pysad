@@ -127,3 +127,33 @@ def test_kitnet_autoencoders_share_one_generator():
     assert same_shape
     for a, b in same_shape:
         assert not np.array_equal(a, b)
+
+
+def test_robust_random_cut_forest_score_partial_does_not_advance_rng():
+    """score_partial must not advance the model's RNG (issue #977)."""
+    from pysad.models import RobustRandomCutForest
+
+    X = np.random.default_rng(42).normal(size=(700, 4))
+
+    # Test 1: Two score_partial calls on the same point give identical scores.
+    a = RobustRandomCutForest(random_state=0)
+    for x in X[:400]:
+        a.fit_partial(x)
+    s1 = a.score_partial(X[400])
+    s2 = a.score_partial(X[400])
+    assert s1 == s2
+
+    # Test 2: Extra score_partial calls on one model do not affect later scores.
+    a = RobustRandomCutForest(random_state=0)
+    b = RobustRandomCutForest(random_state=0)
+    for x in X[:400]:
+        a.fit_partial(x)
+        b.fit_partial(x)
+    for x in X[400:420]:
+        a.score_partial(x)  # model a gets extra score calls
+    for x in X[400:600]:
+        a.fit_partial(x)
+        b.fit_partial(x)
+    sa = np.array([a.score_partial(x) for x in X[600:620]])
+    sb = np.array([b.score_partial(x) for x in X[600:620]])
+    np.testing.assert_array_equal(sa, sb)

@@ -12,3 +12,5 @@ Functions
    :nosignatures:
    :toctree: ../generated
    :kind: functions
+
+   main

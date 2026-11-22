@@ -37,9 +37,28 @@ For a change that targets speed, pass ``--jobs 1`` before and after the change s
 
 .. code-block:: console
 
-   $ python benchmarks/benchmark.py --detectors RSHash --jobs 1
+   $ python benchmarks/benchmark.py --detectors RSHash --jobs 1 --no-cache
 
 Commit your code changes before you run the benchmark. If you do not, the commit in the results ends with ``-dirty``.
+
+Result cache
+------------
+
+The script caches each detector-dataset result in ``~/.cache/pysad/benchmark``.
+Unchanged pairs reuse their scores and timings.
+The cache key includes source contents, detector settings, dataset names, Python, platform, and installed package versions.
+Source contents include the detector, its PySAD imports, dataset definitions, preprocessing, calibrators, and the benchmark script.
+Local source edits invalidate affected entries before you commit them.
+Shingled runs and short CI runs use separate entries.
+The cache keeps calibrated NAB scores so partial reruns can rebuild aggregate NAB scores.
+
+Use ``--cache-dir PATH`` to choose another cache directory.
+If you need fresh timings, pass ``--no-cache``.
+This option skips cache reads and writes.
+``--check`` always runs pairs again.
+Custom models and dimensionality sweeps also run without this result cache.
+The separate CI base cache still uses ``--base-cache-dir`` and ``--det-hashes``.
+To clear cached pair results, delete their cache directory.
 
 Dimensionality sweep
 --------------------

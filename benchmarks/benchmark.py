@@ -26,10 +26,12 @@ import ast
 import csv
 import functools
 import hashlib
+import importlib.metadata
 import importlib.util
 import inspect
 import json
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -361,6 +363,67 @@ FIELDS = [
     "commit",
 ]
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
+
+
+CACHE_DIR = Path.home() / ".cache" / "pysad" / "benchmark"
+
+
+def _result_cache_paths(jobs: list[tuple], cache_dir: Path) -> dict[tuple, Path]:
+    """Build cache paths from source contents, job settings, and runtime versions."""
+    shared = pysad_files([Data, fix_seed, ShingleTransformer, ConformalProbabilityCalibrator])
+    shared |= pysad_files(
+        [getattr(probability_calibration, n) for n in probability_calibration.__all__]
+    )
+    package_root = Path(pysad.__file__).resolve().parents[1]
+    runtime = sorted((d.metadata["Name"], d.version) for d in importlib.metadata.distributions())
+    common = hashlib.sha256()
+    common.update(json.dumps([sys.version, platform.platform(), runtime]).encode())
+    for path in [Path(__file__), ROOT / "pyproject.toml"]:
+        common.update(path.read_bytes())
+    fingerprints = {}
+    paths = {}
+    for job in jobs:
+        if len(job) > 5:  # Custom models can import files outside PySAD.
+            continue
+        detector = job[1].removesuffix(SHINGLED)
+        if detector not in fingerprints:
+            digest = common.copy()
+            for name in sorted(shared | pysad_files([getattr(models, detector)])):
+                digest.update(name.encode())
+                digest.update((package_root / name).read_bytes())
+            fingerprints[detector] = digest.digest()
+        digest = hashlib.sha256(fingerprints[detector])
+        digest.update(json.dumps(job).encode())
+        paths[job] = cache_dir / (digest.hexdigest() + ".json")
+    return paths
+
+
+def _read_cached_result(path: Path) -> dict | None:
+    """Read one cached row, or return None if the file is missing or damaged."""
+    try:
+        row = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(row, dict) or not set(CI_FIELDS[:-1]) <= row.keys():
+            return None
+        if "_nab" in row:
+            row["_nab"] = tuple(np.asarray(a) for a in row["_nab"])
+        return row
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def _write_cached_result(path: Path, row: dict) -> None:
+    """Save a complete result before another run can read it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=path.parent, delete=False
+    ) as f:
+        temporary = Path(f.name)
+        try:
+            json.dump(row, f, default=lambda value: value.tolist())
+            f.close()
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
 
 def _load_custom_model(spec):
@@ -1809,6 +1872,17 @@ def main():
         action="store_true",
         help="write a LaTeX summary table to docs/benchmark/summary.tex",
     )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=CACHE_DIR,
+        help="directory for cached pair results (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="run pairs without reading or writing the result cache",
+    )
     args = parser.parse_args()
     if args.compare_dirs:
         compare_ci_dirs(Path(args.compare_dirs[0]), Path(args.compare_dirs[1]))
@@ -1958,6 +2032,20 @@ def main():
                 )
                 for series in nab_series()
             ]
+    cache_paths = (
+        _result_cache_paths(jobs, args.cache_dir)
+        if not args.no_cache and args.check is None
+        else {}
+    )
+    pending = []
+    for job in jobs:
+        row = _read_cached_result(cache_paths[job]) if job in cache_paths else None
+        if row is None:
+            pending.append(job)
+        else:
+            cached_rows[key(row)] = row
+    print(f"Pair cache: {len(jobs) - len(pending)} hits, {len(pending)} runs.")
+    jobs = pending
     cell_weights, part_weights = _detector_weights()
     drift_keys = set(DRIFT)
 
@@ -1970,16 +2058,22 @@ def main():
 
     jobs.sort(key=_job_weight, reverse=True)
     new = {}
+    run_commit = commit() if not ci_mode else None
     if jobs:
         with ProcessPoolExecutor(args.jobs, initializer=_init_worker) as pool:
             remaining = {pool.submit(run, job): job for job in jobs}
             start, step = time.perf_counter(), max(1, len(jobs) // 20)
             for future in as_completed(list(remaining)):
                 row = future.result()
+                if run_commit is not None:
+                    row["commit"] = run_commit
+                job = remaining.pop(future)
+                if job in cache_paths:
+                    _write_cached_result(cache_paths[job], row)
                 new[key(row)] = row
-                del remaining[future]
                 if len(new) % step == 0 or not remaining:
                     progress(len(new), len(jobs), time.perf_counter() - start, remaining.values())
+    new = {**cached_rows, **new}
     nab = {} if ci_mode else nab_rows(new)  # the NAB score needs the whole series
     for row in new.values():
         row.pop("_nab", None)
@@ -1993,7 +2087,7 @@ def main():
                 det_rows = {k: r for k, r in new.items() if k[1].removesuffix(SHINGLED) == d}
                 if det_rows:
                     _write_ci_csv(_cache_file(cache_dir, d, det_hash), det_rows)
-        combined = {**cached_rows, **new}
+        combined = new
         _write_ci_csv(Path(args.ci), combined)
         if args.compare:
             compare(read_results(Path(args.compare)), combined)
@@ -2054,8 +2148,7 @@ def main():
         print("The results in docs/benchmark/ are up to date.")
         return
 
-    sha = commit()
-    results.update({k: {**row, "commit": sha} for k, row in new.items()})
+    results.update(new)
     OUT.mkdir(parents=True, exist_ok=True)
     nab = {**read_nab(), **nab}
     write_csv(

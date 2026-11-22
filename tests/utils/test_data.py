@@ -786,6 +786,90 @@ def _load_smd_stream(monkeypatch, data_file: str, data_base_path: str) -> tuple:
     return X, y
 
 
+def _load_smap_channel(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load a SMAP channel with mocked download."""
+    import io
+    import os
+
+    import numpy as np
+
+    from pysad.utils.data import Data as Data_d
+
+    d = Data_d(data_base_path=data_base_path)
+
+    # Create the SMAP data file
+    smap_dir = os.path.join(data_base_path, "smap")
+    os.makedirs(smap_dir, exist_ok=True)
+    data_path = os.path.join(smap_dir, data_file)
+
+    # Create a dummy .npy file with 25 features (1 telemetry + 24 one-hot commands)
+    arr = np.ones((10, 25), dtype=np.float64)
+    f = io.BytesIO()
+    np.save(f, arr)
+    with open(data_path, "wb") as out:
+        out.write(f.getvalue())
+
+    # Create the labels file
+    labels_path = os.path.join(data_base_path, "telemanom", "labeled_anomalies.csv")
+    os.makedirs(os.path.dirname(labels_path), exist_ok=True)
+    with open(labels_path, "w") as f:
+        f.write(
+            "chan_id,spacecraft,anomaly_sequences,class,num_values\n"
+            f'{data_file.removesuffix(".npy")},SMAP,"[[2, 4]]",[point],10\n'
+        )
+
+    # Monkeypatch the NASA URL base to local path
+    import pysad.utils.data as dmod
+
+    dmod._NASA = "smap/"
+
+    X, y = d.get_data("smap/" + data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=25)
+    return X, y
+
+
+def _load_msl_channel(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load an MSL channel with mocked download."""
+    import io
+    import os
+
+    import numpy as np
+
+    from pysad.utils.data import Data as Data_d
+
+    d = Data_d(data_base_path=data_base_path)
+
+    # Create the MSL data file
+    msl_dir = os.path.join(data_base_path, "msl")
+    os.makedirs(msl_dir, exist_ok=True)
+    data_path = os.path.join(msl_dir, data_file)
+
+    # Create a dummy .npy file with 55 features (1 telemetry + 54 one-hot commands)
+    arr = np.ones((10, 55), dtype=np.float64)
+    f = io.BytesIO()
+    np.save(f, arr)
+    with open(data_path, "wb") as out:
+        out.write(f.getvalue())
+
+    # Create the labels file
+    labels_path = os.path.join(data_base_path, "telemanom", "labeled_anomalies.csv")
+    os.makedirs(os.path.dirname(labels_path), exist_ok=True)
+    with open(labels_path, "w") as f:
+        f.write(
+            "chan_id,spacecraft,anomaly_sequences,class,num_values\n"
+            f'{data_file.removesuffix(".npy")},MSL,"[[2, 4]]",[point],10\n'
+        )
+
+    # Monkeypatch the NASA URL base to local path
+    import pysad.utils.data as dmod
+
+    dmod._NASA = "msl/"
+
+    X, y = d.get_data("msl/" + data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=55)
+    return X, y
+
+
 def _load_creditcard_arff(monkeypatch, data_base_path: str) -> tuple:
     """Load the credit-card ARFF dataset with mocked download."""
     from pysad.utils import Data
@@ -915,6 +999,16 @@ def test_dataset_structure_ucr(monkeypatch, tmp_path):
 def test_dataset_structure_smd(monkeypatch, tmp_path):
     """Test that SMD machine streams load correctly and have expected structure."""
     _load_smd_stream(monkeypatch, "machine-1-1.txt", str(tmp_path))
+
+
+def test_dataset_structure_smap(monkeypatch, tmp_path):
+    """Test that SMAP channels load correctly and have expected structure."""
+    _load_smap_channel(monkeypatch, "P-1.npy", str(tmp_path))
+
+
+def test_dataset_structure_msl(monkeypatch, tmp_path):
+    """Test that MSL channels load correctly and have expected structure."""
+    _load_msl_channel(monkeypatch, "M-1.npy", str(tmp_path))
 
 
 def test_dataset_structure_creditcard(monkeypatch, tmp_path):

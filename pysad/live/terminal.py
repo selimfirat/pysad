@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.utils import ArrayStreamer, Data, generate_stream
 
@@ -361,7 +362,7 @@ class TerminalDashboard:
 
     def update(
         self,
-        feature_vector: np.ndarray,
+        feature_vector: NDArray[Any],
         score: float,
         calibrated_score: float,
         lower_bound: float | None = None,
@@ -435,7 +436,7 @@ def create_data_stream(
     source: str,
     max_points: int | None = None,
     **kwargs: Any,
-) -> Iterator[tuple[np.ndarray, int | None]]:
+) -> Iterator[tuple[NDArray[Any], int | None]]:
     """Create a data stream from various sources.
 
     Yields:
@@ -516,7 +517,7 @@ def compute_feature_bounds(
     max_points: int | None = None,
     sample_size: int = 1000,
     **kwargs: Any,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Compute feature min/max bounds by sampling from the data source."""
     stream = create_data_stream(source, max_points=max_points, **kwargs)
     samples = []
@@ -533,8 +534,8 @@ def compute_feature_bounds(
 
 def get_detector(
     name: str,
-    feature_mins: np.ndarray | None = None,
-    feature_maxes: np.ndarray | None = None,
+    feature_mins: NDArray[Any] | None = None,
+    feature_maxes: NDArray[Any] | None = None,
     **kwargs: Any,
 ) -> Any:
     """Get a detector instance by name.

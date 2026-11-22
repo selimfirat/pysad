@@ -433,9 +433,6 @@ def register_statistic_tools(mcp: FastMCP) -> None:
 def register_explainability_tools(mcp: FastMCP) -> None:
     """Register explainability tools for detectors with explain_partial."""
 
-    @mcp.tool(
-        name="pysad_explain", description="Explain anomaly score using SHAP or feature attribution"
-    )
     def explain_tool(
         detector_name: str,
         data: list[list[float]] | list[float],
@@ -483,11 +480,14 @@ def register_explainability_tools(mcp: FastMCP) -> None:
         except Exception as e:
             return {"error": str(e), "detector": detector_name}
 
+    mcp.tool(
+        name="pysad_explain", description="Explain anomaly score using SHAP or feature attribution"
+    )(explain_tool)
+
 
 def register_stream_tool(mcp: FastMCP) -> None:
     """Register a tool for running a full streaming pipeline."""
 
-    @mcp.tool(name="pysad_stream", description="Run a streaming anomaly detection pipeline")
     def stream_tool(
         detector_name: str,
         data: list[list[float]] | list[float],
@@ -561,6 +561,10 @@ def register_stream_tool(mcp: FastMCP) -> None:
             }
         except Exception as e:
             return {"error": str(e), "detector": detector_name}
+
+    mcp.tool(name="pysad_stream", description="Run a streaming anomaly detection pipeline")(
+        stream_tool
+    )
 
 
 def register_all_tools(mcp: FastMCP) -> None:

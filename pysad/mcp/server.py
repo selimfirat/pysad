@@ -22,6 +22,7 @@ from typing import Any
 
 import numpy as np
 from mcp.server.fastmcp import Context, FastMCP
+from numpy.typing import NDArray
 
 from pysad.mcp.tools import register_all_tools
 from pysad.models import __all__ as MODEL_NAMES
@@ -125,7 +126,7 @@ class SessionState:
 
     detector: Any = None
     calibrator: Any = None
-    stream_data: list[np.ndarray] = field(default_factory=list)
+    stream_data: list[NDArray[Any]] = field(default_factory=list)
     stream_labels: list[int] | None = field(default_factory=list)
     step: int = 0
     threshold: float = 0.95
@@ -134,7 +135,7 @@ class SessionState:
     initialized: bool = False
 
 
-def _get_state(ctx: Context) -> SessionState:
+def _get_state(ctx: Context[Any, Any, Any]) -> SessionState:
     """Get or create session state from MCP context."""
     context: Any = ctx
     if not hasattr(context, "_pysad_state"):
@@ -182,7 +183,7 @@ async def initialize_detector(
     detector_name: str = "loda",
     detector_kwargs: str = "{}",
     random_state: int | None = None,
-    ctx: Context | None = None,
+    ctx: Context[Any, Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Initialize a streaming anomaly detector.
 
@@ -262,7 +263,7 @@ async def initialize_calibrator(
     calibrator_name: str = "conformal",
     calibrator_kwargs: str = "{}",
     window_size: int = 300,
-    ctx: Context | None = None,
+    ctx: Context[Any, Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Initialize a probability calibrator for anomaly scores.
 
@@ -356,7 +357,7 @@ async def initialize_stream(
     csv_timestamp: str | None = None,
     feature_columns: str | None = None,
     label_column: str | None = None,
-    ctx: Context | None = None,
+    ctx: Context[Any, Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Initialize a data stream for anomaly detection.
 
@@ -480,7 +481,7 @@ async def score_point(
     features: list[float] | None = None,
     use_stream: bool = False,
     threshold: float | None = None,
-    ctx: Context | None = None,
+    ctx: Context[Any, Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Score a single data point for anomaly detection.
 
@@ -574,7 +575,7 @@ async def score_point(
 async def score_batch(
     features_list: list[list[float]],
     threshold: float | None = None,
-    ctx: Context | None = None,
+    ctx: Context[Any, Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Score a batch of data points for anomaly detection.
 
@@ -645,7 +646,7 @@ async def score_batch(
         return {"success": False, "error": str(e)}
 
 
-async def get_status(ctx: Context | None = None) -> dict[str, Any]:
+async def get_status(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
     """Get the current status of the MCP session.
 
     Args:
@@ -672,7 +673,7 @@ async def get_status(ctx: Context | None = None) -> dict[str, Any]:
     }
 
 
-async def reset_session(ctx: Context | None = None) -> dict[str, Any]:
+async def reset_session(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
     """Reset the MCP session to initial state.
 
     Args:
@@ -702,7 +703,7 @@ async def reset_session(ctx: Context | None = None) -> dict[str, Any]:
     return {"success": True, "message": "Session reset successfully"}
 
 
-async def list_detectors(ctx: Context | None = None) -> dict[str, Any]:
+async def list_detectors(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
     """List available streaming anomaly detectors.
 
     Args:
@@ -739,7 +740,7 @@ async def list_detectors(ctx: Context | None = None) -> dict[str, Any]:
     }
 
 
-async def list_calibrators(ctx: Context | None = None) -> dict[str, Any]:
+async def list_calibrators(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
     """List available probability calibrators.
 
     Args:
@@ -763,7 +764,7 @@ async def list_calibrators(ctx: Context | None = None) -> dict[str, Any]:
     }
 
 
-async def list_data_sources(ctx: Context | None = None) -> dict[str, Any]:
+async def list_data_sources(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
     """List available built-in data sources.
 
     Args:

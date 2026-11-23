@@ -1078,6 +1078,115 @@ def test_custom_model_runs_on_stream(tmp_path, monkeypatch):
 
 
 @pytest.fixture
+def custom_forecaster_benchmark(tmp_path, monkeypatch):
+    """End-to-end fixture: a duck-typed streaming forecaster through the --custom runner.
+
+    Writes a univariate ForecastingAnomalyDetector wrapping a duck-typed moving-average
+    forecaster to a temporary file, monkeypatches the benchmark to score a small synthetic
+    NAB-like stream, and returns an invoke helper that runs benchmark.main() with --custom.
+    No new dependencies are needed: the forecaster is plain Python and the detector reuses
+    pysad.integrations.ForecastingAnomalyDetector.
+    """
+    import sys
+
+    benchmark = load_benchmark()
+    monkeypatch.setattr(benchmark, "OUT", tmp_path / "output")
+    monkeypatch.setattr(benchmark, "DATASETS", ["synthetic"])
+    monkeypatch.setattr(benchmark, "DRIFT", {"drift/test.csv": "Synthetic"})
+    monkeypatch.setattr(benchmark, "nab_series", lambda: ["nab/synthetic.csv"])
+    monkeypatch.setattr(benchmark, "UNIVARIATE", {})
+
+    num_points = 600
+    X = np.zeros((num_points, 1))
+    X[[300, 350, 400, 450, 500]] = 5.0
+    y = np.zeros(num_points, dtype=int)
+    y[[300, 350, 400, 450, 500]] = 1
+    monkeypatch.setattr(
+        benchmark.Data,
+        "get_data",
+        lambda *args, **kwargs: (X.copy(), y.copy()),
+    )
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(benchmark, "ProcessPoolExecutor", ThreadPoolExecutor)
+
+    source = "\n".join(
+        [
+            "import numpy as np",
+            "",
+            "from pysad.core.base_model import BaseModel",
+            "from pysad.integrations import ForecastingAnomalyDetector",
+            "",
+            "",
+            "class _MovingAverageForecaster:",
+            '    """Duck-typed streaming forecaster: one-step-ahead moving average."""',
+            "    def __init__(self, window=10):",
+            "        self.window = window",
+            "        self.history = []",
+            "    def forecast(self, horizon=1):",
+            "        if not self.history:",
+            "            return [0.0]",
+            "        return [sum(self.history[-self.window:]) / min(len(self.history), self.window)]",
+            "    def learn_one(self, y):",
+            "        self.history.append(float(y))",
+            "",
+            "",
+            "class MovingAverageAnomalyDetector(ForecastingAnomalyDetector):",
+            '    """Scores each value by its deviation from a moving-average forecast."""',
+            "    _input_kind = 'univariate'",
+            "    def __init__(self, window=10, relative=False, probationary_period=0):",
+            "        forecaster = _MovingAverageForecaster(window=window)",
+            "        super().__init__(",
+            "            forecaster=forecaster,",
+            "            relative=relative,",
+            "            probationary_period=probationary_period,",
+            "        )",
+            "",
+        ]
+    )
+    path = tmp_path / "custom_forecaster.py"
+    path.write_text(source, encoding="utf-8")
+    custom_spec = f"{path}:MovingAverageAnomalyDetector"
+    output_csv = tmp_path / "ci.csv"
+
+    def invoke(*extra):
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "benchmark.py",
+                "--ci",
+                str(output_csv),
+                "--parts",
+                "univariate",
+                "--custom",
+                custom_spec,
+                *extra,
+            ],
+        )
+        benchmark.main()
+
+    return benchmark, invoke, output_csv
+
+
+def test_custom_forecaster_runs_end_to_end_through_custom_runner(
+    custom_forecaster_benchmark,
+):
+    """A duck-typed streaming forecaster runs through --custom and scores above chance."""
+    _benchmark, invoke, output_csv = custom_forecaster_benchmark
+    invoke()
+
+    results = load_benchmark().read_results(output_csv)
+    assert len(results) == 1
+    ((dataset, detector, seed), row) = next(iter(results.items()))
+    assert dataset == "nab/synthetic.csv"
+    assert detector == "MovingAverageAnomalyDetector"
+    assert seed == 0
+    assert float(row["auroc"]) > 0.5
+
+
+@pytest.fixture
 def pair_benchmark(tmp_path, monkeypatch):
     import sys
 

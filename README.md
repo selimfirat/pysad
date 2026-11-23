@@ -140,31 +140,13 @@ uvx --from pysad pysad-live --source synthetic
 - The [live dashboard](https://pysad.readthedocs.io/en/stable/api/live.html) displays streaming scores and alerts in your terminal. Add `--web` to open the web dashboard, or use `--source data.csv` for your own data.
 - [`pysad.mcp`](https://pysad.readthedocs.io/en/stable/guides/mcp.html) exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install `pysad[mcp]`, then run `pysad-mcp` to connect an MCP client.
 
-### Optional PyO3 kernels (pysad_kernels)
+### Optional Rust kernels
 
-The optional PyO3 Rust extension `pysad_kernels` provides tree traversal kernels for `HalfSpaceTrees` and `RobustRandomCutForest`. It is not published on PyPI yet, so build it from the `rust/` directory of the repository. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change.
-
-Install `maturin`, then build and register the extension so Python can import it:
+The `fast` extra installs `pysad_kernels`, a PyO3 Rust extension with optimized tree traversal for `HalfSpaceTrees` and `RobustRandomCutForest`. If the extension is available, these detectors use it automatically. Otherwise, they fall back to NumPy.
 
 ```bash
-pip install maturin
-maturin develop -m rust/pyproject.toml
+pip install pysad[fast]
 ```
-
-Or build a wheel and install it:
-
-```bash
-maturin build -m rust/pyproject.toml --release
-pip install target/wheels/pysad_kernels-0.1.0-*.whl
-```
-
-Once `pysad_kernels` can be imported, `HalfSpaceTrees` and `RobustRandomCutForest` use its kernels automatically. Verify the installation:
-
-```bash
-python -c "import pysad_kernels; print(pysad_kernels.__file__)"
-```
-
-If the import fails, the detectors fall back to NumPy.
 
 ## Migration guides
 

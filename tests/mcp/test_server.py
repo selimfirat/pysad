@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 try:
-    from mcp.server.fastmcp import Context
+    from mcp.server.mcpserver import Context
 
     MCP_AVAILABLE = True
 except ImportError:  # pragma: no cover - mcp is an optional dependency

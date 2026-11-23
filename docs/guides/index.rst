@@ -37,6 +37,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`river_interoperability`
+
+      Run PySAD detectors in River pipelines, score before learning, detect drift, and keep state bounded.
+
+   .. container:: card
+
       :doc:`seasonal`
 
       Find anomalies in metrics with a daily or weekly cycle.

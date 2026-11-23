@@ -229,6 +229,27 @@ second run on the same stream must give exactly the same scores, so the run is r
 Use ``--detectors`` to score only some detectors and ``--streams`` to score only some streams. The
 results go to the file given with ``--output``; without it, the script prints a table only.
 
+Streaming detector ensembles
+----------------------------
+
+To report prequential (test-then-train) metrics of streaming detector ensembles, run the
+``--ensembles`` mode:
+
+.. code-block:: console
+
+   $ python benchmarks/benchmark.py --ensembles
+   $ python benchmarks/benchmark.py --ensembles --ci --jobs 1
+
+Each ensemble combines the same fast multivariate detectors (LODA, xStream, RSHash, and
+HalfSpaceTrees) with a different score ensembler: average, maximum, median, average of the bucket
+maxima, or maximum of the bucket averages. Every detector is wrapped in a normalizing pipeline so
+that its scores are on a comparable scale before they are combined.
+
+The mode scores every instance of each ODDS dataset before the ensemble learns from it, using
+:func:`~pysad.evaluation.evaluate_stream`, and reports AUROC, AUPR, and milliseconds per point.
+With ``--ci`` it keeps only the first 2,000 points of each dataset. The results go to
+``docs/benchmark/ensemble_results.csv``, one row per dataset and ensemble.
+
 Performance badges
 ------------------
 

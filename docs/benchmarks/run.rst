@@ -210,6 +210,25 @@ runs. Multivariate detectors see five features from the unit interval, univariat
 one value, timestamped detectors see ``(timestamp, value)``, and edge-stream detectors see
 ``(source, destination)``.
 
+Reproducible drift benchmark (TSB-drift)
+----------------------------------------
+
+To benchmark the public detectors on the real streams with drift in a reproducible way, run
+``benchmarks/bench_tsb_drift.py``:
+
+.. code-block:: console
+
+   $ python benchmarks/bench_tsb_drift.py --points 10000 --seed 0 --repeats 3 --output drift.csv
+
+The script loads each stream with drift (KDD http, INSECTS A/I/IG/IR, SMD 1-1/2-1/3-1), keeps at
+most ``--points`` points in time order, scales each feature to the range from 0 to 1, and scores
+every public multivariate detector with ``fit_score_partial``. It reports streaming AUROC and AUPR
+after the warm-up, milliseconds per point (throughput), and traced memory from ``tracemalloc``. A
+second run on the same stream must give exactly the same scores, so the run is reproducible.
+
+Use ``--detectors`` to score only some detectors and ``--streams`` to score only some streams. The
+results go to the file given with ``--output``; without it, the script prints a table only.
+
 Performance badges
 ------------------
 

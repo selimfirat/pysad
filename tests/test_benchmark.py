@@ -1416,3 +1416,61 @@ def test_stream_benchmark_writes_measurements(tmp_path):
     assert float(row["ms_per_point"]) > 0
     assert float(row["peak_kb"]) >= 0
     assert float(row["peak_mb"]) >= 0
+
+
+def test_tsb_drift_reports_auroc_aupr_throughput_and_memory(tmp_path, monkeypatch):
+    """The reproducible drift benchmark reports AUROC, AUPR, throughput, and memory without a download."""
+    import sys
+    from pathlib import Path
+
+    benchmarks = Path(__file__).resolve().parents[1] / "benchmarks"
+    sys.path.insert(0, str(benchmarks))
+    try:
+        import bench_tsb_drift
+    finally:
+        sys.path.remove(str(benchmarks))
+
+    from pysad import models
+
+    X = np.zeros((200, 2))
+    X[100:, 0] = 5.0
+    y = np.zeros(200, dtype=int)
+    y[150:] = 1
+
+    monkeypatch.setattr(bench_tsb_drift, "DRIFT", {"drift/synthetic.csv": "Synthetic"})
+    monkeypatch.setattr(
+        bench_tsb_drift,
+        "DETECTORS",
+        {"LODA": lambda X, seed: models.LODA(random_state=seed)},
+    )
+    monkeypatch.setattr(
+        bench_tsb_drift, "load", lambda stream, seed, points=None: (X.copy(), y.copy())
+    )
+
+    rows = bench_tsb_drift.run_benchmark(
+        ["drift/synthetic.csv"], ["LODA"], points=None, seed=0, repeats=2
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert set(row) == set(bench_tsb_drift.FIELDS)
+    assert row["stream"] == "drift/synthetic.csv"
+    assert row["detector"] == "LODA"
+    assert row["points"] == 200
+    assert row["features"] == 2
+    assert row["warmup"] == 50
+    assert row["seed"] == 0
+    assert np.isfinite(row["auroc"])
+    assert np.isfinite(row["aupr"])
+    assert row["ms_per_point"] > 0
+    assert row["peak_mib"] >= 0
+    assert row["deterministic"] is True
+
+    # The declared fields are the CSV header.
+    with (tmp_path / "drift.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=bench_tsb_drift.FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    with (tmp_path / "drift.csv").open(newline="") as handle:
+        written = list(csv.DictReader(handle))
+    assert [r["detector"] for r in written] == ["LODA"]
+    assert set(written[0]) == set(bench_tsb_drift.FIELDS)

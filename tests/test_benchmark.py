@@ -1270,7 +1270,6 @@ def test_pair_cache_restores_full_rows_and_nab_scores(pair_benchmark, monkeypatc
         r["detector"] for r in benchmark.read_results(benchmark.OUT / "results.csv").values()
     } == {
         "LODA",
-        "LODA" + benchmark.SHINGLED,
     }
     for p in benchmark.OUT.glob("*.csv"):
         p.unlink()

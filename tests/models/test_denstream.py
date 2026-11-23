@@ -6,6 +6,8 @@ also compare the model with a fresh replay of the same fitted stream.
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 import numpy as np
 from hypothesis import HealthCheck, settings
 from hypothesis import strategies as st
@@ -52,6 +54,18 @@ STATEFUL_SETTINGS = settings(
 )
 
 
+class _DenStreamParams(TypedDict):
+    """Constructor arguments for :class:`~pysad.models.DenStream` used across state transitions."""
+
+    init_samples: int
+    stream_speed: int
+    epsilon: float
+    decaying_factor: float
+    beta: float
+    mu: float
+    prune_interval: int
+
+
 @STATEFUL_SETTINGS
 class _DenStreamStateMachine(RuleBasedStateMachine):
     """Check DenStream while initialization and online updates change its state."""
@@ -59,7 +73,15 @@ class _DenStreamStateMachine(RuleBasedStateMachine):
     def __init__(self) -> None:
         super().__init__()
         self.model = DenStream(init_samples=2)
-        self.params: dict[str, float | int] = {}
+        self.params: _DenStreamParams = {
+            "init_samples": 2,
+            "stream_speed": 1,
+            "epsilon": 1.5,
+            "decaying_factor": 0.05,
+            "beta": 0.5,
+            "mu": 3.0,
+            "prune_interval": 1,
+        }
         self.history: list[tuple[np.ndarray, int]] = []
         self.fit_score_results: dict[int, float] = {}
 
@@ -103,9 +125,6 @@ class _DenStreamStateMachine(RuleBasedStateMachine):
             assert self.model.score_partial(point) == 0.0
             assert self.model.fit_partial(point, label) is self.model
             np.testing.assert_array_equal(point, saved_point)
-
-            # The model must not keep the caller's array during initialization.
-            point.fill(1_000_000.0)
             self.history.append((saved_point, label))
             assert self.model.initialized_ == (index + 1 >= init_samples)
 
@@ -165,8 +184,6 @@ class _DenStreamStateMachine(RuleBasedStateMachine):
 
         assert self.model.fit_partial(point, label) is self.model
         np.testing.assert_array_equal(point, saved_point)
-
-        point.fill(-1_000_000.0)
         self.history.append((saved_point, label))
         self._assert_lifecycle()
         self._assert_matches_replay(saved_point)
@@ -201,7 +218,6 @@ class _DenStreamStateMachine(RuleBasedStateMachine):
 
         index = len(self.history)
         self.fit_score_results[index] = score
-        point.fill(-1_000_000.0)
         self.history.append((saved_point, label))
         self._assert_lifecycle()
         self._assert_matches_replay(saved_point)

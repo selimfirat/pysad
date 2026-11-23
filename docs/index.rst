@@ -75,10 +75,6 @@ PySAD
 
       $ pip install pysad
 
-   .. code-block:: console
-
-      $ pip install pysad[fast]  # optional Rust kernels for HalfSpaceTrees and RobustRandomCutForest
-
 .. code-block:: python
 
    from pysad.evaluation import AUROCMetric

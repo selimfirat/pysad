@@ -43,6 +43,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`drift_aware_composition`
+
+      Reset a detector on drift and chain stages into one pipeline.
+
+   .. container:: card
+
       :doc:`seasonal`
 
       Find anomalies in metrics with a daily or weekly cycle.

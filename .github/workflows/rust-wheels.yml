@@ -54,6 +54,9 @@ jobs:
 
       - name: Build wheels with cibuildwheel
         uses: pypa/cibuildwheel@63fd63b352a9a8bdcc24791c9dbee952ee9a8abc # v3.3.0
+        with:
+          package-dir: rust
+          output-dir: wheelhouse
         env:
           CIBW_BUILD: cp311-*
           CIBW_SKIP: "*-win32 *-musllinux_*"
@@ -63,14 +66,13 @@ jobs:
           CIBW_ENVIRONMENT: "CARGO_NET_GIT_FETCH_WITH_CLI=true"
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
           CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=10.12"
-          CIBW_PROJECT_DIR: "rust"
           CIBW_TEST_COMMAND: 'python -c "import pysad_kernels"'
 
       - name: Upload wheels
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.artifact }}
-          path: rust/target/wheels/*.whl
+          path: wheelhouse/*.whl
 
   publish-rust:
     name: Publish Rust wheels to PyPI

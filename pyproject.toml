@@ -91,8 +91,8 @@ pysad-mcp = "pysad.mcp.server:main"
 [dependency-groups]
 # Pinned runtime dependencies, so tests and docs run against known versions.
 runtime = [
-  "numpy==2.2.6",
-  "scikit-learn==1.7.2",
+  "numpy==2.4.6",
+  "scikit-learn==1.9.1",
   "scipy>=1.15.4",
   "setuptools>=84.0.0,<85.0.0",
 ]
@@ -113,8 +113,8 @@ test = [
   # Security floor for pillow, a transitive dependency of pyod via matplotlib.
   "pillow>=12.3.0",
   # Adapters for River pipelines in pysad.integrations.
-  "river==0.26.1",
-  "hypothesis==6.168.5",
+  "river==0.27.0",
+  "hypothesis==6.170.15",
   # The reference that StreamhashProjector's NumPy MurmurHash3 is tested against.
   "mmh3==5.3.1",
   "pytest==9.2.0",
@@ -131,23 +131,23 @@ docs = [
   "idna>=3.20",
 ]
 lint = [
-  "pre-commit==4.6.2",
+  "pre-commit==4.7.0",
 ]
 # The libraries that benchmarks/compare.py compares PySAD with. CapyMOA needs Java, and
 # scikit-learn 1.8 or newer.
 compare = [
-  "numpy==2.2.6",
+  "numpy==2.4.6",
   "scikit-learn==1.9.1",
   "scipy>=1.15.4",
   "pyod>=3.6.2",
   "pillow>=12.3.0",
-  "river==0.26.1",
+  "river==0.27.0",
   "capymoa==0.15.1",
 ]
 # The compared libraries that need NumPy 1. StreamAD needs statsmodels 0.13.5, which has no wheels
 # for Python 3.12 or newer and fails to import with SciPy 1.16 or newer.
 compare-numpy1 = [
-  "scipy==1.15.3",
+  "scipy==1.17.1",
   "streamad==0.3.1",
   "alibi-detect==0.13.0",
 ]

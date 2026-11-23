@@ -41,6 +41,75 @@ For a change that targets speed, pass ``--jobs 1`` before and after the change s
 
 Commit your code changes before you run the benchmark. If you do not, the commit in the results ends with ``-dirty``.
 
+Benchmark a custom model
+------------------------
+
+To benchmark a detector that is not part of PySAD, save it in a file and pass
+``--custom path/to/file.py:ClassName``. The runner loads the class from that file and scores it on
+the datasets whose part matches its input kind, the same way it scores the built-in detectors.
+
+The class must subclass :class:`~pysad.core.BaseModel` and implement ``fit_partial`` and
+``score_partial``, as :doc:`/guides/custom_model` shows.
+
+A multivariate custom model is built once per dataset with ``factory(X, seed)``. The runner fills
+these constructor arguments from the data when they are parameters: ``feature_mins``,
+``feature_maxes``, ``input_shape`` and ``initial_X``. Give every other constructor argument a
+default value. The runner passes ``seed`` to ``random_state`` when the constructor accepts it.
+
+A univariate custom model sets ``_input_kind = "univariate"`` and is built with
+``factory(n, period)``. The runner fills ``min_val``, ``max_val``, ``period``,
+``window_length``, ``subsequence_length``, ``window_size`` and ``probationary_period`` when they
+are parameters. Give every other constructor argument a default value. The runner passes
+``random_state=0`` when the constructor accepts it.
+
+For example, save this detector as ``my_model.py``:
+
+.. code-block:: python
+
+   import numpy as np
+   from pysad.core import BaseModel
+
+
+   class MyModel(BaseModel):
+       """Scores each point by its distance from an exponentially weighted mean.
+
+       Args:
+           alpha (float): The weight of the newest point, between 0 and 1 (Default=0.05).
+       """
+
+       def __init__(self, alpha=0.05):
+           self.alpha = alpha
+           self.mean_ = None
+           self.var_ = None
+
+       def fit_partial(self, X, y=None):
+           if self.mean_ is None:
+               self.mean_ = X.astype(float)
+               self.var_ = np.ones_like(self.mean_)
+               return self
+
+           diff = X - self.mean_
+           self.mean_ += self.alpha * diff
+           self.var_ = (1 - self.alpha) * (self.var_ + self.alpha * diff**2)
+           return self
+
+       def score_partial(self, X):
+           if self.mean_ is None:
+               return 0.0
+
+           z = (X - self.mean_) / np.sqrt(self.var_ + 1e-12)
+           return float(np.abs(z).max())
+
+Then run the benchmark runner on this model:
+
+.. code-block:: console
+
+   $ python benchmarks/benchmark.py --custom my_model.py:MyModel
+
+A multivariate model runs on the ODDS datasets and the streams with drift. A univariate model
+runs on the NAB and UCR series. Custom models are not stored in the result cache, so each run
+scores them again.
+
 Result cache
 ------------
 

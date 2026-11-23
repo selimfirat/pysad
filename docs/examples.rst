@@ -1065,8 +1065,20 @@ It prints (when Kafka is unavailable and the synthetic fallback runs):
      [700] score=3.2501 label=1 AUROC=0.818
      [800] score=1.8571 label=0 AUROC=0.835
      [900] score=2.1205 label=0 AUROC=0.837
-     [1000] score=2.1387 label=0 AUROC=0.839
-   Finished synthetic stream. Final AUROC: 0.839
+   [1000] score=2.1387 label=0 AUROC=0.839
+    Finished synthetic stream. Final AUROC: 0.839
+
+Benchmark a custom model
+------------------------
+
+This script defines a custom streaming detector as a subclass of
+:class:`~pysad.core.BaseModel` and runs it through the benchmark runner. The runner loads the
+detector from ``path.py:ClassName`` with ``--custom`` and scores it on the datasets whose part
+matches its input kind. See :doc:`/benchmarks/run` for the full usage, including the constructor
+arguments the runner fills in automatically.
+
+.. literalinclude:: ../examples/example_custom_model_benchmark.py
+   :language: python
 
 Load a NASA SMAP or MSL telemetry channel
 -----------------------------------------

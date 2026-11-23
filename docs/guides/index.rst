@@ -13,6 +13,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`dataset_inventory`
+
+      List each pysad.utils.Data loader with its source, license, checksum and label format.
+
+   .. container:: card
+
       :doc:`choose_detector`
 
       Find candidate detectors for your data and compare them.

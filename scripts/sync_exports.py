@@ -26,6 +26,7 @@ PURE_REEXPORT_PACKAGES: tuple[str, ...] = (
 # Public-named internal base/helper classes intentionally omitted from subpackage __all__.
 EXCLUDED_SYMBOLS: dict[str, frozenset[str]] = {
     "pysad/core": frozenset({"RemovableStatistic"}),
+    "pysad/evaluation": frozenset({"EvaluationConfig"}),
     "pysad/transform/ensemble": frozenset({"PYODScoreEnsembler"}),
 }
 

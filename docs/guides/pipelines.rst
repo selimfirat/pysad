@@ -109,6 +109,71 @@ Wrap custom extractors or encoders
    for record in ["ok 1", "ok 2", "error 99999999"]:
        alert = pipeline.fit_predict_partial(record)
 
+Use frozen time-series embeddings
+---------------------------------
+
+A time-series foundation model (TSFM) can encode a context window as a fixed-length vector.
+Use an existing pretrained encoder as a callable in :class:`~pysad.transform.preprocessing.FunctionTransformer`.
+Leave ``fit_func=None`` so PySAD does not train the encoder.
+The detector learns from the vectors through the same ``|`` interface.
+
+This runnable recipe uses NumPy summary features as a stand-in for the encoder.
+The stand-in is not a TSFM and does not measure TSFM detection quality.
+It needs no model download or new dependency:
+
+.. code-block:: python
+
+   import numpy as np
+
+   from pysad.models import LODA
+   from pysad.transform.preprocessing import FunctionTransformer, ShingleTransformer
+   from pysad.utils import ArrayStreamer
+
+
+   def encode_window(context):
+       """Return summary features as a stand-in for frozen embeddings.
+
+       Args:
+           context (np.ndarray): The context window, oldest value first.
+
+       Returns:
+           np.ndarray: A vector with the window mean and standard deviation.
+       """
+       return np.array([context.mean(), context.std()], dtype=np.float64)
+
+
+   context_size = 24
+   embedding_dims = 2
+   pipeline = (
+       ShingleTransformer(shingle_size=context_size)
+       | FunctionTransformer(encode_window, fit_func=None, output_dims=embedding_dims)
+       | LODA(random_state=0)
+   )
+
+   values = np.sin(np.arange(120) * 2 * np.pi / 24).reshape(-1, 1)
+   scores = []
+   for point in ArrayStreamer().iter(values):
+       scores.append(pipeline.fit_score_partial(point))
+
+Each input has shape ``(1,)``.
+The shingler gives ``encode_window`` a vector of shape ``(context_size,)``, oldest value first.
+It uses only the current point and earlier points.
+During warm-up, it pads the window with copies of the oldest point.
+The detector scores each vector before learning from it.
+Higher scores mean more anomalous vectors.
+
+To use a TSFM, replace ``encode_window`` with a callable around your existing pretrained encoder.
+Load its weights once before the loop.
+Use its inference mode, disable gradient updates, and keep its weights fixed.
+``fit_func=None`` prevents PySAD fit callbacks but does not control the encoder's internal behavior.
+Inside the callable, reshape the context to the encoder's expected input shape.
+Apply any required normalization using only that context or fixed training statistics.
+Return one numeric vector of shape ``(embedding_dims,)`` with the same width on every call.
+Convert framework tensors to a CPU NumPy array before returning.
+Set ``embedding_dims`` to the encoder's output width.
+Keep ``context_size`` fixed to bound the history and encoder input size.
+The encoder and its runtime stay outside PySAD's dependencies.
+
 Use a PySAD model in River
 --------------------------------
 

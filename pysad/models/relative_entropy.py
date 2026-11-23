@@ -7,6 +7,7 @@ from typing import Any, ClassVar, Literal
 import numpy as np
 from numpy.typing import NDArray
 from scipy import stats
+from scipy.special import rel_entr
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _finite_float, _int_at_least, check_univariate
@@ -296,13 +297,9 @@ class RelativeEntropy(BaseModel):
         if self.m == 0:
             return -1
 
-        # Relative entropy of P_hat against every learned hypothesis in one call, instead of
-        # looping in Python and calling scipy.stats.entropy once per hypothesis. P_hat is
-        # broadcast to self.P's shape explicitly because scipy < 1.12 normalizes `pk` along
-        # `axis` before broadcasting, which raises AxisError for a 1-D `pk` with axis=1.
-        entropies = 2 * self.W * stats.entropy(np.broadcast_to(P_hat, self.P.shape), self.P, axis=1)
-        candidates = np.flatnonzero(entropies < self.T)
-        if candidates.size == 0:
-            return -1
-
-        return int(candidates[np.argmin(entropies[candidates])])
+        # Keep stats.entropy's normalization without its general input handling.
+        p = P_hat / P_hat.sum()
+        q = self.P / self.P.sum(axis=1, keepdims=True)
+        entropies = 2 * self.W * rel_entr(p, q).sum(axis=1)
+        index = int(entropies.argmin())
+        return index if entropies[index] < self.T else -1

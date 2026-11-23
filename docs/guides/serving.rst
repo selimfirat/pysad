@@ -1,5 +1,5 @@
 .. meta::
-   :description: Run PySAD with Prometheus alerts, OpenTelemetry metrics, Polars batches, Bytewax, PyFlink, Kafka, FastAPI, and state checkpoints.
+   :description: Run PySAD with Prometheus alerts, OpenTelemetry metrics, Polars batches, Bytewax, PyFlink, Kafka, FastAPI, the MCP server, and state checkpoints.
 
 Serve detectors in production
 =============================
@@ -731,6 +731,61 @@ Configure durable checkpoint storage and source replay before relying on restart
 The print sink does not provide exactly-once delivery.
 Set state expiration or limit active keys to bound the total number of detectors.
 See :doc:`alerts` to calibrate scores before applying an alert threshold.
+
+Model Context Protocol (MCP) server
+-----------------------------------
+
+The MCP server exposes PySAD detectors as tools for AI assistants and LLM clients. It runs over stdio transport, so it needs no network port or host. It requires the optional ``mcp`` dependency:
+
+.. code-block:: bash
+
+   pip install pysad[mcp]
+
+Start the server:
+
+.. code-block:: bash
+
+   pysad-mcp
+
+Or run it as a module:
+
+.. code-block:: bash
+
+   python -m pysad.mcp.server
+
+Connect an MCP client such as Claude Desktop, Cursor, or VS Code. See :doc:`mcp` for the full client configuration and the list of tools.
+
+Score points through the MCP server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Call tools programmatically with :func:`~pysad.mcp.server.create_mcp_server`. Session-based tools (for example ``list_detectors``) return ``(content, structured)`` where ``structured`` holds the parsed result. Auto-discovered detector tools (for example ``pysad_loda``) return a list whose first item holds the result as JSON text:
+
+.. code-block:: python
+
+   import asyncio
+   import json
+
+   from pysad.mcp.server import create_mcp_server
+
+   async def main():
+       server = create_mcp_server()
+
+       _, info = await server.call_tool("list_detectors", {})
+       print("Detectors:", [d["name"] for d in info["detectors"][:5]])
+
+       result = await server.call_tool("pysad_loda", {
+           "data": [[0.1, 0.2], [0.2, 0.3], [10.0, 20.0]],
+           "fit": True,
+           "random_state": 0,
+       })
+       scores = json.loads(result[0].text)["scores"]
+       print("Scores:", scores)
+
+   asyncio.run(main())
+
+Each standalone ``call_tool`` call uses a fresh context, so detector and calibrator state does not carry over between calls. Session-based tools such as ``initialize_detector`` and ``score_point`` keep state within one live MCP client session. Configure a client such as Claude Desktop to use them; see :doc:`mcp`.
+
+For HTTP or WebSocket serving, use the FastAPI recipes earlier in this guide instead.
 
 Next steps
 ----------

@@ -22,6 +22,7 @@ from _autodiscover import (  # noqa: E402
     collect_bibtex,
     doc_counts,
     expand_api_autosummary,
+    expand_detector_catalog,
     expand_detectors_tables,
     expand_examples_gallery,
 )
@@ -55,6 +56,8 @@ def _on_source_read(app: Sphinx, docname: str, source: list[str]) -> None:
         source[0] = expand_api_autosummary(source[0])
     elif docname == "detectors":
         source[0] = expand_detectors_tables(source[0])
+    elif docname == "detector_catalog":
+        source[0] = expand_detector_catalog(source[0])
     elif docname == "examples":
         source[0] = expand_examples_gallery(source[0], ROOT_DIR)
     elif docname == "installation":

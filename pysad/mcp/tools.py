@@ -335,7 +335,9 @@ Returns:
     )
 
 
-def _create_stat_tool(mcp: MCPServer, name: str, stat_class: type, defaults: dict[str, Any]) -> None:
+def _create_stat_tool(
+    mcp: MCPServer, name: str, stat_class: type, defaults: dict[str, Any]
+) -> None:
     """Create and register a statistic tool with explicit parameters."""
     param_info = _get_param_info(stat_class)
 

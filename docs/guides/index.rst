@@ -43,6 +43,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`river_interoperability`
+
+      Run PySAD detectors in River pipelines, score before learning, detect drift, and keep state bounded.
+
+   .. container:: card
+
       :doc:`drift_aware_composition`
 
       Reset a detector on drift and chain stages into one pipeline.

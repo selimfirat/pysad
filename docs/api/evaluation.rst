@@ -12,12 +12,13 @@ Prequential evaluation
 
 :func:`~pysad.evaluation.evaluate_stream` evaluates a model on a labeled stream. For each instance, the model scores the instance with its current state, and then it learns from the instance. The model never receives the labels. Every metric records each label-score pair.
 
-The function accepts arrays, lists, or single-use generators and consumes them once in stream order. If ``X`` and ``y`` have unequal lengths, it raises ``ValueError``. Model and metric updates from earlier pairs are retained.
+An optional calibrator or postprocessor can transform each score before the metrics record it. The postprocessor learns from the score in the same pass, so calibration stays prequential. To evaluate a detector together with a calibrator, pass the calibrator as ``postprocessor`` instead of wrapping the detector in a pipeline:
 
 .. code-block:: python
 
    from pysad.evaluation import AUROCMetric, evaluate_stream
    from pysad.models import LODA
+   from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
    from pysad.utils import Data
 
    X, y = Data().get_data("cardio.mat")
@@ -27,6 +28,32 @@ The function accepts arrays, lists, or single-use generators and consumes them o
        X=X,
        y=y,
        metrics={"AUROC": AUROCMetric()},
+       postprocessor=ConformalProbabilityCalibrator(window_size=1000),
+   )
+
+The function accepts arrays, lists, or single-use generators and consumes them once in stream order. If ``X`` and ``y`` have unequal lengths, it raises ``ValueError``. Model and metric updates from earlier pairs are retained.
+
+Configuration schema
+--------------------
+
+:class:`~pysad.evaluation.config.EvaluationConfig` is the shared configuration schema for a prequential evaluation run. It bundles a streaming detector, an optional calibrator or postprocessor, and the metrics to record:
+
+.. code-block:: python
+
+   from pysad.evaluation.config import EvaluationConfig
+   from pysad.evaluation import AUROCMetric, evaluate_stream
+   from pysad.models import LODA
+
+   config = EvaluationConfig(
+       model=LODA(random_state=0),
+       metrics={"AUROC": AUROCMetric()},
+   )
+   results = evaluate_stream(
+       model=config.model,
+       X=X,
+       y=y,
+       metrics=config.metrics,
+       postprocessor=config.postprocessor,
    )
 
 See ``examples/example_evaluate_stream.py`` for an example with several metrics at once.

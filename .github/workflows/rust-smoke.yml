@@ -1,0 +1,88 @@
+name: Rust wheel smoke
+
+# Builds the optional PyO3 pysad_kernels wheel from rust/, installs it into a clean
+# virtual environment, and verifies the public kernel import. No core dependencies are
+# added to pyproject.toml; pysad_kernels stays an optional, separately built extension.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "rust/**"
+      - ".github/workflows/rust-smoke.yml"
+  pull_request:
+    paths:
+      - "rust/**"
+      - ".github/workflows/rust-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+
+      - name: Install maturin
+        run: python -m pip install --upgrade pip maturin
+
+      - name: Build the PyO3 wheel
+        run: maturin build -m rust/pyproject.toml --release --out-dir dist
+
+      - name: Create a clean environment
+        run: python -m venv .venv
+
+      - name: Install the built wheel
+        run: |
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install dist/pysad_kernels-*.whl numpy
+
+      - name: Verify the public kernel import
+        run: |
+          . .venv/bin/activate
+          python - <<'PY'
+          import pysad_kernels
+
+          import numpy as np
+
+          # Exercise each public kernel once to prove the imported module works, not
+          # just that the import statement succeeds.
+          x = np.array([0.2, 0.7, 0.4], dtype=np.float64)
+
+          split_atts = np.array([[0, 1]], dtype=np.uint16)
+          split_values = np.array([[0.5, 0.5]], dtype=np.float64)
+          path = pysad_kernels.half_space_trees_path(x, split_atts, split_values, 1)
+          assert path.shape == (2, 1)
+
+          roots = np.array([0], dtype=np.int32)
+          dim = np.array([-1], dtype=np.int32)
+          cut = np.array([0.0], dtype=np.float64)
+          left = np.array([-1], dtype=np.int32)
+          right = np.array([-1], dtype=np.int32)
+          leaves = pysad_kernels.rrcf_route_to_leaf(x, roots, dim, cut, left, right)
+          assert leaves.shape == (1,)
+
+          total = pysad_kernels.rrcf_codisp_sum(
+              leaves,
+              np.zeros(1, dtype=np.int32),
+              np.array([-1], dtype=np.int32),
+              np.array([-1], dtype=np.int32),
+              np.ones(1, dtype=np.int32),
+          )
+          assert isinstance(total, float)
+
+          print("rust wheel smoke: pysad_kernels import and kernel calls OK")
+          PY

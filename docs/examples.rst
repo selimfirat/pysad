@@ -293,6 +293,27 @@ It prints:
    F1: 0.252
    Windowed AUROC: 0.756
 
+Migrate from ADTK to PySAD evaluation
+-------------------------------------
+
+ADTK validates a whole series and runs ``fit_detect`` on it, then summarizes
+anomalies after the run. PySAD scores each point when it arrives, then learns
+from it, and evaluates prequentially with
+:func:`~pysad.evaluation.evaluate_stream`. This script shows the PySAD
+equivalent of ADTK's ``summarize_anomalies``: score a stream with several
+metrics and export the results with
+:func:`~pysad.evaluation.export_report`.
+
+.. literalinclude:: ../examples/example_migrate_adtk.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.936
+   AUPR: 0.610
+
 Raise alerts with a calibrator
 ------------------------------
 

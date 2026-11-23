@@ -652,3 +652,148 @@ def test_half_space_trees_explain_rejects_nan():
     anomalous[1] = np.nan
     with pytest.raises(ValueError, match="HalfSpaceTrees does not accept NaN values"):
         model.explain_partial(anomalous)
+
+
+def test_half_space_trees_score_explain_partial_returns_score_and_shap():
+    import numpy as np
+
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(120, 5)
+    model = HalfSpaceTrees(
+        feature_mins=[0.0] * 5,
+        feature_maxes=[1.0] * 5,
+        window_size=40,
+        num_trees=10,
+        max_depth=6,
+        random_state=0,
+    )
+    model.fit(X[:80])
+
+    score, shap = model.score_explain_partial(X[81])
+
+    assert isinstance(score, float)
+    assert shap.shape == (5,)
+    assert shap.dtype == np.float64
+
+
+def test_half_space_trees_score_explain_partial_does_not_change_state():
+    import numpy as np
+
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(120, 5)
+    model = HalfSpaceTrees(
+        feature_mins=[0.0] * 5,
+        feature_maxes=[1.0] * 5,
+        window_size=40,
+        num_trees=10,
+        max_depth=6,
+        random_state=0,
+    )
+    model.fit(X[:80])
+
+    before = model.score_partial(X[81])
+    score, _ = model.score_explain_partial(X[81])
+    after = model.score_partial(X[81])
+
+    assert before == after
+    assert score == before
+
+
+def test_half_space_trees_score_explain_partial_is_reproducible():
+    import numpy as np
+
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(120, 5)
+
+    model_a = HalfSpaceTrees(
+        feature_mins=[0.0] * 5,
+        feature_maxes=[1.0] * 5,
+        window_size=40,
+        num_trees=10,
+        max_depth=6,
+        random_state=0,
+    )
+    model_a.fit(X[:80])
+    score_a, shap_a = model_a.score_explain_partial(X[81])
+
+    model_b = HalfSpaceTrees(
+        feature_mins=[0.0] * 5,
+        feature_maxes=[1.0] * 5,
+        window_size=40,
+        num_trees=10,
+        max_depth=6,
+        random_state=0,
+    )
+    model_b.fit(X[:80])
+    score_b, shap_b = model_b.score_explain_partial(X[81])
+
+    assert score_a == score_b
+    np.testing.assert_array_equal(shap_a, shap_b)
+
+
+def test_half_space_trees_score_explain_partial_shap_depends_on_instance():
+    import numpy as np
+
+    from pysad.models import HalfSpaceTrees
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(120, 5)
+    model = HalfSpaceTrees(
+        feature_mins=[0.0] * 5,
+        feature_maxes=[1.0] * 5,
+        window_size=40,
+        num_trees=10,
+        max_depth=6,
+        random_state=0,
+    )
+    model.fit(X[:80])
+
+    normal_score, normal_shap = model.score_explain_partial(X[81])
+    outside_score, outside_shap = model.score_explain_partial(
+        np.array([100.0, -50.0, 25.0, -75.0, 200.0])
+    )
+
+    assert normal_score != outside_score
+    assert not np.allclose(normal_shap, outside_shap)
+
+
+def test_half_space_trees_score_explain_partial_returns_zeros_before_fit():
+    import numpy as np
+
+    from pysad.models import HalfSpaceTrees
+
+    model = HalfSpaceTrees(
+        feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0], window_size=10, num_trees=3, max_depth=4
+    )
+
+    score, shap = model.score_explain_partial(np.array([0.3, 0.6]))
+
+    assert score == 0.0
+    assert shap.shape == (2,)
+    assert np.all(shap == 0.0)
+
+
+def test_half_space_trees_score_explain_partial_rejects_nan():
+    import numpy as np
+
+    from pysad.models import HalfSpaceTrees
+
+    model = HalfSpaceTrees(
+        feature_mins=[0.0, 0.0], feature_maxes=[1.0, 1.0], window_size=10, num_trees=3, max_depth=4
+    )
+    model.fit(np.random.rand(20, 2))
+
+    anomalous = np.array([0.3, 0.6])
+    anomalous[1] = np.nan
+    with pytest.raises(ValueError, match="HalfSpaceTrees does not accept NaN values"):
+        model.score_explain_partial(anomalous)

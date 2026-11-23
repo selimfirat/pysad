@@ -4,6 +4,7 @@ from bisect import bisect_left, insort
 from collections import deque
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import check_univariate
@@ -36,7 +37,7 @@ class MedianAbsoluteDeviation(BaseModel):
         self.window: deque[float] = deque()
         self._sorted: list[float] = []
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> MedianAbsoluteDeviation:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> MedianAbsoluteDeviation:
         """Updates the model with the next instance.
 
         Args:
@@ -55,14 +56,18 @@ class MedianAbsoluteDeviation(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
             X (np.float64 array of shape (1,)): The instance to score. This model is univariate.
 
         Returns:
-            float: The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance. Higher scores represent
+                more anomalous instances when ``absolute`` is ``True``; when ``absolute`` is
+                ``False``, positive scores indicate the instance is above the median and negative
+                scores indicate it is below, with higher absolute values indicating more
+                anomalous behavior.
         """
         if not self._sorted:  # there is no median before the first value
             return 0.0

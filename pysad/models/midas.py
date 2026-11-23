@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import ClassVar, Literal
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -49,15 +50,16 @@ class MIDAS(BaseModel):
         self.random_state = random_state
         self.num_fitted_ = 0
 
-    def _buckets(self, X: np.ndarray) -> np.ndarray:
+    def _buckets(self, X: NDArray[np.float64]) -> NDArray[np.intp]:
         """The bucket of the edge in each row, shape (num_hash_fns,)."""
         key = (int(X[0]) + _EDGE_KEY_PRIME * int(X[1])) % _HASH_PRIME
         # Python integers, since p * key overflows 64 bits.
         return np.array(
-            [(p * key + q) % _HASH_PRIME % self.num_buckets for p, q in self.hash_params_]
+            [(p * key + q) % _HASH_PRIME % self.num_buckets for p, q in self.hash_params_],
+            dtype=np.intp,
         )
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> MIDAS:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> MIDAS:
         """Updates the edge counts with the next edge.
 
         Args:
@@ -97,7 +99,7 @@ class MIDAS(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next edge by the counts it would have after the model fits it. This method does not change the model.
 
         Args:

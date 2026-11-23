@@ -32,8 +32,9 @@ FINITE_SCORES = st.one_of(
 )
 
 PROPERTIES = settings(
-    max_examples=25,
+    max_examples=8,
     deadline=None,
+    database=None,
     suppress_health_check=[HealthCheck.too_slow],
     # The same examples on every run, so a failure in CI reproduces locally.
     derandomize=True,

@@ -7,22 +7,26 @@
 <h3 align="center">一遍扫描，捕获每个离群点。</h3>
 
 <p align="center">
-  Python 流式异常检测库。PySAD 在每个数据点到达时立即为其打分，<br>
-  提供流式检测器、经过校准的告警和流式评估。
+  面向多变量与单变量数据流的 Python 流式异常检测库。<br>
+  PySAD 在每个数据点到达时立即为其打分并学习，提供经过校准的告警、漂移处理与逐点预评估——完全基于 Python、NumPy、SciPy 和 scikit-learn。
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/v/pysad?style=flat-square&logo=pypi&logoColor=white&label=PyPI" alt="PyPI version"></a>
-  <a href="https://anaconda.org/conda-forge/pysad"><img src="https://img.shields.io/conda/vn/conda-forge/pysad?style=flat-square&logo=condaforge&logoColor=white&label=conda-forge" alt="conda-forge version"></a>
-  <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/pyversions/pysad?style=flat-square&logo=python&logoColor=white&label=Python" alt="Python versions"></a>
-  <a href="https://github.com/selimfirat/pysad/blob/master/LICENSE"><img src="https://img.shields.io/github/license/selimfirat/pysad?style=flat-square&label=license" alt="License"></a>
-  <a href="https://doi.org/10.5281/zenodo.22983312"><img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22983312-0741AD?style=flat-square" alt="DOI"></a>
+  <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/v/pysad?style=flat-square&logo=pypi&logoColor=white&label=PyPI&labelColor=0d1b22&color=00757a" alt="PyPI version"></a>
+  <a href="https://anaconda.org/conda-forge/pysad"><img src="https://img.shields.io/conda/vn/conda-forge/pysad?style=flat-square&logo=condaforge&logoColor=white&label=conda-forge&labelColor=0d1b22&color=00757a" alt="conda-forge version"></a>
+  <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/pyversions/pysad?style=flat-square&logo=python&logoColor=white&label=Python&labelColor=0d1b22&color=00757a" alt="Python versions"></a>
+  <a href="https://github.com/selimfirat/pysad/blob/master/LICENSE"><img src="https://img.shields.io/github/license/selimfirat/pysad?style=flat-square&label=license&labelColor=0d1b22&color=00757a" alt="License"></a>
+  <a href="https://doi.org/10.5281/zenodo.22983312"><img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22983312-00757a?style=flat-square&labelColor=0d1b22" alt="DOI"></a>
   <br>
-  <a href="https://github.com/selimfirat/pysad/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/selimfirat/pysad/coverage.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=tests" alt="Tests"></a>
-  <a href="https://results.pre-commit.ci/latest/github/selimfirat/pysad/master"><img src="https://results.pre-commit.ci/badge/github/selimfirat/pysad/master.svg" alt="pre-commit.ci status"></a>
-  <a href="https://coveralls.io/github/selimfirat/pysad?branch=master"><img src="https://img.shields.io/coverallsCoverage/github/selimfirat/pysad?branch=master&style=flat-square&logo=coveralls&label=coverage" alt="Coverage"></a>
-  <a href="https://pysad.readthedocs.io/en/stable/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs" alt="Documentation"></a>
-  <a href="https://github.com/selimfirat/pysad/commits/master"><img src="https://img.shields.io/github/last-commit/selimfirat/pysad?style=flat-square&label=last%20commit" alt="Last commit"></a>
+  <a href="https://github.com/selimfirat/pysad/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/selimfirat/pysad/coverage.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=tests&labelColor=0d1b22&color=1b7f5c" alt="Tests"></a>
+  <a href="https://results.pre-commit.ci/latest/github/selimfirat/pysad/master"><img src="https://img.shields.io/badge/dynamic/xml?url=https%3A%2F%2Fresults.pre-commit.ci%2Fbadge%2Fgithub%2Fselimfirat%2Fpysad%2Fmaster.svg&query=substring-after(%2F%2F*%5Blocal-name()%3D%27title%27%5D%2C%27%3A%20%27)&label=pre-commit.ci&style=flat-square&logo=precommit&logoColor=white&labelColor=0d1b22&color=1b7f5c" alt="pre-commit.ci status"></a>
+  <a href="https://coveralls.io/github/selimfirat/pysad?branch=master"><img src="https://img.shields.io/coverallsCoverage/github/selimfirat/pysad?branch=master&style=flat-square&logo=coveralls&logoColor=white&label=coverage&labelColor=0d1b22&color=00757a" alt="Coverage"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs&labelColor=0d1b22&color=1b7f5c" alt="Documentation"></a>
+  <a href="https://github.com/selimfirat/pysad/commits/master"><img src="https://img.shields.io/github/last-commit/selimfirat/pysad?style=flat-square&label=last%20commit&labelColor=0d1b22&color=00757a" alt="Last commit"></a>
+  <br>
+  <a href="https://pysad.readthedocs.io/en/stable/benchmark.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fthroughput.json&style=flat-square&labelColor=0d1b22" alt="Median throughput"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Funivariate_detectors.json&style=flat-square&labelColor=0d1b22" alt="Univariate detectors"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmultivariate_detectors.json&style=flat-square&labelColor=0d1b22" alt="Multivariate detectors"></a>
 </p>
 
 <p align="center">
@@ -32,7 +36,8 @@
   <a href="https://pysad.readthedocs.io/en/stable/benchmark.html">基准测试</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/detectors.html">检测器</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/api.html">API</a> ·
-  <a href="https://pyodide.github.io/jupyterlite/lab/index.html?fromURL=https%3A//raw.githubusercontent.com/selimfirat/pysad/master/examples/nyc_taxi_alerts.ipynb">在线演示</a> ·
+  <a href="https://huggingface.co/spaces/selimfirat/pysad-playground">交互式演练场</a> ·
+  <a href="https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb">在线演示</a> ·
   <a href="https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb">在 Colab 中试用</a>
 </p>
 
@@ -44,7 +49,7 @@
 
 ## 为什么选择 PySAD
 
-批处理检测器必须先拿到整个数据集，才能为一个点打分。数据流不会一次给出整个数据集：数据点逐个到达，数据会发生漂移（其分布随时间变化），而且你必须在下一个点到达之前对当前点做出判断。PySAD 正是为这种场景而设计的。[Google Scholar](https://scholar.google.com/scholar?cites=3884618599898298487) 上有 60 多篇论文引用了它，GitHub 上有 [30 多个公开仓库](https://github.com/selimfirat/pysad/network/dependents) 在使用它。
+批处理检测器需要拿到完整数据集才能建立模型。流式检测器在数据点到达时即时更新，无需等待完整数据集。PySAD 为多变量和单变量数据流提供统一的逐点打分与学习接口，支持概念漂移数据流。[Google Scholar](https://scholar.google.com/scholar?cites=3884618599898298487) 上有 60 多篇论文引用了它，GitHub 上有 [30 多个公开仓库](https://github.com/selimfirat/pysad/network/dependents) 在使用它。
 
 <table>
 <tr>
@@ -52,52 +57,52 @@
 
 #### 为数据流而生
 
-每个检测器都通过 `fit_partial`、`score_partial` 和 `fit_score_partial` 一次学习并评分一个点。大多数检测器只保存固定大小的窗口、概要结构（sketch）或一组树，而不是整个数据流。
+每个检测器都通过 `fit_partial`、`score_partial` 和 `fit_score_partial` 一次学习并评分一个点。大多数检测器只保存有界窗口、概要结构（sketch）或一组树，而不是整个数据流历史。
 
 </td>
 <td width="50%" valign="top">
 
 #### 来自已发表论文的检测器
 
-从稳健统计方法（MAD、Seasonal Hybrid ESD）到基于森林、概要结构和投影的方法（Half-Space Trees、Robust Random Cut Forest、RS-Hash、xStream、LODA）。每个检测器都注明了出处论文，[检测器目录](https://pysad.readthedocs.io/en/stable/detectors.html) 列出了每个检测器的输入和内存占用。
+覆盖多变量与单变量流：稳健/季节性统计方法（`MAD`、`SeasonalHybridESD`、`FluxEV`）、随机森林与概要结构（`LODA`、`HalfSpaceTrees`、`RobustRandomCutForest`、`RSHash`、`xStream`）、子序列（`DAMP`、`MatrixProfile`、`SAND`）、图流（`MIDAS`）以及 10 个漂移监测器（`ADWINMeter`、`PageHinkleyMeter`、`DriftAdaptiveDetector`）。
 
 </td>
 </tr>
 <tr>
 <td valign="top">
 
-#### 从分数到告警
+#### 统一尺度的校准告警
 
-共形校准器把原始分数转换为它所超过的近期分数的比例。这样，`0.99` 这样的阈值对每个检测器都具有相同的含义。
+`ConformalProbabilityCalibrator`、基于极值理论的 `SPOTProbabilityCalibrator` 和 `GaussianTailProbabilityCalibrator` 将任意原始分数映射到 `[0, 1]`，并可配合 `ThresholdFilter` 与 `QuantileFilter` 输出二值告警。
 
 </td>
 <td valign="top">
 
-#### 在数据流上评估
+#### 开箱即用的流式评估
 
-流回放器（streamer）逐点回放数据，17 个带标签的基准数据集在首次使用时自动下载。AUROC、AUPR、精确率和召回率等指标在每个点之后更新。
+`evaluate_stream`、`ArrayStreamer`、`PandasStreamer`、`PolarsStreamer` 和 `CSVStreamer` 可逐点回放流数据；`AUROCMetric`、`AUPRMetric` 和 `WindowedMetric` 逐点更新指标，覆盖 17 个带标签的 ODDS 数据集、58 条 NAB 序列与 ULB 信用卡欺诈数据集。
 
 </td>
 </tr>
 <tr>
 <td valign="top">
 
-#### 让批处理模型运行在数据流上
+#### 可组合流水线与特征归因
 
-封装任意 [PyOD](https://github.com/yzhao062/pyod) 检测器，让它在近期数据点的滑动窗口上反复重新训练。
+使用 `|` 串联预处理、投影、日志解析（`DrainLogParser`）、检测、后处理与校准，使用 `&` 集成多个检测器，并通过 `LODA.explain_partial()` 解释触发告警的关键特征。
 
 </td>
 <td valign="top">
 
-#### 完整的处理流水线
+#### 融入现有机器学习栈
 
-预处理器、随机投影、分数后处理器、集成器和在线统计量都可以与每个检测器配合使用。
+通过 `ReferenceWindowModel` 在滑动窗口上运行任意 [PyOD](https://github.com/yzhao062/pyod) 批处理检测器，通过 `PySADToRiverAdapter` / `PySADToScikitLearnAdapter` 嵌入 [River](https://github.com/online-ml/river) 或 scikit-learn 流水线，或通过 `PredictiveAnomalyDetector` 为 River 预测器打分。
 
 </td>
 </tr>
 </table>
 
-[PyOD](https://github.com/yzhao062/pyod) 等批处理离群点检测器在固定数据集上训练，要利用新数据就必须重新训练。PySAD 的检测器从每个点中学习，同时 PySAD 仍可以通过 `ReferenceWindowModel` 在数据流上运行 PyOD 模型。[River](https://github.com/online-ml/river) 等通用在线学习框架把异常检测当作众多模块之一。PySAD 只专注于流式异常检测：检测器以及围绕它们的校准、后处理、集成和评估。
+[PyOD](https://github.com/yzhao062/pyod) 等批处理离群点检测器在固定数据集上训练，要利用新数据就必须重新训练。[River](https://github.com/online-ml/river) 和 [CapyMOA](https://github.com/adaptive-machine-learning/CapyMOA) 等通用在线学习框架把异常检测当作众多模块之一（且 CapyMOA 依赖 Java）。PySAD 专注于流式异常检测：纯 NumPy/SciPy 高性能检测器、流水线组合、分数校准、漂移处理与逐点预评估一体化。
 
 ## 安装
 
@@ -111,7 +116,7 @@ pip install pysad
 conda install -c conda-forge pysad
 ```
 
-PySAD 支持 Linux、macOS 和 Windows 上的 Python 3.11 至 3.14。执行安装后，所有检测器即可使用，无需安装任何可选依赖。
+PySAD 支持 Linux、macOS 和 Windows 上的 Python 3.11 至 3.14。安装后所有检测器即可直接使用，无需额外可选依赖或 JVM。
 
 从 `master` 分支安装最新开发版本：
 
@@ -123,8 +128,9 @@ pip install git+https://github.com/selimfirat/pysad.git
 
 ## 快速开始
 
-[![Open in JupyterLite](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://pyodide.github.io/jupyterlite/lab/index.html?fromURL=https%3A//raw.githubusercontent.com/selimfirat/pysad/master/examples/nyc_taxi_alerts.ipynb)
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb)
+[![Open in Spaces](https://img.shields.io/badge/Hugging%20Face-Open%20in%20Spaces-00757a?style=flat-square&logo=huggingface&logoColor=white&labelColor=0d1b22)](https://huggingface.co/spaces/selimfirat/pysad-playground)
+[![Open in JupyterLite](https://img.shields.io/badge/JupyterLite-Live%20Demo-00757a?style=flat-square&logo=jupyter&logoColor=white&labelColor=0d1b22)](https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb)
+[![Open in Colab](https://img.shields.io/badge/Colab-Open%20Notebook-00757a?style=flat-square&logo=googlecolab&logoColor=white&labelColor=0d1b22)](https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb)
 
 逐点为数据流打分，并在运行过程中评估检测器：
 
@@ -153,17 +159,16 @@ print(f"AUROC: {metric.get():.3f}")  # 输出 AUROC: 0.960
 
 ### 把分数转换为告警
 
-分数越高，表示该点越异常，但原始分数没有固定的尺度。共形校准器把每个分数转换为它所超过的近期分数的比例。接着上面的例子，当这个值接近 1 时发出告警：
+分数越高表示越异常，但原始分数没有固定尺度。使用 `|` 将检测器与 `ConformalProbabilityCalibrator`（或用于极值阈值的 `SPOTProbabilityCalibrator`）串联成流水线，将分数映射到 `[0, 1]` 并在接近 `1` 时告警：
 
 ```python
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 
-model = LODA(random_state=0)
-calibrator = ConformalProbabilityCalibrator(window_size=500)
+pipeline = LODA(random_state=0) | ConformalProbabilityCalibrator(window_size=500)
 
 alerts = []
 for t, x in enumerate(ArrayStreamer().iter(X)):
-    calibrated = calibrator.fit_transform_partial(model.fit_score_partial(x))
+    calibrated = pipeline.fit_score_partial(x)
     if t >= 200 and calibrated >= 0.99:  # 跳过短暂的预热阶段
         alerts.append(t)
 
@@ -171,9 +176,28 @@ for t, x in enumerate(ArrayStreamer().iter(X)):
 print(f"{len(alerts)} alerts, {y[alerts].sum()} of them true anomalies")
 ```
 
+### 解释触发告警的特征
+
+使用 `LODA.explain_partial()` 对导致异常分数的特征贡献进行排序：
+
+```python
+rng = np.random.default_rng(0)
+X_train = rng.normal(size=(2000, 8))
+detector = LODA(random_state=0).fit(X_train)
+
+point = rng.normal(size=8)
+point[[2, 5]] += 6.0  # 平移特征 2 和 5
+
+contributions = detector.explain_partial(point)
+print(
+    f"Score: {detector.score_partial(point):.2f}, top features: {contributions.argsort()[::-1].tolist()[:2]}"
+)
+# 输出：Score: 3.46, top features: [2, 5]
+```
+
 ### 处理你自己的数据流
 
-检测器每次接收一个点的 NumPy 数组，因此任何循环都可以使用：CSV 读取器、套接字或消息队列的消费者。
+检测器每次接收一个点的 NumPy 数组，因此任何循环都可以使用：CSV 读取器、套接字或消息队列消费者。
 
 ```python
 import json
@@ -183,11 +207,11 @@ for message in consumer:  # 例如一个 Kafka 消费者
     score = model.fit_score_partial(x)
 ```
 
-`ArrayStreamer`、`PandasStreamer` 和 `PolarsStreamer` 可以把数组和 pandas 或 Polars DataFrame 当作数据流回放，便于做实验。
+`ArrayStreamer`、`PandasStreamer`、`PolarsStreamer` 和 `CSVStreamer` 可以逐行回放数组、DataFrame 与 CSV 文件，便于实验。
 
-### 在数据流上使用 PyOD 模型
+### 联合使用 PyOD、River 与 scikit-learn
 
-先用 `pip install pyod` 安装 PyOD。
+封装任意 [PyOD](https://github.com/yzhao062/pyod) 批处理检测器并在滑动窗口上定期重新训练（`pip install pyod`）：
 
 ```python
 from pyod.models.iforest import IForest
@@ -199,7 +223,35 @@ for x in ArrayStreamer().iter(X[100:]):
     score = model.fit_score_partial(x)
 ```
 
-[入门教程](https://pysad.readthedocs.io/en/stable/getting_started.html) 讲解了每一步。[操作指南](https://pysad.readthedocs.io/en/stable/guides/index.html) 涵盖告警、评估、流水线、季节性序列、生产环境使用和自定义检测器。
+PySAD 还提供 `PySADToRiverAdapter` 与 `PredictiveAnomalyDetector` 以接入 [River](https://github.com/online-ml/river) 流水线，以及 `PySADToScikitLearnAdapter` 以接入 [scikit-learn](https://scikit-learn.org/) 流水线。更多完整流程请参阅[入门教程](https://pysad.readthedocs.io/en/stable/getting_started.html)、[操作指南](https://pysad.readthedocs.io/en/stable/guides/index.html)与[API 参考](https://pysad.readthedocs.io/en/stable/api.html)。
+
+## 基准测试与库对比
+
+PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每个点之前先由 `fit_score_partial` 为其打分）测试所有检测器：
+
+- **多变量数据流**：在 [ODDS](http://odds.cs.stonybrook.edu/) 的 17 个数据集以及 8 条包含真实漂移的数据流（`KDD http`、`INSECTS`、`SMD`）上进行评估，并附带高达 1,000 维的维度扩展测试及 100 万点内存稳定性验证。
+- **单变量数据流**：在 Numenta 异常基准（NAB）全部 58 条序列上使用官方 NAB 评分器评估（`HTM` 达到 `64.2`，`RelativeEntropy` 达到 `58.9`，`KNNCAD` 复现官方 `58.0` 榜单成绩），并包含 UCR 时间序列异常档案库评估。
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/images/comparison.svg" alt="在 17 个 ODDS 数据集上对比 PySAD、River、CapyMOA 与 PyOD 的吞吐量（点/秒）和平均 AUROC 散点图。" width="100%">
+</p>
+
+<p align="center"><sub>同硬件、17 个 ODDS 数据集上的逐点预评估基准测试（默认参数，种子 0）。PySAD 检测器占据右上角的速度与精度前沿。</sub></p>
+
+### 17 个 ODDS 数据集上的同算法横向对比
+
+在完全一致的逐点预评估协议（[`benchmarks/compare.py`](https://github.com/selimfirat/pysad/blob/master/benchmarks/compare.py)）下对比同一算法在不同库中的表现：
+
+| 算法 | PySAD (AUROC / ms/点) | 其他库 (AUROC / ms/点) | 对比结果 |
+|---|---|---|---|
+| `LODA` | **0.790** / **0.04 ms** | River `0.754` / `0.29 ms` · CapyMOA `0.715` / `1.25 ms` · StreamAD `0.649` / `0.35 ms` | AUROC 高 +0.036 至 +0.141，**速度提升 7×–31×** |
+| `HalfSpaceTrees` | **0.796** / `0.08 ms` | River `0.702` / **0.03 ms** · CapyMOA `0.500` / `0.01 ms` | 相比 River **AUROC 提升 +0.094** |
+| `IncrementalLOF` | **0.675** / **0.21 ms** | River `0.675` / `14.33 ms` | 精度持平，**速度提升 68×** |
+| `RobustRandomCutForest` | **0.787** / **8.96 ms** | CapyMOA `0.787` / `101.37 ms` | 精度持平，**速度提升 11×**，无需 Java |
+| `RSHash` | **0.817** / **0.27 ms** | CapyMOA `0.621` / `5.64 ms` | **AUROC 高 +0.196**，**速度提升 21×** |
+| `OnlineOneClassSVM` | **0.702** / `0.04 ms` | River `0.469` / **0.01 ms** | **AUROC 高 +0.233** |
+
+<sub>PySAD、River 0.26.1、CapyMOA 0.15.1 与 PyOD 3.6.7（通过 `ReferenceWindowModel`）在同一台机器上运行；StreamAD 0.3.1 需要 Python `&lt;3.12` 与 NumPy 1（因 StreamAD 的 `HSTreeDetector`、`RShashDetector` 和 `xStreamDetector` 返回的分数符号相反导致 AUROC 低于 0.5，表格仅列出方向一致的 `LODA`）。完整结果请参阅 [基准测试](https://pysad.readthedocs.io/en/stable/benchmark.html) 与 [库对比详情](https://pysad.readthedocs.io/en/stable/comparisons/index.html)（含 River、CapyMOA、StreamAD、PyOD、Alibi Detect 与 Darts）。</sub>
 
 ## 检测器
 
@@ -208,16 +260,21 @@ for x in ArrayStreamer().iter(X[100:]):
 | 你的数据 | 首选 | 原因 |
 |---|---|---|
 | 具有日周期或周周期的单变量序列 | `SeasonalHybridESD` | 去除周期成分。窗口中较早出现的异常对它影响很小 |
-| 没有明显周期的单变量序列 | `MedianAbsoluteDeviation` | 窗口中的异常对它影响很小。它只使用近期的值，因此能跟随漂移 |
-| 多个特征，初次尝试 | `LODA` | 速度快，参数少，并从每个点中学习 |
+| 没有明显周期的单变量序列 | `MedianAbsoluteDeviation` | 窗口中的异常对它影响很小。只使用近期的值，因此能跟随漂移 |
+| 时间序列中的异常子序列 | `DAMP` 或 `SAND` | 识别异常波形子序列，而不仅是单点尖峰 |
+| 多个特征，初次尝试 | `LODA` | 极快（约 40 µs/点），参数少，逐点学习并支持 `explain_partial` |
 | 特征取值范围已知 | `HalfSpaceTrees` | 每个点的处理时间恒定，以上一个窗口为参照打分 |
-| 特征很多 | `xStream` | 用哈希把数据点投影到更少的特征上 |
-| 网络流量 | `KitNet` | 专为网络入侵检测设计。默认对前 100 个点输出 0 |
-| 你已在使用的 PyOD 模型 | `ReferenceWindowModel` | 在滑动窗口上反复重新训练它 |
+| 特征很多 | `xStream` | 用流式哈希把数据点投影到更少的特征上 |
+| 网络流量或日志 | `KitNet` 或 `DrainLogParser` + `LODA` | `KitNet` 专为实时网络入侵检测设计；`DrainLogParser` 将原始日志解析为事件 ID |
+| 分布发生突变（概念漂移） | `DriftAdaptiveDetector` | 当 Page-Hinkley 监测到分数漂移时自动重置任意检测器 |
+| 你已在使用的 PyOD 模型 | `ReferenceWindowModel` | 在滑动窗口上反复重新训练任意 PyOD 批处理模型 |
 
-以上建议来自每种方法的设计，而不是基准测试排名。[基准测试](https://pysad.readthedocs.io/en/stable/benchmark.html) 给出了每个多变量检测器在 17 个数据集上的结果。请按照 [检测器选择指南](https://pysad.readthedocs.io/en/stable/guides/choose_detector.html) 中的方法，在你自己的数据上比较两到三个检测器。
+以上建议来自每种方法的设计，而不是基准测试排名。请按照 [检测器选择指南](https://pysad.readthedocs.io/en/stable/guides/choose_detector.html) 中的方法，在你自己的数据上比较两到三个检测器。
 
-### 全部检测器
+<details>
+<summary><b>全部流式检测器</b></summary>
+
+<br>
 
 **多变量**
 
@@ -245,18 +302,27 @@ for x in ArrayStreamer().iter(X[100:]):
 | `ThreshLEAP` | 基于最小探测与最新优先探测的距离离群点检测 (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | 增量局部离群因子 (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | 在线单类支持向量机 NORMA (Kivinen et al., IEEE TSP 2004) |
+| `CostSensitiveStreamModel` | 带加权铰链损失的成本敏感在线梯度下降 (Wang et al., IEEE TKDE 2014) |
 | `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |
+| `MiLOF` | 带聚类摘要的高内存效率增量 LOF (Salehi et al., IEEE TKDE 2016) |
 | `KELOS` | 基于窗口微簇的核密度局部离群点检测 (Qin et al., EDBT 2019) |
 | `STARE` | 基于网格单元的核密度局部离群点检测，仅更新窗口变化的区域 (Yoon et al., KDD 2020) |
 | `AnyOut` | 基于 ClusTree 最近簇距离的随时离群点检测 (Assent et al., DASFAA 2012) |
 | `SDOstream` | 带指数衰减的稀疏数据观测器低密度流模型 (Hartl et al., ESANN 2020) |
 | `ADeMS` | Frequent Directions 矩阵概要 (Huang & Kasiviswanathan, VLDB 2015) |
+| `FRAHST` | 快速秩自适应行 Householder 子空间跟踪 (Teixeira & Milidiú, SAC 2010) |
+| `GNGA` | 面向演化数据流的自适应生长神经气 (Bouguelia et al., *DAMI* 2018) |
 | `LocalOutlierProbability` | 局部离群概率 (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD 量子测量密度估计 (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | 基于带折扣学习的有限混合模型 (Yamanishi et al., KDD 2000) |
 | `TEDA` | 典型性与离心率数据分析 (Angelov, EALS 2014) |
-| `EXPoSE` | 与核均值嵌入的期望相似度 (Schneider et al., Machine Learning 2016) |
+| `EXPoSE` | 与核均值嵌入的期望相似度 (Schneider et al., *Machine Learning* 2016) |
 | `IDKS` | IDK-S 滑动窗口上的增量分布核 (Xu et al., AAAI 2026) |
+| `FeedbackHST` | 带主动人机协同标签反馈的 Half-Space Trees (Tan et al., 2011; Das et al., JAIR 2024) |
+| `StreamKMPlusPlus` | 基于 StreamKM++ 流式核心集聚类的最近中心距离 (Ackermann et al., ACM JEA 2012) |
+| `ZeroShotEmbeddingDetector` | 基于语义锚点最大概念匹配的零样本分布外检测 (Ming et al., NeurIPS 2022) |
+| `ABSAD` | 基于角度的子空间异常检测 (ABSAD) (Zhang et al., 2017) |
+| `DenStream` | 密度基准流式异常检测器 (DenStream) (Cao et al., 2006) |
 
 **单变量**
 
@@ -264,40 +330,39 @@ for x in ArrayStreamer().iter(X[100:]):
 |---|---|
 | `SeasonalHybridESD` | Seasonal Hybrid ESD (Hochenbaum et al., 2017) |
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
-| `HTM` | 层级时间记忆（NAB 的 numenta 检测器），输入为带时间戳的值 (Ahmad et al., Neurocomputing 2017) |
+| `HTM` | 层级时间记忆（NAB 的 Numenta 检测器），输入为带时间戳的值 (Ahmad et al., *Neurocomputing* 2017) |
 | `KNNCAD` | 共形 k 近邻异常检测 (Burnaev & Ishimtsev, 2016) |
 | `HoltWinters` | 基于季节性置信带与失败窗口的 Holt-Winters 预测 (Brutlag, USENIX LISA 2000) |
 | `ChangeFinder` | 基于折扣学习自回归模型的离群点与变化点检测 (Takeuchi & Yamanishi, TKDE 2006) |
+| `StreamingAutoregressiveDetector` | 基于 SDAR 算法的流式自回归预测残差 (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | 基于 STAMPI 的矩阵轮廓异常子序列 (Yeh et al., ICDM 2016) |
 | `DAMP` | 提前停止向后搜索的左矩阵轮廓异常子序列 (Lu et al., KDD 2022) |
 | `SpectralResidual` | 滑动窗口上的谱残差显著性 (Ren et al., KDD 2019) |
+| `FluxEV` | 基于极值阈值的流式波动异常检测 (Li et al., WSDM 2021) |
 | `RelativeEntropy` | 基于窗口的相对熵 (Wang et al., IM 2011) |
 | `SAND` | 基于 k-Shape 聚类的流式子序列异常检测 (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | 滑动窗口上的中位数绝对偏差 (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | 在线 3-sigma 规则 (Hochenbaum et al., 2017) |
 | `OeSNNUAD` | 用于无监督异常检测的在线演化脉冲神经网络 (Maciąg et al., *Neural Networks* 2021) |
 | `PEWMA` | 概率指数加权移动平均 (Carter & Streilein, SSP 2012) |
+| `LocalPolynomialDetector` | 基于局部多项式拟合的离群点与变化点检测器 (Li et al., 2007) |
 
 `ReferenceWindowModel` 和 `OneFitModel` 可以在数据流上运行任意 [PyOD](https://github.com/yzhao062/pyod) 检测器。[检测器目录](https://pysad.readthedocs.io/en/stable/detectors.html) 列出了每个检测器的输入、配置和内存占用，[API 参考](https://pysad.readthedocs.io/en/stable/api.html) 列出了所有参数。
 
-## 基准测试
-
-PySAD 在带标签的数据上对其检测器进行基准测试。多变量检测器在 [ODDS](http://odds.cs.stonybrook.edu/) 数据库的 17 个数据集以及 8 条存在漂移的真实数据流上运行。单变量检测器在 Numenta 异常基准（NAB）和 UCR 档案库的序列上运行。每个检测器在每个数据集上使用默认参数运行一次，并且在从每个点学习之前先为它打分（`fit_score_partial`）。
-
-[基准测试结果](https://pysad.readthedocs.io/en/stable/benchmark.html) 页面展示了全部结果。[评估方法](https://pysad.readthedocs.io/en/stable/benchmarks/methodology.html) 说明了实验步骤、指标以及结果的局限性，[数据集](https://pysad.readthedocs.io/en/stable/benchmarks/datasets.html) 页面介绍了所用数据。要运行基准测试，请按照 [运行基准测试](https://pysad.readthedocs.io/en/stable/benchmarks/run.html) 中的说明使用 `python benchmarks/benchmark.py`。对每个修改检测器的拉取请求，CI 都会运行一个简化版基准测试，并列出发生变化的结果。
+</details>
 
 ## 检测器之外
 
 | 阶段 | PySAD 提供的内容 |
 |---|---|
-| 预处理 | `InstanceStandardScaler`、`InstanceUnitNormScaler`、`SeasonalTrendDecomposer`、`ModifiedSTLResidualTransformer`、`OneShotSTL` |
+| 预处理 | `StandardScaler`、`MinMaxScaler`、`InstanceStandardScaler`、`InstanceUnitNormScaler`、`ShingleTransformer`、`DrainLogParser`、`FunctionTransformer`、`SeasonalTrendDecomposer`、`ModifiedSTLResidualTransformer`、`OneShotSTL` |
 | 投影 | `StreamhashProjector`、`GaussianRandomProjector`、`SparseRandomProjector` |
-| 后处理 | 对分数计算累计和窗口化的平均值、最大值、中位数和 z 分数 |
+| 后处理 | 累计及窗口化的分数均值、最大值、中位数、z 分数，`DynamicThresholdPostprocessor`（Telemanom），`ThresholdFilter`，`QuantileFilter` |
 | 校准 | `AnomalyLikelihoodProbabilityCalibrator`、`ConformalProbabilityCalibrator`、`GaussianTailProbabilityCalibrator`、`SPOTProbabilityCalibrator` |
-| 集成 | 平均、最大、中位数、最大值的平均（average-of-maximum）和平均值的最大（maximum-of-average）分数集成器 |
-| 评估 | `AUROCMetric`、`AUPRMetric`、`PrecisionMetric`、`RecallMetric`、`WindowedMetric` |
-| 流式数据 | `ArrayStreamer`、`PandasStreamer`、`PolarsStreamer`，以及提供 17 个带标签 ODDS 基准数据集（首次使用时下载）的 `Data` |
-| 统计量 | 在线均值、方差、中位数、最小值、最大值、总和与计数 |
+| 组合与漂移 | `StreamPipeline`（`\|`）、`ModelEnsemble`（`&`，含 5 种分数集成器）、`DriftAdaptiveDetector` 以及 10 种漂移检测器（`ADWINMeter`、`PageHinkleyMeter`、`KSWINMeter`、`DDMMeter`、`EDDMMeter`、`FHDDMMeter`、`HDDMAMeter`、`HDDMWMeter`） |
+| 生态集成 | `ReferenceWindowModel`、`OneFitModel`（PyOD），`PySADToRiverAdapter`、`PredictiveAnomalyDetector`（River），`PySADToScikitLearnAdapter`（scikit-learn） |
+| 评估与可视化 | `evaluate_stream`、`AUROCMetric`、`AUPRMetric`、`PrecisionMetric`、`RecallMetric`、`WindowedMetric`、`RollingMetric`、`plot_stream` |
+| 流式数据与统计量 | `ArrayStreamer`、`PandasStreamer`、`PolarsStreamer`、`CSVStreamer`、`Data`（17 个 ODDS 数据集、58 条 NAB 序列、ULB 信用卡欺诈），以及在线统计量（`AverageMeter`、`VarianceMeter`、`DDSketchMeter`、`OnlinePeriodicityMeter` 等） |
 
 ## 参与贡献
 

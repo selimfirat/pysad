@@ -1,3 +1,6 @@
+.. meta::
+   :description: Catalog of streaming anomaly detectors in PySAD for multivariate and univariate streams, including required initialization, memory bounds, and paper citations.
+
 Detectors
 =========
 
@@ -18,6 +21,10 @@ These detectors take points with one or more features. A feature is one measured
      - Method
      - Needs before the stream
      - Memory
+   * - :class:`~pysad.models.ABSAD`
+     - Angle-based subspace anomaly detection with shared nearest neighbor reference sets :cite:`zhang2017sliding`
+     - Nothing
+     - Fixed: a sliding window of ``window_size`` points and their outlier scores
    * - :class:`~pysad.models.xStream`
      - Half-space chains on streamhash projections :cite:`xstream`
      - Nothing
@@ -56,7 +63,7 @@ These detectors take points with one or more features. A feature is one measured
      - Fixed: two sketches of ``num_hash_fns`` rows of ``num_buckets`` counts
    * - :class:`~pysad.models.IForestASD`
      - Isolation Forest on a sliding window :cite:`ding2013anomaly`
-     - Nothing (initial points optional)
+     - No initialization needed (see concepts for warm-up)
      - Fixed: two windows of ``window_size`` points
    * - :class:`~pysad.models.OnlineIsolationForest`
      - Online Isolation Forest :cite:`leveni2024online`
@@ -110,6 +117,10 @@ These detectors take points with one or more features. A feature is one measured
      - Online one-class support vector machine (NORMA) with a Gaussian kernel :cite:`kivinen2004online`
      - Nothing
      - Fixed: the support vectors among the last ``window_size`` points
+   * - :class:`~pysad.models.CostSensitiveStreamModel`
+     - Cost-sensitive online gradient descent with a weighted hinge loss :cite:`wang2013cost`
+     - Nothing
+     - Fixed: one weight vector
    * - :class:`~pysad.models.DILOF`
      - The local outlier factor of :class:`~pysad.models.IncrementalLOF` in a window that keeps a density-preserving summary of old points :cite:`na2018dilof`
      - Nothing
@@ -120,12 +131,12 @@ These detectors take points with one or more features. A feature is one measured
      - Fixed: a window of ``window_size`` points, ``num_summaries`` cluster centers, and their ``num_neighbors`` nearest neighbors
    * - :class:`~pysad.models.KELOS`
      - How much lower the kernel density at a point is than the densities at its nearest micro-cluster centers in the window (KLOME) :cite:`qin2019scalable`
-     - Nothing
+     - No initialization needed (see concepts for warm-up)
      - Fixed: a window of ``window_size`` points and the sums of its micro-clusters
-   * - :class:`~pysad.models.STARE`
-     - How much lower the kernel density at a point is than the densities at the nearest grid cell centers in the window, updated only where the window changed :cite:`yoon2020ultrafast`
+   * - :class:`~pysad.models.StreamKMPlusPlus`
+     - Distance to the nearest center of a streaming coreset clustering :cite:`ackermann2012streamkmpp`
      - Nothing
-     - Fixed: the cell counts of each slide of a window of ``window_size`` points
+     - Bounded: a buffer of ``coreset_size`` points and at most ``ceil(log2(n_max))`` level coresets of ``coreset_size`` points
    * - :class:`~pysad.models.AnyOut`
      - Distance to the mean, or Gaussian density, of the closest cluster at the level of a ClusTree that the time budget ``depth`` reaches :cite:`assent2012anyout`
      - Nothing
@@ -144,7 +155,7 @@ These detectors take points with one or more features. A feature is one measured
      - Fixed: the initial points. Does not learn from the stream
    * - :class:`~pysad.models.Inqmad`
      - Quantum measurement density estimation :cite:`gallego2022inqmad`
-     - The number of features, the number of random Fourier features (``dim_x``) and the kernel bandwidth (``gamma``)
+     - Number of features, dim_x, gamma (see concepts for warm-up)
      - Fixed: a ``dim_x`` by ``dim_x`` matrix
    * - :class:`~pysad.models.EXPoSE`
      - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
@@ -152,7 +163,7 @@ These detectors take points with one or more features. A feature is one measured
      - Fixed: ``num_random_features`` frequencies per feature and the mean of the features
    * - :class:`~pysad.models.IDKS`
      - Similarity to the data distribution of a sliding window, from hypersphere partitions of the Isolation Distributional Kernel :cite:`xu2026idks`
-     - The number of features, the window size, the number of partitions and the number of samples per partition
+     - Number of features, window size, partitions, samples (see concepts for warm-up)
      - Fixed: a window of ``window_size`` points and ``num_partitions * num_samples`` hypersphere samples
 
 Univariate detectors
@@ -202,7 +213,7 @@ These detectors take points with exactly one feature. Give each value as an arra
      - Fixed: ``order`` values and ``window_size`` scores
    * - :class:`~pysad.models.HTM`
      - The fraction of active columns that the temporal memory of Hierarchical Temporal Memory did not predict, turned into an anomaly likelihood :cite:`ahmad2017unsupervised`
-     - The range of the values (``min_val`` and ``max_val``), and a timestamp in seconds since the Unix epoch with each value
+     - Value range and timestamp per value (see concepts for warm-up)
      - Grows slowly: at most 128 segments of 32 synapses for each of the 65,536 cells, and a window of 8,640 scores
    * - :class:`~pysad.models.KNNCAD`
      - Conformalized k-nearest neighbors :cite:`burnaev2016conformalized`

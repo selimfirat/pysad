@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_transformer import BaseTransformer
@@ -24,10 +27,10 @@ class _AdversarialStream(BaseTransformer):
         super().__init__(0)
         self.random_state = random_state
         self._rng = check_random_state(random_state)
-        self._mean: np.ndarray | None = None
-        self._m2: np.ndarray | None = None
+        self._mean: NDArray[Any] | None = None
+        self._m2: NDArray[Any] | None = None
         self._count = 0
-        self._direction: np.ndarray | None = None
+        self._direction: NDArray[Any] | None = None
         self._feature_count: int | None = None
         self._is_anomaly = False
 
@@ -36,7 +39,7 @@ class _AdversarialStream(BaseTransformer):
         """Whether the last transformed point is an injected anomaly."""
         return self._is_anomaly
 
-    def _validate_point(self, X: np.ndarray) -> np.ndarray:
+    def _validate_point(self, X: NDArray[Any]) -> NDArray[Any]:
         x = np.asarray(X, dtype=np.float64)
         if x.ndim != 1 or x.size == 0:
             raise ValueError(
@@ -52,7 +55,7 @@ class _AdversarialStream(BaseTransformer):
         self._feature_count = x.shape[0]
         return x
 
-    def _ensure_direction(self, num_features: int) -> np.ndarray:
+    def _ensure_direction(self, num_features: int) -> NDArray[Any]:
         if self._direction is None:
             direction = self._rng.standard_normal(num_features)
             norm = float(np.linalg.norm(direction))
@@ -60,7 +63,7 @@ class _AdversarialStream(BaseTransformer):
         assert self._direction is not None
         return self._direction
 
-    def _update_normal(self, x: np.ndarray) -> None:
+    def _update_normal(self, x: NDArray[Any]) -> None:
         self._ensure_direction(x.shape[0])
         if self._mean is None:
             self._mean = np.zeros(x.shape[0], dtype=np.float64)
@@ -70,14 +73,14 @@ class _AdversarialStream(BaseTransformer):
         self._mean = self._mean + delta / self._count
         self._m2 = self._m2 + delta * (x - self._mean)
 
-    def _scale(self) -> np.ndarray:
+    def _scale(self) -> NDArray[Any]:
         if self._count == 0 or self._mean is None or self._m2 is None:
             num_features = self._feature_count or 1
             return np.ones(num_features, dtype=np.float64)
         std = np.sqrt(self._m2 / self._count)
         return np.where(std > 0.0, std, 1.0)
 
-    def fit_partial(self, X: np.ndarray) -> _AdversarialStream:
+    def fit_partial(self, X: NDArray[Any]) -> _AdversarialStream:
         """Learns the next clean point as part of the normal distribution.
 
         Args:

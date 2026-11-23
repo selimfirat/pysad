@@ -1,3 +1,6 @@
+.. meta::
+   :description: PySAD vs CapyMOA for streaming anomaly detection: compare pure-Python NumPy speed with Java-backed MOA detectors across 17 ODDS datasets.
+
 PySAD vs CapyMOA
 ================
 

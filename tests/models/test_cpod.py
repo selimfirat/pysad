@@ -19,18 +19,18 @@ def test_cpod_scores_equal_exact_storm(params, num_features):
 
     rng = np.random.default_rng(0)
     # Dense groups whose centers drift, sparse noise, and repeated instances.
-    t = np.arange(1000)
+    t = np.arange(350)
     centers = np.sin(t[:, None] / 150 + np.arange(num_features)) * (1 + t % 3)[:, None]
-    X = centers + 0.2 * rng.normal(size=(1000, num_features))
-    X[::10] = 4 * rng.normal(size=(100, num_features))
+    X = centers + 0.2 * rng.normal(size=(350, num_features))
+    X[::10] = 4 * rng.normal(size=(35, num_features))
     X[5::17] = X[4::17][: len(X[5::17])]
 
-    expected = ExactStorm(**params).fit_score(X)
+    exact = ExactStorm(**params)
+    expected = exact.fit_score(X)
+    model = CPOD(**params)
 
-    np.testing.assert_array_equal(CPOD(**params).fit_score(X), expected)
-    np.testing.assert_array_equal(
-        CPOD(**params).fit(X).score(X[:50]), ExactStorm(**params).fit(X).score(X[:50])
-    )
+    np.testing.assert_array_equal(model.fit_score(X), expected)
+    np.testing.assert_array_equal(model.score(X[:50]), exact.score(X[:50]))
 
 
 def test_cpod_empty_window():

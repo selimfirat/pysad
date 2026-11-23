@@ -28,9 +28,11 @@ from collections import deque
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
+from pysad.explainability import treeshap_ensemble
 
 
 def _path_length(num_samples: float, max_leaf_samples: int, inv_log: float) -> float:
@@ -53,7 +55,7 @@ class _OnlineIsolationNode:
         "threshold",
     )
 
-    def __init__(self, data: np.ndarray, depth: int, threshold: int) -> None:
+    def __init__(self, data: NDArray[Any], depth: int, threshold: int) -> None:
         self.data_size = len(data)
         self.depth = depth
         self.threshold = threshold
@@ -62,10 +64,10 @@ class _OnlineIsolationNode:
         self.children: list[_OnlineIsolationNode] | None = None
         self.dim = 0
         self.split_val = 0.0
-        self.split_values: np.ndarray | None = None
+        self.split_values: NDArray[Any] | None = None
         self.slot = 0
 
-    def child_index(self, X: np.ndarray) -> int:
+    def child_index(self, X: NDArray[Any]) -> int:
         if self.split_values is None or len(self.split_values) == 1:
             return 1 if X[self.dim] >= self.split_val else 0
         return int(np.searchsorted(self.split_values, X[self.dim], side="right"))
@@ -92,7 +94,7 @@ class _OnlineIsolationTree:
         return self.max_leaf_samples << depth if self._adaptive else self.max_leaf_samples
 
     def learn_one(
-        self, X: np.ndarray, rng: np.random.RandomState
+        self, X: NDArray[Any], rng: np.random.RandomState
     ) -> tuple[bool, bool, _OnlineIsolationNode | None]:
         """Returns (selected, structure_changed, touched_leaf)."""
         if rng.random_sample() >= self.subsample:
@@ -123,7 +125,7 @@ class _OnlineIsolationTree:
         return self._learn_path(X, rng)
 
     def _learn_path(
-        self, X: np.ndarray, rng: np.random.RandomState
+        self, X: NDArray[Any], rng: np.random.RandomState
     ) -> tuple[bool, bool, _OnlineIsolationNode | None]:
         assert self.root is not None
         curr = self.root
@@ -132,8 +134,6 @@ class _OnlineIsolationTree:
         binary = self.branching_factor == 2
         while curr.children is not None:
             curr.data_size += 1
-            np.minimum(curr.min_values, X, out=curr.min_values)
-            np.maximum(curr.max_values, X, out=curr.max_values)
             parent = curr
             if binary:
                 child_idx = 1 if X[curr.dim] >= curr.split_val else 0
@@ -161,13 +161,14 @@ class _OnlineIsolationTree:
         return True, False, curr
 
     def _learn_all(
-        self, node: _OnlineIsolationNode, X: np.ndarray | None, rng: np.random.RandomState
+        self, node: _OnlineIsolationNode, X: NDArray[Any] | None, rng: np.random.RandomState
     ) -> tuple[_OnlineIsolationNode, bool]:
         if X is not None:
             node.data_size += 1
-            np.minimum(node.min_values, X, out=node.min_values)
-            np.maximum(node.max_values, X, out=node.max_values)
         if node.children is None:
+            if X is not None:
+                np.minimum(node.min_values, X, out=node.min_values)
+                np.maximum(node.max_values, X, out=node.max_values)
             if node.data_size >= node.threshold and node.depth < self.depth_limit:
                 samples = rng.uniform(
                     low=node.min_values,
@@ -189,7 +190,7 @@ class _OnlineIsolationTree:
         return node, changed
 
     def _build(
-        self, samples: np.ndarray, depth: int, rng: np.random.RandomState
+        self, samples: NDArray[Any], depth: int, rng: np.random.RandomState
     ) -> _OnlineIsolationNode:
         threshold = self._threshold(depth)
         node = _OnlineIsolationNode(samples, depth, threshold)
@@ -229,7 +230,7 @@ class _OnlineIsolationTree:
         return node
 
     def unlearn_one(
-        self, X: np.ndarray, rng: np.random.RandomState, selected: bool
+        self, X: NDArray[Any], rng: np.random.RandomState, selected: bool
     ) -> tuple[bool, _OnlineIsolationNode | None]:
         """Returns (structure_changed, touched_leaf)."""
         # Keep the reference's draw order, but expire the original selection.
@@ -247,26 +248,24 @@ class _OnlineIsolationTree:
         return self._unlearn(self.root, X)
 
     def _unlearn(
-        self, node: _OnlineIsolationNode, X: np.ndarray | None
+        self, node: _OnlineIsolationNode, X: NDArray[Any]
     ) -> tuple[bool, _OnlineIsolationNode | None]:
-        if X is not None:
-            node.data_size -= 1
-        if node.children is None:
-            return False, node if X is not None else None
-        if node.data_size < node.threshold:
-            self._unbuild(node)
-            return True, None
-        index = node.child_index(X) if X is not None else -1
-        changed = False
-        touched: _OnlineIsolationNode | None = None
-        for i, child in enumerate(node.children):
-            c_changed, c_leaf = self._unlearn(child, X if i == index else None)
-            if c_changed:
-                changed = True
-            if c_leaf is not None:
-                touched = c_leaf
-        self._refresh_bounds(node)
-        return changed, touched
+        binary = self.branching_factor == 2
+        curr = node
+        while True:
+            curr.data_size -= 1
+            children = curr.children
+            if children is None:
+                return False, curr
+            if curr.data_size < curr.threshold:
+                self._unbuild(curr)
+                return True, None
+            if binary:
+                curr = children[1 if X[curr.dim] >= curr.split_val else 0]
+            else:
+                assert curr.split_values is not None
+                idx = int(np.searchsorted(curr.split_values, X[curr.dim], side="right"))
+                curr = children[idx]
 
     def _refresh_bounds(self, node: _OnlineIsolationNode) -> None:
         assert node.children is not None
@@ -286,7 +285,7 @@ class _OnlineIsolationTree:
         self._refresh_bounds(node)
         node.children = None
 
-    def predict_one(self, X: np.ndarray) -> float:
+    def predict_one(self, X: NDArray[Any]) -> float:
         node = self.root
         if node is None:
             return 0.0
@@ -443,7 +442,7 @@ class OnlineIsolationForest(BaseModel):
             )
             for _ in range(num_trees)
         ]
-        self.window_: deque[tuple[np.ndarray, np.ndarray | None]] = deque()
+        self.window_: deque[tuple[NDArray[Any], NDArray[Any] | None]] = deque()
 
         # Packed 2D arrays across trees for fast vectorized binary-tree scoring.
         cap = 16
@@ -542,7 +541,7 @@ class OnlineIsolationForest(BaseModel):
                 p_right[s] = u.children[1].slot
                 p_leaf_pl[s] = 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> OnlineIsolationForest:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> OnlineIsolationForest:
         """Learns one instance, then forgets the oldest if the window is full.
 
         Args:
@@ -603,14 +602,15 @@ class OnlineIsolationForest(BaseModel):
         )
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores an instance without learning it.
 
         Args:
             X (np.float64 array of shape (num_features,)): Instance to score.
 
         Returns:
-            float: Anomaly score in [0, 1], or 0.0 before learning.
+            float: Anomaly score in [0, 1], or 0.0 before learning. Higher scores
+                represent more anomalous instances.
         """
         if not self.window_:
             return 0.0
@@ -641,3 +641,109 @@ class OnlineIsolationForest(BaseModel):
 
         depth = sum(tree.predict_one(X) for tree in self.trees_) / self.num_trees
         return float(2.0 ** (-depth / (self.normalization_ + np.finfo(float).eps)))
+
+    def explain_partial(self, X: NDArray[Any]) -> NDArray[Any]:
+        """Returns per-feature SHAP values for the anomaly score of the next instance.
+
+        Uses the TreeSHAP algorithm :cite:`lundberg2020consistent` to compute exact SHAP values
+        for the tree ensemble. The SHAP values explain the average path length (depth) across
+        trees, which is monotonically related to the anomaly score. Positive values indicate
+        features that increase the path length (making the instance more normal), negative values
+        indicate features that decrease the path length (making the instance more anomalous).
+
+        Like ``score_partial``, it does not update the model or record the instance. Before
+        the first instance is fitted, the method returns zeros of shape ``(num_features,)``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to explain.
+
+        Returns:
+            np.float64 array of shape (num_features,): SHAP values, one per feature.
+            Positive values mean the feature increases the average path length (more normal),
+            negative values mean it decreases the path length (more anomalous).
+            Returns zeros before any fitting.
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        if not self.window_:
+            return np.zeros(x.shape[0], dtype=np.float64)
+
+        if self.branching_factor != 2:
+            # TreeSHAP currently only supports binary trees.
+            return np.zeros(x.shape[0], dtype=np.float64)
+
+        # Extract tree structures from packed representation.
+        num_features = x.shape[0]
+        trees_features: list[NDArray[Any]] = []
+        trees_thresholds: list[NDArray[Any]] = []
+        trees_left: list[NDArray[Any]] = []
+        trees_right: list[NDArray[Any]] = []
+        trees_values: list[NDArray[Any]] = []
+        trees_left_fractions: list[NDArray[Any]] = []
+
+        for t_idx in range(self.num_trees):
+            max_d = self.trees_[t_idx].max_depth
+            if max_d == 0:
+                # Empty tree: single leaf node with value 0.
+                trees_features.append(np.array([-1], dtype=np.intp))
+                trees_thresholds.append(np.array([0.0], dtype=np.float64))
+                trees_left.append(np.array([0], dtype=np.intp))
+                trees_right.append(np.array([0], dtype=np.intp))
+                trees_values.append(np.array([0.0], dtype=np.float64))
+                trees_left_fractions.append(np.array([0.5], dtype=np.float64))
+                continue
+
+            nc = self.trees_[t_idx].node_count
+            # Packed arrays for this tree.
+            p_dim = self._p_dim[t_idx, :nc]
+            p_split = self._p_split[t_idx, :nc]
+            p_left = self._p_left[t_idx, :nc]
+            p_right = self._p_right[t_idx, :nc]
+            p_leaf_pl = self._p_leaf_pl[t_idx, :nc]
+
+            # TreeSHAP expects leaf nodes to have feature = -1.
+            # In our packed representation, leaf nodes have p_dim = 0 and p_left = p_right = node.
+            # We need to convert: for leaf nodes, set feature to -1.
+            features = p_dim.copy()
+            is_leaf = p_left == p_right
+            features[is_leaf] = -1
+
+            left_fractions = np.full(nc, 0.5, dtype=np.float64)
+            root = self.trees_[t_idx].root
+            if root is not None:
+                stack = [root]
+                while stack:
+                    node = stack.pop()
+                    if node.children is not None:
+                        left_child, right_child = node.children
+                        total = left_child.data_size + right_child.data_size
+                        if total > 0:
+                            left_fractions[node.slot] = left_child.data_size / total
+                        stack.append(right_child)
+                        stack.append(left_child)
+
+            trees_features.append(features)
+            trees_thresholds.append(p_split)
+            trees_left.append(p_left)
+            trees_right.append(p_right)
+            trees_values.append(p_leaf_pl)
+            trees_left_fractions.append(left_fractions)
+
+        # Compute SHAP values for the average path length.
+        phi = treeshap_ensemble(
+            x,
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            num_features,
+            trees_left_fractions=trees_left_fractions,
+        )
+
+        return phi

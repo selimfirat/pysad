@@ -3,7 +3,7 @@ import pytest
 
 from pysad.utils import fix_seed
 
-NUM_INSTANCES = 150
+NUM_INSTANCES = 80
 NUM_FEATURES = 3
 
 
@@ -19,7 +19,12 @@ def _model_specs():
     from pysad.integrations import OneFitModel, PredictiveAnomalyDetector, ReferenceWindowModel
     from pysad.transform.postprocessing import ZScorePostprocessor
     from pysad.transform.preprocessing import ShingleTransformer
-    from tests.models.conftest import active_model_names, num_features_for, short_stream_params
+    from tests.models.conftest import (
+        active_model_names,
+        is_component_active,
+        num_features_for,
+        short_stream_params,
+    )
 
     mins, maxes = [0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES
     params = {
@@ -82,16 +87,19 @@ def _model_specs():
         (
             name,
             lambda name=name: getattr(models, name)(
-                **(
-                    params.get(name)
-                    or short_stream_params(name, num_features_for(name, NUM_FEATURES))
-                )
+                **short_stream_params(name, num_features_for(name, NUM_FEATURES))
             ),
             num_features_for(name, NUM_FEATURES),
         )
         for name in active_model_names()
     ]
     variants = [
+        (
+            "AnyOut",
+            "AnyOut-density",
+            lambda: models.AnyOut(max_height=2, outlier_score="density"),
+            NUM_FEATURES,
+        ),
         (
             "ChangeFinder",
             "ChangeFinder-outlier",
@@ -101,7 +109,7 @@ def _model_specs():
         (
             "HTM",
             "HTM-raw",
-            lambda: models.HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=256),
+            lambda: models.HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=64),
             2,
         ),
         (
@@ -118,24 +126,36 @@ def _model_specs():
         ),
     ]
     specs += [(vid, fn, nf) for base_name, vid, fn, nf in variants if base_name in active]
-    specs += [
-        ("OneFitModel", lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES)), NUM_FEATURES),
-        (
-            "ReferenceWindowModel",
-            lambda: ReferenceWindowModel(
-                IForest, window_size=20, sliding_size=10, initial_window_X=_initial_X(NUM_FEATURES)
-            ),
-            NUM_FEATURES,
-        ),
-    ]
-
-    specs.append(
-        (
-            "PredictiveAnomalyDetector",
-            lambda: PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=0)),
-            1,
+    if is_component_active(OneFitModel):
+        specs.append(
+            (
+                "OneFitModel",
+                lambda: OneFitModel(IForest, _initial_X(NUM_FEATURES), n_estimators=10),
+                NUM_FEATURES,
+            )
         )
-    )
+    if is_component_active(ReferenceWindowModel):
+        specs.append(
+            (
+                "ReferenceWindowModel",
+                lambda: ReferenceWindowModel(
+                    IForest,
+                    window_size=20,
+                    sliding_size=10,
+                    initial_window_X=_initial_X(NUM_FEATURES),
+                    n_estimators=10,
+                ),
+                NUM_FEATURES,
+            )
+        )
+    if is_component_active(PredictiveAnomalyDetector):
+        specs.append(
+            (
+                "PredictiveAnomalyDetector",
+                lambda: PredictiveAnomalyDetector(time_series.SNARIMAX(p=2, d=0, q=0)),
+                1,
+            )
+        )
 
     return specs
 
@@ -197,8 +217,6 @@ def test_batch_methods_return_1d_arrays(name, factory, num_features):
 def test_score_partial_before_the_first_fit_returns_a_score(name, factory, num_features):
     """Regression test for #266: fit_score_partial scores each instance before it fits it, so
     every detector must score the first instance without an error."""
-    if name == "PerfectModel":  # returns the labels that it was fitted with
-        pytest.skip("PerfectModel needs a label before it can score")
     X, _ = _data(name, num_features)
 
     score = factory().score_partial(X[0])

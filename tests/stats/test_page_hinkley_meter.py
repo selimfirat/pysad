@@ -57,6 +57,56 @@ def test_negative_delta_is_rejected():
         PageHinkleyMeter(delta=-0.5)
 
 
+def test_negative_threshold_is_rejected():
+    with pytest.raises(ValueError, match="threshold must be positive"):
+        PageHinkleyMeter(threshold=-1.0)
+
+
+def test_zero_threshold_is_rejected():
+    with pytest.raises(ValueError, match="threshold must be positive"):
+        PageHinkleyMeter(threshold=0.0)
+
+
+def test_min_instances_below_one_is_rejected():
+    with pytest.raises(ValueError, match="min_instances must be a positive integer"):
+        PageHinkleyMeter(min_instances=0)
+
+
+def test_drift_detected_flag_when_statistic_exceeds_threshold():
+    meter = PageHinkleyMeter(threshold=5.0, min_instances=1)
+    # Values below threshold
+    for _ in range(5):
+        meter.update(1.0)
+        assert not meter.drift_detected
+    # Shift that exceeds threshold
+    meter.update(100.0)
+    assert meter.drift_detected
+
+
+def test_drift_resets_on_next_update():
+    meter = PageHinkleyMeter(threshold=5.0, min_instances=1)
+    meter.update(1.0)
+    meter.update(100.0)
+    assert meter.drift_detected
+    assert meter.get() > 5.0
+
+    # Next update resets sums
+    meter.update(1.0)
+    assert not meter.drift_detected
+    assert meter.get() == 0.0
+
+
+def test_min_instances_delays_testing():
+    meter = PageHinkleyMeter(threshold=5.0, min_instances=10)
+    # First 9 values establish a baseline
+    for _ in range(9):
+        meter.update(1.0)
+        assert not meter.drift_detected
+    # 10th value is a large shift
+    meter.update(100.0)
+    assert meter.drift_detected
+
+
 def test_remove_is_not_supported():
     from pysad.statistics import RunningStatistic
 
@@ -64,3 +114,10 @@ def test_remove_is_not_supported():
     assert not hasattr(meter, "remove")
     with pytest.raises(TypeError, match="does not support remove"):
         RunningStatistic(PageHinkleyMeter, window_size=10)
+
+
+def test_parameters_are_attributes():
+    meter = PageHinkleyMeter(delta=0.5, threshold=25.0, min_instances=20)
+    assert meter.delta == 0.5
+    assert meter.threshold == 25.0
+    assert meter.min_instances == 20

@@ -7,27 +7,30 @@
 <h3 align="center">One pass. Every outlier.</h3>
 
 <p align="center">
-  Streaming anomaly detection in Python. PySAD scores each data point when it arrives,<br>
-  with streaming detectors, calibrated alerts and streaming evaluation.
+  Streaming anomaly detection in Python for multivariate and univariate data streams.<br>
+  PySAD scores and learns from each point as it arrives, with calibrated alerts, drift handling, and prequential evaluation—in pure Python, NumPy, SciPy, and scikit-learn.
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/v/pysad?style=flat-square&logo=pypi&logoColor=white&label=PyPI" alt="PyPI version"></a>
-  <a href="https://anaconda.org/conda-forge/pysad"><img src="https://img.shields.io/conda/vn/conda-forge/pysad?style=flat-square&logo=condaforge&logoColor=white&label=conda-forge" alt="conda-forge version"></a>
-  <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/pyversions/pysad?style=flat-square&logo=python&logoColor=white&label=Python" alt="Python versions"></a>
-  <a href="https://github.com/selimfirat/pysad/blob/master/LICENSE"><img src="https://img.shields.io/github/license/selimfirat/pysad?style=flat-square&label=license" alt="License"></a>
-  <a href="https://doi.org/10.5281/zenodo.22983312"><img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22983312-0741AD?style=flat-square" alt="DOI"></a>
+  <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/v/pysad?style=flat-square&logo=pypi&logoColor=white&label=PyPI&labelColor=0d1b22&color=00757a" alt="PyPI version"></a>
+  <a href="https://anaconda.org/conda-forge/pysad"><img src="https://img.shields.io/conda/vn/conda-forge/pysad?style=flat-square&logo=condaforge&logoColor=white&label=conda-forge&labelColor=0d1b22&color=00757a" alt="conda-forge version"></a>
+  <a href="https://pypi.org/project/pysad/"><img src="https://img.shields.io/pypi/pyversions/pysad?style=flat-square&logo=python&logoColor=white&label=Python&labelColor=0d1b22&color=00757a" alt="Python versions"></a>
+  <a href="https://github.com/selimfirat/pysad/blob/master/LICENSE"><img src="https://img.shields.io/github/license/selimfirat/pysad?style=flat-square&label=license&labelColor=0d1b22&color=00757a" alt="License"></a>
+  <a href="https://doi.org/10.5281/zenodo.22983312"><img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22983312-00757a?style=flat-square&labelColor=0d1b22" alt="DOI"></a>
   <br>
-  <a href="https://github.com/selimfirat/pysad/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/selimfirat/pysad/coverage.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=tests" alt="Tests"></a>
-  <a href="https://results.pre-commit.ci/latest/github/selimfirat/pysad/master"><img src="https://results.pre-commit.ci/badge/github/selimfirat/pysad/master.svg" alt="pre-commit.ci status"></a>
-  <a href="https://coveralls.io/github/selimfirat/pysad?branch=master"><img src="https://img.shields.io/coverallsCoverage/github/selimfirat/pysad?branch=master&style=flat-square&logo=coveralls&label=coverage" alt="Coverage"></a>
-  <a href="https://pysad.readthedocs.io/en/stable/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs" alt="Documentation"></a>
-  <a href="https://github.com/selimfirat/pysad/commits/master"><img src="https://img.shields.io/github/last-commit/selimfirat/pysad?style=flat-square&label=last%20commit" alt="Last commit"></a>
+  <a href="https://github.com/selimfirat/pysad/actions/workflows/coverage.yml"><img src="https://img.shields.io/github/actions/workflow/status/selimfirat/pysad/coverage.yml?branch=master&style=flat-square&logo=githubactions&logoColor=white&label=tests&labelColor=0d1b22&color=1b7f5c" alt="Tests"></a>
+  <a href="https://results.pre-commit.ci/latest/github/selimfirat/pysad/master"><img src="https://img.shields.io/badge/dynamic/xml?url=https%3A%2F%2Fresults.pre-commit.ci%2Fbadge%2Fgithub%2Fselimfirat%2Fpysad%2Fmaster.svg&query=substring-after(%2F%2F*%5Blocal-name()%3D%27title%27%5D%2C%27%3A%20%27)&label=pre-commit.ci&style=flat-square&logo=precommit&logoColor=white&labelColor=0d1b22&color=1b7f5c" alt="pre-commit.ci status"></a>
+  <a href="https://coveralls.io/github/selimfirat/pysad?branch=master"><img src="https://img.shields.io/coverallsCoverage/github/selimfirat/pysad?branch=master&style=flat-square&logo=coveralls&logoColor=white&label=coverage&labelColor=0d1b22&color=00757a" alt="Coverage"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/"><img src="https://img.shields.io/readthedocs/pysad?style=flat-square&logo=readthedocs&logoColor=white&label=docs&labelColor=0d1b22&color=1b7f5c" alt="Documentation"></a>
+  <a href="https://github.com/selimfirat/pysad/commits/master"><img src="https://img.shields.io/github/last-commit/selimfirat/pysad?style=flat-square&label=last%20commit&labelColor=0d1b22&color=00757a" alt="Last commit"></a>
   <br>
-  <a href="https://pysad.readthedocs.io/en/stable/benchmark.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fthroughput.json&style=flat-square" alt="Median throughput"></a>
-  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Funivariate_detectors.json&style=flat-square" alt="Univariate detectors"></a>
-  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmultivariate_detectors.json&style=flat-square" alt="Multivariate detectors"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/benchmark.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fthroughput.json&style=flat-square&labelColor=0d1b22" alt="Median throughput"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/benchmarks/multivariate.html#memory-stability"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmemory.json&style=flat-square&labelColor=0d1b22" alt="Maximum traced memory growth in three measured detectors"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Funivariate_detectors.json&style=flat-square&labelColor=0d1b22" alt="Univariate detectors"></a>
+  <a href="https://pysad.readthedocs.io/en/stable/detectors.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmultivariate_detectors.json&style=flat-square&labelColor=0d1b22" alt="Multivariate detectors"></a>
 </p>
+
+<p align="center"><sub>Throughput: median across recorded ODDS runs. Memory: maximum traced growth in three detectors over 1M points after warmup.</sub></p>
 
 <p align="center">
   <a href="https://pysad.readthedocs.io/en/stable/"><b>Documentation</b></a> ·
@@ -36,6 +39,7 @@
   <a href="https://pysad.readthedocs.io/en/stable/benchmark.html">Benchmarks</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/detectors.html">Detectors</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/api.html">API</a> ·
+  <a href="https://huggingface.co/spaces/selimfirat/pysad-playground">Interactive playground</a> ·
   <a href="https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb">Live demo</a> ·
   <a href="https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb">Try it in Colab</a>
 </p>
@@ -48,7 +52,7 @@
 
 ## Why PySAD
 
-Batch detectors train on a fixed dataset. Streaming detectors update as points arrive, without waiting for a complete dataset. PySAD provides a common interface for scoring and learning from each point, including streams whose distribution changes over time (drift). More than 60 publications on [Google Scholar](https://scholar.google.com/scholar?cites=3884618599898298487) cite it, and [30+ public repositories](https://github.com/selimfirat/pysad/network/dependents) on GitHub use it.
+Batch detectors train on a fixed dataset. Streaming detectors update as points arrive, without waiting for a complete dataset. PySAD provides a common interface for scoring and learning from each point across both multivariate and univariate streams, including streams with concept drift. More than 60 publications on [Google Scholar](https://scholar.google.com/scholar?cites=3884618599898298487) cite it, and [30+ public repositories](https://github.com/selimfirat/pysad/network/dependents) on GitHub use it.
 
 <table>
 <tr>
@@ -56,52 +60,52 @@ Batch detectors train on a fixed dataset. Streaming detectors update as points a
 
 #### Built for streams
 
-Every detector learns from and scores one point at a time with `fit_partial`, `score_partial` and `fit_score_partial`. Most detectors keep a window, a sketch or a set of trees of fixed size instead of the whole stream.
+Every detector learns from and scores one point at a time with `fit_partial`, `score_partial` and `fit_score_partial`. Most detectors keep a bounded window, sketch, or set of trees rather than the full stream history.
 
 </td>
 <td width="50%" valign="top">
 
 #### Detectors from published papers
 
-From robust statistics (MAD, Seasonal Hybrid ESD) to forests, sketches and projections (Half-Space Trees, Robust Random Cut Forest, RS-Hash, xStream, LODA). Each detector cites its paper, and the [detector catalog](https://pysad.readthedocs.io/en/stable/detectors.html) lists its input and memory.
+Covers multivariate and univariate streams: robust/seasonal statistics (`MAD`, `SeasonalHybridESD`, `FluxEV`), forests and sketches (`LODA`, `HalfSpaceTrees`, `RobustRandomCutForest`, `RSHash`, `xStream`), subsequences (`DAMP`, `MatrixProfile`, `SAND`), graphs (`MIDAS`), and 10 drift monitors (`ADWINMeter`, `PageHinkleyMeter`, `DriftAdaptiveDetector`).
 
 </td>
 </tr>
 <tr>
 <td valign="top">
 
-#### From scores to alerts
+#### Calibrated alerts on one scale
 
-The conformal calibrator converts a raw score into the fraction of recent scores that it exceeds. A threshold such as `0.99` selects scores by their rank in the recent window, regardless of the detector’s raw score scale. It does not give the probability that a point is an anomaly.
+`ConformalProbabilityCalibrator`, extreme-value `SPOTProbabilityCalibrator`, and `GaussianTailProbabilityCalibrator` normalize arbitrary raw scores onto a `[0, 1]` scale, paired with `ThresholdFilter` and `QuantileFilter` for binary alerts.
 
 </td>
 <td valign="top">
 
-#### Evaluate on the stream
+#### Prequential evaluation out of the box
 
-Streamers replay data one point at a time, and 17 labeled benchmark datasets download on first use. Metrics such as AUROC, AUPR, precision and recall update after every point.
+`evaluate_stream`, `ArrayStreamer`, `PandasStreamer`, `PolarsStreamer`, and `CSVStreamer` replay streams without loading everything into memory, while `AUROCMetric`, `AUPRMetric`, and `WindowedMetric` update per point across 17 labeled ODDS datasets, 58 NAB series, and ULB credit-card fraud.
 
 </td>
 </tr>
 <tr>
 <td valign="top">
 
-#### Your batch models on a stream
+#### Composable pipelines & explanations
 
-Wrap any [PyOD](https://github.com/yzhao062/pyod) detector to train it again on a sliding window of recent points.
+Chain preprocessing, projections, log parsing (`DrainLogParser`), detection, postprocessing, and calibration with `|`, combine detectors with `&`, and attribute anomalous features with `LODA.explain_partial()`.
 
 </td>
 <td valign="top">
 
-#### A complete pipeline
+#### Fits your existing ML stack
 
-Preprocessors, random projections, score postprocessors, ensemblers and running statistics work with every detector.
+Wrap any [PyOD](https://github.com/yzhao062/pyod) detector on a sliding window (`ReferenceWindowModel`), drop PySAD detectors into [River](https://github.com/online-ml/river) (`PySADToRiverAdapter`) or scikit-learn (`PySADToScikitLearnAdapter`) pipelines, or score River forecasters (`PredictiveAnomalyDetector`).
 
 </td>
 </tr>
 </table>
 
-Batch outlier detectors such as [PyOD](https://github.com/yzhao062/pyod) can score new points after training, but need retraining to update what they have learned. PySAD detectors learn from every point, and PySAD can still run PyOD models on a stream with `ReferenceWindowModel`. General online learning frameworks such as [River](https://github.com/online-ml/river) treat anomaly detection as one module among many. PySAD is only about streaming anomaly detection: its detectors come with calibration, postprocessing, ensembling and evaluation.
+Batch outlier detectors such as [PyOD](https://github.com/yzhao062/pyod) can score new points after training, but need retraining to update what they have learned. General online learning frameworks such as [River](https://github.com/online-ml/river) and [CapyMOA](https://github.com/adaptive-machine-learning/CapyMOA) treat anomaly detection as one module among many (and CapyMOA requires Java). PySAD is built specifically for streaming anomaly detection: fast pure-NumPy/SciPy detectors, pipeline composition, score calibration, drift handling, and prequential evaluation in one lightweight package.
 
 ## Installation
 
@@ -115,7 +119,7 @@ Or with Conda / Mamba / Pixi:
 conda install -c conda-forge pysad
 ```
 
-PySAD supports Python 3.11 to 3.14 on Linux, macOS and Windows. Every detector works after installation, with no optional extras.
+PySAD supports Python 3.11 to 3.14 on Linux, macOS and Windows. The core detectors need no optional extras or JVM.
 
 To install the latest development version from `master`:
 
@@ -125,10 +129,57 @@ pip install git+https://github.com/selimfirat/pysad.git
 
 For an editable installation with development dependencies, follow the [contributing guide](https://pysad.readthedocs.io/en/latest/contributing.html).
 
+## Live dashboard, MCP, and optional kernels
+
+If you use uv, run the live dashboard with `uvx`:
+
+```bash
+uvx --from pysad pysad-live --source synthetic
+```
+
+- The [live dashboard](https://pysad.readthedocs.io/en/stable/api/live.html) displays streaming scores and alerts in your terminal. Add `--web` to open the web dashboard, or use `--source data.csv` for your own data.
+- [`pysad.mcp`](https://pysad.readthedocs.io/en/stable/guides/mcp.html) exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install `pysad[mcp]`, then run `pysad-mcp` to connect an MCP client.
+
+### Optional PyO3 kernels (pysad_kernels)
+
+The optional PyO3 Rust extension `pysad_kernels` provides tree traversal kernels for `HalfSpaceTrees` and `RobustRandomCutForest`. It is not published on PyPI yet, so build it from the `rust/` directory of the repository. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change.
+
+Install `maturin`, then build and register the extension so Python can import it:
+
+```bash
+pip install maturin
+maturin develop -m rust/pyproject.toml
+```
+
+Or build a wheel and install it:
+
+```bash
+maturin build -m rust/pyproject.toml --release
+pip install target/wheels/pysad_kernels-0.1.0-*.whl
+```
+
+Once `pysad_kernels` can be imported, `HalfSpaceTrees` and `RobustRandomCutForest` use its kernels automatically. Verify the installation:
+
+```bash
+python -c "import pysad_kernels; print(pysad_kernels.__file__)"
+```
+
+If the import fails, the detectors fall back to NumPy.
+
+## Migration guides
+
+Use these guides to map your existing workflow to PySAD:
+
+- [Azure AI Anomaly Detector and Metrics Advisor](https://pysad.readthedocs.io/en/stable/guides/migrate_azure.html)
+- [AWS Lookout for Equipment and Kinesis RCF](https://pysad.readthedocs.io/en/stable/guides/migrate_aws.html)
+- [Salesforce Merlion](https://pysad.readthedocs.io/en/stable/guides/migrate_merlion.html)
+- [Alibi Detect](https://pysad.readthedocs.io/en/stable/guides/migrate_alibi_detect.html)
+
 ## Quick start
 
-[![Open in JupyterLite](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb)
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb)
+[![Open in Spaces](https://img.shields.io/badge/Hugging%20Face-Open%20in%20Spaces-00757a?style=flat-square&logo=huggingface&logoColor=white&labelColor=0d1b22)](https://huggingface.co/spaces/selimfirat/pysad-playground)
+[![Open in JupyterLite](https://img.shields.io/badge/JupyterLite-Live%20Demo-00757a?style=flat-square&logo=jupyter&logoColor=white&labelColor=0d1b22)](https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb)
+[![Open in Colab](https://img.shields.io/badge/Colab-Open%20Notebook-00757a?style=flat-square&logo=googlecolab&logoColor=white&labelColor=0d1b22)](https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb)
 
 Score a stream point by point, and measure the detector while it runs:
 
@@ -157,22 +208,40 @@ print(f"AUROC: {metric.get():.3f}")  # prints AUROC: 0.960
 
 ### Turn scores into alerts
 
-A higher score means a more anomalous point, but raw scores have no fixed scale. The conformal calibrator converts each score into the fraction of recent scores that it exceeds. Continuing the example above, raise an alert when this value is close to 1:
+A higher score means a more anomalous point, but raw scores have no fixed scale. Chain a detector with `ConformalProbabilityCalibrator` (or `SPOTProbabilityCalibrator` for extreme-value thresholding) using `|` to convert scores into ranks in `[0, 1]`, and alert when the calibrated value nears `1`:
 
 ```python
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 
-model = LODA(random_state=0)
-calibrator = ConformalProbabilityCalibrator(window_size=500)
+pipeline = LODA(random_state=0) | ConformalProbabilityCalibrator(window_size=500)
 
 alerts = []
 for t, x in enumerate(ArrayStreamer().iter(X)):
-    calibrated = calibrator.fit_transform_partial(model.fit_score_partial(x))
+    calibrated = pipeline.fit_score_partial(x)
     if t >= 200 and calibrated >= 0.99:  # skip a short warm-up
         alerts.append(t)
 
 # Prints: 20 alerts, 15 of them true anomalies
 print(f"{len(alerts)} alerts, {y[alerts].sum()} of them true anomalies")
+```
+
+### Explain an alert
+
+Rank which features contributed most to an anomaly score with `LODA.explain_partial()`:
+
+```python
+rng = np.random.default_rng(0)
+X_train = rng.normal(size=(2000, 8))
+detector = LODA(random_state=0).fit(X_train)
+
+point = rng.normal(size=8)
+point[[2, 5]] += 6.0  # shift features 2 and 5
+
+contributions = detector.explain_partial(point)
+print(
+    f"Score: {detector.score_partial(point):.2f}, top features: {contributions.argsort()[::-1].tolist()[:2]}"
+)
+# Prints: Score: 3.46, top features: [2, 5]
 ```
 
 ### Stream your own data
@@ -187,11 +256,11 @@ for message in consumer:  # for example, a Kafka consumer
     score = model.fit_score_partial(x)
 ```
 
-`ArrayStreamer`, `PandasStreamer` and `PolarsStreamer` replay arrays and pandas or Polars DataFrames as streams for experiments.
+`ArrayStreamer`, `PandasStreamer`, `PolarsStreamer`, and `CSVStreamer` replay arrays, DataFrames, and CSV files one row at a time for experiments.
 
-### Use a PyOD model on a stream
+### Use PyOD, River, and scikit-learn together
 
-Install PyOD first with `pip install pyod`.
+Wrap any [PyOD](https://github.com/yzhao062/pyod) batch detector to refit on a sliding window (`pip install pyod`):
 
 ```python
 from pyod.models.iforest import IForest
@@ -203,7 +272,35 @@ for x in ArrayStreamer().iter(X[100:]):
     score = model.fit_score_partial(x)
 ```
 
-Follow the [getting started tutorial](https://pysad.readthedocs.io/en/stable/getting_started.html) for a complete first workflow. Read [concepts](https://pysad.readthedocs.io/en/stable/concepts.html) for the reasoning behind scoring, learning and calibration. Use the [how-to guides](https://pysad.readthedocs.io/en/stable/guides/index.html) for specific tasks and the [API reference](https://pysad.readthedocs.io/en/stable/api.html) for classes, methods and parameters.
+PySAD also provides `PySADToRiverAdapter` and `PredictiveAnomalyDetector` for [River](https://github.com/online-ml/river) pipelines, and `PySADToScikitLearnAdapter` for [scikit-learn](https://scikit-learn.org/) pipelines. Follow the [getting started tutorial](https://pysad.readthedocs.io/en/stable/getting_started.html), [how-to guides](https://pysad.readthedocs.io/en/stable/guides/index.html), and [API reference](https://pysad.readthedocs.io/en/stable/api.html) for full workflows.
+
+## Benchmarks & library comparisons
+
+PySAD benchmarks its detectors prequentially (scoring each point before learning from it via `fit_score_partial`, with default parameters and seed 0):
+
+- **Multivariate streams**: 17 datasets from [ODDS](http://odds.cs.stonybrook.edu/) and 8 real streams with drift (`KDD http`, `INSECTS`, `SMD`), plus dimensionality scaling up to 1,000 features and 1M-point memory-stability checks.
+- **Univariate streams**: All 58 series of the Numenta Anomaly Benchmark (NAB) using official NAB scoring (where `HTM` reaches `64.2`, `RelativeEntropy` reaches `58.9`, and `KNNCAD` reproduces the official `58.0` scoreboard result) and the UCR Time Series Anomaly Archive.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/selimfirat/pysad/master/docs/images/comparison.svg" alt="Scatter plot of throughput in points per second versus mean AUROC across 17 ODDS datasets comparing PySAD, River, CapyMOA, and PyOD." width="100%">
+</p>
+
+<p align="center"><sub>Same-hardware prequential benchmark across 17 ODDS datasets (default parameters, seed 0). PySAD detectors span the upper-right speed/accuracy frontier.</sub></p>
+
+### Same-algorithm comparison on 17 ODDS datasets
+
+Comparing implementations of the same streaming algorithm under the exact same prequential protocol ([`benchmarks/compare.py`](https://github.com/selimfirat/pysad/blob/master/benchmarks/compare.py)):
+
+| Algorithm | PySAD (AUROC / ms/pt) | Other library (AUROC / ms/pt) | Comparison |
+|---|---|---|---|
+| `LODA` | **0.790** / **0.04 ms** | River `0.754` / `0.29 ms` · CapyMOA `0.715` / `1.25 ms` · StreamAD `0.649` / `0.35 ms` | +0.036 to +0.141 AUROC, **7×–31× faster** |
+| `HalfSpaceTrees` | **0.796** / `0.08 ms` | River `0.702` / **0.03 ms** · CapyMOA `0.500` / `0.01 ms` | **+0.094 AUROC** over River |
+| `IncrementalLOF` | **0.675** / **0.21 ms** | River `0.675` / `14.33 ms` | Matching AUROC, **68× faster** |
+| `RobustRandomCutForest` | **0.787** / **8.96 ms** | CapyMOA `0.787` / `101.37 ms` | Matching AUROC, **11× faster**, no Java |
+| `RSHash` | **0.817** / **0.27 ms** | CapyMOA `0.621` / `5.64 ms` | **+0.196 AUROC**, **21× faster** |
+| `OnlineOneClassSVM` | **0.702** / `0.04 ms` | River `0.469` / **0.01 ms** | **+0.233 AUROC** |
+
+<sub>PySAD, River 0.26.1, CapyMOA 0.15.1, and PyOD 3.6.7 (via `ReferenceWindowModel`) ran on the same computer; StreamAD 0.3.1 requires Python `&lt;3.12` and NumPy 1 (tabled for `LODA` only because StreamAD's `HSTreeDetector`, `RShashDetector`, and `xStreamDetector` invert score orientation). See the full [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) and detailed [library comparisons](https://pysad.readthedocs.io/en/stable/comparisons/index.html) (River, CapyMOA, StreamAD, PyOD, Alibi Detect, and Darts).</sub>
 
 ## Detectors
 
@@ -212,16 +309,22 @@ Follow the [getting started tutorial](https://pysad.readthedocs.io/en/stable/get
 | Your data | Start with | Why |
 |---|---|---|
 | One series of values with daily or weekly cycles | `SeasonalHybridESD` | Removes the cycle. Earlier anomalies in the window have little effect on it |
-| One series of values without a strong cycle | `MedianAbsoluteDeviation` | Anomalies in the window have little effect on it. It uses only recent values, so it follows drift |
-| Several features, first try | `LODA` | Fast, has few parameters and learns from every point |
+| One series of values without a strong cycle | `MedianAbsoluteDeviation` | Anomalies in the window have little effect on it. Uses recent values only, so it follows drift |
+| Subsequence discords in a time series | `DAMP` or `SAND` | Finds unusual shapes or subsequences rather than single-point spikes |
+| Several features, first try | `LODA` | Fast (~40 µs/point), parameter-light, learns from every point, and supports `explain_partial` |
 | Features with known value ranges | `HalfSpaceTrees` | Constant time per point, scored against the previous window |
-| Many features | `xStream` | Projects the points to fewer features with hashing |
-| Network traffic | `KitNet` | Built for network intrusion detection. Gives 0 for the first 100 points by default |
-| A PyOD model that you already use | `ReferenceWindowModel` | Trains it again on a sliding window |
+| Many features | `xStream` | Projects points to fewer features with stream hashing |
+| Network traffic or logs | `KitNet` or `DrainLogParser` + `LODA` | `KitNet` targets live intrusion detection; `DrainLogParser` parses raw log lines into event IDs |
+| Abrupt distribution shifts | `DriftAdaptiveDetector` | Resets any detector automatically when a Page-Hinkley monitor detects score drift |
+| A PyOD model that you already use | `ReferenceWindowModel` | Refits any batch PyOD detector on a sliding window |
 
-These starting points come from the design of each method. They are not benchmark rankings. The [benchmark](https://pysad.readthedocs.io/en/stable/benchmark.html) gives the results of each multivariate detector on 17 datasets. Compare two or three detectors on your own data, as the [guide to choosing a detector](https://pysad.readthedocs.io/en/stable/guides/choose_detector.html) shows.
+These starting points come from the design of each method. They are not benchmark rankings. Compare two or three detectors on your own data, as the [guide to choosing a detector](https://pysad.readthedocs.io/en/stable/guides/choose_detector.html) shows.
 
-### All detectors
+<details>
+<!-- BEGIN:AUTOGEN_DETECTORS -->
+<summary><b>All streaming detectors</b></summary>
+
+<br>
 
 **Multivariate**
 
@@ -249,18 +352,27 @@ These starting points come from the design of each method. They are not benchmar
 | `ThreshLEAP` | Distance-based outliers with minimal, newest-first probing (Cao et al., ICDE 2014) |
 | `IncrementalLOF` | Incremental local outlier factor (Pokrajac et al., CIDM 2007) |
 | `OnlineOneClassSVM` | Online one-class SVM, NORMA (Kivinen et al., IEEE TSP 2004) |
+| `CostSensitiveStreamModel` | Cost-sensitive online gradient descent with a weighted hinge loss (Wang et al., IEEE TKDE 2014) |
 | `DILOF` | Density summarizing incremental LOF (Na et al., KDD 2018) |
+| `MiLOF` | Memory-efficient incremental LOF with cluster summaries (Salehi et al., IEEE TKDE 2016) |
 | `KELOS` | Kernel density local outliers over micro-clusters of a window (Qin et al., EDBT 2019) |
 | `STARE` | Kernel density local outliers over grid cells, updated only where the window changed (Yoon et al., KDD 2020) |
 | `AnyOut` | Anytime outliers by distance to the closest cluster of a ClusTree (Assent et al., DASFAA 2012) |
 | `SDOstream` | Sparse data observers with exponential fading, a low-density stream model (Hartl et al., ESANN 2020) |
 | `ADeMS` | Frequent Directions matrix sketch (Huang & Kasiviswanathan, VLDB 2015) |
+| `FRAHST` | Fast rank-adaptive row-Householder subspace tracking (Teixeira & Milidiú, SAC 2010) |
+| `GNGA` | Adaptive growing neural gas for evolving streams (Bouguelia et al., *DAMI* 2018) |
 | `LocalOutlierProbability` | Local Outlier Probabilities (Kriegel et al., CIKM 2009) |
 | `Inqmad` | InQMAD quantum measurement density (Gallego-Mejia et al., ICDMW 2022) |
 | `SmartSifter` | Finite mixtures with discounting learning (Yamanishi et al., KDD 2000) |
 | `TEDA` | Typicality and eccentricity data analytics (Angelov, EALS 2014) |
-| `EXPoSE` | Expected similarity to the kernel mean embedding (Schneider et al., Machine Learning 2016) |
+| `EXPoSE` | Expected similarity to the kernel mean embedding (Schneider et al., *Machine Learning* 2016) |
 | `IDKS` | IDK-S incremental distributional kernel over a sliding window (Xu et al., AAAI 2026) |
+| `FeedbackHST` | Half-Space Trees with active human-in-the-loop label feedback (Tan et al., 2011; Das et al., 2024; Das et al., 2020) |
+| `StreamKMPlusPlus` | Distance to the nearest center of a StreamKM++ streaming coreset clustering (Ackermann et al., 2012) |
+| `ZeroShotEmbeddingDetector` | Zero-shot OOD detector using semantic anchors (Maximum Concept Matching) (Ming et al., 2022) |
+| `ABSAD` | Angle-Based Subspace Anomaly Detection (ABSAD) (Zhang et al., 2017) |
+| `DenStream` | DenStream density-based streaming anomaly detector (Cao et al., 2006) |
 
 **Univariate**
 
@@ -268,40 +380,40 @@ These starting points come from the design of each method. They are not benchmar
 |---|---|
 | `SeasonalHybridESD` | Seasonal Hybrid ESD (Hochenbaum et al., 2017) |
 | `SeasonalESD` | Seasonal ESD (Hochenbaum et al., 2017) |
-| `HTM` | Hierarchical Temporal Memory, the numenta detector of NAB, on timestamped values (Ahmad et al., Neurocomputing 2017) |
+| `HTM` | Hierarchical Temporal Memory, the Numenta detector of NAB, on timestamped values (Ahmad et al., *Neurocomputing* 2017) |
 | `KNNCAD` | Conformalized k-NN anomaly detection (Burnaev & Ishimtsev, 2016) |
 | `HoltWinters` | Holt-Winters forecasting with a seasonal confidence band and a failure window (Brutlag, USENIX LISA 2000) |
 | `ChangeFinder` | Outlier and change point detection with discounting AR models (Takeuchi & Yamanishi, TKDE 2006) |
+| `StreamingAutoregressiveDetector` | Streaming autoregressive forecasting residual with SDAR (Takeuchi & Yamanishi, TKDE 2006) |
 | `MatrixProfile` | Matrix profile discords with STAMPI (Yeh et al., ICDM 2016) |
 | `DAMP` | Left matrix profile discords with a backward search that stops early (Lu et al., KDD 2022) |
 | `SpectralResidual` | Spectral residual saliency over a sliding window (Ren et al., KDD 2019) |
+| `FluxEV` | Streaming fluctuation detection with extreme-value thresholds (Li et al., WSDM 2021) |
 | `RelativeEntropy` | Relative entropy over windows (Wang et al., IM 2011) |
 | `SAND` | Streaming subsequence anomaly detection with k-Shape clusters (Boniol et al., PVLDB 2021) |
 | `MedianAbsoluteDeviation` | Median absolute deviation over a sliding window (Hochenbaum et al., 2017) |
 | `StandardAbsoluteDeviation` | Running 3-sigma rule (Hochenbaum et al., 2017) |
 | `OeSNNUAD` | Online evolving spiking neural network for unsupervised anomaly detection (Maciąg et al., *Neural Networks* 2021) |
 | `PEWMA` | Probabilistic exponentially weighted moving average (Carter & Streilein, SSP 2012) |
+| `LocalPolynomialDetector` | Local polynomial fitting outlier and change detector (Li et al., 2007) |
+<!-- END:AUTOGEN_DETECTORS -->
 
 `ReferenceWindowModel` and `OneFitModel` run any [PyOD](https://github.com/yzhao062/pyod) detector on a stream. The [detector catalog](https://pysad.readthedocs.io/en/stable/detectors.html) lists the input, setup and memory of each detector, and the [API reference](https://pysad.readthedocs.io/en/stable/api.html) lists every parameter.
 
-## Benchmarks
-
-PySAD benchmarks its detectors on labeled data. The multivariate detectors run on 17 datasets from the [ODDS](http://odds.cs.stonybrook.edu/) repository and on 8 real streams with drift. The univariate detectors run on the series of the Numenta Anomaly Benchmark (NAB) and of the UCR archive. Each detector runs once on each dataset, with its default parameters, and scores each point before it learns from it (`fit_score_partial`).
-
-The [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) page shows all the results. The [evaluation methodology](https://pysad.readthedocs.io/en/stable/benchmarks/methodology.html) explains the steps, the metrics and the limits of the results, and the [datasets](https://pysad.readthedocs.io/en/stable/benchmarks/datasets.html) page describes the data. To run the benchmark, use `python benchmarks/benchmark.py`, as [Run the benchmark](https://pysad.readthedocs.io/en/stable/benchmarks/run.html) shows. On each pull request that changes a detector, CI runs a short form of the benchmark and lists the results that moved.
+</details>
 
 ## Beyond detectors
 
 | Stage | What PySAD provides |
 |---|---|
-| Preprocessing | `InstanceStandardScaler`, `InstanceUnitNormScaler`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
+| Preprocessing | `StandardScaler`, `MinMaxScaler`, `InstanceStandardScaler`, `InstanceUnitNormScaler`, `ShingleTransformer`, `DrainLogParser`, `FunctionTransformer`, `SeasonalTrendDecomposer`, `ModifiedSTLResidualTransformer`, `OneShotSTL` |
 | Projection | `StreamhashProjector`, `GaussianRandomProjector`, `SparseRandomProjector` |
-| Postprocessing | Running and windowed average, max, median and z-score of scores, and `QuantileFilter` for 0/1 labels |
+| Postprocessing | Running and windowed average, max, median and z-score of scores, `DynamicThresholdPostprocessor` (Telemanom), `ThresholdFilter`, `QuantileFilter` |
 | Calibration | `AnomalyLikelihoodProbabilityCalibrator`, `ConformalProbabilityCalibrator`, `GaussianTailProbabilityCalibrator`, `SPOTProbabilityCalibrator` |
-| Ensembling | Average, maximum, median, average-of-maximum and maximum-of-average score ensemblers |
-| Evaluation | `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric` |
-| Streaming data | `ArrayStreamer`, `PandasStreamer`, `PolarsStreamer`, and `Data` for 17 labeled ODDS benchmark datasets, downloaded on first use |
-| Statistics | Running mean, variance, median, min, max, sum and count |
+| Composition & Drift | `StreamPipeline` (`\|`), `ModelEnsemble` (`&`) with 5 score ensemblers (`Average`, `Maximum`, `Median`, `AOM`, `MOA`), `DriftAdaptiveDetector`, and 10 drift meters (`ADWINMeter`, `PageHinkleyMeter`, `KSWINMeter`, `DDMMeter`, `EDDMMeter`, `FHDDMMeter`, `HDDMAMeter`, `HDDMWMeter`) |
+| Integrations | `ReferenceWindowModel`, `OneFitModel` (PyOD), `PySADToRiverAdapter`, `PredictiveAnomalyDetector` (River), `PySADToScikitLearnAdapter` (scikit-learn) |
+| Evaluation & Plotting | `evaluate_stream`, `AUROCMetric`, `AUPRMetric`, `PrecisionMetric`, `RecallMetric`, `WindowedMetric`, `RollingMetric`, `plot_stream` |
+| Streaming data & Stats | `ArrayStreamer`, `PandasStreamer`, `PolarsStreamer`, `CSVStreamer`, `Data` (17 labeled ODDS datasets, 58 NAB series, ULB credit-card fraud), and running statistics (`AverageMeter`, `VarianceMeter`, `DDSketchMeter`, `OnlinePeriodicityMeter`, etc.) |
 
 ## Contributing
 

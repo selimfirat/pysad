@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import ClassVar, Literal
+
 import numpy as np
+from numpy.typing import NDArray
 from scipy.linalg import norm, solve
 from sklearn.utils import check_random_state
 
@@ -51,6 +54,8 @@ class FRAHST(BaseModel):
         random_state (int, np.random.RandomState or None): Seed or generator for the initial basis. None uses NumPy's global generator (Default=None).
     """
 
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "decision"
+
     def __init__(
         self,
         alpha: float = 0.96,
@@ -67,7 +72,7 @@ class FRAHST(BaseModel):
         self.energy_high = energy_high
         self.random_state = random_state
         self.rng_ = check_random_state(random_state)
-        self.basis_: np.ndarray | None = None
+        self.basis_: NDArray[np.float64] | None = None
         self.s_ = np.array([[1e-4]])
         self.rank_ = 1
         self.energy_ = 0.0
@@ -75,7 +80,9 @@ class FRAHST(BaseModel):
         self.count_ = 0
         self.last_increase_ = 0
 
-    def _step(self, X: np.ndarray) -> tuple[np.ndarray, np.ndarray, float, float, bool]:
+    def _step(
+        self, X: NDArray[np.float64]
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], float, float, bool]:
         """Computes Figure 1 without changing the current state."""
         assert self.basis_ is not None
         Q = self.basis_
@@ -113,8 +120,12 @@ class FRAHST(BaseModel):
 
     @staticmethod
     def _reflect(
-        X: np.ndarray, Q: np.ndarray, h: np.ndarray, S: np.ndarray, residual_energy: float
-    ) -> tuple[np.ndarray, np.ndarray]:
+        X: NDArray[np.float64],
+        Q: NDArray[np.float64],
+        h: NDArray[np.float64],
+        S: NDArray[np.float64],
+        residual_energy: float,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Applies the Householder reflection in equations 13d-13j."""
         root = np.sqrt(residual_energy)
         b = solve(S.T, root * h, check_finite=False)
@@ -128,7 +139,7 @@ class FRAHST(BaseModel):
         Q = Q - 2.0 * np.outer(e, v)
         return Q, S
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> FRAHST:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> FRAHST:
         """Updates the subspace and its rank with one instance.
 
         Args:
@@ -148,14 +159,15 @@ class FRAHST(BaseModel):
             self.last_increase_ = self.count_
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Returns the next rank-increase alarm without learning.
 
         Args:
             X (np.ndarray): Input with shape (num_features,).
 
         Returns:
-            float: One for an unsuppressed rank increase, otherwise zero.
+            float: Decision score: ``1.0`` for an unsuppressed rank increase, otherwise ``0.0``.
+                Higher scores indicate more anomalous rank behavior.
         """
         if self.basis_ is None or self.count_ + 1 <= self.last_increase_ + 1:
             return 0.0

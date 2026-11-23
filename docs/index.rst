@@ -1,3 +1,6 @@
+.. meta::
+   :description: PySAD is a Python library for streaming anomaly detection on multivariate and univariate data streams, with 50+ online detectors, conformal and SPOT calibration, drift monitoring, and prequential evaluation.
+
 :hide-toc:
 
 PySAD
@@ -27,6 +30,41 @@ PySAD
 
       :doc:`Get started <getting_started>` `View on GitHub <https://github.com/selimfirat/pysad>`_ |stars|
 
+   .. container:: actions
+
+      .. image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fthroughput.json&style=flat-square&labelColor=0d1b22
+         :target: benchmark.html
+         :alt: Median throughput
+
+      .. image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmemory.json&style=flat-square&labelColor=0d1b22
+         :target: benchmarks/multivariate.html#memory-stability
+         :alt: Maximum traced memory growth in three measured detectors
+
+      .. image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Funivariate_detectors.json&style=flat-square&labelColor=0d1b22
+         :target: detectors.html
+         :alt: Univariate detectors
+
+      .. image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fselimfirat%2Fpysad%2Fmaster%2Fdocs%2F_static%2Fmultivariate_detectors.json&style=flat-square&labelColor=0d1b22
+         :target: detectors.html
+         :alt: Multivariate detectors
+
+   Throughput: median across recorded ODDS runs.
+   Memory: maximum traced growth in three detectors over 1M points after warmup.
+
+   .. container:: actions
+
+      .. image:: https://img.shields.io/badge/Hugging%20Face-Open%20in%20Spaces-00757a?style=flat-square&logo=huggingface&logoColor=white&labelColor=0d1b22
+         :target: https://huggingface.co/spaces/selimfirat/pysad-playground
+         :alt: Open in Hugging Face Spaces
+
+      .. image:: https://img.shields.io/badge/JupyterLite-Live%20Demo-00757a?style=flat-square&logo=jupyter&logoColor=white&labelColor=0d1b22
+         :target: https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb
+         :alt: Open in JupyterLite
+
+      .. image:: https://img.shields.io/badge/Colab-Open%20Notebook-00757a?style=flat-square&logo=googlecolab&logoColor=white&labelColor=0d1b22
+         :target: https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb
+         :alt: Open in Colab
+
 .. |stars| image:: https://img.shields.io/github/stars/selimfirat/pysad?style=social
    :alt: GitHub stars
    :target: https://github.com/selimfirat/pysad
@@ -55,6 +93,55 @@ PySAD
 .. code-block:: text
 
    AUROC: 0.946
+
+Live dashboard, MCP, and optional kernels
+-----------------------------------------
+
+If you use uv, run the live dashboard with ``uvx``:
+
+.. code-block:: console
+
+   $ uvx --from pysad pysad-live --source synthetic
+
+- The :doc:`live dashboard <api/live>` displays streaming scores and alerts in your terminal. Add ``--web`` to open the web dashboard, or use ``--source data.csv`` for your own data.
+- :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp`` to connect an MCP client.
+
+Optional PyO3 kernels (pysad_kernels)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The optional PyO3 Rust extension ``pysad_kernels`` provides tree traversal kernels for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`. It is not published on PyPI yet, so build it from the ``rust/`` directory of the repository. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change.
+
+Install ``maturin``, then build and register the extension so Python can import it:
+
+.. code-block:: console
+
+   $ pip install maturin
+   $ maturin develop -m rust/pyproject.toml
+
+Or build a wheel and install it:
+
+.. code-block:: console
+
+   $ maturin build -m rust/pyproject.toml --release
+   $ pip install target/wheels/pysad_kernels-0.1.0-*.whl
+
+Once ``pysad_kernels`` can be imported, :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest` use its kernels automatically. Verify the installation:
+
+.. code-block:: console
+
+   $ python -c "import pysad_kernels; print(pysad_kernels.__file__)"
+
+If the import fails, the detectors fall back to NumPy.
+
+Migration guides
+----------------
+
+Use these guides to map your existing workflow to PySAD:
+
+- :doc:`Azure AI Anomaly Detector and Metrics Advisor <guides/migrate_azure>`
+- :doc:`AWS Lookout for Equipment and Kinesis RCF <guides/migrate_aws>`
+- :doc:`Salesforce Merlion <guides/migrate_merlion>`
+- :doc:`Alibi Detect <guides/migrate_alibi_detect>`
 
 .. container:: stream-figure
 
@@ -193,19 +280,25 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    concepts
 
 .. toctree::
-   :hidden:
-   :caption: How-to guides
+    :hidden:
+    :caption: How-to guides
 
-   guides/index
-   guides/stream_data
-   guides/choose_detector
-   guides/alerts
-   guides/evaluate
-   guides/pipelines
-   guides/seasonal
-   guides/pyod
-   guides/production
-   guides/custom_model
+    guides/index
+    guides/stream_data
+    guides/choose_detector
+    guides/alerts
+    guides/evaluate
+    guides/pipelines
+    guides/seasonal
+    guides/pyod
+    guides/production
+    guides/serving
+    guides/custom_model
+    guides/mcp
+    guides/migrate_azure
+    guides/migrate_aws
+    guides/migrate_merlion
+    guides/migrate_alibi_detect
 
 .. toctree::
    :hidden:
@@ -224,12 +317,15 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    comparisons/pyod
    comparisons/alibi_detect
    comparisons/darts
+   comparisons/adtk
+   comparisons/statsforecast
 
 .. toctree::
    :hidden:
    :caption: Reference
 
    detectors
+   detector_catalog
    api
    references
 
@@ -241,5 +337,6 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    contributing
    inclusion_criteria
    license
+   pyopensci_review
    GitHub <https://github.com/selimfirat/pysad>
    Changelog <https://github.com/selimfirat/pysad/releases>

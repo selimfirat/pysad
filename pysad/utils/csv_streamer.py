@@ -1,8 +1,10 @@
 import csv
 from collections.abc import Iterator, Sequence
 from os import PathLike
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 
 class CSVStreamer:
@@ -38,7 +40,9 @@ class CSVStreamer:
         self.delimiter = delimiter
         self.encoding = encoding
 
-    def iter(self, path: str | PathLike[str]) -> Iterator[np.ndarray | tuple[np.ndarray, float]]:
+    def iter(
+        self, path: str | PathLike[str]
+    ) -> Iterator[NDArray[Any] | tuple[NDArray[Any], float]]:
         """Open a CSV file and yield its features and optional labels.
 
         Each call reads the file from the beginning. The file is opened on first
@@ -50,7 +54,7 @@ class CSVStreamer:
             path (str or os.PathLike[str]): Path to the CSV file.
 
         Yields:
-            np.ndarray or tuple[np.ndarray, float]: Features, or a features-label pair.
+            NDArray[Any] or tuple[NDArray[Any], float]: Features, or a features-label pair.
         """
         with open(path, encoding=self.encoding, newline="") as file:
             reader = csv.reader(file, delimiter=self.delimiter)

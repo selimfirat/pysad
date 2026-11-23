@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import Any
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -49,7 +50,7 @@ class PYODScoreEnsembler(BaseScoreEnsembler):
         score_array = np.asarray(scores, dtype=np.float64).reshape(1, -1)
         return float(self._combine(score_array)[0])
 
-    def fit(self, scores: np.ndarray) -> PYODScoreEnsembler:
+    def fit(self, scores: NDArray[Any]) -> PYODScoreEnsembler:
         """Returns the ensembler unchanged without iterating the batch."""
         return self
 
@@ -57,13 +58,13 @@ class PYODScoreEnsembler(BaseScoreEnsembler):
 class _DeterministicScoreEnsembler(PYODScoreEnsembler):
     """Base class for deterministic score ensemblers that combine a full batch in one call."""
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         arr = self._as_2d_scores(scores)
         if len(arr) == 0:
             return np.empty(0, dtype=np.float64)
         return np.asarray(self._combine(arr), dtype=np.float64).reshape(-1)
 
-    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+    def fit_transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         return self.transform(scores)
 
 
@@ -74,7 +75,7 @@ class AverageScoreEnsembler(_DeterministicScoreEnsembler):
         estimator_weights (np.float64 array of shape (num_anomaly_detectors,) or (1, num_anomaly_detectors) or None): Detector weights. If None, all detectors receive uniform weights (Default=None).
     """
 
-    def __init__(self, estimator_weights: np.ndarray | None = None) -> None:
+    def __init__(self, estimator_weights: NDArray[Any] | None = None) -> None:
         self.estimator_weights = estimator_weights
 
     def _combine(self, scores: NDArray[np.float64]) -> NDArray[np.float64]:

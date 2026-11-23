@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Sequence
+from typing import Any, ClassVar, Literal
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy import stats
+from scipy.special import rel_entr
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _finite_float, _int_at_least, check_univariate
@@ -24,6 +27,8 @@ class RelativeEntropy(BaseModel):
         c_th (int): The paper's rarity threshold. A window that agrees with a hypothesis scores 1.0 if fewer than `c_th` earlier windows created or agreed with that hypothesis, so a new state keeps being flagged until it has recurred. The default `1`, as in NAB, never flags a window that agrees with a hypothesis. Counts go up once per tested window, so with the default `step=1` they count values rather than the paper's non-overlapping windows. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1 (Default=1).
         alpha (float): Significance level of the goodness-of-fit test. The threshold `T` is the `1 - alpha` quantile of the chi-squared distribution with `num_bins - 1` degrees of freedom, and a window agrees with a hypothesis when its test statistic is below `T`. The paper sets `T` at 0.95 or 0.99, i.e. `alpha=0.05` or `alpha=0.01` (the default, as in NAB). A larger `alpha` lowers `T`, so smaller changes in the distribution of the values are flagged. Treat it as a sensitivity setting rather than a false alarm rate: each hypothesis is learned from a single window, so a window drawn from the same distribution disagrees with it far more often than `alpha`. Must be a finite real number strictly between 0 and 1 (a NumPy number is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for other values (Default=0.01).
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "decision"
 
     def __init__(
         self,
@@ -98,7 +103,7 @@ class RelativeEntropy(BaseModel):
         # as in NAB) never flags a window that agrees with a hypothesis.
         self.c_th = c_th
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> RelativeEntropy:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> RelativeEntropy:
         """Updates the model with the next instance. It appends `X` to the window buffer, which keeps only the last `window_size` values, and, when `X` closes a window (the window is full and ends `step` values after the previous tested window, counting from the first full window), either learns it as the first hypothesis or updates the agreeing hypothesis's count, adding it as a new hypothesis otherwise. Values that don't close a window are only appended to the window buffer; the learned hypotheses and counts are unchanged.
 
         Args:
@@ -121,17 +126,20 @@ class RelativeEntropy(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores the window ending with the given instance, i.e., the last `W - 1` fitted values followed by `X`, if `X` would close a window. This method does not change the model, so `score` after `fit` scores every row as the value following the fitted ones: with the default `step=1` that value always closes a window, whereas with `step=window_size` it returns all 0.0 unless the number of fitted values is one short of a multiple of `window_size`.
 
         Args:
             X (float or np.float64 array): The instance to score, holding exactly one value.
 
         Returns:
-            float: 1.0 if the window agrees with no hypothesis, or with one that fewer than `c_th` earlier windows created or agreed with (never, at the default `c_th=1`), and 0.0 if it agrees with another hypothesis. Also 0.0 before the window is full, when `X` doesn't close a window (per `step`, only the value that closes a window gets its score), before any hypothesis has been learned, or when `min_val == max_val` (bucket width `stepSize` is 0).
-
-        Raises:
-            ValueError: If `X` holds more than one value or is NaN.
+            float: Decision score: ``1.0`` if the window agrees with no hypothesis, or with one that
+                fewer than ``c_th`` earlier windows created or agreed with (never, at the default
+                ``c_th=1``), and ``0.0`` if it agrees with another hypothesis. Also ``0.0``
+                before the window is full, when ``X`` doesn't close a window (per ``step``, only
+                the value that closes a window gets its score), before any hypothesis has been
+                learned, or when ``min_val == max_val`` (bucket width ``stepSize`` is 0).
+                Higher scores indicate more anomalous windows (agreeing with fewer hypotheses).
         """
         x = self._value(X)
 
@@ -145,7 +153,7 @@ class RelativeEntropy(BaseModel):
 
         return self._score_window(index)
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[Any], y: int | None = None) -> float:
         """Scores the window ending with the given instance and then fits the model to it, as NAB's detector does for each record. Only a value that closes a window (per `step`) gets that window's score and has the window fitted; any other value scores 0.0 and is only appended to the window buffer.
 
         Args:
@@ -175,7 +183,7 @@ class RelativeEntropy(BaseModel):
         return score
 
     @staticmethod
-    def _value(X: np.ndarray) -> float:
+    def _value(X: NDArray[Any]) -> float:
         return check_univariate(X, "RelativeEntropy", reject_nan=True)
 
     def _closes_window(self, position: int) -> bool:
@@ -195,7 +203,7 @@ class RelativeEntropy(BaseModel):
         """
         return position >= self.W and (position - self.W) % self.step == 0
 
-    def _window_index(self, window: Sequence[float]) -> tuple[np.ndarray, int]:
+    def _window_index(self, window: Sequence[float]) -> tuple[NDArray[Any], int]:
         """Computes a window's empirical histogram and the index of the hypothesis it agrees with.
 
         Args:
@@ -227,7 +235,7 @@ class RelativeEntropy(BaseModel):
         # is read before `_fit_window` increments, hence the + 1.
         return 1.0 if self.c[index] + 1 <= self.c_th else 0.0
 
-    def _fit_window(self, P_hat: np.ndarray, index: int) -> None:
+    def _fit_window(self, P_hat: NDArray[Any], index: int) -> None:
         """Fits a window from its histogram and the index of the hypothesis it agrees with: updates
         the agreeing hypothesis's count, or adds `P_hat` as a new hypothesis if none agrees.
 
@@ -241,7 +249,7 @@ class RelativeEntropy(BaseModel):
         else:
             self._add_hypothesis(P_hat)
 
-    def _add_hypothesis(self, P_hat: np.ndarray) -> None:
+    def _add_hypothesis(self, P_hat: NDArray[Any]) -> None:
         """Learns `P_hat` as a new hypothesis with a window count of 1.
 
         Args:
@@ -251,7 +259,7 @@ class RelativeEntropy(BaseModel):
         self.c.append(1)
         self.m += 1
 
-    def _histogram(self, window: Sequence[float]) -> np.ndarray:
+    def _histogram(self, window: Sequence[float]) -> NDArray[Any]:
         """Computes the empirical frequency histogram `P_hat` of a window.
 
         Args:
@@ -272,7 +280,7 @@ class RelativeEntropy(BaseModel):
 
         return np.bincount(B_current - 1, minlength=self.N_bins) / len(window)
 
-    def _get_agreement_hypothesis(self, P_hat: np.ndarray) -> int:
+    def _get_agreement_hypothesis(self, P_hat: NDArray[Any]) -> int:
         """This function computes multinomial goodness-of-fit test. It calculates
         the relative entropy test statistic between P_hat and all `m` null
         hypotheses and compares it against the threshold `T` based on cdf of
@@ -289,13 +297,9 @@ class RelativeEntropy(BaseModel):
         if self.m == 0:
             return -1
 
-        # Relative entropy of P_hat against every learned hypothesis in one call, instead of
-        # looping in Python and calling scipy.stats.entropy once per hypothesis. P_hat is
-        # broadcast to self.P's shape explicitly because scipy < 1.12 normalizes `pk` along
-        # `axis` before broadcasting, which raises AxisError for a 1-D `pk` with axis=1.
-        entropies = 2 * self.W * stats.entropy(np.broadcast_to(P_hat, self.P.shape), self.P, axis=1)
-        candidates = np.flatnonzero(entropies < self.T)
-        if candidates.size == 0:
-            return -1
-
-        return int(candidates[np.argmin(entropies[candidates])])
+        # Keep stats.entropy's normalization without its general input handling.
+        p = P_hat / P_hat.sum()
+        q = self.P / self.P.sum(axis=1, keepdims=True)
+        entropies = 2 * self.W * rel_entr(p, q).sum(axis=1)
+        index = int(entropies.argmin())
+        return index if entropies[index] < self.T else -1

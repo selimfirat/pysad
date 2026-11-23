@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -41,18 +42,21 @@ class EXPoSE(BaseModel):
 
     def _init_model(self, num_features: int) -> None:
         rng = check_random_state(self.random_state)
-        self.frequencies_: np.ndarray = rng.normal(
+        self.frequencies_: NDArray[np.float64] = rng.normal(
             scale=np.sqrt(2.0 * self.gamma), size=(self.num_random_features, num_features)
         )
-        self.embedding_: np.ndarray = np.zeros(self.num_random_features, dtype=np.complex128)
+        self.embedding_: NDArray[np.complex128] = np.zeros(
+            self.num_random_features, dtype=np.complex128
+        )
         self.num_seen_ = 0
         self.to_init = False
 
-    def _unscaled_features(self, X: np.ndarray) -> np.ndarray:
+    def _unscaled_features(self, X: NDArray[np.float64]) -> NDArray[np.complex128]:
         """``exp(iZx)``, the feature map without its factor ``1 / sqrt(num_random_features)``."""
-        return np.exp(1j * self.frequencies_.dot(X))
+        features: NDArray[np.complex128] = np.exp(1j * self.frequencies_.dot(X))
+        return features
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> EXPoSE:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> EXPoSE:
         """Updates the kernel mean embedding with the next instance.
 
         Args:
@@ -74,7 +78,7 @@ class EXPoSE(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

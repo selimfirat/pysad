@@ -1,0 +1,105 @@
+name: smoke tests
+
+# Builds the PySAD core wheel, installs it into clean virtual environments (the core
+# wheel alone, and the wheel with the mcp extra), and verifies the public imports.
+# No core dependencies are added to pyproject.toml.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "pysad/**"
+      - "pyproject.toml"
+      - ".github/workflows/smoke.yml"
+  pull_request:
+    paths:
+      - "pysad/**"
+      - "pyproject.toml"
+      - ".github/workflows/smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.13"]
+        extra: ["", "mcp"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: smoke-${{ matrix.extra }}
+          prune-cache: true
+
+      - name: Build the core wheel
+        run: |
+          rm -rf dist
+          uv build --wheel --out-dir dist
+
+      - name: Create a clean environment
+        run: python -m venv .venv
+
+      - name: Install the built wheel
+        run: |
+          set -- dist/pysad-*.whl
+          WHL=$1
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          if [ "${SMOKE_EXTRA}" = "mcp" ]; then
+            python -m pip install "${WHL}[mcp]"
+          else
+            python -m pip install "$WHL"
+          fi
+        env:
+          SMOKE_EXTRA: ${{ matrix.extra }}
+
+      - name: Verify public imports
+        run: |
+          . .venv/bin/activate
+          python - <<'PY'
+          import os
+
+          import numpy as np
+
+          import pysad
+          assert pysad.__version__
+
+          from pysad.models import HalfSpaceTrees, LODA, xStream
+          from pysad.transform.ensemble import AverageScoreEnsembler
+          from pysad.statistics import AverageMeter
+          from pysad.utils import ArrayStreamer, Data, fix_seed
+          from pysad.evaluation import evaluate_stream
+
+          import pysad.core
+          import pysad.utils
+
+          # One real score call proves the installed wheel works, not just imports.
+          detector = LODA()
+          score = detector.fit_score_partial(np.array([0.1, 0.2, 0.3]))
+          assert isinstance(score, float)
+
+          if os.environ.get("SMOKE_EXTRA") == "mcp":
+              from pysad.mcp.server import create_mcp_server
+
+              create_mcp_server()
+
+          print("smoke: public imports and a score call OK")
+          PY
+        env:
+          SMOKE_EXTRA: ${{ matrix.extra }}

@@ -55,12 +55,53 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`serving`
+
+      Consume from Kafka or Redpanda, expose a FastAPI streaming endpoint, and checkpoint state to disk or Redis.
+
+   .. container:: card
+
       :doc:`custom_model`
 
       Implement the model interface for a published streaming method and add it to PySAD.
 
    .. container:: card
 
+      :doc:`mcp`
+
+      Run PySAD detectors, drift meters, and explainability from AI assistants via MCP.
+
+   .. container:: card
+
       :doc:`/examples`
 
       Complete scripts that run end to end.
+
+Migration guides
+----------------
+
+.. container:: cards
+
+   .. container:: card
+
+      :doc:`migrate_azure`
+
+      Replace retired Azure AI Anomaly Detector and Metrics Advisor in Python.
+
+   .. container:: card
+
+      :doc:`migrate_aws`
+
+      Replace AWS Lookout for Equipment and Kinesis RANDOM_CUT_FOREST with PySAD.
+
+   .. container:: card
+
+      :doc:`migrate_merlion`
+
+      Migrate anomaly detection pipelines from archived Salesforce Merlion.
+
+   .. container:: card
+
+      :doc:`migrate_alibi_detect`
+
+      Move from BSL 1.1 Alibi Detect to permissive BSD 3-Clause PySAD.

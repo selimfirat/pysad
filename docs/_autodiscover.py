@@ -6,7 +6,6 @@ import ast
 import importlib
 import inspect
 import re
-import sys
 from pathlib import Path
 
 import pysad.models
@@ -214,13 +213,7 @@ def _infer_detector_doc(cls: type) -> tuple[str, str, str]:
     doc = inspect.getdoc(cls) or cls.__name__
     first_line = doc.splitlines()[0].rstrip(".")
     sig = inspect.signature(cls.__init__)
-    required = [
-        f"``{p.name}``"
-        for p in sig.parameters.values()
-        if p.name != "self"
-        and p.default is inspect.Parameter.empty
-        and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
-    ]
+    required = [f"``{name}``" for name in cls._required_init_params()]
     needs = ", ".join(required) if required else "Nothing"
     memory = (
         "Fixed: a window of ``window_size`` points" if "window_size" in sig.parameters else "Fixed"
@@ -229,12 +222,7 @@ def _infer_detector_doc(cls: type) -> tuple[str, str, str]:
 
 
 def _is_univariate_detector(cls: type) -> bool:
-    kind = getattr(cls, "_input_kind", None)
-    if kind in ("univariate", "timestamped"):
-        return True
-    if kind in ("multivariate", "edge"):
-        return False
-    return hasattr(sys.modules[cls.__module__], "check_univariate")
+    return bool(cls._effective_input_kind() in ("univariate", "timestamped"))
 
 
 def expand_detectors_tables(text: str) -> str:
@@ -269,6 +257,47 @@ def expand_detectors_tables(text: str) -> str:
         marker = "\nIntegrations\n------------"
         text = text.replace(marker, "\n" + "\n".join(uni_rows) + "\n" + marker, 1)
     return text
+
+
+def expand_detector_catalog(text: str) -> str:
+    """Replaces the ``.. detector-catalog-table::`` marker with a list of every detector.
+
+    Each row links to the detector's API reference, cites its paper, and gives its input kind.
+    The table is rebuilt from ``pysad.models.__all__`` so it always matches the library.
+    """
+    marker = ".. detector-catalog-table::"
+    if marker not in text:
+        return text
+    cite_pattern = re.compile(r":cite(?::[a-z]+)?:`([^`]+)`")
+    rows: list[str] = []
+    for name in pysad.models.__all__:
+        cls = getattr(pysad.models, name, None)
+        if cls is None or not is_detector_model(name):
+            continue
+        kind = cls._effective_input_kind()
+        doc = inspect.getdoc(cls) or ""
+        keys: list[str] = []
+        for group in cite_pattern.findall(doc):
+            for key in group.split(","):
+                key = key.strip()
+                if key and key not in keys:
+                    keys.append(key)
+        if keys:
+            citation = ", ".join(f":cite:`{key}`" for key in keys)
+        else:
+            citation = "No paper citation"
+        rows.append(
+            f"   * - :class:`~pysad.models.{name}`\n     - {citation}\n     - {kind.title()}"
+        )
+    table = (
+        ".. list-table::\n"
+        "   :header-rows: 1\n"
+        "   :widths: 30 38 32\n\n"
+        "   * - Detector\n"
+        "     - Paper\n"
+        "     - Input kind\n" + "\n".join(rows)
+    )
+    return text.replace(marker, table, 1)
 
 
 def _humanize_example_stem(stem: str) -> str:

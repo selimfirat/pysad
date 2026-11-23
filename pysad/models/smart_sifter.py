@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.special import logsumexp
 from sklearn.utils import check_random_state
 
@@ -70,12 +71,15 @@ class SmartSifter(BaseModel):
         diagonals = np.diagonal(chol, axis1=1, axis2=2)  # (k, d)
         self._log_norms = -0.5 * d * np.log(2.0 * np.pi) - np.log(diagonals).sum(axis=1)
 
-    def _log_joint(self, x: np.ndarray) -> np.ndarray:
+    def _log_joint(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         """Returns ``log(c_i p_i(x))`` for each component, of shape (k,)."""
         z = np.einsum("kij,kj->ki", self._inv_chol, x - self.means_)  # (k, d)
-        return np.log(self.weights_) + self._log_norms - 0.5 * (z * z).sum(axis=1)
+        res: NDArray[np.float64] = (
+            np.log(self.weights_) + self._log_norms - 0.5 * (z * z).sum(axis=1)
+        )
+        return res
 
-    def _update(self, x: np.ndarray, log_joint: np.ndarray) -> None:
+    def _update(self, x: NDArray[np.float64], log_joint: NDArray[np.float64]) -> None:
         """One SDEM step on ``x``, given the log joint densities under the current mixture."""
         r, k = self.discount, self.num_components
         posteriors = np.exp(log_joint - logsumexp(log_joint))
@@ -88,7 +92,7 @@ class SmartSifter(BaseModel):
         self.covariances_ += (w * (1.0 - w))[:, :, None] * diffs[:, :, None] * diffs[:, None, :]
         self._factorize()
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> SmartSifter:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> SmartSifter:
         """Updates the mixture with the next instance.
 
         Args:
@@ -104,7 +108,7 @@ class SmartSifter(BaseModel):
         self._update(X, self._log_joint(X))
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -116,9 +120,9 @@ class SmartSifter(BaseModel):
         if self.to_init:
             self._init_model(X.shape[0])
 
-        return -logsumexp(self._log_joint(X))
+        return float(-logsumexp(self._log_joint(X)))
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the next instance, and then updates the mixture with it.
 
         Args:
@@ -133,4 +137,4 @@ class SmartSifter(BaseModel):
 
         log_joint = self._log_joint(X)
         self._update(X, log_joint)
-        return -logsumexp(log_joint)
+        return float(-logsumexp(log_joint))

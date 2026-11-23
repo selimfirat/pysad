@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 460" width="960" height="460" role="img" aria-labelledby="t d">
+<title id="t">PySAD vs River, CapyMOA, and PyOD: throughput and AUROC on 17 ODDS datasets</title>
+<desc id="d">Scatter plot comparing streaming multivariate anomaly detectors across PySAD, River 0.26.1, CapyMOA 0.15.1, and PyOD 3.6.7 wrapped with ReferenceWindowModel on the same hardware across 17 ODDS datasets. X-axis shows log-scale throughput in points per second; Y-axis shows mean AUROC.</desc>
+<style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}.title{fill:#0d1b22;font-size:14px;font-weight:600}.cue,.legend-text{fill:#5b6f78;font-size:12px}.axis-label{fill:#5b6f78;font-size:12px;font-weight:500}.tick{fill:#5b6f78;font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}.grid{stroke:#dce3e2;stroke-width:1}.chance{stroke:#8b99a0;stroke-width:1;stroke-dasharray:4 4}.chance-text{fill:#5b6f78;font-size:11px}.frontier{stroke:#00757a;stroke-width:1.4;stroke-dasharray:5 4;opacity:0.45;fill:none}.leader{stroke:#5b6f78;stroke-width:1;opacity:0.45}.m-pysad{fill:#00757a}.m-river{fill:#5c6bc0}.m-capymoa{fill:#c26d1f}.m-pyod{fill:none;stroke:#64748b;stroke-width:2}.lbl-pysad{fill:#00757a;font-size:11.5px;font-weight:600}.lbl-other{fill:#5b6f78;font-size:11px;font-weight:500}@media (prefers-color-scheme:dark){.title{fill:#edf5f6;font-size:14px;font-weight:600}.cue,.legend-text{fill:#99b0b6;font-size:12px}.axis-label{fill:#99b0b6;font-size:12px;font-weight:500}.tick{fill:#99b0b6;font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}.grid{stroke:#1e343d;stroke-width:1}.chance{stroke:#64748b;stroke-width:1;stroke-dasharray:4 4}.chance-text{fill:#99b0b6;font-size:11px}.frontier{stroke:#2dd4bf;stroke-width:1.4;stroke-dasharray:5 4;opacity:0.45;fill:none}.leader{stroke:#99b0b6;stroke-width:1;opacity:0.45}.m-pysad{fill:#2dd4bf}.m-river{fill:#818cf8}.m-capymoa{fill:#f59e0b}.m-pyod{fill:none;stroke:#94a3b8;stroke-width:2}.lbl-pysad{fill:#2dd4bf;font-size:11.5px;font-weight:600}.lbl-other{fill:#99b0b6;font-size:11px;font-weight:500}}</style>
+<text x="74" y="22" class="title">Streaming multivariate anomaly detection across 17 ODDS datasets</text>
+<text x="928" y="22" text-anchor="end" class="cue">Faster &amp; more accurate &#x2197;</text>
+<circle cx="79.0" cy="40.0" r="4.8" class="m-pysad"/>
+<text x="90.0" y="44.0" class="legend-text">PySAD (26 detectors)</text>
+<polygon points="257.0,34.8 262.2,40.0 257.0,45.2 251.8,40.0" class="m-river"/>
+<text x="268.0" y="44.0" class="legend-text">River 0.26.1</text>
+<rect x="374.5" y="35.5" width="9" height="9" rx="1.2" class="m-capymoa"/>
+<text x="390.0" y="44.0" class="legend-text">CapyMOA 0.15.1 (JVM)</text>
+<circle cx="561.0" cy="40.0" r="4.3" class="m-pyod"/>
+<text x="572.0" y="44.0" class="legend-text">PyOD 3.6.7 (via ReferenceWindowModel)</text>
+<line x1="74.0" y1="360.5" x2="928.0" y2="360.5" class="chance"/>
+<text x="64.0" y="364.5" text-anchor="end" class="tick">0.50</text>
+<line x1="74.0" y1="284.5" x2="928.0" y2="284.5" class="grid"/>
+<text x="64.0" y="288.5" text-anchor="end" class="tick">0.60</text>
+<line x1="74.0" y1="208.6" x2="928.0" y2="208.6" class="grid"/>
+<text x="64.0" y="212.6" text-anchor="end" class="tick">0.70</text>
+<line x1="74.0" y1="132.7" x2="928.0" y2="132.7" class="grid"/>
+<text x="64.0" y="136.7" text-anchor="end" class="tick">0.80</text>
+<text x="82.0" y="354.5" class="chance-text">chance (0.50)</text>
+<line x1="236.7" y1="72.0" x2="236.7" y2="406.0" class="grid"/>
+<text x="236.7" y="424.0" text-anchor="middle" class="tick">10</text>
+<line x1="399.3" y1="72.0" x2="399.3" y2="406.0" class="grid"/>
+<text x="399.3" y="424.0" text-anchor="middle" class="tick">100</text>
+<line x1="562.0" y1="72.0" x2="562.0" y2="406.0" class="grid"/>
+<text x="562.0" y="424.0" text-anchor="middle" class="tick">1k</text>
+<line x1="724.7" y1="72.0" x2="724.7" y2="406.0" class="grid"/>
+<text x="724.7" y="424.0" text-anchor="middle" class="tick">10k</text>
+<line x1="887.3" y1="72.0" x2="887.3" y2="406.0" class="grid"/>
+<text x="887.3" y="424.0" text-anchor="middle" class="tick">100k</text>
+<line x1="74.0" y1="406.0" x2="928.0" y2="406.0" class="grid"/>
+<line x1="74.0" y1="72.0" x2="74.0" y2="406.0" class="grid"/>
+<text x="501.0" y="448.0" text-anchor="middle" class="axis-label">Throughput (points / second, log scale)</text>
+<text x="20" y="239.0" text-anchor="middle" transform="rotate(-90 20 239.0)" class="axis-label">Mean AUROC</text>
+<polyline points="628.5,100.8 654.5,119.8 669.0,134.2 740.4,135.8 789.4,140.3 887.3,176.8" class="frontier"/>
+<circle cx="662.8" cy="134.2" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="603.0" cy="134.2" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="544.0" cy="134.2" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="554.6" cy="138.0" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="491.1" cy="151.7" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="675.7" cy="170.7" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="760.8" cy="169.9" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="691.5" cy="162.3" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="662.8" cy="160.1" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="672.3" cy="227.6" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="683.1" cy="221.5" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="700.9" cy="219.3" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="531.0" cy="205.6" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="649.4" cy="204.1" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="789.4" cy="207.1" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="687.2" cy="269.4" r="3.6" class="m-pysad" opacity="0.38"/>
+<circle cx="732.1" cy="284.5" r="3.6" class="m-pysad" opacity="0.38"/>
+<polygon points="809.7,201.7 815.1,207.1 809.7,212.5 804.3,207.1" class="m-river" opacity="0.92"/>
+<polygon points="649.4,162.2 654.8,167.6 649.4,173.0 644.0,167.6" class="m-river" opacity="0.92"/>
+<polygon points="373.9,222.2 379.3,227.6 373.9,233.0 368.5,227.6" class="m-river" opacity="0.92"/>
+<polygon points="887.3,378.6 892.7,384.0 887.3,389.4 881.9,384.0" class="m-river" opacity="0.92"/>
+<rect x="390.9" y="170.0" width="9.0" height="9.0" rx="1.2" class="m-capymoa" opacity="0.92"/>
+<rect x="231.2" y="138.1" width="9.0" height="9.0" rx="1.2" class="m-capymoa" opacity="0.92"/>
+<rect x="620.5" y="176.8" width="9.0" height="9.0" rx="1.2" class="m-capymoa" opacity="0.92"/>
+<rect x="541.7" y="192.8" width="9.0" height="9.0" rx="1.2" class="m-capymoa" opacity="0.92"/>
+<rect x="107.3" y="176.8" width="9.0" height="9.0" rx="1.2" class="m-capymoa" opacity="0.92"/>
+<rect x="385.9" y="221.6" width="9.0" height="9.0" rx="1.2" class="m-capymoa" opacity="0.92"/>
+<rect x="435.3" y="264.1" width="9.0" height="9.0" rx="1.2" class="m-capymoa" opacity="0.92"/>
+<rect x="882.8" y="356.0" width="9.0" height="9.0" rx="1.2" class="m-capymoa" opacity="0.92"/>
+<circle cx="442.9" cy="122.9" r="4.5" class="m-pyod" opacity="0.9"/>
+<circle cx="649.4" cy="144.1" r="4.5" class="m-pyod" opacity="0.9"/>
+<circle cx="706.1" cy="160.1" r="4.5" class="m-pyod" opacity="0.9"/>
+<circle cx="628.5" cy="202.6" r="4.5" class="m-pyod" opacity="0.9"/>
+<circle cx="628.5" cy="100.8" r="5.0" class="m-pysad" opacity="0.95"/>
+<circle cx="654.5" cy="119.8" r="5.0" class="m-pysad" opacity="0.95"/>
+<circle cx="442.5" cy="125.9" r="5.0" class="m-pysad" opacity="0.95"/>
+<circle cx="789.4" cy="140.3" r="5.0" class="m-pysad" opacity="0.95"/>
+<circle cx="740.4" cy="135.8" r="5.0" class="m-pysad" opacity="0.95"/>
+<circle cx="669.0" cy="134.2" r="5.0" class="m-pysad" opacity="0.95"/>
+<circle cx="407.1" cy="142.6" r="5.0" class="m-pysad" opacity="0.95"/>
+<circle cx="887.3" cy="176.8" r="5.0" class="m-pysad" opacity="0.95"/>
+<circle cx="532.0" cy="160.1" r="5.0" class="m-pysad" opacity="0.95"/>
+<text x="618.5" y="92.8" text-anchor="end" class="lbl-pysad">LoOP</text>
+<line x1="654.5" y1="119.8" x2="657.5" y2="88.3" class="leader"/>
+<text x="660.5" y="91.8" text-anchor="start" class="lbl-pysad">RSHash</text>
+<text x="432.5" y="115.9" text-anchor="end" class="lbl-pysad">IForestASD</text>
+<text x="801.4" y="132.3" text-anchor="start" class="lbl-pysad">LODA</text>
+<line x1="740.4" y1="135.8" x2="743.4" y2="100.3" class="leader"/>
+<text x="746.4" y="103.8" text-anchor="start" class="lbl-pysad">HalfSpaceTrees</text>
+<line x1="669.0" y1="134.2" x2="676.0" y2="116.7" class="leader"/>
+<text x="679.0" y="120.2" text-anchor="start" class="lbl-pysad">ExactStorm</text>
+<text x="397.1" y="133.6" text-anchor="end" class="lbl-pysad">RRCF</text>
+<text x="877.3" y="170.8" text-anchor="end" class="lbl-pysad">TEDA</text>
+<line x1="532.0" y1="160.1" x2="525.0" y2="172.6" class="leader"/>
+<text x="522.0" y="176.1" text-anchor="end" class="lbl-pysad">xStream</text>
+<line x1="809.7" y1="207.1" x2="816.7" y2="217.6" class="leader"/>
+<text x="819.7" y="221.1" text-anchor="start" class="lbl-other">River HST</text>
+<text x="633.4" y="163.6" text-anchor="end" class="lbl-other">River LODA</text>
+<text x="363.9" y="231.6" text-anchor="end" class="lbl-other">River LOF</text>
+<text x="877.3" y="388.0" text-anchor="end" class="lbl-other">River OCSVM</text>
+<line x1="395.4" y1="174.5" x2="388.4" y2="185.0" class="leader"/>
+<text x="385.4" y="188.5" text-anchor="end" class="lbl-other">CapyMOA SIF</text>
+<text x="245.7" y="134.6" text-anchor="start" class="lbl-other">CapyMOA RRCF</text>
+<text x="635.0" y="191.3" text-anchor="start" class="lbl-other">CapyMOA AIF</text>
+<line x1="546.2" y1="197.2" x2="539.2" y2="219.8" class="leader"/>
+<text x="536.2" y="223.2" text-anchor="end" class="lbl-other">CapyMOA LODA</text>
+<text x="121.8" y="185.3" text-anchor="start" class="lbl-other">CapyMOA StreamRHF</text>
+<text x="449.8" y="272.6" text-anchor="start" class="lbl-other">CapyMOA RSHash</text>
+<text x="877.3" y="364.5" text-anchor="end" class="lbl-other">CapyMOA HST</text>
+<text x="452.9" y="113.9" text-anchor="start" class="lbl-other">PyOD IForest</text>
+<line x1="649.4" y1="144.1" x2="638.4" y2="122.6" class="leader"/>
+<text x="635.4" y="126.1" text-anchor="end" class="lbl-other">PyOD KNN</text>
+<line x1="706.1" y1="160.1" x2="713.1" y2="184.6" class="leader"/>
+<text x="716.1" y="188.1" text-anchor="start" class="lbl-other">PyOD HBOS</text>
+<line x1="628.5" y1="202.6" x2="621.5" y2="213.1" class="leader"/>
+<text x="618.5" y="216.6" text-anchor="end" class="lbl-other">PyOD LOF</text>
+</svg>

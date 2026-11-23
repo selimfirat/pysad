@@ -176,6 +176,36 @@ This warm-up is an example choice. The model learns from all points, including a
 Replace the generated values with your stream.
 For benchmark data from :class:`~pysad.utils.Data`, select one feature with ``X[:, :1]`` to preserve the batch shape for ``ArrayStreamer``.
 
+Generate a synthetic stream
+---------------------------
+
+:func:`~pysad.utils.generate_stream` creates a labeled stream with point anomalies, bursts and drifts. It needs no download, so it suits quick tests and unit tests.
+
+.. code-block:: python
+
+   from pysad.utils import generate_stream
+   from pysad.models import LODA
+   from pysad.evaluation import AUROCMetric
+   from pysad.utils import ArrayStreamer
+
+   X, y = generate_stream(num_instances=2000, num_features=2, random_state=0)
+
+   model = LODA(random_state=0)
+   metric = AUROCMetric()
+
+   for x, label in ArrayStreamer().iter(X, y):
+       score = model.fit_score_partial(x)
+       metric.update(label, score)
+
+   print(f"AUROC: {metric.get():.3f}")
+
+The stream starts with normal instances so that a detector can learn the normal distribution first. Anomalies are placed after the first tenth of the stream and do not overlap. The parameters control the anomaly types:
+
+- ``num_points`` adds single-point anomalies.
+- ``num_bursts`` and ``burst_length`` add consecutive anomalies that share one offset.
+- ``num_drifts`` and ``drift_length`` add slow drifts whose offset grows linearly.
+- ``magnitude`` sets the anomaly offset in standard deviations of the normal distribution.
+
 Load a benchmark dataset
 ------------------------
 
@@ -209,6 +239,28 @@ The `OpenML metadata <https://www.openml.org/api/v1/json/data/1597>`_ lists the 
 The first load downloads the ARFF file into the shared dataset cache and verifies its SHA-256 checksum. Later loads reuse that file, including with ``download=False``. PySAD does not bundle the transactions.
 
 .. literalinclude:: ../../examples/example_creditcard.py
+   :language: python
+
+Server Machine Dataset (SMD)
+----------------------------
+
+``Data.datasets("smd")`` lists the 28 test halves of the Server Machine Dataset :cite:`su2019robust`, for example ``smd/machine-1-1.txt``. Each machine has 38 features collected at one-minute intervals. The source is the `OmniAnomaly repository <https://github.com/NetManAIOps/OmniAnomaly>`_ (MIT license).
+
+``get_data`` returns the test half of a machine in its original time order. The labels come from the corresponding ``test_label`` file. Use ``get_iterator(..., shuffle=False)`` to stream in time order; ``get_iterator`` and ``get_stream`` shuffle by default.
+
+.. literalinclude:: ../../examples/example_smd.py
+   :language: python
+
+NASA SMAP and MSL telemetry
+---------------------------
+
+``Data.datasets("smap")`` lists the 54 test halves of the SMAP satellite telemetry channels, and ``Data.datasets("msl")`` lists the 27 test halves of the MSL rover Curiosity telemetry channels. Both come from the `Telemanom paper <https://arxiv.org/abs/1802.04431>`_ :cite:`hundman2018detecting`, hosted in the `TranAD repository <https://github.com/imperial-qore/TranAD>`_ (BSD-3-Clause license).
+
+Each SMAP channel has 25 features: the first is the telemetry value, and the remaining 24 are one-hot encoded spacecraft commands. Each MSL channel has 55 features in the same layout. The labels are the anomaly ranges from Telemanom's ``labeled_anomalies.csv``; a channel can have multiple ranges, and all are applied.
+
+``get_data`` returns the test half of a channel in its original time order with labels from the anomaly ranges. Use ``get_iterator(..., shuffle=False)`` to stream in time order; ``get_iterator`` and ``get_stream`` shuffle by default.
+
+.. literalinclude:: ../../examples/example_smap_msl.py
    :language: python
 
 Next steps

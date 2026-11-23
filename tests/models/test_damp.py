@@ -6,11 +6,11 @@ M = 20
 
 
 def _series():
-    """A noisy sine of period 50 with a nearly flat stretch at 700 and a ramp at 1000."""
+    """A noisy sine of period 50 with a nearly flat stretch at 280 and a ramp at 420."""
     rng = np.random.default_rng(0)
-    values = np.sin(2 * np.pi * np.arange(1500) / 50) + 0.1 * rng.normal(size=1500)
-    values[700:720] = 0.3 + 0.01 * rng.normal(size=20)
-    values[1000:1020] += np.linspace(0.0, 2.0, 20)
+    values = np.sin(2 * np.pi * np.arange(600) / 50) + 0.1 * rng.normal(size=600)
+    values[280:300] = 0.3 + 0.01 * rng.normal(size=20)
+    values[420:440] += np.linspace(0.0, 2.0, 20)
     return values
 
 
@@ -61,7 +61,7 @@ def test_flat_stretch_gets_the_highest_score():
     scores = DAMP(window_length=M).fit_score(_series().reshape(-1, 1))
 
     # The highest score ends a subsequence that overlaps the flat stretch, the top left-discord.
-    assert 700 <= scores.argmax() < 720 + M
+    assert 280 <= scores.argmax() < 300 + M
 
 
 def test_score_partial_does_not_change_the_model():

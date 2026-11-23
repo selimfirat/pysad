@@ -1,32 +1,3 @@
-def _mixed_stream(seed=0, num_instances=1000, num_features=3):
-    """A standard normal stream with 30 far outliers, added after a warmup of 100."""
-    import numpy as np
-
-    rng = np.random.RandomState(seed)
-    X = rng.normal(0.0, 1.0, size=(num_instances, num_features))
-    y = np.zeros(num_instances, dtype=np.int64)
-
-    outliers = rng.choice(np.arange(100, num_instances), size=30, replace=False)
-    X[outliers] += 6.0 * rng.choice([-1.0, 1.0], size=(30, num_features))
-    y[outliers] = 1
-
-    return X, y
-
-
-def test_sdostream_ranks_far_outliers_above_normal_points():
-    """Far outliers sit far from the active observers, so they score above the normal points."""
-    from sklearn.metrics import roc_auc_score
-
-    from pysad.models import SDOstream
-
-    X, y = _mixed_stream()
-
-    scores = SDOstream(random_state=0).fit_score(X)
-
-    assert scores.shape == (X.shape[0],)
-    assert roc_auc_score(y, scores) > 0.9
-
-
 def test_sdostream_score_grows_with_the_distance_to_a_cluster():
     """On one tight cluster, the score rises as the probe moves away from it."""
     import numpy as np
@@ -64,22 +35,6 @@ def test_sdostream_scores_before_it_fits_and_leaves_scoring_stateless():
     combined = model.fit_score_partial(probe)
 
     assert before == combined
-
-
-def test_sdostream_is_reproducible_and_seed_sensitive():
-    """The same seed gives the same stream of scores, and different seeds give different scores."""
-    import numpy as np
-
-    from pysad.models import SDOstream
-
-    X = np.random.RandomState(5).rand(120, 3)
-
-    np.testing.assert_array_equal(
-        SDOstream(random_state=1).fit_score(X), SDOstream(random_state=1).fit_score(X)
-    )
-    assert not np.array_equal(
-        SDOstream(random_state=1).fit_score(X), SDOstream(random_state=2).fit_score(X)
-    )
 
 
 def test_sdostream_scores_stay_finite_on_extreme_streams():

@@ -57,7 +57,7 @@ def test_pickling_mid_stream_keeps_later_scores() -> None:
     from pysad.models import ADeMS
 
     X = np.random.RandomState(0).normal(size=(60, 8))
-    for split in range(1, X.shape[0]):
+    for split in (1, 3, 10, 30):
         model = ADeMS().fit(X[:split])
         restored = pickle.loads(pickle.dumps(model))
 
@@ -162,3 +162,53 @@ def test_detupdate_is_stable_for_extreme_magnitudes(scale: float) -> None:
     actual = ADeMS(num_components=2, sketch_size=3).fit_score(scale * X)
     assert np.isfinite(actual).all()
     np.testing.assert_allclose(actual, expected, atol=1e-12)
+
+
+def test_a_score_equal_to_the_threshold_is_fitted() -> None:
+    from pysad.models import ADeMS
+
+    initial_X = np.tile([1.0, 0.0, 0.0], (10, 1))
+    anomalies = np.tile([0.0, 1.0, 0.0], (5, 1))
+
+    # The orthogonal instances score exactly 1.0, so this threshold admits them.
+    admitted = ADeMS(num_components=2, threshold=1.0, initial_X=initial_X).fit(anomalies)
+
+    assert admitted.score_partial(anomalies[0]) == pytest.approx(0.0, abs=1e-12)
+
+
+def test_initial_X_is_fitted_without_the_threshold() -> None:
+    from pysad.models import ADeMS
+
+    # The bootstrap instances are trusted normals, so the threshold does not filter them.
+    trusted = np.tile([0.0, 1.0, 0.0], (10, 1))
+    model = ADeMS(num_components=2, threshold=0.5, initial_X=trusted)
+
+    assert model.score_partial(trusted[0]) == pytest.approx(0.0, abs=1e-12)
+
+
+def test_fitting_zero_instances_leaves_later_scores() -> None:
+    from pysad.models import ADeMS
+
+    rng = np.random.RandomState(3)
+    X = rng.normal(size=(30, 4))
+    queries = rng.normal(size=(20, 4))
+
+    # A zero instance must leave the sketch unchanged, so later scores match.
+    with_zeros = ADeMS().fit(np.vstack([X, np.zeros((5, 4))]))
+    without_zeros = ADeMS().fit(X)
+
+    np.testing.assert_allclose(with_zeros.score(queries), without_zeros.score(queries))
+
+
+def test_model_size_does_not_grow_with_the_stream() -> None:
+    import pickle
+
+    from pysad.models import ADeMS
+
+    rng = np.random.RandomState(5)
+    stream = rng.normal(size=(300, 6))
+
+    # The model keeps one sketch of fixed size, so one pickle has one size.
+    sizes = [len(pickle.dumps(ADeMS(sketch_size=3).fit(stream[:n]))) for n in (30, 300)]
+
+    assert sizes[0] == sizes[1]

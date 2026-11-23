@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from sklearn.metrics import average_precision_score, roc_auc_score
 
+from pysad.core.base_model import BaseModel
 from tests.test_dimensionality import load_benchmark
 
 
@@ -19,6 +20,19 @@ def test_last_bit_differences_give_the_same_auroc():
     assert roc_auc_score(y, benchmark.significant(scores)) == roc_auc_score(
         y, benchmark.significant(other)
     )
+
+
+def test_inqmad_keeps_auroc_on_the_nab_spike_density_stream():
+    """The benchmark must keep Inqmad's AUROC above 0.53 on the affected NAB stream."""
+    benchmark = load_benchmark()
+
+    row = benchmark.run_univariate(
+        "nab/artificialWithAnomaly/art_increase_spike_density.csv",
+        "Inqmad",
+        ci=True,
+    )
+
+    assert row["auroc"] >= 0.53
 
 
 @pytest.mark.filterwarnings("error")
@@ -64,6 +78,29 @@ def test_sand_registration_and_fixed_configuration():
         assert model.centroid_length == 40
         assert model.batch_size == 256
         assert model.random_state == 0
+
+
+@pytest.mark.parametrize("detector", ["HoltWinters", "FluxEV"])
+@pytest.mark.parametrize("period", [24, 288])
+def test_seasonal_benchmark_keeps_default_window(detector, period):
+    from pysad import models
+
+    benchmark = load_benchmark()
+    X = np.sin(np.arange(4 * period) * 2 * np.pi / period).reshape(-1, 1)
+    X[3 * period : 3 * period + 10] += 4.0
+    model = benchmark.UNIVARIATE[detector](len(X), period)
+    expected = getattr(models, detector)(period=period)
+    assert model.window_size == expected.window_size
+    np.testing.assert_array_equal(model.fit_score(X), expected.fit_score(X))
+
+
+@pytest.mark.parametrize("detector", ["SeasonalESD", "SeasonalHybridESD"])
+@pytest.mark.parametrize("period", [24, 288])
+def test_seasonal_esd_benchmark_window_covers_three_periods(detector, period):
+    benchmark = load_benchmark()
+    model = benchmark.UNIVARIATE[detector](2000, period)
+    assert model.period == period
+    assert model.window_size == 3 * period + 1
 
 
 def test_sdostream_registration_and_seeding():
@@ -181,7 +218,7 @@ def test_alert_mcc_survives_csv_and_averages_runs(tmp_path, monkeypatch):
     benchmark.write_tables(results)
     with (tmp_path / "alerts.csv").open() as stream:
         table = list(csv.DictReader(stream))
-    assert [row["MCC"] for row in table] == ["0.289", "0.000", "-0.289", "0.289"] * 2
+    assert [row["MCC"] for row in table] == ["0.289", "0.000", "-0.289", "0.289"] * 3
 
 
 @pytest.fixture
@@ -270,7 +307,7 @@ def test_best_values_at_chance_render_in_bold_and_italics(ranking_tables):
     (tmp_path / "index.rst").write_text(
         "Chance values\n============="
         "\n\n.. csv-table:: AUPR\n   :file: aupr.csv\n   :header-rows: 1\n"
-        "\n.. csv-table:: AUROC\n   :file: auroc.csv\n   :header-rows: 1\n"
+        ".. csv-table:: AUROC\n   :file: auroc.csv\n   :header-rows: 1\n"
     )
     warnings = StringIO()
     app = Sphinx(
@@ -323,6 +360,7 @@ def test_write_ranking_compares_chance_at_stored_precision(tmp_path, monkeypatch
 
 def test_changed_benchmark_detectors_isolates_table_edits():
     """Editing a detector entry in benchmark.py only flags that detector, not the whole suite."""
+    import re
     from pathlib import Path
 
     benchmark = load_benchmark()
@@ -332,17 +370,22 @@ def test_changed_benchmark_detectors_isolates_table_edits():
 
     assert benchmark._changed_benchmark_detectors(source, source) == set()
 
-    added = source.replace(
-        "DETECTOR_OVERRIDES = {}",
-        'DETECTOR_OVERRIDES = {"NewModel": lambda X, seed: models.LODA(random_state=seed)}',
+    added, count = re.subn(
+        r"DETECTOR_OVERRIDES\s*=\s*\{",
+        'DETECTOR_OVERRIDES = {\n    "NewModel": lambda X, seed: models.LODA(random_state=seed),',
+        source,
+        count=1,
     )
+    assert count == 1
     assert benchmark._changed_benchmark_detectors(source, added) == {"NewModel"}
 
-    modified = source.replace(
-        "batch_size=WARMUP_POINTS, random_state=0",
-        "batch_size=128, random_state=0",
+    synthetic_base = (
+        "WARMUP_POINTS = 256\n"
+        'DETECTOR_OVERRIDES = {"Demo": lambda X, seed: models.LODA(random_state=seed)}\n'
+        'UNIVARIATE_OVERRIDES = {"Uni": lambda n, period: models.SAND(batch_size=256)}\n'
     )
-    assert benchmark._changed_benchmark_detectors(source, modified) == {"SAND"}
+    synthetic_mod = synthetic_base.replace("batch_size=256", "batch_size=128")
+    assert benchmark._changed_benchmark_detectors(synthetic_base, synthetic_mod) == {"Uni"}
 
     shared_change = source.replace("WARMUP_POINTS = 256", "WARMUP_POINTS = 128")
     assert benchmark._changed_benchmark_detectors(source, shared_change) is None
@@ -536,3 +579,898 @@ def test_summary_has_no_mean_aupr(tmp_path, monkeypatch):
         aupr_rows = list(csv.DictReader(f))
     assert [row["Dataset"] for row in aupr_rows] == datasets
     assert float(aupr_rows[0]["RSHash"].replace("*", "")) == 0.9  # the best cell is bolded
+
+
+def test_ci_mode_skips_calibrators_and_changed_detectors_isolates_calibrator_edits(monkeypatch):
+    benchmark = load_benchmark()
+    monkeypatch.setattr(
+        benchmark, "git", lambda *args: "pysad/transform/probability_calibration/gaussian_tail.py\n"
+    )
+    assert benchmark.changed_detectors("origin/master", ci=True) == []
+    assert benchmark.changed_detectors("origin/master", ci=False) == [
+        *benchmark.DETECTORS,
+        *benchmark.UNIVARIATE,
+    ]
+
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(300, 2))
+    y = np.zeros(300, dtype=int)
+    y[290:] = 1
+    monkeypatch.setattr(benchmark, "load", lambda *args: (X.copy(), y.copy()))
+    row = benchmark.run(("synthetic", "LODA", 0, 300, True))
+    assert set(row) == {"dataset", "detector", "seed", "auroc", "aupr", "ms_per_point"}
+
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda self, name: (X[:, :1].copy(), y.copy()))
+    uni_row = benchmark.run(("nab/synthetic.csv", "StandardAbsoluteDeviation", 0, 300, True))
+    assert "_nab" not in uni_row
+    assert set(uni_row) == {"dataset", "detector", "seed", "auroc", "aupr", "ms_per_point"}
+
+
+def test_ci_plan_shards_and_ignore_unknown(monkeypatch):
+    import json
+    import sys
+
+    benchmark = load_benchmark()
+    monkeypatch.setattr(
+        benchmark,
+        "changed_detectors",
+        lambda base, path=None, ci=False: ["LODA", "xStream", "StandardAbsoluteDeviation"],
+    )
+    monkeypatch.setattr(
+        benchmark,
+        "git",
+        lambda *args: (
+            "100644 blob aaa\tpysad/models/loda.py\n100644 blob bbb\tpysad/models/xstream.py\n"
+        ),
+    )
+    plan = benchmark.ci_plan("origin/master")
+    assert plan["has_jobs"] is True
+    assert [(row["part"], row["shard"], row["has_base"]) for row in plan["include"]] == [
+        ("odds", "LODA,xStream", True),
+        ("drift", "LODA,xStream", True),
+        ("univariate", "StandardAbsoluteDeviation", False),
+    ]
+    assert all(len(row["base_hash"]) == 16 for row in plan["include"])
+
+    monkeypatch.setattr(benchmark, "changed_detectors", lambda base, path=None, ci=False: [])
+    empty_plan = benchmark.ci_plan("origin/master")
+    assert empty_plan == {"has_jobs": False, "include": []}
+
+    shards = benchmark._pack_shards(
+        ["A", "B", "C", "D"], 2, {"A": 10.0, "B": 9.0, "C": 2.0, "D": 1.0}
+    )
+    assert len(shards) == 2
+    assert {d for s in shards for d in s} == {"A", "B", "C", "D"}
+
+    # --ignore-unknown silently filters unknown detectors without error.
+    ran = []
+    monkeypatch.setattr(
+        benchmark,
+        "run",
+        lambda job: (
+            ran.append(job)
+            or {"dataset": "d", "detector": job[1], "seed": 0, "auroc": 0.5, "aupr": 0.5}
+        ),
+    )
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda self, name: None)
+    out_csv = str(__import__("pathlib").Path(__file__).resolve().parent / "__tmp_ignored.csv")
+    try:
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "benchmark.py",
+                "--ci",
+                out_csv,
+                "--parts",
+                "odds",
+                "--detectors",
+                "NonExistentDetector",
+                "--ignore-unknown",
+            ],
+        )
+        benchmark.main()
+        assert ran == []
+    finally:
+        __import__("pathlib").Path(out_csv).unlink(missing_ok=True)
+        __import__("sys")
+    assert isinstance(json.dumps(plan), str)
+
+
+def test_ci_plan_fallback_weights_and_det_hashes(monkeypatch):
+    import json
+
+    benchmark = load_benchmark()
+    _, pw = benchmark._detector_weights()
+    assert pw["odds"]["PCBIsolationForest"] > pw["odds"].get("LODA", 0.0)
+    shards = benchmark._pack_shards(
+        ["PCBIsolationForest", "OnlineIsolationForest", "RobustRandomCutForest", "LODA"],
+        3,
+        pw["odds"],
+    )
+    heavy_buckets = [
+        i
+        for i, s in enumerate(shards)
+        for name in s
+        if name in {"PCBIsolationForest", "OnlineIsolationForest", "RobustRandomCutForest"}
+    ]
+    assert len(set(heavy_buckets)) == 3
+
+    monkeypatch.setattr(
+        benchmark,
+        "git",
+        lambda *args: "100644 blob aaa\tpysad/models/loda.py\n",
+    )
+    plan = benchmark.ci_plan("HEAD", all_detectors=True)
+    assert plan["has_jobs"] is True
+    for row in plan["include"]:
+        det_hashes = json.loads(row["det_hashes"])
+        assert sorted(det_hashes) == sorted(row["shard"].split(","))
+
+
+def test_base_cache_dir_and_compare_dirs(tmp_path, monkeypatch, capsys):
+    import json
+    import sys
+
+    benchmark = load_benchmark()
+    cache_dir = tmp_path / "cache"
+    out1 = tmp_path / "run1.csv"
+    out2 = tmp_path / "run2.csv"
+    calls = []
+
+    def fake_run(job):
+        ds, det, seed, points, ci = job
+        calls.append(det)
+        return {
+            "dataset": ds,
+            "detector": det,
+            "seed": seed,
+            "auroc": 0.9 if det == "LODA" else 0.8,
+            "aupr": 0.7,
+        }
+
+    class DummyFuture:
+        def __init__(self, value):
+            self._value = value
+
+        def result(self):
+            return self._value
+
+    class DummyExecutor:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def submit(self, fn, arg):
+            return DummyFuture(fn(arg))
+
+    monkeypatch.setattr(benchmark, "run", fake_run)
+    monkeypatch.setattr(benchmark, "ProcessPoolExecutor", DummyExecutor)
+    monkeypatch.setattr(benchmark, "as_completed", list)
+    monkeypatch.setattr(benchmark, "DRIFT", {"kddcup99/http.csv": "KDD http"})
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda self, name: None)
+
+    hashes1 = json.dumps({"LODA": "aaaa1111aaaa1111", "xStream": "bbbb2222bbbb2222"})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "benchmark.py",
+            "--ci",
+            str(out1),
+            "--parts",
+            "drift",
+            "--detectors",
+            "LODA,xStream",
+            "--base-cache-dir",
+            str(cache_dir),
+            "--det-hashes",
+            hashes1,
+            "--no-cache",
+        ],
+    )
+    benchmark.main()
+    assert sorted(calls) == ["LODA", "xStream"]
+    assert (cache_dir / "LODA-aaaa1111aaaa1111.csv").is_file()
+    assert (cache_dir / "xStream-bbbb2222bbbb2222.csv").is_file()
+
+    # Re-run when only xStream hash changed: LODA is served from cache, xStream recomputes.
+    calls.clear()
+    hashes2 = json.dumps({"LODA": "aaaa1111aaaa1111", "xStream": "cccc3333cccc3333"})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "benchmark.py",
+            "--ci",
+            str(out2),
+            "--parts",
+            "drift",
+            "--detectors",
+            "LODA,xStream",
+            "--base-cache-dir",
+            str(cache_dir),
+            "--det-hashes",
+            hashes2,
+            "--no-cache",
+        ],
+    )
+    benchmark.main()
+    assert calls == ["xStream"]
+    assert set(benchmark.read_results(out2)) == {
+        ("kddcup99/http.csv", "LODA", 0),
+        ("kddcup99/http.csv", "xStream", 0),
+    }
+
+    base_dir = tmp_path / "base_artifacts"
+    head_dir = tmp_path / "head_artifacts"
+    (base_dir / "s0").mkdir(parents=True)
+    (head_dir / "s0").mkdir(parents=True)
+    (base_dir / "s0" / "base.csv").write_text(out1.read_text(encoding="utf-8"), encoding="utf-8")
+    (head_dir / "s0" / "head.csv").write_text(out2.read_text(encoding="utf-8"), encoding="utf-8")
+    benchmark.compare_ci_dirs(base_dir, head_dir)
+    assert "No run moved, out of 2." in capsys.readouterr().out
+
+    # Perturb head AUROC and verify drift detection via --compare-dirs CLI.
+    (head_dir / "s0" / "head.csv").write_text(
+        out2.read_text(encoding="utf-8").replace(",0.9,", ",0.5,"), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        sys, "argv", ["benchmark.py", "--compare-dirs", str(base_dir), str(head_dir)]
+    )
+    benchmark.main()
+    out = capsys.readouterr().out
+    assert "1 of 2 runs moved." in out and "LODA" in out
+
+    # Empty base directory leaves comparison graceful.
+    empty_base = tmp_path / "empty_base"
+    empty_base.mkdir()
+    benchmark.compare_ci_dirs(empty_base, head_dir)
+    assert "No base benchmark results to compare" in capsys.readouterr().out
+
+
+class NotAModel:
+    """A class that does not inherit from BaseModel."""
+
+    def __init__(self, random_state=None):
+        self.random_state = random_state
+
+
+def _write_custom_model(tmp_path, class_name, source):
+    path = tmp_path / "custom_model.py"
+    path.write_text(source, encoding="utf-8")
+    return path
+
+
+def test_load_custom_model_loads_valid_model(tmp_path):
+    benchmark = load_benchmark()
+    source = (
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomMultivariateDetector(BaseModel):\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return 0.0\n"
+    )
+    path = _write_custom_model(tmp_path, "CustomMultivariateDetector", source)
+    cls = benchmark._load_custom_model(f"{path}:CustomMultivariateDetector")
+    assert cls is not None
+    assert cls.__name__ == "CustomMultivariateDetector"
+    assert issubclass(cls, benchmark.BaseModel)
+
+
+@pytest.mark.parametrize("spec", ["no_colon", "just_a_path.py", "a:b:c"])
+def test_load_custom_model_rejects_bad_spec(spec):
+    benchmark = load_benchmark()
+    try:
+        benchmark._load_custom_model(spec)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(f"expected ValueError for spec {spec!r}")
+
+
+def test_load_custom_model_rejects_missing_file(tmp_path):
+    benchmark = load_benchmark()
+    try:
+        benchmark._load_custom_model(str(tmp_path / "does_not_exist.py:MyModel"))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError for missing file")
+
+
+def test_load_custom_model_rejects_missing_class(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "OtherClass",
+        "from pysad.core.base_model import BaseModel\nclass OtherClass(BaseModel):\n    def fit_partial(self, X, y=None): return self\n    def score_partial(self, X): return 0.0\n",
+    )
+    try:
+        benchmark._load_custom_model(f"{path}:NotInFile")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError for missing class")
+
+
+def test_load_custom_model_rejects_non_model(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path, "NotAModel", "class NotAModel:\n    def __init__(self): pass\n"
+    )
+    try:
+        benchmark._load_custom_model(f"{path}:NotAModel")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError for non-BaseModel class")
+
+
+def test_custom_factory_multivariate(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "CustomMultivariateDetector",
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomMultivariateDetector(BaseModel):\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return 0.0\n",
+    )
+    cls = benchmark._load_custom_model(f"{path}:CustomMultivariateDetector")
+    factory = benchmark._make_custom_factory(cls, "multivariate")
+    model = factory(np.zeros((20, 3)), 7)
+    assert isinstance(model, BaseModel)
+    assert model.window_size == 50
+    assert model.random_state == 7
+
+
+def test_custom_factory_univariate(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "CustomUnivariateDetector",
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomUnivariateDetector(BaseModel):\n"
+        "    _input_kind = 'univariate'\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return 0.0\n",
+    )
+    cls = benchmark._load_custom_model(f"{path}:CustomUnivariateDetector")
+    factory = benchmark._make_custom_factory(cls, "univariate")
+    model = factory(200, 24)
+    assert isinstance(model, BaseModel)
+    assert model.window_size == 50
+    assert model.random_state == 0
+
+
+def test_custom_factory_uses_defaults_for_optional_params(tmp_path):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "CustomMultivariateDetector",
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomMultivariateDetector(BaseModel):\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return 0.0\n",
+    )
+    cls = benchmark._load_custom_model(f"{path}:CustomMultivariateDetector")
+    factory = benchmark._make_custom_factory(cls, "multivariate")
+    model = factory(np.zeros((20, 3)), 7)
+    assert model.window_size == 50
+
+
+def test_write_latex_summary_ranks_and_marks(tmp_path):
+    benchmark = load_benchmark()
+    results = {
+        ("arrhythmia", "LODA", 0): {
+            "dataset": "arrhythmia",
+            "detector": "LODA",
+            "seed": 0,
+            "auroc": 0.7722,
+        },
+        ("arrhythmia", "RSHash", 0): {
+            "dataset": "arrhythmia",
+            "detector": "RSHash",
+            "seed": 0,
+            "auroc": 0.7366,
+        },
+        ("cardio", "LODA", 0): {
+            "dataset": "cardio",
+            "detector": "LODA",
+            "seed": 0,
+            "auroc": 0.93,
+        },
+        ("cardio", "RSHash", 0): {
+            "dataset": "cardio",
+            "detector": "RSHash",
+            "seed": 0,
+            "auroc": 0.9261,
+        },
+    }
+    out_path = tmp_path / "summary.tex"
+    benchmark._write_latex_summary(results, ["LODA", "RSHash"], out_path)
+    text = out_path.read_text(encoding="utf-8")
+    assert "\\begin{table}[htbp]" in text
+    assert "\\caption{Benchmark AUROC summary (higher is better).}" in text
+    assert "arrhythmia" in text and "cardio" in text
+    assert "LODA" in text and "RSHash" in text
+    assert "\\textbf{0.772}" in text
+    assert "\\begin{tabular}" in text and "\\end{tabular}" in text
+
+
+def test_write_latex_summary_handles_nan_and_chance(tmp_path):
+    benchmark = load_benchmark()
+    results = {
+        ("arrhythmia", "LODA", 0): {
+            "dataset": "arrhythmia",
+            "detector": "LODA",
+            "seed": 0,
+            "auroc": 0.5,
+        },
+        ("arrhythmia", "RSHash", 0): {
+            "dataset": "arrhythmia",
+            "detector": "RSHash",
+            "seed": 0,
+            "auroc": 0.8,
+        },
+        ("cardio", "LODA", 0): {
+            "dataset": "cardio",
+            "detector": "LODA",
+            "seed": 0,
+            "auroc": float("nan"),
+        },
+        ("cardio", "RSHash", 0): {
+            "dataset": "cardio",
+            "detector": "RSHash",
+            "seed": 0,
+            "auroc": 0.8,
+        },
+    }
+    out_path = tmp_path / "summary.tex"
+    benchmark._write_latex_summary(results, ["LODA", "RSHash"], out_path)
+    text = out_path.read_text(encoding="utf-8")
+    assert "\\textit{0.500}" in text
+    assert "--" in text
+
+
+def test_custom_model_runs_on_stream(tmp_path, monkeypatch):
+    benchmark = load_benchmark()
+    path = _write_custom_model(
+        tmp_path,
+        "CustomMultivariateDetector",
+        "import numpy as np\n"
+        "from pysad.core.base_model import BaseModel\n\n"
+        "class CustomMultivariateDetector(BaseModel):\n"
+        "    def __init__(self, window_size=50, random_state=None):\n"
+        "        self.window_size = window_size\n"
+        "        self.random_state = random_state\n"
+        "        self._seen = 0\n"
+        "    def fit_partial(self, X, y=None):\n"
+        "        self._seen += 1\n"
+        "        return self\n"
+        "    def score_partial(self, X):\n"
+        "        return float(self._seen)\n",
+    )
+    cls = benchmark._load_custom_model(f"{path}:CustomMultivariateDetector")
+    factory = benchmark._make_custom_factory(cls, "multivariate")
+    X = np.zeros((50, 2))
+    model = factory(X, 0)
+    scores, ms = benchmark.score_stream(model, X)
+    assert len(scores) == 50
+    assert ms > 0
+    assert float(scores[-1]) == 49.0
+
+
+@pytest.fixture
+def custom_forecaster_benchmark(tmp_path, monkeypatch):
+    """End-to-end fixture: a duck-typed streaming forecaster through the --custom runner.
+
+    Writes a univariate ForecastingAnomalyDetector wrapping a duck-typed moving-average
+    forecaster to a temporary file, monkeypatches the benchmark to score a small synthetic
+    NAB-like stream, and returns an invoke helper that runs benchmark.main() with --custom.
+    No new dependencies are needed: the forecaster is plain Python and the detector reuses
+    pysad.integrations.ForecastingAnomalyDetector.
+    """
+    import sys
+
+    benchmark = load_benchmark()
+    monkeypatch.setattr(benchmark, "OUT", tmp_path / "output")
+    monkeypatch.setattr(benchmark, "DATASETS", ["synthetic"])
+    monkeypatch.setattr(benchmark, "DRIFT", {"drift/test.csv": "Synthetic"})
+    monkeypatch.setattr(benchmark, "nab_series", lambda: ["nab/synthetic.csv"])
+    monkeypatch.setattr(benchmark, "UNIVARIATE", {})
+
+    num_points = 600
+    X = np.zeros((num_points, 1))
+    X[[300, 350, 400, 450, 500]] = 5.0
+    y = np.zeros(num_points, dtype=int)
+    y[[300, 350, 400, 450, 500]] = 1
+    monkeypatch.setattr(
+        benchmark.Data,
+        "get_data",
+        lambda *args, **kwargs: (X.copy(), y.copy()),
+    )
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(benchmark, "ProcessPoolExecutor", ThreadPoolExecutor)
+
+    source = "\n".join(
+        [
+            "import numpy as np",
+            "",
+            "from pysad.core.base_model import BaseModel",
+            "from pysad.integrations import ForecastingAnomalyDetector",
+            "",
+            "",
+            "class _MovingAverageForecaster:",
+            '    """Duck-typed streaming forecaster: one-step-ahead moving average."""',
+            "    def __init__(self, window=10):",
+            "        self.window = window",
+            "        self.history = []",
+            "    def forecast(self, horizon=1):",
+            "        if not self.history:",
+            "            return [0.0]",
+            "        return [sum(self.history[-self.window:]) / min(len(self.history), self.window)]",
+            "    def learn_one(self, y):",
+            "        self.history.append(float(y))",
+            "",
+            "",
+            "class MovingAverageAnomalyDetector(ForecastingAnomalyDetector):",
+            '    """Scores each value by its deviation from a moving-average forecast."""',
+            "    _input_kind = 'univariate'",
+            "    def __init__(self, window=10, relative=False, probationary_period=0):",
+            "        forecaster = _MovingAverageForecaster(window=window)",
+            "        super().__init__(",
+            "            forecaster=forecaster,",
+            "            relative=relative,",
+            "            probationary_period=probationary_period,",
+            "        )",
+            "",
+        ]
+    )
+    path = tmp_path / "custom_forecaster.py"
+    path.write_text(source, encoding="utf-8")
+    custom_spec = f"{path}:MovingAverageAnomalyDetector"
+    output_csv = tmp_path / "ci.csv"
+
+    def invoke(*extra):
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "benchmark.py",
+                "--ci",
+                str(output_csv),
+                "--parts",
+                "univariate",
+                "--custom",
+                custom_spec,
+                *extra,
+            ],
+        )
+        benchmark.main()
+
+    return benchmark, invoke, output_csv
+
+
+def test_custom_forecaster_runs_end_to_end_through_custom_runner(
+    custom_forecaster_benchmark,
+):
+    """A duck-typed streaming forecaster runs through --custom and scores above chance."""
+    _benchmark, invoke, output_csv = custom_forecaster_benchmark
+    invoke()
+
+    results = load_benchmark().read_results(output_csv)
+    assert len(results) == 1
+    ((dataset, detector, seed), row) = next(iter(results.items()))
+    assert dataset == "nab/synthetic.csv"
+    assert detector == "MovingAverageAnomalyDetector"
+    assert seed == 0
+    assert float(row["auroc"]) > 0.5
+
+
+@pytest.fixture
+def pair_benchmark(tmp_path, monkeypatch):
+    import sys
+
+    benchmark = load_benchmark()
+    monkeypatch.setattr(benchmark, "OUT", tmp_path / "output")
+    monkeypatch.setattr(benchmark, "DATASETS", ["synthetic"])
+    monkeypatch.setattr(benchmark, "DRIFT", {"drift/test.csv": "Synthetic"})
+    monkeypatch.setattr(benchmark, "nab_series", lambda: ["nab/synthetic.csv"])
+    X = np.arange(600, dtype=float).reshape(-1, 1) % 7
+    y = np.tile([0, 0, 1], 200)
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda *args, **kwargs: (X.copy(), y.copy()))
+    monkeypatch.setattr(
+        benchmark, "load", lambda ds, seed, points=None: (X[:points].copy(), y[:points].copy())
+    )
+    monkeypatch.setattr(benchmark, "commit", lambda: "abc123")
+    monkeypatch.setattr(benchmark, "warmup", lambda n: 5)
+    monkeypatch.setattr(benchmark, "series_of", lambda d: benchmark.nab_series())
+    # Run the real scoring code in this process, so each run uses the synthetic data.
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(benchmark, "ProcessPoolExecutor", ThreadPoolExecutor)
+
+    def invoke(*extra):
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "benchmark.py",
+                "--detectors",
+                "LODA",
+                "--jobs",
+                "1",
+                "--cache-dir",
+                str(tmp_path / "cache"),
+                *extra,
+            ],
+        )
+        benchmark.main()
+
+    return benchmark, invoke
+
+
+def test_pair_cache_reuses_ci_results_and_separates_settings(pair_benchmark, tmp_path, monkeypatch):
+    benchmark, invoke = pair_benchmark
+    output = tmp_path / "ci.csv"
+    invoke("--ci", str(output), "--parts", "drift")
+    expected = output.read_text()
+    original_run = benchmark.run
+
+    def fail_run(job):
+        pytest.fail("An unchanged pair ran again.")
+
+    monkeypatch.setattr(benchmark, "run", fail_run)
+    invoke("--ci", str(output), "--parts", "drift")
+    assert output.read_text() == expected
+    monkeypatch.setattr(benchmark, "run", original_run)
+    monkeypatch.setattr(benchmark, "CI_POINTS", 30)
+    invoke("--ci", str(output), "--parts", "drift")
+    assert output.read_text() != expected
+    invoke("--ci", str(output), "--parts", "drift", "--no-cache")
+
+
+def test_pair_cache_restores_full_rows_and_nab_scores(pair_benchmark, monkeypatch):
+    benchmark, invoke = pair_benchmark
+    invoke("--parts", "odds,nab,shingles")
+    expected = {p.name: p.read_bytes() for p in benchmark.OUT.glob("*.csv")}
+    assert {
+        r["detector"] for r in benchmark.read_results(benchmark.OUT / "results.csv").values()
+    } == {
+        "LODA",
+        "LODA" + benchmark.SHINGLED,
+    }
+    for p in benchmark.OUT.glob("*.csv"):
+        p.unlink()
+
+    def fail_run(job):
+        pytest.fail("An unchanged pair ran again.")
+
+    monkeypatch.setattr(benchmark, "run", fail_run)
+    invoke("--parts", "odds,nab,shingles")
+    assert {p.name: p.read_bytes() for p in benchmark.OUT.glob("*.csv")} == expected
+
+
+def test_pair_cache_invalidates_only_changed_detector(pair_benchmark, tmp_path, monkeypatch):
+    benchmark, invoke = pair_benchmark
+    package = tmp_path / "package" / "pysad"
+    package.mkdir(parents=True)
+    for name in ["common", "LODA", "xStream"]:
+        (package / f"{name}.py").write_text("original")
+    monkeypatch.setattr(benchmark.pysad, "__file__", str(package / "__init__.py"))
+
+    def dependencies(objects):
+        if len(objects) == 1 and objects[0].__name__ in {"LODA", "xStream"}:
+            return {f"pysad/{objects[0].__name__}.py"}
+        return {"pysad/common.py"}
+
+    monkeypatch.setattr(benchmark, "pysad_files", dependencies)
+    output = tmp_path / "ci.csv"
+    options = ["--ci", str(output), "--parts", "drift", "--detectors", "LODA,xStream"]
+    invoke(*options)
+    before = benchmark.read_results(output)
+    # Change the stream too, so reused metrics differ from metrics that run again.
+    X = np.arange(600, dtype=float).reshape(-1, 1) % 7
+    y = (X[:, 0] == 6).astype(int)
+    monkeypatch.setattr(benchmark, "load", lambda *args: (X.copy(), y.copy()))
+    (package / "xStream.py").write_text("changed")
+    invoke(*options)
+    after = benchmark.read_results(output)
+    assert after[("drift/test.csv", "LODA", 0)] == before[("drift/test.csv", "LODA", 0)]
+    assert after[("drift/test.csv", "xStream", 0)] != before[("drift/test.csv", "xStream", 0)]
+    (package / "common.py").write_text("changed")
+    invoke(*options)
+    assert (
+        benchmark.read_results(output)[("drift/test.csv", "LODA", 0)]
+        != before[("drift/test.csv", "LODA", 0)]
+    )
+
+
+def test_pair_cache_recovers_damaged_entry(pair_benchmark, tmp_path):
+    benchmark, invoke = pair_benchmark
+    output = tmp_path / "ci.csv"
+    options = ["--ci", str(output), "--parts", "drift"]
+    invoke(*options)
+    expected = output.read_text()
+    paths = list((tmp_path / "cache").glob("*.json"))
+    assert len(paths) == 1
+    for path in paths:
+        path.write_text("{broken")
+    invoke(*options)
+    assert output.read_text() == expected
+    assert benchmark.read_results(output)
+
+
+def test_no_cache_bypasses_reads_and_writes(pair_benchmark, tmp_path, monkeypatch):
+    benchmark, invoke = pair_benchmark
+    output = tmp_path / "ci.csv"
+    options = ["--ci", str(output), "--parts", "drift"]
+    invoke(*options)
+    expected = output.read_text()
+    X = np.arange(600, dtype=float).reshape(-1, 1) % 7
+    y = (X[:, 0] == 6).astype(int)
+    monkeypatch.setattr(benchmark, "load", lambda *args: (X.copy(), y.copy()))
+    invoke(*options, "--no-cache")
+    assert output.read_text() != expected
+    invoke(*options)
+    assert output.read_text() == expected
+
+
+def test_memory_benchmark_writes_measurements(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    output = tmp_path / "memory.csv"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/memory_stability.py",
+            "--detectors",
+            "StandardAbsoluteDeviation",
+            "--points",
+            "30",
+            "--checkpoint",
+            "10",
+            "--output",
+            str(output),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    with output.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["detector"] == "StandardAbsoluteDeviation"
+    assert float(row["points"]) == 30
+    assert float(row["seconds"]) > 0
+    assert float(row["peak_kb"]) >= 0
+    assert np.isfinite(float(row["growth_kb"]))
+
+
+def test_stream_benchmark_writes_measurements(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    output = tmp_path / "stream.csv"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/bench_stream.py",
+            "--detectors",
+            "StandardAbsoluteDeviation",
+            "--points",
+            "30",
+            "--repeats",
+            "1",
+            "--output",
+            str(output),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    with output.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["detector"] == "StandardAbsoluteDeviation"
+    assert float(row["points"]) == 30
+    assert float(row["ms_per_point"]) > 0
+    assert float(row["peak_kb"]) >= 0
+    assert float(row["peak_mb"]) >= 0
+
+
+def test_tsb_drift_reports_auroc_aupr_throughput_and_memory(tmp_path, monkeypatch):
+    """The reproducible drift benchmark reports AUROC, AUPR, throughput, and memory without a download."""
+    import sys
+    from pathlib import Path
+
+    benchmarks = Path(__file__).resolve().parents[1] / "benchmarks"
+    sys.path.insert(0, str(benchmarks))
+    try:
+        import bench_tsb_drift
+    finally:
+        sys.path.remove(str(benchmarks))
+
+    from pysad import models
+
+    X = np.zeros((200, 2))
+    X[100:, 0] = 5.0
+    y = np.zeros(200, dtype=int)
+    y[150:] = 1
+
+    monkeypatch.setattr(bench_tsb_drift, "DRIFT", {"drift/synthetic.csv": "Synthetic"})
+    monkeypatch.setattr(
+        bench_tsb_drift,
+        "DETECTORS",
+        {"LODA": lambda X, seed: models.LODA(random_state=seed)},
+    )
+    monkeypatch.setattr(
+        bench_tsb_drift, "load", lambda stream, seed, points=None: (X.copy(), y.copy())
+    )
+
+    rows = bench_tsb_drift.run_benchmark(
+        ["drift/synthetic.csv"], ["LODA"], points=None, seed=0, repeats=2
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert set(row) == set(bench_tsb_drift.FIELDS)
+    assert row["stream"] == "drift/synthetic.csv"
+    assert row["detector"] == "LODA"
+    assert row["points"] == 200
+    assert row["features"] == 2
+    assert row["warmup"] == 50
+    assert row["seed"] == 0
+    assert np.isfinite(row["auroc"])
+    assert np.isfinite(row["aupr"])
+    assert row["ms_per_point"] > 0
+    assert row["peak_mib"] >= 0
+    assert row["deterministic"] is True
+
+    # The declared fields are the CSV header.
+    with (tmp_path / "drift.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=bench_tsb_drift.FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    with (tmp_path / "drift.csv").open(newline="") as handle:
+        written = list(csv.DictReader(handle))
+    assert [r["detector"] for r in written] == ["LODA"]
+    assert set(written[0]) == set(bench_tsb_drift.FIELDS)

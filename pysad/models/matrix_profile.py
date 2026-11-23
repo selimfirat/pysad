@@ -4,6 +4,7 @@ import math
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _int_at_least, check_univariate
@@ -40,7 +41,7 @@ class MatrixProfile(BaseModel):
         self.values_ = np.zeros(self.history_size)
         self.num_values_ = 0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> MatrixProfile:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> MatrixProfile:
         """Appends the next value to the history and drops the oldest value once the history is full.
 
         Args:
@@ -63,7 +64,7 @@ class MatrixProfile(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the subsequence of the last ``window_length - 1`` fitted values followed by `X`. This method does not change the model.
 
         Args:
@@ -86,7 +87,7 @@ class MatrixProfile(BaseModel):
         return _nearest_distance(series=values[: num_neighbors + m - 1], query=values[-m:])
 
 
-def _nearest_distance(series: np.ndarray, query: np.ndarray) -> float:
+def _nearest_distance(series: NDArray[np.float64], query: NDArray[np.float64]) -> float:
     """Returns the smallest z-normalized Euclidean distance from `query` to a subsequence of `series` of the same length.
 
     As in STUMPY, the distance between two constant subsequences is 0, and the distance between a constant subsequence and another subsequence is ``sqrt(len(query))``.
@@ -95,16 +96,18 @@ def _nearest_distance(series: np.ndarray, query: np.ndarray) -> float:
     neighbors = sliding_window_view(series, m)  # (num_neighbors, m)
 
     stds = neighbors.std(axis=1)
-    constant = neighbors.max(axis=1) == neighbors.min(axis=1)
-    query_constant = query.max() == query.min()
+    query_std = query.std()
+    constant = (neighbors.max(axis=1) == neighbors.min(axis=1)) | (stds == 0.0)
+    query_constant = (query.max() == query.min()) | (query_std == 0.0)
     # The centered query sums to 0, so its dot product with a subsequence equals the dot product
     # of both centered. Shifting the series by the query mean avoids the cancellation of
     # sum(x * y) - m * mean(x) * mean(y) when the values are far from 0.
     query_mean = query.mean()
     with np.errstate(divide="ignore", invalid="ignore"):
         correlations = np.correlate(series - query_mean, query - query_mean) / (
-            m * stds * query.std()
+            m * stds * query_std
         )
+    correlations = np.where(np.isfinite(correlations), correlations, 0.0)
     squared = 2 * m * (1 - np.minimum(correlations, 1.0))
     squared = np.where(constant | query_constant, m, squared)
     squared[constant & query_constant] = 0.0

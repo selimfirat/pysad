@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_streamer import BaseStreamer
 from pysad.utils.array_streamer import ArrayStreamer
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
     import polars as pl
 
 
-def _iter_rows(data: pl.DataFrame | pl.Series) -> Iterator[Any]:
+def _iter_rows(data: pl.DataFrame | pl.Series) -> Iterator[NDArray[Any]]:
     import polars as pl
 
     if isinstance(data, pl.Series):
@@ -47,16 +48,16 @@ class PolarsStreamer(BaseStreamer["pl.DataFrame", "pl.DataFrame | pl.Series"]):
         self.array_iterator = ArrayStreamer(shuffle=shuffle, random_state=random_state)
 
     @overload
-    def iter(self, X: pl.DataFrame, y: None = None) -> Iterator[np.ndarray]: ...
+    def iter(self, X: pl.DataFrame, y: None = None) -> Iterator[NDArray[Any]]: ...
 
     @overload
     def iter(
         self, X: pl.DataFrame, y: pl.DataFrame | pl.Series
-    ) -> Iterator[tuple[np.ndarray, Any]]: ...
+    ) -> Iterator[tuple[NDArray[Any], Any]]: ...
 
     def iter(
         self, X: pl.DataFrame, y: pl.DataFrame | pl.Series | None = None
-    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
+    ) -> Iterator[NDArray[Any] | tuple[NDArray[Any], Any]]:
         """Yield feature rows and optional labels in positional order.
 
         If shuffle is True, yield the rows in shuffled order.

@@ -4,9 +4,12 @@ import numbers
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
+from pysad import _kernels
 from pysad.core.base_model import BaseModel
+from pysad.explainability import treeshap_ensemble
 from pysad.utils.validation import check_feature_bounds
 
 
@@ -45,12 +48,12 @@ class HalfSpaceTrees(BaseModel):
 
     def __init__(
         self,
-        feature_mins: np.ndarray | list[float] | tuple[float, ...],
-        feature_maxes: np.ndarray | list[float] | tuple[float, ...],
+        feature_mins: NDArray[np.float64] | list[float] | tuple[float, ...],
+        feature_maxes: NDArray[np.float64] | list[float] | tuple[float, ...],
         window_size: int = 250,
         num_trees: int = 25,
         max_depth: int = 15,
-        initial_window_X: np.ndarray | None = None,
+        initial_window_X: NDArray[np.float64] | None = None,
         random_work_space: bool = True,
         random_state: int | np.random.RandomState | None = None,
     ) -> None:
@@ -80,40 +83,49 @@ class HalfSpaceTrees(BaseModel):
         # the masses take the smallest unsigned integers that hold them: a node records at most
         # `window_size` instances per window.
         num_splits = 2**self.max_depth - 1
-        self.split_atts: np.ndarray = np.empty(
+        self.split_atts: NDArray[Any] = np.empty(
             (self.num_trees, num_splits), dtype=np.min_scalar_type(self.num_dimensions - 1)
         )
-        self.split_values = np.empty((self.num_trees, num_splits))
+        self.split_values: NDArray[np.float64] = np.empty((self.num_trees, num_splits))
         rng = check_random_state(random_state)
         for tree in range(self.num_trees):
             self.split_atts[tree], self.split_values[tree] = self._build_tree(rng)
-        self.l_mass = np.zeros(
+        self.l_mass: NDArray[Any] = np.zeros(
             (self.num_trees, 2 * num_splits + 1), dtype=np.min_scalar_type(self.window_size)
         )
-        self.r_mass = np.zeros_like(self.l_mass)
+        self.r_mass: NDArray[Any] = np.zeros_like(self.l_mass)
         # r * 2^k of a node at depth k.
-        self._depth_weights = 2 ** np.arange(self.max_depth + 1, dtype=np.int64)
+        self._depth_weights: NDArray[np.int64] = 2 ** np.arange(self.max_depth + 1, dtype=np.int64)
         # Traversal state shared by every point. Each tree's current node is kept as the
         # tree-independent heap index u = node + 1, one per row of `self._flat_path`, so a depth
         # step is u <- 2u + goes_right for every tree at once and no Python loop touches a single
         # tree. The split and the mass arrays are read as one flat array in which node n of tree t
         # sits at t * num_splits + n and t * num_nodes + n: gathering a split needs the index
         # u + t * num_splits - 1, a mass cell u + t * num_nodes - 1.
-        self._split_shift = np.arange(self.num_trees, dtype=np.intp) * num_splits - 1
-        self._mass_shift = np.arange(self.num_trees, dtype=np.intp) * (2 * num_splits + 1) - 1
-        self._flat_path = np.empty((self.max_depth + 1, self.num_trees), dtype=np.intp)
-        self._idx_buf = np.empty(self.num_trees, dtype=np.intp)
-        self._att_buf = np.empty(self.num_trees, dtype=self.split_atts.dtype)
-        self._val_buf = np.empty(self.num_trees)
-        self._x_buf = np.empty(self.num_trees)
-        self._goes_right_buf = np.empty(self.num_trees, dtype=np.bool_)
+        self._split_shift: NDArray[np.intp] = (
+            np.arange(self.num_trees, dtype=np.intp) * num_splits - 1
+        )
+        self._mass_shift: NDArray[np.intp] = (
+            np.arange(self.num_trees, dtype=np.intp) * (2 * num_splits + 1) - 1
+        )
+        self._flat_path: NDArray[np.intp] = np.empty(
+            (self.max_depth + 1, self.num_trees), dtype=np.intp
+        )
+        self._idx_buf: NDArray[np.intp] = np.empty(self.num_trees, dtype=np.intp)
+        self._att_buf: NDArray[Any] = np.empty(self.num_trees, dtype=self.split_atts.dtype)
+        self._val_buf: NDArray[np.float64] = np.empty(self.num_trees)
+        self._x_buf: NDArray[np.float64] = np.empty(self.num_trees)
+        self._goes_right_buf: NDArray[np.bool_] = np.empty(self.num_trees, dtype=np.bool_)
+        self._split_atts_u16: NDArray[np.uint16] | None = None
 
         self.is_first_window = True
         self.step = 0
         if initial_window_X is not None:
             self.fit(initial_window_X)
 
-    def _work_space(self, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
+    def _work_space(
+        self, rng: np.random.RandomState
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         if not self.random_work_space:
             return self.feature_mins.copy(), self.feature_maxes.copy()
 
@@ -123,7 +135,7 @@ class HalfSpaceTrees(BaseModel):
 
         return s - half_width, s + half_width
 
-    def _build_tree(self, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
+    def _build_tree(self, rng: np.random.RandomState) -> tuple[NDArray[Any], NDArray[np.float64]]:
         """Draws the split features and computes the split values of one tree, in heap order.
 
         The tree halves its work space at every internal node: the node splits the feature drawn for it at the
@@ -160,8 +172,24 @@ class HalfSpaceTrees(BaseModel):
 
         return atts, values
 
-    def _path(self, X: np.ndarray) -> np.ndarray:
+    def _path(self, X: NDArray[np.float64]) -> NDArray[np.intp]:
         """Returns the flat index into the mass arrays of the max_depth + 1 nodes that `X` visits in each tree."""
+        rust_path = _kernels.half_space_trees_path
+        if rust_path is not None and self.num_dimensions <= 65536:
+            x = np.asarray(X, dtype=np.float64)
+            if x.ndim == 1 and x.shape[0] >= self.num_dimensions:
+                split_atts_u16 = self._split_atts_u16
+                if split_atts_u16 is None:
+                    split_atts_u16 = self.split_atts.astype(np.uint16, copy=False)
+                    self._split_atts_u16 = split_atts_u16
+                return np.asarray(
+                    rust_path(x, split_atts_u16, self.split_values, self.max_depth),
+                    dtype=np.intp,
+                )
+
+        return self._path_numpy(X)
+
+    def _path_numpy(self, X: NDArray[np.float64]) -> NDArray[np.intp]:
         X = np.asarray(X)
         # A float64 X can be gathered through a reusable buffer; other dtypes (a float32 or an int
         # point, for example) would not cast into it, so they take the allocating path.
@@ -188,7 +216,7 @@ class HalfSpaceTrees(BaseModel):
 
         return path
 
-    def _fit_path(self, path: np.ndarray) -> None:
+    def _fit_path(self, path: NDArray[np.intp]) -> None:
         self.step += 1
         self.l_mass.reshape(-1)[path] += 1
 
@@ -198,7 +226,7 @@ class HalfSpaceTrees(BaseModel):
             self.l_mass.fill(0)
             self.is_first_window = False
 
-    def _score_path(self, path: np.ndarray) -> float:
+    def _score_path(self, path: NDArray[np.intp]) -> float:
         # During the first window there is no reference yet, so score against the mass recorded so far.
         mass = (self.l_mass if self.is_first_window else self.r_mass).reshape(-1)[path]
         s = float((mass * self._depth_weights[:, None]).sum())
@@ -210,7 +238,7 @@ class HalfSpaceTrees(BaseModel):
 
         return 0.0 - s
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> HalfSpaceTrees:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> HalfSpaceTrees:
         """Updates the model with the next instance.
 
         Args:
@@ -224,7 +252,7 @@ class HalfSpaceTrees(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance against the reference mass profile built from the previous window, without recording it.
 
         Args:
@@ -235,7 +263,7 @@ class HalfSpaceTrees(BaseModel):
         """
         return self._score_path(self._path(X))
 
-    def explain_partial(self, X: np.ndarray) -> np.ndarray:
+    def explain_partial(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """Returns per-feature attribution weights for the anomaly score of the next instance.
 
         Each tree routes the instance down one path from its root to a leaf. The tree blames the
@@ -294,11 +322,11 @@ class HalfSpaceTrees(BaseModel):
         flat_split_index = best_node - tree_id * (num_splits + 1)
         split_feature = self.split_atts.reshape(-1)[flat_split_index]  # (num_trees,)
 
-        attribution: np.ndarray = np.bincount(
+        attribution = np.bincount(
             split_feature,
             weights=rarity_weight,
             minlength=self.num_dimensions,
-        )
+        ).astype(np.float64)
 
         total = float(attribution.sum())
         if total > 0.0:
@@ -306,7 +334,148 @@ class HalfSpaceTrees(BaseModel):
 
         return attribution
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def _treeshap_structure(
+        self,
+    ) -> tuple[
+        list[NDArray[np.intp]],
+        list[NDArray[np.float64]],
+        list[NDArray[np.intp]],
+        list[NDArray[np.intp]],
+        list[NDArray[np.float64]],
+        list[NDArray[np.float64]],
+    ]:
+        """Extract tree structure and leaf values for TreeSHAP.
+
+        Returns:
+            Tuple of (trees_features, trees_thresholds, trees_left, trees_right,
+            trees_values, trees_left_fractions) for treeshap_ensemble.
+        """
+        num_splits = 2**self.max_depth - 1
+        num_nodes = 2 * num_splits + 1
+        mass = (self.l_mass if self.is_first_window else self.r_mass).reshape(-1).astype(np.float64)
+
+        trees_features: list[NDArray[np.intp]] = []
+        trees_thresholds: list[NDArray[np.float64]] = []
+        trees_left: list[NDArray[np.intp]] = []
+        trees_right: list[NDArray[np.intp]] = []
+        trees_values: list[NDArray[np.float64]] = []
+        trees_left_fractions: list[NDArray[np.float64]] = []
+
+        for tree in range(self.num_trees):
+            # Node indices for this tree in the flat mass array
+            base = tree * num_nodes
+
+            # Features: split feature for internal nodes, -1 for leaves
+            features = np.full(num_nodes, -1, dtype=np.intp)
+            features[:num_splits] = self.split_atts[tree]
+
+            # Thresholds: split value for internal nodes, 0 for leaves
+            thresholds = np.zeros(num_nodes, dtype=np.float64)
+            thresholds[:num_splits] = self.split_values[tree]
+
+            # Children in heap order: node i has children 2i+1, 2i+2
+            left = np.full(num_nodes, -1, dtype=np.intp)
+            right = np.full(num_nodes, -1, dtype=np.intp)
+            for i in range(num_splits):
+                left[i] = 2 * i + 1
+                right[i] = 2 * i + 2
+
+            # Leaf values: negative cumulative mass * depth_weight along path to each leaf.
+            # The anomaly score contribution of a tree is -sum(mass * 2^depth) along the path.
+            # TreeSHAP explains the leaf value, so we use the negative sum to make
+            # positive SHAP values correspond to increased anomaly score (more anomalous).
+            depth = np.zeros(num_nodes, dtype=np.intp)
+            for i in range(1, num_nodes):
+                depth[i] = depth[(i - 1) // 2] + 1
+
+            values = np.zeros(num_nodes, dtype=np.float64)
+            for i in range(num_nodes):
+                contrib = mass[base + i] * (2 ** depth[i])
+                if i == 0:
+                    values[i] = -contrib
+                else:
+                    parent = (i - 1) // 2
+                    values[i] = values[parent] - contrib
+
+            trees_features.append(features)
+            trees_thresholds.append(thresholds)
+            trees_left.append(left)
+            trees_right.append(right)
+            trees_values.append(values)
+
+            # Left fractions: default 0.5 for all internal nodes
+            left_fracs = np.full(num_nodes, 0.5, dtype=np.float64)
+            trees_left_fractions.append(left_fracs)
+
+        return (
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            trees_left_fractions,
+        )
+
+    def score_explain_partial(self, X: NDArray[np.float64]) -> tuple[float, NDArray[np.float64]]:
+        """Returns the anomaly score and per-feature SHAP values for the next instance.
+
+        Uses the TreeSHAP algorithm :cite:`lundberg2020consistent` to compute exact SHAP values
+        for the tree ensemble. The SHAP values explain the anomaly score contribution of each
+        tree (negative sum of mass * 2^depth along the path), averaged across trees.
+        Positive SHAP values indicate features that increase the anomaly score (more anomalous),
+        negative values indicate features that decrease the anomaly score (more normal).
+
+        Like ``score_partial``, it does not update the model or record the instance. Before
+        the first instance is fitted, the method returns 0.0 and zeros of shape
+        ``(num_features,)``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and explain.
+
+        Returns:
+            tuple: (score, shap_values) where
+                score (float): The anomalousness score of the input instance.
+                shap_values (np.float64 array of shape (num_features,)): SHAP values, one per
+                feature. Positive values mean the feature increases the anomaly score
+                (more anomalous), negative values mean it decreases the anomaly score
+                (more normal). Returns zeros before any fitting.
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        score = self.score_partial(X)
+
+        if self.step == 0:  # nothing fitted yet
+            return score, np.zeros(self.num_dimensions, dtype=np.float64)
+
+        # Extract tree structure and compute SHAP values
+        (
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            trees_left_fractions,
+        ) = self._treeshap_structure()
+
+        shap_values = treeshap_ensemble(
+            x,
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            self.num_dimensions,
+            trees_left_fractions=trees_left_fractions,
+        )
+
+        return score, shap_values
+
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the next instance against the reference mass profile, and then updates the model with it.
 
         Args:

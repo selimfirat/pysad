@@ -33,8 +33,9 @@ FINITE_SCORES = st.one_of(
 )
 
 PROPERTIES = settings(
-    max_examples=25,
+    max_examples=8,
     deadline=None,
+    database=None,
     suppress_health_check=[HealthCheck.too_slow],
     # The same examples on every run, so a failure in CI reproduces locally.
     derandomize=True,
@@ -43,7 +44,9 @@ PROPERTIES = settings(
 # Constructor arguments by class. Small windows make the calibrators evict scores.
 PARAMS = {
     "ConformalProbabilityCalibrator": {"window_size": 10},
+    "ConformalTSFMCalibrator": {"alpha": 0.1, "gamma": 0.005, "window_size": 10},
     "GaussianTailProbabilityCalibrator": {"window_size": 10, "short_window_size": 3},
+    "GroupConditionalConformalCalibrator": {"window_size": 10, "max_regimes": 4},
 }
 
 

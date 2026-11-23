@@ -20,7 +20,7 @@ authors = [
 maintainers = [
   {name = "Selim Firat Yilmaz", email = "yilmazselimfirat@gmail.com"}
 ]
-description = "Streaming anomaly detection in Python: online detectors (xStream, LODA, RS-Hash, Half-Space Trees, RRCF...) plus calibration and prequential evaluation for real-time data."
+description = "Streaming anomaly detection in Python: 50+ online multivariate and univariate detectors (LODA, RRCF, Half-Space Trees, xStream, DAMP, SAND) with calibrated alerts, drift handling, and prequential evaluation."
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
 keywords = [
@@ -32,6 +32,15 @@ keywords = [
   "real-time",
   "incremental learning",
   "time series",
+  "concept drift",
+  "conformal prediction",
+  "prequential evaluation",
+  "rrcf",
+  "half-space trees",
+  "loda",
+  "spot",
+  "online anomaly detection",
+  "streaming anomaly detection",
 ]
 classifiers = [
         'Development Status :: 5 - Production/Stable',
@@ -40,10 +49,11 @@ classifiers = [
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
         'Intended Audience :: Information Technology',
-        "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
+        "Natural Language :: English",
         "License :: OSI Approved :: BSD License",
+        "Typing :: Typed",
         'Operating System :: Unix',
         'Operating System :: MacOS',
         'Operating System :: Microsoft :: Windows',
@@ -56,11 +66,23 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/selimfirat/pysad"
 Documentation = "https://pysad.readthedocs.io/"
+Playground = "https://huggingface.co/spaces/selimfirat/pysad-playground"
+"Live Demo" = "https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb"
+Benchmarks = "https://pysad.readthedocs.io/en/stable/benchmark.html"
 Repository = "https://github.com/selimfirat/pysad.git"
 "Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
+Discussions = "https://github.com/selimfirat/pysad/discussions"
 Changelog = "https://github.com/selimfirat/pysad/releases"
 
-# PEP 735 dependency groups. The runtime dependencies only have floors in [project]; these
+[project.optional-dependencies]
+mcp = ["mcp>=1.26.0,<2"]
+# fast = ["pysad_kernels>=0.1.0"]  # Enable after pysad_kernels 0.1.0 is published on PyPI
+
+[project.scripts]
+pysad-live = "pysad.live.cli:main"
+pysad-mcp = "pysad.mcp.server:main"
+
+# PEP 735 dependency groups. The runtime dependencies use ranges in [project]; these
 # groups pin what CI, Read the Docs and contributors install, and Dependabot bumps them.
 # Install with `pip install -e . --group dev` (pip 25.1+) or `uv sync --group dev`.
 [dependency-groups]
@@ -70,6 +92,9 @@ runtime = [
   "scikit-learn==1.7.2",
   "scipy>=1.15.4",
   "setuptools>=84.0.0,<85.0.0",
+]
+mcp = [
+  "mcp==1.30.0",
 ]
 test = [
   # PandasStreamer takes DataFrames.
@@ -123,7 +148,7 @@ compare-numpy1 = [
   "streamad==0.3.1",
   "alibi-detect==0.13.0",
 ]
-# The packages that .github/workflows/jupyterlite.yml deploys to GitHub Pages, so the deploy
+# The packages that .github/workflows/pages.yml deploys to GitHub Pages, so the deploy
 # job runs known versions and Dependabot bumps the pins with the one-week cooldown.
 jupyterlite = [
   "jupyterlite-core==0.8.7",
@@ -132,6 +157,7 @@ jupyterlite = [
 ]
 dev = [
   {include-group = "runtime"},
+  {include-group = "mcp"},
   {include-group = "test"},
   {include-group = "docs"},
   {include-group = "lint"},
@@ -139,6 +165,9 @@ dev = [
 
 [tool.setuptools.dynamic]
 version = {attr = "pysad.version.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["pysad*"]
 
 [tool.setuptools.package-data]
 # PEP 561 marker: type checkers use pysad's inline type hints.
@@ -211,14 +240,88 @@ warn_redundant_casts = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
+warn_return_any = true
+strict_equality = true
+extra_checks = true
 
 [[tool.mypy.overrides]]
 module = [
     "pysad.core.*",
+    "pysad.explainability.*",
+    "pysad.live.*",
+    "pysad.mcp.*",
+    "pysad.models._window",
+    "pysad.models.absad",
+    "pysad.models.adems",
+    "pysad.models.anyout",
+    "pysad.models.approx_storm",
+    "pysad.models.baselines",
+    "pysad.models.change_finder",
+    "pysad.models.cost_sensitive_stream",
+    "pysad.models.cpod",
+    "pysad.models.d3",
+    "pysad.models.damp",
+    "pysad.models.denstream",
+    "pysad.models.dilof",
+    "pysad.models.drift_adaptive_detector",
+    "pysad.models.exact_storm",
+    "pysad.models.expose",
+    "pysad.models.feedback_hst",
+    "pysad.models.fluxev",
+    "pysad.models.frahst",
+    "pysad.models.gng_a",
+    "pysad.models.half_space_trees",
+    "pysad.models.htm.*",
+    "pysad.models.holt_winters",
+    "pysad.models.idks",
+    "pysad.models.iforest_asd",
+    "pysad.models.incremental_lof",
+    "pysad.models.inqmad",
+    "pysad.models.kelos",
+    "pysad.models.kitnet",
+    "pysad.models.knn_cad",
+    "pysad.models.loda",
+    "pysad.models.local_polynomial",
+    "pysad.models.loop",
+    "pysad.models.matrix_profile",
+    "pysad.models.mcod",
+    "pysad.models.median_absolute_deviation",
+    "pysad.models.memstream",
+    "pysad.models.midas",
+    "pysad.models.milof",
+    "pysad.models.mstream",
+    "pysad.models.nets",
+    "pysad.models.model_ensemble",
+    "pysad.models.oesnn_uad",
+    "pysad.models.online_isolation_forest",
+    "pysad.models.online_one_class_svm",
+    "pysad.models.pcb_isolation_forest",
+    "pysad.models.pewma",
+    "pysad.models.relative_entropy",
+    "pysad.models.robust_random_cut_forest",
+    "pysad.models.rs_forest",
+    "pysad.models.rs_hash",
+    "pysad.models.sand",
+    "pysad.models.sdostream",
+    "pysad.models.seasonal_esd",
+    "pysad.models.smart_sifter",
+    "pysad.models.spectral_residual",
+    "pysad.models.standard_absolute_deviation",
+    "pysad.models.stream_km_plusplus",
+    "pysad.models.stream_pipeline",
+    "pysad.models.streaming_autoregressive",
+    "pysad.models.teda",
+    "pysad.models.thresh_leap",
+    "pysad.models.xstream",
+    "pysad.models.zero_shot_embedding_detector",
+    "pysad.evaluation.*",
     "pysad.evaluation.metrics",
     "pysad.evaluation.prequential",
     "pysad.evaluation.rolling_metric",
     "pysad.evaluation.windowed_metric",
+    "pysad.integrations",
+    "pysad.integrations.*",
+    "pysad.statistics.*",
     "pysad.statistics.basic",
     "pysad.statistics.drift",
     "pysad.statistics.exponential_moving_average_meter",
@@ -226,15 +329,28 @@ module = [
     "pysad.statistics.quantiles",
     "pysad.statistics.relative_error_quantile_meter",
     "pysad.statistics.running_statistic",
+    "pysad.transform",
+    "pysad.transform.*",
+    "pysad.utils",
+    "pysad.utils._datasets",
+    "pysad.utils.array_streamer",
+    "pysad.utils.count_min_sketch",
+    "pysad.utils.csv_streamer",
+    "pysad.utils.data",
+    "pysad.utils.hyperloglog",
+    "pysad.utils.pandas_streamer",
+    "pysad.utils.plotting",
+    "pysad.utils.polars_streamer",
+    "pysad.utils.synthetic",
+    "pysad.utils.validation",
+    "pysad.utils.window",
 ]
 disallow_any_generics = true
 disallow_subclassing_any = true
 disallow_untyped_calls = true
 disallow_untyped_decorators = true
-warn_return_any = true
 implicit_reexport = false
-strict_equality = true
-extra_checks = true
+warn_unused_ignores = false
 
 # Dependencies without type hints or stubs.
 [[tool.mypy.overrides]]

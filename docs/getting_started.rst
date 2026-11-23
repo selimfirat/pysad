@@ -1,5 +1,22 @@
+.. meta::
+   :description: Get started with streaming anomaly detection in Python using PySAD: score points one at a time, measure prequential AUROC, and calibrate alerts.
+
 Getting started
 ===============
+
+.. container:: actions
+
+   .. image:: https://img.shields.io/badge/Hugging%20Face-Open%20in%20Spaces-00757a?style=flat-square&logo=huggingface&logoColor=white&labelColor=0d1b22
+      :target: https://huggingface.co/spaces/selimfirat/pysad-playground
+      :alt: Open in Hugging Face Spaces
+
+   .. image:: https://img.shields.io/badge/JupyterLite-Live%20Demo-00757a?style=flat-square&logo=jupyter&logoColor=white&labelColor=0d1b22
+      :target: https://selimfirat.github.io/pysad/lab/index.html?path=nyc_taxi_alerts.ipynb
+      :alt: Open in JupyterLite
+
+   .. image:: https://img.shields.io/badge/Colab-Open%20Notebook-00757a?style=flat-square&logo=googlecolab&logoColor=white&labelColor=0d1b22
+      :target: https://colab.research.google.com/github/selimfirat/pysad/blob/master/examples/quickstart.ipynb
+      :alt: Open in Colab
 
 We will use LODA to score a synthetic stream, evaluate the scores, and raise alerts. Allow ten minutes and run the code blocks in order in one Python session.
 

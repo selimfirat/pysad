@@ -41,6 +41,8 @@ The next table gives the AUPR on each dataset. Its first column is the fraction 
    :stub-columns: 1
    :class: benchmark-table
 
+.. include:: ../benchmark/kitnet.rst
+
 Streams with drift
 ------------------
 
@@ -86,29 +88,13 @@ This sweep measures how the time per point scales with the number of features :m
 Memory stability
 ----------------
 
-Each detector in PySAD keeps a bounded window or fixed-size summary statistics so that memory does not grow with the stream length. ``benchmarks/memory_stability.py`` verifies this over 1,000,000 continuous points after a 1,000-point warm-up by recording ``tracemalloc`` allocations every 100,000 points and checking that traced memory grows by at most 512 KiB between the second and final checkpoints (:doc:`run` shows the command and options).
+The table records three detectors over 1,000,000 points after a 1,000-point warmup.
+``benchmarks/memory_stability.py`` records traced allocations every 100,000 points.
+Growth compares the second and final checkpoints. Memory values use KiB.
+These measurements cover traced allocations after warmup, rather than total process memory.
+See :doc:`run` for the command and options.
 
-.. list-table::
+.. csv-table::
+   :file: ../benchmark/memory.csv
    :header-rows: 1
    :class: benchmark-table
-
-   * - Detector
-     - Points
-     - Time (s)
-     - Peak traced (KiB)
-     - Growth (KiB)
-   * - :class:`~pysad.models.LODA`
-     - 1,000,000
-     - 223.7
-     - 9.3
-     - 0.3
-   * - :class:`~pysad.models.MedianAbsoluteDeviation`
-     - 1,000,000
-     - 488.2
-     - 15.7
-     - 0.3
-   * - :class:`~pysad.models.StandardAbsoluteDeviation`
-     - 1,000,000
-     - 33.6
-     - 1.3
-     - 0.2

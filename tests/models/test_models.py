@@ -7,7 +7,12 @@ import pysad.models
 from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
-from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, active_model_names
+from tests.models.conftest import (
+    EDGE_MODELS,
+    TIMESTAMPED_MODELS,
+    active_model_names,
+    short_stream_params,
+)
 
 MODEL_CASES = {
     "ADeMS": [{}],
@@ -86,11 +91,15 @@ MODEL_CASES = {
     "xStream": [{}],
 }
 
+EXTRA_MODEL_CASES: dict[str, list[dict[str, object]]] = {
+    "HTM": [{"likelihood": False}],
+}
+
 
 def _parametrized_cases():
     cases = []
     for name in active_model_names():
-        param_list = MODEL_CASES.get(name, [{}])
+        param_list = [{}] + EXTRA_MODEL_CASES.get(name, [])
         for index, params in enumerate(param_list):
             case_id = name if len(param_list) == 1 else f"{name}-{index}"
             cases.append(pytest.param(name, params, id=case_id))
@@ -100,27 +109,21 @@ def _parametrized_cases():
 @pytest.mark.parametrize("model_name,params_dict", _parametrized_cases())
 def test_unsupervised_models(model_name, params_dict):
     fix_seed(61)
-    X = np.random.rand(150, 1)
+    X = np.random.rand(80, 1)
     if model_name in TIMESTAMPED_MODELS:
         X = np.column_stack([3600.0 * np.arange(len(X)), X])
     elif model_name in EDGE_MODELS:
         X = np.random.RandomState(0).randint(0, 10, size=(len(X), 2)).astype(np.float64)
 
-    helper_test_model(X, getattr(pysad.models, model_name), copy.deepcopy(params_dict))
+    resolved_params = {**short_stream_params(model_name, X.shape[1]), **copy.deepcopy(params_dict)}
+    helper_test_model(X, getattr(pysad.models, model_name), resolved_params)
 
 
 def helper_test_model(X, model_cls, params_dict):
-    if "initial_X" in params_dict and params_dict["initial_X"]:
-        params_dict["initial_X"] = X[:25, :]
-        model = model_cls(params_dict["initial_X"])
-        train_X = X[25:, :]
-    else:
-        train_X = X
-        model = model_cls(**params_dict)
-
-    y = np.zeros(train_X.shape[0], dtype=np.int32) if model_cls.__name__ == "PerfectModel" else None
-    y_pred = model.fit_score(train_X, y)
-    assert y_pred.shape == (train_X.shape[0],)
+    model = model_cls(**params_dict)
+    y = np.zeros(X.shape[0], dtype=np.int32) if model_cls.__name__ == "PerfectModel" else None
+    y_pred = model.fit_score(X, y)
+    assert y_pred.shape == (X.shape[0],)
 
 
 def test_relative_entropy_no_warnings():

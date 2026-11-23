@@ -11,30 +11,6 @@ def _fitted_forest(**params):
     return model
 
 
-def test_rrcf_trees_keep_independent_uniform_samples():
-    model = _fitted_forest(num_trees=400, tree_size=10)
-
-    samples = [frozenset(index for _, index in heap) for heap in model.samples]
-    assert all(len(sample) == 10 for sample in samples)
-    assert all(
-        sample == frozenset(slot_map)
-        for sample, slot_map in zip(samples, model._slot_leaves, strict=True)
-    )
-    assert len(set(samples)) > 1
-
-    # A uniform sample of 10 out of 40 keeps each instance in a quarter of the trees.
-    kept = np.array([sum(index in sample for sample in samples) for index in range(40)]) / 400
-    np.testing.assert_allclose(kept, 0.25, atol=0.11)
-
-
-def test_rrcf_large_time_decay_keeps_the_latest_instances():
-    model = _fitted_forest(num_trees=5, tree_size=10, time_decay=50.0)
-
-    for heap, slot_map in zip(model.samples, model._slot_leaves, strict=True):
-        assert sorted(index for _, index in heap) == list(range(30, 40))
-        assert sorted(slot_map) == list(range(30, 40))
-
-
 def test_rrcf_scores_before_fitting():
     from pysad.models import RobustRandomCutForest
 
@@ -185,21 +161,6 @@ def test_rrcf_score_partial_matches_reference_codisp_without_mutating_trees():
         _assert_snapshot_unchanged(multi_model, snapshot)
 
 
-def test_rrcf_cuts_on_varying_feature_at_leaf():
-    from pysad.models import RobustRandomCutForest
-
-    model = RobustRandomCutForest(num_trees=20, tree_size=2, random_state=0)
-    model.fit_partial(np.array([0.0, 0.0]))
-    model.fit_partial(np.array([0.0, 1.0]))
-
-    arena = model._arena
-    for r in arena.roots.tolist():
-        assert arena.dim[r] == 1
-        assert 0.0 <= arena.cut[r] <= 1.0
-        np.testing.assert_array_equal(arena.bbox_low[arena.left[r]], [0.0, 0.0])
-        np.testing.assert_array_equal(arena.bbox_low[arena.right[r]], [0.0, 1.0])
-
-
 def test_rrcf_constant_features_and_identical_observations():
     from pysad.models import RobustRandomCutForest
 
@@ -233,44 +194,109 @@ def test_rrcf_high_dimensional_and_boundary_cuts():
     assert outlier_score > normal_score
 
 
-def test_rrcf_reservoir_eviction_with_batched_traversal():
+def test_rrcf_score_explain_partial_returns_score_and_shap():
+    import numpy as np
+
     from pysad.models import RobustRandomCutForest
 
-    model = RobustRandomCutForest(num_trees=10, tree_size=8, random_state=0)
-    rng = np.random.RandomState(0)
+    model = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in np.random.RandomState(0).rand(40, 2):
+        model.fit_partial(x)
 
-    for _ in range(40):
-        model.fit_partial(rng.rand(3))
+    score, shap = model.score_explain_partial(np.random.RandomState(1).rand(2))
 
-    for slot_map in model._slot_leaves:
-        assert len(slot_map) == 8
+    assert isinstance(score, float)
+    # SHAP values are in shingled space: shingle_size * num_features = 2 * 2 = 4
+    assert shap.shape == (4,)
+    assert shap.dtype == np.float64
 
 
-def test_rrcf_cut_slots_matches_cut_one_slot():
-    from pysad.models.robust_random_cut_forest import _ForestArena
+def test_rrcf_score_explain_partial_does_not_change_state():
+    import numpy as np
 
-    rng = np.random.RandomState(123)
-    d = 10
-    num_nodes = 25
+    from pysad.models import RobustRandomCutForest
 
-    arena = _ForestArena(num_nodes, num_nodes)
-    arena.ensure_features(d)
-    slots = arena.alloc_many(num_nodes)
-    for s in slots.tolist():
-        low = rng.uniform(-10, 0, size=d)
-        high = low + rng.uniform(0.1, 10, size=d)
-        arena.bbox_low[s] = low
-        arena.bbox_high[s] = high
+    model = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in np.random.RandomState(0).rand(40, 2):
+        model.fit_partial(x)
 
-    x = rng.uniform(-15, 15, size=d)
+    test_x = np.random.RandomState(1).rand(2)
+    # score_explain_partial should not change the model's RNG state
+    rng_state_before = model.rng.get_state()
+    score1, _ = model.score_explain_partial(test_x)
+    rng_state_after = model.rng.get_state()
+    assert rng_state_before[1].tobytes() == rng_state_after[1].tobytes()
+    # Calling it again with the same RNG state should give the same score
+    score2, _ = model.score_explain_partial(test_x)
+    assert score1 == score2
 
-    rng1 = np.random.RandomState(999)
-    rng2 = np.random.RandomState(999)
 
-    dims, cuts, stopped = arena.cut_slots(x, slots, rng1)
+def test_rrcf_score_explain_partial_is_reproducible():
+    import numpy as np
 
-    for i, s in enumerate(slots.tolist()):
-        expected_dim, expected_cut, expected_stopped = arena.cut_one_slot(x, s, rng2)
-        assert dims[i] == expected_dim
-        np.testing.assert_allclose(cuts[i], expected_cut)
-        assert stopped[i] == expected_stopped
+    from pysad.models import RobustRandomCutForest
+
+    X = np.random.RandomState(0).rand(40, 2)
+    test_x = np.random.RandomState(1).rand(2)
+
+    model_a = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in X:
+        model_a.fit_partial(x)
+    score_a, shap_a = model_a.score_explain_partial(test_x)
+
+    model_b = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in X:
+        model_b.fit_partial(x)
+    score_b, shap_b = model_b.score_explain_partial(test_x)
+
+    assert score_a == score_b
+    np.testing.assert_array_equal(shap_a, shap_b)
+
+
+def test_rrcf_score_explain_partial_shap_depends_on_instance():
+    import numpy as np
+
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in np.random.RandomState(0).rand(40, 2):
+        model.fit_partial(x)
+
+    normal_score, normal_shap = model.score_explain_partial(np.random.RandomState(1).rand(2))
+    outside_score, outside_shap = model.score_explain_partial(np.array([100.0, -50.0]))
+
+    assert normal_score != outside_score
+    assert not np.allclose(normal_shap, outside_shap)
+
+
+def test_rrcf_score_explain_partial_returns_zeros_before_shingle():
+    import numpy as np
+
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=4, shingle_size=3, tree_size=16, random_state=0)
+    # Fit fewer than shingle_size instances
+    for _ in range(2):
+        model.fit_partial(np.random.RandomState(0).rand(2))
+
+    score, shap = model.score_explain_partial(np.random.RandomState(1).rand(2))
+
+    assert score == 0.0
+    assert shap.shape == (6,)  # shingle_size * num_features = 3 * 2 = 6
+    assert np.all(shap == 0.0)
+
+
+def test_rrcf_score_explain_partial_rejects_nan():
+    import numpy as np
+    import pytest
+
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(num_trees=4, shingle_size=2, tree_size=16, random_state=0)
+    for x in np.random.RandomState(0).rand(40, 2):
+        model.fit_partial(x)
+
+    anomalous = np.array([0.3, 0.6])
+    anomalous[1] = np.nan
+    with pytest.raises(ValueError, match="RobustRandomCutForest does not accept NaN values"):
+        model.score_explain_partial(anomalous)

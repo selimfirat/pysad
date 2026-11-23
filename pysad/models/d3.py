@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -47,7 +48,7 @@ class D3(BaseModel):
         self.num_samples_ = max(1, round(sample_fraction * window_size))
         self.num_seen_ = 0
         # The stored values of each chain as (index, value), oldest first. The first one is the sample value.
-        self.chains_: list[deque[tuple[int, np.ndarray]]] = [
+        self.chains_: list[deque[tuple[int, NDArray[np.float64]]]] = [
             deque() for _ in range(self.num_samples_)
         ]
         # The index of the value that each chain waits for, and the index of its sample value.
@@ -59,7 +60,7 @@ class D3(BaseModel):
         self.mean_ = np.empty(0)
         self.m2_ = np.empty(0)  # the sum of squared deviations from the mean, per dimension
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> D3:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> D3:
         """Adds the next value to the chain sample and to the window standard deviation.
 
         Args:
@@ -95,7 +96,7 @@ class D3(BaseModel):
 
         return self
 
-    def _update_moments(self, X: np.ndarray) -> None:
+    def _update_moments(self, X: NDArray[np.float64]) -> None:
         """Adds X to the window mean and sum of squared deviations, and removes the expired value."""
         slot = (self.num_seen_ - 1) % self.window_size
         if self.num_seen_ <= self.window_size:
@@ -110,7 +111,7 @@ class D3(BaseModel):
             self.mean_ = mean
         self.window_[slot] = X
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next instance by the negative estimated number of window values within ``max_radius`` of it.
 
         Args:

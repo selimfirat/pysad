@@ -1,12 +1,16 @@
 name: benchmark
 
 # Runs the detectors that a pull request can change on the first 2,000 points of each dataset
-# (--ci), once with the code of the base branch and once with the code of the pull request, on the
-# same machine. The summary of each job lists the runs whose AUROC moved, and the job keeps both
-# result files as an artifact. Each part of benchmark.py (--parts) runs in its own job, except the
-# multivariate detectors on NAB (nab and shingles), which only the full runs of the maintainers run.
-# The full results in docs/benchmark/ come from these full runs.
+# (--ci), once on the base branch and once on the pull request in parallel, then compares both
+# result sets in a summary table. Pushes to master warm per-detector base caches for future PRs.
 on:
+  push:
+    branches: [master]
+    paths:
+      - "pysad/**"
+      - "benchmarks/**"
+      - "pyproject.toml"
+      - ".github/workflows/benchmark.yml"
   pull_request:
     paths:
       - "pysad/**"
@@ -18,20 +22,30 @@ on:
 permissions:
   contents: read
 
+env:
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  VECLIB_MAXIMUM_THREADS: "1"
+  NUMEXPR_NUM_THREADS: "1"
+  OPENBLAS_CORETYPE: HASWELL
+  NPY_DISABLE_CPU_FEATURES: AVX512F
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  benchmark:
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
       contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        part: [odds, univariate, drift]
+    outputs:
+      has_jobs: ${{ steps.plan.outputs.has_jobs }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has_base_jobs: ${{ steps.plan.outputs.has_base_jobs }}
+      base_matrix: ${{ steps.plan.outputs.base_matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,53 +57,264 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: benchmark-runtime
+          prune-cache: true
+      - name: Install dependencies
+        run: uv pip install --system --group runtime -e .
+      - name: Compute benchmark matrix
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" = "push" ]; then
+            python benchmarks/benchmark.py --ci-plan HEAD --all-detectors > "$RUNNER_TEMP/plan.json"
+          elif [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            python benchmarks/benchmark.py --ci-plan "origin/$BASE_REF" > "$RUNNER_TEMP/plan.json"
+          else
+            python benchmarks/benchmark.py --ci-plan > "$RUNNER_TEMP/plan.json"
+          fi
+          python -c '
+          import json, os
+          from pathlib import Path
+          plan = json.loads(Path(os.environ["RUNNER_TEMP"], "plan.json").read_text(encoding="utf-8"))
+          include = plan["include"]
+          base_include = [row for row in include if row.get("has_base")]
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write("has_jobs=" + ("true" if plan["has_jobs"] else "false") + "\n")
+              f.write("matrix=" + json.dumps({"include": include}, separators=(",", ":")) + "\n")
+              f.write("has_base_jobs=" + ("true" if base_include else "false") + "\n")
+              f.write("base_matrix=" + json.dumps({"include": base_include}, separators=(",", ":")) + "\n")
+          '
+
+  benchmark-base:
+    needs: plan
+    if: needs.plan.outputs.has_base_jobs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.base_matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Restore base benchmark cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .bench-base-cache/${{ matrix.part }}
+          key: bench-base-v3-${{ matrix.part }}-${{ matrix.base_hash }}
+          restore-keys: |
+            bench-base-v3-${{ matrix.part }}-all-
+            bench-base-v3-${{ matrix.part }}-
+      - name: Check per-detector cache
+        id: detcache
+        env:
+          PART: ${{ matrix.part }}
+          DET_HASHES: ${{ matrix.det_hashes }}
+        run: |
+          python3 - <<'PY'
+          import csv, json, os
+          from pathlib import Path
+
+          det_hashes = json.loads(os.environ["DET_HASHES"])
+          cache_dir = Path(".bench-base-cache") / os.environ["PART"]
+          files = [cache_dir / f"{det}-{h}.csv" for det, h in sorted(det_hashes.items())]
+          hit = bool(files) and all(path.is_file() for path in files)
+          if hit:
+              rows = []
+              header = None
+              for path in files:
+                  with open(path, newline="", encoding="utf-8") as f:
+                      reader = list(csv.reader(f))
+                  if not reader:
+                      continue
+                  if header is None:
+                      header = reader[0]
+                  rows.extend(reader[1:])
+              if header is not None:
+                  with open("base.csv", "w", newline="", encoding="utf-8") as f:
+                      writer = csv.writer(f, lineterminator="\n")
+                      writer.writerow(header)
+                      writer.writerows(rows)
+              else:
+                  hit = False
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"hit={'true' if hit else 'false'}\n")
+          PY
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        if: steps.detcache.outputs.hit != 'true'
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        if: steps.detcache.outputs.hit != 'true'
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: benchmark-runtime
+          prune-cache: true
+      - name: Install dependencies
+        if: steps.detcache.outputs.hit != 'true'
+        run: uv pip install --system --group runtime -e .
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.detcache.outputs.hit != 'true'
+        with:
+          path: ~/.cache/pysad
+          key: pysad-data-${{ hashFiles('pysad/utils/data.py', 'pysad/utils/_datasets.py') }}
+          restore-keys: pysad-data-
+      - name: Run the base branch
+        if: steps.detcache.outputs.hit != 'true'
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          PART: ${{ matrix.part }}
+          DETECTORS: ${{ matrix.shard }}
+          DET_HASHES: ${{ matrix.det_hashes }}
+        run: |
+          if [ "$EVENT_NAME" != "push" ] && [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            git worktree add ../base "origin/$BASE_REF"
+            uv pip install --system --no-deps -e ../base
+          fi
+          python benchmarks/benchmark.py \
+            --ci base.csv \
+            --parts "$PART" \
+            --detectors "$DETECTORS" \
+            --ignore-unknown \
+            --base-cache-dir ".bench-base-cache/$PART" \
+            --det-hashes "$DET_HASHES"
+      - name: Prune stale detector caches
+        if: github.event_name == 'push'
+        env:
+          PART: ${{ matrix.part }}
+          DET_HASHES: ${{ matrix.det_hashes }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          cache_dir = Path(".bench-base-cache") / os.environ["PART"]
+          keep = {f"{det}-{h}.csv" for det, h in json.loads(os.environ["DET_HASHES"]).items()}
+          if cache_dir.is_dir():
+              for path in cache_dir.glob("*.csv"):
+                  if path.name not in keep:
+                      path.unlink()
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name != 'push' && always()
+        with:
+          name: bench-base-${{ matrix.part }}-${{ matrix.shard_id }}
+          path: base.csv
+          retention-days: 1
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name == 'push' && always()
+        with:
+          name: bench-cache-${{ matrix.part }}-${{ matrix.shard_id }}
+          path: .bench-base-cache/${{ matrix.part }}/*.csv
+          retention-days: 1
+          if-no-files-found: ignore
+
+  consolidate-base-cache:
+    needs: benchmark-base
+    if: github.event_name == 'push' && needs.benchmark-base.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [odds, drift, univariate]
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: bench-cache-${{ matrix.part }}-*
+          path: .bench-base-cache/${{ matrix.part }}
+          merge-multiple: true
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .bench-base-cache/${{ matrix.part }}
+          key: bench-base-v3-${{ matrix.part }}-all-${{ github.sha }}
+
+  benchmark-head:
+    needs: plan
+    if: github.event_name != 'push' && needs.plan.outputs.has_jobs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: benchmark-runtime
+          prune-cache: true
       - name: Install dependencies
         run: uv pip install --system --group runtime -e .
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pysad
           key: pysad-data-${{ hashFiles('pysad/utils/data.py', 'pysad/utils/_datasets.py') }}
-      # Both runs use the benchmark.py of the pull request, so that only the code of pysad differs.
-      - name: Resolve base commit and affected detectors
-        id: base
-        if: github.base_ref != ''
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          git fetch --depth=1 origin "$BASE_REF"
-          echo "sha=$(git rev-parse "origin/$BASE_REF")" >> "$GITHUB_OUTPUT"
-          detectors=$(python -c 'import os, sys; sys.path.insert(0, "benchmarks"); import benchmark; print(",".join(sorted(benchmark.changed_detectors("origin/" + os.environ["BASE_REF"]))))')
-          echo "detectors_hash=$(printf '%s' "$detectors" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-      - name: Cache base branch benchmark
-        id: cache-base
-        if: github.base_ref != ''
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: base.csv
-          key: benchmark-base-${{ matrix.part }}-${{ steps.base.outputs.sha }}-${{ steps.base.outputs.detectors_hash }}-${{ hashFiles('benchmarks/benchmark.py', 'pyproject.toml') }}
-      - name: Run the base branch
-        if: github.base_ref != '' && steps.cache-base.outputs.cache-hit != 'true'
-        env:
-          BASE_REF: ${{ github.base_ref }}
-          PART: ${{ matrix.part }}
-        run: |
-          git worktree add ../base "origin/$BASE_REF"
-          uv pip install --system --no-deps -e ../base
-          python benchmarks/benchmark.py --ci base.csv --since "origin/$BASE_REF" --parts "$PART"
+          restore-keys: pysad-data-
       - name: Run the pull request
         env:
-          BASE_REF: ${{ github.base_ref }}
           PART: ${{ matrix.part }}
-        run: |
-          uv pip install --system --no-deps -e .
-          if [ -n "$BASE_REF" ]; then
-            python benchmarks/benchmark.py --ci head.csv --since "origin/$BASE_REF" --parts "$PART" --compare base.csv
-          else
-            python benchmarks/benchmark.py --ci head.csv --parts "$PART"
-          fi
+          DETECTORS: ${{ matrix.shard }}
+        run: python benchmarks/benchmark.py --ci head.csv --parts "$PART" --detectors "$DETECTORS"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: benchmark-${{ matrix.part }}
-          path: "*.csv"
+          name: bench-head-${{ matrix.part }}-${{ matrix.shard_id }}
+          path: head.csv
+          retention-days: 7
           if-no-files-found: ignore
+
+  compare:
+    needs: [plan, benchmark-base, benchmark-head]
+    if: always() && !cancelled() && github.event_name != 'push' && needs.plan.outputs.has_jobs == 'true' && needs.benchmark-head.result == 'success' && (needs.benchmark-base.result == 'success' || needs.benchmark-base.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: benchmark-runtime
+          prune-cache: true
+      - name: Install dependencies
+        run: uv pip install --system --group runtime -e .
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: bench-head-*
+          path: bench-head
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.benchmark-base.result == 'success'
+        with:
+          pattern: bench-base-*
+          path: bench-base
+      - name: Compare base and pull request AUROCs
+        run: |
+          mkdir -p bench-base bench-head
+          python benchmarks/benchmark.py --compare-dirs bench-base bench-head

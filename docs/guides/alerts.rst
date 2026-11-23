@@ -1,3 +1,6 @@
+.. meta::
+   :description: Calibrate raw streaming anomaly scores with ConformalProbabilityCalibrator and SPOTProbabilityCalibrator, choose alert thresholds, and avoid poisoning the model.
+
 Turn scores into alerts
 =======================
 
@@ -43,6 +46,8 @@ Calibrate the scores and raise alerts
 
    threshold_filter = ThresholdFilter(threshold=0.99)
    label = threshold_filter.transform_partial(calibrated)
+
+Each model and postprocessor exposes ``output_kind`` (``"score"``, ``"probability"``, or ``"decision"``). Pipelines that end with :class:`~pysad.transform.postprocessing.ThresholdFilter`, :class:`~pysad.transform.postprocessing.QuantileFilter`, or :class:`~pysad.transform.postprocessing.NonparametricDynamicThresholdPostprocessor`, as well as detectors with a paper-defined decision rule (:class:`~pysad.models.FluxEV`, :class:`~pysad.models.FRAHST`, :class:`~pysad.models.GNGA`, :class:`~pysad.models.OeSNNUAD`, :class:`~pysad.models.RelativeEntropy`), support ``predict_partial`` and ``fit_predict_partial`` returning ``0`` or ``1``. Score-only pipelines and probability calibrators raise ``TypeError`` on ``predict_partial``, and piping a ``"decision"`` stage into a ``"probability"`` calibrator raises ``ValueError``.
 
 Choose the threshold
 --------------------

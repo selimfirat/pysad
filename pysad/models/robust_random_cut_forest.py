@@ -4,9 +4,12 @@ import heapq
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
+from pysad import _kernels
 from pysad.core.base_model import BaseModel
+from pysad.explainability import treeshap_ensemble
 from pysad.transform.preprocessing import ShingleTransformer
 
 
@@ -21,21 +24,21 @@ class _ForestArena:
         self.num_trees = num_trees
         self.cap = cap
         self.num_features = 0
-        self.roots = np.full(num_trees, -1, dtype=np.int32)
-        self.left = np.full(cap, -1, dtype=np.int32)
-        self.right = np.full(cap, -1, dtype=np.int32)
-        self.parent = np.full(cap, -1, dtype=np.int32)
-        self.sibling = np.full(cap, -1, dtype=np.int32)
-        self.dim = np.full(cap, -1, dtype=np.int32)
-        self.cut = np.zeros(cap, dtype=np.float64)
-        self.count = np.zeros(cap, dtype=np.int32)
-        self.bbox_low = np.empty((cap, 0), dtype=np.float64)
-        self.bbox_high = np.empty((cap, 0), dtype=np.float64)
-        self.free_slots = np.arange(cap - 1, -1, -1, dtype=np.int32)
+        self.roots: NDArray[np.int32] = np.full(num_trees, -1, dtype=np.int32)
+        self.left: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.right: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.parent: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.sibling: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.dim: NDArray[np.int32] = np.full(cap, -1, dtype=np.int32)
+        self.cut: NDArray[np.float64] = np.zeros(cap, dtype=np.float64)
+        self.count: NDArray[np.int32] = np.zeros(cap, dtype=np.int32)
+        self.bbox_low: NDArray[np.float64] = np.empty((cap, 0), dtype=np.float64)
+        self.bbox_high: NDArray[np.float64] = np.empty((cap, 0), dtype=np.float64)
+        self.free_slots: NDArray[np.int32] = np.arange(cap - 1, -1, -1, dtype=np.int32)
         self.free_top = cap
-        self._iota = np.arange(max(num_trees, 16), dtype=np.intp)
-        self._buf_lo = np.empty((max(num_trees, 1), 0), dtype=np.float64)
-        self._buf_sp = np.empty((max(num_trees, 1), 0), dtype=np.float64)
+        self._iota: NDArray[np.intp] = np.arange(max(num_trees, 16), dtype=np.intp)
+        self._buf_lo: NDArray[np.float64] = np.empty((max(num_trees, 1), 0), dtype=np.float64)
+        self._buf_sp: NDArray[np.float64] = np.empty((max(num_trees, 1), 0), dtype=np.float64)
 
     def ensure_features(self, num_features: int) -> None:
         if self.num_features == 0:
@@ -83,7 +86,7 @@ class _ForestArena:
         self.free_top += added
         self.cap = new_cap
 
-    def alloc_many(self, k: int) -> np.ndarray:
+    def alloc_many(self, k: int) -> NDArray[np.int32]:
         self._ensure_free(k)
         top = self.free_top
         self.free_top = top - k
@@ -94,8 +97,21 @@ class _ForestArena:
         self.free_top += 1
 
     def find_duplicate_batch(
-        self, point: np.ndarray, roots_sub: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
+        self, point: NDArray[np.float64], roots_sub: NDArray[np.int32]
+    ) -> tuple[NDArray[np.int32], NDArray[np.bool_]]:
+        rust_route = _kernels.rrcf_route_to_leaf
+        if rust_route is not None and point.ndim == 1 and point.shape[0] >= self.num_features:
+            leaves = rust_route(
+                np.asarray(point, dtype=np.float64),
+                roots_sub.astype(np.int32, copy=False),
+                self.dim,
+                self.cut,
+                self.left,
+                self.right,
+            )
+            is_dup = (self.bbox_low[leaves] == point).all(axis=1)
+            return leaves, is_dup
+
         m = len(roots_sub)
         if m > len(self._iota):
             self._iota = np.arange(m, dtype=np.intp)
@@ -128,7 +144,7 @@ class _ForestArena:
         return leaves, is_dup
 
     def cut_one_slot(
-        self, point: np.ndarray, slot: int, rng: np.random.RandomState
+        self, point: NDArray[np.float64], slot: int, rng: np.random.RandomState
     ) -> tuple[int, float, bool]:
         low = self.bbox_low[slot]
         high = self.bbox_high[slot]
@@ -144,8 +160,8 @@ class _ForestArena:
         return d, c_val, bool(c_val <= low[d] or c_val >= high[d])
 
     def cut_slots(
-        self, point: np.ndarray, slots: np.ndarray, rng: np.random.RandomState
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        self, point: NDArray[np.float64], slots: NDArray[np.int32], rng: np.random.RandomState
+    ) -> tuple[NDArray[np.intp], NDArray[np.float64], NDArray[np.bool_]]:
         n = len(slots)
         d = point.shape[0]
         if n > len(self._iota):
@@ -173,7 +189,19 @@ class _ForestArena:
         stopped = (cuts <= lows[row_idx, dims]) | (cuts >= highs[row_idx, dims])
         return dims, cuts, stopped
 
-    def codisp_sum(self, slots: np.ndarray, init_counts: np.ndarray) -> float:
+    def codisp_sum(self, slots: NDArray[np.int32], init_counts: NDArray[np.int32]) -> float:
+        rust_codisp = _kernels.rrcf_codisp_sum
+        if rust_codisp is not None:
+            return float(
+                rust_codisp(
+                    slots.astype(np.int32, copy=False),
+                    init_counts.astype(np.int32, copy=False),
+                    self.parent,
+                    self.sibling,
+                    self.count,
+                )
+            )
+
         m = len(slots)
         if m > len(self._iota):
             self._iota = np.arange(m, dtype=np.intp)
@@ -276,15 +304,15 @@ class RobustRandomCutForest(BaseModel):
 
         # The (key, index) pairs of the instances in each tree, as a min-heap on the key.
         self.samples: list[list[tuple[float, int]]] = [[] for _ in range(self.num_trees)]
-        self._min_keys = np.full(self.num_trees, -np.inf, dtype=np.float64)
+        self._min_keys: NDArray[np.float64] = np.full(self.num_trees, -np.inf, dtype=np.float64)
         self._all_heaps_full = False
-        self._done_tids = np.empty(num_trees, dtype=np.int32)
-        self._done_nodes = np.empty(num_trees, dtype=np.int32)
-        self._done_parents = np.empty(num_trees, dtype=np.int32)
-        self._done_dims = np.empty(num_trees, dtype=np.intp)
-        self._done_cuts = np.empty(num_trees, dtype=np.float64)
-        self._final_slots = np.empty(num_trees, dtype=np.int32)
-        self._init_counts = np.empty(num_trees, dtype=np.int32)
+        self._done_tids: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
+        self._done_nodes: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
+        self._done_parents: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
+        self._done_dims: NDArray[np.intp] = np.empty(num_trees, dtype=np.intp)
+        self._done_cuts: NDArray[np.float64] = np.empty(num_trees, dtype=np.float64)
+        self._final_slots: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
+        self._init_counts: NDArray[np.int32] = np.empty(num_trees, dtype=np.int32)
         # The last shingle_size - 1 fitted instances, which start the shingle of the next instance.
         self.shingler: ShingleTransformer = ShingleTransformer(shingle_size)
         self.index: int = 0
@@ -300,7 +328,7 @@ class RobustRandomCutForest(BaseModel):
         self.__dict__.update(state)
         self.rng = check_random_state(self.rng)
 
-    def _shingle(self, X: np.ndarray) -> np.ndarray | None:
+    def _shingle(self, X: NDArray[np.float64]) -> NDArray[np.float64] | None:
         # The shingle that ends with X, or None while fewer than shingle_size - 1 instances are fitted.
         if not self.shingler.full:
             return None
@@ -352,7 +380,7 @@ class RobustRandomCutForest(BaseModel):
                 b_walk = nxt[keep]
                 pts = pts[keep]
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> RobustRandomCutForest:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> RobustRandomCutForest:
         """Updates the model with the next instance.
 
         Args:
@@ -457,9 +485,9 @@ class RobustRandomCutForest(BaseModel):
             self.index = idx + 1
             return self
 
-        active_tids: np.ndarray = tids_arr
-        active_nodes: np.ndarray = roots_sub
-        active_parents: np.ndarray = np.full(m, -1, dtype=np.int32)
+        active_tids: NDArray[np.int32] = tids_arr
+        active_nodes: NDArray[np.int32] = roots_sub
+        active_parents: NDArray[np.int32] = np.full(m, -1, dtype=np.int32)
 
         done_tids = self._done_tids
         done_nodes = self._done_nodes
@@ -593,8 +621,8 @@ class RobustRandomCutForest(BaseModel):
         self.index = idx + 1
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
-        """Scores the shingle that ends with the next instance by the collusive displacement it would have in each tree if it were inserted there, averaged over the trees. The trees are not modified, so only the random cuts draw from the random number generator.
+    def score_partial(self, X: NDArray[np.float64]) -> float:
+        """Scores the shingle that ends with the next instance by the collusive displacement it would have in each tree if it were inserted there, averaged over the trees. The trees are not modified, and the random number generator state is restored afterwards so that scoring does not advance the model's RNG.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score. Higher scores represent more anomalous instances whereas lower scores correspond to more normal instances.
@@ -602,65 +630,271 @@ class RobustRandomCutForest(BaseModel):
         Returns:
             float: The anomalousness score of the input instance.
         """
-        point = self._shingle(X)
-        if point is None:
-            return 0.0
+        rng_state = self.rng.get_state()
+        try:
+            point = self._shingle(X)
+            if point is None:
+                return 0.0
 
+            arena = self._arena
+            roots = arena.roots
+            if len(roots) == 0:
+                return 0.0
+            non_empty = roots if roots.min() >= 0 else roots[roots >= 0]
+            m = len(non_empty)
+            if m == 0:
+                return 0.0
+
+            cand_leaves, is_dup = arena.find_duplicate_batch(point, non_empty)
+            final_slots = self._final_slots[:m]
+            init_counts = self._init_counts[:m]
+            n_done = 0
+
+            if is_dup.any():
+                dup_slots = cand_leaves[is_dup]
+                nd = len(dup_slots)
+                final_slots[:nd] = dup_slots
+                init_counts[:nd] = 0
+                n_done = nd
+                active = non_empty[~is_dup]
+            else:
+                active = non_empty
+
+            while len(active) > 1:
+                _, _, stopped = arena.cut_slots(point, active, self.rng)
+                if stopped.any():
+                    st_slots = active[stopped]
+                    ns = len(st_slots)
+                    final_slots[n_done : n_done + ns] = st_slots
+                    init_counts[n_done : n_done + ns] = arena.count[st_slots]
+                    n_done += ns
+                    active = active[~stopped]
+                    if len(active) == 0:
+                        break
+                d_act = arena.dim[active]
+                active = np.where(
+                    point[d_act] <= arena.cut[active],
+                    arena.left[active],
+                    arena.right[active],
+                )
+
+            if len(active) == 1:
+                s = int(active[0])
+                rng = self.rng
+                while True:
+                    _, _, stop_1 = arena.cut_one_slot(point, s, rng)
+                    if stop_1:
+                        break
+                    nd = int(arena.dim[s])
+                    s = int(arena.left[s]) if point[nd] <= arena.cut[s] else int(arena.right[s])
+                final_slots[n_done] = s
+                init_counts[n_done] = arena.count[s]
+
+            return arena.codisp_sum(final_slots, init_counts) / self.num_trees
+        finally:
+            self.rng.set_state(rng_state)
+
+    def _collect_tree_structure(
+        self, tree_id: int
+    ) -> tuple[
+        NDArray[np.intp],
+        NDArray[np.float64],
+        NDArray[np.intp],
+        NDArray[np.intp],
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ]:
+        """Collect the structure of a single tree for TreeSHAP.
+
+        Returns:
+            Tuple of (features, thresholds, left, right, values, left_fractions) for the tree.
+            Arrays are indexed by node ID (0 to num_nodes-1 in the collected tree).
+        """
         arena = self._arena
-        roots = arena.roots
-        if len(roots) == 0:
-            return 0.0
-        non_empty = roots if roots.min() >= 0 else roots[roots >= 0]
-        m = len(non_empty)
-        if m == 0:
-            return 0.0
-
-        cand_leaves, is_dup = arena.find_duplicate_batch(point, non_empty)
-        final_slots = self._final_slots[:m]
-        init_counts = self._init_counts[:m]
-        n_done = 0
-
-        if is_dup.any():
-            dup_slots = cand_leaves[is_dup]
-            nd = len(dup_slots)
-            final_slots[:nd] = dup_slots
-            init_counts[:nd] = 0
-            n_done = nd
-            active = non_empty[~is_dup]
-        else:
-            active = non_empty
-
-        while len(active) > 1:
-            _, _, stopped = arena.cut_slots(point, active, self.rng)
-            if stopped.any():
-                st_slots = active[stopped]
-                ns = len(st_slots)
-                final_slots[n_done : n_done + ns] = st_slots
-                init_counts[n_done : n_done + ns] = arena.count[st_slots]
-                n_done += ns
-                active = active[~stopped]
-                if len(active) == 0:
-                    break
-            d_act = arena.dim[active]
-            active = np.where(
-                point[d_act] <= arena.cut[active],
-                arena.left[active],
-                arena.right[active],
+        root = arena.roots[tree_id]
+        if root < 0:
+            # Empty tree
+            return (
+                np.array([-1], dtype=np.intp),
+                np.array([0.0], dtype=np.float64),
+                np.array([-1], dtype=np.intp),
+                np.array([-1], dtype=np.intp),
+                np.array([0.0], dtype=np.float64),
+                np.array([0.5], dtype=np.float64),
             )
 
-        if len(active) == 1:
-            s = int(active[0])
-            rng = self.rng
-            while True:
-                _, _, stop_1 = arena.cut_one_slot(point, s, rng)
-                if stop_1:
-                    break
-                nd = int(arena.dim[s])
-                s = int(arena.left[s]) if point[nd] <= arena.cut[s] else int(arena.right[s])
-            final_slots[n_done] = s
-            init_counts[n_done] = arena.count[s]
+        # Traverse the tree to collect all nodes in BFS order
+        nodes = []
+        queue = [root]
+        node_to_idx = {root: 0}
+        next_idx = 1
+        while queue:
+            node = queue.pop(0)
+            nodes.append(node)
+            left_child = arena.left[node]
+            right_child = arena.right[node]
+            if left_child >= 0 and left_child not in node_to_idx:
+                node_to_idx[left_child] = next_idx
+                next_idx += 1
+                queue.append(left_child)
+            if right_child >= 0 and right_child not in node_to_idx:
+                node_to_idx[right_child] = next_idx
+                next_idx += 1
+                queue.append(right_child)
 
-        return arena.codisp_sum(final_slots, init_counts) / self.num_trees
+        num_nodes = len(nodes)
+        features = np.full(num_nodes, -1, dtype=np.intp)
+        thresholds = np.zeros(num_nodes, dtype=np.float64)
+        left = np.full(num_nodes, -1, dtype=np.intp)
+        right = np.full(num_nodes, -1, dtype=np.intp)
+        values = np.zeros(num_nodes, dtype=np.float64)
+        left_fractions = np.full(num_nodes, 0.5, dtype=np.float64)
+
+        for idx, node in enumerate(nodes):
+            d = arena.dim[node]
+            if d >= 0:  # Internal node
+                features[idx] = d
+                thresholds[idx] = arena.cut[node]
+                left_child = arena.left[node]
+                right_child = arena.right[node]
+                if left_child >= 0:
+                    left[idx] = node_to_idx[left_child]
+                if right_child >= 0:
+                    right[idx] = node_to_idx[right_child]
+                # Left fraction based on counts
+                total = (
+                    arena.count[left_child] + arena.count[right_child]
+                    if left_child >= 0 and right_child >= 0
+                    else 1
+                )
+                if total > 0 and left_child >= 0:
+                    left_fractions[idx] = arena.count[left_child] / total
+            else:  # Leaf node
+                features[idx] = -1
+                # Leaf value: collusive displacement (CoDisp) for this leaf
+                # CoDisp is the max ratio count[sibling] / (count[node] + 1) along path to root
+                codisp = 0.0
+                curr = node
+                while True:
+                    p = arena.parent[curr]
+                    if p < 0:
+                        break
+                    sib = arena.sibling[curr]
+                    if sib >= 0:
+                        ratio = arena.count[sib] / (arena.count[curr] + 1)
+                        if ratio > codisp:
+                            codisp = ratio
+                    curr = p
+                # Higher CoDisp = more anomalous, so TreeSHAP positive = more anomalous
+                values[idx] = codisp
+
+        return features, thresholds, left, right, values, left_fractions
+
+    def _route_to_leaf(self, tree_id: int, point: NDArray[np.float64]) -> int:
+        """Route a point down the existing tree structure to find the leaf it would fall into.
+
+        Does not add random cuts; uses only existing splits.
+        """
+        arena = self._arena
+        node: int = int(arena.roots[tree_id])
+        if node < 0:
+            return -1
+        while True:
+            d: int = int(arena.dim[node])
+            if d < 0:
+                return node
+            if point[d] <= arena.cut[node]:
+                node = int(arena.left[node])
+            else:
+                node = int(arena.right[node])
+            if node < 0:
+                # Should not happen in a valid tree
+                return -1
+
+    def score_explain_partial(self, X: NDArray[np.float64]) -> tuple[float, NDArray[np.float64]]:
+        """Returns the anomaly score and per-feature SHAP values for the next instance.
+
+        Uses the TreeSHAP algorithm :cite:`lundberg2020consistent` to compute exact SHAP values
+        for the forest of random cut trees. The SHAP values explain the collusive displacement
+        (CoDisp) of the leaf each instance falls into, averaged across trees.
+        Positive SHAP values indicate features that increase the anomaly score (more anomalous),
+        negative values indicate features that decrease the anomaly score (more normal).
+
+        Like ``score_partial``, it does not update the model or record the instance. Before
+        the first shingle is fitted, the method returns 0.0 and zeros of shape
+        ``(shingle_size * num_features,)``.
+
+        Note: The explanation uses the current tree structure without the random cuts that
+        ``score_partial`` draws during hypothetical insertion. The SHAP values approximate
+        the feature contributions to the CoDisp-based anomaly score. The explanation operates
+        in the shingled feature space (shape ``shingle_size * num_features``), not the original
+        feature space.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and explain.
+
+        Returns:
+            tuple: (score, shap_values) where
+                score (float): The anomalousness score of the input instance (from ``score_partial``).
+                shap_values (np.float64 array of shape (shingle_size * num_features,)): SHAP values
+                in the shingled feature space. Positive values mean the feature increases the
+                anomaly score (more anomalous), negative values mean it decreases the anomaly score
+                (more normal). Returns zeros before any shingle is fitted.
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        score = self.score_partial(X)
+
+        # Check if we have any shingles fitted (shingler.full means at least one shingle)
+        if not self.shingler.full:
+            return score, np.zeros(x.shape[0], dtype=np.float64)
+
+        point = self._shingle(x)
+        if point is None:
+            return score, np.zeros(x.shape[0], dtype=np.float64)
+
+        num_features = len(point)
+
+        # Collect tree structures for all trees
+        trees_features: list[NDArray[np.intp]] = []
+        trees_thresholds: list[NDArray[np.float64]] = []
+        trees_left: list[NDArray[np.intp]] = []
+        trees_right: list[NDArray[np.intp]] = []
+        trees_values: list[NDArray[np.float64]] = []
+        trees_left_fractions: list[NDArray[np.float64]] = []
+
+        for tree_id in range(self.num_trees):
+            root = self._arena.roots[tree_id]
+            if root < 0:
+                continue
+            feat, thresh, left, right, vals, left_fracs = self._collect_tree_structure(tree_id)
+            trees_features.append(feat)
+            trees_thresholds.append(thresh)
+            trees_left.append(left)
+            trees_right.append(right)
+            trees_values.append(vals)
+            trees_left_fractions.append(left_fracs)
+
+        if not trees_features:
+            return score, np.zeros(num_features, dtype=np.float64)
+
+        shap_values = treeshap_ensemble(
+            point,
+            trees_features,
+            trees_thresholds,
+            trees_left,
+            trees_right,
+            trees_values,
+            num_features,
+            trees_left_fractions=trees_left_fractions,
+        )
+
+        return score, shap_values
 
 
 # Tree cut and collusive displacement logic is adapted from rrcf 0.4.4, distributed under:

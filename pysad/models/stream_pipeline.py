@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import ClassVar
+from typing import Any, ClassVar, Literal
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.core.base_postprocessor import BasePostprocessor, _PostprocessorChain
@@ -33,9 +34,34 @@ class StreamPipeline(BaseModel):
         preprocessors: Sequence[BaseTransformer] = (),
         postprocessors: Sequence[BasePostprocessor] = (),
     ) -> None:
+        kind = model.output_kind
+        for postprocessor in postprocessors:
+            if kind == "decision" and postprocessor.output_kind == "probability":
+                raise ValueError(
+                    f"Cannot apply probability calibrator {type(postprocessor).__name__} "
+                    "after a binary decision output."
+                )
+            kind = postprocessor.output_kind
         self.model = model
         self.preprocessors: tuple[BaseTransformer, ...] = tuple(preprocessors)
         self.postprocessors: tuple[BasePostprocessor, ...] = tuple(postprocessors)
+
+    @property
+    def output_kind(self) -> Literal["score", "probability", "decision"]:
+        """Output kind produced by the final stage of the pipeline."""
+        if self.postprocessors:
+            return self.postprocessors[-1].output_kind
+        return self.model.output_kind
+
+    def _can_predict(self) -> bool:
+        if self.postprocessors:
+            return self.postprocessors[-1]._can_predict()
+        return self.model._can_predict()
+
+    def _decide_from_score(self, score: float) -> int:
+        if self.postprocessors:
+            return self.postprocessors[-1]._decide_from_score(score)
+        return self.model._decide_from_score(score)
 
     def __or__(self, other: BasePostprocessor) -> StreamPipeline:
         """Appends a postprocessor or postprocessor chain to this pipeline."""
@@ -59,11 +85,11 @@ class StreamPipeline(BaseModel):
             )
         return NotImplemented
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> StreamPipeline:
+    def fit_partial(self, X: Any, y: int | None = None) -> StreamPipeline:
         """Updates every stage with the next instance, as ``fit_score_partial`` does.
 
         Args:
-            X (np.float64 array of shape (num_features,)): The instance to fit.
+            X (np.float64 array of shape (num_features,) or Any): The instance to fit.
             y (int or None): The label of the instance, passed to the detector (Default=None).
 
         Returns:
@@ -72,14 +98,16 @@ class StreamPipeline(BaseModel):
         self.fit_score_partial(X, y)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: Any) -> float:
         """Scores the next instance with every stage, and fits no stage.
 
         Args:
-            X (np.float64 array of shape (num_features,)): The instance to score.
+            X (np.float64 array of shape (num_features,) or Any): The instance to score.
 
         Returns:
-            float: The output of the last stage.
+            float: The output of the last stage. Higher scores represent more anomalous
+                instances, consistent with the output kind of the last model or postprocessor
+                in the pipeline.
         """
         for preprocessor in self.preprocessors:
             X = preprocessor.transform_partial(X)
@@ -89,13 +117,13 @@ class StreamPipeline(BaseModel):
 
         return score
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: Any, y: int | None = None) -> float:
         """Fits every stage with the next instance and returns the output of the last stage.
 
         The detector scores the instance before it fits it, as in ``BaseModel.fit_score_partial``.
 
         Args:
-            X (np.float64 array of shape (num_features,)): The instance to fit and score.
+            X (np.float64 array of shape (num_features,) or Any): The instance to fit and score.
             y (int or None): The label of the instance, passed to the detector (Default=None).
 
         Returns:
@@ -109,11 +137,11 @@ class StreamPipeline(BaseModel):
 
         return score
 
-    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> StreamPipeline:
+    def fit(self, X: Any, y: NDArray[Any] | None = None) -> StreamPipeline:
         """Fits every stage to all instances in order.
 
         Args:
-            X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
+            X (np.float64 array of shape (num_instances, num_features) or Sequence[Any]): The instances to fit, in order.
             y (np.int32 array of shape (num_instances,)): The labels of the instances, passed to the detector (Default=None).
 
         Returns:
@@ -122,11 +150,11 @@ class StreamPipeline(BaseModel):
         self.fit_score(X, y)
         return self
 
-    def score(self, X: np.ndarray) -> np.ndarray:
+    def score(self, X: Any) -> NDArray[Any]:
         """Scores all instances in order with every stage, fitting no stage.
 
         Args:
-            X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order.
+            X (np.float64 array of shape (num_instances, num_features) or Sequence[Any]): The instances to score, in order.
 
         Returns:
             np.float64 array of shape (num_instances,): The outputs of the last stage in order.
@@ -139,11 +167,11 @@ class StreamPipeline(BaseModel):
 
         return np.asarray(scores, dtype=np.float64)
 
-    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
+    def fit_score(self, X: Any, y: NDArray[Any] | None = None) -> NDArray[Any]:
         """Fits every stage to all instances in order and returns the outputs of the last stage.
 
         Args:
-            X (np.float64 array of shape (num_instances, num_features)): The instances to fit and score, in order.
+            X (np.float64 array of shape (num_instances, num_features) or Sequence[Any]): The instances to fit and score, in order.
             y (np.int32 array of shape (num_instances,)): The labels of the instances, passed to the detector (Default=None).
 
         Returns:
@@ -158,6 +186,68 @@ class StreamPipeline(BaseModel):
             scores = postprocessor.fit_transform(scores)
 
         return np.asarray(scores, dtype=np.float64)
+
+    def predict_partial(self, X: Any) -> int:
+        """Predicts a binary anomaly label for one instance without fitting any stage."""
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        for preprocessor in self.preprocessors:
+            X = preprocessor.transform_partial(X)
+        if not self.postprocessors:
+            return self.model.predict_partial(X)
+        score = self.model.score_partial(X)
+        for postprocessor in self.postprocessors:
+            score = postprocessor.transform_partial(score)
+        return self.postprocessors[-1]._decide_from_score(score)
+
+    def fit_predict_partial(self, X: Any, y: int | None = None) -> int:
+        """Fits every stage on one instance and returns a binary anomaly decision."""
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        for preprocessor in self.preprocessors:
+            X = preprocessor.fit_transform_partial(X)
+        if not self.postprocessors:
+            return self.model.fit_predict_partial(X, y)
+        score = self.model.fit_score_partial(X, y)
+        for postprocessor in self.postprocessors:
+            score = postprocessor.fit_transform_partial(score)
+        return self.postprocessors[-1]._decide_from_score(score)
+
+    def predict(self, X: Any) -> NDArray[np.int64]:
+        """Predicts binary anomaly labels for all instances in order without fitting."""
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        for preprocessor in self.preprocessors:
+            X = preprocessor.transform(X)
+        if not self.postprocessors:
+            return self.model.predict(X)
+        scores = self.model.score(X)
+        for postprocessor in self.postprocessors:
+            scores = postprocessor.transform(scores)
+        last = self.postprocessors[-1]
+        if last.output_kind == "decision":
+            return np.asarray(scores > 0.0, dtype=np.int64)
+        decide = last._decide_from_score
+        return np.array([decide(float(s)) for s in scores], dtype=np.int64)
+
+    def fit_predict(self, X: Any, y: NDArray[Any] | None = None) -> NDArray[np.int64]:
+        """Fits every stage on all instances in order and returns binary anomaly labels."""
+        if y is not None and len(X) != len(y):
+            raise ValueError("X and y must have the same length.")
+        if not self._can_predict():
+            self._decide_from_score(0.0)
+        for preprocessor in self.preprocessors:
+            X = preprocessor.fit_transform(X)
+        if not self.postprocessors:
+            return self.model.fit_predict(X, y)
+        scores = self.model.fit_score(X, y)
+        for postprocessor in self.postprocessors:
+            scores = postprocessor.fit_transform(scores)
+        last = self.postprocessors[-1]
+        if last.output_kind == "decision":
+            return np.asarray(scores > 0.0, dtype=np.int64)
+        decide = last._decide_from_score
+        return np.array([decide(float(s)) for s in scores], dtype=np.int64)
 
 
 BaseModel._pipeline_cls = StreamPipeline

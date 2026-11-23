@@ -4,6 +4,7 @@ from abc import abstractmethod
 from typing import Any, Literal, cast
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.sparse import issparse
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
 
@@ -29,7 +30,7 @@ class BaseSKLearnProjector(BaseTransformer):
         """Helper property to wrap sklearn projectors."""
         pass
 
-    def _fit_projector(self, X: np.ndarray) -> None:
+    def _fit_projector(self, X: NDArray[Any]) -> None:
         """Draws the random projection matrix once, sized from the given instances.
 
         Args:
@@ -44,7 +45,7 @@ class BaseSKLearnProjector(BaseTransformer):
         self._components = self._projector().fit(X).components_
         self.output_dims = self._components.shape[0]
 
-    def fit(self, X: np.ndarray) -> BaseSKLearnProjector:
+    def fit(self, X: NDArray[Any]) -> BaseSKLearnProjector:
         """Draws the random projection matrix from all instances, which also resolves num_components='auto'.
 
         Args:
@@ -58,7 +59,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Projects all instances, fitting the projector to them first if it is not fitted yet.
 
         Args:
@@ -79,7 +80,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return super().transform(X)
 
-    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Fits the projector to all instances, then projects them.
 
         Args:
@@ -90,7 +91,7 @@ class BaseSKLearnProjector(BaseTransformer):
         """
         return self.fit(X).transform(X)
 
-    def fit_partial(self, X: np.ndarray) -> BaseSKLearnProjector:
+    def fit_partial(self, X: NDArray[Any]) -> BaseSKLearnProjector:
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
@@ -104,7 +105,7 @@ class BaseSKLearnProjector(BaseTransformer):
 
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
 
         Args:
@@ -119,7 +120,8 @@ class BaseSKLearnProjector(BaseTransformer):
         # .dot rather than sklearn's transform: its matmul raises spurious FPE warnings with macOS Accelerate BLAS.
         # Sparse components stay sparse and use scipy's sparse product.
         assert self._components is not None
-        return self._components.dot(X)
+        projected: NDArray[Any] = self._components.dot(X)
+        return projected
 
 
 class GaussianRandomProjector(BaseSKLearnProjector):

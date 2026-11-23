@@ -6,6 +6,17 @@ name: docs
 on:
   pull_request:
     branches: [master]
+    paths:
+      - "pysad/**"
+      - "docs/**"
+      - "examples/**"
+      - "benchmarks/benchmark.py"
+      - "benchmarks/memory_stability.py"
+      - "scripts/generate_performance_badges.py"
+      - "README.md"
+      - "pyproject.toml"
+      - ".readthedocs.yaml"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 permissions:
@@ -33,13 +44,62 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: docs-311
+          prune-cache: true
+      - name: Cache intersphinx inventories
+        id: inv-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pysad-intersphinx
+          key: docs-intersphinx-v1-${{ hashFiles('docs/conf.py') }}
+      - name: Prefetch intersphinx inventories
+        run: |
+          python3 - <<'PY'
+          import contextlib, os, urllib.request
+          from concurrent.futures import ThreadPoolExecutor
+          from pathlib import Path
+
+          cache_dir = Path.home() / ".cache" / "pysad-intersphinx"
+          cache_dir.mkdir(parents=True, exist_ok=True)
+          urls = {
+              "python": "https://docs.python.org/3/objects.inv",
+              "numpy": "https://numpy.org/doc/stable/objects.inv",
+              "pandas": "https://pandas.pydata.org/docs/objects.inv",
+              "scipy": "https://docs.scipy.org/doc/scipy/objects.inv",
+              "sklearn": "https://scikit-learn.org/stable/objects.inv",
+          }
+
+          def fetch(item):
+              name, url = item
+              dest = cache_dir / f"{name}.inv"
+              if dest.is_file():
+                  return
+              req = urllib.request.Request(url, headers={"User-Agent": "pysad-docs"})
+              with contextlib.suppress(Exception):
+                  with urllib.request.urlopen(req, timeout=10) as resp:
+                      dest.write_bytes(resp.read())
+
+          with ThreadPoolExecutor(max_workers=5) as pool:
+              list(pool.map(fetch, urls.items()))
+
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
+              f.write(f"PYSAD_INTERSPHINX_CACHE={cache_dir}\n")
+          PY
       - name: Install dependencies
         # Same dependency groups as python.install in .readthedocs.yaml. The package itself
         # is not installed; docs/conf.py puts the repository root on sys.path.
         run: uv pip install --system --group runtime --group docs
+      - name: Make sure that performance badges match their sources
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/generate_performance_badges.py
+          git diff --exit-code -- docs/_static/*throughput.json docs/_static/*memory.json docs/_static/*detectors.json
       - name: Build documentation
+        env:
+          PYSAD_DOCS_FAST: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         # -W turns warnings into errors and --keep-going reports all of them in one run.
-        run: python -m sphinx -W --keep-going -b html docs docs/_build/html
+        run: python -m sphinx -j auto -W --keep-going -b html docs docs/_build/html
       - name: Upload built documentation
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

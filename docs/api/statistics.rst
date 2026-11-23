@@ -8,7 +8,11 @@ This module holds running statistics. A running statistic changes as you add val
 :class:`CUSUMMeter` tracks shifts from a fixed target mean. Its ``get()`` method
 returns the larger cumulative deviation. Its ``drift_detected`` flag reports
 when this value exceeds ``threshold``. The next update restarts both sums.
-Use :class:`PageHinkleyMeter` to track deviations from a running mean instead.
+:class:`PageHinkleyMeter` tracks deviations from a running mean. Its ``get()``
+method returns the two-sided Page-Hinkley statistic. Its ``drift_detected``
+flag reports when this value exceeds ``threshold`` after at least
+``min_instances`` observations. The next update restarts both sums and the
+running mean. Use :class:`CUSUMMeter` to track shifts from a fixed target mean.
 This module holds running statistics. Call ``update`` to add a value, then call
 ``get`` to read the statistic. Removable meters also support ``remove`` and can use
 :class:`RunningStatistic` for windowed summaries. Each meter's class documentation
@@ -39,6 +43,9 @@ partitioned streams without replaying the observations. The meters must have the
 same ``relative_accuracy``. The receiver retains its ``q`` and ``max_buckets``,
 and the source stays unchanged. Counts remain exact; quantiles whose buckets have
 been collapsed in either meter may fall outside the relative-error guarantee.
+
+:class:`KLLMeter` supports ``merge(other)`` to combine summaries of partitioned
+streams. It merges and re-compacts compactors, bounding memory by :math:`O(k)`.
 See ``examples/example_ddsketch_merge.py`` for a partitioned-stream example.
 
 :class:`RelativeErrorQuantileMeter` tracks relative rank accuracy with randomized

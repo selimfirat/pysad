@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.linalg.blas import ddot, dsymv, dsyr, dsyrk
 from sklearn.kernel_approximation import RBFSampler
 from sklearn.utils import check_random_state
@@ -18,23 +19,25 @@ def _unit_interval(value: float, name: str) -> float:
     return value
 
 
-def _states(X: np.ndarray, weights: np.ndarray, offset: np.ndarray) -> np.ndarray:
+def _states(
+    X: NDArray[np.float64], weights: NDArray[np.float64], offset: NDArray[np.float64]
+) -> NDArray[np.float64]:
     """The unit-norm random Fourier feature states of the rows of ``X``."""
-    vals = np.cos(np.atleast_2d(X) @ weights + offset)
+    vals: NDArray[np.float64] = np.cos(np.atleast_2d(X) @ weights + offset)
     vals /= np.linalg.norm(vals, axis=1, keepdims=True)
     return vals
 
 
 def _adapt_features(
-    X: np.ndarray,
-    weights: np.ndarray,
-    offset: np.ndarray,
+    X: NDArray[np.float64],
+    weights: NDArray[np.float64],
+    offset: NDArray[np.float64],
     gamma: float,
     learning_rate: float,
     rng: np.random.RandomState,
     num_steps: int = 50,
     batch_size: int = 1024,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     r"""Fits the random Fourier features to the Gaussian kernel on random pairs of rows of ``X``.
 
     Minimizes the mean squared error between :math:`\exp(-\gamma \|x - y\|^2)` and the inner product of the states of :math:`x` and :math:`y` with Adam, from ``learning_rate`` decaying linearly to 1e-7 over ``num_steps`` steps of ``batch_size`` pairs, as the authors' code does.
@@ -83,6 +86,10 @@ def _adapt_features(
         np.square(py, out=dzx)
         dzx.sum(axis=1, out=ny[:, 0])
         np.sqrt(ny, out=ny)
+        # Prevent division by zero when the state norms are very small.
+        eps_norm = np.float32(1e-8)
+        np.maximum(nx, eps_norm, out=nx)
+        np.maximum(ny, eps_norm, out=ny)
         px /= nx
         py /= ny
         np.multiply(px, py, out=dzx)
@@ -103,6 +110,7 @@ def _adapt_features(
         zy *= -error
         zy /= ny
         dzy *= zy
+        # The divisions above re-use nx, ny which already have the epsilon floor.
         grads = [x.T @ dzx + y.T @ dzy, dzx.sum(axis=0) + dzy.sum(axis=0)]
         lr = learning_rate + (1e-7 - learning_rate) * (step - 1) / num_steps
         for param, grad, (m, v) in zip(params, grads, moments, strict=True):
@@ -125,13 +133,13 @@ class Inqmad(BaseModel):
 
     The adaptive Fourier features start as random Fourier features of the kernel. They are then fitted with gradient descent to minimize the squared error between the kernel and the inner product of the states, on random pairs drawn from the scaled initial sample plus points drawn uniformly from :math:`[-0.5, 1.5]^d`: as in the paper, enough of them to make 10,000 points if the sample has fewer than 1,000 instances, and twice the sample size otherwise. The paper does not give the optimizer's schedule, so this follows the authors' code: 50 Adam steps of 1,024 pairs, with the learning rate decaying linearly to 1e-7.
 
-    The defaults follow the paper: 2000 features, and a bandwidth :math:`\sigma = 1` in the middle of the paper's per-dataset values (0.1 to 4). A smaller ``sigma`` makes the density more local. The paper tunes ``alpha`` per dataset and does not report ``beta``. The default ``alpha`` keeps a memory of about a hundred normal instances, and the default ``beta`` is PyOD's default contamination.
+    The defaults use 2000 features, a bandwidth :math:`\sigma = 1` in the middle of the paper's per-dataset values (0.1 to 4), and an initial sample of 500 instances for better robustness on streams with sparse anomalies. A smaller ``sigma`` makes the density more local. The paper tunes ``alpha`` per dataset and does not report ``beta``. The default ``alpha`` keeps a memory of about a hundred normal instances, and the default ``beta`` is PyOD's default contamination.
 
     Args:
         input_shape (int): Number of features. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1. Every instance must be an array of shape (input_shape,) or (1, input_shape), or `ValueError` is raised before the model changes.
         dim_x (int): Random Fourier features dimension, the paper's :math:`D`. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1 (Default=2000).
         sigma (float): Bandwidth of the Gaussian kernel :math:`k(x, y) = \exp(-\|x - y\|^2 / (2 \sigma^2))` on the scaled instances. Must be a positive real number (Default=1.0).
-        initial_size (int): Number of instances in the initial sample, the paper's :math:`n`. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1 (Default=256).
+        initial_size (int): Number of instances in the initial sample, the paper's :math:`n`. Must be an int >= 1 (a NumPy integer is accepted, but not a bool): `TypeError` is raised for other types and `ValueError` for values below 1 (Default=500).
         alpha (float): Forgetting rate of the update, the weight of each new normal instance in :math:`\rho`. A larger value forgets old instances faster. Must be a real number between 0 and 1 (Default=0.01).
         beta (float): Expected proportion of anomalies, the quantile of the initial sample's densities that becomes the threshold :math:`\tau`. Must be a real number between 0 and 1 (Default=0.1).
         learning_rate (float): Initial learning rate of the adaptive Fourier features fit, the paper's :math:`lr_{base}`. Must be a positive real number (Default=1e-3).
@@ -143,7 +151,7 @@ class Inqmad(BaseModel):
         input_shape: int,
         dim_x: int = 2000,
         sigma: float = 1.0,
-        initial_size: int = 256,
+        initial_size: int = 500,
         alpha: float = 0.01,
         beta: float = 0.1,
         learning_rate: float = 1e-3,
@@ -167,33 +175,33 @@ class Inqmad(BaseModel):
         self.weights = sampler.random_weights_
         self.offset = sampler.random_offset_
         # The initial sample, until it is complete; then the scaling, rho and tau replace it.
-        self._initial_buf: np.ndarray | None = np.empty(
+        self._initial_buf: NDArray[np.float64] | None = np.empty(
             (self.initial_size, input_shape), dtype=np.float64
         )
         self._initial_len = 0
-        self._warmup_min: np.ndarray | None = None
-        self._warmup_max: np.ndarray | None = None
-        self.feature_min: np.ndarray | None = None
-        self.feature_range: np.ndarray | None = None
-        self._states_buf: np.ndarray | None = None
-        self._weights_buf: np.ndarray | None = None
+        self._warmup_min: NDArray[np.float64] | None = None
+        self._warmup_max: NDArray[np.float64] | None = None
+        self.feature_min: NDArray[np.float64] | None = None
+        self.feature_range: NDArray[np.float64] | None = None
+        self._states_buf: NDArray[np.float64] | None = None
+        self._weights_buf: NDArray[np.float64] | None = None
         self._num_states = 0
         self._max_states = dim_x
-        self._psi_buf = np.empty(dim_x, dtype=np.float64)
-        self._proj_buf = np.empty(0, dtype=np.float64)
-        self._rho: np.ndarray | None = None
+        self._psi_buf: NDArray[np.float64] = np.empty(dim_x, dtype=np.float64)
+        self._proj_buf: NDArray[np.float64] = np.empty(0, dtype=np.float64)
+        self._rho: NDArray[np.float64] | None = None
         self._rho_scale = 1.0
         self._rho_dirty = False
         self.tau: float | None = None
 
     @property
-    def initial(self) -> np.ndarray | None:
+    def initial(self) -> NDArray[np.float64] | None:
         if self._initial_buf is None:
             return None
         return self._initial_buf[: self._initial_len]
 
     @initial.setter
-    def initial(self, value: np.ndarray | None) -> None:
+    def initial(self, value: NDArray[np.float64] | None) -> None:
         if value is None:
             self._initial_buf = None
             self._initial_len = 0
@@ -234,12 +242,12 @@ class Inqmad(BaseModel):
             self._rho_dirty = False
 
     @property
-    def rho(self) -> np.ndarray | None:
+    def rho(self) -> NDArray[np.float64] | None:
         self._materialize_rho()
         return self._rho
 
     @rho.setter
-    def rho(self, value: np.ndarray | None) -> None:
+    def rho(self, value: NDArray[np.float64] | None) -> None:
         self._states_buf = None
         self._weights_buf = None
         self._num_states = 0
@@ -247,7 +255,7 @@ class Inqmad(BaseModel):
         self._rho_scale = 1.0
         self._rho_dirty = False
 
-    def _instance(self, X: np.ndarray) -> np.ndarray:
+    def _instance(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """``X`` as a 1-D ``(num_features,)`` float64 vector, or raises if it is not one instance of the fitted feature count."""
         num_features = self.weights.shape[0]
         arr = np.asarray(X)
@@ -259,12 +267,12 @@ class Inqmad(BaseModel):
         return np.asarray(arr, dtype=np.float64).reshape(num_features)
 
     @staticmethod
-    def _min_range(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _min_range(X: NDArray[np.float64]) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """The per-feature minimum and range of the rows of ``X``, with a zero range replaced by 1 as in scikit-learn's MinMaxScaler."""
         feature_range = np.ptp(X, axis=0)
         return X.min(axis=0), np.where(feature_range == 0, 1.0, feature_range)
 
-    def _measure(self, X: np.ndarray) -> tuple[np.ndarray | None, float]:
+    def _measure(self, X: NDArray[np.float64]) -> tuple[NDArray[np.float64] | None, float]:
         """The state of the 1-D instance ``X`` (None before rho exists) and its density."""
         if self._rho is None and self._states_buf is None:
             if self._initial_len == 0:
@@ -304,7 +312,7 @@ class Inqmad(BaseModel):
         assert self._rho is not None
         return psi, float(ddot(psi, dsymv(self._rho_scale, self._rho.T, psi)))
 
-    def _fit(self, X: np.ndarray, psi: np.ndarray | None, density: float) -> None:
+    def _fit(self, X: NDArray[np.float64], psi: NDArray[np.float64] | None, density: float) -> None:
         if self._rho is None and self._states_buf is None:
             assert self._initial_buf is not None
             idx = self._initial_len
@@ -361,7 +369,7 @@ class Inqmad(BaseModel):
         elif self.tau is not None and density >= self.tau * (1.0 - 1e-12) and self.alpha > 0.0:
             assert psi is not None
             if self.alpha == 1.0:
-                self.rho = np.outer(psi, psi)
+                self.rho = np.ascontiguousarray(np.outer(psi, psi), dtype=np.float64)
             elif self._states_buf is not None and self._num_states < self._max_states:
                 assert self._weights_buf is not None
                 if self._num_states == len(self._states_buf):
@@ -393,7 +401,7 @@ class Inqmad(BaseModel):
                 dsyr(self.alpha / self._rho_scale, psi, a=self._rho.T, overwrite_a=1)
                 self._rho_dirty = True
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> Inqmad:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> Inqmad:
         """Updates the model with the next instance: adds it to the initial sample, or, once the sample is complete, adds it to the density matrix if its density is at least the threshold.
 
         Args:
@@ -414,7 +422,7 @@ class Inqmad(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -428,7 +436,7 @@ class Inqmad(BaseModel):
         """
         return -self._measure(self._instance(X))[1]
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         r"""Scores the next instance against the density matrix :math:`\rho_t` (or the initial sample) before it, and then fits it, as in the paper's Algorithm 2. The instance's own state therefore does not add to its density.
 
         Args:

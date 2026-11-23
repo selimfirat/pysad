@@ -56,24 +56,24 @@ def _sequence(num_repeats):
 def test_raw_score_falls_on_a_learned_sequence_and_rises_on_a_new_one():
     from pysad.models import HTM
 
-    model = HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=512, random_state=0)
-    scores = model.fit_score(_sequence(20))
+    model = HTM(min_val=0.0, max_val=1.0, likelihood=False, num_columns=256, random_state=0)
+    scores = model.fit_score(_sequence(12))
 
     assert scores[:24].mean() > 0.9
     assert scores[-48:].mean() < 0.3
     # A value between the two levels, at an hour that the model knows.
-    assert model.score_partial(np.array([3600.0 * 24 * 20, 0.5])) > 0.5
+    assert model.score_partial(np.array([3600.0 * 24 * 12, 0.5])) > 0.5
 
 
 def test_likelihood_is_one_half_during_the_probationary_period():
     from pysad.models import HTM
 
-    model = HTM(min_val=0.0, max_val=1.0, probationary_period=100, num_columns=256, random_state=0)
-    scores = model.fit_score(_sequence(10))
+    model = HTM(min_val=0.0, max_val=1.0, probationary_period=48, num_columns=256, random_state=0)
+    scores = model.fit_score(_sequence(5))
 
-    np.testing.assert_array_equal(scores[:100], 0.5)
+    np.testing.assert_array_equal(scores[:48], 0.5)
     assert np.all((scores >= 0.0) & (scores <= 1.0))
-    assert np.any(scores[100:] != 0.5)
+    assert np.any(scores[48:] != 0.5)
 
 
 def test_value_outside_the_range_so_far_is_a_spatial_anomaly():

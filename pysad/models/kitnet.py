@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import copy
 import math
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.cluster.hierarchy import ClusterNode, linkage, to_tree
 from scipy.special import expit
 from sklearn.utils import check_random_state
@@ -16,13 +16,13 @@ class _CorClust:
 
     def __init__(self, num_features: int) -> None:
         self.n = num_features
-        self.c = np.zeros(num_features, dtype=np.float64)
-        self.c_r = np.zeros(num_features, dtype=np.float64)
-        self.c_rs = np.zeros(num_features, dtype=np.float64)
-        self.C = np.zeros((num_features, num_features), dtype=np.float64)
+        self.c: NDArray[np.float64] = np.zeros(num_features, dtype=np.float64)
+        self.c_r: NDArray[np.float64] = np.zeros(num_features, dtype=np.float64)
+        self.c_rs: NDArray[np.float64] = np.zeros(num_features, dtype=np.float64)
+        self.C: NDArray[np.float64] = np.zeros((num_features, num_features), dtype=np.float64)
         self.n_updates = 0
 
-    def update(self, x: np.ndarray) -> None:
+    def update(self, x: NDArray[np.float64]) -> None:
         self.n_updates += 1
         self.c += x
         c_rt = x - self.c / self.n_updates
@@ -30,11 +30,11 @@ class _CorClust:
         self.c_rs += c_rt**2
         self.C += np.outer(c_rt, c_rt)
 
-    def corr_dist(self) -> np.ndarray:
+    def corr_dist(self) -> NDArray[np.float64]:
         c_rs_sqrt = np.sqrt(self.c_rs)
         denom = np.outer(c_rs_sqrt, c_rs_sqrt)
         denom[denom == 0.0] = 1e-100
-        dist: np.ndarray = 1.0 - self.C / denom
+        dist: NDArray[np.float64] = 1.0 - self.C / denom
         dist[dist < 0.0] = 0.0
         return dist
 
@@ -83,24 +83,24 @@ class _DenoisingAutoencoder:
         self.lr = lr
         self.n_trained = 0
 
-        self.norm_max = np.full(n_visible, -np.inf, dtype=np.float64)
-        self.norm_min = np.full(n_visible, np.inf, dtype=np.float64)
+        self.norm_max: NDArray[np.float64] = np.full(n_visible, -np.inf, dtype=np.float64)
+        self.norm_min: NDArray[np.float64] = np.full(n_visible, np.inf, dtype=np.float64)
 
         bound = 1.0 / n_visible
-        self.W: np.ndarray = np.asarray(
+        self.W: NDArray[np.float64] = np.asarray(
             rng.uniform(low=-bound, high=bound, size=(n_visible, n_hidden)),
             dtype=np.float64,
         )
-        self.hbias = np.zeros(n_hidden, dtype=np.float64)
-        self.vbias = np.zeros(n_visible, dtype=np.float64)
+        self.hbias: NDArray[np.float64] = np.zeros(n_hidden, dtype=np.float64)
+        self.vbias: NDArray[np.float64] = np.zeros(n_visible, dtype=np.float64)
 
-    def normalize(self, x: np.ndarray) -> np.ndarray:
+    def normalize(self, x: NDArray[np.float64]) -> NDArray[np.float64]:
         # Constant training features are shifted without dividing by the 1e-16 guard.
         scale = self.norm_max - self.norm_min + 1e-16
         scale[self.norm_max == self.norm_min] = 1.0
         return (x - self.norm_min) / scale
 
-    def train(self, x: np.ndarray) -> float:
+    def train(self, x: NDArray[np.float64]) -> float:
         self.n_trained += 1
         np.maximum(self.norm_max, x, out=self.norm_max)
         np.minimum(self.norm_min, x, out=self.norm_min)
@@ -118,7 +118,7 @@ class _DenoisingAutoencoder:
         self.vbias += self.lr * float(err_v.mean())
         return float(np.sqrt(np.mean(err_v**2)))
 
-    def execute(self, x: np.ndarray) -> float:
+    def execute(self, x: NDArray[np.float64]) -> float:
         x_norm = self.normalize(x)
         y = np.asarray(expit(x_norm @ self.W + self.hbias), dtype=np.float64)
         z = np.asarray(expit(y @ self.W.T + self.vbias), dtype=np.float64)
@@ -163,13 +163,13 @@ class _KitNET:
     def in_grace(self) -> bool:
         return self.n_trained < self.fm_grace_period + self.ad_grace_period
 
-    def train(self, x: np.ndarray) -> None:
+    def train(self, x: NDArray[np.float64]) -> None:
         if self.n_trained < self.fm_grace_period and self.feature_map is None:
             self.fm.update(x)
         elif self.output_layer is None:
             if self.feature_map is None:
                 self.feature_map = self.fm.cluster(self.m)
-            self._create_autoencoders(self.feature_map, temporary=False)
+            self._create_autoencoders(self.feature_map)
 
         if self.active_map is not None and self.output_layer is not None:
             scores_l1 = np.empty(len(self.ensemble_layer), dtype=np.float64)
@@ -178,7 +178,7 @@ class _KitNET:
             self.output_layer.train(scores_l1)
         self.n_trained += 1
 
-    def execute(self, x: np.ndarray) -> float:
+    def execute(self, x: NDArray[np.float64]) -> float:
         if self.output_layer is None or self.active_map is None:
             raise RuntimeError("KitNET autoencoders have not trained on an instance yet.")
         self.n_executed += 1
@@ -187,12 +187,9 @@ class _KitNET:
             scores_l1[idx] = ae.execute(x[self.active_map[idx]])
         return self.output_layer.execute(scores_l1)
 
-    def _create_autoencoders(self, feature_map: list[list[int]], temporary: bool) -> None:
+    def _create_autoencoders(self, feature_map: list[list[int]]) -> None:
         rng = check_random_state(self.random_state)
-        if temporary:
-            rng = copy.deepcopy(rng)
         self.active_map = feature_map
-        self.temporary = temporary
         self.ensemble_layer = [
             _DenoisingAutoencoder(len(cluster), self.lr, self.hr, rng) for cluster in feature_map
         ]
@@ -246,7 +243,7 @@ class KitNet(BaseModel):
         self.model: _KitNET | None = None
         self.feature_map_: list[list[int]] | None = None
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> KitNet:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> KitNet:
         """Fits the model to the next instance.
 
         The first ``grace_feature_mapping`` instances learn the feature mapping;
@@ -282,7 +279,7 @@ class KitNet(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Returns ``0.0`` before the first instance and during the feature mapping grace
@@ -299,7 +296,7 @@ class KitNet(BaseModel):
             return 0.0
         return self.model.execute(X)
 
-    def explain_partial(self, X: np.ndarray) -> np.ndarray:
+    def explain_partial(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """Returns per-feature attribution weights for the anomaly score of the next instance.
 
         Each ensemble autoencoder reconstructs the features it maps, and its squared reconstruction
@@ -329,7 +326,7 @@ class KitNet(BaseModel):
         if model is None or model.active_map is None or not model.ensemble_layer:
             return np.zeros(x.shape[0], dtype=np.float64)
 
-        attribution: np.ndarray = np.zeros(x.shape[0], dtype=np.float64)
+        attribution: NDArray[np.float64] = np.zeros(x.shape[0], dtype=np.float64)
         for autoencoder, features in zip(model.ensemble_layer, model.active_map, strict=True):
             subset = np.asarray(list(features), dtype=np.intp)
             normalized = autoencoder.normalize(x[subset])
@@ -346,6 +343,39 @@ class KitNet(BaseModel):
             attribution = attribution / total
 
         return attribution
+
+    def score_explain_partial(self, X: NDArray[np.float64]) -> tuple[float, NDArray[np.float64]]:
+        """Returns the anomaly score and per-feature attribution for the next instance.
+
+        The explanation attributes the reconstruction error of each ensemble autoencoder
+        to the features it maps, normalized to sum to one. Higher attribution weights
+        mean the autoencoders using that feature reconstruct it poorly, indicating
+        that feature contributes more to the anomaly score.
+
+        Like ``score_partial``, it does not update the model or record the instance.
+        Before the first autoencoders exist, the method returns 0.0 and zeros of shape
+        ``(num_features,)``.
+
+        Args:
+            X (np.float64 array of shape (num_features,)): The instance to score and explain.
+
+        Returns:
+            tuple: (score, attribution) where
+                score (float): The anomalousness score of the input instance.
+                attribution (np.float64 array of shape (num_features,)): Non-negative
+                attribution weights, one per feature, summing to one (zeros before the
+                first autoencoders exist).
+
+        Raises:
+            ValueError: If `X` holds NaN.
+        """
+        x = np.asarray(X)
+        if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
+            raise ValueError(f"{type(self).__name__} does not accept NaN values.")
+
+        score = self.score_partial(X)
+        attribution = self.explain_partial(X)
+        return score, attribution
 
 
 # _CorClust, _DenoisingAutoencoder, and _KitNET are adapted from KitNET-py

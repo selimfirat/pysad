@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -56,6 +59,8 @@ class OeSNNUAD(BaseModel):
         ValueError: If ``mod`` is not in (0, 1), ``c`` is not in (0, 1], ``xi`` is not in [0, 1], or an int parameter is below its minimum.
     """
 
+    _has_decision_rule: ClassVar[bool] = True
+
     def __init__(
         self,
         window_size: int = 100,
@@ -110,7 +115,9 @@ class OeSNNUAD(BaseModel):
         self.update_times_ = np.zeros(self.num_output_neurons)
         self.update_counts_ = np.zeros(self.num_output_neurons, dtype=np.int64)
 
-    def _encode(self, window: np.ndarray, x: float) -> tuple[np.ndarray, np.ndarray]:
+    def _encode(
+        self, window: NDArray[np.float64], x: float
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """The candidate weights mod^order of each input neuron, and the input neurons in firing order."""
         low, scale = window.min(), window.max() - window.min()
         # On [0, 1], the minimum and the maximum of the window are exact, so tied fields stay tied.
@@ -120,7 +127,7 @@ class OeSNNUAD(BaseModel):
         weights[firing] = self.powers_
         return weights, firing
 
-    def _predict(self, firing: np.ndarray) -> tuple[int | None, int]:
+    def _predict(self, firing: NDArray[np.int64]) -> tuple[int | None, int]:
         """The output neuron that fires first (Algorithm 3), or None, and the one of the largest potential."""
         # (num_neurons, num_input_neurons): the potentials after each input neuron fires.
         potentials = np.cumsum(self.weights_[: self.num_neurons_, firing] * self.powers_, axis=1)
@@ -138,7 +145,7 @@ class OeSNNUAD(BaseModel):
         std = normal_errors.std()
         return (error - normal_errors.mean()) / std if std > 0.0 else 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> OeSNNUAD:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> OeSNNUAD:
         """Classifies the next value as the paper does, then learns from it.
 
         Args:
@@ -204,14 +211,19 @@ class OeSNNUAD(BaseModel):
         self.update_counts_[i] = 1
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the value with the current model, without changing it.
 
         Args:
             X (np.float64 array of shape (1,)): The value to score. This model is univariate.
 
         Returns:
-            float: The prediction error in standard deviations above the mean recent error of the values that were not anomalies. It is 0 during the first ``window_size`` values, while the repository is empty, or when that standard deviation is 0.
+            float: The prediction error in standard deviations above the mean recent error
+                of the values that were not anomalies. It is 0 during the first
+                ``window_size`` values, while the repository is empty, or when that
+                standard deviation is 0. Higher scores represent more anomalous instances.
+                A threshold :math:`\\varepsilon` is used for binary decision classification
+                via :meth:`_decide_from_score`.
         """
         x = check_univariate(X, "OeSNNUAD")
         if self.count_ < self.window_size or not self.num_neurons_:
@@ -222,3 +234,6 @@ class OeSNNUAD(BaseModel):
         window[self.position_] = x
         fired, largest = self._predict(self._encode(window, x)[1])
         return self._z(abs(x - self.outputs_[largest if fired is None else fired]))
+
+    def _decide_from_score(self, score: float) -> int:
+        return 1 if score > self.epsilon else 0

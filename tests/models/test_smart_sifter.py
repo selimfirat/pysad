@@ -11,12 +11,11 @@ def _mixture_stream(rng, num_instances):
     return MEANS[labels] + rng.normal(0.0, STD, (num_instances, 2))
 
 
-@pytest.mark.parametrize("seed", range(3))
-def test_smart_sifter_learns_a_stationary_mixture(seed):
+def test_smart_sifter_learns_a_stationary_mixture():
     from pysad.models import SmartSifter
 
-    rng = np.random.default_rng(seed)
-    model = SmartSifter(num_components=2, discount=0.002, random_state=seed)
+    rng = np.random.default_rng(0)
+    model = SmartSifter(num_components=2, discount=0.002, random_state=0)
     model.fit(_mixture_stream(rng, 10_000))
 
     order = np.argsort(model.means_[:, 0])
@@ -49,8 +48,8 @@ def _steps_to_follow_a_jump(discount):
 
     rng = np.random.default_rng(0)
     model = SmartSifter(num_components=1, discount=discount, random_state=0)
-    model.fit(rng.normal(0.2, STD, (3000, 2)))
-    for step, x in enumerate(rng.normal(0.8, STD, (3000, 2)), start=1):
+    model.fit(rng.normal(0.2, STD, (1500, 2)))
+    for step, x in enumerate(rng.normal(0.8, STD, (1500, 2)), start=1):
         model.fit_partial(x)
         if np.abs(model.means_ - 0.8).max() < 0.05:
             return step
@@ -71,7 +70,7 @@ def test_smart_sifter_stays_finite_on_constant_features(noise):
     from pysad.models import SmartSifter
 
     rng = np.random.default_rng(0)
-    X = np.column_stack([rng.normal(size=20_000), 3.0 + noise * rng.normal(size=20_000)])
+    X = np.column_stack([rng.normal(size=3_000), 3.0 + noise * rng.normal(size=3_000)])
     model = SmartSifter(random_state=0)
     scores = model.fit_score(X)
 

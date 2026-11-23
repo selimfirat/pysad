@@ -32,6 +32,8 @@ SUBPACKAGES: tuple[str, ...] = (
 
 REQUIRED_ARGS: dict[str, dict[str, Any]] = {
     "ApproxStorm": {"sample_fraction": 0.5},
+    "ConformalTSFMCalibrator": {"alpha": 0.1, "gamma": 0.005},
+    "FeedbackHST": {"feature_mins": [0.0], "feature_maxes": [1.0]},
     "HalfSpaceTrees": {"feature_mins": [0.0], "feature_maxes": [1.0]},
     "HoltWinters": {"period": 2},
     "IDKS": {"input_shape": 1},
@@ -54,7 +56,7 @@ def _discover_window_size_components() -> list[Any]:
         for name in getattr(mod, "__all__", ()):
             if name.startswith("_"):
                 continue
-            if name == "RiverAnomalyDetector" and (
+            if name == "PySADToRiverAdapter" and (
                 importlib.util.find_spec("river") is None
                 or not hasattr(importlib.import_module("river.base"), "AnomalyDetector")
             ):

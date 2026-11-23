@@ -1,3 +1,4 @@
+import contextlib
 import csv
 import gzip
 import hashlib
@@ -13,7 +14,8 @@ from collections.abc import Iterator
 from typing import Any
 
 import numpy as np
-from scipy.io import arff
+from numpy.typing import NDArray
+from sklearn.utils import check_random_state
 
 from pysad.utils._datasets import (
     _CHECKSUMS,
@@ -38,6 +40,10 @@ from pysad.utils._datasets import (
     _SMD,
     _SMD_CHECKSUMS,
     _SOURCES,
+    _TSB_DRIFT_ARCHIVE,
+    _TSB_DRIFT_ARCHIVE_CHECKSUM,
+    _TSB_DRIFT_ARCHIVE_KEY,
+    _TSB_DRIFT_SERIES,
     _UCR,
     _UCR_ARCHIVE,
     _UCR_CHECKSUM,
@@ -82,6 +88,8 @@ def _source(name: str) -> tuple[str, str]:
     if name.startswith("insects/"):
         drive_id, checksum = _INSECTS_FILES[name[len("insects/") :]]
         return _INSECTS + drive_id, checksum
+    if name.startswith("tsb-drift/"):
+        return _TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM
 
     return _MIRROR + name, _CHECKSUMS[name]
 
@@ -109,7 +117,12 @@ class Data:
     series come from the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly Archive.
     The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD),
     the NASA SMAP and MSL telemetry of Telemanom (:cite:`hundman2018detecting`), INSECTS and
-    credit-card fraud (OpenML 1597). Each download must match a SHA-256 checksum.
+    credit-card fraud (OpenML 1597). The distribution-drift series come from TSB-drift, the
+    top-75 subset of the TSB-AD-M benchmark introduced by Parrino et al. (KDD 2026,
+    "In a Streaming World, Should You Stand Still? A Comprehensive Benchmark of Anomaly
+    Detection in Streams", DOI 10.1145/3770855.3817495, CC BY 4.0) and extracted from the
+    TSB-AD-M archive of Liu and Paparrizos (NeurIPS 2024). Each download must match a
+    SHA-256 checksum.
     :meth:`datasets` lists the datasets, and
     :meth:`get_stream` gives the stream of a run of the PySAD benchmark.
 
@@ -142,6 +155,7 @@ class Data:
                 - ``"msl"``: the test halves of the 27 telemetry channels of the MSL rover Curiosity, for example ``"msl/M-1.npy"``, with 55 features in the same layout as ``"smap"``.
                 - ``"creditcard"``: ``"creditcard/creditcard.arff"``, the 284,807 transactions of OpenML 1597, version 1, in their original time order. The 30 features are Time (elapsed seconds), V1 through V28 and Amount. Class is returned separately as the label: 1 for fraud, 0 otherwise. The database is under ODbL 1.0 and its contents under DbCL 1.0; see :doc:`/guides/stream_data` for the source links and license details.
                 - ``"insects"``: the 4 INSECTS streams of the ARCUS paper, for example ``"insects/abrupt.csv"``, with 33 features. The southern house mosquito is the anomaly class.
+                - ``"tsb-drift"``: the 75 series of the TSB-drift distribution-drift benchmark of Parrino et al. (KDD 2026), for example ``"tsb-drift/009_MSL_id_8_Sensor_tr_714_1st_1390.csv"``. The series are extracted from the TSB-AD-M archive, and the last column holds the binary anomaly label. The paper is under CC BY 4.0; the underlying TSB-AD series keep their original per-dataset licenses and the TSB-AD curation is provided under the Apache 2.0 license.
 
         Returns:
             list[str]: The names of the datasets, which :meth:`get_data` accepts.
@@ -167,6 +181,8 @@ class Data:
             return ["creditcard/creditcard.arff"]
         if source == "insects":
             return ["insects/" + name for name in _INSECTS_FILES]
+        if source == "tsb-drift":
+            return ["tsb-drift/" + name for name in _TSB_DRIFT_SERIES]
         raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
 
     def _download(self, file_name: str, target_path: str) -> None:
@@ -222,7 +238,7 @@ class Data:
                     pass
             raise
 
-    def _load_via_txt(self, path: str) -> np.ndarray:
+    def _load_via_txt(self, path: str) -> NDArray[np.float64]:
         """Loads the data file from .txt file.
 
         Args:
@@ -237,7 +253,7 @@ class Data:
 
     def get_data(
         self, data_file: str, download: bool = True, timestamps: bool = False
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads the data given the filename or path, downloading it if not present.
 
         Args:
@@ -246,7 +262,7 @@ class Data:
             timestamps (bool): Whether to give each point of a NAB series as ``[timestamp, value]``, with the timestamp in seconds since the Unix epoch, as :class:`~pysad.models.HTM` takes it. NAB gives local times without a time zone, and the timestamps read them as UTC (Default=False).
 
         Returns:
-            tuple[np.ndarray, np.ndarray]: The feature vectors of shape (num_instances, num_features) and the labels of shape (num_instances,).
+            tuple[NDArray[np.float64], NDArray[np.int64]]: The feature vectors of shape (num_instances, num_features) and the labels of shape (num_instances,).
 
         Raises:
             ValueError: If ``timestamps`` is True and ``data_file`` is not a NAB series.
@@ -288,13 +304,13 @@ class Data:
                 self._extract_ucr(file_name, data_path)
             elif file_name.startswith("kddcup99/"):
                 self._extract_kddcup99(data_path)
+            elif file_name.startswith("tsb-drift/"):
+                self._extract_tsb_drift(file_name, data_path)
             else:
                 self._download(file_name, data_path)
 
         if file_name == "creditcard/creditcard.arff":
-            records, metadata = arff.loadarff(data_path)
-            X = np.column_stack([records[n] for n in metadata.names() if n != "Class"])
-            return X, records["Class"].astype(int)
+            return self._load_creditcard(data_path)
         if file_name.startswith("nab/"):
             return self._load_nab(file_name, data_path, download, timestamps)
         if file_name.startswith("ucr/"):
@@ -303,6 +319,8 @@ class Data:
             return self._load_smd(file_name, data_path, download)
         if file_name.startswith(("smap/", "msl/")):
             return self._load_nasa(file_name, data_path, download)
+        if file_name.startswith("tsb-drift/"):
+            return self._load_tsb_drift(data_path)
         if data_path.endswith(".mat"):
             from scipy.io import loadmat
 
@@ -320,9 +338,65 @@ class Data:
 
         return X, y
 
+    def _load_creditcard(self, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Loads the numeric credit-card ARFF file and separates features from ``Class``."""
+        cache_path = f"{data_path}.npz"
+        if os.path.exists(cache_path) and os.path.getmtime(cache_path) >= os.path.getmtime(
+            data_path
+        ):
+            try:
+                with np.load(cache_path) as cached:
+                    return cached["X"], cached["y"]
+            except (OSError, ValueError, KeyError):
+                pass
+
+        attributes: list[str] = []
+        with open(data_path, encoding="utf-8") as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped or stripped.startswith("%"):
+                    continue
+                head = stripped.split(maxsplit=2)
+                tag = head[0].lower()
+                if tag == "@attribute" and len(head) >= 2:
+                    attributes.append(head[1].strip("'\""))
+                elif tag == "@data":
+                    break
+            raw_body = f.read()
+
+        if "%" in raw_body:
+            body = ",".join(
+                line.strip()
+                for line in raw_body.splitlines()
+                if line.strip() and not line.lstrip().startswith("%")
+            )
+        else:
+            body = raw_body.replace("\r", "").replace("\n", ",")
+        body = body.replace("'", "").replace('"', "").strip(" \t,")
+
+        num_cols = len(attributes)
+        class_idx = attributes.index("Class")
+        arr = np.fromstring(body, dtype=np.float64, sep=",").reshape(-1, num_cols)
+        if class_idx == num_cols - 1:
+            X = np.ascontiguousarray(arr[:, :class_idx])
+        else:
+            feature_cols = [i for i in range(num_cols) if i != class_idx]
+            X = np.ascontiguousarray(arr[:, feature_cols])
+        y = arr[:, class_idx].astype(int)
+
+        tmp_path = f"{data_path}.{os.getpid()}.tmp.npz"
+        try:
+            np.savez(tmp_path, X=X, y=y)
+            os.replace(tmp_path, cache_path)
+        except OSError:
+            if os.path.exists(tmp_path):
+                with contextlib.suppress(OSError):
+                    os.remove(tmp_path)
+        return X, y
+
     def _load_nab(
         self, name: str, data_path: str, download: bool, timestamps: bool
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads a NAB series, with the timestamps if `timestamps` is True, and labels the points in its anomaly windows with 1."""
         windows_path = os.path.join(self.data_base_path, "nab", "combined_windows.json")
         if not os.path.exists(windows_path):
@@ -357,7 +431,7 @@ class Data:
         with open(data_path, "wb") as f:
             f.write(content)
 
-    def _load_ucr(self, name: str, data_path: str) -> tuple[np.ndarray, np.ndarray]:
+    def _load_ucr(self, name: str, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads a UCR series and labels the points of its anomaly with 1."""
         with open(data_path) as f:
             X = np.array(f.read().split(), dtype=np.float64).reshape(
@@ -384,7 +458,9 @@ class Data:
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
         np.savetxt(data_path, np.column_stack([X, y]), delimiter=",", fmt="%.17g")
 
-    def _load_smd(self, name: str, data_path: str, download: bool) -> tuple[np.ndarray, np.ndarray]:
+    def _load_smd(
+        self, name: str, data_path: str, download: bool
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads the test half of an SMD machine and its labels."""
         labels_name = "smd/labels/" + name[len("smd/") :]
         labels_path = os.path.join(self.data_base_path, labels_name)
@@ -399,7 +475,7 @@ class Data:
 
     def _load_nasa(
         self, name: str, data_path: str, download: bool
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads the test half of a SMAP or MSL channel and labels the points of its anomaly ranges with 1."""
         labels_path = os.path.join(self.data_base_path, _NASA_LABELS)
         if not os.path.exists(labels_path):
@@ -420,13 +496,31 @@ class Data:
 
         return X, y
 
+    def _extract_tsb_drift(self, name: str, data_path: str) -> None:
+        """Extracts a TSB-drift series out of the TSB-AD-M archive, downloading it if needed."""
+        archive = os.path.join(self.data_base_path, _TSB_DRIFT_ARCHIVE_KEY)
+        if not os.path.exists(archive):
+            self._download(_TSB_DRIFT_ARCHIVE_KEY, archive)
+        with zipfile.ZipFile(archive) as z, z.open("TSB-AD-M/" + name[len("tsb-drift/") :]) as f:
+            content = f.read()
+        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        with open(data_path, "wb") as f:
+            f.write(content)
+
+    def _load_tsb_drift(self, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Loads a TSB-drift CSV and separates the binary ``Label`` column from the features."""
+        X = np.loadtxt(data_path, delimiter=",", skiprows=1)
+        y = X[:, -1].ravel().astype(int)
+        X = X[:, :-1]
+        return X, y
+
     def get_iterator(
         self,
         data_file: str,
         shuffle: bool = True,
         random_state: int | np.random.RandomState | None = None,
         download: bool = True,
-    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
+    ) -> Iterator[tuple[NDArray[np.float64], Any]]:
         """Returns an iterator over the instances and labels of a dataset, in shuffled order by default.
 
         Args:
@@ -436,7 +530,7 @@ class Data:
             download (bool): Whether to download the dataset if not present locally (Default=True).
 
         Returns:
-            Iterator[tuple[np.ndarray, Any]]: Iterator over ``(X, y)`` pairs, where ``X`` is the feature vector of shape (num_features,) and ``y`` is its label.
+            Iterator[tuple[NDArray[np.float64], Any]]: Iterator over ``(X, y)`` pairs, where ``X`` is the feature vector of shape (num_features,) and ``y`` is its label.
         """
         X, y = self.get_data(data_file, download=download)
 
@@ -463,7 +557,7 @@ class Data:
         max_points: int | None = None,
         scale: bool = False,
         download: bool = True,
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Returns a shuffled dataset as arrays, in the order of :meth:`get_iterator`.
 
         With ``random_state=seed``, ``max_points=5000`` and ``scale=True``, this is the stream of the PySAD benchmark for that seed.
@@ -476,12 +570,15 @@ class Data:
             download (bool): Whether to download the dataset if not present locally (Default=True).
 
         Returns:
-            tuple[np.ndarray, np.ndarray]: The feature vectors of shape (num_points, num_features) and the labels of shape (num_points,), in stream order.
+            tuple[NDArray[np.float64], NDArray[np.int64]]: The feature vectors of shape (num_points, num_features) and the labels of shape (num_points,), in stream order.
         """
-        stream = list(self.get_iterator(data_file, random_state=random_state, download=download))
-        stream = stream[:max_points]
-        X, y = np.array([x for x, _ in stream]), np.array([label for _, label in stream])
-        if scale:
+        X, y = self.get_data(data_file, download=download)
+        indices = list(range(len(X)))
+        check_random_state(random_state).shuffle(indices)
+        if max_points is not None:
+            indices = indices[:max_points]
+        X, y = X[indices], y[indices]
+        if scale and len(X) > 0:
             mins, maxes = X.min(axis=0), X.max(axis=0)
             X = (X - mins) / np.where(maxes > mins, maxes - mins, 1.0)
 

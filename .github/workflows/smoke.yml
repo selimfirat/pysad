@@ -2,18 +2,20 @@ name: smoke tests
 
 # Builds the PySAD core wheel and installs it into clean virtual environments.
 # The checks cover the core wheel, the mcp extra, and the fast extra.
-# The fast extra check installs pysad_kernels from PyPI on Linux, macOS, and Windows.
+# The fast extra check builds pysad_kernels on Linux, macOS, and Windows.
 # No core dependencies are added to pyproject.toml.
 on:
   push:
     branches: [master]
     paths:
       - "pysad/**"
+      - "rust/**"
       - "pyproject.toml"
       - ".github/workflows/smoke.yml"
   pull_request:
     paths:
       - "pysad/**"
+      - "rust/**"
       - "pyproject.toml"
       - ".github/workflows/smoke.yml"
   workflow_dispatch:
@@ -130,9 +132,13 @@ jobs:
           prune-cache: true
 
       - name: Build the core wheel
+        shell: bash
         run: |
           rm -rf dist
           uv build --wheel --out-dir dist
+
+      - name: Build the kernel wheel
+        run: uv build rust --wheel --out-dir wheelhouse
 
       - name: Install the fast extra
         shell: bash
@@ -145,7 +151,7 @@ jobs:
           fi
           "$PYTHON" -m pip install --upgrade pip
           set -- dist/pysad-*.whl
-          "$PYTHON" -m pip install --only-binary=pysad_kernels "${1}[fast]"
+          "$PYTHON" -m pip install --only-binary=pysad_kernels --find-links wheelhouse "${1}[fast]"
 
       - name: Verify the native kernels
         shell: bash

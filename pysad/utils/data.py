@@ -40,6 +40,10 @@ from pysad.utils._datasets import (
     _SMD,
     _SMD_CHECKSUMS,
     _SOURCES,
+    _TSB_DRIFT_ARCHIVE,
+    _TSB_DRIFT_ARCHIVE_CHECKSUM,
+    _TSB_DRIFT_ARCHIVE_KEY,
+    _TSB_DRIFT_SERIES,
     _UCR,
     _UCR_ARCHIVE,
     _UCR_CHECKSUM,
@@ -84,6 +88,8 @@ def _source(name: str) -> tuple[str, str]:
     if name.startswith("insects/"):
         drive_id, checksum = _INSECTS_FILES[name[len("insects/") :]]
         return _INSECTS + drive_id, checksum
+    if name.startswith("tsb-drift/"):
+        return _TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM
 
     return _MIRROR + name, _CHECKSUMS[name]
 
@@ -111,7 +117,12 @@ class Data:
     series come from the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly Archive.
     The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD),
     the NASA SMAP and MSL telemetry of Telemanom (:cite:`hundman2018detecting`), INSECTS and
-    credit-card fraud (OpenML 1597). Each download must match a SHA-256 checksum.
+    credit-card fraud (OpenML 1597). The distribution-drift series come from TSB-drift, the
+    top-75 subset of the TSB-AD-M benchmark introduced by Parrino et al. (KDD 2026,
+    "In a Streaming World, Should You Stand Still? A Comprehensive Benchmark of Anomaly
+    Detection in Streams", DOI 10.1145/3770855.3817495, CC BY 4.0) and extracted from the
+    TSB-AD-M archive of Liu and Paparrizos (NeurIPS 2024). Each download must match a
+    SHA-256 checksum.
     :meth:`datasets` lists the datasets, and
     :meth:`get_stream` gives the stream of a run of the PySAD benchmark.
 
@@ -144,6 +155,7 @@ class Data:
                 - ``"msl"``: the test halves of the 27 telemetry channels of the MSL rover Curiosity, for example ``"msl/M-1.npy"``, with 55 features in the same layout as ``"smap"``.
                 - ``"creditcard"``: ``"creditcard/creditcard.arff"``, the 284,807 transactions of OpenML 1597, version 1, in their original time order. The 30 features are Time (elapsed seconds), V1 through V28 and Amount. Class is returned separately as the label: 1 for fraud, 0 otherwise. The database is under ODbL 1.0 and its contents under DbCL 1.0; see :doc:`/guides/stream_data` for the source links and license details.
                 - ``"insects"``: the 4 INSECTS streams of the ARCUS paper, for example ``"insects/abrupt.csv"``, with 33 features. The southern house mosquito is the anomaly class.
+                - ``"tsb-drift"``: the 75 series of the TSB-drift distribution-drift benchmark of Parrino et al. (KDD 2026), for example ``"tsb-drift/009_MSL_id_8_Sensor_tr_714_1st_1390.csv"``. The series are extracted from the TSB-AD-M archive, and the last column holds the binary anomaly label. The paper is under CC BY 4.0; the underlying TSB-AD series keep their original per-dataset licenses and the TSB-AD curation is provided under the Apache 2.0 license.
 
         Returns:
             list[str]: The names of the datasets, which :meth:`get_data` accepts.
@@ -169,6 +181,8 @@ class Data:
             return ["creditcard/creditcard.arff"]
         if source == "insects":
             return ["insects/" + name for name in _INSECTS_FILES]
+        if source == "tsb-drift":
+            return ["tsb-drift/" + name for name in _TSB_DRIFT_SERIES]
         raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
 
     def _download(self, file_name: str, target_path: str) -> None:
@@ -290,6 +304,8 @@ class Data:
                 self._extract_ucr(file_name, data_path)
             elif file_name.startswith("kddcup99/"):
                 self._extract_kddcup99(data_path)
+            elif file_name.startswith("tsb-drift/"):
+                self._extract_tsb_drift(file_name, data_path)
             else:
                 self._download(file_name, data_path)
 
@@ -303,6 +319,8 @@ class Data:
             return self._load_smd(file_name, data_path, download)
         if file_name.startswith(("smap/", "msl/")):
             return self._load_nasa(file_name, data_path, download)
+        if file_name.startswith("tsb-drift/"):
+            return self._load_tsb_drift(data_path)
         if data_path.endswith(".mat"):
             from scipy.io import loadmat
 
@@ -476,6 +494,24 @@ class Data:
                     for start, end in json.loads(row["anomaly_sequences"]):
                         y[start : end + 1] = 1
 
+        return X, y
+
+    def _extract_tsb_drift(self, name: str, data_path: str) -> None:
+        """Extracts a TSB-drift series out of the TSB-AD-M archive, downloading it if needed."""
+        archive = os.path.join(self.data_base_path, _TSB_DRIFT_ARCHIVE_KEY)
+        if not os.path.exists(archive):
+            self._download(_TSB_DRIFT_ARCHIVE_KEY, archive)
+        with zipfile.ZipFile(archive) as z, z.open("TSB-AD-M/" + name[len("tsb-drift/") :]) as f:
+            content = f.read()
+        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        with open(data_path, "wb") as f:
+            f.write(content)
+
+    def _load_tsb_drift(self, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Loads a TSB-drift CSV and separates the binary ``Label`` column from the features."""
+        X = np.loadtxt(data_path, delimiter=",", skiprows=1)
+        y = X[:, -1].ravel().astype(int)
+        X = X[:, :-1]
         return X, y
 
     def get_iterator(

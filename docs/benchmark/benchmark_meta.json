@@ -1,6 +1,6 @@
 {
   "benchmark_date": "2026-11-23",
-  "commit": "0e38da1",
+  "commit": "dd79d69",
   "dataset_checksums": {
     "arrhythmia.mat": "e4d47e499591ae31e5d7f0cd983367092353eac240f48e14c9b36457edb3460d",
     "cardio.mat": "5e568b6a73711012c481fa6cc984ab9c68e9a4fa44d6aeb3b43efa381c3f695b",

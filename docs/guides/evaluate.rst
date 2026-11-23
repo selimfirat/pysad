@@ -61,14 +61,14 @@ These generators avoid copying the arrays. The evaluation loop does not retain t
 
 The F1 threshold 3.0 is illustrative. Choose yours on prior validation data. Equality counts as anomalous. With ``threshold=None``, pass binary predictions.
 
-For transformed scores, update all metrics in your own loop. Here conformal scores range from 0 to 1, and precision and recall use a 0.95 rank threshold. See :doc:`alerts`:
+For transformed scores, you can pass the calibrator or postprocessor directly to :func:`~pysad.evaluation.evaluate_stream` instead of writing your own loop. The postprocessor learns from each score prequentially, so calibration stays aligned with the detector:
 
 .. code-block:: python
 
-   from pysad.evaluation import AUPRMetric, AUROCMetric, PrecisionMetric, RecallMetric
+   from pysad.evaluation import AUPRMetric, AUROCMetric, PrecisionMetric, RecallMetric, evaluate_stream
    from pysad.models import LODA
    from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
-   from pysad.utils import ArrayStreamer, Data
+   from pysad.utils import Data
 
    X, y = Data().get_data("cardio.mat")
 
@@ -81,22 +81,40 @@ For transformed scores, update all metrics in your own loop. Here conformal scor
        "Recall": RecallMetric(threshold=0.95),
    }
 
-   for x, label in ArrayStreamer().iter(X, y):
-       calibrated = calibrator.fit_transform_partial(model.fit_score_partial(x))
-       for metric in metrics.values():
-           metric.update(label, calibrated)
+   results = evaluate_stream(
+       model=model,
+       X=X,
+       y=y,
+       metrics=metrics,
+       postprocessor=calibrator,
+   )
 
    for name, metric in metrics.items():
-       print(f"{name:>9}: {metric.get():.3f}")
-
-.. code-block:: text
-
-       AUROC: 0.902
-        AUPR: 0.416
-   Precision: 0.435
-      Recall: 0.381
+       print(f"{name:>9}: {results[name]:.3f}")
 
 The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores. During this final run of anomalies, most of the recent scores are from anomalies too.
+
+Evaluate a calibrator on pre-computed scores
+--------------------------------------------
+
+If you already have the raw scores of a detector, use :func:`~pysad.evaluation.evaluate_postprocessor` to transform them through a calibrator prequentially and measure calibration quality with :class:`~pysad.evaluation.BrierScoreMetric`, :class:`~pysad.evaluation.ExpectedCalibrationErrorMetric`, or :class:`~pysad.evaluation.LogLossMetric`:
+
+.. code-block:: python
+
+   from pysad.evaluation import (
+       BrierScoreMetric,
+       ExpectedCalibrationErrorMetric,
+       evaluate_postprocessor,
+   )
+   from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+   calibrator = ConformalProbabilityCalibrator(window_size=50)
+   results = evaluate_postprocessor(
+       scores=raw_scores,
+       y=y,
+       metrics={"Brier": BrierScoreMetric(), "ECE": ExpectedCalibrationErrorMetric()},
+       postprocessor=calibrator,
+   )
 
 ``PrecisionMetric``, ``RecallMetric``, ``F1Metric``, ``BalancedAccuracyMetric`` and :class:`~pysad.evaluation.MatthewsCorrelationMetric` retain four confusion counts, giving constant update and read costs. ``AUROCMetric`` and ``AUPRMetric`` retain all labels and scores. Their ``get`` cost grows with the stream. Read them periodically or at the end.
 

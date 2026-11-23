@@ -748,7 +748,7 @@ def generate_pipeline_code(
     if primary == "LODA":
         explain_block = (
             "\n        # Rank features contributing to this alert\n"
-            "        top = pipeline.models[0].explain_partial(x).argsort()[::-1][:3]"
+            "        top = pipeline.model.explain_partial(x).argsort()[::-1][:3]"
         )
 
     comparison_note = (

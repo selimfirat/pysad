@@ -1,6 +1,6 @@
 Detector,Series,Standard,Low false alerts,Low misses,AUROC,Time (ms),Commit
-:class:`~pysad.models.HTM`,58,64.2,56.8,68.3,0.595,5.34,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
-:class:`~pysad.models.RelativeEntropy`,58,58.9,53.2,62.5,0.504,0.35,`61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__
+:class:`~pysad.models.HTM`,58,64.2,56.8,68.3,0.595,5.34,"`08d11f0 <https://github.com/selimfirat/pysad/commit/08d11f0>`__, `51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__"
+:class:`~pysad.models.RelativeEntropy`,58,58.9,53.2,62.5,0.504,0.36,`61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__
 :class:`~pysad.models.AnyOut`,58,58.5,48.5,65.1,0.542,0.23,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 :class:`~pysad.models.KNNCAD`,58,58.0,43.4,64.8,0.563,0.50,`61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__
 :class:`~pysad.models.LODA`,58,55.1,44.5,61.2,0.560,0.04,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
@@ -43,19 +43,19 @@ Detector,Series,Standard,Low false alerts,Low misses,AUROC,Time (ms),Commit
 ":class:`~pysad.models.KitNet`, shingles",58,24.0,14.4,28.8,0.594,0.04,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 ":class:`~pysad.models.IForestASD`, shingles",58,23.9,11.2,31.0,0.586,0.53,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 ":class:`~pysad.models.MStream`, shingles",58,23.8,8.0,33.2,0.626,0.06,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
-:class:`~pysad.models.SeasonalESD`,14,23.0,10.3,34.0,0.534,12.72,`61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__
+:class:`~pysad.models.SeasonalESD`,14,23.0,10.3,34.0,0.534,14.00,"`08d11f0 <https://github.com/selimfirat/pysad/commit/08d11f0>`__, `61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__"
 :class:`~pysad.models.ChangeFinder`,58,22.6,11.4,27.7,0.615,0.09,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
-":class:`~pysad.models.ABSAD`, shingles",58,21.2,7.6,29.0,0.564,14.18,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
+":class:`~pysad.models.ABSAD`, shingles",58,21.2,7.6,29.0,0.564,16.76,"`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__, `08d11f0 <https://github.com/selimfirat/pysad/commit/08d11f0>`__"
 :class:`~pysad.models.SpectralResidual`,58,21.1,9.1,30.1,0.508,0.05,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
 :class:`~pysad.models.IncrementalLOF`,58,19.8,10.0,31.6,0.518,0.37,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 ":class:`~pysad.models.IncrementalLOF`, shingles",58,18.7,13.3,22.7,0.543,0.46,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 :class:`~pysad.models.IForestASD`,58,18.2,5.8,30.1,0.559,0.51,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
-":class:`~pysad.models.PCBIsolationForest`, shingles",58,17.7,6.3,26.4,0.546,7.33,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
+":class:`~pysad.models.PCBIsolationForest`, shingles",58,17.7,6.3,26.4,0.546,7.33,"`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__, `08d11f0 <https://github.com/selimfirat/pysad/commit/08d11f0>`__"
 :class:`~pysad.models.KELOS`,58,17.4,1.9,24.5,0.513,0.34,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 :class:`~pysad.models.DILOF`,58,17.0,10.9,23.1,0.510,0.13,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 ":class:`~pysad.models.LocalOutlierProbability`, shingles",58,16.1,11.2,23.1,0.574,0.60,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 ":class:`~pysad.models.ADeMS`, shingles",58,13.7,4.1,20.3,0.515,0.06,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
-:class:`~pysad.models.PCBIsolationForest`,58,13.2,6.2,20.2,0.541,2.58,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
+:class:`~pysad.models.PCBIsolationForest`,58,13.2,6.2,20.2,0.541,2.82,"`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__, `08d11f0 <https://github.com/selimfirat/pysad/commit/08d11f0>`__"
 ":class:`~pysad.models.ZeroShotEmbeddingDetector`, shingles",58,13.0,6.8,23.9,0.503,0.03,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 ":class:`~pysad.models.DILOF`, shingles",58,13.0,9.1,18.8,0.518,0.12,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 :class:`~pysad.models.MiLOF`,58,12.8,4.5,24.9,0.519,0.19,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
@@ -71,7 +71,7 @@ Detector,Series,Standard,Low false alerts,Low misses,AUROC,Time (ms),Commit
 ":class:`~pysad.models.Inqmad`, shingles",58,8.8,7.5,16.1,0.594,2.49,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 :class:`~pysad.models.LocalOutlierProbability`,58,8.5,6.5,10.8,0.546,0.60,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 :class:`~pysad.models.MStream`,58,7.9,2.7,12.2,0.583,0.05,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
-:class:`~pysad.models.SeasonalHybridESD`,14,7.2,3.2,18.1,0.547,13.75,`61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__
+:class:`~pysad.models.SeasonalHybridESD`,14,7.2,3.2,18.1,0.547,14.28,"`08d11f0 <https://github.com/selimfirat/pysad/commit/08d11f0>`__, `61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__"
 :class:`~pysad.models.SAND`,58,5.6,1.8,8.1,0.493,0.36,`f529f6f <https://github.com/selimfirat/pysad/commit/f529f6f>`__
 :class:`~pysad.models.CPOD`,58,4.8,1.2,8.9,0.558,0.16,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 :class:`~pysad.models.ExactStorm`,58,4.8,1.2,8.9,0.558,0.07,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
@@ -81,7 +81,7 @@ Detector,Series,Standard,Low false alerts,Low misses,AUROC,Time (ms),Commit
 :class:`~pysad.models.MatrixProfile`,58,3.6,1.8,6.4,0.499,0.17,`f529f6f <https://github.com/selimfirat/pysad/commit/f529f6f>`__
 :class:`~pysad.models.OnlineIsolationForest`,58,1.9,0.2,2.7,0.555,0.94,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 ":class:`~pysad.models.OnlineIsolationForest`, shingles",58,1.4,0.3,3.4,0.562,0.79,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
-:class:`~pysad.models.ABSAD`,58,1.1,0.8,16.9,0.553,7.65,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
+:class:`~pysad.models.ABSAD`,58,1.1,0.8,16.9,0.553,10.51,"`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__, `08d11f0 <https://github.com/selimfirat/pysad/commit/08d11f0>`__"
 ":class:`~pysad.models.ThreshLEAP`, shingles",58,1.1,0.8,6.6,0.571,0.06,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 ":class:`~pysad.models.RSForest`, shingles",58,0.8,0.8,0.8,0.556,0.20,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 ":class:`~pysad.models.CPOD`, shingles",58,0.8,0.8,2.0,0.592,0.40,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__

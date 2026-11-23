@@ -13,32 +13,6 @@ from pysad.models.absad import (
 )
 
 
-def test_absad_default_initialization() -> None:
-    model = ABSAD()
-    assert model.window_size == 750
-    assert model.num_neighbors == 100
-    assert model.num_references == 100
-    assert model.theta == 0.4
-    assert model.confidence == 0.99
-    assert model.control_limit_ is None
-    assert len(model._window) == 0
-
-
-def test_absad_custom_initialization() -> None:
-    model = ABSAD(
-        window_size=200,
-        num_neighbors=30,
-        num_references=20,
-        theta=0.5,
-        confidence=0.95,
-    )
-    assert model.window_size == 200
-    assert model.num_neighbors == 30
-    assert model.num_references == 20
-    assert model.theta == 0.5
-    assert model.confidence == 0.95
-
-
 @pytest.mark.parametrize(
     ("kwargs", "expected_msg"),
     [

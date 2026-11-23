@@ -22,6 +22,19 @@ def test_last_bit_differences_give_the_same_auroc():
     )
 
 
+def test_inqmad_keeps_auroc_on_the_nab_spike_density_stream():
+    """The benchmark must keep Inqmad's AUROC above 0.53 on the affected NAB stream."""
+    benchmark = load_benchmark()
+
+    row = benchmark.run_univariate(
+        "nab/artificialWithAnomaly/art_increase_spike_density.csv",
+        "Inqmad",
+        ci=True,
+    )
+
+    assert row["auroc"] >= 0.53
+
+
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize(
     "labels",
@@ -1367,3 +1380,168 @@ def test_memory_benchmark_writes_measurements(tmp_path):
     assert float(row["seconds"]) > 0
     assert float(row["peak_kb"]) >= 0
     assert np.isfinite(float(row["growth_kb"]))
+
+
+def test_stream_benchmark_writes_measurements(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    output = tmp_path / "stream.csv"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/bench_stream.py",
+            "--detectors",
+            "StandardAbsoluteDeviation",
+            "--points",
+            "30",
+            "--repeats",
+            "1",
+            "--output",
+            str(output),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    with output.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["detector"] == "StandardAbsoluteDeviation"
+    assert float(row["points"]) == 30
+    assert float(row["ms_per_point"]) > 0
+    assert float(row["peak_kb"]) >= 0
+    assert float(row["peak_mb"]) >= 0
+
+
+def test_tsb_drift_reports_auroc_aupr_throughput_and_memory(tmp_path, monkeypatch):
+    """The reproducible drift benchmark reports AUROC, AUPR, throughput, and memory without a download."""
+    import sys
+    from pathlib import Path
+
+    benchmarks = Path(__file__).resolve().parents[1] / "benchmarks"
+    sys.path.insert(0, str(benchmarks))
+    try:
+        import bench_tsb_drift
+    finally:
+        sys.path.remove(str(benchmarks))
+
+    from pysad import models
+
+    X = np.zeros((200, 2))
+    X[100:, 0] = 5.0
+    y = np.zeros(200, dtype=int)
+    y[150:] = 1
+
+    monkeypatch.setattr(bench_tsb_drift, "DRIFT", {"drift/synthetic.csv": "Synthetic"})
+    monkeypatch.setattr(
+        bench_tsb_drift,
+        "DETECTORS",
+        {"LODA": lambda X, seed: models.LODA(random_state=seed)},
+    )
+    monkeypatch.setattr(
+        bench_tsb_drift, "load", lambda stream, seed, points=None: (X.copy(), y.copy())
+    )
+
+    rows = bench_tsb_drift.run_benchmark(
+        ["drift/synthetic.csv"], ["LODA"], points=None, seed=0, repeats=2
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert set(row) == set(bench_tsb_drift.FIELDS)
+    assert row["stream"] == "drift/synthetic.csv"
+    assert row["detector"] == "LODA"
+    assert row["points"] == 200
+    assert row["features"] == 2
+    assert row["warmup"] == 50
+    assert row["seed"] == 0
+    assert np.isfinite(row["auroc"])
+    assert np.isfinite(row["aupr"])
+    assert row["ms_per_point"] > 0
+    assert row["peak_mib"] >= 0
+    assert row["deterministic"] is True
+
+    # The declared fields are the CSV header.
+    with (tmp_path / "drift.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=bench_tsb_drift.FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    with (tmp_path / "drift.csv").open(newline="") as handle:
+        written = list(csv.DictReader(handle))
+    assert [r["detector"] for r in written] == ["LODA"]
+    assert set(written[0]) == set(bench_tsb_drift.FIELDS)
+
+
+def test_ensemble_reports_prequential_metrics(monkeypatch):
+    """run_ensemble scores each instance before learning and reports prequential metrics."""
+    benchmark = load_benchmark()
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(400, 3))
+    X[200:240] += 8.0
+    y = np.zeros(400, dtype=int)
+    y[200:240] = 1
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda *args, **kwargs: (X.copy(), y.copy()))
+    monkeypatch.setattr(benchmark, "load", lambda ds, seed, points=None: (X.copy(), y.copy()))
+
+    for ensemble in benchmark.ENSEMBLES:
+        row = benchmark.run_ensemble("synthetic", ensemble, 0, None)
+        assert set(row) == set(benchmark.ENSEMBLE_FIELDS)
+        assert row["dataset"] == "synthetic"
+        assert row["ensemble"] == ensemble
+        assert row["seed"] == 0
+        assert row["ms_per_point"] > 0
+        # Both classes are present, so AUROC and AUPR are defined.
+        assert np.isfinite(row["auroc"])
+        assert np.isfinite(row["aupr"])
+
+    # A combination rule that highlights anomalies should rank them above chance.
+    assert benchmark.run_ensemble("synthetic", "maximum", 0, None)["auroc"] > 0.5
+
+
+def test_ensemble_single_class_gives_nan_metrics(monkeypatch):
+    """AUROC and AUPR are NaN when the stream holds a single class, but timing is still reported."""
+    benchmark = load_benchmark()
+    X = np.zeros((100, 2))
+    y = np.zeros(100, dtype=int)
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda *args, **kwargs: (X.copy(), y.copy()))
+    monkeypatch.setattr(benchmark, "load", lambda ds, seed, points=None: (X.copy(), y.copy()))
+    row = benchmark.run_ensemble("synthetic", "average", 0, None)
+    assert set(row) == set(benchmark.ENSEMBLE_FIELDS)
+    assert np.isnan(row["auroc"])
+    assert np.isnan(row["aupr"])
+    assert row["ms_per_point"] > 0
+
+
+def test_ensembles_command_writes_csv(tmp_path, monkeypatch):
+    """--ensembles writes ensemble_results.csv and runs without a download."""
+    import sys
+
+    benchmark = load_benchmark()
+    monkeypatch.setattr(benchmark, "OUT", tmp_path)
+    monkeypatch.setattr(benchmark, "DATASETS", ["synthetic"])
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(200, 3))
+    X[100:120] += 8.0
+    y = np.zeros(200, dtype=int)
+    y[100:120] = 1
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda *args, **kwargs: (X.copy(), y.copy()))
+    monkeypatch.setattr(benchmark, "load", lambda ds, seed, points=None: (X.copy(), y.copy()))
+    monkeypatch.setattr(benchmark, "commit", lambda: "abc123")
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(benchmark, "ProcessPoolExecutor", ThreadPoolExecutor)
+    monkeypatch.setattr(benchmark, "as_completed", list)
+
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--ensembles", "--jobs", "1"])
+    benchmark.main()
+    out = tmp_path / "ensemble_results.csv"
+    assert out.is_file()
+    rows = list(csv.DictReader(out.open(newline="")))
+    assert len(rows) == len(benchmark.ENSEMBLES)
+    assert [r["dataset"] for r in rows] == ["synthetic"] * len(benchmark.ENSEMBLES)
+    assert {r["ensemble"] for r in rows} == set(benchmark.ENSEMBLES)
+    assert set(rows[0]) == set(benchmark.ENSEMBLE_FIELDS)
+    assert all(float(r["ms_per_point"]) > 0 for r in rows)

@@ -130,11 +130,10 @@ class RingBuffer:
 
         n = arr.shape[0]
         if n >= self.window_size:
-            # Batch larger than window: keep only the last window_size items
-            if is_scalar_batch:
-                self.points[:] = arr[-self.window_size :]
-            else:
-                self.points[:] = arr[-self.window_size :]
+            # Batch larger than window: keep only the last window_size items.
+            # The scalar and vector branches had identical bodies, so keep one
+            # assignment and drop the duplicate branch.
+            self.points[:] = arr[-self.window_size :]
             self.next_slot = 0
             self.count = self.window_size
             return

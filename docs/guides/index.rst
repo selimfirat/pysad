@@ -13,6 +13,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`dataset_inventory`
+
+      List each pysad.utils.Data loader with its source, license, checksum and label format.
+
+   .. container:: card
+
       :doc:`choose_detector`
 
       Find candidate detectors for your data and compare them.
@@ -34,6 +40,18 @@ Choose a guide for the task you need to complete. These guides assume familiarit
       :doc:`pipelines`
 
       Add preprocessing, projections, postprocessing and ensembles.
+
+   .. container:: card
+
+      :doc:`river_interoperability`
+
+      Run PySAD detectors in River pipelines, score before learning, detect drift, and keep state bounded.
+
+   .. container:: card
+
+      :doc:`drift_aware_composition`
+
+      Reset a detector on drift and chain stages into one pipeline.
 
    .. container:: card
 
@@ -105,3 +123,15 @@ Migration guides
       :doc:`migrate_alibi_detect`
 
       Move from BSL 1.1 Alibi Detect to permissive BSD 3-Clause PySAD.
+
+   .. container:: card
+
+      :doc:`migrate_statsforecast`
+
+      Replace StatsForecast and Nixtla batch forecasts with PySAD streaming pipelines.
+
+   .. container:: card
+
+      :doc:`migrate_adtk`
+
+      Map ADTK batch rule-based and statistical detection to PySAD streaming detection.

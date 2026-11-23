@@ -17,69 +17,12 @@ def _model_specs():
 
     from pysad import models
     from pysad.integrations import OneFitModel, PredictiveAnomalyDetector, ReferenceWindowModel
-    from pysad.transform.postprocessing import ZScorePostprocessor
-    from pysad.transform.preprocessing import ShingleTransformer
     from tests.models.conftest import (
         active_model_names,
         is_component_active,
         num_features_for,
         short_stream_params,
     )
-
-    mins, maxes = [0.0] * NUM_FEATURES, [1.0] * NUM_FEATURES
-    params = {
-        "AnyOut": {"max_height": 2, "outlier_score": "density"},
-        "ApproxStorm": {
-            "window_size": 20,
-            "max_radius": 0.3,
-            "num_neighbors": 3,
-            "sample_fraction": 0.25,
-        },
-        "CPOD": {"window_size": 20, "max_radius": 0.3},
-        "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.3},
-        "DAMP": {"window_length": 8, "history_size": 40},
-        "DILOF": {"num_neighbors": 5, "window_size": 40},
-        "ExactStorm": {"window_size": 20},
-        "EXPoSE": {"num_random_features": 50},
-        "HalfSpaceTrees": {
-            "feature_mins": mins,
-            "feature_maxes": maxes,
-            "window_size": 20,
-            "num_trees": 5,
-            "max_depth": 5,
-        },
-        "HoltWinters": {"period": 4, "threshold": 1},
-        "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 256},
-        "IForestASD": {"window_size": 32},
-        "IDKS": {"input_shape": NUM_FEATURES, "window_size": 20, "num_samples": 4},
-        "IncrementalLOF": {"window_size": 20},
-        "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32},
-        "KELOS": {"window_size": 20, "radius": 0.3, "num_neighbors": 3},
-        "KitNet": {"grace_feature_mapping": 10, "grace_anomaly_detector": 10},
-        "KNNCAD": {"probationary_period": 50},
-        "LocalOutlierProbability": {"initial_X": _initial_X(NUM_FEATURES)},
-        "MatrixProfile": {"window_length": 8, "history_size": 40},
-        "MCOD": {"window_size": 20, "max_radius": 0.3, "num_neighbors": 2},
-        "MemStream": {"window_size": 8, "num_epochs": 20},
-        "MIDAS": {"tick_size": 5},
-        "NETS": {"window_size": 20, "max_radius": 0.3},
-        # step=1 so that every value from the 10th on, including the last score_partial, is scored against the hypotheses
-        "RelativeEntropy": {"min_val": 0.0, "max_val": 1.0, "window_size": 10, "step": 1},
-        "RobustRandomCutForest": {"num_trees": 4, "tree_size": 32},
-        "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
-        "RSHash": {"feature_mins": mins, "feature_maxes": maxes},
-        "SAND": {"subsequence_length": 4, "batch_size": 40},
-        "SeasonalESD": {"period": 4, "window_size": 12, "max_anomalies": 0.17},
-        "SeasonalHybridESD": {"period": 4, "window_size": 12, "max_anomalies": 0.17},
-        "SpectralResidual": {"window_size": 30},
-        "STARE": {"window_size": 20, "slide_size": 5, "num_neighbors": 3, "cell_size": 0.3},
-        "StreamPipeline": {
-            "model": models.LODA(),
-            "preprocessors": [ShingleTransformer(shingle_size=2)],
-            "postprocessors": [ZScorePostprocessor(window_size=20)],
-        },
-        "ThreshLEAP": {"window_size": 20, "max_radius": 0.3, "num_neighbors": 3},
-    }
 
     active = set(active_model_names())
     # (name, factory, number of features)

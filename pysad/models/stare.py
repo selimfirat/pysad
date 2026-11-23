@@ -94,6 +94,8 @@ class STARE(BaseModel):
         cell_size: float = 0.1,
         skip_threshold: float = 0.1,
     ) -> None:
+        if window_size <= 0:
+            raise ValueError("window_size must be a positive integer.")
         if window_size % slide_size:
             raise ValueError(
                 f"window_size must be a multiple of slide_size {slide_size}, got {window_size}."
@@ -109,15 +111,22 @@ class STARE(BaseModel):
         self._slide: Counter[tuple[float, ...]] = Counter()  # the counts of the incomplete slide
         self._slide_length = 0
         self._cells: list[tuple[float, ...]] = []  # the nonempty cells in sorted order
-        self._cell_array = np.empty((0, 0))  # the indices of the cells, (num_cells, num_features)
-        self._centers = np.empty((0, 0))  # the kernel centers, (num_cells, num_features)
-        self._weights = np.empty(0)  # the weights of the kernel centers, (num_cells,)
+        self._cell_array: np.ndarray = np.empty(
+            (0, 0)
+        )  # the cell indices, (num_cells, num_features)
+        self._centers: np.ndarray = np.empty(
+            (0, 0)
+        )  # the kernel centers, (num_cells, num_features)
+        self._weights: np.ndarray = np.empty(0)  # the weights of the kernel centers, (num_cells,)
 
     def _cell(self, X: np.ndarray) -> tuple[float, ...]:
         return tuple(np.floor(X / (self.cell_size / np.sqrt(len(X)))).tolist())
 
     def _center(self, cell: tuple[float, ...]) -> np.ndarray:
-        return (np.array(cell) + 0.5) * (self.cell_size / np.sqrt(len(cell)))
+        scale = self.cell_size / np.sqrt(len(cell))
+        arr = np.asarray(cell, dtype=np.float64)
+        result = (arr + 0.5) * scale
+        return np.asarray(result, dtype=np.float64)
 
     def fit_partial(self, X: np.ndarray, y: int | None = None) -> STARE:
         """Adds the next instance to the current slide, and slides the window when the slide is complete.

@@ -223,7 +223,7 @@ def _make_univariate_factory(cls):
 DETECTOR_OVERRIDES = {
     "Inqmad": lambda X, seed: models.Inqmad(input_shape=X.shape[1], random_state=seed),
     "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(
-        initial_X=X[: warmup(len(X))], random_state=seed
+        initial_X=X[: warmup(len(X))]
     ),
     "ZeroShotEmbeddingDetector": lambda X, seed: models.ZeroShotEmbeddingDetector(
         semantic_anchors=np.random.RandomState(seed).randn(10, X.shape[1])

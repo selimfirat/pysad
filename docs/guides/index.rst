@@ -108,6 +108,12 @@ Migration guides
 
    .. container:: card
 
+      :doc:`migrate_statsforecast`
+
+      Replace StatsForecast and Nixtla batch forecasts with PySAD streaming pipelines.
+
+   .. container:: card
+
       :doc:`migrate_adtk`
 
       Map ADTK batch rule-based and statistical detection to PySAD streaming detection.

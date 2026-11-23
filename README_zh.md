@@ -306,6 +306,7 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |
 | `MiLOF` | 带聚类摘要的高内存效率增量 LOF (Salehi et al., IEEE TKDE 2016) |
 | `KELOS` | 基于窗口微簇的核密度局部离群点检测 (Qin et al., EDBT 2019) |
+| `STARE` | 基于网格单元的核密度局部离群点检测，仅更新窗口变化的区域 (Yoon et al., KDD 2020) |
 | `AnyOut` | 基于 ClusTree 最近簇距离的随时离群点检测 (Assent et al., DASFAA 2012) |
 | `SDOstream` | 带指数衰减的稀疏数据观测器低密度流模型 (Hartl et al., ESANN 2020) |
 | `ADeMS` | Frequent Directions 矩阵概要 (Huang & Kasiviswanathan, VLDB 2015) |

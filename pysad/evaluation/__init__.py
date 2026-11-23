@@ -16,6 +16,7 @@ from .metrics import (
     RecallMetric,
 )
 from .prequential import evaluate_postprocessor, evaluate_stream
+from .report import export_report
 from .rolling_metric import RollingMetric
 from .windowed_metric import WindowedMetric
 
@@ -28,6 +29,7 @@ __all__ = [
     "evaluate_postprocessor",
     "evaluate_stream",
     "ExpectedCalibrationErrorMetric",
+    "export_report",
     "F1Metric",
     "LogLossMetric",
     "MatthewsCorrelationMetric",

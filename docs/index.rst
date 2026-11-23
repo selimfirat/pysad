@@ -143,6 +143,7 @@ Use these guides to map your existing workflow to PySAD:
 - :doc:`Salesforce Merlion <guides/migrate_merlion>`
 - :doc:`StatsForecast and Nixtla <guides/migrate_statsforecast>`
 - :doc:`Alibi Detect <guides/migrate_alibi_detect>`
+- :doc:`ADTK <guides/migrate_adtk>`
 
 .. container:: stream-figure
 
@@ -303,6 +304,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
     guides/migrate_merlion
     guides/migrate_statsforecast
     guides/migrate_alibi_detect
+    guides/migrate_adtk
 
 .. toctree::
    :hidden:

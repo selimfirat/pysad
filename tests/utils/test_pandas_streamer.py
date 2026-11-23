@@ -1,5 +1,6 @@
 import gc
 import multiprocessing
+import sys
 import tracemalloc
 
 import numpy as np
@@ -92,24 +93,47 @@ def test_pandas_streamer_random_state():
             {"a": pd.array([True, None], dtype="boolean")},
             np.array([[True], [pd.NA]], dtype=object),
         ),
-        (
-            {"a": pd.date_range("2025-01-01", periods=2, tz="UTC")},
-            np.array(
-                [[pd.Timestamp("2025-01-01", tz="UTC")], [pd.Timestamp("2025-01-02", tz="UTC")]],
-                dtype=object,
-            ),
-        ),
         ({"a": pd.Categorical([1, None])}, np.array([[1], [np.nan]])),
         ({"a": pd.Categorical(["x", "y"])}, np.array([["x"], ["y"]], dtype=object)),
-        (
-            {"a": pd.date_range("2025-01-01", periods=2)},
-            np.array([["2025-01-01"], ["2025-01-02"]], dtype="datetime64[ns]"),
-        ),
         ({}, np.empty((2, 0))),
     ],
 )
 @pytest.mark.parametrize("shuffle", [False, True])
 def test_pandas_streamer_row_values_and_dtypes(data, expected, shuffle):
+    df = pd.DataFrame(data, index=[7, 3])
+    order = [0, 1] if not shuffle else [1, 0]
+
+    rows = list(PandasStreamer(shuffle=shuffle, random_state=0).iter(df))
+
+    assert len(rows) == 2
+    for row, i in zip(rows, order, strict=True):
+        assert isinstance(row, np.ndarray)
+        assert row.dtype == expected.dtype
+        pd.testing.assert_series_equal(pd.Series(row), pd.Series(expected[i]))
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 15),
+    reason=(
+        "pandas 2.3.3 segfaults in its C extensions when building a "
+        "date range on Python 3.15 or newer (upstream pandas "
+        "incompatibility). Skipped there until pandas releases a fix."
+    ),
+)
+@pytest.mark.parametrize("tz", ["UTC", None])
+@pytest.mark.parametrize("shuffle", [False, True])
+def test_pandas_streamer_datetime_values(tz, shuffle):
+    """pandas streamer keeps timezone-aware and naive datetime columns."""
+    data = {"a": pd.date_range("2025-01-01", periods=2, tz=tz)}
+
+    if tz == "UTC":
+        expected = np.array(
+            [[pd.Timestamp("2025-01-01", tz="UTC")], [pd.Timestamp("2025-01-02", tz="UTC")]],
+            dtype=object,
+        )
+    else:
+        expected = np.array([["2025-01-01"], ["2025-01-02"]], dtype="datetime64[ns]")
+
     df = pd.DataFrame(data, index=[7, 3])
     order = [0, 1] if not shuffle else [1, 0]
 

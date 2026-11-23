@@ -91,6 +91,18 @@ def _model_params(model_name, num_features, data):
             "num_columns": 16,
             "num_cells_per_column": 2,
         },
+        # A short period and a threshold of 1, so that the streams reach the failure rule.
+        "HoltWinters": {"period": 2, "window_size": 3, "threshold": 1},
+        "IDKS": {"input_shape": num_features, "window_size": 8, "num_samples": 4},
+        "IncrementalLOF": {"num_neighbors": 3, "window_size": 10},
+        "KELOS": {"window_size": 20, "radius": 0.1, "num_neighbors": 3},
+        "MatrixProfile": {"window_length": 4, "history_size": 20},
+        "DAMP": {"window_length": 4, "history_size": 20},
+        "SpectralResidual": {"window_size": 8, "num_average_points": 3},
+        "STARE": {"window_size": 12, "slide_size": 3, "num_neighbors": 2, "cell_size": 0.1},
+        "ThreshLEAP": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
+        "LODA": {"num_bins": 5, "num_random_cuts": 10},
+        "MCOD": {"window_size": 20, "max_radius": 0.1, "num_neighbors": 2},
         # The drawn values reach -1e6, below the domain of log(1 + x).
         "MStream": {"log_transform": False},
         "OeSNNUAD": {"window_size": 5, "num_output_neurons": 5},

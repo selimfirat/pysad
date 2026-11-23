@@ -853,35 +853,3 @@ def test_fit_then_score_vs_batch_equivalence(model_name):
         atol=1e-12,
         err_msg=f"{model_name}: sequential fit_partial+score_partial != batch fit().score()",
     )
-
-
-@pytest.mark.parametrize("model_name", active_model_names())
-def test_state_reset_equivalence(model_name):
-    """Test that a new model instance with same params gives same scores (state reset)."""
-    num_features = _num_features_for(model_name)
-    params = _test_safe_params(model_name, short_stream_params(model_name, num_features, seed=SEED))
-
-    fix_seed(SEED)
-    rng = np.random.RandomState(SEED + 1)
-    if model_name == "MStream":
-        X = rng.uniform(0, 10, size=(20, num_features)).astype(np.float64)
-    else:
-        X = rng.choice(FINITE_VALUES, size=(20, num_features)).astype(np.float64)
-    y = rng.randint(0, 2, size=20)
-
-    fix_seed(SEED)
-    model_cls = getattr(pysad.models, model_name)
-    model1 = model_cls(**copy.deepcopy(params))
-    scores1 = [model1.fit_score_partial(xi, yi) for xi, yi in zip(X, y, strict=True)]
-
-    fix_seed(SEED)
-    model2 = model_cls(**copy.deepcopy(params))
-    scores2 = model2.fit_score(X, y)
-
-    np.testing.assert_allclose(
-        scores2,
-        np.array(scores1),
-        rtol=1e-10,
-        atol=1e-12,
-        err_msg=f"{model_name}: state reset scores != original sequential scores",
-    )

@@ -58,6 +58,7 @@ jobs:
           package-dir: rust
           output-dir: wheelhouse
         env:
+          # Cargo enables abi3-py311 for Python 3.11 and later.
           CIBW_BUILD: cp311-*
           CIBW_SKIP: "*-win32 *-musllinux_*"
           CIBW_ARCHS: ${{ matrix.arch }}
@@ -74,9 +75,74 @@ jobs:
           name: ${{ matrix.artifact }}
           path: wheelhouse/*.whl
 
+  test-wheels:
+    name: Test wheels (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    needs: build-wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact: rust-wheels-linux-x86_64
+          - os: macos-latest
+            artifact: rust-wheels-macos-universal2
+          - os: windows-latest
+            artifact: rust-wheels-windows-amd64
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download wheels
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: wheelhouse/
+
+      - name: Install the built kernels and fast extra
+        run: |
+          python -m pip install --no-index --find-links wheelhouse pysad_kernels==0.1.0
+          python -m pip install ".[fast]"
+
+      - name: Test native kernels with a stream
+        shell: bash
+        run: |
+          python - <<'PY'
+          import numpy as np
+
+          import pysad_kernels
+          from pysad.models import HalfSpaceTrees
+
+          assert callable(pysad_kernels.half_space_trees_path)
+          assert callable(pysad_kernels.rrcf_route_to_leaf)
+          assert callable(pysad_kernels.rrcf_codisp_sum)
+
+          detector = HalfSpaceTrees(
+              feature_mins=np.zeros(2),
+              feature_maxes=np.ones(2),
+              window_size=4,
+              num_trees=2,
+              max_depth=2,
+              random_state=0,
+          )
+          for point in np.random.RandomState(0).random_sample((12, 2)):
+              score = detector.fit_score_partial(point)
+              assert isinstance(score, float)
+              assert np.isfinite(score)
+          PY
+
   publish-rust:
     name: Publish Rust wheels to PyPI
-    needs: build-wheels
+    needs: [build-wheels, test-wheels]
     if: github.event_name == 'release' || inputs.publish
     runs-on: ubuntu-latest
     permissions:

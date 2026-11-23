@@ -1381,3 +1381,38 @@ def test_memory_benchmark_writes_measurements(tmp_path):
     assert float(row["seconds"]) > 0
     assert float(row["peak_kb"]) >= 0
     assert np.isfinite(float(row["growth_kb"]))
+
+
+def test_stream_benchmark_writes_measurements(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    output = tmp_path / "stream.csv"
+    subprocess.run(
+        [
+            sys.executable,
+            "benchmarks/bench_stream.py",
+            "--detectors",
+            "StandardAbsoluteDeviation",
+            "--points",
+            "30",
+            "--repeats",
+            "1",
+            "--output",
+            str(output),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    with output.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["detector"] == "StandardAbsoluteDeviation"
+    assert float(row["points"]) == 30
+    assert float(row["ms_per_point"]) > 0
+    assert float(row["peak_kb"]) >= 0
+    assert float(row["peak_mb"]) >= 0

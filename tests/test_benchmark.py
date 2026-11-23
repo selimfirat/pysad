@@ -22,6 +22,19 @@ def test_last_bit_differences_give_the_same_auroc():
     )
 
 
+def test_inqmad_keeps_auroc_on_the_nab_spike_density_stream():
+    """The benchmark must keep Inqmad's AUROC above 0.53 on the affected NAB stream."""
+    benchmark = load_benchmark()
+
+    row = benchmark.run_univariate(
+        "nab/artificialWithAnomaly/art_increase_spike_density.csv",
+        "Inqmad",
+        ci=True,
+    )
+
+    assert row["auroc"] >= 0.53
+
+
 @pytest.mark.filterwarnings("error")
 @pytest.mark.parametrize(
     "labels",

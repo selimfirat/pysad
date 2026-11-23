@@ -17,6 +17,7 @@ import importlib.machinery
 import importlib.util
 import sys
 import time
+import tracemalloc
 from collections.abc import Callable
 from importlib import import_module
 from pathlib import Path
@@ -103,6 +104,20 @@ def _time_calls(call: Callable[[], None], repeats: int, num_points: int) -> floa
     return median(durations) * 1000.0 / num_points
 
 
+def _measure_memory(call: Callable[[], None], repeats: int) -> tuple[float, float]:
+    """Return the median current and peak memory in MiB across repeats."""
+    current_samples = []
+    peak_samples = []
+    for _ in range(repeats):
+        tracemalloc.start()
+        call()
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        current_samples.append(current / (1024 * 1024))
+        peak_samples.append(peak / (1024 * 1024))
+    return median(current_samples), median(peak_samples)
+
+
 def run_benchmark(
     num_features: int = 10,
     num_trees: int = 50,
@@ -112,7 +127,7 @@ def run_benchmark(
     seed: int = 42,
     extension: Path | None = None,
 ) -> dict[str, float]:
-    """Run the RRCF traversal and CoDisp benchmark and return the timing results.
+    """Run the RRCF traversal and CoDisp benchmark and return the timing and memory results.
 
     Args:
         num_features: The number of features in each point.
@@ -124,8 +139,8 @@ def run_benchmark(
         extension: Optional path to a compiled extension.
 
     Returns:
-        A mapping with the NumPy time, Rust time, and speedup in milliseconds
-        and times.
+        A mapping with the NumPy time, Rust time, speedup, and memory usage
+        in milliseconds and MiB.
 
     Raises:
         RuntimeError: If the Rust and NumPy results differ.
@@ -245,12 +260,14 @@ def run_benchmark(
             init_counts[n_done : n_done + len(leaves)] = count[leaves]
             n_done += len(leaves)
 
-        total = rust_codisp(
-            final_slots[:n_done],
-            init_counts[:n_done],
-            parent,
-            sibling,
-            count,
+        total: float = float(
+            rust_codisp(
+                final_slots[:n_done],
+                init_counts[:n_done],
+                parent,
+                sibling,
+                count,
+            )
         )
         return total / num_trees
 
@@ -279,10 +296,23 @@ def run_benchmark(
     numpy_ms = _time_calls(run_numpy, repeats, num_points)
     rust_ms = _time_calls(run_rust, repeats, num_points)
 
+    numpy_current_mib, numpy_peak_mib = _measure_memory(run_numpy, repeats)
+    rust_current_mib, rust_peak_mib = _measure_memory(run_rust, repeats)
+
     return {
         "numpy_ms_per_point": numpy_ms,
         "rust_ms_per_point": rust_ms,
         "speedup": numpy_ms / rust_ms if rust_ms > 0 else float("inf"),
+        "numpy_current_mib": numpy_current_mib,
+        "numpy_peak_mib": numpy_peak_mib,
+        "rust_current_mib": rust_current_mib,
+        "rust_peak_mib": rust_peak_mib,
+        "memory_speedup_current": numpy_current_mib / rust_current_mib
+        if rust_current_mib > 0
+        else float("inf"),
+        "memory_speedup_peak": numpy_peak_mib / rust_peak_mib
+        if rust_peak_mib > 0
+        else float("inf"),
     }
 
 
@@ -303,12 +333,21 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Path to a compiled pysad_kernels extension",
     )
+    parser.add_argument(
+        "--numpy-only",
+        action="store_true",
+        help="Run only the NumPy path (skip Rust extension check)",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     """Run the benchmark command."""
     args = _parse_args()
+
+    if args.numpy_only:
+        return _run_numpy_only(args)
+
     try:
         results = run_benchmark(
             num_features=args.features,
@@ -323,7 +362,8 @@ def main() -> int:
         print(f"Rust extension is not available: {error}", file=sys.stderr)
         print(
             "If the Rust extension is not available, run "
-            "`cargo build --manifest-path rust/Cargo.toml --release`.",
+            "`cargo build --manifest-path rust/Cargo.toml --release` "
+            "or use --numpy-only to test NumPy path alone.",
             file=sys.stderr,
         )
         return 2
@@ -339,7 +379,111 @@ def main() -> int:
     print(f"NumPy traversal + CoDisp: {results['numpy_ms_per_point']:.6f} ms/point")
     print(f"Rust traversal + CoDisp: {results['rust_ms_per_point']:.6f} ms/point")
     print(f"Speedup: {results['speedup']:.2f}x")
+    print(f"NumPy memory (current): {results['numpy_current_mib']:.3f} MiB")
+    print(f"NumPy memory (peak): {results['numpy_peak_mib']:.3f} MiB")
+    print(f"Rust memory (current): {results['rust_current_mib']:.3f} MiB")
+    print(f"Rust memory (peak): {results['rust_peak_mib']:.3f} MiB")
+    print(f"Memory speedup (current): {results['memory_speedup_current']:.2f}x")
+    print(f"Memory speedup (peak): {results['memory_speedup_peak']:.2f}x")
     print("Results match: yes")
+    return 0
+
+
+def _run_numpy_only(args: argparse.Namespace) -> int:
+    """Run benchmark with NumPy path only."""
+    model = _create_model(args.features, args.trees, args.tree_size, args.seed)
+    rng = np.random.default_rng(args.seed)
+
+    # Fit some data first to build trees
+    fit_points = rng.random((args.tree_size * 2, args.features), dtype=np.float64)
+    for x in fit_points:
+        model.fit_partial(x)
+
+    # Generate test points
+    test_points = rng.random((args.points, args.features), dtype=np.float64)
+
+    # Get arena arrays for NumPy path
+    arena = model._arena
+    roots = arena.roots.astype(np.int32, copy=False)
+    dim = arena.dim.astype(np.int32, copy=False)
+    cut = arena.cut.astype(np.float64, copy=False)
+    left = arena.left.astype(np.int32, copy=False)
+    right = arena.right.astype(np.int32, copy=False)
+    parent = arena.parent.astype(np.int32, copy=False)
+    sibling = arena.sibling.astype(np.int32, copy=False)
+    count = arena.count.astype(np.int32, copy=False)
+
+    def run_numpy_route_and_codisp(point: np.ndarray) -> float:
+        """NumPy implementation of route_to_leaf + codisp_sum."""
+        non_empty_roots = roots[roots >= 0]
+        if len(non_empty_roots) == 0:
+            return 0.0
+
+        cand_leaves = non_empty_roots.copy()
+        for k in range(len(cand_leaves)):
+            s = int(cand_leaves[k])
+            while (d := int(dim[s])) >= 0:
+                s = int(left[s]) if point[d] <= cut[s] else int(right[s])
+            cand_leaves[k] = s
+
+        is_dup = (arena.bbox_low[cand_leaves] == point).all(axis=1)
+
+        final_slots = np.empty(len(non_empty_roots), dtype=np.int32)
+        init_counts = np.empty(len(non_empty_roots), dtype=np.int32)
+        n_done = 0
+
+        if is_dup.any():
+            dup_slots = cand_leaves[is_dup]
+            nd = len(dup_slots)
+            final_slots[:nd] = dup_slots
+            init_counts[:nd] = 0
+            n_done = nd
+            non_dup_leaves = cand_leaves[~is_dup]
+        else:
+            non_dup_leaves = cand_leaves
+
+        if len(non_dup_leaves) > 0:
+            final_slots[n_done : n_done + len(non_dup_leaves)] = non_dup_leaves
+            init_counts[n_done : n_done + len(non_dup_leaves)] = count[non_dup_leaves]
+            n_done += len(non_dup_leaves)
+
+        total = 0.0
+        for i in range(n_done):
+            leaf = final_slots[i]
+            if leaf < 0:
+                continue
+            init_count = float(init_counts[i])
+            best = init_count
+            curr = leaf
+            while (p := int(parent[curr])) >= 0:
+                sib = int(sibling[curr])
+                if sib >= 0:
+                    ratio = float(count[sib]) / (float(count[curr]) + 1.0)
+                    if ratio > best:
+                        best = ratio
+                curr = p
+            total += best
+
+        return float(total / args.trees)
+
+    def run_numpy() -> None:
+        for point in test_points:
+            run_numpy_route_and_codisp(point)
+
+    for point in test_points[:10]:
+        run_numpy_route_and_codisp(point)
+
+    numpy_ms = _time_calls(run_numpy, args.repeats, args.points)
+    numpy_current_mib, numpy_peak_mib = _measure_memory(run_numpy, args.repeats)
+
+    print(f"Features: {args.features}")
+    print(f"Trees: {args.trees}")
+    print(f"Tree size: {args.tree_size}")
+    print(f"Points per run: {args.points}")
+    print(f"Timing runs: {args.repeats}")
+    print(f"NumPy traversal + CoDisp: {numpy_ms:.6f} ms/point")
+    print(f"NumPy memory (current): {numpy_current_mib:.3f} MiB")
+    print(f"NumPy memory (peak): {numpy_peak_mib:.3f} MiB")
     return 0
 
 

@@ -1068,4 +1068,33 @@ It prints (when Kafka is unavailable and the synthetic fallback runs):
      [1000] score=2.1387 label=0 AUROC=0.839
    Finished synthetic stream. Final AUROC: 0.839
 
+Load a NASA SMAP or MSL telemetry channel
+-----------------------------------------
+
+This script loads the test half of a SMAP satellite channel and of an MSL rover channel from the NASA telemetry of Telemanom, then scores each point in its original time order. The labels come from the labeled anomaly ranges of Telemanom, where points in an anomaly range have the label 1. SMAP has 54 channels with 25 features, and MSL has 27 channels with 55 features.
+
+.. literalinclude:: ../examples/example_smap_msl.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   SMAP P-1: points=8505, features=25, anomalies=751
+   MSL M-1: points=2277, features=55, anomalies=1141
+
+Load an SMD machine stream
+--------------------------
+
+This script loads the test half of machine 1 of group 1 of the Server Machine Dataset (SMD) and streams each point in its original time order. SMD has 28 machines across three groups, each point has 38 features, and one point arrives per minute.
+
+.. literalinclude:: ../examples/example_smd.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Points: 28479, features: 38, anomalies: 2694
+
 .. auto-examples::

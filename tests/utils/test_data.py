@@ -455,6 +455,38 @@ def test_ucr_series_come_from_the_archive_and_are_labeled_by_their_names(tmp_pat
     assert downloads == [pysad.utils.data._UCR]  # the second call reads the extracted file
 
 
+def test_tsb_drift_series_come_from_the_archive_and_are_labeled_by_their_names(
+    tmp_path, monkeypatch
+):
+    """TSB-drift series are extracted from the TSB-AD-M archive, Label column last."""
+    import zipfile
+
+    name = "009_TEST_id_1_Sensor_tr_3_1st_7.csv"
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("TSB-AD-M/" + name, "a,b,Label\n1.0,2.0,0\n3.0,4.0,1\n5.0,6.0,0\n")
+    content = archive.getvalue()
+    downloads = []
+
+    def urlopen(req, timeout):
+        downloads.append(req.full_url)
+        return Response(content)
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(
+        pysad.utils.data, "_TSB_DRIFT_ARCHIVE_CHECKSUM", hashlib.sha256(content).hexdigest()
+    )
+    monkeypatch.setattr(pysad.utils.data, "_TSB_DRIFT_SERIES", (name,))
+    data = Data(data_base_path=str(tmp_path))
+
+    X, y = data.get_data("tsb-drift/" + name)
+    data.get_data("tsb-drift/" + name)
+
+    np.testing.assert_array_equal(X, [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+    np.testing.assert_array_equal(y, [0, 1, 0])
+    assert downloads == [pysad.utils.data._TSB_DRIFT_ARCHIVE]
+
+
 def test_drift_streams_are_listed_by_source():
     assert Data.datasets("kddcup99") == ["kddcup99/http.csv"]
     assert len(Data.datasets("smd")) == 28
@@ -465,6 +497,8 @@ def test_drift_streams_are_listed_by_source():
     assert "msl/M-1.npy" in Data.datasets("msl")
     assert len(Data.datasets("insects")) == 4
     assert "insects/abrupt.csv" in Data.datasets("insects")
+    assert len(Data.datasets("tsb-drift")) == 75
+    assert "tsb-drift/009_MSL_id_8_Sensor_tr_714_1st_1390.csv" in Data.datasets("tsb-drift")
 
 
 def _serve(monkeypatch, files):
@@ -949,6 +983,7 @@ def test_datasets_list_by_source(monkeypatch):
         "msl": 27,
         "insects": 4,
         "creditcard": 1,
+        "tsb-drift": 75,
     }
     for source, expected in expected_counts.items():
         names = d.datasets(source)

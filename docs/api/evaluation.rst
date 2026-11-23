@@ -150,6 +150,39 @@ Windowed metrics
 
 Set ``ignore_nonempty_last=False`` to include the incomplete last window in the average when it contains both classes. The empty last window is always ignored.
 
+Report export
+-------------
+
+:func:`~pysad.evaluation.export_report` writes the metric values returned by
+:func:`~pysad.evaluation.evaluate_stream` or
+:func:`~pysad.evaluation.evaluate_postprocessor` to a JSON, CSV, or Markdown
+file. ``None`` values become ``null`` in JSON and an empty cell in CSV and
+Markdown. Parent directories of the output path are created if needed:
+
+.. code-block:: python
+
+   from pysad.evaluation import AUROCMetric, evaluate_stream, export_report
+   from pysad.models import LODA
+
+   X, y = ...
+
+   results = evaluate_stream(
+       model=LODA(random_state=0),
+       X=X,
+       y=y,
+       metrics={"AUROC": AUROCMetric()},
+   )
+
+   export_report(
+       results=results,
+       path="reports/cardio_loda.json",
+       model="LODA",
+       dataset="cardio",
+   )
+
+Use ``format="csv"`` or ``format="markdown"`` for other serializations. Pass
+``postprocessor`` to record the calibrator or postprocessor that was applied.
+
 .. autosummary::
    :nosignatures:
    :template: class.rst

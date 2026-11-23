@@ -132,7 +132,7 @@ def test_pandas_streamer_datetime_values(tz, shuffle):
             dtype=object,
         )
     else:
-        expected = np.array([["2025-01-01"], ["2025-01-02"]], dtype="datetime64[ns]")
+        expected = np.array([["2025-01-01"], ["2025-01-02"]], dtype=data["a"].dtype)
 
     df = pd.DataFrame(data, index=[7, 3])
     order = [0, 1] if not shuffle else [1, 0]

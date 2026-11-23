@@ -1,6 +1,6 @@
 Detector,Series,Standard,Low false alerts,Low misses,AUROC,Time (ms),Commit
 :class:`~pysad.models.HTM`,58,64.2,56.8,68.3,0.595,5.34,`51766f9 <https://github.com/selimfirat/pysad/commit/51766f9>`__
-:class:`~pysad.models.RelativeEntropy`,58,58.9,53.2,62.5,0.504,0.36,`61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__
+:class:`~pysad.models.RelativeEntropy`,58,58.9,53.2,62.5,0.504,0.35,`61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__
 :class:`~pysad.models.AnyOut`,58,58.5,48.5,65.1,0.542,0.23,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__
 :class:`~pysad.models.KNNCAD`,58,58.0,43.4,64.8,0.563,0.50,`61aa615 <https://github.com/selimfirat/pysad/commit/61aa615>`__
 :class:`~pysad.models.LODA`,58,55.1,44.5,61.2,0.560,0.04,`055ac50 <https://github.com/selimfirat/pysad/commit/055ac50>`__

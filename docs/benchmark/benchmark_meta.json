@@ -1,0 +1,23 @@
+{
+  "benchmark_date": "2026-11-23",
+  "commit": "0e38da1",
+  "dataset_checksums": {
+    "arrhythmia.mat": "e4d47e499591ae31e5d7f0cd983367092353eac240f48e14c9b36457edb3460d",
+    "cardio.mat": "5e568b6a73711012c481fa6cc984ab9c68e9a4fa44d6aeb3b43efa381c3f695b",
+    "glass.mat": "2c506e6e1e2ca1e82a905d10a90773151ff812c4bd969c71a12db5b2bb6e7921",
+    "ionosphere.mat": "8ac5dfa6f47db4acdfe10615489b7f7dd015d79d5b381ce641e72baca3cfefb0",
+    "letter.mat": "f4a229b0e2a6b0c9157ce27fa760bcbac0f948cd690b2f5d51c120e5450f2195",
+    "lympho.mat": "031b907ecb50347720b08b38f8139d05635adeca9335a064d89d5569c27a5834",
+    "mnist.mat": "9479e221f236684c09f3e11c7ad124725d34ecd301b9450425e8b113368413a6",
+    "musk.mat": "50bbf414caceb66cfe6f6b1eb7c1ff7c6eb1e6d87173f7bb597ba55cd3dc5493",
+    "optdigits.mat": "30c664cd6f3740a173277a27cd1028d471b06f0835a9902c9712749cec58c1c4",
+    "pendigits.mat": "7bc32ac83b3d583443acea8b1342a54aaa59eaedb9996af405322f473f3c22bc",
+    "pima.mat": "b6a5be8d548b9293d6958beceb1c77055591714d25d40d957eba87808456468f",
+    "satellite.mat": "6feac3112b9c14e1c3e60afc437f2f3d29dc1000119c9f950c628078778d6aa0",
+    "satimage-2.mat": "95c37a07cea2cb201f6900d14f521510e10b6b2f0074c06ac46d3157440ec67b",
+    "shuttle.mat": "b6e396c92354d5dcf5036901e36dc58e2913f2d1a5e138c35a2bedf9c69db899",
+    "vertebral.mat": "84b50b055f118f54b5c976650ccd284ab7c1adee822f8b3eb517c7e2c890d15e",
+    "vowels.mat": "51d5397bad1ceeda22b7cd44fd58125c5d603c9c2edb53aa59933330e259ac7b",
+    "wbc.mat": "afe6b26953cc196b9a480318c903e0edef22529c2f61bd02082438c6e70630a7"
+  }
+}

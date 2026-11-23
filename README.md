@@ -129,6 +129,14 @@ pip install git+https://github.com/selimfirat/pysad.git
 
 For an editable installation with development dependencies, follow the [contributing guide](https://pysad.readthedocs.io/en/latest/contributing.html).
 
+### Optional Rust kernels
+
+The `fast` extra installs `pysad_kernels`, a PyO3 Rust extension with optimized tree traversal for `HalfSpaceTrees` and `RobustRandomCutForest`. If the extension is available, these detectors use it automatically. Otherwise, they fall back to NumPy.
+
+```bash
+pip install pysad[fast]
+```
+
 ## Live dashboard, MCP, and optional kernels
 
 If you use uv, run the live dashboard with `uvx`:

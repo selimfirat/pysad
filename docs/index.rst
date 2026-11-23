@@ -75,6 +75,10 @@ PySAD
 
       $ pip install pysad
 
+   .. code-block:: console
+
+      $ pip install pysad[fast]  # optional Rust kernels for HalfSpaceTrees and RobustRandomCutForest
+
 .. code-block:: python
 
    from pysad.evaluation import AUROCMetric
@@ -105,7 +109,7 @@ If you use uv, run the live dashboard with ``uvx``:
 
 - The :doc:`live dashboard <api/live>` displays streaming scores and alerts in your terminal. Add ``--web`` to open the web dashboard, or use ``--source data.csv`` for your own data.
 - :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp`` to connect an MCP client.
-- The optional PyO3 Rust extension ``pysad_kernels`` provides tree traversal kernels for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy.
+- The optional PyO3 Rust extension ``pysad_kernels`` provides tree traversal kernels for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy. Install with ``pip install pysad[fast]``.
 
 Migration guides
 ----------------

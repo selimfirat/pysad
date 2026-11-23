@@ -354,6 +354,111 @@ def test_relative_entropy_step_window_size_tests_non_overlapping_windows(method)
     assert sum(model.c) == 4
 
 
+def _reference_agreement_index(P, P_hat, W, T):
+    """Loop-based reference for `_get_agreement_hypothesis`: `scipy.stats.entropy` called once per
+    hypothesis, returning the agreeing hypothesis with the smallest test statistic, or -1 when
+    none agrees. Mirrors the vectorized computation in `_get_agreement_hypothesis`."""
+    import math
+
+    from scipy import stats
+
+    best_index = -1
+    best_stat = math.inf
+    for i in range(len(P)):
+        stat = 2 * W * stats.entropy(P_hat, P[i])
+        if stat < T and stat < best_stat:
+            best_stat = stat
+            best_index = i
+    return best_index
+
+
+def test_relative_entropy_vectorized_entropy_matches_loop_reference():
+    import numpy as np
+
+    from pysad.models import RelativeEntropy
+
+    # Hypotheses with zero bins (concentrated distributions) exercise the log(p / 0) -> inf
+    # and 0 * log(0 / 0) -> 0 paths of the vectorized entropy computation.
+    hypotheses = [
+        np.array([1.0, 0.0, 0.0, 0.0, 0.0]),
+        np.array([0.0, 1.0, 0.0, 0.0, 0.0]),
+        np.array([0.2, 0.2, 0.2, 0.2, 0.2]),
+        np.array([0.5, 0.5, 0.0, 0.0, 0.0]),
+        np.array([0.0, 0.0, 0.5, 0.5, 0.0]),
+    ]
+
+    for num_hypotheses in (1, 2, 5):
+        model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=10, num_bins=5)
+        W = model.W
+        T = model.T
+        rng = np.random.default_rng(num_hypotheses)
+        for P_hat in hypotheses[:num_hypotheses]:
+            model._add_hypothesis(P_hat)
+
+        # Every P_hat must map to the same agreement index as the per-hypothesis loop, proving
+        # the vectorized entropy (broadcast_to over all hypotheses at once) agrees with calling
+        # scipy.stats.entropy once per hypothesis.
+        for P_hat in [
+            np.array([1.0, 0.0, 0.0, 0.0, 0.0]),
+            np.array([0.0, 0.0, 0.0, 0.0, 1.0]),
+            np.array([0.2, 0.2, 0.2, 0.2, 0.2]),
+            np.array([0.5, 0.0, 0.5, 0.0, 0.0]),
+            rng.random(model.N_bins) / 5,
+        ]:
+            if P_hat.sum() > 0:
+                P_hat = P_hat / P_hat.sum()
+            assert model._get_agreement_hypothesis(P_hat) == _reference_agreement_index(
+                model.P, P_hat, W, T
+            )
+
+
+def test_relative_entropy_many_distinct_hypotheses_scoring_stays_binary():
+    import numpy as np
+
+    from pysad.models import RelativeEntropy
+
+    # Random uniform values spread across bins create many distinct hypotheses, exercising the
+    # vectorized entropy over many rows of self.P. Scores must stay 0.0 / 1.0 with no NaN.
+    rng = np.random.default_rng(2)
+    x = rng.random(600)
+
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=20, num_bins=10, step=20)
+    scores = [model.fit_score_partial(np.array([v])) for v in x]
+
+    assert all(score in (0.0, 1.0) for score in scores)
+    assert model.m > 1  # many distinct windows were learned
+
+    # score_partial must not change the model state.
+    P_before, c_before, m_before = model.P.copy(), list(model.c), model.m
+    for v in x[:20]:
+        model.score_partial(np.array([v]))
+    np.testing.assert_array_equal(model.P, P_before)
+    assert list(model.c) == c_before
+    assert model.m == m_before
+
+
+def test_relative_entropy_concentrated_windows_zero_bins():
+    import numpy as np
+
+    from pysad.models import RelativeEntropy
+
+    # Values concentrate in one or two bins, so hypotheses and windows carry zeros. The vectorized
+    # entropy must not produce NaN scores or let the hypothesis count grow with every record.
+    x = np.r_[np.full(100, 0.1), np.full(100, 0.9)]
+    model = RelativeEntropy(min_val=0.0, max_val=1.0, window_size=10, num_bins=5, step=10)
+    scores = model.fit_score(x.reshape(-1, 1))
+
+    assert set(np.unique(scores)) <= {0.0, 1.0}
+    # Two distinct windows (all 0.1, then all 0.9), so two hypotheses. The first window is
+    # learned, not flagged; only the first 0.9 window agrees with no hypothesis.
+    assert model.m == 2
+    np.testing.assert_array_equal(model.c, [10, 10])
+    # Only the first 0.9 window (closed by index 109) is flagged; the first window creates a
+    # hypothesis and later windows agree with one.
+    flagged = np.flatnonzero(scores)
+    assert set(flagged.tolist()) == {109}
+
+
 @pytest.mark.parametrize("step_kwargs", [{}, {"step": 1}], ids=["default", "step=1"])
 @pytest.mark.parametrize("method", ["fit", "fit_score"])
 def test_relative_entropy_default_step_reproduces_nab_sliding_windows(method, step_kwargs):

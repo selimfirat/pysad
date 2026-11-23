@@ -41,6 +41,6 @@
         "Run PyOD batch models on streams with ReferenceWindowModel or OneFitModel, embed PySAD detectors in River or scikit-learn with PySADToRiverAdapter or PySADToScikitLearnAdapter, and score River forecasters with PredictiveAnomalyDetector.",
         "Run live streaming anomaly detection with the pysad-live CLI, for example: pysad-live --source synthetic --detector loda --calibrator conformal. The CLI also supports --web, --json-output, and CSV sources.",
         "Expose PySAD detectors, drift meters, and explainability via the MCP server: pip install pysad[mcp] then run pysad-mcp. The server registers every detector and drift meter from pysad.models and pysad.statistics as a pysad_<lowercase_name> tool.",
-        "HalfSpaceTrees and RobustRandomCutForest use the optional pysad_kernels PyO3 extension for tree traversal when it is installed. Otherwise they run NumPy, so the extension is never required."
+        "HalfSpaceTrees and RobustRandomCutForest use the optional pysad_kernels PyO3 extension for tree traversal when it is installed. Otherwise they run NumPy, so the extension is never required. Install it with `pip install pysad[fast]`."
     ]
 }

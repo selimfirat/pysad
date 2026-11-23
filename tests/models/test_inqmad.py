@@ -1,4 +1,5 @@
 import gc
+import warnings
 import weakref
 
 import numpy as np
@@ -6,6 +7,7 @@ import pytest
 
 from pysad.models import Inqmad
 from pysad.models.inqmad import _adapt_features
+from pysad.utils import Data
 
 PARAMS = {"input_shape": 3, "dim_x": 32, "initial_size": 20, "random_state": 0}
 
@@ -423,3 +425,53 @@ def test_long_normal_stream_matches_step_by_step_rho_recurrence():
 
     np.testing.assert_allclose(scores, expected_scores, rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(model.rho, rho, rtol=1e-12, atol=1e-12)
+
+
+def test_inqmad_is_robust_on_the_nab_two_value_series():
+    """The series nab/artificialWithAnomaly/art_increase_spike_density.csv has only two
+    distinct values, 0 and 20. After min-max scaling every scaled state is 0 or 1, so the
+    densities tie. The model must still score every instance with a finite float without
+    raising, reproduce the same scores with the same seed, agree between batch and
+    sequential calls, and leave the model unchanged under score_partial.
+    """
+    X, _ = Data().get_data("nab/artificialWithAnomaly/art_increase_spike_density.csv")
+
+    # This series is the edge case: one feature and only two distinct values.
+    assert X.shape[1] == 1
+    assert len(np.unique(X)) == 2
+
+    params = {"input_shape": 1, "dim_x": 16, "initial_size": 15, "random_state": 0}
+
+    def run_batch():
+        model = Inqmad(**params)
+        with warnings.catch_warnings():
+            # The two-value data makes the adaptive feature fit degenerate.
+            warnings.simplefilter("ignore")
+            return model.fit_score(X)
+
+    scores = run_batch()
+
+    assert scores.shape == (len(X),)
+    assert np.all(np.isfinite(scores))
+
+    # Reproducible with the same seed.
+    np.testing.assert_array_equal(run_batch(), scores)
+
+    # Batch fit_score agrees with sequential fit_score_partial, which returns Python floats.
+    model = Inqmad(**params)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        partial = [model.fit_score_partial(xi) for xi in X]
+    assert all(type(score) is float for score in partial)
+    np.testing.assert_array_equal(np.asarray(partial), scores)
+
+    # score_partial does not mutate the model.
+    model = Inqmad(**params)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        model.fit_score(X[:100])
+    rho_before = model.rho.copy()
+    score_before = model.score_partial(X[100])
+    model.score_partial(X[100])
+    np.testing.assert_array_equal(model.rho, rho_before)
+    assert model.score_partial(X[100]) == score_before

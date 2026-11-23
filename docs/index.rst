@@ -109,7 +109,33 @@ If you use uv, run the live dashboard with ``uvx``:
 
 - The :doc:`live dashboard <api/live>` displays streaming scores and alerts in your terminal. Add ``--web`` to open the web dashboard, or use ``--source data.csv`` for your own data.
 - :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp`` to connect an MCP client.
-- The optional PyO3 Rust extension ``pysad_kernels`` provides tree traversal kernels for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy. Install with ``pip install pysad[fast]``.
+
+Optional PyO3 kernels (pysad_kernels)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The optional PyO3 Rust extension ``pysad_kernels`` provides tree traversal kernels for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`. It is not published on PyPI yet, so build it from the ``rust/`` directory of the repository. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change.
+
+Install ``maturin``, then build and register the extension so Python can import it:
+
+.. code-block:: console
+
+   $ pip install maturin
+   $ maturin develop -m rust/pyproject.toml
+
+Or build a wheel and install it:
+
+.. code-block:: console
+
+   $ maturin build -m rust/pyproject.toml --release
+   $ pip install target/wheels/pysad_kernels-0.1.0-*.whl
+
+Once ``pysad_kernels`` can be imported, :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest` use its kernels automatically. Verify the installation:
+
+.. code-block:: console
+
+   $ python -c "import pysad_kernels; print(pysad_kernels.__file__)"
+
+If the import fails, the detectors fall back to NumPy.
 
 Migration guides
 ----------------

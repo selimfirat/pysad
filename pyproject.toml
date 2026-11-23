@@ -79,7 +79,7 @@ Changelog = "https://github.com/selimfirat/pysad/releases"
 
 [project.optional-dependencies]
 mcp = ["mcp>=2.0.0,<3"]
-fast = ["pysad_kernels>=0.1.0"]
+# fast = ["pysad_kernels>=0.1.0"]  # Enable after pysad_kernels 0.1.0 is published on PyPI
 
 [project.scripts]
 pysad-live = "pysad.live.cli:main"

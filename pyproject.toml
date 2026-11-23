@@ -101,7 +101,7 @@ mcp = [
 ]
 test = [
   # PandasStreamer takes DataFrames.
-  "pandas==2.3.3",
+  "pandas==3.1.1",
   # examples/example_plot_stream.py draws with matplotlib.
   "matplotlib==3.11.2",
   # PolarsStreamer takes Polars DataFrames.

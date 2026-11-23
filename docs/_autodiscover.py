@@ -259,6 +259,47 @@ def expand_detectors_tables(text: str) -> str:
     return text
 
 
+def expand_detector_catalog(text: str) -> str:
+    """Replaces the ``.. detector-catalog-table::`` marker with a list of every detector.
+
+    Each row links to the detector's API reference, cites its paper, and gives its input kind.
+    The table is rebuilt from ``pysad.models.__all__`` so it always matches the library.
+    """
+    marker = ".. detector-catalog-table::"
+    if marker not in text:
+        return text
+    cite_pattern = re.compile(r":cite(?::[a-z]+)?:`([^`]+)`")
+    rows: list[str] = []
+    for name in pysad.models.__all__:
+        cls = getattr(pysad.models, name, None)
+        if cls is None or not is_detector_model(name):
+            continue
+        kind = cls._effective_input_kind()
+        doc = inspect.getdoc(cls) or ""
+        keys: list[str] = []
+        for group in cite_pattern.findall(doc):
+            for key in group.split(","):
+                key = key.strip()
+                if key and key not in keys:
+                    keys.append(key)
+        if keys:
+            citation = ", ".join(f":cite:`{key}`" for key in keys)
+        else:
+            citation = "No paper citation"
+        rows.append(
+            f"   * - :class:`~pysad.models.{name}`\n     - {citation}\n     - {kind.title()}"
+        )
+    table = (
+        ".. list-table::\n"
+        "   :header-rows: 1\n"
+        "   :widths: 30 38 32\n\n"
+        "   * - Detector\n"
+        "     - Paper\n"
+        "     - Input kind\n" + "\n".join(rows)
+    )
+    return text.replace(marker, table, 1)
+
+
 def _humanize_example_stem(stem: str) -> str:
     raw_words = stem.removeprefix("example_").split("_")
     words = [_EXAMPLE_ACRONYMS.get(w.lower(), w) for w in raw_words]

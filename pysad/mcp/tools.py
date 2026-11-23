@@ -12,7 +12,7 @@ import json
 from typing import Any, cast
 
 import numpy as np
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from pysad.models import __all__ as MODEL_NAMES
 from pysad.statistics import __all__ as STAT_NAMES
@@ -248,7 +248,7 @@ def _ann_from_str(ann_str: str) -> type:
 
 
 def _create_detector_tool(
-    mcp: FastMCP, name: str, model_class: type, defaults: dict[str, Any]
+    mcp: MCPServer, name: str, model_class: type, defaults: dict[str, Any]
 ) -> None:
     """Create and register a detector tool with explicit parameters."""
     param_info = _get_param_info(model_class)
@@ -335,7 +335,7 @@ Returns:
     )
 
 
-def _create_stat_tool(mcp: FastMCP, name: str, stat_class: type, defaults: dict[str, Any]) -> None:
+def _create_stat_tool(mcp: MCPServer, name: str, stat_class: type, defaults: dict[str, Any]) -> None:
     """Create and register a statistic tool with explicit parameters."""
     param_info = _get_param_info(stat_class)
 
@@ -400,7 +400,7 @@ Returns:
     )
 
 
-def register_detector_tools(mcp: FastMCP) -> None:
+def register_detector_tools(mcp: MCPServer) -> None:
     """Register all PySAD detectors as MCP tools."""
     for name in MODEL_NAMES:
         # Skip base classes and utilities
@@ -417,7 +417,7 @@ def register_detector_tools(mcp: FastMCP) -> None:
             pass
 
 
-def register_statistic_tools(mcp: FastMCP) -> None:
+def register_statistic_tools(mcp: MCPServer) -> None:
     """Register all PySAD statistics/drift meters as MCP tools."""
     for name in STAT_NAMES:
         if name.startswith("_"):
@@ -430,7 +430,7 @@ def register_statistic_tools(mcp: FastMCP) -> None:
             pass
 
 
-def register_explainability_tools(mcp: FastMCP) -> None:
+def register_explainability_tools(mcp: MCPServer) -> None:
     """Register explainability tools for detectors with explain_partial."""
 
     def explain_tool(
@@ -485,7 +485,7 @@ def register_explainability_tools(mcp: FastMCP) -> None:
     )(explain_tool)
 
 
-def register_stream_tool(mcp: FastMCP) -> None:
+def register_stream_tool(mcp: MCPServer) -> None:
     """Register a tool for running a full streaming pipeline."""
 
     def stream_tool(
@@ -567,7 +567,7 @@ def register_stream_tool(mcp: FastMCP) -> None:
     )
 
 
-def register_all_tools(mcp: FastMCP) -> None:
+def register_all_tools(mcp: MCPServer) -> None:
     """Register all PySAD tools with the MCP server."""
     register_detector_tools(mcp)
     register_statistic_tools(mcp)

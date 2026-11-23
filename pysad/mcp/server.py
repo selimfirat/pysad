@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from numpy.typing import NDArray
 
 from pysad.mcp.tools import register_all_tools
@@ -135,7 +135,7 @@ class SessionState:
     initialized: bool = False
 
 
-def _get_state(ctx: Context[Any, Any, Any]) -> SessionState:
+def _get_state(ctx: Context[Any, Any]) -> SessionState:
     """Get or create session state from MCP context."""
     context: Any = ctx
     if not hasattr(context, "_pysad_state"):
@@ -144,14 +144,14 @@ def _get_state(ctx: Context[Any, Any, Any]) -> SessionState:
     return state
 
 
-def create_mcp_server() -> FastMCP:
+def create_mcp_server() -> MCPServer:
     """Create and configure the PySAD MCP server.
 
     Returns:
-        Configured FastMCP server instance with both session-based and
+        Configured MCPServer instance with both session-based and
         auto-discovered tools.
     """
-    mcp = FastMCP(
+    mcp = MCPServer(
         name="PySAD Streaming Anomaly Detection",
         instructions=(
             "PySAD MCP server for streaming anomaly detection. "
@@ -183,7 +183,7 @@ async def initialize_detector(
     detector_name: str = "loda",
     detector_kwargs: str = "{}",
     random_state: int | None = None,
-    ctx: Context[Any, Any, Any] | None = None,
+    ctx: Context[Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Initialize a streaming anomaly detector.
 
@@ -263,7 +263,7 @@ async def initialize_calibrator(
     calibrator_name: str = "conformal",
     calibrator_kwargs: str = "{}",
     window_size: int = 300,
-    ctx: Context[Any, Any, Any] | None = None,
+    ctx: Context[Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Initialize a probability calibrator for anomaly scores.
 
@@ -357,7 +357,7 @@ async def initialize_stream(
     csv_timestamp: str | None = None,
     feature_columns: str | None = None,
     label_column: str | None = None,
-    ctx: Context[Any, Any, Any] | None = None,
+    ctx: Context[Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Initialize a data stream for anomaly detection.
 
@@ -481,7 +481,7 @@ async def score_point(
     features: list[float] | None = None,
     use_stream: bool = False,
     threshold: float | None = None,
-    ctx: Context[Any, Any, Any] | None = None,
+    ctx: Context[Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Score a single data point for anomaly detection.
 
@@ -575,7 +575,7 @@ async def score_point(
 async def score_batch(
     features_list: list[list[float]],
     threshold: float | None = None,
-    ctx: Context[Any, Any, Any] | None = None,
+    ctx: Context[Any, Any] | None = None,
 ) -> dict[str, Any]:
     """Score a batch of data points for anomaly detection.
 
@@ -646,7 +646,7 @@ async def score_batch(
         return {"success": False, "error": str(e)}
 
 
-async def get_status(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
+async def get_status(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
     """Get the current status of the MCP session.
 
     Args:
@@ -673,7 +673,7 @@ async def get_status(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any
     }
 
 
-async def reset_session(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
+async def reset_session(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
     """Reset the MCP session to initial state.
 
     Args:
@@ -703,7 +703,7 @@ async def reset_session(ctx: Context[Any, Any, Any] | None = None) -> dict[str, 
     return {"success": True, "message": "Session reset successfully"}
 
 
-async def list_detectors(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
+async def list_detectors(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
     """List available streaming anomaly detectors.
 
     Args:
@@ -740,7 +740,7 @@ async def list_detectors(ctx: Context[Any, Any, Any] | None = None) -> dict[str,
     }
 
 
-async def list_calibrators(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
+async def list_calibrators(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
     """List available probability calibrators.
 
     Args:
@@ -764,7 +764,7 @@ async def list_calibrators(ctx: Context[Any, Any, Any] | None = None) -> dict[st
     }
 
 
-async def list_data_sources(ctx: Context[Any, Any, Any] | None = None) -> dict[str, Any]:
+async def list_data_sources(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
     """List available built-in data sources.
 
     Args:

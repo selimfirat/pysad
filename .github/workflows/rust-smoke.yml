@@ -39,7 +39,7 @@ jobs:
         run: python -m pip install --upgrade pip maturin
 
       - name: Build the PyO3 wheel
-        run: maturin build -m rust/pyproject.toml --release --out dist
+        run: maturin build -m rust/Cargo.toml --release --out dist
 
       - name: Create a clean environment
         run: python -m venv .venv

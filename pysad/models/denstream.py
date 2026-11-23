@@ -52,10 +52,6 @@ class _DenStreamMicroCluster:
         """Returns the faded weight at the given timestamp."""
         return self.weight * self._fading_factor(timestamp)
 
-    def calc_creation_weight(self, timestamp: int) -> float:
-        """Returns the faded weight from creation at the given timestamp."""
-        return self.weight * self._creation_fading_factor(timestamp)
-
     @property
     def center(self) -> NDArray[np.float64]:
         """Returns the center of the micro-cluster (independent of timestamp)."""
@@ -88,20 +84,6 @@ class _DenStreamMicroCluster:
         self.squared_sum = self.squared_sum * ff + x * x
         self.weight = self.weight * ff + 1.0
         self.last_edit_time = timestamp
-        self._center = None
-
-    def merge(self, other: _DenStreamMicroCluster, timestamp: int) -> None:
-        """Merges another micro-cluster into this one."""
-        # Fade both clusters to the current timestamp
-        ff_self = self._fading_factor(timestamp)
-        ff_other = other._fading_factor(timestamp)
-
-        self.linear_sum = self.linear_sum * ff_self + other.linear_sum * ff_other
-        self.squared_sum = self.squared_sum * ff_self + other.squared_sum * ff_other
-        self.weight = self.weight * ff_self + other.weight * ff_other
-        self.last_edit_time = timestamp
-        if self.creation_time > other.creation_time:
-            self.creation_time = other.creation_time
         self._center = None
 
 
@@ -384,7 +366,7 @@ class DenStream(BaseModel):
 
         # Initialization phase: buffer points until we have init_samples
         if not self.initialized_:
-            self._init_buffer.append(X)
+            self._init_buffer.append(X.copy())
             if len(self._init_buffer) >= self.init_samples:
                 self._initialize_clusters()
                 self.initialized_ = True
@@ -394,13 +376,13 @@ class DenStream(BaseModel):
         # Online phase: try to merge into nearest p-micro-cluster
         merged = False
         if self.p_micro_clusters_:
-            idx, nearest_p, dist = self._get_nearest_cluster(X, self.p_micro_clusters_)
+            _, nearest_p, _ = self._get_nearest_cluster(X, self.p_micro_clusters_)
             if nearest_p is not None and self._merge_into_cluster(X, nearest_p, self.timestamp_):
                 merged = True
 
         # Try to merge into nearest o-micro-cluster
         if not merged and self.o_micro_clusters_:
-            idx, nearest_o, dist = self._get_nearest_cluster(X, self.o_micro_clusters_)
+            idx, nearest_o, _ = self._get_nearest_cluster(X, self.o_micro_clusters_)
             if nearest_o is not None and self._merge_into_cluster(X, nearest_o, self.timestamp_):
                 merged = True
                 # Check if o-micro-cluster becomes a p-micro-cluster
@@ -440,23 +422,8 @@ class DenStream(BaseModel):
             # Not enough data to score, return 0
             return 0.0
 
-        # Check distance to nearest p-micro-cluster
-        min_p_dist = float("inf")
-        nearest_p = None
-        for cluster in self.p_micro_clusters_:
-            dist = self._distance(X, cluster.center)
-            if dist < min_p_dist:
-                min_p_dist = dist
-                nearest_p = cluster
-
-        # Check distance to nearest o-micro-cluster
-        min_o_dist = float("inf")
-        nearest_o = None
-        for cluster in self.o_micro_clusters_:
-            dist = self._distance(X, cluster.center)
-            if dist < min_o_dist:
-                min_o_dist = dist
-                nearest_o = cluster
+        _, nearest_p, min_p_dist = self._get_nearest_cluster(X, self.p_micro_clusters_)
+        _, nearest_o, min_o_dist = self._get_nearest_cluster(X, self.o_micro_clusters_)
 
         # Determine score based on where the point would fall
         if nearest_p is not None and min_p_dist <= self.epsilon:

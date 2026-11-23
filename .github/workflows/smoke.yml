@@ -57,11 +57,12 @@ jobs:
 
       - name: Install the built wheel
         run: |
-          WHL=$(ls dist/pysad-*.whl | head -n 1)
+          set -- dist/pysad-*.whl
+          WHL=$1
           . .venv/bin/activate
           python -m pip install --upgrade pip
           if [ "${SMOKE_EXTRA}" = "mcp" ]; then
-            python -m pip install "$WHL[mcp]"
+            python -m pip install "${WHL}[mcp]"
           else
             python -m pip install "$WHL"
           fi

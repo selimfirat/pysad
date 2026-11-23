@@ -111,3 +111,9 @@ Migration guides
       :doc:`migrate_alibi_detect`
 
       Move from BSL 1.1 Alibi Detect to permissive BSD 3-Clause PySAD.
+
+   .. container:: card
+
+      :doc:`migrate_statsforecast`
+
+      Replace StatsForecast and Nixtla batch forecasts with PySAD streaming pipelines.

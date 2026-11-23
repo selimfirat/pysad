@@ -49,7 +49,17 @@ from threadpoolctl import threadpool_limits
 import pysad
 from pysad import models
 from pysad.core.base_model import BaseModel
+from pysad.evaluation import AUPRMetric, AUROCMetric, evaluate_stream
+from pysad.models import ModelEnsemble, StreamPipeline
 from pysad.transform import probability_calibration
+from pysad.transform.ensemble import (
+    AverageOfMaximumScoreEnsembler,
+    AverageScoreEnsembler,
+    MaximumOfAverageScoreEnsembler,
+    MaximumScoreEnsembler,
+    MedianScoreEnsembler,
+)
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import Data, fix_seed
@@ -363,6 +373,49 @@ FIELDS = [
     "commit",
 ]
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
+
+# The fast multivariate detectors that go into the ensembles. Each detector is wrapped in a
+# normalizing pipeline so that its scores are on a comparable scale before they are combined.
+# ZScorePostprocessor normalizes each score using only the earlier scores of the stream, so the
+# ensemble stays in prequential (test-then-train) order.
+ENSEMBLE_MEMBERS = ["LODA", "xStream", "RSHash", "HalfSpaceTrees"]
+ENSEMBLE_WINDOW = 200
+
+
+def _ensemble_member(name, X, seed):
+    """One detector of an ensemble, wrapped in a score-normalizing pipeline."""
+    return StreamPipeline(
+        model=DETECTORS[name](X, seed),
+        postprocessors=(ZScorePostprocessor(window_size=ENSEMBLE_WINDOW),),
+    )
+
+
+# Streaming detector ensembles, scored in prequential order. Each ensemble combines the same
+# detectors with a different score ensembler, so the benchmark isolates how the combination rule
+# affects the prequential metrics.
+ENSEMBLES = {
+    "average": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=AverageScoreEnsembler(),
+    ),
+    "maximum": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=MaximumScoreEnsembler(),
+    ),
+    "median": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=MedianScoreEnsembler(),
+    ),
+    "average_of_maximum": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=AverageOfMaximumScoreEnsembler(n_buckets=2),
+    ),
+    "maximum_of_average": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=MaximumOfAverageScoreEnsembler(n_buckets=2),
+    ),
+}
+ENSEMBLE_FIELDS = ["dataset", "ensemble", "seed", "auroc", "aupr", "ms_per_point"]
 
 
 CACHE_DIR = Path.home() / ".cache" / "pysad" / "benchmark"
@@ -794,6 +847,49 @@ def score_stream(model: BaseModel, X: np.ndarray) -> tuple[np.ndarray, float]:
         scores = np.array([float(model.fit_score_partial(x)) for x in X])
     seconds = time.perf_counter() - start
     return significant(scores), round(1000 * seconds / len(X), 3)
+
+
+def run_ensemble(dataset, ensemble, seed, points):
+    """Run one streaming detector ensemble on one dataset in prequential order.
+
+    ``evaluate_stream`` scores each instance before the ensemble learns from it, so the reported
+    metrics are prequential (test-then-train). AUROC and AUPR are reported when the evaluated
+    stream holds both classes; otherwise they are NaN.
+
+    Args:
+        dataset (str): Name of an ODDS dataset.
+        ensemble (str): Name of an ensemble in ``ENSEMBLES``.
+        seed (int): Stream seed.
+        points (int or None): Number of points to score.
+
+    Returns:
+        dict: dataset, ensemble, seed, auroc, aupr, and ms_per_point.
+    """
+    X, y = load(dataset, seed, points)
+    model = ENSEMBLES[ensemble](X, seed)
+    auroc, aupr = np.nan, np.nan
+    start = time.perf_counter()
+    try:
+        results = evaluate_stream(
+            model,
+            X,
+            y,
+            metrics={"AUROC": AUROCMetric(), "AUPR": AUPRMetric()},
+        )
+        auroc = results["AUROC"]
+        aupr = results["AUPR"]
+    except ValueError:
+        # AUROC and AUPR are undefined when the evaluated stream holds a single class.
+        pass
+    seconds = time.perf_counter() - start
+    return {
+        "dataset": dataset,
+        "ensemble": ensemble,
+        "seed": seed,
+        "auroc": round(float(auroc), 4) if np.isfinite(auroc) else np.nan,
+        "aupr": round(float(aupr), 4) if np.isfinite(aupr) else np.nan,
+        "ms_per_point": round(1000 * seconds / len(X), 3),
+    }
 
 
 def _load_univariate_raw(series, timestamps):
@@ -1863,6 +1959,11 @@ def main():
         help="points per detector and dimension in the dimensionality sweep",
     )
     parser.add_argument(
+        "--ensembles",
+        action="store_true",
+        help="report prequential metrics of streaming detector ensembles on the ODDS datasets",
+    )
+    parser.add_argument(
         "--custom",
         metavar="SPEC",
         help="custom model to benchmark, as 'path/to/file.py:ClassName'",
@@ -1909,6 +2010,46 @@ def main():
     path = OUT / "results.csv"
     ci_mode = bool(args.ci)
     points = CI_POINTS if ci_mode else None
+
+    if args.ensembles:
+        # Report prequential metrics of streaming detector ensembles on the ODDS datasets.
+        # Each ensemble scores every instance before it learns from it, as evaluate_stream does.
+        for dataset in DATASETS:
+            Data().get_data(f"{dataset}.mat")
+        run_commit = commit() if not ci_mode else None
+        jobs = [(ds, e, 0, points) for ds in DATASETS for e in ENSEMBLES]
+        new = {}
+        if jobs:
+            with ProcessPoolExecutor(args.jobs, initializer=_init_worker) as pool:
+                remaining = {pool.submit(run_ensemble, *job): job for job in jobs}
+                start, step = time.perf_counter(), max(1, len(jobs) // 20)
+                for future in as_completed(list(remaining)):
+                    row = future.result()
+                    if run_commit is not None:
+                        row["commit"] = run_commit
+                    job = remaining.pop(future)
+                    new[(row["dataset"], row["ensemble"], int(row["seed"]))] = row
+                    if len(new) % step == 0 or not remaining:
+                        progress(
+                            len(new),
+                            len(jobs),
+                            time.perf_counter() - start,
+                            remaining.values(),
+                        )
+        OUT.mkdir(parents=True, exist_ok=True)
+        rows = sorted(new.values(), key=lambda r: (r["dataset"], r["ensemble"]))
+        write_csv(
+            "ensemble_results.csv",
+            ENSEMBLE_FIELDS,
+            [[r.get(f, "") for f in ENSEMBLE_FIELDS] for r in rows],
+        )
+        for r in rows:
+            print(
+                f"{r['ensemble']:<22} {r['dataset']:<20} "
+                f"AUROC={r['auroc']} AUPR={r['aupr']} {r['ms_per_point']} ms/point"
+            )
+        print(f"Ensemble results written to {OUT / 'ensemble_results.csv'} ({len(rows)} runs).")
+        return
 
     # Load custom model if specified
     custom_model = None

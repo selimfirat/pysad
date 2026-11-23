@@ -192,6 +192,24 @@ To check that detector memory stays bounded over a long stream, run ``benchmarks
 
 The script generates one point at a time, warms up on 1,000 points, and records ``tracemalloc`` memory every ``--checkpoint`` points (default 100,000) over ``--points`` points (default 1,000,000). It exits with a non-zero status if traced memory grows by more than ``--max-growth-kb`` KiB (default 512.0) between the second and last checkpoints.
 
+Edge-memory and throughput benchmark
+------------------------------------
+
+To measure the peak traced memory and the milliseconds per point of the pure-Python streaming
+detectors on a deterministic stream of a fixed length, run ``benchmarks/bench_stream.py``:
+
+.. code-block:: console
+
+   $ python benchmarks/bench_stream.py --detectors all --points 10000 --repeats 3
+   $ python benchmarks/bench_stream.py --detectors LODA,RSHash,MIDAS --points 50000 --output docs/benchmark/stream_benchmark.csv
+
+Each detector warms up on 64 points, then scores every point before it learns from it. The stream
+length and the seed are fixed, so a rerun gives the same memory and timing. tracemalloc records
+the peak traced memory, and the script reports the median milliseconds per point across the timed
+runs. Multivariate detectors see five features from the unit interval, univariate detectors see
+one value, timestamped detectors see ``(timestamp, value)``, and edge-stream detectors see
+``(source, destination)``.
+
 Reproducible drift benchmark (TSB-drift)
 ----------------------------------------
 

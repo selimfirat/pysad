@@ -376,6 +376,18 @@ FIELDS = [
     *ALERT_FIELDS,
     "commit",
 ]
+# Results table omits the alert fields; they live in alerts.csv.
+# This keeps results.csv small enough for the repository's file-size limit.
+RESULT_FIELDS = [
+    "dataset",
+    "detector",
+    "seed",
+    "auroc",
+    "aupr",
+    "ms_per_point",
+    "solved",  # UCR series only
+    "commit",
+]
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
 
 # The fast multivariate detectors that go into the ensembles. Each detector is wrapped in a
@@ -1096,7 +1108,12 @@ def write_tables(results, nab=None):
             r["detector"],
         ),
     )
-    write_csv("results.csv", FIELDS, [[r.get(f, "") for f in FIELDS] for r in rows])
+    # results.csv keeps the multivariate detector results on the ODDS datasets.
+    # NAB, drift, and UCR results live in their own tables, which keeps results.csv small.
+    odds_rows = [r for r in rows if r["dataset"] in DATASETS]
+    write_csv(
+        "results.csv", RESULT_FIELDS, [[r.get(f, "") for f in RESULT_FIELDS] for r in odds_rows]
+    )
     write_univariate_tables(
         {k: r for k, r in results.items() if k[0].startswith(("nab/", "ucr/"))}, nab or read_nab()
     )

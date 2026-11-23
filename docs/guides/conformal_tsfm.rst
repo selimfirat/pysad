@@ -83,7 +83,7 @@ Stream the values one at a time and score each point before the stages learn fro
 Raise alerts
 ------------
 
-The calibrated score is a value between 0 and 1. A threshold of 0.99 flags about 1 in 100 normal points. Raise the threshold to reduce false alerts, or lower it to catch more anomalies. Measure the trade-off with precision and recall, as :doc:`/guides/evaluate` shows.
+The calibrated score is a value between 0 and 1. A threshold of 0.99 flags about 1 in 100 normal points. Raise the threshold to reduce false alerts, or lower it to catch more anomalies. Measure the trade-off with precision and recall, as :doc:`evaluate` shows.
 
 You can also run the stages in an explicit loop instead of the pipeline:
 
@@ -102,6 +102,6 @@ Here ``detector.score_partial`` runs before ``detector.fit_partial``, matching t
 Next steps
 ----------
 
-- :doc:`/guides/alerts` explains thresholds and warm-up for calibrators.
-- :doc:`/guides/evaluate` explains how to measure precision, recall and AUROC.
-- :doc:`/guides/pipelines` explains how pipeline stages connect.
+- :doc:`alerts` explains thresholds and warm-up for calibrators.
+- :doc:`evaluate` explains how to measure precision, recall and AUROC.
+- :doc:`pipelines` explains how pipeline stages connect.

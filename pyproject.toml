@@ -41,6 +41,9 @@ keywords = [
   "spot",
   "online anomaly detection",
   "streaming anomaly detection",
+  "mcp",
+  "model context protocol",
+  "mcp-server",
 ]
 classifiers = [
         'Development Status :: 5 - Production/Stable',

@@ -192,6 +192,64 @@ To check that detector memory stays bounded over a long stream, run ``benchmarks
 
 The script generates one point at a time, warms up on 1,000 points, and records ``tracemalloc`` memory every ``--checkpoint`` points (default 100,000) over ``--points`` points (default 1,000,000). It exits with a non-zero status if traced memory grows by more than ``--max-growth-kb`` KiB (default 512.0) between the second and last checkpoints.
 
+Edge-memory and throughput benchmark
+------------------------------------
+
+To measure the peak traced memory and the milliseconds per point of the pure-Python streaming
+detectors on a deterministic stream of a fixed length, run ``benchmarks/bench_stream.py``:
+
+.. code-block:: console
+
+   $ python benchmarks/bench_stream.py --detectors all --points 10000 --repeats 3
+   $ python benchmarks/bench_stream.py --detectors LODA,RSHash,MIDAS --points 50000 --output docs/benchmark/stream_benchmark.csv
+
+Each detector warms up on 64 points, then scores every point before it learns from it. The stream
+length and the seed are fixed, so a rerun gives the same memory and timing. tracemalloc records
+the peak traced memory, and the script reports the median milliseconds per point across the timed
+runs. Multivariate detectors see five features from the unit interval, univariate detectors see
+one value, timestamped detectors see ``(timestamp, value)``, and edge-stream detectors see
+``(source, destination)``.
+
+Reproducible drift benchmark (TSB-drift)
+----------------------------------------
+
+To benchmark the public detectors on the real streams with drift in a reproducible way, run
+``benchmarks/bench_tsb_drift.py``:
+
+.. code-block:: console
+
+   $ python benchmarks/bench_tsb_drift.py --points 10000 --seed 0 --repeats 3 --output drift.csv
+
+The script loads each stream with drift (KDD http, INSECTS A/I/IG/IR, SMD 1-1/2-1/3-1), keeps at
+most ``--points`` points in time order, scales each feature to the range from 0 to 1, and scores
+every public multivariate detector with ``fit_score_partial``. It reports streaming AUROC and AUPR
+after the warm-up, milliseconds per point (throughput), and traced memory from ``tracemalloc``. A
+second run on the same stream must give exactly the same scores, so the run is reproducible.
+
+Use ``--detectors`` to score only some detectors and ``--streams`` to score only some streams. The
+results go to the file given with ``--output``; without it, the script prints a table only.
+
+Streaming detector ensembles
+----------------------------
+
+To report prequential (test-then-train) metrics of streaming detector ensembles, run the
+``--ensembles`` mode:
+
+.. code-block:: console
+
+   $ python benchmarks/benchmark.py --ensembles
+   $ python benchmarks/benchmark.py --ensembles --ci --jobs 1
+
+Each ensemble combines the same fast multivariate detectors (LODA, xStream, RSHash, and
+HalfSpaceTrees) with a different score ensembler: average, maximum, median, average of the bucket
+maxima, or maximum of the bucket averages. Every detector is wrapped in a normalizing pipeline so
+that its scores are on a comparable scale before they are combined.
+
+The mode scores every instance of each ODDS dataset before the ensemble learns from it, using
+:func:`~pysad.evaluation.evaluate_stream`, and reports AUROC, AUPR, and milliseconds per point.
+With ``--ci`` it keeps only the first 2,000 points of each dataset. The results go to
+``docs/benchmark/ensemble_results.csv``, one row per dataset and ensemble.
+
 Performance badges
 ------------------
 

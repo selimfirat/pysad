@@ -24,6 +24,31 @@ NUM_NEXT = 20
 MODEL_PARAMS = {
     # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 50},
+    "KNNCAD": {"probationary_period": 50},
+    "MatrixProfile": {"window_length": 4, "history_size": 30},
+    "DAMP": {"window_length": 4, "history_size": 20},
+    "SpectralResidual": {"window_size": 8, "num_average_points": 3},
+    # The window slides before and after the round trip.
+    "STARE": {"window_size": 30, "slide_size": 5, "num_neighbors": 3, "cell_size": 0.6},
+    # The window slides before and after the round trip.
+    "ThreshLEAP": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 3},
+    # Micro-clusters form, expire and dissolve within the first instances.
+    "MCOD": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 2},
+    "MemStream": {"window_size": 8, "num_epochs": 20},
+    # Ticks start and end before and after the round trip.
+    "MIDAS": {"tick_size": 7},
+    # Cells empty out and fill again within the first instances.
+    "NETS": {"window_size": 30, "max_radius": 0.6},
+    # Output neurons merge and replace the oldest one before and after the round trip.
+    "OeSNNUAD": {"window_size": 20, "num_output_neurons": 4},
+    "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
+    # A window that wraps before and after the round trip.
+    "OnlineOneClassSVM": {"window_size": 32},
+    "PCBIsolationForest": {
+        "num_trees": 10,
+        "window_size": 32,
+        "stat_size": 10,
+    },
     # Non-overlapping windows of 5 close 4 times among the NUM_NEXT compared values, and 80 buckets
     # split the noise so that some of them score 1.0 (see test_relative_entropy_compared_scores_use_learned_state).
     "RelativeEntropy": {

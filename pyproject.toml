@@ -328,6 +328,18 @@ module = [
     "pysad.statistics.running_statistic",
     "pysad.transform",
     "pysad.transform.*",
+    "pysad.utils",
+    "pysad.utils._datasets",
+    "pysad.utils.array_streamer",
+    "pysad.utils.count_min_sketch",
+    "pysad.utils.csv_streamer",
+    "pysad.utils.data",
+    "pysad.utils.hyperloglog",
+    "pysad.utils.pandas_streamer",
+    "pysad.utils.plotting",
+    "pysad.utils.polars_streamer",
+    "pysad.utils.synthetic",
+    "pysad.utils.validation",
     "pysad.utils.window",
 ]
 disallow_any_generics = true

@@ -33,6 +33,28 @@ An optional calibrator or postprocessor can transform each score before the metr
 
 The function accepts arrays, lists, or single-use generators and consumes them once in stream order. If ``X`` and ``y`` have unequal lengths, it raises ``ValueError``. Model and metric updates from earlier pairs are retained.
 
+Postprocessor evaluation
+------------------------
+
+:func:`~pysad.evaluation.evaluate_postprocessor` evaluates a postprocessor or calibrator on pre-computed scores. It transforms each score through the postprocessor (which learns from the score in the same pass) and records the transformed score with every metric. Use it with calibration metrics such as :class:`~pysad.evaluation.BrierScoreMetric`, :class:`~pysad.evaluation.ExpectedCalibrationErrorMetric`, or :class:`~pysad.evaluation.LogLossMetric` to measure calibration quality.
+
+.. code-block:: python
+
+   from pysad.evaluation import (
+       BrierScoreMetric,
+       ExpectedCalibrationErrorMetric,
+       evaluate_postprocessor,
+   )
+   from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+   calibrator = ConformalProbabilityCalibrator(window_size=50)
+   results = evaluate_postprocessor(
+       scores=raw_scores,
+       y=y,
+       metrics={"Brier": BrierScoreMetric(), "ECE": ExpectedCalibrationErrorMetric()},
+       postprocessor=calibrator,
+   )
+
 Configuration schema
 --------------------
 

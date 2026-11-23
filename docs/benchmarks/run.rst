@@ -110,6 +110,46 @@ A multivariate model runs on the ODDS datasets and the streams with drift. A uni
 runs on the NAB and UCR series. Custom models are not stored in the result cache, so each run
 scores them again.
 
+Benchmark an embedding stream
+-----------------------------
+
+To benchmark a frozen encoder, for example the output of a pretrained time-series foundation
+model, save the encoder as a callable in a file and pass
+``--encoder path/to/file.py:encode``. The script encodes every instance of a deterministic
+synthetic stream, scores each embedding with
+:class:`~pysad.models.ZeroShotEmbeddingDetector`, and reports the AUROC, the milliseconds per
+point, and whether a second run on the same stream gives exactly the same scores.
+
+The encoder receives one instance as a one dimensional NumPy array of shape
+``(num_features,)`` and must return one embedding vector of shape ``(embedding_dim,)`` with the
+same width on every call. It must be deterministic: if the encoder returns the same embedding for the same instance, a
+second run gives exactly the same scores. No framework or new dependency is needed. The encoder
+and its runtime stay outside PySAD.
+
+The semantic anchors of the detector are the embeddings of the warm-up points, so no labels are
+used to build them and the warm-up points do not count in the AUROC.
+
+For example, save this encoder as ``my_encoder.py``:
+
+.. code-block:: python
+
+   import numpy as np
+
+
+   def encode(x):
+       x = np.asarray(x, dtype=np.float64)
+       return x.copy()
+
+
+Then run:
+
+.. code-block:: console
+
+   $ python benchmarks/bench_embedding_stream.py --encoder my_encoder.py:encode --points 2000 --seed 7
+
+The command prints one row per run. If you pass ``--output results.csv``, the script writes the
+results to that CSV file.
+
 Result cache
 ------------
 

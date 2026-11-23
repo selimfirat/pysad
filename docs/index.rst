@@ -261,6 +261,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
     guides/stream_data
     guides/choose_detector
     guides/alerts
+    guides/conformal_tsfm
     guides/evaluate
     guides/pipelines
     guides/seasonal

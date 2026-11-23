@@ -25,6 +25,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`conformal_tsfm`
+
+      Normalize forecast residuals and calibrate them with ConformalTSFMCalibrator.
+
+   .. container:: card
+
       :doc:`evaluate`
 
       Choose a metric, follow performance over time and report stable results.

@@ -78,7 +78,7 @@ Discussions = "https://github.com/selimfirat/pysad/discussions"
 Changelog = "https://github.com/selimfirat/pysad/releases"
 
 [project.optional-dependencies]
-mcp = ["mcp>=1.26.0,<2"]
+mcp = ["mcp>=1.26.0,<3"]
 # fast = ["pysad_kernels>=0.1.0"]  # Enable after pysad_kernels 0.1.0 is published on PyPI
 
 [project.scripts]
@@ -97,7 +97,7 @@ runtime = [
   "setuptools>=84.0.0,<85.0.0",
 ]
 mcp = [
-  "mcp==1.30.0",
+  "mcp==2.3.0",
 ]
 test = [
   # PandasStreamer takes DataFrames.

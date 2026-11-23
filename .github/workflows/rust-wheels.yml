@@ -2,16 +2,46 @@ name: Rust Wheels
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the built wheels to PyPI
+        required: true
+        default: false
+        type: boolean
   release:
     types: [published]
+  pull_request:
+    paths:
+      - "rust/**"
+      - ".github/workflows/rust-wheels.yml"
 
 permissions:
   contents: read
 
 jobs:
   build-wheels:
-    name: Build wheels with cibuildwheel
-    runs-on: ubuntu-latest
+    name: Build ${{ matrix.artifact }} wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            rust-targets: x86_64-unknown-linux-gnu
+            artifact: rust-wheels-linux-x86_64
+          - os: ubuntu-24.04-arm
+            arch: aarch64
+            rust-targets: aarch64-unknown-linux-gnu
+            artifact: rust-wheels-linux-aarch64
+          - os: macos-15-intel
+            arch: universal2
+            rust-targets: x86_64-apple-darwin aarch64-apple-darwin
+            artifact: rust-wheels-macos-universal2
+          - os: windows-latest
+            arch: AMD64
+            rust-targets: x86_64-pc-windows-msvc
+            artifact: rust-wheels-windows-amd64
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -19,6 +49,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Docker Buildx
+        if: runner.os == 'Linux'
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Build wheels with cibuildwheel
@@ -26,31 +57,38 @@ jobs:
         env:
           CIBW_BUILD: cp311-*
           CIBW_SKIP: "*-win32 *-musllinux_*"
-          CIBW_ARCHS: "auto"
-          CIBW_BEFORE_ALL: "rustup default stable && rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-pc-windows-msvc aarch64-pc-windows-msvc x86_64-apple-darwin aarch64-apple-darwin"
+          CIBW_ARCHS: ${{ matrix.arch }}
+          CIBW_BEFORE_ALL: "rustup default stable && rustup target add ${{ matrix.rust-targets }}"
+          CIBW_BEFORE_ALL_LINUX: "curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable && . \"$HOME/.cargo/env\" && rustup target add ${{ matrix.rust-targets }}"
           CIBW_ENVIRONMENT: "CARGO_NET_GIT_FETCH_WITH_CLI=true"
+          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
+          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=10.12"
           CIBW_PROJECT_DIR: "rust"
-          CIBW_MACOS_DEFAULT_ARCH: "universal2"
+          CIBW_TEST_COMMAND: 'python -c "import pysad_kernels"'
 
       - name: Upload wheels
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: rust-wheels
+          name: ${{ matrix.artifact }}
           path: rust/target/wheels/*.whl
 
   publish-rust:
     name: Publish Rust wheels to PyPI
     needs: build-wheels
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || inputs.publish
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    environment:
+      name: pypi-kernels
+      url: https://pypi.org/project/pysad-kernels/
     steps:
       - name: Download wheel artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: rust-wheels
+          pattern: rust-wheels-*
+          merge-multiple: true
           path: dist/
 
       - name: Show downloaded wheels

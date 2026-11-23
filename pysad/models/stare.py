@@ -7,6 +7,17 @@ from scipy.special import logsumexp
 
 from pysad.core.base_model import BaseModel
 
+__bibtex__ = r"""
+@inproceedings{yoon2020ultrafast,
+  title={Ultrafast Local Outlier Detection from a Data Stream with Stationary Region Skipping},
+  author={Yoon, Susik and Lee, Jae-Gil and Lee, Byung Suk},
+  booktitle={Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining},
+  pages={1181--1191},
+  year={2020},
+  doi={10.1145/3394486.3403171}
+}
+"""
+
 # The bandwidth of the reference implementation in a dimension where the kernel centers coincide with the point.
 _MIN_BANDWIDTH = 0.001
 

@@ -94,6 +94,27 @@ For transformed scores, you can pass the calibrator or postprocessor directly to
 
 The AUROC of the calibrated scores is lower than the AUROC of the raw scores (0.951 in :doc:`/getting_started`). In ``cardio``, the 176 anomalies are the last points of the file. The calibrator compares each score with recent scores. During this final run of anomalies, most of the recent scores are from anomalies too.
 
+Evaluate a calibrator on pre-computed scores
+--------------------------------------------
+
+If you already have the raw scores of a detector, use :func:`~pysad.evaluation.evaluate_postprocessor` to transform them through a calibrator prequentially and measure calibration quality with :class:`~pysad.evaluation.BrierScoreMetric`, :class:`~pysad.evaluation.ExpectedCalibrationErrorMetric`, or :class:`~pysad.evaluation.LogLossMetric`:
+
+.. code-block:: python
+
+   from pysad.evaluation import (
+       BrierScoreMetric,
+       ExpectedCalibrationErrorMetric,
+       evaluate_postprocessor,
+   )
+   from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+   calibrator = ConformalProbabilityCalibrator(window_size=50)
+   results = evaluate_postprocessor(
+       scores=raw_scores,
+       y=y,
+       metrics={"Brier": BrierScoreMetric(), "ECE": ExpectedCalibrationErrorMetric()},
+       postprocessor=calibrator,
+   )
 
 ``PrecisionMetric``, ``RecallMetric``, ``F1Metric``, ``BalancedAccuracyMetric`` and :class:`~pysad.evaluation.MatthewsCorrelationMetric` retain four confusion counts, giving constant update and read costs. ``AUROCMetric`` and ``AUPRMetric`` retain all labels and scores. Their ``get`` cost grows with the stream. Read them periodically or at the end.
 

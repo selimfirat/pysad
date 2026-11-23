@@ -125,3 +125,74 @@ def test_evaluation_config_defaults_and_fields():
         metrics=metrics,
     )
     assert config_with_cal.postprocessor is None
+
+
+@pytest.mark.parametrize(
+    "as_iterable",
+    [np.asarray, list, lambda values: (value for value in values)],
+    ids=["array", "list", "generator"],
+)
+def test_evaluate_postprocessor_matches_manual_loop(as_iterable):
+    from pysad.evaluation import (
+        AUROCMetric,
+        BrierScoreMetric,
+        ExpectedCalibrationErrorMetric,
+        evaluate_postprocessor,
+    )
+    from pysad.models import LODA
+    from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(200, 3))
+    y = np.zeros(200, dtype=int)
+    y[::20] = 1
+    X[y == 1] += 5
+
+    model = LODA(random_state=0)
+    raw_scores = np.array([float(model.fit_score_partial(x)) for x in X])
+
+    calibrator = ConformalProbabilityCalibrator(window_size=50)
+    results = evaluate_postprocessor(
+        scores=as_iterable(raw_scores),
+        y=as_iterable(y),
+        metrics={
+            "AUROC": AUROCMetric(),
+            "Brier": BrierScoreMetric(),
+            "ECE": ExpectedCalibrationErrorMetric(),
+        },
+        postprocessor=calibrator,
+    )
+
+    model = LODA(random_state=0)
+    calibrator = ConformalProbabilityCalibrator(window_size=50)
+    auroc, brier, ece = AUROCMetric(), BrierScoreMetric(), ExpectedCalibrationErrorMetric()
+    for x, label in zip(X, y, strict=True):
+        score = model.fit_score_partial(x)
+        calibrated = calibrator.fit_transform_partial(score)
+        auroc.update(label, calibrated)
+        brier.update(label, calibrated)
+        ece.update(label, calibrated)
+
+    assert results == {
+        "AUROC": auroc.get(),
+        "Brier": brier.get(),
+        "ECE": ece.get(),
+    }
+    assert results["AUROC"] > 0.5
+    assert 0.0 <= results["Brier"] <= 1.0
+    assert 0.0 <= results["ECE"] <= 1.0
+
+
+def test_evaluate_postprocessor_rejects_length_mismatch():
+    from pysad.evaluation import AUROCMetric, evaluate_postprocessor
+    from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+    scores = np.zeros(5)
+    y = np.zeros(3, dtype=int)
+    with pytest.raises(ValueError):
+        evaluate_postprocessor(
+            scores=scores,
+            y=y,
+            metrics={"AUROC": AUROCMetric()},
+            postprocessor=ConformalProbabilityCalibrator(),
+        )

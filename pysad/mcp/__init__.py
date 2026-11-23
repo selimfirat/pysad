@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
-mcp_server: FastMCP | None
+mcp_server: MCPServer | None
 
 try:
     from .server import (

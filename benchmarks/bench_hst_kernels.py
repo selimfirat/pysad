@@ -16,6 +16,7 @@ import importlib.machinery
 import importlib.util
 import sys
 import time
+import tracemalloc
 from collections.abc import Callable
 from importlib import import_module
 from pathlib import Path
@@ -102,6 +103,20 @@ def _time_calls(call: Callable[[], None], repeats: int, num_points: int) -> floa
     return median(durations) * 1000.0 / num_points
 
 
+def _measure_memory(call: Callable[[], None], repeats: int) -> tuple[float, float]:
+    """Return the median current and peak memory in MiB across repeats."""
+    current_samples = []
+    peak_samples = []
+    for _ in range(repeats):
+        tracemalloc.start()
+        call()
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        current_samples.append(current / (1024 * 1024))
+        peak_samples.append(peak / (1024 * 1024))
+    return median(current_samples), median(peak_samples)
+
+
 def run_benchmark(
     num_features: int = 10,
     num_trees: int = 25,
@@ -111,7 +126,7 @@ def run_benchmark(
     seed: int = 42,
     extension: Path | None = None,
 ) -> dict[str, float]:
-    """Run the traversal benchmark and return the timing results.
+    """Run the traversal benchmark and return the timing and memory results.
 
     Args:
         num_features: The number of features in each point.
@@ -123,8 +138,8 @@ def run_benchmark(
         extension: Optional path to a compiled extension.
 
     Returns:
-        A mapping with the NumPy time, Rust time, and speedup in milliseconds
-        and times.
+        A mapping with the NumPy time, Rust time, speedup, and memory usage
+        in milliseconds and MiB.
 
     Raises:
         RuntimeError: If the Rust and NumPy paths differ.
@@ -160,10 +175,24 @@ def run_benchmark(
 
     numpy_ms = _time_calls(run_numpy, repeats, num_points)
     rust_ms = _time_calls(run_rust, repeats, num_points)
+
+    numpy_current_mib, numpy_peak_mib = _measure_memory(run_numpy, repeats)
+    rust_current_mib, rust_peak_mib = _measure_memory(run_rust, repeats)
+
     return {
         "numpy_ms_per_point": numpy_ms,
         "rust_ms_per_point": rust_ms,
         "speedup": numpy_ms / rust_ms,
+        "numpy_current_mib": numpy_current_mib,
+        "numpy_peak_mib": numpy_peak_mib,
+        "rust_current_mib": rust_current_mib,
+        "rust_peak_mib": rust_peak_mib,
+        "memory_speedup_current": numpy_current_mib / rust_current_mib
+        if rust_current_mib > 0
+        else float("inf"),
+        "memory_speedup_peak": numpy_peak_mib / rust_peak_mib
+        if rust_peak_mib > 0
+        else float("inf"),
     }
 
 
@@ -182,12 +211,21 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Path to a compiled pysad_kernels extension",
     )
+    parser.add_argument(
+        "--numpy-only",
+        action="store_true",
+        help="Run only the NumPy path (skip Rust extension check)",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     """Run the benchmark command."""
     args = _parse_args()
+
+    if args.numpy_only:
+        return _run_numpy_only(args)
+
     try:
         results = run_benchmark(
             num_features=args.features,
@@ -202,7 +240,8 @@ def main() -> int:
         print(f"Rust extension is not available: {error}", file=sys.stderr)
         print(
             "If the Rust extension is not available, run "
-            "`cargo build --manifest-path rust/Cargo.toml --release`.",
+            "`cargo build --manifest-path rust/Cargo.toml --release` "
+            "or use --numpy-only to test NumPy path alone.",
             file=sys.stderr,
         )
         return 2
@@ -215,7 +254,40 @@ def main() -> int:
     print(f"NumPy traversal: {results['numpy_ms_per_point']:.6f} ms/point")
     print(f"Rust traversal: {results['rust_ms_per_point']:.6f} ms/point")
     print(f"Speedup: {results['speedup']:.2f}x")
+    print(f"NumPy memory (current): {results['numpy_current_mib']:.3f} MiB")
+    print(f"NumPy memory (peak): {results['numpy_peak_mib']:.3f} MiB")
+    print(f"Rust memory (current): {results['rust_current_mib']:.3f} MiB")
+    print(f"Rust memory (peak): {results['rust_peak_mib']:.3f} MiB")
+    print(f"Memory speedup (current): {results['memory_speedup_current']:.2f}x")
+    print(f"Memory speedup (peak): {results['memory_speedup_peak']:.2f}x")
     print("Paths match: yes")
+    return 0
+
+
+def _run_numpy_only(args: argparse.Namespace) -> int:
+    """Run benchmark with NumPy path only."""
+    model = _create_model(args.features, args.trees, args.depth, args.seed)
+    rng = np.random.default_rng(args.seed)
+    points = rng.random((args.points, args.features), dtype=np.float64)
+
+    def run_numpy() -> None:
+        for point in points:
+            model._path_numpy(point)
+
+    for point in points[:10]:
+        model._path_numpy(point)
+
+    numpy_ms = _time_calls(run_numpy, args.repeats, args.points)
+    numpy_current_mib, numpy_peak_mib = _measure_memory(run_numpy, args.repeats)
+
+    print(f"Features: {args.features}")
+    print(f"Trees: {args.trees}")
+    print(f"Depth: {args.depth}")
+    print(f"Points per run: {args.points}")
+    print(f"Timing runs: {args.repeats}")
+    print(f"NumPy traversal: {numpy_ms:.6f} ms/point")
+    print(f"NumPy memory (current): {numpy_current_mib:.3f} MiB")
+    print(f"NumPy memory (peak): {numpy_peak_mib:.3f} MiB")
     return 0
 
 

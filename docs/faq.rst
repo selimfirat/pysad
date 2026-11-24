@@ -120,7 +120,7 @@ A common fix is to repeat the last known value of each feature:
        last = x
        score = model.fit_score_partial(x)
 
-See :doc:`guides/production`.
+See :doc:`guides/troubleshooting` for NaN and infinite values, and :doc:`guides/production` for keeping the input clean.
 
 How do I use categorical features?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -197,12 +197,12 @@ Some detectors give 0 by design, during a warm-up or for every point that is not
 - :class:`~pysad.models.RelativeEntropy` gives only 0 or 1. It gives 1 only when the values of the window have a new distribution.
 - :class:`~pysad.models.LocalOutlierProbability` gives a probability, which is often exactly 0 for normal points.
 
-If another detector gives only 0, look at the input. For example, :class:`~pysad.models.StandardAbsoluteDeviation` gives 0 when all values are the same. See :doc:`detectors`.
+If another detector gives only 0, look at the input. For example, :class:`~pysad.models.StandardAbsoluteDeviation` gives 0 when all values are the same. See :doc:`guides/troubleshooting` and :doc:`detectors`.
 
 Why are the first scores unstable?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A detector learns from the stream itself, so it knows little at the start. Skip a warm-up period before you raise alerts, for example the first 200 points. Or fit the detector to historical data before the stream starts. To see the warm-up in a metric, measure each window of the stream separately. See :doc:`guides/evaluate`.
+A detector learns from the stream itself, so it knows little at the start. Skip a warm-up period before you raise alerts, for example the first 200 points. Or fit the detector to historical data before the stream starts. To see the warm-up in a metric, measure each window of the stream separately. See :doc:`guides/troubleshooting` and :doc:`guides/evaluate`.
 
 .. _faq-evaluation:
 

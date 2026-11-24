@@ -171,7 +171,7 @@ The initial learning period is called warm-up. Full-stream metrics include it. T
 Warm-up behavior of selected detectors
 --------------------------------------
 
-Each detector has a warm-up period before it produces meaningful scores. During warm-up, ``score_partial`` and ``fit_score_partial`` return a fixed value (usually 0.0 or 0.5) that does not reflect anomalousness.
+Each detector has a warm-up period before it produces meaningful scores. During warm-up, ``score_partial`` and ``fit_score_partial`` return a fixed value (usually 0.0 or 0.5) that does not reflect anomalousness. See :doc:`guides/troubleshooting` for how to handle the cold start.
 
 - :class:`~pysad.models.HTM`: The anomaly likelihood is 0.5 for the first ``probationary_period`` points (default 750). The raw anomaly score (fraction of unpredicted columns) is available immediately if ``likelihood=False``. Spatial anomalies (values outside the observed range by more than 5%) return 1.0 at any time.
 - :class:`~pysad.models.IDKS`: Returns 0.0 until the first window of ``window_size`` points (default 100) is full. After the window fills, the hypersphere partitions are initialized and scores reflect similarity to the window distribution.

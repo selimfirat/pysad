@@ -213,3 +213,41 @@ def test_rolling_precision_mixed_batch_and_single_updates():
     metric.update(0, 0.2)  # TN -> evicts oldest (1, 0.7) TP
     # Window: (0, 0.2) TN, (0, 0.6) FP, (0, 0.1) TN, (0, 0.2) TN -> TP=0, FP=1 -> prec = 0/1 = 0.0
     assert metric.get() == pytest.approx(0.0)
+
+
+def test_mixed_batch_and_single_updates():
+    from pysad.evaluation import PrecisionMetric, RollingMetric
+
+    metric = RollingMetric(
+        PrecisionMetric,
+        window_size=3,
+        threshold=0.5,
+    )
+
+    # Stage 1: Start with individual updates.
+    metric.update(1, 0.9)
+    assert metric.get() == pytest.approx(1.0)
+
+    metric.update(0, 0.8)
+    assert metric.get() == pytest.approx(0.5)
+
+    # Stage 2: Add a short batch.
+    metric.update_batch(
+        [1, 1],
+        [0.2, 0.7],
+    )
+    assert metric.get() == pytest.approx(0.5)
+
+    # Stage 3: Replace the window with a larger batch.
+    metric.update_batch(
+        [0, 1, 0, 1],
+        [0.9, 0.8, 0.1, 0.9],
+    )
+    assert metric.get() == pytest.approx(1.0)
+
+    # Stage 4: Resume individual updates.
+    metric.update(0, 0.7)
+    assert metric.get() == pytest.approx(0.5)
+
+    metric.update(1, 0.1)
+    assert metric.get() == pytest.approx(0.5)

@@ -22,6 +22,7 @@ _SHARED_MODEL_TEST_FILES = frozenset(
         ".github/workflows/coverage.yml",
         "tests/models/conftest.py",
         "tests/models/test_discrimination.py",
+        "tests/models/test_edge_cases.py",
         "tests/models/test_models.py",
         "tests/models/test_nan_input.py",
         "tests/models/test_pickling.py",

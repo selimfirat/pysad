@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.spatial.distance import cdist
 from sklearn.cluster import KMeans
 from sklearn.utils import check_random_state
@@ -50,19 +51,19 @@ class MiLOF(IncrementalLOF):
         # each summary continues the same random stream.
         self._rng = check_random_state(random_state)
         # The cluster centers summarizing older points, and the number of raw points each center represents.
-        self.centers_: np.ndarray | None = None
-        self.center_weights_: np.ndarray | None = None
-        self.center_k_dists_: np.ndarray | None = None
-        self.center_reach_dists_: np.ndarray | None = None
+        self.centers_: NDArray[np.float64] | None = None
+        self.center_weights_: NDArray[np.float64] | None = None
+        self.center_k_dists_: NDArray[np.float64] | None = None
+        self.center_reach_dists_: NDArray[np.float64] | None = None
         # The previous summary, used to merge with the new one.
-        self._prev_centers: np.ndarray | None = None
-        self._prev_weights: np.ndarray | None = None
-        self._prev_k_dists: np.ndarray | None = None
-        self._prev_reach_dists: np.ndarray | None = None
+        self._prev_centers: NDArray[np.float64] | None = None
+        self._prev_weights: NDArray[np.float64] | None = None
+        self._prev_k_dists: NDArray[np.float64] | None = None
+        self._prev_reach_dists: NDArray[np.float64] | None = None
         # The number of completed summarization steps. The first step has no previous summary to merge.
         self._merge_step = 0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> MiLOF:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> MiLOF:
         """Inserts the instance into the window, and summarizes the oldest half into cluster centers when the window is full.
 
         Args:
@@ -77,7 +78,7 @@ class MiLOF(IncrementalLOF):
             self._summarize_and_merge()
         return self
 
-    def _candidate_matrix(self) -> np.ndarray:
+    def _candidate_matrix(self) -> NDArray[np.float64]:
         """The candidate neighbor set: the cluster centers followed by the raw points in the window.
 
         Centers occupy the combined indices ``[0, num_centers)`` and are stable across insertions,
@@ -91,7 +92,7 @@ class MiLOF(IncrementalLOF):
     def _num_centers(self) -> int:
         return 0 if self.centers_ is None else self.centers_.shape[0]
 
-    def _k_dist_of(self, combined: np.ndarray) -> np.ndarray:
+    def _k_dist_of(self, combined: NDArray[np.intp]) -> NDArray[np.float64]:
         """The k-distance of each combined neighbor index: a center's k-distance, or a raw point's."""
         c = self._num_centers()
         out = np.empty(combined.shape, dtype=np.float64)
@@ -103,7 +104,7 @@ class MiLOF(IncrementalLOF):
             out[~is_center] = self.k_dists_[combined[~is_center] - c]
         return out
 
-    def _update_neighbors(self, idx: np.ndarray, exclude: int | None = None) -> None:
+    def _update_neighbors(self, idx: NDArray[np.intp], exclude: int | None = None) -> None:
         # Recomputes the k nearest neighbors of the raw points in slots idx against the cluster
         # centers and the raw points, so centers stay candidate neighbors of the kept points.
         c = self._num_centers()
@@ -117,13 +118,13 @@ class MiLOF(IncrementalLOF):
         self.neighbor_dists_[idx] = np.take_along_axis(dists, neighbors, axis=1)
         self.k_dists_[idx] = self.neighbor_dists_[idx].max(axis=1)
 
-    def _update_reach_dists(self, idx: np.ndarray) -> None:
+    def _update_reach_dists(self, idx: NDArray[np.intp]) -> None:
         # reach-dist(q, o) = max(k-distance(o), d(q, o)) for each neighbor o of q; a center's
         # k-distance is its stored center k-distance.
         reach = np.maximum(self._k_dist_of(self.neighbors_[idx]), self.neighbor_dists_[idx])
         self.reach_dists_[idx] = reach.mean(axis=1)
 
-    def _reverse_neighbors(self, updated: np.ndarray) -> np.ndarray:
+    def _reverse_neighbors(self, updated: NDArray[np.intp]) -> NDArray[np.intp]:
         # The raw points whose lrd changes when the k-distances of `updated` change: `updated`,
         # and each raw neighbor q of an updated point o that has o as a neighbor too. Cluster
         # centers have no neighbor list of their own and are never updated, so they are not
@@ -174,11 +175,13 @@ class MiLOF(IncrementalLOF):
             n_init=10,
         ).fit(old)
         labels = km.labels_
-        centers = km.cluster_centers_
-        weights = np.bincount(labels, minlength=self.num_summaries).astype(np.float64)
+        centers: NDArray[np.float64] = km.cluster_centers_
+        weights: NDArray[np.float64] = np.bincount(labels, minlength=self.num_summaries).astype(
+            np.float64
+        )
 
-        k_dists = np.empty(self.num_summaries)
-        reach_dists = np.empty(self.num_summaries)
+        k_dists: NDArray[np.float64] = np.empty(self.num_summaries)
+        reach_dists: NDArray[np.float64] = np.empty(self.num_summaries)
         fallback_k = self.k_dists_[:half].mean()
         fallback_r = self.reach_dists_[:half].mean()
         for j in range(self.num_summaries):
@@ -223,11 +226,11 @@ class MiLOF(IncrementalLOF):
 
     def _merge(
         self,
-        centers: np.ndarray,
-        weights: np.ndarray,
-        k_dists: np.ndarray,
-        reach_dists: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        centers: NDArray[np.float64],
+        weights: NDArray[np.float64],
+        k_dists: NDArray[np.float64],
+        reach_dists: NDArray[np.float64],
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         # Merges the current and previous summaries with weighted c-means, minimizing the weighted
         # squared distance to the merged centers. The weight of a center is the number of raw points
         # it represents (Equation 10 and 11 of the paper). A merged center's lrd is the weighted
@@ -279,7 +282,7 @@ class MiLOF(IncrementalLOF):
                 new_reach_dists[j] = reach_dists[j]
         return merged, new_weights, new_k_dists, new_reach_dists
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the instance by its LOF against the current raw points and cluster centers, without inserting it.
 
         Args:

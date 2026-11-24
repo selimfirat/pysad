@@ -17,7 +17,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.768
+   AUROC: 0.773
 
 Score a stream with LODA
 ------------------------
@@ -31,7 +31,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.946
+   AUROC: 0.936
 
 Score a stream with HalfSpaceTrees
 ----------------------------------
@@ -73,7 +73,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.878
+   AUROC: 0.930
 
 Score a synthetic stream
 ------------------------
@@ -88,6 +88,80 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.867
+
+Explore anomaly types in a synthetic stream
+--------------------------------------------
+
+This script shows how the parameters of :func:`~pysad.utils.generate_stream` control point anomalies, bursts and drifts. It prints the anomaly counts and groupings for each configuration.
+
+.. literalinclude:: ../examples/example_generate_stream_anomaly_types.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   === Default stream (points, bursts, drift) ===
+   Default: 2000 instances, 2 features
+     Normal: 1850, Anomalies: 150
+     Anomaly indices: [283 362 402 657 706 711 712 713 714 715]...
+     Max gap between anomalies: 430
+     Number of anomaly groups: 13
+   === Only point anomalies ===
+   Points only: 2000 instances, 2 features
+     Normal: 1980, Anomalies: 20
+     Anomaly indices: [229 267 364 378 409 488 508 619 711 854]...
+     Max gap between anomalies: 404
+     Number of anomaly groups: 20
+   === Only burst anomalies ===
+   Bursts only: 2000 instances, 2 features
+     Normal: 1925, Anomalies: 75
+     Anomaly indices: [402 403 404 405 406 407 408 409 410 411]...
+     Max gap between anomalies: 295
+     Number of anomaly groups: 5
+   === Only drift anomalies ===
+   Drifts only: 2000 instances, 2 features
+     Normal: 1760, Anomalies: 240
+     Anomaly indices: [711 712 713 714 715 716 717 718 719 720]...
+     Max gap between anomalies: 256
+     Number of anomaly groups: 3
+   === Higher magnitude anomalies ===
+   High magnitude: 2000 instances, 2 features
+     Normal: 1850, Anomalies: 150
+     Anomaly indices: [283 362 402 657 706 711 712 713 714 715]...
+     Max gap between anomalies: 430
+     Number of anomaly groups: 13
+   === More features ===
+   10 features: 2000 instances, 10 features
+     Normal: 1850, Anomalies: 150
+     Anomaly indices: [241 284 285 286 287 288 289 290 291 292]...
+     Max gap between anomalies: 281
+     Number of anomaly groups: 13
+   === Longer stream ===
+   10000 instances: 10000 instances, 2 features
+     Normal: 9850, Anomalies: 150
+     Anomaly indices: [1123 2696 2911 3957 5391 6174 6175 6176 6177 6178]...
+     Max gap between anomalies: 1573
+     Number of anomaly groups: 13
+
+Compare detectors on a synthetic stream
+-----------------------------------------
+
+This script runs several detectors on the same synthetic stream and prints their AUROC scores.
+
+.. literalinclude:: ../examples/example_generate_stream_detectors.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Comparing detectors on synthetic stream:
+   Stream: 2000 instances, 2 features, 150 anomalies
+                LODA: AUROC 0.869
+             xStream: AUROC 0.841
+       HalfSpaceTrees: AUROC 0.870
+             RSForest: AUROC 0.634
 
 Integrate a one-dimensional stream
 ----------------------------------
@@ -110,7 +184,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.789
+   AUROC: 0.794
 
 Give a detector the recent history
 ----------------------------------
@@ -124,7 +198,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.627
+   AUROC: 0.546
 
 Build a full pipeline
 ---------------------
@@ -219,6 +293,27 @@ It prints:
    F1: 0.252
    Windowed AUROC: 0.756
 
+Migrate from ADTK to PySAD evaluation
+-------------------------------------
+
+ADTK validates a whole series and runs ``fit_detect`` on it, then summarizes
+anomalies after the run. PySAD scores each point when it arrives, then learns
+from it, and evaluates prequentially with
+:func:`~pysad.evaluation.evaluate_stream`. This script shows the PySAD
+equivalent of ADTK's ``summarize_anomalies``: score a stream with several
+metrics and export the results with
+:func:`~pysad.evaluation.export_report`.
+
+.. literalinclude:: ../examples/example_migrate_adtk.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.936
+   AUPR: 0.610
+
 Raise alerts with a calibrator
 ------------------------------
 
@@ -231,7 +326,7 @@ It prints:
 
 .. code-block:: text
 
-   27 alerts, 17 of them true anomalies
+   26 alerts, 16 of them true anomalies
 
 Label scores with a fixed threshold
 -----------------------------------
@@ -245,7 +340,7 @@ It prints:
 
 .. code-block:: text
 
-   Precision: 0.656, recall: 0.318
+   Precision: 0.625, recall: 0.303
 
 Raise alerts at a chosen risk
 -----------------------------
@@ -259,8 +354,8 @@ It prints:
 
 .. code-block:: text
 
-   32 alerts, 27 of them true anomalies
-   alarm threshold on the raw scores: 3.013
+   40 alerts, 30 of them true anomalies
+   alarm threshold on the raw scores: 2.937
 
 Raise alerts with the anomaly likelihood
 ----------------------------------------
@@ -312,7 +407,7 @@ It prints:
 
 .. code-block:: text
 
-   Precision: 0.381, recall: 0.636
+   Precision: 0.338, recall: 0.597
 
 Postprocess scores
 ------------------
@@ -340,7 +435,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.817
+   AUROC: 0.819
 
 Explain an anomaly
 ------------------
@@ -354,7 +449,7 @@ It prints:
 
 .. code-block:: text
 
-   Score: 3.46
+   Score: 2.81
    Features by contribution: [2, 5, 0, 1, 4, 3, 7, 6]
 
 Run a PyOD model
@@ -552,7 +647,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.739
+   AUROC: 0.760
 
 Use an incremental distributional kernel detector
 -------------------------------------------------
@@ -640,6 +735,20 @@ It prints:
 .. code-block:: text
 
    AUROC: 0.651
+
+Use a distance-based detector
+-----------------------------
+
+This script scores each point with MCOD. MCOD keeps the last ``window_size`` points and scores each point by the fraction of them that are not its neighbors, that is, farther than the radius. It groups the window into micro-clusters to compute fewer distances, so it gives the same scores as :class:`~pysad.models.ExactStorm`. With ``max_radius=None``, the first ``calibration_size`` points set the radius.
+
+.. literalinclude:: ../examples/example_mcod.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   AUROC: 0.843
 
 Use an online isolation forest
 ------------------------------
@@ -806,7 +915,7 @@ It prints:
 
 .. code-block:: text
 
-   AUROC: 0.751
+   AUROC: 0.770
 
 Track running statistics
 ------------------------
@@ -952,5 +1061,73 @@ MemStream trains a denoising autoencoder on a small normal calibration block, th
 
 .. literalinclude:: ../examples/example_memstream.py
    :language: python
+
+Kafka/Redpanda consumer worker
+------------------------------
+
+This recipe shows a streaming anomaly detection worker that consumes JSON messages from a Kafka or Redpanda topic, scores each point with LODA before learning from it, and periodically checkpoints the model state to disk using pickle (zero external dependencies). It resumes from the latest checkpoint on restart. If Kafka is not available, it falls back to a synthetic stream so it runs anywhere for demonstration.
+
+.. literalinclude:: ../examples/example_kafka_consumer.py
+   :language: python
+
+It prints (when Kafka is unavailable and the synthetic fallback runs):
+
+.. code-block:: text
+
+   No checkpoint found, starting fresh.
+   Kafka not available (confluent-kafka not installed or brokers unreachable).
+   Running synthetic stream with 1000 points...
+     [100] score=1.6280 label=0 AUROC=N/A (single class so far)
+     [200] score=1.6046 label=0 AUROC=N/A (single class so far)
+     [300] score=2.2207 label=0 AUROC=N/A (single class so far)
+     [400] score=1.5719 label=0 AUROC=0.989
+     [500] score=1.8456 label=1 AUROC=0.753
+     [600] score=1.4624 label=0 AUROC=0.819
+     [700] score=3.2501 label=1 AUROC=0.818
+     [800] score=1.8571 label=0 AUROC=0.835
+     [900] score=2.1205 label=0 AUROC=0.837
+   [1000] score=2.1387 label=0 AUROC=0.839
+    Finished synthetic stream. Final AUROC: 0.839
+
+Benchmark a custom model
+------------------------
+
+This script defines a custom streaming detector as a subclass of
+:class:`~pysad.core.BaseModel` and runs it through the benchmark runner. The runner loads the
+detector from ``path.py:ClassName`` with ``--custom`` and scores it on the datasets whose part
+matches its input kind. See :doc:`/benchmarks/run` for the full usage, including the constructor
+arguments the runner fills in automatically.
+
+.. literalinclude:: ../examples/example_custom_model_benchmark.py
+   :language: python
+
+Load a NASA SMAP or MSL telemetry channel
+-----------------------------------------
+
+This script loads the test half of a SMAP satellite channel and of an MSL rover channel from the NASA telemetry of Telemanom, then scores each point in its original time order. The labels come from the labeled anomaly ranges of Telemanom, where points in an anomaly range have the label 1. SMAP has 54 channels with 25 features, and MSL has 27 channels with 55 features.
+
+.. literalinclude:: ../examples/example_smap_msl.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   SMAP P-1: points=8505, features=25, anomalies=751
+   MSL M-1: points=2277, features=55, anomalies=1141
+
+Load an SMD machine stream
+--------------------------
+
+This script loads the test half of machine 1 of group 1 of the Server Machine Dataset (SMD) and streams each point in its original time order. SMD has 28 machines across three groups, each point has 38 features, and one point arrives per minute.
+
+.. literalinclude:: ../examples/example_smd.py
+   :language: python
+
+It prints:
+
+.. code-block:: text
+
+   Points: 28479, features: 38, anomalies: 2694
 
 .. auto-examples::

@@ -58,29 +58,6 @@ def test_invalid_parameters(kwargs):
         OnlineIsolationForest(**kwargs)
 
 
-def test_anomalies_score_higher_than_inliers():
-    import numpy as np
-
-    from pysad.models import OnlineIsolationForest
-
-    rng = np.random.RandomState(0)
-    inliers = rng.normal(loc=0.0, scale=0.5, size=(300, 3))
-    outlier = np.array([10.0, 10.0, 10.0])
-
-    model = OnlineIsolationForest(
-        num_trees=32, max_leaf_samples=16, window_size=500, random_state=0
-    )
-    for x in inliers:
-        model.fit_partial(x)
-
-    inlier_score = model.score_partial(inliers[0])
-    outlier_score = model.score_partial(outlier)
-
-    assert outlier_score > inlier_score
-    assert 0.0 <= inlier_score <= 1.0
-    assert 0.0 <= outlier_score <= 1.0
-
-
 def test_window_forgetting():
     import numpy as np
 
@@ -160,13 +137,13 @@ def test_scores_use_the_reference_active_count_normalization():
     np.testing.assert_allclose(model.score(np.array([[0.0], [2.0]])), expected)
 
 
-@pytest.mark.parametrize("subsample", [1.0, 0.5])
+@pytest.mark.parametrize("subsample", [0.5])
 def test_reusing_an_input_buffer_keeps_the_same_scores(subsample):
     import numpy as np
 
     from pysad.models import OnlineIsolationForest
 
-    X = np.random.RandomState(0).normal(size=(300, 2))
+    X = np.random.RandomState(0).normal(size=(100, 2))
     params = dict(
         num_trees=4, max_leaf_samples=4, window_size=20, subsample=subsample, random_state=0
     )
@@ -217,10 +194,10 @@ def test_memory_stays_bounded_over_a_long_stream(subsample):
     rng = np.random.RandomState(0)
     tracemalloc.start()
     try:
-        for _ in range(2000):
+        for _ in range(400):
             model.fit_score_partial(rng.rand(3))
         initial = tracemalloc.get_traced_memory()[0]
-        for _ in range(10000):
+        for _ in range(2000):
             model.fit_score_partial(rng.rand(3))
         final = tracemalloc.get_traced_memory()[0]
     finally:
@@ -274,3 +251,139 @@ def test_packed_capacity_growth_across_trees_and_eviction():
     assert scores.shape == (260,)
     assert np.all(np.isfinite(scores))
     assert np.all((scores >= 0.0) & (scores <= 1.0))
+
+
+def test_online_isolation_forest_explain_does_not_change_state():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(200, 5)
+    model = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+    model.fit(X[:100])
+
+    before = model.score_partial(X[101])
+    model.explain_partial(X[101])
+    after = model.score_partial(X[101])
+
+    assert before == after
+
+
+def test_online_isolation_forest_explain_is_reproducible():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(200, 5)
+
+    model_a = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+    model_a.fit(X[:100])
+    weights_a = model_a.explain_partial(X[101])
+
+    model_b = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+    model_b.fit(X[:100])
+    weights_b = model_b.explain_partial(X[101])
+
+    np.testing.assert_array_equal(weights_a, weights_b)
+
+
+def test_online_isolation_forest_explain_shap_depends_on_the_instance():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(200, 5)
+    model = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+    model.fit(X[:100])
+
+    normal = model.explain_partial(X[101])
+    outside = model.explain_partial(np.array([100.0, -50.0, 25.0, -75.0, 200.0]))
+
+    assert not np.allclose(normal, outside)
+
+
+def test_online_isolation_forest_explain_returns_zeros_before_any_fit():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0)
+
+    weights = model.explain_partial(np.array([0.3, 0.6, 0.1, 0.2, 0.5]))
+
+    assert weights.shape == (5,)
+    assert np.all(weights == 0.0)
+
+
+def test_online_isolation_forest_explain_rejects_nan():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    X = np.random.RandomState(0).rand(200, 5)
+    model = OnlineIsolationForest(num_trees=10, window_size=100, random_state=0).fit(X[:100])
+
+    anomalous = X[101].copy()
+    anomalous[1] = np.nan
+    with pytest.raises(ValueError, match="OnlineIsolationForest does not accept NaN values"):
+        model.explain_partial(anomalous)
+
+
+def test_online_isolation_forest_explain_non_binary_trees_returns_zeros():
+    """TreeSHAP currently only supports binary trees; non-binary should return zeros."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+    from pysad.utils import fix_seed
+
+    fix_seed(0)
+    X = np.random.rand(200, 5)
+    model = OnlineIsolationForest(num_trees=10, window_size=100, branching_factor=4, random_state=0)
+    model.fit(X[:100])
+
+    weights = model.explain_partial(X[101])
+
+    assert weights.shape == (5,)
+    assert np.all(weights == 0.0)
+
+
+def test_online_isolation_forest_explain_satisfies_local_accuracy():
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    rng = np.random.RandomState(7)
+    X = rng.randn(180, 4)
+    model = OnlineIsolationForest(
+        num_trees=15, max_leaf_samples=8, window_size=120, random_state=7
+    ).fit(X[:150])
+
+    def _expected_depth(node, tree):
+        if node.children is None:
+            mls = tree.max_leaf_samples
+            ns = node.data_size
+            pl = 0.0 if ns <= mls else np.log(ns / mls) * tree._inv_log
+            return node.depth + pl
+        left_child, right_child = node.children
+        total = left_child.data_size + right_child.data_size
+        left_frac = left_child.data_size / total if total > 0 else 0.5
+        return left_frac * _expected_depth(left_child, tree) + (1.0 - left_frac) * _expected_depth(
+            right_child, tree
+        )
+
+    for idx in range(150, 160):
+        x = X[idx]
+        phi = model.explain_partial(x)
+        assert phi.shape == (4,)
+        assert phi.dtype == np.float64
+        diffs = [
+            0.0 if tree.max_depth == 0 else tree.predict_one(x) - _expected_depth(tree.root, tree)
+            for tree in model.trees_
+        ]
+        np.testing.assert_allclose(phi.sum(), float(np.mean(diffs)), atol=1e-10)

@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from pysad.utils import _iterate
+from pysad.core._iterate import _iterate
 
 
 class BaseTransformer(ABC):
@@ -98,7 +98,36 @@ class BaseTransformer(ABC):
         return self._transform_all(X, self.fit_transform_partial)
 
     def __or__(self, other: BaseTransformer) -> _TransformerChain:
-        """Chains this transformer with another transformer."""
+        """Compose two transformers into a left-to-right processing chain.
+
+        The ``|`` operator creates a sequential chain. Each transformer
+        receives the output of the preceding transformer.
+
+        Calling ``transform`` applies each step in order without fitting.
+        Calling ``fit`` fits each step in order: all steps except the last
+        are fitted and used to transform the data before the next step
+        is fitted. The last step is fitted on the transformed data.
+
+        Calling ``fit_transform`` fits and transforms each step in order,
+        passing each transformed output to the next step.
+
+        The partial methods follow the same left-to-right order for a
+        single input vector. ``transform_partial`` transforms without
+        fitting. ``fit_partial`` fits each preceding step and transforms
+        its output before fitting the final step. ``fit_transform_partial``
+        fits and transforms every step.
+
+        For example, with existing transformer instances ``first`` and
+        ``second``, ``(first | second).fit_transform(X)`` fits and
+        transforms the data through both transformers in order.
+
+        Args:
+            other (BaseTransformer): Transformer to apply after this one.
+
+        Returns:
+            _TransformerChain: A sequential composition of transformers.
+        """
+
         if isinstance(other, BaseTransformer):
             left = self.steps if isinstance(self, _TransformerChain) else (self,)
             right = other.steps if isinstance(other, _TransformerChain) else (other,)

@@ -1,3 +1,6 @@
+.. meta::
+   :description: Prequential benchmarks for 50+ streaming anomaly detectors across 17 ODDS datasets, 8 real drift streams, all 58 NAB series, UCR archive, and dimensionality scaling.
+
 Benchmark results
 =================
 

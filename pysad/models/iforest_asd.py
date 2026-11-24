@@ -5,7 +5,7 @@ import numbers
 from typing import Any, ClassVar
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 from sklearn.ensemble import IsolationForest
 
 from pysad.integrations.reference_window_model import ReferenceWindowModel
@@ -27,7 +27,7 @@ def _check_drift_threshold(drift_threshold: float | None) -> None:
         )
 
 
-def _average_path_length(n_samples_leaf: np.ndarray) -> np.ndarray:
+def _average_path_length(n_samples_leaf: NDArray[np.float64]) -> NDArray[np.float64]:
     """Average path length of an unsuccessful BST search, matching scikit-learn."""
     n = np.asarray(n_samples_leaf, dtype=np.float64)
     out = np.zeros_like(n)
@@ -38,7 +38,7 @@ def _average_path_length(n_samples_leaf: np.ndarray) -> np.ndarray:
     return out
 
 
-class _IsolationForest(IsolationForest):
+class _IsolationForest(IsolationForest):  # type: ignore[misc]
     _higher_is_anomalous = True
 
     def fit(
@@ -116,7 +116,7 @@ class _IsolationForest(IsolationForest):
             raw = 2.0 ** (-d_sum / self._denom)
         return float(-((-raw) - self.offset_))
 
-    def decision_function(self, X: ArrayLike) -> np.ndarray:
+    def decision_function(self, X: ArrayLike) -> NDArray[np.float64]:
         X32 = np.asarray(X, dtype=np.float32)
         if X32.ndim == 1:
             X32 = X32.reshape(1, -1)
@@ -155,9 +155,10 @@ class _IsolationForest(IsolationForest):
             dtype=np.float64,
             count=n_samples,
         )
-        return -((-raw) - self.offset_)
+        scores: NDArray[np.float64] = -((-raw) - self.offset_)
+        return scores
 
-    def predict(self, X: ArrayLike) -> np.ndarray:
+    def predict(self, X: ArrayLike) -> NDArray[np.int_]:
         # 1 for anomalies, 0 for inliers.
         return (self.decision_function(X) > 0).astype(int)
 
@@ -180,7 +181,7 @@ class IForestASD(ReferenceWindowModel):
 
     def __init__(
         self,
-        initial_window_X: np.ndarray | None = None,
+        initial_window_X: NDArray[np.float64] | None = None,
         window_size: int = 2048,
         drift_threshold: float | None = None,
         **kwargs: Any,
@@ -191,7 +192,7 @@ class IForestASD(ReferenceWindowModel):
         self.drift_threshold = drift_threshold
         self._drift_check_active = self.initial_ref_window
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> IForestASD:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> IForestASD:
         """Updates the model with the next instance. ``y`` is accepted for API consistency but always
         ignored, since the model is unsupervised.
 
@@ -220,7 +221,9 @@ class IForestASD(ReferenceWindowModel):
 
         return self
 
-    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
+    def fit_score(
+        self, X: NDArray[np.float64], y: NDArray[np.float64] | None = None
+    ) -> NDArray[np.float64]:
         """Applies ``fit_score_partial`` to each instance in order and returns the scores.
 
         Args:

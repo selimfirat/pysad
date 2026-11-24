@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -9,35 +10,71 @@ from pysad.core.base_model import BaseModel
 class SDOstream(BaseModel):
     """Scores each instance by its median distance to the nearest active observers :cite:`hartl2020low`.
 
-    SDOstream extends the Sparse Data Observers (SDO) algorithm for stream data. The model holds `num_observers` points, called observers. It builds a low-density model of the stream and fades the quality of each observer with an exponential factor. The model follows the stream without a sliding window and uses a fixed amount of memory.
+    SDOstream extends the Sparse Data Observers (SDO) algorithm for stream data. The model holds
+    `num_observers` points, called observers. It builds a low-density model of the stream and fades
+    the quality of each observer with an exponential factor. The model follows the stream without a
+    sliding window and uses a fixed amount of memory.
 
-    Each observer holds a quality metric. The metric is the exponential moving average of how often the observer is one of the closest observers of a new instance, so recent uses count more than old uses. This class splits the observers into active and idle. The observers with the lowest quality, the `idle_fraction` fraction that the paper calls idle, stay out of the score.
+    Each observer holds a quality metric. The metric is the exponential moving average of how often
+    the observer is one of the closest observers of a new instance. Recent uses count more than old
+    uses. This class splits the observers into active and idle. The observers with the lowest quality,
+    the `idle_fraction` fraction that the paper calls idle, stay out of the score.
 
-    On each instance this class finds the `num_neighbors` closest active observers and returns the median of their distances. An instance far from every active observer gets a high score. Higher scores mean more anomalous instances.
+    On each instance this class finds the `num_neighbors` closest active observers and returns the
+    median of their distances. An instance far from every active observer gets a high score. Higher
+    scores mean more anomalous instances.
 
-    To keep the model current, this class adds new observers at a mean rate of `num_observers` points per unit of time `time_param`. The fading factor is exp(-1 / `time_param`). When the model is full, this class removes the observer with the lowest average quality. The average quality divides the quality metric by the highest value that the metric can reach at the age of the observer. A new observer then holds the highest average quality, so it does not get removed right away.
+    To keep the model current, this class adds new observers at a mean rate of `num_observers` points
+    per unit of time `time_param`. The fading factor is exp(-1 / `time_param`). When the model is
+    full, this class removes the observer with the lowest average quality. The average quality divides
+    the quality metric by the highest value the metric can reach at the age of the observer. A new
+    observer then holds the highest average quality and does not get removed right away.
 
-    The paper gives no rounding rule for the number of idle observers. This class follows the C++ reference implementation of the authors, dSalmon (LGPL-3.0), where the paper is silent. Where that implementation and the paper differ, this class follows the paper. The deviations from the paper:
+    The paper gives no rounding rule for the number of idle observers. This class follows the C++
+    reference implementation of the authors, dSalmon (LGPL-3.0), where the paper is silent. Where
+    that implementation and the paper differ, this class follows the paper. The deviations from the
+    paper:
 
-    - PySAD passes no timestamps. This class uses the sample index as the time, with a constant inter-arrival time of one, so the time ratio of line 4 is one. The reference implementation raises the timestamps by one for each sample when it gets no timestamps. That ratio uses differences of times only, so the start value changes nothing.
-    - Algorithm 1 fades the quality metric of every observer on each instance. This class stores the time of the last change of each quality value and fades the value when it reads it or changes it. Both approaches give the same values.
-    - Algorithm 1 finds the idle-active split at line 1, before it fades the quality at line 2. This class fades the quality to the current time before it reads the split, as the reference implementation does.
-    - Algorithm 1 raises the quality of the nearest observers at line 3 and removes the observer with the lowest average quality at line 6. The reference implementation picks that observer before the raise. This class follows the paper, so the raise can save an observer from removal.
-    - The paper does not say how to round the number of idle observers. This class keeps active the floor((n - 1) * (1 - `idle_fraction`)) + 1 observers with the highest current quality, where n is the number of observers, so at least one observer stays active. The reference implementation uses the same active set.
-    - The reference implementation averages the two middle distances with the higher index for an even `num_neighbors`, and it reads past the end of its distance array when two observers are active. This class returns the standard median, as the paper describes.
-    - The paper describes an observer rate that falls during start-up. Algorithm 1 gets that behavior from the quality fraction of line 4, so this class adds no separate start-up rule.
-    - The default values of `idle_fraction` and `num_neighbors` follow the reference implementation. The reference implementation has no default values for `num_observers` and `time_param`, so this class chooses them.
+    - PySAD passes no timestamps. This class uses the sample index as the time, with a constant
+      inter-arrival time of one, so the time ratio of line 4 is one. The reference implementation
+      raises the timestamps by one for each sample when it gets no timestamps. That ratio uses
+      differences of times only, so the start value changes nothing.
+    - Algorithm 1 fades the quality metric of every observer on each instance. This class stores
+      the time of the last change of each quality value and fades the value when it reads it or
+      changes it. Both approaches give the same values.
+    - Algorithm 1 finds the idle-active split at line 1, before it fades the quality at line 2.
+      This class fades the quality to the current time before it reads the split, as the reference
+      implementation does.
+    - Algorithm 1 raises the quality of the nearest observers at line 3 and removes the observer
+      with the lowest average quality at line 6. The reference implementation picks that observer
+      before the raise. This class follows the paper, so the raise can save an observer from removal.
+    - The paper does not say how to round the number of idle observers. This class keeps active
+      the floor((n - 1) * (1 - `idle_fraction`)) + 1 observers with the highest current quality,
+      where n is the number of observers, so at least one observer stays active. The reference
+      implementation uses the same active set.
+    - The reference implementation averages the two middle distances with the higher index for
+      an even `num_neighbors`, and it reads past the end of its distance array when two observers
+      are active. This class returns the standard median, as the paper describes.
+    - The paper describes an observer rate that falls during start-up. Algorithm 1 gets that
+      behavior from the quality fraction of line 4, so this class adds no separate start-up rule.
+    - The default values of `idle_fraction` and `num_neighbors` follow the reference implementation.
+      The reference implementation has no default values for `num_observers` and `time_param`, so
+      this class chooses them.
 
     Args:
-        num_observers (int): The number of observers k in the model (Default=100).
-        num_neighbors (int): The number x of closest observers for the median distance (Default=6).
-        idle_fraction (float): The fraction q_id of observers to declare idle (Default=0.3).
-        time_param (float): The time parameter T, with a fading factor of exp(-1 / T) (Default=250.0).
-        random_state (int, np.random.RandomState or None): The seed or the random number generator of the observer sampling. None draws from the global NumPy random state, which `pysad.utils.fix_seed` seeds (Default=None).
+        num_observers (int): The number of observers k in the model. Default=100.
+        num_neighbors (int): The number x of closest observers for the median distance. Default=6.
+        idle_fraction (float): The fraction q_id of observers to declare idle. Default=0.3.
+        time_param (float): The time parameter T, with a fading factor of exp(-1 / T). Default=250.0.
+        random_state (int, np.random.RandomState or None): The seed or the random number generator
+            of the observer sampling. None draws from the global NumPy random state, which
+            `pysad.utils.fix_seed` seeds. Default=None.
 
     Attributes:
-        observers_ (np.float64 array of shape (num_observers, num_features)): The points of the model. The first `size_` rows hold an observer.
-        observations_ (np.float64 array of shape (num_observers,)): The quality metric of each observer, as of its last change.
+        observers_ (np.float64 array of shape (num_observers, num_features)): The points of the model.
+            The first `size_` rows hold an observer.
+        observations_ (np.float64 array of shape (num_observers,)): The quality metric of each
+            observer, as of its last change.
         size_ (int): The number of observers in the model, at most `num_observers`.
         index_ (int): The number of instances that the model processed, which is the current time.
     """
@@ -77,18 +114,19 @@ class SDOstream(BaseModel):
         self._touched = np.zeros(num_observers, dtype=np.int64)
         self._added = np.zeros(num_observers, dtype=np.int64)
 
-    def _faded(self, now: int) -> np.ndarray:
+    def _faded(self, now: int) -> NDArray[np.float64]:
         """Returns the quality metric of each observer faded to the time `now`."""
         return self.observations_[: self.size_] * self._fading ** (
             now - self._touched[: self.size_]
         )
 
-    def _squared_distances(self, X: np.ndarray) -> np.ndarray:
+    def _squared_distances(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         """Returns the squared Euclidean distance from `X` to each observer."""
         diffs = self.observers_[: self.size_] - X
-        return np.einsum("ij,ij->i", diffs, diffs)  # (size_,)
+        dists: NDArray[np.float64] = np.einsum("ij,ij->i", diffs, diffs)  # (size_,)
+        return dists
 
-    def _closest(self, sq: np.ndarray, slots: np.ndarray) -> np.ndarray:
+    def _closest(self, sq: NDArray[np.float64], slots: NDArray[np.intp]) -> NDArray[np.intp]:
         """Returns the slots of the `num_neighbors` closest observers in `slots`.
 
         A tie on distance keeps the older observer, for reproducibility.
@@ -98,9 +136,10 @@ class SDOstream(BaseModel):
             return slots
 
         chosen = np.lexsort((self._added[slots], values))[: self.num_neighbors]
-        return slots[chosen]
+        res: NDArray[np.intp] = slots[chosen]
+        return res
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> SDOstream:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> SDOstream:
         """Updates the model with the next instance.
 
         Args:
@@ -157,7 +196,7 @@ class SDOstream(BaseModel):
         self.index_ = now + 1
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

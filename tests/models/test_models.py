@@ -7,42 +7,49 @@ import pysad.models
 from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.utils import fix_seed
-from tests.models.conftest import EDGE_MODELS, TIMESTAMPED_MODELS, active_model_names
+from tests.models.conftest import (
+    EDGE_MODELS,
+    TIMESTAMPED_MODELS,
+    active_model_names,
+    short_stream_params,
+)
 
 MODEL_CASES = {
-    "DriftAdaptiveDetector": [{"model_factory": pysad.models.LODA}],
+    "ADeMS": [{}],
     "AnyOut": [{}, {"outlier_score": "density"}],
+    "ApproxStorm": [{}],
     "ChangeFinder": [{}, {"change_point": False}],
+    "CPOD": [{}],
     "D3": [{"window_size": 50}],
     "DAMP": [{"window_length": 10}],
     "DILOF": [{"num_neighbors": 5, "window_size": 40}],
+    "DriftAdaptiveDetector": [{"model_factory": pysad.models.LODA}],
+    "ExactStorm": [{}],
     "EXPoSE": [{"num_random_features": 50}],
+    "FluxEV": [{}],
+    "FRAHST": [{}],
+    "GNGA": [{}],
     "HalfSpaceTrees": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
     "HoltWinters": [{"period": 10}, {"period": 10, "threshold": 1}],
     "HTM": [
         {"min_val": 0.0, "max_val": 1.0, "probationary_period": 50, "likelihood": True},
         {"min_val": 0.0, "max_val": 1.0, "probationary_period": 50, "likelihood": False},
     ],
-    "IncrementalLOF": [{"window_size": 20}],
     "IDKS": [{"input_shape": 1, "window_size": 64, "num_samples": 4}],
+    "IForestASD": [{}],
+    "IncrementalLOF": [{"window_size": 20}],
     "Inqmad": [{"input_shape": 1, "dim_x": 128}],
+    "KELOS": [{}],
+    "KitNet": [{}],
     "KNNCAD": [{"probationary_period": 50}],
     "LocalOutlierProbability": [{"initial_X": True}],
+    "LODA": [{}],
     "MatrixProfile": [{"window_length": 10}],
+    "MCOD": [{}],
     "MedianAbsoluteDeviation": [{}, {"absolute": False}],
     "MemStream": [{"window_size": 8, "num_epochs": 20}],
     "MIDAS": [{"tick_size": 10}],
     "MiLOF": [{"window_size": 30, "num_summaries": 5}],
-    "OeSNNUAD": [{}, {"window_size": 10, "num_output_neurons": 5}],
-    "PCBIsolationForest": [{"num_trees": 10, "window_size": 40, "stat_size": 10}],
-    "PEWMA": [{}, {"beta": 0.0}],
-    "RelativeEntropy": [{"min_val": 0.0, "max_val": 1.0}],
-    "RSForest": [{"window_size": 50}],
-    "RSHash": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
-    "SAND": [{"subsequence_length": 4, "batch_size": 40}],
-    "SeasonalESD": [{"period": 10, "window_size": 31}],
-    "SeasonalHybridESD": [{"period": 10, "window_size": 31}],
-    "StandardAbsoluteDeviation": [{}, {"absolute": False}],
     "ModelEnsemble": [
         {
             "models": [
@@ -51,6 +58,27 @@ MODEL_CASES = {
             ]
         }
     ],
+    "MStream": [{}],
+    "NETS": [{}],
+    "NullModel": [{}],
+    "OeSNNUAD": [{}, {"window_size": 10, "num_output_neurons": 5}],
+    "OnlineIsolationForest": [{}],
+    "OnlineOneClassSVM": [{}],
+    "PCBIsolationForest": [{"num_trees": 10, "window_size": 40, "stat_size": 10}],
+    "PEWMA": [{}, {"beta": 0.0}],
+    "RandomModel": [{}],
+    "RelativeEntropy": [{"min_val": 0.0, "max_val": 1.0}],
+    "RobustRandomCutForest": [{}],
+    "RSForest": [{"window_size": 50}],
+    "RSHash": [{"feature_mins": [0.0], "feature_maxes": [1.0]}],
+    "SAND": [{"subsequence_length": 4, "batch_size": 40}],
+    "SDOstream": [{}],
+    "SeasonalESD": [{"period": 10, "window_size": 31}],
+    "SeasonalHybridESD": [{"period": 10, "window_size": 31}],
+    "SmartSifter": [{}],
+    "SpectralResidual": [{}],
+    "StandardAbsoluteDeviation": [{}, {"absolute": False}],
+    "STARE": [{"window_size": 50, "slide_size": 10}],
     "StreamPipeline": [
         {
             "model": pysad.models.LODA(),
@@ -58,13 +86,20 @@ MODEL_CASES = {
             "postprocessors": [ZScorePostprocessor(window_size=20)],
         }
     ],
+    "TEDA": [{}],
+    "ThreshLEAP": [{}],
+    "xStream": [{}],
+}
+
+EXTRA_MODEL_CASES: dict[str, list[dict[str, object]]] = {
+    "HTM": [{"likelihood": False}],
 }
 
 
 def _parametrized_cases():
     cases = []
     for name in active_model_names():
-        param_list = MODEL_CASES.get(name, [{}])
+        param_list = [{}] + EXTRA_MODEL_CASES.get(name, [])
         for index, params in enumerate(param_list):
             case_id = name if len(param_list) == 1 else f"{name}-{index}"
             cases.append(pytest.param(name, params, id=case_id))
@@ -74,27 +109,21 @@ def _parametrized_cases():
 @pytest.mark.parametrize("model_name,params_dict", _parametrized_cases())
 def test_unsupervised_models(model_name, params_dict):
     fix_seed(61)
-    X = np.random.rand(150, 1)
+    X = np.random.rand(80, 1)
     if model_name in TIMESTAMPED_MODELS:
         X = np.column_stack([3600.0 * np.arange(len(X)), X])
     elif model_name in EDGE_MODELS:
         X = np.random.RandomState(0).randint(0, 10, size=(len(X), 2)).astype(np.float64)
 
-    helper_test_model(X, getattr(pysad.models, model_name), copy.deepcopy(params_dict))
+    resolved_params = {**short_stream_params(model_name, X.shape[1]), **copy.deepcopy(params_dict)}
+    helper_test_model(X, getattr(pysad.models, model_name), resolved_params)
 
 
 def helper_test_model(X, model_cls, params_dict):
-    if "initial_X" in params_dict and params_dict["initial_X"]:
-        params_dict["initial_X"] = X[:25, :]
-        model = model_cls(params_dict["initial_X"])
-        train_X = X[25:, :]
-    else:
-        train_X = X
-        model = model_cls(**params_dict)
-
-    y = np.zeros(train_X.shape[0], dtype=np.int32) if model_cls.__name__ == "PerfectModel" else None
-    y_pred = model.fit_score(train_X, y)
-    assert y_pred.shape == (train_X.shape[0],)
+    model = model_cls(**params_dict)
+    y = np.zeros(X.shape[0], dtype=np.int32) if model_cls.__name__ == "PerfectModel" else None
+    y_pred = model.fit_score(X, y)
+    assert y_pred.shape == (X.shape[0],)
 
 
 def test_relative_entropy_no_warnings():

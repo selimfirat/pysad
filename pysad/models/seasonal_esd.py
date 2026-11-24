@@ -3,9 +3,11 @@ from __future__ import annotations
 from functools import lru_cache
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.stats import t
 
 from pysad.core.base_model import BaseModel
+from pysad.statistics import OnlinePeriodicityMeter
 from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
 from pysad.utils.validation import check_univariate
 from pysad.utils.window import RingBuffer, _median_and_mad_sorted
@@ -17,10 +19,10 @@ def _critical_value(alpha: float, num_tails: float, n: int, i: int) -> float:
     # is computed once instead of once per scored instance.
     p = 1.0 - alpha / (num_tails * (n - i + 1))
     t_value = t.ppf(p, n - i - 1)
-    return ((n - i) * t_value) / np.sqrt((n - i - 1 + t_value**2) * (n - i + 1))
+    return float(((n - i) * t_value) / np.sqrt((n - i - 1 + t_value**2) * (n - i + 1)))
 
 
-def _median_mad_sorted(sub: np.ndarray) -> tuple[float, float]:
+def _median_mad_sorted(sub: NDArray[np.float64]) -> tuple[float, float]:
     """Returns ``(median, 1.4826 * MAD)`` of sorted 1-D slice ``sub`` in O(log m) time."""
     center, mad = _median_and_mad_sorted(sub)
     return center, 1.4826 * mad
@@ -33,32 +35,49 @@ class SeasonalESD(BaseModel):
 
     The score of an instance is the ESD test statistic of the newest value if the test flags it as an anomaly, else 0.0. The score is 0.0 until the window holds ``window_size`` values.
 
+    When ``auto_period=True``, the model estimates the period online using :class:`pysad.statistics.OnlinePeriodicityMeter` and updates the seasonal decomposition when the estimated period changes. The period meter uses a sliding window of ``period_window_size`` observations (defaulting to ``window_size``). The initial ``period`` is used until the meter produces its first valid estimate.
+
     Args:
-        period (int): Number of observations in one seasonal period. It must be at least 2.
-        window_size (int): Number of recent observations used for STL and ESD. It must be greater than ``2 * period``.
-        max_anomalies (float): Maximum number of anomalies that ESD tests in each window, as a fraction of ``window_size``, greater than 0 and at most 0.49. The test looks for ``max(1, int(max_anomalies * window_size))`` anomalies (Default=0.1).
+        period (int | None): Number of observations in one seasonal period. It must be at least 2.
+            Optional when ``auto_period=True``; required otherwise.
+        window_size (int): Number of recent observations used for STL and ESD.
+            When ``auto_period=False``, it must be greater than ``2 * period``.
+            When ``auto_period=True``, it must be greater than ``2 * min_period``.
+        max_anomalies (float): Maximum number of anomalies that ESD tests in each window,
+            as a fraction of ``window_size``, greater than 0 and at most 0.49.
+            The test looks for ``max(1, int(max_anomalies * window_size))`` anomalies (Default=0.1).
         alpha (float): ESD significance level, strictly between 0 and 1 (Default=0.05).
-        direction (str): Which anomalies the test flags: ``"pos"`` for high values, ``"neg"`` for low values, or ``"both"`` for both, with the critical values of a two-sided test (Default="pos").
+        direction (str): Which anomalies the test flags: ``"pos"`` for high values,
+            ``"neg"`` for low values, or ``"both"`` for both, with the critical values of a
+            two-sided test (Default="pos").
         robust (bool): Whether to use robust STL fitting (Default=True).
+        auto_period (bool): Whether to estimate the period online with
+            :class:`pysad.statistics.OnlinePeriodicityMeter` (Default=False).
+        period_window_size (int | None): Window size for the period meter.
+            Defaults to ``window_size``. Must be at least 4.
+        min_period (int): Minimum period to accept from the meter (Default=2).
+        max_period (int | None): Maximum period to accept from the meter.
+            Defaults to ``period_window_size // 2`` (the Nyquist limit).
 
     Raises:
-        ValueError: If ``period`` is less than 2, ``window_size`` is at most ``2 * period``, ``max_anomalies`` is not greater than 0 and at most 0.49, ``alpha`` is not strictly between 0 and 1, or ``direction`` is not ``"pos"``, ``"neg"`` or ``"both"``.
+        ValueError: If validation fails for the provided parameters.
     """
 
     _use_median = False
 
     def __init__(
         self,
-        period: int,
-        window_size: int,
+        period: int | None = None,
+        window_size: int = 100,
         max_anomalies: float = 0.1,
         alpha: float = 0.05,
         direction: str = "pos",
         robust: bool = True,
+        auto_period: bool = False,
+        period_window_size: int | None = None,
+        min_period: int = 2,
+        max_period: int | None = None,
     ) -> None:
-        if window_size <= 2 * period:
-            raise ValueError("window_size must be greater than 2 * period.")
-
         if not 0 < max_anomalies <= 0.49:
             raise ValueError("max_anomalies must be greater than 0 and at most 0.49.")
 
@@ -67,6 +86,36 @@ class SeasonalESD(BaseModel):
 
         if direction not in ("pos", "neg", "both"):
             raise ValueError("direction must be 'pos', 'neg' or 'both'.")
+
+        if min_period < 2:
+            raise ValueError("min_period must be at least 2.")
+
+        if period_window_size is not None and period_window_size < 4:
+            raise ValueError("period_window_size must be at least 4.")
+
+        self.auto_period = auto_period
+        self.period_window_size = (
+            period_window_size if period_window_size is not None else window_size
+        )
+        self.min_period = min_period
+        self.max_period = max_period if max_period is not None else self.period_window_size // 2
+
+        if self.auto_period:
+            if period is None:
+                period = self.min_period
+            if window_size <= 2 * self.min_period:
+                raise ValueError(
+                    "window_size must be greater than 2 * min_period when auto_period=True."
+                )
+            if self.max_period < self.min_period:
+                raise ValueError("max_period must be at least min_period.")
+        else:
+            if period is None:
+                raise ValueError("period is required when auto_period=False.")
+            if period < 2:
+                raise ValueError("period must be at least 2.")
+            if window_size <= 2 * period:
+                raise ValueError("window_size must be greater than 2 * period.")
 
         self.period = period
         self.window_size = window_size
@@ -78,18 +127,23 @@ class SeasonalESD(BaseModel):
             period=period, window_size=window_size, robust=robust
         )
 
-    def _as_value(self, X: np.ndarray) -> float:
+        if self.auto_period:
+            self._period_meter: OnlinePeriodicityMeter | None = OnlinePeriodicityMeter(
+                window_size=self.period_window_size
+            )
+        else:
+            self._period_meter = None
+
+    def _as_value(self, X: NDArray[np.float64]) -> float:
         return check_univariate(X, "SeasonalESD")
 
-    def _center_scale(self, values: np.ndarray) -> tuple[float, float]:
+    def _center_scale(self, values: NDArray[np.float64]) -> tuple[float, float]:
         return float(values.mean()), float(values.std(ddof=1))
 
     def _critical_value(self, n: int, i: int) -> float:
         return _critical_value(self.alpha, 2.0 if self.direction == "both" else 1.0, n, i)
 
-    def _esd_target(
-        self, values: np.ndarray, min_scale: float | np.floating, target_idx: int
-    ) -> float:
+    def _esd_target(self, values: NDArray[np.float64], min_scale: float, target_idx: int) -> float:
         arr = np.asarray(values, dtype=np.float64)
         n = arr.shape[0]
         max_k = max(1, int(self.max_anomalies * n))
@@ -192,7 +246,7 @@ class SeasonalESD(BaseModel):
 
         return 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> SeasonalESD:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> SeasonalESD:
         """Adds the next instance to the model window.
 
         Args:
@@ -202,19 +256,37 @@ class SeasonalESD(BaseModel):
         Returns:
             object: self.
         """
-        self._window.append(self._as_value(X))
+        value = self._as_value(X)
+        self._window.append(value)
+
+        if self.auto_period and self._period_meter is not None:
+            self._period_meter.update(value)
+            estimated_period = self._period_meter.get()
+            if estimated_period > 0:
+                new_period = int(round(estimated_period))
+                if self.min_period <= new_period <= self.max_period and new_period != self.period:
+                    if self.window_size > 2 * new_period:
+                        self.period = new_period
+                        self.residual_transformer = ModifiedSTLResidualTransformer(
+                            period=new_period,
+                            window_size=self.window_size,
+                            robust=self.residual_transformer.robust,
+                        )
+
         return self
 
-    def _score_window(self, values: np.ndarray) -> float:
+    def _score_window(self, values: NDArray[np.float64]) -> float:
         residuals = self.residual_transformer.transform_window(values)
         # The rounding error of the residuals grows with the window size and the largest value.
         return self._esd_target(
             residuals,
-            min_scale=self.window_size * np.finfo(np.float64).eps * float(np.abs(values).max()),
+            min_scale=float(
+                self.window_size * np.finfo(np.float64).eps * float(np.abs(values).max())
+            ),
             target_idx=values.shape[0] - 1,
         )
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the next instance in the window that ends with it, without adding it to the window.
 
         Args:
@@ -222,21 +294,20 @@ class SeasonalESD(BaseModel):
 
         Returns:
             float: The ESD test statistic of ``X`` if the test flags it as an anomaly, else 0.0.
+            Higher scores represent more anomalous instances.
         """
         value = self._as_value(X)
         if len(self._window) + 1 < self.window_size:
             return 0.0
 
-        first, second, num_prior = self._window.active_slices()
-        candidate = np.empty(num_prior + 1, dtype=np.float64)
-        n_first = first.shape[0]
-        candidate[:n_first] = first
-        if second is not None:
-            candidate[n_first:num_prior] = second
-        candidate[num_prior] = value
+        # The window without the oldest item (which would be evicted when the new item arrives).
+        window = self._window.window_view()
+        if len(self._window) == self.window_size:
+            window = window[:-1]
+        candidate = np.append(window, value)
         return self._score_window(candidate)
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Adds the next instance to the window and scores it.
 
         Args:
@@ -249,7 +320,7 @@ class SeasonalESD(BaseModel):
         self.fit_partial(X, y)
         if len(self._window) < self.window_size:
             return 0.0
-        return self._score_window(self._window.to_array())
+        return self._score_window(self._window.window_view())
 
 
 class SeasonalHybridESD(SeasonalESD):
@@ -259,21 +330,37 @@ class SeasonalHybridESD(SeasonalESD):
 
     The score of an instance is the test statistic of the newest value if the test flags it as an anomaly, else 0.0. The score is 0.0 until the window holds ``window_size`` values.
 
+    When ``auto_period=True``, the model estimates the period online using :class:`pysad.statistics.OnlinePeriodicityMeter` and updates the seasonal decomposition when the estimated period changes. The period meter uses a sliding window of ``period_window_size`` observations (defaulting to ``window_size``). The initial ``period`` is used until the meter produces its first valid estimate.
+
     Args:
-        period (int): Number of observations in one seasonal period. It must be at least 2.
-        window_size (int): Number of recent observations used for STL and ESD. It must be greater than ``2 * period``.
-        max_anomalies (float): Maximum number of anomalies that ESD tests in each window, as a fraction of ``window_size``, greater than 0 and at most 0.49. The test looks for ``max(1, int(max_anomalies * window_size))`` anomalies (Default=0.1).
+        period (int | None): Number of observations in one seasonal period. It must be at least 2.
+            Optional when ``auto_period=True``; required otherwise.
+        window_size (int): Number of recent observations used for STL and ESD.
+            When ``auto_period=False``, it must be greater than ``2 * period``.
+            When ``auto_period=True``, it must be greater than ``2 * min_period``.
+        max_anomalies (float): Maximum number of anomalies that ESD tests in each window,
+            as a fraction of ``window_size``, greater than 0 and at most 0.49.
+            The test looks for ``max(1, int(max_anomalies * window_size))`` anomalies (Default=0.1).
         alpha (float): ESD significance level, strictly between 0 and 1 (Default=0.05).
-        direction (str): Which anomalies the test flags: ``"pos"`` for high values, ``"neg"`` for low values, or ``"both"`` for both, with the critical values of a two-sided test (Default="pos").
+        direction (str): Which anomalies the test flags: ``"pos"`` for high values,
+            ``"neg"`` for low values, or ``"both"`` for both, with the critical values of a
+            two-sided test (Default="pos").
         robust (bool): Whether to use robust STL fitting (Default=True).
+        auto_period (bool): Whether to estimate the period online with
+            :class:`pysad.statistics.OnlinePeriodicityMeter` (Default=False).
+        period_window_size (int | None): Window size for the period meter.
+            Defaults to ``window_size``. Must be at least 4.
+        min_period (int): Minimum period to accept from the meter (Default=2).
+        max_period (int | None): Maximum period to accept from the meter.
+            Defaults to ``period_window_size // 2`` (the Nyquist limit).
 
     Raises:
-        ValueError: If ``period`` is less than 2, ``window_size`` is at most ``2 * period``, ``max_anomalies`` is not greater than 0 and at most 0.49, ``alpha`` is not strictly between 0 and 1, or ``direction`` is not ``"pos"``, ``"neg"`` or ``"both"``.
+        ValueError: If validation fails for the provided parameters.
     """
 
     _use_median = True
 
-    def _center_scale(self, values: np.ndarray) -> tuple[float, float]:
+    def _center_scale(self, values: NDArray[np.float64]) -> tuple[float, float]:
         center = float(np.median(values))
         scale = 1.4826 * float(np.median(np.abs(values - center)))
         return center, scale

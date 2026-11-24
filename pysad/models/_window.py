@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 
 
 class _RadiusCalibrator:
@@ -24,7 +25,7 @@ class _RadiusCalibrator:
     def active(self) -> bool:
         return self.max_radius is None and self.count < self.calibration_size
 
-    def update(self, X: np.ndarray) -> float | None:
+    def update(self, X: NDArray[np.float64]) -> float | None:
         if self.count == 0:
             self._points = np.empty((self.calibration_size, len(X)), dtype=np.float64)
             self._nearest = np.full(self.calibration_size, np.inf, dtype=np.float64)

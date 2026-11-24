@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import scipy
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.models._window import _RadiusCalibrator
@@ -37,16 +38,20 @@ class CPOD(BaseModel):
         self.calibration_size = calibration_size
         self.outlier_fraction = outlier_fraction
         self.radius_: float | None = None
-        self._ring_thresholds: np.ndarray | None = None
+        self._ring_thresholds: NDArray[np.float64] | None = None
         self._set_radius(max_radius)
         self._calibrator = _RadiusCalibrator(max_radius, calibration_size, outlier_fraction)
         self.points_ = np.empty((0, 0))  # the window as a ring buffer, (window_size, num_features)
-        self.cores_: np.ndarray = np.empty((0, 0))  # the core points, (capacity, num_features)
+        self.cores_: NDArray[np.float64] = np.empty(
+            (0, 0)
+        )  # the core points, (capacity, num_features)
         # The ring of each window slot for each core point, 4 if none, (capacity, window_size).
-        self.rings_: np.ndarray = np.empty((0, window_size), dtype=np.int8)
-        self.half_: np.ndarray = np.zeros(0, dtype=np.int64)  # the size of E_0 of each core point
+        self.rings_: NDArray[np.int8] = np.empty((0, window_size), dtype=np.int8)
+        self.half_: NDArray[np.int64] = np.zeros(
+            0, dtype=np.int64
+        )  # the size of E_0 of each core point
         # The number of instances linked to each core point, the size of E_0 and E_1. A row with 0 is free.
-        self.linked_: np.ndarray = np.zeros(0, dtype=np.int64)
+        self.linked_: NDArray[np.int64] = np.zeros(0, dtype=np.int64)
         self._num = 0  # the number of instances in the window
         self._next = 0  # the slot of the next instance, which holds the oldest one in a full window
 
@@ -57,13 +62,14 @@ class CPOD(BaseModel):
         )
 
     @staticmethod
-    def _dists_to_point(points: np.ndarray, x: np.ndarray) -> np.ndarray:
+    def _dists_to_point(points: NDArray[np.float64], x: NDArray[np.float64]) -> NDArray[np.float64]:
         if len(points) == 0:
             return np.empty(0, dtype=np.float64)
         diff = points - x
-        return np.sqrt(np.einsum("ij,ij->i", diff, diff))
+        dists: NDArray[np.float64] = np.sqrt(np.einsum("ij,ij->i", diff, diff))
+        return dists
 
-    def _grow_cores(self) -> np.ndarray:
+    def _grow_cores(self) -> NDArray[np.intp]:
         num = max(len(self.linked_), 1)
         start = len(self.linked_)
         self.cores_ = np.concatenate([self.cores_, np.empty((num, self.cores_.shape[1]))])
@@ -76,9 +82,9 @@ class CPOD(BaseModel):
 
     def _fit_with_dists(
         self,
-        X: np.ndarray,
-        active: np.ndarray | None = None,
-        dists: np.ndarray | None = None,
+        X: NDArray[np.float64],
+        active: NDArray[np.intp] | None = None,
+        dists: NDArray[np.float64] | None = None,
     ) -> None:
         if self.points_.size == 0:
             self.points_ = np.empty((self.window_size, len(X)))
@@ -107,7 +113,7 @@ class CPOD(BaseModel):
         elif self.radius_ is not None:
             self._add(i, active, dists)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> CPOD:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> CPOD:
         """Updates the model with the next instance. The oldest instance of a full window expires.
 
         Args:
@@ -120,7 +126,7 @@ class CPOD(BaseModel):
         self._fit_with_dists(np.array(X, dtype=np.float64))
         return self
 
-    def _ring(self, dists: np.ndarray) -> np.ndarray:
+    def _ring(self, dists: NDArray[np.float64]) -> NDArray[np.int8]:
         """The ring k of each distance, with k = 4 for distances above 2R."""
         assert self._ring_thresholds is not None
         return np.searchsorted(self._ring_thresholds, dists).astype(np.int8)
@@ -178,8 +184,8 @@ class CPOD(BaseModel):
     def _add(
         self,
         i: int,
-        active: np.ndarray | None = None,
-        dists: np.ndarray | None = None,
+        active: NDArray[np.intp] | None = None,
+        dists: NDArray[np.float64] | None = None,
     ) -> None:
         """Algorithm 2 of the paper for the instance in slot i."""
         assert self.radius_ is not None
@@ -230,8 +236,8 @@ class CPOD(BaseModel):
         rings[:] = 4
 
     def _score_with_dists(
-        self, X: np.ndarray
-    ) -> tuple[float, np.ndarray | None, np.ndarray | None]:
+        self, X: NDArray[np.float64]
+    ) -> tuple[float, NDArray[np.intp] | None, NDArray[np.float64] | None]:
         expiring = self._num == self.window_size
         num_window = self._num - expiring
         if num_window == 0 or self.radius_ is None:
@@ -269,7 +275,7 @@ class CPOD(BaseModel):
 
         return float(1.0 - num_neighbors / num_window), active, dists
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance as if it arrived, without adding it to the window.
 
         When the instance arrives, the oldest instance of a full window expires, so the instance is scored against the `window_size - 1` most recent instances. This gives the same score as `fit_score_partial`.
@@ -282,7 +288,7 @@ class CPOD(BaseModel):
         """
         return self._score_with_dists(np.asarray(X, dtype=np.float64))[0]
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the next instance and adds it to the window, reusing core distances across both steps.
 
         Args:

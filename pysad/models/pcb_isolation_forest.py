@@ -4,6 +4,7 @@ import math
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.ensemble import IsolationForest
 from sklearn.utils import check_random_state
 
@@ -97,7 +98,7 @@ class PCBIsolationForest(BaseModel):
         self.random_state = random_state
         self.rng_ = check_random_state(random_state)
         self.performance_counters_ = np.zeros(num_trees, dtype=np.int64)
-        self.window_: np.ndarray | None = None
+        self.window_: NDArray[Any] | None = None
         self._count = 0
         self._threshold = math.sqrt(-math.log(alpha) / stat_size)
         self._depth_limit = math.ceil(math.log2(window_size))
@@ -126,7 +127,7 @@ class PCBIsolationForest(BaseModel):
         self.__dict__.update(state)
         self.rng_ = check_random_state(self.rng_)
 
-    def _build(self, indices: np.ndarray) -> None:
+    def _build(self, indices: NDArray[Any]) -> None:
         if not len(indices):
             return
         forest = IsolationForest(
@@ -161,9 +162,9 @@ class PCBIsolationForest(BaseModel):
                 return True
         return False
 
-    def _scores(self, X: np.ndarray) -> np.ndarray:
+    def _scores(self, X: NDArray[Any]) -> NDArray[Any]:
         x = np.asarray(X, dtype=np.float32)
-        nodes: np.ndarray = np.zeros(self.num_trees, dtype=np.intp)
+        nodes: NDArray[Any] = np.zeros(self.num_trees, dtype=np.intp)
         # Track one node per tree. Leaves keep their index.
         for _ in range(self._depth_limit):
             left = self._left_[self._indices, nodes]
@@ -173,9 +174,12 @@ class PCBIsolationForest(BaseModel):
                 self._right_[self._indices, nodes],
             )
             nodes = np.where(left == -1, nodes, branch)
-        return np.exp2(-self._paths_[self._indices, nodes] / self._correction[self.window_size])
+        scores: NDArray[Any] = np.exp2(
+            -self._paths_[self._indices, nodes] / self._correction[self.window_size]
+        )
+        return scores
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> PCBIsolationForest:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> PCBIsolationForest:
         """Learn one instance and replace weak trees after drift.
 
         Args:
@@ -203,14 +207,15 @@ class PCBIsolationForest(BaseModel):
             self.performance_counters_.fill(0)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Score an instance without changing the forest.
 
         Args:
             X (np.float64 array of shape (num_features,)): Instance to score.
 
         Returns:
-            float: Mean tree score in [0, 1], or 0.0 before initialization.
+            float: Mean tree score in [0, 1], or 0.0 before initialization. Higher scores
+                represent more anomalous instances.
         """
         if self._count < self.window_size:
             return 0.0

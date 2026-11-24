@@ -13,6 +13,7 @@ Run it from the repository root:
     python benchmarks/benchmark.py --check origin/master  # rerun what changed, compare with the results
     python benchmarks/benchmark.py --parts drift          # only the streams with drift
     python benchmarks/benchmark.py --ci base.csv --since origin/master  # the short run of CI
+    python benchmarks/benchmark.py --custom path.py:MyModel --latex  # custom model with LaTeX output
 
 The results go to docs/benchmark/, which the pages in docs/benchmarks/ show.
 The dimensionality sweep writes docs/benchmark/dimensions.csv and
@@ -24,10 +25,16 @@ import argparse
 import ast
 import csv
 import functools
+import hashlib
+import importlib.metadata
+import importlib.util
 import inspect
+import json
 import os
+import platform
 import subprocess
 import sys
+import tempfile
 import time
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -42,7 +49,17 @@ from threadpoolctl import threadpool_limits
 import pysad
 from pysad import models
 from pysad.core.base_model import BaseModel
+from pysad.evaluation import AUPRMetric, AUROCMetric, evaluate_stream
+from pysad.models import ModelEnsemble, StreamPipeline
 from pysad.transform import probability_calibration
+from pysad.transform.ensemble import (
+    AverageOfMaximumScoreEnsembler,
+    AverageScoreEnsembler,
+    MaximumOfAverageScoreEnsembler,
+    MaximumScoreEnsembler,
+    MedianScoreEnsembler,
+)
+from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import Data, fix_seed
@@ -100,6 +117,9 @@ def _is_detector_model(name):
 
 def _model_input_kind(name):
     cls = getattr(models, name)
+    getter = getattr(cls, "_effective_input_kind", None)
+    if callable(getter) and name not in _FALLBACK_INPUT_KINDS:
+        return getter()
     kind = getattr(cls, "_input_kind", None)
     if kind is not None and kind != "multivariate":
         return kind
@@ -116,7 +136,15 @@ def _accepts_random_state(sig):
     )
 
 
-def _required_param_names(sig):
+def _required_param_names(cls_or_sig):
+    getter = getattr(cls_or_sig, "_required_init_params", None)
+    if callable(getter):
+        return list(getter())
+    sig = (
+        cls_or_sig
+        if isinstance(cls_or_sig, inspect.Signature)
+        else inspect.signature(cls_or_sig.__init__)
+    )
     return [
         p.name
         for p in sig.parameters.values()
@@ -128,7 +156,7 @@ def _required_param_names(sig):
 
 def _make_multivariate_factory(cls):
     sig = inspect.signature(cls.__init__)
-    required = _required_param_names(sig)
+    required = _required_param_names(cls)
     seeded = _accepts_random_state(sig)
 
     def factory(X, seed):
@@ -155,7 +183,7 @@ def _make_multivariate_factory(cls):
 
 def _make_univariate_factory(cls):
     sig = inspect.signature(cls.__init__)
-    required = _required_param_names(sig)
+    required = _required_param_names(cls)
     has_period = "period" in sig.parameters
     seeded = _accepts_random_state(sig)
 
@@ -180,6 +208,10 @@ def _make_univariate_factory(cls):
                 raise TypeError(
                     f"{cls.__name__} requires {param!r}; add an entry to UNIVARIATE_OVERRIDES."
                 )
+        # Pass period for detectors that have it (seasonal detectors), even if it has a default.
+        # The benchmark only runs these on series with a known period.
+        if has_period and "period" not in kwargs:
+            kwargs["period"] = period
         if seeded:
             kwargs["random_state"] = 0
         return cls(**kwargs)
@@ -188,11 +220,24 @@ def _make_univariate_factory(cls):
 
 
 # Non-default benchmark arguments; every other detector in pysad.models.__all__ is auto-discovered.
-DETECTOR_OVERRIDES = {}
+DETECTOR_OVERRIDES = {
+    "Inqmad": lambda X, seed: models.Inqmad(input_shape=X.shape[1], random_state=seed),
+    "LocalOutlierProbability": lambda X, seed: models.LocalOutlierProbability(
+        initial_X=X[: warmup(len(X))]
+    ),
+    "ZeroShotEmbeddingDetector": lambda X, seed: models.ZeroShotEmbeddingDetector(
+        semantic_anchors=np.random.RandomState(seed).randn(10, X.shape[1])
+    ),
+}
 UNIVARIATE_OVERRIDES = {
     # HTM learns during NAB's probationary period, as in NAB.
     "HTM": lambda n, period: models.HTM(
         min_val=0.0, max_val=1.0, probationary_period=nab_probation(n), random_state=0
+    ),
+    # STL needs more than two periods. An odd window matches R's robust STL.
+    "SeasonalESD": lambda n, period: models.SeasonalESD(period=period, window_size=3 * period + 1),
+    "SeasonalHybridESD": lambda n, period: models.SeasonalHybridESD(
+        period=period, window_size=3 * period + 1
     ),
     # Fix the length without labels, as for shingles, and initialize in the standard warm-up.
     "SAND": lambda n, period: models.SAND(
@@ -331,7 +376,294 @@ FIELDS = [
     *ALERT_FIELDS,
     "commit",
 ]
+# Results table omits the alert fields; they live in alerts.csv.
+# This keeps results.csv small enough for the repository's file-size limit.
+RESULT_FIELDS = [
+    "dataset",
+    "detector",
+    "seed",
+    "auroc",
+    "aupr",
+    "ms_per_point",
+    "solved",  # UCR series only
+    "commit",
+]
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
+
+# The fast multivariate detectors that go into the ensembles. Each detector is wrapped in a
+# normalizing pipeline so that its scores are on a comparable scale before they are combined.
+# ZScorePostprocessor normalizes each score using only the earlier scores of the stream, so the
+# ensemble stays in prequential (test-then-train) order.
+ENSEMBLE_MEMBERS = ["LODA", "xStream", "RSHash", "HalfSpaceTrees"]
+ENSEMBLE_WINDOW = 200
+
+
+def _ensemble_member(name, X, seed):
+    """One detector of an ensemble, wrapped in a score-normalizing pipeline."""
+    return StreamPipeline(
+        model=DETECTORS[name](X, seed),
+        postprocessors=(ZScorePostprocessor(window_size=ENSEMBLE_WINDOW),),
+    )
+
+
+# Streaming detector ensembles, scored in prequential order. Each ensemble combines the same
+# detectors with a different score ensembler, so the benchmark isolates how the combination rule
+# affects the prequential metrics.
+ENSEMBLES = {
+    "average": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=AverageScoreEnsembler(),
+    ),
+    "maximum": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=MaximumScoreEnsembler(),
+    ),
+    "median": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=MedianScoreEnsembler(),
+    ),
+    "average_of_maximum": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=AverageOfMaximumScoreEnsembler(n_buckets=2),
+    ),
+    "maximum_of_average": lambda X, seed: ModelEnsemble(
+        models=[_ensemble_member(m, X, seed) for m in ENSEMBLE_MEMBERS],
+        ensembler=MaximumOfAverageScoreEnsembler(n_buckets=2),
+    ),
+}
+ENSEMBLE_FIELDS = ["dataset", "ensemble", "seed", "auroc", "aupr", "ms_per_point"]
+
+
+CACHE_DIR = Path.home() / ".cache" / "pysad" / "benchmark"
+
+
+def _result_cache_paths(jobs: list[tuple], cache_dir: Path) -> dict[tuple, Path]:
+    """Build cache paths from source contents, job settings, and runtime versions."""
+    shared = pysad_files([Data, fix_seed, ShingleTransformer, ConformalProbabilityCalibrator])
+    shared |= pysad_files(
+        [getattr(probability_calibration, n) for n in probability_calibration.__all__]
+    )
+    package_root = Path(pysad.__file__).resolve().parents[1]
+    runtime = sorted((d.metadata["Name"], d.version) for d in importlib.metadata.distributions())
+    common = hashlib.sha256()
+    common.update(json.dumps([sys.version, platform.platform(), runtime]).encode())
+    for path in [Path(__file__), ROOT / "pyproject.toml"]:
+        common.update(path.read_bytes())
+    fingerprints = {}
+    paths = {}
+    for job in jobs:
+        if len(job) > 5:  # Custom models can import files outside PySAD.
+            continue
+        detector = job[1].removesuffix(SHINGLED)
+        if detector not in fingerprints:
+            digest = common.copy()
+            for name in sorted(shared | pysad_files([getattr(models, detector)])):
+                digest.update(name.encode())
+                digest.update((package_root / name).read_bytes())
+            fingerprints[detector] = digest.digest()
+        digest = hashlib.sha256(fingerprints[detector])
+        digest.update(json.dumps(job).encode())
+        paths[job] = cache_dir / (digest.hexdigest() + ".json")
+    return paths
+
+
+def _read_cached_result(path: Path) -> dict | None:
+    """Read one cached row, or return None if the file is missing or damaged."""
+    try:
+        row = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(row, dict) or not set(CI_FIELDS[:-1]) <= row.keys():
+            return None
+        if "_nab" in row:
+            row["_nab"] = tuple(np.asarray(a) for a in row["_nab"])
+        return row
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def _write_cached_result(path: Path, row: dict) -> None:
+    """Save a complete result before another run can read it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=path.parent, delete=False
+    ) as f:
+        temporary = Path(f.name)
+        try:
+            json.dump(row, f, default=lambda value: value.tolist())
+            f.close()
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def _load_custom_model(spec):
+    """Load a custom model class from a file path and class name.
+
+    Args:
+        spec (str): Specification in the format "path/to/file.py:ClassName".
+
+    Returns:
+        type: The model class.
+
+    Raises:
+        ValueError: If the spec format is invalid, the file does not exist,
+            the class is not found, or the class does not inherit from BaseModel.
+    """
+    if ":" not in spec:
+        raise ValueError(
+            f"Custom model spec must be in format 'path/to/file.py:ClassName', got '{spec}'"
+        )
+    file_path, class_name = spec.rsplit(":", 1)
+    path = Path(file_path).resolve()
+    if not path.is_file():
+        raise ValueError(f"Custom model file not found: {path}")
+    module_name = path.stem
+    spec_obj = importlib.util.spec_from_file_location(module_name, path)
+    if spec_obj is None or spec_obj.loader is None:
+        raise ValueError(f"Could not load module from {path}")
+    module = importlib.util.module_from_spec(spec_obj)
+    sys.modules[module_name] = module
+    spec_obj.loader.exec_module(module)
+    if not hasattr(module, class_name):
+        raise ValueError(f"Class '{class_name}' not found in {path}")
+    cls = getattr(module, class_name)
+    if not issubclass(cls, BaseModel):
+        raise ValueError(f"Class '{class_name}' must inherit from BaseModel")
+    return cls
+
+
+def _make_custom_factory(cls, input_kind):
+    """Create a factory function for a custom model.
+
+    Args:
+        cls (type): The model class.
+        input_kind (str): The input kind ("multivariate" or "univariate").
+
+    Returns:
+        callable: A factory function that creates model instances.
+    """
+    sig = inspect.signature(cls.__init__)
+    required = _required_param_names(cls)
+    seeded = _accepts_random_state(sig)
+
+    if input_kind == "multivariate":
+
+        def factory(X, seed):
+            kwargs = {}
+            for param in required:
+                if param == "feature_mins":
+                    kwargs["feature_mins"] = np.zeros(X.shape[1])
+                elif param == "feature_maxes":
+                    kwargs["feature_maxes"] = np.ones(X.shape[1])
+                elif param == "input_shape":
+                    kwargs["input_shape"] = X.shape[1]
+                elif param == "initial_X":
+                    kwargs["initial_X"] = X[: warmup(len(X))]
+                else:
+                    raise TypeError(
+                        f"{cls.__name__} requires {param!r}; pass it via constructor defaults."
+                    )
+            if seeded:
+                kwargs["random_state"] = seed
+            return cls(**kwargs)
+
+    else:  # univariate or timestamped
+
+        def factory(n, period):
+            kwargs = {}
+            for param in required:
+                if param == "min_val":
+                    kwargs["min_val"] = 0.0
+                elif param == "max_val":
+                    kwargs["max_val"] = 1.0
+                elif param == "period":
+                    kwargs["period"] = period
+                elif param in ("window_length", "subsequence_length"):
+                    kwargs[param] = SHINGLE_SIZE
+                elif param == "window_size":
+                    has_period = "period" in sig.parameters
+                    kwargs["window_size"] = 3 * period + 1 if has_period else WARMUP_POINTS
+                elif param == "probationary_period":
+                    kwargs["probationary_period"] = nab_probation(n)
+                else:
+                    raise TypeError(
+                        f"{cls.__name__} requires {param!r}; pass it via constructor defaults."
+                    )
+            if hasattr(cls, "period") and "period" not in kwargs and period is not None:
+                kwargs["period"] = period
+            if seeded:
+                kwargs["random_state"] = 0
+            return cls(**kwargs)
+
+    return factory
+
+
+def _write_latex_summary(results, detectors, out_path):
+    """Write a LaTeX summary table of AUROC results.
+
+    Args:
+        results (dict): Benchmark results keyed by (dataset, detector, seed).
+        detectors (list): List of detector names in summary order (from write_ranking).
+        out_path (Path): Output file path for the LaTeX table.
+    """
+    # Get all detectors from results, not just built-in ones
+    all_detectors = sorted({k[1].removesuffix(SHINGLED) for k in results if k[0] in DATASETS})
+    if not all_detectors:
+        return
+
+    datasets = [ds for ds in DATASETS if any(k[0] == ds for k in results)]
+    if not datasets:
+        return
+
+    def mean_auroc(dataset, detector):
+        vals = []
+        for k, r in results.items():
+            if k[:2] == (dataset, detector):
+                auroc_val = r.get("auroc")
+                if auroc_val is not None and auroc_val != "":
+                    try:
+                        val = float(auroc_val)
+                        if not np.isnan(val):
+                            vals.append(val)
+                    except (ValueError, TypeError):
+                        pass
+        return np.mean(vals) if vals else np.nan
+
+    table = np.array([[mean_auroc(ds, d) for d in all_detectors] for ds in datasets])
+
+    mean_auroc_vals = np.nanmean(table, axis=0)
+    order = np.argsort(-mean_auroc_vals)
+
+    lines = []
+    lines.append(r"\begin{table}[htbp]")
+    lines.append(r"\centering")
+    lines.append(r"\caption{Benchmark AUROC summary (higher is better).}")
+    lines.append(r"\label{tab:benchmark-auroc}")
+    cols = "l" + "c" * len(all_detectors)
+    lines.append(rf"\begin{{tabular}}{{{cols}}}")
+    lines.append(r"\toprule")
+    header = ["Dataset"] + [SHORT_NAMES.get(all_detectors[i], all_detectors[i]) for i in order]
+    lines.append(" & ".join(header) + r" \\")
+    lines.append(r"\midrule")
+    for j, ds in enumerate(datasets):
+        row = [ds]
+        for i in order:
+            val = table[j, i]
+            if np.isnan(val):
+                row.append("--")
+            else:
+                cell = f"{val:.3f}"
+                if val == np.nanmax(table[j]) and not np.isnan(np.nanmax(table[j])):
+                    cell = rf"\textbf{{{cell}}}"
+                if val <= 0.5:
+                    cell = rf"\textit{{{cell}}}"
+                row.append(cell)
+        lines.append(" & ".join(row) + r" \\")
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\end{table}")
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines) + "\n")
 
 
 def significant(scores):
@@ -353,16 +685,34 @@ def warmup(n):
     return min(WARMUP_POINTS, n // 4)
 
 
+_WORKER_CACHE: dict[tuple, tuple[np.ndarray, np.ndarray]] | None = None
+
+
+def _init_worker():
+    """Enable per-process dataset caching inside benchmark worker processes."""
+    global _WORKER_CACHE
+    _WORKER_CACHE = {}
+
+
 def load(dataset, seed, points=None):
+    cache_key = ("load", dataset, None if dataset in DRIFT else seed, points)
+    if _WORKER_CACHE is not None and cache_key in _WORKER_CACHE:
+        cached_X, cached_y = _WORKER_CACHE[cache_key]
+        return cached_X.copy(), cached_y.copy()
     if dataset in DRIFT:
         X, y = Data().get_data(dataset)
         step = -(-len(X) // DRIFT_POINTS)  # the smallest step that keeps at most DRIFT_POINTS
         X, y = X[::step][:points], y[::step][:points]
         mins, maxes = X.min(axis=0), X.max(axis=0)
-        return (X - mins) / np.where(maxes > mins, maxes - mins, 1.0), y
-    return Data().get_stream(
-        f"{dataset}.mat", random_state=seed, max_points=points or MAX_POINTS, scale=True
-    )
+        result = ((X - mins) / np.where(maxes > mins, maxes - mins, 1.0), y)
+    else:
+        result = Data().get_stream(
+            f"{dataset}.mat", random_state=seed, max_points=points or MAX_POINTS, scale=True
+        )
+    if _WORKER_CACHE is not None:
+        _WORKER_CACHE[cache_key] = result
+        return result[0].copy(), result[1].copy()
+    return result
 
 
 def anomaly_fraction(dataset):
@@ -515,35 +865,94 @@ def score_stream(model: BaseModel, X: np.ndarray) -> tuple[np.ndarray, float]:
     return significant(scores), round(1000 * seconds / len(X), 3)
 
 
-def run_univariate(series, detector, points=None):
+def run_ensemble(dataset, ensemble, seed, points):
+    """Run one streaming detector ensemble on one dataset in prequential order.
+
+    ``evaluate_stream`` scores each instance before the ensemble learns from it, so the reported
+    metrics are prequential (test-then-train). AUROC and AUPR are reported when the evaluated
+    stream holds both classes; otherwise they are NaN.
+
+    Args:
+        dataset (str): Name of an ODDS dataset.
+        ensemble (str): Name of an ensemble in ``ENSEMBLES``.
+        seed (int): Stream seed.
+        points (int or None): Number of points to score.
+
+    Returns:
+        dict: dataset, ensemble, seed, auroc, aupr, and ms_per_point.
+    """
+    X, y = load(dataset, seed, points)
+    model = ENSEMBLES[ensemble](X, seed)
+    auroc, aupr = np.nan, np.nan
+    start = time.perf_counter()
+    try:
+        results = evaluate_stream(
+            model,
+            X,
+            y,
+            metrics={"AUROC": AUROCMetric(), "AUPR": AUPRMetric()},
+        )
+        auroc = results["AUROC"]
+        aupr = results["AUPR"]
+    except ValueError:
+        # AUROC and AUPR are undefined when the evaluated stream holds a single class.
+        pass
+    seconds = time.perf_counter() - start
+    return {
+        "dataset": dataset,
+        "ensemble": ensemble,
+        "seed": seed,
+        "auroc": round(float(auroc), 4) if np.isfinite(auroc) else np.nan,
+        "aupr": round(float(aupr), 4) if np.isfinite(aupr) else np.nan,
+        "ms_per_point": round(1000 * seconds / len(X), 3),
+    }
+
+
+def _load_univariate_raw(series, timestamps):
+    cache_key = ("univariate", series, timestamps)
+    if _WORKER_CACHE is not None and cache_key in _WORKER_CACHE:
+        cached_X, cached_y = _WORKER_CACHE[cache_key]
+        return cached_X.copy(), cached_y.copy()
     # The base branch's Data.get_data has no timestamps argument, so pass it only when needed.
-    X, y = (
-        Data().get_data(series, timestamps=True)
-        if detector in TIMESTAMPED
-        else Data().get_data(series)
-    )
-    X, y = X[:points], y[:points]
+    X, y = Data().get_data(series, timestamps=True) if timestamps else Data().get_data(series)
+    if _WORKER_CACHE is not None:
+        _WORKER_CACHE[cache_key] = (X, y)
+        return X.copy(), y.copy()
+    return X, y
+
+
+def run_univariate(
+    series, detector, points=None, ci=False, model_type=None, input_kind=None, custom_spec=None
+):
+    X, y = _load_univariate_raw(series, detector in TIMESTAMPED)
+    X, y = X[:points].copy(), y[:points]
     values = X[:, -1]  # the timestamps, if any, come first
     span = values.max() - values.min()
     X[:, -1] = (values - values.min()) / (span if span > 0 else 1.0)
-    if detector in UNIVARIATE:
+
+    if model_type == "custom":
+        cls = _load_custom_model(custom_spec)
+        factory = _make_custom_factory(cls, input_kind)
+        model = factory(len(X), PERIODS.get(series))
+    elif detector in UNIVARIATE:
         model = UNIVARIATE[detector](len(X), PERIODS.get(series))
     else:
         if detector.endswith(SHINGLED):
             X = ShingleTransformer(SHINGLE_SIZE).fit_transform(X)
         fix_seed(0)
         model = DETECTORS[detector.removesuffix(SHINGLED)](X, 0)
+
     scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
-    if detector in NAB_UNIT_SCORES:
-        nab = (scores, y)
-    else:
-        with np.errstate(all="ignore"):
-            nab = (ConformalProbabilityCalibrator(window_size=len(X)).fit_transform(scores), y)
+    if not ci:
+        if detector in NAB_UNIT_SCORES:
+            nab = (scores, y)
+        else:
+            with np.errstate(all="ignore"):
+                nab = (ConformalProbabilityCalibrator(window_size=len(X)).fit_transform(scores), y)
     scores, y = scores[warmup(len(X)) :], y[warmup(len(X)) :]
     both = valid and 0 < y.sum() < len(y)  # AUROC and AUPR need both kinds of points
-    return {
-        "_nab": nab,
+    row = {
         "dataset": series,
         "detector": detector,
         "seed": 0,
@@ -551,14 +960,24 @@ def run_univariate(series, detector, points=None):
         "aupr": round(average_precision_score(y, scores), 4) if both else np.nan,
         "ms_per_point": ms_per_point,
     }
+    if not ci:
+        row["_nab"] = nab
+    return row
 
 
-def run_ucr(series, detector):
+def run_ucr(series, detector, model_type=None, input_kind=None, custom_spec=None):
     """Runs a detector on a UCR series, with the arguments that it gets on NAB, and the raw scores."""
     X, y = Data().get_data(series)
     span = X.max() - X.min()
     X = (X - X.min()) / (span if span > 0 else 1.0)
-    model = UNIVARIATE[detector](len(X), None)
+
+    if model_type == "custom":
+        cls = _load_custom_model(custom_spec)
+        factory = _make_custom_factory(cls, input_kind)
+        model = factory(len(X), None)
+    else:
+        model = UNIVARIATE[detector](len(X), None)
+
     scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     train = int(series.split("_")[-3])  # the training part has no anomalies, so it does not count
@@ -579,24 +998,60 @@ def run_ucr(series, detector):
 
 
 def run(job):
+    dataset, detector, seed, points, *rest = job
+    ci = bool(rest[0]) if rest else False
+    model_type = rest[1] if len(rest) > 1 else None
+    input_kind = rest[2] if len(rest) > 2 else None
+    custom_spec = rest[3] if len(rest) > 3 else None
     # One thread for BLAS and OpenMP in each worker, so that the workers do not compete for the cores
     # and the times per point stay comparable. The scores do not change.
     with threadpool_limits(1):
-        return _run(*job)
+        return _run(
+            dataset,
+            detector,
+            seed,
+            points,
+            ci=ci,
+            model_type=model_type,
+            input_kind=input_kind,
+            custom_spec=custom_spec,
+        )
 
 
-def _run(dataset, detector, seed, points):
+def _run(
+    dataset, detector, seed, points, ci=False, model_type=None, input_kind=None, custom_spec=None
+):
     if dataset.startswith("ucr/"):
-        return run_ucr(dataset, detector)
+        return run_ucr(
+            dataset, detector, model_type=model_type, input_kind=input_kind, custom_spec=custom_spec
+        )
     if dataset.startswith("nab/"):
-        return run_univariate(dataset, detector, points)
+        return run_univariate(
+            dataset,
+            detector,
+            points,
+            ci=ci,
+            model_type=model_type,
+            input_kind=input_kind,
+            custom_spec=custom_spec,
+        )
+
     X, y = load(dataset, seed, points)
     fix_seed(seed)
-    model = DETECTORS[detector](X, seed)
+
+    if model_type == "custom":
+        # Custom model: load from spec in worker
+        cls = _load_custom_model(custom_spec)
+        factory = _make_custom_factory(cls, input_kind)
+        model = factory(X, seed)
+    else:
+        model = DETECTORS[detector](X, seed)
+
     scores, ms_per_point = score_stream(model, X)
     valid = np.isfinite(scores).all()
     row = {"dataset": dataset, "detector": detector, "seed": seed}
-    for name, calibrator in CALIBRATORS.items() if dataset not in DRIFT else []:
+    calibrators = [] if (ci or dataset in DRIFT) else CALIBRATORS.items()
+    for name, calibrator in calibrators:
         with np.errstate(all="ignore"):
             calibrated = calibrator().fit_transform(scores)
         row.update(alerts(name, calibrated[warmup(len(X)) :], y[warmup(len(X)) :], valid))
@@ -653,7 +1108,12 @@ def write_tables(results, nab=None):
             r["detector"],
         ),
     )
-    write_csv("results.csv", FIELDS, [[r.get(f, "") for f in FIELDS] for r in rows])
+    # results.csv keeps the multivariate detector results on the ODDS datasets.
+    # NAB, drift, and UCR results live in their own tables, which keeps results.csv small.
+    odds_rows = [r for r in rows if r["dataset"] in DATASETS]
+    write_csv(
+        "results.csv", RESULT_FIELDS, [[r.get(f, "") for f in RESULT_FIELDS] for r in odds_rows]
+    )
     write_univariate_tables(
         {k: r for k, r in results.items() if k[0].startswith(("nab/", "ucr/"))}, nab or read_nab()
     )
@@ -943,7 +1403,7 @@ def _parse_detector_tables(source):
             and len(node.targets) == 1
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id in _DETECTOR_TABLES
-            and isinstance(node.value, (ast.Dict, ast.List))
+            and isinstance(node.value, ast.Dict | ast.List)
         ):
             name = node.targets[0].id
             if isinstance(node.value, ast.Dict):
@@ -980,13 +1440,14 @@ def _runtime_toml(source):
     return source.split("\ntest = [", 1)[0]
 
 
-def changed_detectors(base, path=None):
+def changed_detectors(base, path=None, ci=False):
     """The detectors whose results a change since ``base`` can move.
 
     With ``path``, also the detectors whose committed results in ``path`` changed since ``base``.
     """
     files = git("diff", "--name-only", base).split()
-    common = pysad_files([Data, fix_seed, ShingleTransformer, *CALIBRATORS.values()])
+    shared = [Data, fix_seed] if ci else [Data, fix_seed, ShingleTransformer, *CALIBRATORS.values()]
+    common = pysad_files(shared)
     if common & set(files):
         return [*DETECTORS, *UNIVARIATE]
     if "pyproject.toml" in files and _runtime_toml(
@@ -1041,8 +1502,10 @@ def compare(before, after):
         if old is None:
             moved.append((k, "new", row["auroc"]))
         elif not np.isclose(
-            number(old["auroc"]), row["auroc"], atol=TOLERANCE, equal_nan=True
-        ) or not np.isclose(number(old.get("solved")), row.get("solved", np.nan), equal_nan=True):
+            number(old["auroc"]), number(row["auroc"]), atol=TOLERANCE, equal_nan=True
+        ) or not np.isclose(
+            number(old.get("solved")), number(row.get("solved", np.nan)), equal_nan=True
+        ):
             moved.append((k, old["auroc"], row["auroc"]))
     lines = [f"| {k[1]} | {k[0]} | {a} | {b} |" for k, a, b in moved]
     report = (
@@ -1102,7 +1565,8 @@ DIMENSION_DETECTORS = ["LODA", "xStream", "RSHash", "HalfSpaceTrees", "Inqmad", 
 DIMENSIONS = [2, 10, 50, 100, 500, 1000]
 DIMENSION_POINTS = 2000
 DIMENSION_FIELDS = ["detector", "dimension", "points", "ms_per_point"]
-DIMENSION_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]
+DIMENSION_COLORS = ["#00757a", "#5c6bc0", "#c26d1f", "#2a9d9f", "#64748b", "#e63946"]
+DIMENSION_COLORS_DARK = ["#2dd4bf", "#818cf8", "#f59e0b", "#99f6e4", "#94a3b8", "#f45b69"]
 
 
 def dimension_model(detector, d, seed):
@@ -1163,43 +1627,281 @@ def write_dimensions_svg(rows, detectors):
     def y(ms):
         return top + plot_h - plot_h * ms / (max_ms * 1.1)
 
+    sans = 'Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif'
+    mono = '"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace'
+    light_rules = "".join(f".s{i}{{stroke:{color}}}" for i, color in enumerate(DIMENSION_COLORS))
+    dark_rules = "".join(
+        f".s{i}{{stroke:{color}}}" for i, color in enumerate(DIMENSION_COLORS_DARK)
+    )
+    style = (
+        f"text{{font-family:{sans}}}"
+        f".title{{fill:#0d1b22;font-size:14px;font-weight:600}}"
+        f".axis{{fill:#5b6f78;font-size:12px;font-weight:500}}"
+        f".tick{{fill:#5b6f78;font-family:{mono};font-size:11px}}"
+        f".legend{{fill:#0d1b22;font-size:12px;font-weight:500}}"
+        f".grid{{stroke:#dce3e2;stroke-width:1}}"
+        f"{light_rules}"
+        f"@media (prefers-color-scheme:dark){{"
+        f".title,.legend{{fill:#edf5f6}}"
+        f".axis,.tick{{fill:#99b0b6}}"
+        f".grid{{stroke:#1e343d}}"
+        f"{dark_rules}"
+        f"}}"
+    )
     lines = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
-        f'<text x="{width // 2}" y="20" text-anchor="middle">Latency per point by dimension</text>',
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+        f'width="{width}" height="{height}" role="img" aria-label="Latency per point by dimension">',
+        f"<style>{style}</style>",
+        f'<text x="{width // 2}" y="20" text-anchor="middle" class="title">'
+        "Latency per point by dimension</text>",
     ]
     for ms in np.linspace(0, max_ms, 6):
         lines.append(
-            f'<line x1="{left}" y1="{y(ms):.1f}" x2="{left + plot_w}" y2="{y(ms):.1f}" stroke="#ddd"/>'
+            f'<line x1="{left}" y1="{y(ms):.1f}" x2="{left + plot_w}" y2="{y(ms):.1f}" class="grid"/>'
         )
-        lines.append(f'<text x="{left - 10}" y="{y(ms) + 4:.1f}" text-anchor="end">{ms:.3g}</text>')
+        lines.append(
+            f'<text x="{left - 10}" y="{y(ms) + 4:.1f}" text-anchor="end" class="tick">{ms:.3g}</text>'
+        )
     for d in dims:
         lines.append(
-            f'<line x1="{x(d):.1f}" y1="{top}" x2="{x(d):.1f}" y2="{top + plot_h}" stroke="#ddd"/>'
+            f'<line x1="{x(d):.1f}" y1="{top}" x2="{x(d):.1f}" y2="{top + plot_h}" class="grid"/>'
         )
         lines.append(
-            f'<text x="{x(d):.1f}" y="{top + plot_h + 20}" text-anchor="middle">{d}</text>'
+            f'<text x="{x(d):.1f}" y="{top + plot_h + 20}" text-anchor="middle" class="tick">{d}</text>'
         )
     lines.append(
-        f'<text x="{left + plot_w // 2}" y="{height - 10}" text-anchor="middle">dimension d (log scale)</text>'
+        f'<text x="{left + plot_w // 2}" y="{height - 10}" text-anchor="middle" class="axis">'
+        "dimension d (log scale)</text>"
     )
     lines.append(
-        f'<text x="20" y="{top + plot_h // 2}" text-anchor="middle" transform="rotate(-90 20 {top + plot_h // 2})">ms per point</text>'
+        f'<text x="20" y="{top + plot_h // 2}" text-anchor="middle" '
+        f'transform="rotate(-90 20 {top + plot_h // 2})" class="axis">ms per point</text>'
     )
     for i, detector in enumerate(detectors):
-        color = DIMENSION_COLORS[i % len(DIMENSION_COLORS)]
+        cls = f"s{i % len(DIMENSION_COLORS)}"
         cells = [row for row in rows if row["detector"] == detector]
         points_attr = " ".join(f"{x(r['dimension']):.1f},{y(r['ms_per_point']):.1f}" for r in cells)
         lines.append(
-            f'<polyline fill="none" stroke="{color}" stroke-width="2" points="{points_attr}"/>'
+            f'<polyline fill="none" class="{cls}" stroke-width="2" points="{points_attr}"/>'
         )
         legend_y = top + 15 * i
         lines.append(
-            f'<line x1="{left + plot_w + 10}" y1="{legend_y}" x2="{left + plot_w + 30}" y2="{legend_y}" stroke="{color}" stroke-width="2"/>'
+            f'<line x1="{left + plot_w + 10}" y1="{legend_y}" x2="{left + plot_w + 30}" '
+            f'y2="{legend_y}" class="{cls}" stroke-width="2"/>'
         )
-        lines.append(f'<text x="{left + plot_w + 35}" y="{legend_y + 4}">{detector}</text>')
+        lines.append(
+            f'<text x="{left + plot_w + 35}" y="{legend_y + 4}" class="legend">{detector}</text>'
+        )
     lines.append("</svg>")
     with open(OUT / "dimensions.svg", "w") as f:
         f.write("\n".join(lines) + "\n")
+
+
+_FALLBACK_PART_WEIGHTS: dict[str, dict[str, float]] = {
+    "odds": {
+        "PCBIsolationForest": 180.0,
+        "MiLOF": 50.0,
+        "IDKS": 35.0,
+        "GNGA": 25.0,
+        "FRAHST": 20.0,
+        "FeedbackHST": 18.0,
+        "CostSensitiveStreamModel": 15.0,
+        "SDOstream": 15.0,
+    },
+    "drift": {
+        "PCBIsolationForest": 140.0,
+        "MiLOF": 25.0,
+        "IDKS": 20.0,
+        "GNGA": 15.0,
+        "FRAHST": 12.0,
+        "FeedbackHST": 10.0,
+        "CostSensitiveStreamModel": 8.0,
+        "SDOstream": 8.0,
+    },
+    "univariate": {
+        "OeSNNUAD": 25.0,
+        "FluxEV": 12.0,
+        "PEWMA": 8.0,
+        "StreamingAutoregressiveDetector": 8.0,
+    },
+}
+
+
+def _write_ci_csv(out_path: Path, rows_by_key: dict[tuple[str, str, int], dict]) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w", newline="", encoding="utf-8", dir=out_path.parent, delete=False
+    ) as f:
+        tmp_path = Path(f.name)
+        writer = csv.writer(f, lineterminator="\n")
+        writer.writerow(CI_FIELDS)
+        writer.writerows(
+            [r.get(field, "") for field in CI_FIELDS] for _, r in sorted(rows_by_key.items())
+        )
+    tmp_path.replace(out_path)
+
+
+def _detector_weights(results_path=OUT / "results.csv"):
+    """Load per-(dataset, detector) and per-part detector timings from results.csv."""
+    cell_weights: dict[tuple[str, str], float] = {}
+    part_weights: dict[str, dict[str, float]] = {"odds": {}, "drift": {}, "univariate": {}}
+    if results_path.exists():
+        drift_keys = set(DRIFT)
+        multivariate_dets = set(DETECTORS)
+        univariate_dets = set(UNIVARIATE)
+        with open(results_path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                ds = row.get("dataset", "")
+                det = row.get("detector", "").removesuffix(SHINGLED)
+                try:
+                    ms = float(row.get("ms_per_point", ""))
+                except (TypeError, ValueError):
+                    continue
+                cell_weights[(ds, det)] = ms
+                if ds in drift_keys and det in multivariate_dets:
+                    part = "drift"
+                elif ds.startswith("nab/") and det in univariate_dets:
+                    part = "univariate"
+                elif not ds.startswith(("nab/", "ucr/")) and det in multivariate_dets:
+                    part = "odds"
+                else:
+                    continue
+                part_weights[part][det] = part_weights[part].get(det, 0.0) + ms
+    for part, defaults in _FALLBACK_PART_WEIGHTS.items():
+        for det, weight in defaults.items():
+            part_weights[part].setdefault(det, weight)
+    return cell_weights, part_weights
+
+
+def _ci_shard_count(part: str, count: int) -> int:
+    if count <= 1:
+        return max(1, count)
+    if part == "odds":
+        target = (
+            1 if count <= 4 else 2 if count <= 9 else 3 if count <= 15 else 4 if count <= 22 else 5
+        )
+    elif part == "drift":
+        target = 1 if count <= 5 else 2 if count <= 14 else 3
+    else:
+        target = 1 if count <= 4 else 2 if count <= 10 else 3
+    return min(target, count)
+
+
+def _pack_shards(
+    detectors: list[str], num_shards: int, weights: dict[str, float]
+) -> list[list[str]]:
+    """Greedy LPT bin-packing of detectors into balanced shards."""
+    if num_shards <= 1 or len(detectors) <= 1:
+        return [list(detectors)] if detectors else []
+    known = [weights[d] for d in detectors if d in weights]
+    default_weight = float(np.median(known)) if known else 1.0
+    ordered = sorted(detectors, key=lambda d: (-weights.get(d, default_weight), d))
+    bins: list[tuple[float, list[str]]] = [(0.0, []) for _ in range(num_shards)]
+    for det in ordered:
+        bins.sort(key=lambda b: b[0])
+        load_so_far, bucket = bins[0]
+        bucket.append(det)
+        bins[0] = (load_so_far + weights.get(det, default_weight), bucket)
+    return [bucket for _, bucket in bins if bucket]
+
+
+def _cache_file(cache_dir: Path, detector: str, det_hash: str) -> Path:
+    return cache_dir / f"{detector}-{det_hash}.csv"
+
+
+def _det_base_hash(
+    part: str, bench_sha: str, detector: str, deps: set[str], ls_map: dict[str, str]
+) -> str:
+    hasher = hashlib.sha256()
+    hasher.update(f"{part}\n{bench_sha}\n{detector}\n".encode())
+    for dep in sorted(deps):
+        if dep in ls_map:
+            hasher.update((ls_map[dep] + "\n").encode())
+    return hasher.hexdigest()[:16]
+
+
+def compare_ci_dirs(base_dir: Path, head_dir: Path) -> None:
+    """Compare all ``--ci`` CSV artifacts collected under ``base_dir`` and ``head_dir``."""
+    before: dict[tuple[str, str, int], dict] = {}
+    for csv_path in sorted(base_dir.rglob("*.csv")):
+        before.update(read_results(csv_path))
+    after: dict[tuple[str, str, int], dict] = {}
+    for csv_path in sorted(head_dir.rglob("*.csv")):
+        after.update(read_results(csv_path))
+    if not after:
+        print("No head benchmark results to compare.")
+        return
+    if not before:
+        print(f"No base benchmark results to compare ({len(after)} head runs).")
+        return
+    compare(before, after)
+
+
+def ci_plan(base: str, *, all_detectors: bool = False) -> dict:
+    """Compute sharded GitHub Actions matrix and content-addressed base cache keys for --ci."""
+    tree_ref = (base or "HEAD") if all_detectors else base
+    detectors = (
+        [*DETECTORS, *UNIVARIATE]
+        if (all_detectors or not base)
+        else changed_detectors(base, ci=True)
+    )
+    multivariate = [d for d in detectors if d in DETECTORS]
+    univariate = [d for d in detectors if d in UNIVARIATE]
+    _, part_weights = _detector_weights()
+    shared_deps = pysad_files([Data, fix_seed]) | {"pyproject.toml"}
+    bench_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16]
+
+    ls_map: dict[str, str] = {}
+    if tree_ref:
+        for line in git("ls-tree", "-r", tree_ref, "--", "pysad", "pyproject.toml").splitlines():
+            parts = line.split("\t", 1)
+            if len(parts) == 2:
+                ls_map[parts[1]] = line
+
+    include = []
+    for part, part_detectors in [
+        ("odds", multivariate),
+        ("drift", multivariate),
+        ("univariate", univariate),
+    ]:
+        if not part_detectors:
+            continue
+        shards = _pack_shards(
+            part_detectors,
+            _ci_shard_count(part, len(part_detectors)),
+            part_weights[part],
+        )
+        for shard_id, shard_dets in enumerate(shards):
+            has_base = bool(tree_ref) and any(
+                f"{getattr(models, d).__module__.replace('.', '/')}.py" in ls_map
+                for d in shard_dets
+            )
+            det_hashes = {
+                d: _det_base_hash(
+                    part,
+                    bench_sha,
+                    d,
+                    shared_deps | pysad_files([getattr(models, d)]),
+                    ls_map,
+                )
+                for d in sorted(shard_dets)
+            }
+            shard_hash = hashlib.sha256(
+                (
+                    f"{part}\n{bench_sha}\n" + "\n".join(f"{k}={v}" for k, v in det_hashes.items())
+                ).encode()
+            ).hexdigest()[:16]
+            include.append(
+                {
+                    "part": part,
+                    "shard": ",".join(shard_dets),
+                    "shard_id": str(shard_id),
+                    "has_base": has_base,
+                    "base_hash": shard_hash,
+                    "det_hashes": json.dumps(det_hashes, separators=(",", ":")),
+                }
+            )
+    return {"has_jobs": bool(include), "include": include}
 
 
 def main():
@@ -1228,9 +1930,42 @@ def main():
         "--since", metavar="BASE", help="run only the detectors that changed since BASE"
     )
     parser.add_argument(
+        "--ignore-unknown",
+        action="store_true",
+        help="ignore detector names not present in this checkout",
+    )
+    parser.add_argument(
+        "--ci-plan",
+        nargs="?",
+        const="",
+        metavar="BASE",
+        help="print JSON sharded CI plan and content-addressed base cache keys for changes since BASE",
+    )
+    parser.add_argument(
+        "--all-detectors",
+        action="store_true",
+        help="with --ci-plan, include every detector instead of only detectors changed since BASE",
+    )
+    parser.add_argument(
+        "--base-cache-dir",
+        metavar="DIR",
+        help="with --ci, read and populate per-detector <detector>-<hash>.csv cache files in DIR",
+    )
+    parser.add_argument(
+        "--det-hashes",
+        metavar="JSON",
+        help="with --base-cache-dir, JSON mapping detector name to its base hash",
+    )
+    parser.add_argument(
         "--compare",
         metavar="FILE",
         help="with --ci, print the AUROC of each run that differs from FILE, a file of another --ci run",
+    )
+    parser.add_argument(
+        "--compare-dirs",
+        nargs=2,
+        metavar=("BASE_DIR", "HEAD_DIR"),
+        help="compare all --ci CSV files under BASE_DIR against HEAD_DIR",
     )
     parser.add_argument("--jobs", type=int, default=os.cpu_count())
     parser.add_argument(
@@ -1244,7 +1979,39 @@ def main():
         default=DIMENSION_POINTS,
         help="points per detector and dimension in the dimensionality sweep",
     )
+    parser.add_argument(
+        "--ensembles",
+        action="store_true",
+        help="report prequential metrics of streaming detector ensembles on the ODDS datasets",
+    )
+    parser.add_argument(
+        "--custom",
+        metavar="SPEC",
+        help="custom model to benchmark, as 'path/to/file.py:ClassName'",
+    )
+    parser.add_argument(
+        "--latex",
+        action="store_true",
+        help="write a LaTeX summary table to docs/benchmark/summary.tex",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=CACHE_DIR,
+        help="directory for cached pair results (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="run pairs without reading or writing the result cache",
+    )
     args = parser.parse_args()
+    if args.compare_dirs:
+        compare_ci_dirs(Path(args.compare_dirs[0]), Path(args.compare_dirs[1]))
+        return
+    if args.ci_plan is not None:
+        print(json.dumps(ci_plan(args.ci_plan, all_detectors=args.all_detectors)))
+        return
     if args.dimensions:
         if args.dimension_points <= 0:
             parser.error("--dimension-points must be positive.")
@@ -1262,11 +2029,68 @@ def main():
             )
         return
     path = OUT / "results.csv"
-    points = CI_POINTS if args.ci else None
+    ci_mode = bool(args.ci)
+    points = CI_POINTS if ci_mode else None
+
+    if args.ensembles:
+        # Report prequential metrics of streaming detector ensembles on the ODDS datasets.
+        # Each ensemble scores every instance before it learns from it, as evaluate_stream does.
+        for dataset in DATASETS:
+            Data().get_data(f"{dataset}.mat")
+        run_commit = commit() if not ci_mode else None
+        jobs = [(ds, e, 0, points) for ds in DATASETS for e in ENSEMBLES]
+        new = {}
+        if jobs:
+            with ProcessPoolExecutor(args.jobs, initializer=_init_worker) as pool:
+                remaining = {pool.submit(run_ensemble, *job): job for job in jobs}
+                start, step = time.perf_counter(), max(1, len(jobs) // 20)
+                for future in as_completed(list(remaining)):
+                    row = future.result()
+                    if run_commit is not None:
+                        row["commit"] = run_commit
+                    job = remaining.pop(future)
+                    new[(row["dataset"], row["ensemble"], int(row["seed"]))] = row
+                    if len(new) % step == 0 or not remaining:
+                        progress(
+                            len(new),
+                            len(jobs),
+                            time.perf_counter() - start,
+                            remaining.values(),
+                        )
+        OUT.mkdir(parents=True, exist_ok=True)
+        rows = sorted(new.values(), key=lambda r: (r["dataset"], r["ensemble"]))
+        write_csv(
+            "ensemble_results.csv",
+            ENSEMBLE_FIELDS,
+            [[r.get(f, "") for f in ENSEMBLE_FIELDS] for r in rows],
+        )
+        for r in rows:
+            print(
+                f"{r['ensemble']:<22} {r['dataset']:<20} "
+                f"AUROC={r['auroc']} AUPR={r['aupr']} {r['ms_per_point']} ms/point"
+            )
+        print(f"Ensemble results written to {OUT / 'ensemble_results.csv'} ({len(rows)} runs).")
+        return
+
+    # Load custom model if specified
+    custom_model = None
+    custom_name = None
+    custom_input_kind = None
+    if args.custom:
+        custom_model = _load_custom_model(args.custom)
+        custom_name = custom_model.__name__
+        custom_input_kind = custom_model._input_kind
+        if custom_input_kind not in ("multivariate", "univariate", "timestamped"):
+            custom_input_kind = "multivariate"
 
     detectors = args.detectors.split(",") if args.detectors else [*DETECTORS, *UNIVARIATE]
     if args.check or args.since:
-        detectors = changed_detectors(args.check or args.since, None if args.ci else path)
+        detectors = changed_detectors(
+            args.check or args.since, None if ci_mode else path, ci=ci_mode
+        )
+    if args.ignore_unknown:
+        known = set(DETECTORS) | set(UNIVARIATE)
+        detectors = [d for d in detectors if d in known]
     if args.check is not None or args.since:
         print("Detectors to run:", ", ".join(detectors) or "none")
     unknown = set(detectors) - set(DETECTORS) - set(UNIVARIATE)
@@ -1276,55 +2100,159 @@ def main():
     if set(parts) - set(PARTS):
         parser.error(f"unknown parts: {', '.join(sorted(set(parts) - set(PARTS)))}")
 
+    # Create factory for custom model
+    custom_is_multivariate = False
+    custom_is_univariate = False
+    if custom_model:
+        _make_custom_factory(custom_model, custom_input_kind)  # validate factory creation
+        custom_is_multivariate = custom_input_kind == "multivariate"
+        custom_is_univariate = custom_input_kind in ("univariate", "timestamped")
+
     # Each part downloads its data once, before the workers start. Every part runs once, with seed 0.
+    cache_dir = Path(args.base_cache_dir) if (ci_mode and args.base_cache_dir) else None
+    det_hashes: dict[str, str] = json.loads(args.det_hashes) if args.det_hashes else {}
+    cached_rows: dict[tuple[str, str, int], dict] = {}
+    run_detectors = list(detectors)
+    if cache_dir is not None and det_hashes:
+        run_detectors = []
+        for d in detectors:
+            det_hash = det_hashes.get(d)
+            cache_path = _cache_file(cache_dir, d, det_hash) if det_hash else None
+            if cache_path is not None and cache_path.is_file():
+                cached_rows.update(read_results(cache_path))
+            else:
+                run_detectors.append(d)
+
     jobs = []
-    multivariate = [d for d in detectors if d in DETECTORS]
-    univariate = [d for d in detectors if d in UNIVARIATE]
-    if "odds" in parts:
+    multivariate = [d for d in run_detectors if d in DETECTORS]
+    univariate = [d for d in run_detectors if d in UNIVARIATE]
+
+    if "odds" in parts and (multivariate or custom_is_multivariate):
         for dataset in DATASETS:
             Data().get_data(f"{dataset}.mat")
-        jobs += [(ds, d, 0, points) for d in multivariate for ds in DATASETS]
-    if {"univariate", "nab", "shingles"} & set(parts):
+        jobs += [(ds, d, 0, points, ci_mode) for d in multivariate for ds in DATASETS]
+        if custom_is_multivariate:
+            jobs += [
+                (ds, custom_name, 0, points, ci_mode, "custom", custom_input_kind, args.custom)
+                for ds in DATASETS
+            ]
+    if {"univariate", "nab", "shingles"} & set(parts) and (
+        univariate
+        or ({"nab", "shingles"} & set(parts) and multivariate)
+        or custom_is_univariate
+        or ({"nab", "shingles"} & set(parts) and custom_is_multivariate)
+    ):
         for series in nab_series():
             Data().get_data(series)
-    if "univariate" in parts:
-        jobs += [(series, d, 0, points) for d in univariate for series in series_of(d)]
-        if not args.ci:  # the training part of most UCR series is longer than CI_POINTS
+    if "univariate" in parts and (univariate or custom_is_univariate):
+        jobs += [(series, d, 0, points, ci_mode) for d in univariate for series in series_of(d)]
+        if custom_is_univariate:
             jobs += [
-                (s, d, 0, None)
+                (series, custom_name, 0, points, ci_mode, "custom", custom_input_kind, args.custom)
+                for series in nab_series()
+            ]
+        if not ci_mode:
+            jobs += [
+                (s, d, 0, None, ci_mode)
                 for d in univariate
                 if d not in SEASONAL + TIMESTAMPED
                 for s in ucr_series()
             ]
-    if "drift" in parts:
+    if "drift" in parts and (multivariate or custom_is_multivariate):
         for stream in DRIFT:
             Data().get_data(stream)
-        jobs += [(stream, d, 0, points) for d in multivariate for stream in DRIFT]
-    if "nab" in parts:
-        jobs += [(series, d, 0, points) for d in multivariate for series in nab_series()]
-    if "shingles" in parts:
-        jobs += [(series, d + SHINGLED, 0, points) for d in multivariate for series in nab_series()]
+        jobs += [(stream, d, 0, points, ci_mode) for d in multivariate for stream in DRIFT]
+        if custom_is_multivariate:
+            jobs += [
+                (stream, custom_name, 0, points, ci_mode, "custom", custom_input_kind, args.custom)
+                for stream in DRIFT
+            ]
+    if "nab" in parts and (multivariate or custom_is_multivariate):
+        jobs += [(series, d, 0, points, ci_mode) for d in multivariate for series in nab_series()]
+        if custom_is_multivariate:
+            jobs += [
+                (series, custom_name, 0, points, ci_mode, "custom", custom_input_kind, args.custom)
+                for series in nab_series()
+            ]
+    if "shingles" in parts and (multivariate or custom_is_multivariate):
+        jobs += [
+            (series, d + SHINGLED, 0, points, ci_mode)
+            for d in multivariate
+            for series in nab_series()
+        ]
+        if custom_is_multivariate:
+            jobs += [
+                (
+                    series,
+                    custom_name + SHINGLED,
+                    0,
+                    points,
+                    ci_mode,
+                    "custom",
+                    custom_input_kind,
+                    args.custom,
+                )
+                for series in nab_series()
+            ]
+    cache_paths = (
+        _result_cache_paths(jobs, args.cache_dir)
+        if not args.no_cache and args.check is None
+        else {}
+    )
+    pending = []
+    for job in jobs:
+        row = _read_cached_result(cache_paths[job]) if job in cache_paths else None
+        if row is None:
+            pending.append(job)
+        else:
+            cached_rows[key(row)] = row
+    print(f"Pair cache: {len(jobs) - len(pending)} hits, {len(pending)} runs.")
+    jobs = pending
+    cell_weights, part_weights = _detector_weights()
+    drift_keys = set(DRIFT)
+
+    def _job_weight(job: tuple) -> float:
+        ds, det_raw = job[0], job[1].removesuffix(SHINGLED)
+        if (ds, det_raw) in cell_weights:
+            return cell_weights[(ds, det_raw)]
+        part = "drift" if ds in drift_keys else "univariate" if ds.startswith("nab/") else "odds"
+        return part_weights[part].get(det_raw, float("inf"))
+
+    jobs.sort(key=_job_weight, reverse=True)
     new = {}
-    with ProcessPoolExecutor(args.jobs) as pool:
-        remaining = {pool.submit(run, job): job for job in jobs}
-        start, step = time.perf_counter(), max(1, len(jobs) // 20)
-        for future in as_completed(list(remaining)):
-            row = future.result()
-            new[key(row)] = row
-            del remaining[future]
-            if len(new) % step == 0 or not remaining:
-                progress(len(new), len(jobs), time.perf_counter() - start, remaining.values())
-    nab = {} if args.ci else nab_rows(new)  # the NAB score needs the whole series
+    run_commit = commit() if not ci_mode else None
+    if jobs:
+        with ProcessPoolExecutor(args.jobs, initializer=_init_worker) as pool:
+            remaining = {pool.submit(run, job): job for job in jobs}
+            start, step = time.perf_counter(), max(1, len(jobs) // 20)
+            for future in as_completed(list(remaining)):
+                row = future.result()
+                if run_commit is not None:
+                    row["commit"] = run_commit
+                job = remaining.pop(future)
+                if job in cache_paths:
+                    _write_cached_result(cache_paths[job], row)
+                new[key(row)] = row
+                if len(new) % step == 0 or not remaining:
+                    progress(len(new), len(jobs), time.perf_counter() - start, remaining.values())
+    new = {**cached_rows, **new}
+    nab = {} if ci_mode else nab_rows(new)  # the NAB score needs the whole series
     for row in new.values():
         row.pop("_nab", None)
 
-    if args.ci:
-        with open(args.ci, "w", newline="") as f:
-            writer = csv.writer(f, lineterminator="\n")
-            writer.writerow(CI_FIELDS)
-            writer.writerows([r.get(f, "") for f in CI_FIELDS] for _, r in sorted(new.items()))
+    if ci_mode:
+        if cache_dir is not None and det_hashes:
+            for d in run_detectors:
+                det_hash = det_hashes.get(d)
+                if not det_hash:
+                    continue
+                det_rows = {k: r for k, r in new.items() if k[1].removesuffix(SHINGLED) == d}
+                if det_rows:
+                    _write_ci_csv(_cache_file(cache_dir, d, det_hash), det_rows)
+        combined = new
+        _write_ci_csv(Path(args.ci), combined)
         if args.compare:
-            compare(read_results(Path(args.compare)), new)
+            compare(read_results(Path(args.compare)), combined)
         return
 
     results = read_results(path)
@@ -1382,8 +2310,7 @@ def main():
         print("The results in docs/benchmark/ are up to date.")
         return
 
-    sha = commit()
-    results.update({k: {**row, "commit": sha} for k, row in new.items()})
+    results.update(new)
     OUT.mkdir(parents=True, exist_ok=True)
     nab = {**read_nab(), **nab}
     write_csv(
@@ -1391,7 +2318,10 @@ def main():
         NAB_FIELDS,
         [[nab[d].get(f, "") for f in NAB_FIELDS] for d in NAB_DETECTORS if d in nab],
     )
-    write_tables(results, nab)
+    detectors_order = write_tables(results, nab)
+    if args.latex:
+        _write_latex_summary(results, detectors_order, OUT / "summary.tex")
+        print(f"LaTeX summary written to {OUT / 'summary.tex'}")
 
 
 if __name__ == "__main__":

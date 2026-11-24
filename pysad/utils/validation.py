@@ -5,6 +5,7 @@ import numbers
 from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 
 def _int_at_least(value: Any, name: str, minimum: int, expected: str = "an int") -> int:
@@ -63,7 +64,9 @@ def _finite_float(value: Any, name: str) -> float:
     return value_float
 
 
-def check_feature_bounds(feature_mins: Any, feature_maxes: Any) -> tuple[np.ndarray, np.ndarray]:
+def check_feature_bounds(
+    feature_mins: Any, feature_maxes: Any
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Converts and validates feature minimum and maximum boundary arrays.
 
     The boundary arrays must be non-empty 1-D arrays of the same length.

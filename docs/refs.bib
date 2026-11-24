@@ -1,3 +1,13 @@
+@article{ackermann2012streamkmpp,
+  title={{StreamKM}++: A Clustering Algorithm for Data Streams},
+  author={Ackermann, Marcel R. and M\"artens, Marcus and Raupach, Christoph and Swierkot, Kamil and Lammersen, Christiane and Sohler, Christian},
+  journal={ACM Journal of Experimental Algorithmics},
+  volume={17},
+  pages={2.4:1--2.4:30},
+  year={2012},
+  doi={10.1145/2133803.2184450}
+}
+
 @article{aggarwal2015theoretical,
   title={Theoretical foundations and algorithms for outlier ensembles},
   author={Aggarwal, Charu C and Sathe, Saket},
@@ -17,15 +27,6 @@
   pages={134--147},
   year={2017},
   publisher={Elsevier}
-}
-
-@inproceedings{angelov2014anomaly,
-  title={Anomaly Detection Based on Eccentricity Analysis},
-  author={Angelov, Plamen},
-  booktitle={2014 IEEE Symposium on Evolving and Autonomous Learning Systems (EALS)},
-  pages={1--8},
-  year={2014},
-  doi={10.1109/EALS.2014.7009497}
 }
 
 @inproceedings{angiulli2007detecting,
@@ -75,11 +76,12 @@
 @article{bartos_2019_rrcf,
   title={{rrcf: Implementation of the Robust Random Cut Forest algorithm for anomaly detection on streams}},
   author={Matthew Bartos and Abhiram Mullapudi and Sara Troutman},
-  journal={{The Journal of Open Source Software}},
+  journal={Journal of Open Source Software},
   volume={4},
   number={35},
   pages={1336},
-  year={2019}
+  year={2019},
+  doi={10.21105/joss.01336}
 }
 
 @inproceedings{bhatia2020midas,
@@ -97,12 +99,13 @@
   title={{MStream}: Fast Anomaly Detection in Multi-Aspect Streams},
   author={Bhatia, Siddharth and Jain, Arjit and Li, Pan and Kumar, Ritesh and Hooi, Bryan},
   booktitle={Proceedings of the Web Conference 2021},
+  pages={3371--3382},
   year={2021},
   doi={10.1145/3442381.3450023}
 }
 
 @inproceedings{bhatia2022memstream,
-  title={MemStream: Memory-Based Streaming Anomaly Detection},
+  title={{MemStream}: Memory-Based Streaming Anomaly Detection},
   author={Bhatia, Siddharth and Jain, Arjit and Srivastava, Shivin and Kawaguchi, Kenji and Hooi, Bryan},
   booktitle={Proceedings of the ACM Web Conference 2022},
   pages={610--621},
@@ -180,8 +183,10 @@
   author={Cesa-Bianchi, Nicol{\`o} and Lugosi, G{\'a}bor},
   journal={Machine Learning},
   volume={43},
+  number={3},
   pages={247--264},
   year={2001},
+  doi={10.1023/A:1010848128995},
   url={https://cesa-bianchi.di.unimi.it/Pubblicazioni/ml-01.pdf}
 }
 
@@ -192,7 +197,19 @@
   volume={3},
   number={30},
   pages={845},
-  year={2018}
+  year={2018},
+  doi={10.21105/joss.00845}
+}
+
+@article{cormode2005countmin,
+  title={An improved data stream summary: the count-min sketch and its applications},
+  author={Cormode, Graham and Muthukrishnan, S.},
+  journal={Journal of Algorithms},
+  volume={55},
+  number={1},
+  pages={58--75},
+  year={2005},
+  doi={10.1016/j.jalgor.2003.12.001}
 }
 
 @inproceedings{cormode2021relative,
@@ -248,12 +265,12 @@
 }
 
 @inproceedings{flajolet2007hyperloglog,
-  title={Hyperloglog: the analysis of a near-optimal cardinality estimation algorithm},
+  title={{HyperLogLog}: the analysis of a near-optimal cardinality estimation algorithm},
   author={Flajolet, Philippe and Fusy, {\'E}ric and Gandouet, Olivier and Meunier, Fr{\'e}d{\'e}ric},
   booktitle={Discrete Mathematics and Theoretical Computer Science Proceedings},
   series={DMTCS Proceedings},
   volume={AH},
-  pages={127--146},
+  pages={137--156},
   year={2007},
   doi={10.46298/dmtcs.3545}
 }
@@ -297,16 +314,20 @@
   volume={66},
   number={5},
   pages={1213--1227},
-  year={2017},
-  publisher={IEEE}
+  year={2018},
+  publisher={IEEE},
+  doi={10.1109/TSP.2017.2784390}
 }
 
 @inproceedings{guha2016robust,
   title={Robust random cut forest based anomaly detection on streams},
   author={Guha, Sudipto and Mishra, Nina and Roy, Gourav and Schrijvers, Okke},
   booktitle={International Conference on Machine Learning},
+  volume={48},
   pages={2712--2721},
-  year={2016}
+  year={2016},
+  series={Proceedings of Machine Learning Research},
+  publisher={PMLR}
 }
 
 @article{hamlet2017incremental,
@@ -338,7 +359,7 @@
 }
 
 @article{he2023oneshotstl,
-  title={OneShotSTL: One-Shot Seasonal-Trend Decomposition For Online Time Series Anomaly Detection And Forecasting},
+  title={{OneShotSTL}: One-Shot Seasonal-Trend Decomposition For Online Time Series Anomaly Detection And Forecasting},
   author={He, Xiao and Li, Ye and Tan, Jian and Wu, Bin and Li, Feifei},
   journal={Proceedings of the VLDB Endowment},
   volume={16},
@@ -390,19 +411,32 @@
   title={Conformal {k-NN} Anomaly Detector for Univariate Data Streams},
   author={Ishimtsev, Vladislav and Bernstein, Alexander and Burnaev, Evgeny and Nazarov, Ivan},
   booktitle={Conformal and Probabilistic Prediction and Applications},
+  volume={60},
   pages={213--227},
-  year={2017}
+  year={2017},
+  series={Proceedings of Machine Learning Research},
+  publisher={PMLR}
 }
 
 @article{jain1985psquare,
-  title={The P	extsuperscript{2} algorithm for dynamic calculation of quantiles and histograms without storing observations},
+  title={The {P$^2$} algorithm for dynamic calculation of quantiles and histograms without storing observations},
   author={Jain, Raj and Chlamtac, Imrich},
   journal={Communications of the {ACM}},
   volume={28},
   number={10},
   pages={1076--1085},
   year={1985},
-  publisher={ACM New York, NY, USA}
+  publisher={ACM New York, NY, USA},
+  doi={10.1145/4372.4378}
+}
+
+@inproceedings{karnin2016optimal,
+  title={Optimal Quantile Approximation in Streams},
+  author={Karnin, Zohar and Lang, Kevin and Liberty, Edo},
+  booktitle={2016 IEEE 57th Annual Symposium on Foundations of Computer Science (FOCS)},
+  pages={71--78},
+  year={2016},
+  doi={10.1109/FOCS.2016.17}
 }
 
 @article{kivinen2004online,
@@ -455,7 +489,7 @@
 @inproceedings{laptev2015generic,
   title={Generic and Scalable Framework for Automated Time-series Anomaly Detection},
   author={Laptev, Nikolay and Amizadeh, Saeed and Flint, Ian},
-  booktitle={Proceedings of the 21th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+  booktitle={Proceedings of the 21st ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
   pages={1939--1947},
   year={2015},
   doi={10.1145/2783258.2788611}
@@ -484,7 +518,7 @@
 }
 
 @inproceedings{li2021fluxev,
-  title={FluxEV: A Fast and Effective Unsupervised Framework for Time-Series Anomaly Detection},
+  title={{FluxEV}: A Fast and Effective Unsupervised Framework for Time-Series Anomaly Detection},
   author={Li, Jia and Di, Shimin and Shen, Yanyan and Chen, Lei},
   booktitle={Proceedings of the 14th ACM International Conference on Web Search and Data Mining},
   pages={824--832},
@@ -499,6 +533,18 @@
   pages={1173--1182},
   year={2022},
   doi={10.1145/3534678.3539271}
+}
+
+@article{lundberg2020consistent,
+  title={From local explanations to global understanding with explainable AI for trees},
+  author={Lundberg, Scott M and Erion, Gabriel and Chen, Hugh and DeGrave, Alex and Prutkin, Jordan M and Nair, Bala and Katz, Ronit and Himmelfarb, Jonathan and Bansal, Nisha and Lee, Su-In},
+  journal={Nature Machine Intelligence},
+  volume={2},
+  number={1},
+  pages={56--67},
+  year={2020},
+  publisher={Nature Publishing Group},
+  doi={10.1038/s42256-019-0138-9}
 }
 
 @article{maciag2021unsupervised,
@@ -559,7 +605,7 @@
 }
 
 @inproceedings{pesaranghader2016fast,
-  title={Fast Hoeffding Drift Detection Method for Evolving Data Streams},
+  title={Fast {Hoeffding} Drift Detection Method for Evolving Data Streams},
   author={Pesaranghader, Ali and Viktor, Herna L.},
   booktitle={Machine Learning and Knowledge Discovery in Databases -- ECML PKDD 2016},
   series={Lecture Notes in Computer Science},
@@ -571,7 +617,7 @@
 }
 
 @article{pesaranghader2018reservoir,
-  title={Reservoir of Diverse Adaptive Learners and Stacking Fast Hoeffding Drift Detection Methods for Evolving Data Streams},
+  title={Reservoir of Diverse Adaptive Learners and Stacking Fast {Hoeffding} Drift Detection Methods for Evolving Data Streams},
   author={Pesaranghader, Ali and Viktor, Herna L. and Paquet, Eric},
   journal={Machine Learning},
   volume={107},
@@ -653,6 +699,9 @@
   title={Fast memory efficient local outlier detection in data streams},
   author={Salehi, Mahsa and Leckie, Christopher and Bezdek, James C. and Vaithianathan, Tharshan and Zhang, Xuyun},
   journal={IEEE Transactions on Knowledge and Data Engineering},
+  volume={28},
+  number={12},
+  pages={3246--3260},
   year={2016},
   doi={10.1109/TKDE.2016.2597833},
   publisher={IEEE}
@@ -689,10 +738,11 @@
 
 @article{souza2020challenges,
   title={Challenges in Benchmarking Stream Learning Algorithms with Real-world Data},
-  author={Souza, Vinicius M. A. and dos Reis, Denis M. and Maletzke, Andre G. and Batista, Gustavo E. A. P. A.},
+  author={Souza, Vinicius M. A. and dos Reis, Denis M. and Maletzke, Andr{\'e} G. and Batista, Gustavo E. A. P. A.},
   journal={Data Mining and Knowledge Discovery},
   volume={34},
   number={6},
+  pages={1805--1858},
   year={2020},
   doi={10.1007/s10618-020-00698-5}
 }
@@ -701,6 +751,7 @@
   title={Robust Anomaly Detection for Multivariate Time Series through Stochastic Recurrent Neural Network},
   author={Su, Ya and Zhao, Youjian and Niu, Chenhao and Liu, Rong and Sun, Wei and Pei, Dan},
   booktitle={Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+  pages={2828--2837},
   year={2019},
   doi={10.1145/3292500.3330672}
 }
@@ -722,13 +773,6 @@
   pages={482--492},
   year={2006},
   doi={10.1109/TKDE.2006.1599387}
-}
-
-@inproceedings{tan2011fast,
-  title={Fast anomaly detection for streaming data},
-  author={Tan, Swee Chuan and Ting, Kai Ming and Liu, Tony Fei},
-  booktitle={Twenty-Second International Joint Conference on Artificial Intelligence},
-  year={2011}
 }
 
 @inproceedings{teixeira2010data,
@@ -764,7 +808,7 @@
 
 @inproceedings{wang2011statistical,
   title={Statistical techniques for online anomaly detection in data centers},
-  author={Wang, Chengwei and Viswanathan, Krishnamurthy and Choudur, Lakshminarayan and Talwar, Vanish and Satterfield, Wade and Schwan, Karsten},
+  author={Wang, Chengwei and Viswanathan, Krishnamurthy and Lakshminarayan, Choudur and Talwar, Vanish and Satterfield, Wade and Schwan, Karsten},
   booktitle={12th IFIP/IEEE International Symposium on Integrated Network Management (IM 2011) and Workshops},
   pages={385--392},
   year={2011},
@@ -772,8 +816,19 @@
   doi={10.1109/INM.2011.5990537}
 }
 
+@article{wang2013cost,
+  title={Cost-Sensitive Online Classification},
+  author={Wang, Jialei and Zhao, Peilin and Hoi, Steven C. H.},
+  journal={IEEE Transactions on Knowledge and Data Engineering},
+  volume={26},
+  number={10},
+  pages={2425--2438},
+  year={2014},
+  doi={10.1109/TKDE.2013.157}
+}
+
 @inproceedings{wu2014rsforest,
-  title={RS-Forest: A Rapid Density Estimator for Streaming Anomaly Detection},
+  title={{RS-Forest}: A Rapid Density Estimator for Streaming Anomaly Detection},
   author={Wu, Ke and Zhang, Kun and Fan, Wei and Edwards, Andrea and Yu, Philip S.},
   booktitle={2014 IEEE International Conference on Data Mining},
   pages={600--609},
@@ -801,7 +856,7 @@
 }
 
 @inproceedings{xu2026idks,
-  title={IDK-S: Incremental Distributional Kernel for Streaming Anomaly Detection},
+  title={{IDK-S}: Incremental Distributional Kernel for Streaming Anomaly Detection},
   author={Xu, Yang and Ma, Yixiao and Zhang, Kaifeng and Yang, Zuliang and Ting, Kai Ming},
   booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
   volume={40},
@@ -856,6 +911,7 @@
   title={Adaptive Model Pooling for Online Deep Anomaly Detection from a Complex Evolving Data Stream},
   author={Yoon, Susik and Lee, Youngjun and Lee, Jae-Gil and Lee, Byung Suk},
   booktitle={Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining},
+  pages={2347--2357},
   year={2022},
   doi={10.1145/3534678.3539348}
 }

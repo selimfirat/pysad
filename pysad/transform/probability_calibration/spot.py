@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import math
 from collections import deque
+from typing import Any, ClassVar, Literal
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.optimize import brentq
 
 from pysad.core.base_postprocessor import BasePostprocessor
@@ -36,7 +38,10 @@ class SPOTProbabilityCalibrator(BasePostprocessor):
 
     Raises:
         ValueError: If q is not between 0 and 1 - level.
+        TypeError: If ``score`` is not convertible to float.
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
 
     def __init__(
         self,
@@ -70,6 +75,15 @@ class SPOTProbabilityCalibrator(BasePostprocessor):
         """float: The alarm threshold :math:`z_q` on the scale of the raw scores."""
         return self.z_q_ + self._baseline()
 
+    def _validate_score(self, score: float) -> float:
+        """Convert score to float, raising TypeError if not possible."""
+        try:
+            return float(score)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"score must be convertible to float, got {type(score).__name__}: {score!r}"
+            ) from None
+
     def fit_partial(self, score: float) -> SPOTProbabilityCalibrator:
         """Fits particular (next) timestep's score to train the postprocessor.
 
@@ -79,6 +93,7 @@ class SPOTProbabilityCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
+        score = self._validate_score(score)
         if len(self.window_) < self.depth:
             self.window_.append(score)
             return self
@@ -109,6 +124,7 @@ class SPOTProbabilityCalibrator(BasePostprocessor):
         Returns:
             float: One minus the tail probability of the score.
         """
+        score = self._validate_score(score)
         excess = score - self._baseline() - self.t_
         if not excess > 0:
             return 0.0
@@ -136,7 +152,7 @@ class SPOTProbabilityCalibrator(BasePostprocessor):
         self.fit_partial(score)
         return calibrated
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a 1-D batch of scores against the current frozen Pareto tail."""
         arr = np.asarray(scores, dtype=np.float64)
         if arr.ndim != 1:
@@ -186,7 +202,7 @@ class SPOTProbabilityCalibrator(BasePostprocessor):
             self.z_q_ = self.t_ + self.sigma_ / self.gamma_ * (ratio ** (-self.gamma_) - 1)
 
 
-def _grimshaw(peaks: np.ndarray) -> tuple[float, float]:
+def _grimshaw(peaks: NDArray[np.float64]) -> tuple[float, float]:
     """Fits a GPD to positive peaks by maximum likelihood with Grimshaw's procedure.
 
     Returns:
@@ -194,9 +210,12 @@ def _grimshaw(peaks: np.ndarray) -> tuple[float, float]:
     """
     mean, low, high = peaks.mean(), peaks.min(), peaks.max()
 
-    def w(x: np.ndarray | float) -> np.ndarray:
+    def w(x: NDArray[np.float64] | float) -> NDArray[np.float64]:
         xy = np.multiply.outer(x, peaks)  # (num_x, num_peaks)
-        return (1 / (1 + xy)).mean(axis=-1) * (1 + np.log1p(xy).mean(axis=-1)) - 1
+        res: NDArray[np.float64] = (1 / (1 + xy)).mean(axis=-1) * (
+            1 + np.log1p(xy).mean(axis=-1)
+        ) - 1
+        return res
 
     # The roots of w other than 0 are in (-1 / high, 0) and (0, 2 (mean - low) / low^2].
     # The grids are dense near both ends of each interval.
@@ -217,7 +236,7 @@ def _grimshaw(peaks: np.ndarray) -> tuple[float, float]:
     return max(candidates, key=lambda c: _log_likelihood(peaks, *c))
 
 
-def _log_likelihood(peaks: np.ndarray, gamma: float, sigma: float) -> float:
+def _log_likelihood(peaks: NDArray[np.float64], gamma: float, sigma: float) -> float:
     if gamma == 0:
         return float(-len(peaks) * math.log(sigma) - peaks.sum() / sigma)
     return float(

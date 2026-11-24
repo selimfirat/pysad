@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 import pysad.utils.data
+from pysad.utils._datasets import _NASA, _NASA_LABELS_URL, _SMD
 from pysad.utils.data import Data
 
 
@@ -454,6 +455,38 @@ def test_ucr_series_come_from_the_archive_and_are_labeled_by_their_names(tmp_pat
     assert downloads == [pysad.utils.data._UCR]  # the second call reads the extracted file
 
 
+def test_tsb_drift_series_come_from_the_archive_and_are_labeled_by_their_names(
+    tmp_path, monkeypatch
+):
+    """TSB-drift series are extracted from the TSB-AD-M archive, Label column last."""
+    import zipfile
+
+    name = "009_TEST_id_1_Sensor_tr_3_1st_7.csv"
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr("TSB-AD-M/" + name, "a,b,Label\n1.0,2.0,0\n3.0,4.0,1\n5.0,6.0,0\n")
+    content = archive.getvalue()
+    downloads = []
+
+    def urlopen(req, timeout):
+        downloads.append(req.full_url)
+        return Response(content)
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(
+        pysad.utils.data, "_TSB_DRIFT_ARCHIVE_CHECKSUM", hashlib.sha256(content).hexdigest()
+    )
+    monkeypatch.setattr(pysad.utils.data, "_TSB_DRIFT_SERIES", (name,))
+    data = Data(data_base_path=str(tmp_path))
+
+    X, y = data.get_data("tsb-drift/" + name)
+    data.get_data("tsb-drift/" + name)
+
+    np.testing.assert_array_equal(X, [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+    np.testing.assert_array_equal(y, [0, 1, 0])
+    assert downloads == [pysad.utils.data._TSB_DRIFT_ARCHIVE]
+
+
 def test_drift_streams_are_listed_by_source():
     assert Data.datasets("kddcup99") == ["kddcup99/http.csv"]
     assert len(Data.datasets("smd")) == 28
@@ -464,6 +497,8 @@ def test_drift_streams_are_listed_by_source():
     assert "msl/M-1.npy" in Data.datasets("msl")
     assert len(Data.datasets("insects")) == 4
     assert "insects/abrupt.csv" in Data.datasets("insects")
+    assert len(Data.datasets("tsb-drift")) == 75
+    assert "tsb-drift/009_MSL_id_8_Sensor_tr_714_1st_1390.csv" in Data.datasets("tsb-drift")
 
 
 def _serve(monkeypatch, files):
@@ -596,3 +631,742 @@ def test_creditcard_keeps_transaction_order_and_separates_class_in_shared_cache(
     stream = list(Data().get_iterator("creditcard/creditcard.arff", shuffle=False))
     np.testing.assert_array_equal([x for x, _ in stream], X)
     np.testing.assert_array_equal([label for _, label in stream], y)
+
+    arff_path = tmp_path / "creditcard" / "creditcard.arff"
+    npz_path = tmp_path / "creditcard" / "creditcard.arff.npz"
+    assert npz_path.exists()
+    # Replacing the cached .arff with a newer mtime invalidates the sidecar cache.
+    updated_content = (header + "0," + "4," * 28 + "40.5,'1'\n").encode()
+    arff_path.write_bytes(updated_content)
+    newer_mtime = npz_path.stat().st_mtime + 10.0
+    os.utime(arff_path, (newer_mtime, newer_mtime))
+    reloaded_X, reloaded_y = Data().get_data("creditcard/creditcard.arff", download=False)
+    assert reloaded_X.shape == (1, 30)
+    np.testing.assert_array_equal(reloaded_X[:, -1], [40.5])
+    np.testing.assert_array_equal(reloaded_y, [1])
+
+
+def test_data_pickle_round_trip(tmp_path):
+    """Verify Data preserves cache path and cached data retrieval across pickle round-trip."""
+    import pickle
+
+    dataset_path = tmp_path / "sample.txt"
+    arr = np.array([[1.0, 2.0, 0.0], [3.0, 4.0, 1.0]])
+    np.savetxt(dataset_path, arr, delimiter=",")
+
+    data = Data(data_base_path=str(tmp_path))
+    X_orig, y_orig = data.get_data("sample.txt", download=False)
+
+    restored = pickle.loads(pickle.dumps(data))
+    assert restored.data_base_path == data.data_base_path
+
+    X_restored, y_restored = restored.get_data("sample.txt", download=False)
+    np.testing.assert_array_equal(X_restored, X_orig)
+    np.testing.assert_array_equal(y_restored, y_orig)
+
+
+def _validate_dataset_structure(X, y, num_features_min: int = 1) -> None:
+    """Validate that a loaded dataset has the expected structure.
+
+    Args:
+        X: Feature array of shape (num_instances, num_features).
+        y: Label array of shape (num_instances,).
+        num_features_min: Minimum expected number of features.
+    """
+    assert isinstance(X, np.ndarray), "X must be a numpy array"
+    assert X.ndim == 2, f"X must be 2D, got ndim={X.ndim}"
+    assert X.shape[0] > 0, "X must have at least one instance"
+    assert X.shape[1] >= num_features_min, (
+        f"X must have at least {num_features_min} feature(s), got {X.shape[1]}"
+    )
+    assert isinstance(y, np.ndarray), "y must be a numpy array"
+    assert y.ndim == 1, f"y must be 1D, got ndim={y.ndim}"
+    assert y.shape[0] == X.shape[0], (
+        f"y must have the same length as X: {y.shape[0]} vs {X.shape[0]}"
+    )
+    assert set(np.unique(y)).issubset({0, 1}), (
+        f"y must contain only binary labels (0/1), got {set(np.unique(y))}"
+    )
+
+
+# A simple Response mock used across test helpers.
+# (The Response class is defined at line 15 for reuse across tests.)
+
+
+def _load_odds_mat(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load an ODDS .mat dataset with a mocked scipy loadmat."""
+
+    class DummyF:
+        def __getitem__(self, key):
+            if key == "X":
+                return np.ones((10, 3))
+            if key == "y":
+                return np.array([0, 1] * 5).reshape(-1, 1)
+
+    monkeypatch.setattr("scipy.io.loadmat", lambda p: DummyF())
+    import hashlib
+
+    from pysad.utils._datasets import _CHECKSUMS
+
+    monkeypatch.setitem(_CHECKSUMS, data_file, hashlib.sha256(b"dummy").hexdigest())
+    d = Data(data_base_path=data_base_path)
+    X, y = d.get_data(data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=3)
+    return X, y
+
+
+def _load_nab_series(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load a NAB series with mocked combined_windows.json."""
+    import json
+    import os
+
+    d = Data(data_base_path=data_base_path)
+
+    # Use the full NAB path as expected by get_data
+    full_data_file = "nab/" + data_file
+
+    # Create the NAB data file
+    nab_dir = os.path.join(data_base_path, "nab")
+    os.makedirs(nab_dir, exist_ok=True)
+    series_dir = os.path.join(nab_dir, "realKnownCause")
+    os.makedirs(series_dir, exist_ok=True)
+    series_path = os.path.join(series_dir, "nyc_taxi.csv")
+    with open(series_path, "w") as f:
+        f.write(
+            "timestamp,value\n2014-07-01 00:00:00,1\n2014-07-01 00:30:00,2\n2014-07-01 01:00:00,30\n2014-07-01 01:30:00,4\n2014-07-01 02:00:00,5\n"
+        )
+
+    # Set up combined_windows.json with key matching name[len("nab/") :]
+    windows_path = os.path.join(nab_dir, "combined_windows.json")
+    windows = {
+        "realKnownCause/nyc_taxi.csv": [
+            ["2014-07-01 00:30:00.000000", "2014-07-01 01:00:00.000000"]
+        ]
+    }
+    with open(windows_path, "w") as f:
+        json.dump(windows, f)
+
+    X, y = d.get_data(full_data_file, download=False)
+    _validate_dataset_structure(X, y)
+    return X, y
+
+
+def _load_ucr_series(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load a UCR series with a mocked archive download."""
+    import hashlib
+    import io
+    import os
+    import zipfile
+
+    from pysad.utils.data import Data as Data_d
+
+    d = Data_d(data_base_path=data_base_path)
+
+    name = data_file
+    # Create the UCR data file in the expected location
+    ucr_dir = os.path.join(data_base_path, "ucr")
+    os.makedirs(ucr_dir, exist_ok=True)
+    data_path = os.path.join(ucr_dir, name)
+    with open(data_path, "w") as f:
+        f.write("1\n2\n3\n4\n5\n")
+
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as z:
+        z.writestr(f"ucr/{name}", "1\n2\n3\n4\n5\n")
+    content = archive.getvalue()
+
+    # Monkeypatch following the existing test pattern
+    def urlopen(req, timeout):
+        return type("R", (), {"read": lambda self, *a: content, "headers": {}}())()
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    monkeypatch.setattr(pysad.utils.data, "_UCR_CHECKSUM", hashlib.sha256(content).hexdigest())
+    monkeypatch.setattr(pysad.utils.data, "_UCR_SERIES", [name])
+    X, y = d.get_data("ucr/" + name, download=False)
+    _validate_dataset_structure(X, y, num_features_min=1)
+    return X, y
+
+
+def _load_smd_stream(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load an SMD machine stream with mocked download."""
+    import os
+
+    from pysad.utils.data import Data as Data_d
+
+    d = Data_d(data_base_path=data_base_path)
+
+    # Create the SMD data and labels files in the expected locations
+    smd_dir = os.path.join(data_base_path, "smd")
+    os.makedirs(smd_dir, exist_ok=True)
+
+    # Data file
+    data_path = os.path.join(smd_dir, data_file)
+    with open(data_path, "w") as f:
+        f.write("0.1,0.2\n0.3,0.4\n0.5,0.6\n")
+
+    # Labels file (matching the data file name)
+    "smd/labels/" + data_file
+    labels_path = os.path.join(smd_dir, "labels", data_file)
+    os.makedirs(os.path.dirname(labels_path), exist_ok=True)
+    with open(labels_path, "w") as f:
+        f.write("0\n1\n0\n")
+
+    # Directly set the SMD module attribute to avoid monkeypatch.setitem issues
+    import pysad.utils.data as dmod
+
+    dmod._SMD = "smd/"
+
+    X, y = d.get_data("smd/" + data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=2)
+    return X, y
+
+
+def _load_smap_channel(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load a SMAP channel with mocked download."""
+    import io
+    import os
+
+    import numpy as np
+
+    from pysad.utils.data import Data as Data_d
+
+    d = Data_d(data_base_path=data_base_path)
+
+    # Create the SMAP data file
+    smap_dir = os.path.join(data_base_path, "smap")
+    os.makedirs(smap_dir, exist_ok=True)
+    data_path = os.path.join(smap_dir, data_file)
+
+    # Create a dummy .npy file with 25 features (1 telemetry + 24 one-hot commands)
+    arr = np.ones((10, 25), dtype=np.float64)
+    f = io.BytesIO()
+    np.save(f, arr)
+    with open(data_path, "wb") as out:
+        out.write(f.getvalue())
+
+    # Create the labels file
+    labels_path = os.path.join(data_base_path, "telemanom", "labeled_anomalies.csv")
+    os.makedirs(os.path.dirname(labels_path), exist_ok=True)
+    with open(labels_path, "w") as f:
+        f.write(
+            "chan_id,spacecraft,anomaly_sequences,class,num_values\n"
+            f'{data_file.removesuffix(".npy")},SMAP,"[[2, 4]]",[point],10\n'
+        )
+
+    # Monkeypatch the NASA URL base to local path
+    import pysad.utils.data as dmod
+
+    dmod._NASA = "smap/"
+
+    X, y = d.get_data("smap/" + data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=25)
+    return X, y
+
+
+def _load_msl_channel(monkeypatch, data_file: str, data_base_path: str) -> tuple:
+    """Load an MSL channel with mocked download."""
+    import io
+    import os
+
+    import numpy as np
+
+    from pysad.utils.data import Data as Data_d
+
+    d = Data_d(data_base_path=data_base_path)
+
+    # Create the MSL data file
+    msl_dir = os.path.join(data_base_path, "msl")
+    os.makedirs(msl_dir, exist_ok=True)
+    data_path = os.path.join(msl_dir, data_file)
+
+    # Create a dummy .npy file with 55 features (1 telemetry + 54 one-hot commands)
+    arr = np.ones((10, 55), dtype=np.float64)
+    f = io.BytesIO()
+    np.save(f, arr)
+    with open(data_path, "wb") as out:
+        out.write(f.getvalue())
+
+    # Create the labels file
+    labels_path = os.path.join(data_base_path, "telemanom", "labeled_anomalies.csv")
+    os.makedirs(os.path.dirname(labels_path), exist_ok=True)
+    with open(labels_path, "w") as f:
+        f.write(
+            "chan_id,spacecraft,anomaly_sequences,class,num_values\n"
+            f'{data_file.removesuffix(".npy")},MSL,"[[2, 4]]",[point],10\n'
+        )
+
+    # Monkeypatch the NASA URL base to local path
+    import pysad.utils.data as dmod
+
+    dmod._NASA = "msl/"
+
+    X, y = d.get_data("msl/" + data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=55)
+    return X, y
+
+
+def _load_creditcard_arff(monkeypatch, data_base_path: str) -> tuple:
+    """Load the credit-card ARFF dataset with mocked download."""
+    from pysad.utils import Data
+
+    d = Data(data_base_path=data_base_path)
+
+    names = ["Time"] + [f"V{i}" for i in range(1, 29)] + ["Amount"]
+    header = "@relation creditcard\n" + "".join(f"@attribute {n} numeric\n" for n in names)
+    header += "@attribute Class {'0','1'}\n@data\n"
+    rows = [
+        "0," + "1," * 28 + "10.5,'0'",
+        "0," + "2," * 28 + "20.5,'1'",
+        "1," + "3," * 28 + "30.5,'0'",
+    ]
+    content = (header + "\n".join(rows) + "\n").encode()
+
+    # Create the ARFF file in the expected location
+    import os
+
+    arff_dir = os.path.join(data_base_path, "creditcard")
+    os.makedirs(arff_dir, exist_ok=True)
+    arff_path = os.path.join(arff_dir, "creditcard.arff")
+    with open(arff_path, "w") as f:
+        f.write(content.decode())
+
+    # Follow existing test pattern: set checksum via monkeypatch so it is reverted after the test
+    # The _source function uses "creditcard/creditcard.arff" as key for checksum lookup
+    # When download=False and file exists, checksum is checked but we can set it to match
+    import hashlib
+
+    import pysad.utils.data as dmod
+
+    # Read back the file content to compute checksum
+    with open(arff_path, "rb") as f:
+        file_content = f.read()
+    monkeypatch.setitem(
+        dmod._CHECKSUMS, "creditcard/creditcard.arff", hashlib.sha256(file_content).hexdigest()
+    )
+
+    # Monkeypatch urlopen to avoid actual network calls
+    def urlopen(req, timeout):
+        return Response(content)
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+
+    X, y = d.get_data("creditcard/creditcard.arff", download=False)
+    _validate_dataset_structure(X, y, num_features_min=30)
+    return X, y
+
+
+_SAMPLE_DATASETS_PER_SOURCE = {
+    "odds": ["arrhythmia.mat", "cardio.mat", "ionosphere.mat"],
+    "nab": ["realKnownCause/nyc_taxi.csv"],
+    "ucr": ["001_UCR_Anomaly_DISTORTED1sddb40_35000_52000_52620.txt"],
+    "kddcup99": ["http.csv"],
+    "smd": ["machine-1-1.txt"],
+    "smap": ["P-1.npy"],
+    "msl": ["M-1.npy"],
+    "insects": ["abrupt.csv"],
+    "creditcard": ["creditcard.arff"],
+}
+
+
+def test_datasets_list_by_source(monkeypatch):
+    """Test that datasets() returns the expected number of datasets per source."""
+    from pysad.utils.data import Data
+
+    d = Data()
+    expected_counts = {
+        "odds": 17,
+        "nab": 58,
+        "ucr": 250,
+        "kddcup99": 1,
+        "smd": 28,
+        "smap": 54,
+        "msl": 27,
+        "insects": 4,
+        "creditcard": 1,
+        "tsb-drift": 75,
+    }
+    for source, expected in expected_counts.items():
+        names = d.datasets(source)
+        assert isinstance(names, list)
+        assert len(names) == expected, (
+            f"Expected {expected} datasets for source '{source}', got {len(names)}"
+        )
+
+
+@pytest.mark.parametrize("data_file", ["arrhythmia.mat", "cardio.mat", "ionosphere.mat"])
+def test_dataset_structure_odds(monkeypatch, tmp_path, data_file):
+    """Test that ODDS .mat datasets load correctly and have expected structure."""
+    import hashlib
+
+    # Create a dummy .mat file so get_data can find it
+    from pysad.utils._datasets import _CHECKSUMS
+
+    dummy_mat = tmp_path / data_file
+    dummy_mat.write_bytes(b"MATLAB dummy content")
+
+    monkeypatch.setitem(_CHECKSUMS, data_file, hashlib.sha256(b"MATLAB dummy content").hexdigest())
+
+    class DummyF:
+        def __getitem__(self, key):
+            if key == "X":
+                return np.ones((10, 3))
+            if key == "y":
+                return np.array([0, 1] * 5).reshape(-1, 1)
+
+    monkeypatch.setattr("scipy.io.loadmat", lambda p: DummyF())
+
+    d = Data(data_base_path=str(tmp_path))
+    X, y = d.get_data(data_file, download=False)
+    _validate_dataset_structure(X, y, num_features_min=3)
+
+
+def test_dataset_structure_nab(monkeypatch, tmp_path):
+    """Test that NAB series load correctly and have expected structure."""
+    _load_nab_series(monkeypatch, "realKnownCause/nyc_taxi.csv", str(tmp_path))
+
+
+def test_dataset_structure_ucr(monkeypatch, tmp_path):
+    """Test that UCR series load correctly and have expected structure."""
+    _load_ucr_series(
+        monkeypatch, "001_UCR_Anomaly_DISTORTED1sddb40_35000_52000_52620.txt", str(tmp_path)
+    )
+
+
+def test_dataset_structure_smd(monkeypatch, tmp_path):
+    """Test that SMD machine streams load correctly and have expected structure."""
+    _load_smd_stream(monkeypatch, "machine-1-1.txt", str(tmp_path))
+
+
+def test_dataset_structure_smap(monkeypatch, tmp_path):
+    """Test that SMAP channels load correctly and have expected structure."""
+    _load_smap_channel(monkeypatch, "P-1.npy", str(tmp_path))
+
+
+def test_dataset_structure_msl(monkeypatch, tmp_path):
+    """Test that MSL channels load correctly and have expected structure."""
+    _load_msl_channel(monkeypatch, "M-1.npy", str(tmp_path))
+
+
+def test_dataset_structure_creditcard(monkeypatch, tmp_path):
+    """Test that credit-card ARFF dataset loads correctly and has expected structure."""
+    _load_creditcard_arff(monkeypatch, str(tmp_path))
+
+
+def test_smd_streaming_iterator_preserves_labels_and_shuffles(tmp_path, monkeypatch):
+    """Test that get_iterator for SMD streams preserves labels and supports shuffling with random_state."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_SMD", _SMD)
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+    _serve(
+        monkeypatch,
+        {
+            _SMD + "test/machine-1-1.txt": b"0.1,0.2\n0.3,0.4\n0.5,0.6\n0.7,0.8\n",
+            _SMD + "test_label/machine-1-1.txt": b"0\n1\n0\n1\n",
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Test shuffle=False preserves order
+    stream = list(data.get_iterator("smd/machine-1-1.txt", shuffle=False))
+    X_stream = np.array([x for x, _ in stream])
+    y_stream = np.array([y for _, y in stream])
+    np.testing.assert_array_equal(X_stream, [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6], [0.7, 0.8]])
+    np.testing.assert_array_equal(y_stream, [0, 1, 0, 1])
+
+    # Test shuffle=True with random_state gives deterministic order
+    stream1 = list(data.get_iterator("smd/machine-1-1.txt", shuffle=True, random_state=42))
+    stream2 = list(data.get_iterator("smd/machine-1-1.txt", shuffle=True, random_state=42))
+    y1 = [y for _, y in stream1]
+    y2 = [y for _, y in stream2]
+    assert y1 == y2, "Same random_state must give same shuffle order"
+    assert sorted(y1) == [0, 0, 1, 1], "Shuffle must preserve all labels"
+
+    # Test different random_state gives different order (with high probability)
+    stream3 = list(data.get_iterator("smd/machine-1-1.txt", shuffle=True, random_state=123))
+    y3 = [y for _, y in stream3]
+    # Very unlikely to be same order with different seeds for 4 items
+    assert y1 != y3 or y1 == [0, 0, 1, 1], (
+        "Different random_state should typically give different order"
+    )
+
+
+def test_smap_streaming_iterator_preserves_labels_and_shuffles(tmp_path, monkeypatch):
+    """Test that get_iterator for SMAP streams preserves labels and supports shuffling with random_state."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    smap_data = np.arange(20.0).reshape(10, 2)
+    labels = (
+        'chan_id,spacecraft,anomaly_sequences,class,num_values\nP-1,SMAP,"[[2, 4]]",[point],10\n'
+    )
+    _serve(
+        monkeypatch,
+        {
+            _NASA + "P-1.npy": npy(smap_data),
+            _NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Expected labels: points 2,3,4 are anomalies (0-indexed: indices 2,3,4)
+    expected_y = np.array([0, 0, 1, 1, 1, 0, 0, 0, 0, 0])
+
+    # Test shuffle=False preserves order
+    stream = list(data.get_iterator("smap/P-1.npy", shuffle=False))
+    X_stream = np.array([x for x, _ in stream])
+    y_stream = np.array([y for _, y in stream])
+    np.testing.assert_array_equal(X_stream, smap_data)
+    np.testing.assert_array_equal(y_stream, expected_y)
+
+    # Test shuffle=True with random_state gives deterministic order
+    stream1 = list(data.get_iterator("smap/P-1.npy", shuffle=True, random_state=42))
+    stream2 = list(data.get_iterator("smap/P-1.npy", shuffle=True, random_state=42))
+    y1 = [y for _, y in stream1]
+    y2 = [y for _, y in stream2]
+    assert y1 == y2, "Same random_state must give same shuffle order"
+    assert sorted(y1) == sorted(expected_y), "Shuffle must preserve all labels"
+
+
+def test_msl_streaming_iterator_preserves_labels_and_shuffles(tmp_path, monkeypatch):
+    """Test that get_iterator for MSL streams preserves labels and supports shuffling with random_state."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    msl_data = np.arange(15.0).reshape(5, 3)
+    labels = 'chan_id,spacecraft,anomaly_sequences,class,num_values\nM-1,MSL,"[[0, 1]]",[point],5\n'
+    _serve(
+        monkeypatch,
+        {
+            _NASA + "M-1.npy": npy(msl_data),
+            _NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Expected labels: points 0,1 are anomalies
+    expected_y = np.array([1, 1, 0, 0, 0])
+
+    # Test shuffle=False preserves order
+    stream = list(data.get_iterator("msl/M-1.npy", shuffle=False))
+    X_stream = np.array([x for x, _ in stream])
+    y_stream = np.array([y for _, y in stream])
+    np.testing.assert_array_equal(X_stream, msl_data)
+    np.testing.assert_array_equal(y_stream, expected_y)
+
+    # Test shuffle=True with random_state gives deterministic order
+    stream1 = list(data.get_iterator("msl/M-1.npy", shuffle=True, random_state=42))
+    stream2 = list(data.get_iterator("msl/M-1.npy", shuffle=True, random_state=42))
+    y1 = [y for _, y in stream1]
+    y2 = [y for _, y in stream2]
+    assert y1 == y2, "Same random_state must give same shuffle order"
+    assert sorted(y1) == sorted(expected_y), "Shuffle must preserve all labels"
+
+
+def test_smd_streaming_get_stream_shuffles_scales_and_limits(tmp_path, monkeypatch):
+    """Test that get_stream for SMD shuffles, scales to [0,1], and limits to max_points."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_SMD", _SMD)
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+    _serve(
+        monkeypatch,
+        {
+            _SMD + "test/machine-1-1.txt": b"0.0,10.0\n2.0,20.0\n4.0,30.0\n6.0,40.0\n8.0,50.0\n",
+            _SMD + "test_label/machine-1-1.txt": b"0\n1\n0\n1\n0\n",
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Test max_points limits the stream
+    Xs, ys = data.get_stream("smd/machine-1-1.txt", random_state=1, max_points=3, scale=False)
+    assert Xs.shape == (3, 2)
+    assert ys.shape == (3,)
+    assert set(ys).issubset({0, 1})
+
+    # Test scale=True scales features to [0, 1]
+    Xs_scaled, ys_scaled = data.get_stream(
+        "smd/machine-1-1.txt", random_state=1, max_points=3, scale=True
+    )
+    assert Xs_scaled.shape == (3, 2)
+    # First feature: original values [0, 2, 4, 6, 8] -> shuffled subset scaled to [0, 1]
+    # Second feature: original values [10, 20, 30, 40, 50] -> shuffled subset scaled to [0, 1]
+    assert np.all(Xs_scaled >= 0.0) and np.all(Xs_scaled <= 1.0), (
+        "Scaled features must be in [0, 1]"
+    )
+
+    # Test random_state gives deterministic shuffle
+    Xs1, ys1 = data.get_stream("smd/machine-1-1.txt", random_state=42, max_points=3, scale=False)
+    Xs2, ys2 = data.get_stream("smd/machine-1-1.txt", random_state=42, max_points=3, scale=False)
+    np.testing.assert_array_equal(Xs1, Xs2)
+    np.testing.assert_array_equal(ys1, ys2)
+
+
+def test_smap_streaming_get_stream_shuffles_scales_and_limits(tmp_path, monkeypatch):
+    """Test that get_stream for SMAP shuffles, scales to [0,1], and limits to max_points."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    smap_data = np.array(
+        [
+            [0.0, 10.0],
+            [2.0, 20.0],
+            [4.0, 30.0],
+            [6.0, 40.0],
+            [8.0, 50.0],
+            [10.0, 60.0],
+            [12.0, 70.0],
+            [14.0, 80.0],
+            [16.0, 90.0],
+            [18.0, 100.0],
+        ]
+    )
+    labels = (
+        'chan_id,spacecraft,anomaly_sequences,class,num_values\nP-1,SMAP,"[[2, 4]]",[point],10\n'
+    )
+    _serve(
+        monkeypatch,
+        {
+            _NASA + "P-1.npy": npy(smap_data),
+            _NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Test max_points limits the stream
+    Xs, ys = data.get_stream("smap/P-1.npy", random_state=1, max_points=4, scale=False)
+    assert Xs.shape == (4, 2)
+    assert ys.shape == (4,)
+    assert set(ys).issubset({0, 1})
+
+    # Test scale=True scales features to [0, 1]
+    Xs_scaled, ys_scaled = data.get_stream("smap/P-1.npy", random_state=1, max_points=4, scale=True)
+    assert Xs_scaled.shape == (4, 2)
+    assert np.all(Xs_scaled >= 0.0) and np.all(Xs_scaled <= 1.0), (
+        "Scaled features must be in [0, 1]"
+    )
+
+    # Test random_state gives deterministic shuffle
+    Xs1, ys1 = data.get_stream("smap/P-1.npy", random_state=42, max_points=4, scale=False)
+    Xs2, ys2 = data.get_stream("smap/P-1.npy", random_state=42, max_points=4, scale=False)
+    np.testing.assert_array_equal(Xs1, Xs2)
+    np.testing.assert_array_equal(ys1, ys2)
+
+
+def test_msl_streaming_get_stream_shuffles_scales_and_limits(tmp_path, monkeypatch):
+    """Test that get_stream for MSL shuffles, scales to [0,1], and limits to max_points."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    msl_data = np.array(
+        [
+            [0.0, 10.0, 100.0],
+            [2.0, 20.0, 200.0],
+            [4.0, 30.0, 300.0],
+            [6.0, 40.0, 400.0],
+            [8.0, 50.0, 500.0],
+        ]
+    )
+    labels = 'chan_id,spacecraft,anomaly_sequences,class,num_values\nM-1,MSL,"[[0, 1]]",[point],5\n'
+    _serve(
+        monkeypatch,
+        {
+            _NASA + "M-1.npy": npy(msl_data),
+            _NASA_LABELS_URL: labels.encode(),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # Test max_points limits the stream
+    Xs, ys = data.get_stream("msl/M-1.npy", random_state=1, max_points=3, scale=False)
+    assert Xs.shape == (3, 3)
+    assert ys.shape == (3,)
+    assert set(ys).issubset({0, 1})
+
+    # Test scale=True scales features to [0, 1]
+    Xs_scaled, ys_scaled = data.get_stream("msl/M-1.npy", random_state=1, max_points=3, scale=True)
+    assert Xs_scaled.shape == (3, 3)
+    assert np.all(Xs_scaled >= 0.0) and np.all(Xs_scaled <= 1.0), (
+        "Scaled features must be in [0, 1]"
+    )
+
+    # Test random_state gives deterministic shuffle
+    Xs1, ys1 = data.get_stream("msl/M-1.npy", random_state=42, max_points=3, scale=False)
+    Xs2, ys2 = data.get_stream("msl/M-1.npy", random_state=42, max_points=3, scale=False)
+    np.testing.assert_array_equal(Xs1, Xs2)
+    np.testing.assert_array_equal(ys1, ys2)
+
+
+def test_smd_smap_msl_streaming_anomaly_rate_preserved(tmp_path, monkeypatch):
+    """Test that streaming preserves the anomaly rate of SMD, SMAP, and MSL datasets."""
+    # Restore original module variables that may have been modified by earlier tests
+    monkeypatch.setattr(pysad.utils.data, "_SMD", _SMD)
+    monkeypatch.setattr(pysad.utils.data, "_NASA", _NASA)
+
+    def npy(array):
+        f = io.BytesIO()
+        np.save(f, array)
+        return f.getvalue()
+
+    _serve(
+        monkeypatch,
+        {
+            _SMD + "test/machine-1-1.txt": b"0.1,0.2\n0.3,0.4\n0.5,0.6\n0.7,0.8\n",
+            _SMD + "test_label/machine-1-1.txt": b"0\n1\n0\n1\n",
+            _NASA + "P-1.npy": npy(np.arange(20.0).reshape(10, 2)),
+            _NASA + "M-1.npy": npy(np.arange(15.0).reshape(5, 3)),
+            _NASA_LABELS_URL: (
+                b"chan_id,spacecraft,anomaly_sequences,class,num_values\n"
+                b'P-1,SMAP,"[[2, 4]]",[point],10\n'
+                b'M-1,MSL,"[[0, 1]]",[point],5\n'
+            ),
+        },
+    )
+    data = Data(data_base_path=str(tmp_path))
+
+    # SMD: 2 anomalies out of 4 = 0.5
+    X_smd, y_smd = data.get_data("smd/machine-1-1.txt")
+    smd_anomaly_rate = float(np.mean(y_smd))
+    stream_smd = list(data.get_iterator("smd/machine-1-1.txt", shuffle=False))
+    y_stream_smd = np.array([y for _, y in stream_smd])
+    assert float(np.mean(y_stream_smd)) == smd_anomaly_rate
+
+    # SMAP: 3 anomalies out of 10 = 0.3
+    X_smap, y_smap = data.get_data("smap/P-1.npy")
+    smap_anomaly_rate = float(np.mean(y_smap))
+    stream_smap = list(data.get_iterator("smap/P-1.npy", shuffle=False))
+    y_stream_smap = np.array([y for _, y in stream_smap])
+    assert float(np.mean(y_stream_smap)) == smap_anomaly_rate
+
+    # MSL: 2 anomalies out of 5 = 0.4
+    X_msl, y_msl = data.get_data("msl/M-1.npy")
+    msl_anomaly_rate = float(np.mean(y_msl))
+    stream_msl = list(data.get_iterator("msl/M-1.npy", shuffle=False))
+    y_stream_msl = np.array([y for _, y in stream_msl])
+    assert float(np.mean(y_stream_msl)) == msl_anomaly_rate
+
+    # Also test with get_stream (shuffled but same labels)
+    _, ys_smd = data.get_stream("smd/machine-1-1.txt", random_state=1, scale=False)
+    _, ys_smap = data.get_stream("smap/P-1.npy", random_state=1, scale=False)
+    _, ys_msl = data.get_stream("msl/M-1.npy", random_state=1, scale=False)
+    assert float(np.mean(ys_smd)) == smd_anomaly_rate
+    assert float(np.mean(ys_smap)) == smap_anomaly_rate
+    assert float(np.mean(ys_msl)) == msl_anomaly_rate

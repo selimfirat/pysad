@@ -1,3 +1,6 @@
+.. meta::
+   :description: How to choose and compare streaming anomaly detectors in PySAD for univariate, seasonal, high-dimensional, or network-traffic data streams.
+
 Choose a detector
 =================
 

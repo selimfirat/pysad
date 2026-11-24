@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_transformer import BaseTransformer
 
 
-def _murmurhash3_x86_32(seeds: np.ndarray, byte_matrix: np.ndarray) -> np.ndarray:
+def _murmurhash3_x86_32(seeds: NDArray[Any], byte_matrix: NDArray[Any]) -> NDArray[Any]:
     """Vectorized 32-bit MurmurHash3 (x86_32), matching ``mmh3.hash(s, signed=False, seed=k)``.
 
     Computes the hash of every row of `byte_matrix` (all of the same byte length) against every
@@ -70,7 +73,7 @@ class StreamhashProjector(BaseTransformer):
         density (float): Fraction of non-zero entries in the projection matrix (Default=1/3).
     """
 
-    _R: np.ndarray | None
+    _R: NDArray[Any] | None
     _R_ndim: int | None
 
     def __init__(self, num_components: int, density: float = 1 / 3.0) -> None:
@@ -82,7 +85,7 @@ class StreamhashProjector(BaseTransformer):
         self._R = None
         self._R_ndim = None
 
-    def fit_partial(self, X: np.ndarray) -> StreamhashProjector:
+    def fit_partial(self, X: NDArray[Any]) -> StreamhashProjector:
         """Fits particular (next) timestep's features to train the projector.
 
         Args:
@@ -93,7 +96,7 @@ class StreamhashProjector(BaseTransformer):
         """
         return self
 
-    def transform_partial(self, X: np.ndarray) -> np.ndarray:
+    def transform_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Projects particular (next) timestep's vector to (possibly) lower dimensional space.
 
         Args:
@@ -108,15 +111,15 @@ class StreamhashProjector(BaseTransformer):
 
         R = self._get_projection_matrix(ndim)
 
-        Y = np.dot(X, R.T).squeeze()
+        Y: NDArray[Any] = np.dot(X, R.T)[0]
 
         return Y
 
-    def fit(self, X: np.ndarray) -> StreamhashProjector:
+    def fit(self, X: NDArray[Any]) -> StreamhashProjector:
         """Returns the projector unchanged without iterating the batch."""
         return self
 
-    def transform(self, X: np.ndarray) -> np.ndarray:
+    def transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Projects all instances in a 2-D batch using a single matrix product."""
         if isinstance(X, np.ndarray) and X.ndim == 2:
             if len(X) == 0:
@@ -126,11 +129,11 @@ class StreamhashProjector(BaseTransformer):
                 return np.asarray(X @ R.T, dtype=np.float64)
         return super().transform(X)
 
-    def fit_transform(self, X: np.ndarray) -> np.ndarray:
+    def fit_transform(self, X: NDArray[Any]) -> NDArray[Any]:
         """Projects all instances in a 2-D batch using a single matrix product."""
         return self.transform(X)
 
-    def _get_projection_matrix(self, ndim: int) -> np.ndarray:
+    def _get_projection_matrix(self, ndim: int) -> NDArray[Any]:
         """Returns the projection matrix for the given number of features, building and caching it on first use.
 
         The matrix only depends on `ndim`, `self.keys`, `self.density` and `self.constant`, so it is
@@ -148,7 +151,7 @@ class StreamhashProjector(BaseTransformer):
 
         return self._R
 
-    def _build_projection_matrix(self, ndim: int) -> np.ndarray:
+    def _build_projection_matrix(self, ndim: int) -> NDArray[Any]:
         """Builds the projection matrix by hashing the ASCII decimal string of every feature index.
 
         Feature indices are grouped by the byte length of their decimal representation (e.g. 0-9,

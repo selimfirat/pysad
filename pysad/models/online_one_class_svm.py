@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 
@@ -52,7 +55,7 @@ class OnlineOneClassSVM(BaseModel):
         self.support_vectors_ = np.zeros((self.window_size, num_features))
         self.alphas_ = np.zeros(self.window_size)
 
-    def _decision(self, X: np.ndarray) -> float:
+    def _decision(self, X: NDArray[Any]) -> float:
         """Returns f(X), the kernel expansion at the instance."""
         if self.num_seen_ == 0:
             return 0.0
@@ -61,7 +64,7 @@ class OnlineOneClassSVM(BaseModel):
         # An elementwise sum: Apple's Accelerate BLAS raises spurious warnings in a matmul here.
         return float((self.alphas_ * np.exp(-self.gamma_ * sq_dists)).sum())
 
-    def _fit(self, X: np.ndarray, decision: float) -> None:
+    def _fit(self, X: NDArray[Any], decision: float) -> None:
         if self.num_seen_ == 0:
             self._init_model(X.shape[0])
         self.alphas_ *= 1.0 - self.learning_rate
@@ -75,7 +78,7 @@ class OnlineOneClassSVM(BaseModel):
             self.rho_ += self.learning_rate * self.nu
         self.num_seen_ += 1
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> OnlineOneClassSVM:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> OnlineOneClassSVM:
         """Updates the model with the next instance.
 
         Args:
@@ -88,7 +91,7 @@ class OnlineOneClassSVM(BaseModel):
         self._fit(X, self._decision(X))
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:
@@ -99,7 +102,7 @@ class OnlineOneClassSVM(BaseModel):
         """
         return self.rho_ - self._decision(X)
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[Any], y: int | None = None) -> float:
         """Scores the next instance, and then updates the model with it.
 
         Args:

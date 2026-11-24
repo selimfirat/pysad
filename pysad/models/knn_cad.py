@@ -5,7 +5,7 @@ import numbers
 from typing import Any
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.transform.preprocessing import ShingleTransformer
@@ -21,7 +21,7 @@ class KNNCAD(BaseModel):
         probationary_period (int): Number of instances in probationary period. Until probationary_period instances are received, the model outputs anomaly score of `0.0`. Must be a whole number of at least `48` (window length `19` plus `k = 27` plus `2`): the training set holds `probationary_period - 19` windows, and the calibration scores need at least `k + 2` of them. It may be an int (a NumPy integer is accepted, but not a bool) or an integral-valued float, such as the `750.0` that NAB's probation period helper returns, which is converted to an int. Raises `TypeError` for a bool or a non-real type, and `ValueError` for NaN, infinity, a value with a fractional part, or a value below the minimum.
     """
 
-    sigma: np.ndarray
+    sigma: NDArray[np.float64]
 
     def __init__(self, probationary_period: float) -> None:
         dim = 19
@@ -54,8 +54,8 @@ class KNNCAD(BaseModel):
 
         # Each window is a shingle of the last dim values. The model uses no copies at the start.
         self.shingler: ShingleTransformer = ShingleTransformer(dim)
-        self.training: list[np.ndarray] = []
-        self.calibration: list[np.ndarray] = []
+        self.training: list[NDArray[np.float64]] = []
+        self.calibration: list[NDArray[np.float64]] = []
         self.scores: list[float] = []
         self.record_count: int = 0
         self.pred: int = -1
@@ -68,15 +68,17 @@ class KNNCAD(BaseModel):
     def _value(X: Any) -> float:
         return check_univariate(X, "KNNCAD")
 
-    def _ncm(self, item: ArrayLike, sigma: np.ndarray, item_in_array: bool = False) -> float:
+    def _ncm(
+        self, item: ArrayLike, sigma: NDArray[np.float64], item_in_array: bool = False
+    ) -> float:
         # The distances (x - item) sigma (x - item)^T of all the training windows x at once.
         # einsum does not call BLAS, which can raise false floating-point flags on macOS.
         diff = np.asarray(self.training, dtype=np.float64) - np.asarray(item, dtype=np.float64)
         arr = np.einsum("ij,ij->i", np.einsum("ij,jk->ik", diff, sigma), diff)
 
-        return np.sum(np.partition(arr, self.k + item_in_array)[: self.k + item_in_array])
+        return float(np.sum(np.partition(arr, self.k + item_in_array)[: self.k + item_in_array]))
 
-    def _sigma_at(self, record_count: int) -> np.ndarray:
+    def _sigma_at(self, record_count: int) -> NDArray[np.float64]:
         """Returns the sigma NAB uses at the given record, recomputed from the training set when a refresh is due.
 
         Args:
@@ -94,7 +96,7 @@ class KNNCAD(BaseModel):
 
         return self.sigma
 
-    def _calibration_scores(self, sigma: np.ndarray) -> list[float]:
+    def _calibration_scores(self, sigma: NDArray[np.float64]) -> list[float]:
         """Returns the calibration scores, computed from the training set with the given sigma when there are none yet.
 
         Args:
@@ -163,7 +165,7 @@ class KNNCAD(BaseModel):
 
         return 1.0 * len(np.where(np.array(scores) < new_score)[0]) / len(scores), new_score
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> KNNCAD:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> KNNCAD:
         """Updates the model with the next instance. Note that this model is univariate.
 
         Args:
@@ -181,7 +183,7 @@ class KNNCAD(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the window that ends with the given instance, i.e., the last `dim - 1` fitted values followed by `X`, against the current calibration scores. The score is the fraction of calibration scores lower than the window's score. This method does not change the model. Alarm suppression, which outputs `0.5` for a while after an alarm as in NAB, applies only in `fit_score_partial`.
 
         Args:
@@ -196,7 +198,7 @@ class KNNCAD(BaseModel):
         value = self._value(X)
         return self._score(value)[0]
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[np.float64], y: int | None = None) -> float:
         """Scores the window that ends with the given instance and then fits the model to it, as NAB's detector does for each record. After a score of at least `0.9965` raises an alarm, the next `int(probationary_period / 5)` scores are suppressed to `0.5`.
 
         Args:

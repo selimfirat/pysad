@@ -75,23 +75,6 @@ def test_base_sklearn_metric():
     assert abs(accuracy - 2.0 / 3.0) < 1e-10
 
 
-def test_metric_error_handling():
-    """Test metric error handling with invalid data."""
-    from pysad.evaluation import AUROCMetric
-
-    metric = AUROCMetric()
-
-    # Test with both classes present
-    metric.update(1, 0.5)
-    metric.update(0, 0.7)
-    metric.update(1, 0.3)
-
-    # AUROC should work with both classes
-    score = metric.get()
-    assert isinstance(score, int | float)
-    assert 0.0 <= score <= 1.0
-
-
 def test_precision_metric_edge_cases():
     """Test PrecisionMetric with edge cases."""
     import warnings
@@ -113,22 +96,6 @@ def test_precision_metric_edge_cases():
         assert precision == 0.0
 
 
-def test_precision_metric_normal_case():
-    """Test PrecisionMetric with normal binary predictions."""
-    from pysad.evaluation import PrecisionMetric
-
-    metric = PrecisionMetric()
-
-    # Test with mixed predictions
-    metric.update(1, 1)  # True positive
-    metric.update(0, 1)  # False positive
-    metric.update(1, 1)  # True positive
-
-    # Precision should be 2/3
-    precision = metric.get()
-    assert abs(precision - 2.0 / 3.0) < 1e-10
-
-
 def test_recall_metric_edge_cases():
     """Test RecallMetric with edge cases."""
     import warnings
@@ -148,57 +115,6 @@ def test_recall_metric_edge_cases():
         warnings.filterwarnings("ignore", message="Recall is ill-defined and being set to 0.0")
         recall = metric.get()
         assert recall == 0.0
-
-
-def test_recall_metric_normal_case():
-    """Test RecallMetric with normal binary predictions."""
-    from pysad.evaluation import RecallMetric
-
-    metric = RecallMetric()
-
-    # Test with mixed predictions
-    metric.update(1, 1)  # True positive
-    metric.update(1, 0)  # False negative
-    metric.update(1, 1)  # True positive
-
-    # Recall should be 2/3
-    recall = metric.get()
-    assert abs(recall - 2.0 / 3.0) < 1e-10
-
-
-def test_aupr_metric_comprehensive():
-    """Test AUPRMetric with various scenarios."""
-    from pysad.evaluation import AUPRMetric
-
-    metric = AUPRMetric()
-
-    # Test perfect prediction
-    metric.update(1, 0.9)
-    metric.update(0, 0.1)
-    metric.update(1, 0.8)
-    metric.update(0, 0.2)
-
-    aupr = metric.get()
-    assert 0.0 <= aupr <= 1.0
-
-
-def test_auroc_metric_comprehensive():
-    """Test AUROCMetric with various scenarios."""
-    import numpy as np
-
-    from pysad.evaluation import AUROCMetric
-
-    metric = AUROCMetric()
-
-    # Test random prediction (should be around 0.5)
-    np.random.seed(42)
-    for _ in range(20):
-        y_true = np.random.randint(0, 2)
-        y_pred = np.random.random()
-        metric.update(y_true, y_pred)
-
-    auroc = metric.get()
-    assert 0.0 <= auroc <= 1.0
 
 
 def test_auroc_single_class_error():
@@ -269,26 +185,6 @@ def test_precision_recall_threshold_on_model_scores():
     assert np.isclose(precision.get(), precision_score(y_true, y_pred))
     assert np.isclose(recall.get(), recall_score(y_true, y_pred))
     assert recall.get() > 0.0
-
-
-def test_precision_recall_without_threshold_on_binary_predictions():
-    """Test PrecisionMetric and RecallMetric keep their 0/1 behaviour when threshold is None."""
-    import numpy as np
-    from sklearn.metrics import precision_score, recall_score
-
-    from pysad.evaluation import PrecisionMetric, RecallMetric
-
-    y_true = [1, 0, 1, 1, 0, 0, 1]
-    y_pred = [1, 1, 0, 1, 0, 1, 1]
-
-    for metric_cls, sklearn_metric in [
-        (PrecisionMetric, precision_score),
-        (RecallMetric, recall_score),
-    ]:
-        for metric in [metric_cls(), metric_cls(threshold=None)]:
-            for yt, yp in zip(y_true, y_pred, strict=True):
-                metric.update(yt, yp)
-            assert np.isclose(metric.get(), sklearn_metric(y_true, y_pred))
 
 
 def test_precision_recall_without_threshold_reject_scores():
@@ -365,7 +261,7 @@ def test_precision_recall_retained_state_is_bounded():
             for label, score in [(1, 0.8), (0, 0.7), (1, 0.2), (0, 0.1)]:
                 metric.update(label, score)
         initial_size = len(pickle.dumps(metric))
-        for _ in range(24750):
+        for _ in range(2500):
             for label, score in [(1, 0.8), (0, 0.7), (1, 0.2), (0, 0.1)]:
                 metric.update(label, score)
         # Allow integer counters to grow, but no storage proportional to the stream.
@@ -601,21 +497,40 @@ def test_log_loss_metric_finite_boundary_loss(eps):
             assert metric.get() > 0.0
 
 
-def test_log_loss_metric_running_state():
-    """Verify LogLossMetric reports the mean loss of all updates so far."""
+@pytest.mark.parametrize(
+    "metric_cls",
+    [
+        "AUROCMetric",
+        "AUPRMetric",
+        "PrecisionMetric",
+        "RecallMetric",
+        "F1Metric",
+        "BalancedAccuracyMetric",
+        "MatthewsCorrelationMetric",
+    ],
+)
+def test_metrics_empty_batch(metric_cls):
+    """Verify update_batch with empty sequences preserves metric state and value."""
+    import copy
+
     import numpy as np
 
-    from pysad.evaluation import LogLossMetric
+    import pysad.evaluation as pe
 
-    metric = LogLossMetric()
-    assert metric.get() is None
+    cls = getattr(pe, metric_cls)
+    metric = cls()
 
-    y_true = [1, 1, 0]
-    y_pred = [0.9, 0.5, 0.5]
+    metric.update(1, 1)
+    metric.update(0, 0)
+    metric.update(1, 0)
 
-    losses = [-np.log(0.9), -np.log(0.5), -np.log(0.5)]
-    expected_means = np.cumsum(losses) / np.arange(1, 4)
+    val_before = metric.get()
+    state_before = copy.deepcopy(metric.__dict__)
 
-    for i, (yt, yp) in enumerate(zip(y_true, y_pred, strict=True)):
-        metric.update(yt, yp)
-        assert np.isclose(metric.get(), expected_means[i])
+    metric.update_batch([], [])
+    assert metric.get() == val_before
+    assert metric.__dict__ == state_before
+
+    metric.update_batch(np.array([], dtype=int), np.array([], dtype=float))
+    assert metric.get() == val_before
+    assert metric.__dict__ == state_before

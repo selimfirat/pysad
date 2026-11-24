@@ -10,6 +10,22 @@ on:
       - "LICENSE"
       - "CITATION.cff"
       - ".readthedocs.yaml"
+      - ".github/dependabot.yml"
+      - ".github/workflows/all-checks.yml"
+      - ".github/workflows/benchmark.yml"
+      - ".github/workflows/codeql.yml"
+      - ".github/workflows/dependency-review.yml"
+      - ".github/workflows/docs.yml"
+      - ".github/workflows/examples.yml"
+      - ".github/workflows/greetings.yml"
+      - ".github/workflows/hf-space.yml"
+      - ".github/workflows/jupyterlite.yml"
+      - ".github/workflows/lint-workflows.yml"
+      - ".github/workflows/pr-labels.yml"
+      - ".github/workflows/publish.yml"
+      - ".github/workflows/scorecard.yml"
+      - ".github/workflows/stale.yml"
+      - ".github/workflows/weekly.yml"
   pull_request:
     paths-ignore:
       - "docs/**"
@@ -18,9 +34,32 @@ on:
       - "LICENSE"
       - "CITATION.cff"
       - ".readthedocs.yaml"
+      - ".github/dependabot.yml"
+      - ".github/workflows/all-checks.yml"
+      - ".github/workflows/benchmark.yml"
+      - ".github/workflows/codeql.yml"
+      - ".github/workflows/dependency-review.yml"
+      - ".github/workflows/docs.yml"
+      - ".github/workflows/examples.yml"
+      - ".github/workflows/greetings.yml"
+      - ".github/workflows/hf-space.yml"
+      - ".github/workflows/jupyterlite.yml"
+      - ".github/workflows/lint-workflows.yml"
+      - ".github/workflows/pr-labels.yml"
+      - ".github/workflows/publish.yml"
+      - ".github/workflows/scorecard.yml"
+      - ".github/workflows/stale.yml"
+      - ".github/workflows/weekly.yml"
 
 permissions:
   contents: read
+
+env:
+  OMP_NUM_THREADS: "1"
+  OPENBLAS_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+  VECLIB_MAXIMUM_THREADS: "1"
+  NUMEXPR_NUM_THREADS: "1"
 
 concurrency:
   # PR runs share a group per PR (so stale pushes get cancelled); every push gets its own group.
@@ -28,7 +67,84 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      count: ${{ steps.plan.outputs.count }}
+      run_tests: ${{ steps.plan.outputs.run_tests }}
+      needs_compat: ${{ steps.plan.outputs.needs_compat }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Plan affected tests
+        id: plan
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            python3 scripts/ci_affected.py tests "origin/$BASE_REF" > "$RUNNER_TEMP/tests-plan.json"
+            python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          plan = json.loads(Path(os.environ["RUNNER_TEMP"], "tests-plan.json").read_text(encoding="utf-8"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"count={plan['count']}\n")
+              f.write(f"run_tests={'true' if plan['count'] > 0 else 'false'}\n")
+              f.write(f"needs_compat={'true' if plan['needs_compat'] else 'false'}\n")
+          PY
+          else
+            {
+              echo "count=999"
+              echo "run_tests=true"
+              echo "needs_compat=true"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+  coverage-shard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {shard: "0/2", shard_id: "0"}
+          - {shard: "1/2", shard_id: "1"}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+          cache-suffix: coverage-312
+          prune-cache: true
+      - name: Install dependencies
+        run: |
+          # uv prefers wheels by default, matching pip's --prefer-binary.
+          uv pip install --system --group runtime --group test --group mcp -e .
+      - name: Test shard with coverage
+        env:
+          COVERAGE_CORE: sysmon
+          PYSAD_TEST_SHARD: ${{ matrix.shard }}
+          COVERAGE_FILE: coverage.shard-${{ matrix.shard_id }}
+        run: pytest -n auto --dist worksteal --cov=pysad --cov-report=
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-shard-${{ matrix.shard_id }}
+          path: coverage.shard-${{ matrix.shard_id }}
+          retention-days: 1
+
   coverage:
+    needs: coverage-shard
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -45,14 +161,18 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
-      - name: Install dependencies
+          cache-suffix: coverage-combine
+          prune-cache: true
+      - name: Install coverage
+        run: uv pip install --system coverage
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: coverage-shard-*
+          merge-multiple: true
+      - name: Combine coverage and generate LCOV
         run: |
-          # uv prefers wheels by default, matching pip's --prefer-binary.
-          uv pip install --system --group runtime --group test -e .
-      - name: Test with coverage
-        env:
-          COVERAGE_CORE: sysmon
-        run: pytest -n auto --cov=pysad --cov-report=lcov
+          coverage combine coverage.shard-*
+          coverage lcov -o coverage.lcov
       - name: Upload to Coveralls
         uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
@@ -61,22 +181,25 @@ jobs:
       - name: Upload to Qlty
         # Forked PRs get no OIDC token, so upload only from this repo.
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: qltysh/qlty-action/coverage@ebcd284bf32e36a030afe15f1e136c7be08b9506 # v2.5.0
+        uses: qltysh/qlty-action/coverage@0ff2178667bf8eb28ed0013a7ef54857a24d4056 # v2.7.0
         with:
           oidc: true
           files: coverage.lcov
 
   tests:
-    # The coverage job runs Python 3.12 on Linux. This job runs Python 3.11 and 3.13 on Linux.
-    # It also runs Python 3.12 on macOS and Windows with the pinned runtime dependencies.
+    # The coverage job runs Python 3.12 on Linux. This job runs Python 3.11 and 3.13 on Linux,
+    # Python 3.12 on macOS, and 2-way sharded Python 3.12 on Windows.
+    needs: plan
+    if: needs.plan.outputs.run_tests == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-latest, python: "3.11"}
-          - {os: ubuntu-latest, python: "3.13"}
-          - {os: macos-latest, python: "3.12"}
-          - {os: windows-latest, python: "3.12"}
+          - {os: ubuntu-latest, python: "3.11", shard: ""}
+          - {os: ubuntu-latest, python: "3.13", shard: ""}
+          - {os: macos-latest, python: "3.12", shard: ""}
+          - {os: windows-latest, python: "3.12", shard: "0/2"}
+          - {os: windows-latest, python: "3.12", shard: "1/2"}
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -91,21 +214,62 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: tests-${{ matrix.os }}-${{ matrix.python }}
+          prune-cache: true
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: win-venv
+        if: runner.os == 'Windows'
+        with:
+          path: .venv
+          key: win-venv-312-${{ hashFiles('pyproject.toml') }}
+      - name: Install dependencies (Windows venv)
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          CACHE_HIT: ${{ steps.win-venv.outputs.cache-hit }}
+        run: |
+          if [ "$CACHE_HIT" != "true" ]; then
+            uv venv .venv --python "$(python -c 'import sys; print(sys.executable)')"
+            uv pip install --python .venv/Scripts/python.exe --group runtime --group test -e .
+          else
+            uv pip install --python .venv/Scripts/python.exe --no-deps -e .
+          fi
       - name: Install dependencies
+        if: runner.os != 'Windows'
         run: |
           uv pip install --system --group runtime --group test -e .
       - name: Test
         shell: bash
         env:
           BASE_REF: ${{ github.base_ref }}
+          COUNT: ${{ needs.plan.outputs.count }}
+          SHARD: ${{ matrix.shard }}
         run: |
+          if [ -x .venv/Scripts/pytest.exe ]; then
+            PYTEST=.venv/Scripts/pytest.exe
+          else
+            PYTEST=pytest
+          fi
           if [ -n "$BASE_REF" ]; then
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
-          pytest -n auto
+          if [ -n "$SHARD" ]; then
+            export PYSAD_TEST_SHARD="$SHARD"
+          fi
+          status=0
+          if [ -n "$BASE_REF" ] && [ -z "$SHARD" ] && [ "${COUNT:-999}" -le 3 ]; then
+            "$PYTEST" || status=$?
+          else
+            "$PYTEST" -n auto --dist worksteal || status=$?
+          fi
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
+          fi
 
   unpinned-314:
+    needs: plan
+    if: needs.plan.outputs.run_tests == 'true' && needs.plan.outputs.needs_compat == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -120,20 +284,33 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: unpinned-314
+          prune-cache: true
       - name: Install unpinned dependencies
         run: |
           uv pip install --system -e . --group test
       - name: Test
         env:
           BASE_REF: ${{ github.base_ref }}
+          COUNT: ${{ needs.plan.outputs.count }}
         run: |
           if [ -n "$BASE_REF" ]; then
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
-          pytest -n auto
+          status=0
+          if [ -n "$BASE_REF" ] && [ "${COUNT:-999}" -le 3 ]; then
+            pytest || status=$?
+          else
+            pytest -n auto --dist worksteal || status=$?
+          fi
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
+          fi
 
   numpy-123:
+    needs: plan
+    if: needs.plan.outputs.run_tests == 'true' && needs.plan.outputs.needs_compat == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -148,18 +325,38 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
-      - name: Install NumPy 1.23 with compatible test dependencies
-        # These River and Matplotlib versions support NumPy 1.23.
+          cache-suffix: numpy-123
+          prune-cache: true
+      - name: Install NumPy 2.x with river 0.26.1 compatible test dependencies
+        # River 0.26.1+ is required by the PySADToRiverAdapter; numpy 2.x is
+        # compatible with river 0.26.1 when the correct pins are used.
         run: |
-          printf '%s\n' 'river==0.21.2' 'matplotlib==3.10.8' > "$RUNNER_TEMP/numpy123-overrides.txt"
-          uv pip install --system --only-binary :all: --no-binary pysad --group test -e . "numpy==1.23.5" \
+          printf '%s\n' 'river==0.26.1' 'matplotlib==3.10.8' > "$RUNNER_TEMP/numpy123-overrides.txt"
+          uv pip install --system --only-binary :all: --no-binary pysad --group test -e . "numpy>=2.2.5" \
             --override "$RUNNER_TEMP/numpy123-overrides.txt"
-      - name: Test with NumPy 1.23
+      - name: Test with NumPy 2.x
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          COUNT: ${{ needs.plan.outputs.count }}
         run: |
-          python -c 'import numpy; assert numpy.__version__ == "1.23.5", numpy.__version__'
-          pytest -n auto
+          python -c 'import numpy; assert numpy.__version__ >= "2.2.5", numpy.__version__'
+          if [ -n "$BASE_REF" ]; then
+            git fetch --depth=1 origin "$BASE_REF"
+            export PYSAD_TESTS_SINCE="origin/$BASE_REF"
+          fi
+          status=0
+          if [ -n "$BASE_REF" ] && [ "${COUNT:-999}" -le 3 ]; then
+            pytest || status=$?
+          else
+            pytest -n auto --dist worksteal || status=$?
+          fi
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
+          fi
 
   lowest-versions:
+    needs: plan
+    if: needs.plan.outputs.run_tests == 'true' && needs.plan.outputs.needs_compat == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -174,6 +371,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
+          cache-suffix: lowest-versions
+          prune-cache: true
       - name: Install the lowest allowed dependencies
         # Resolve the lowest direct dependencies on the oldest supported Python.
         # River requires NumPy 2.2.5 or newer, so the test group cannot use NumPy 1.23.
@@ -182,9 +381,18 @@ jobs:
       - name: Test
         env:
           BASE_REF: ${{ github.base_ref }}
+          COUNT: ${{ needs.plan.outputs.count }}
         run: |
           if [ -n "$BASE_REF" ]; then
             git fetch --depth=1 origin "$BASE_REF"
             export PYSAD_TESTS_SINCE="origin/$BASE_REF"
           fi
-          pytest -n auto
+          status=0
+          if [ -n "$BASE_REF" ] && [ "${COUNT:-999}" -le 3 ]; then
+            pytest || status=$?
+          else
+            pytest -n auto --dist worksteal || status=$?
+          fi
+          if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+            exit "$status"
+          fi

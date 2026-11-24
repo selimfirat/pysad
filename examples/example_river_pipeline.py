@@ -5,13 +5,13 @@ from functools import partial
 from river import preprocessing
 
 from pysad.evaluation import AUROCMetric
-from pysad.integrations import RiverAnomalyDetector
+from pysad.integrations import PySADToRiverAdapter
 from pysad.models import LODA
 from pysad.utils import ArrayStreamer, Data
 
 if __name__ == "__main__":
     X, y = Data().get_data("arrhythmia.mat")
-    pipeline = preprocessing.StandardScaler() | RiverAnomalyDetector(partial(LODA, random_state=0))
+    pipeline = preprocessing.StandardScaler() | PySADToRiverAdapter(partial(LODA, random_state=0))
     metric = AUROCMetric()
 
     for x, label in ArrayStreamer().iter(X, y):

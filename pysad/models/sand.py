@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 from numpy.typing import NDArray
@@ -12,7 +14,7 @@ from pysad.utils.validation import _finite_float, _int_at_least, check_univariat
 KSHAPE_MAX_ITER = 100
 
 
-def _znorm(X: np.ndarray) -> np.ndarray:
+def _znorm(X: NDArray[Any]) -> NDArray[np.float64]:
     """Returns the rows of X with mean 0 and standard deviation 1, and the constant rows as zeros."""
     mean = X.mean(axis=-1, keepdims=True)
     std = X.std(axis=-1, keepdims=True)
@@ -20,14 +22,16 @@ def _znorm(X: np.ndarray) -> np.ndarray:
     return np.where(constant, 0.0, (X - mean) / np.where(constant, 1.0, std))
 
 
-def _spectrum(X: np.ndarray) -> np.ndarray:
+def _spectrum(X: NDArray[Any]) -> NDArray[np.complex128]:
     """Returns the conjugate FFT of the rows of X, zero padded to hold every shift."""
     return np.fft.rfft(X, 1 << (2 * X.shape[1] - 1).bit_length(), axis=1).conj()
 
 
 def _sbd(
-    X: np.ndarray, c: np.ndarray, spectrum: np.ndarray | None = None
-) -> tuple[np.ndarray, np.ndarray]:
+    X: NDArray[Any],
+    c: NDArray[np.float64],
+    spectrum: NDArray[np.complex128] | None = None,
+) -> tuple[NDArray[np.float64], NDArray[np.intp]]:
     """Returns the shape-based distance of each row of X to c, and the shift that aligns the row to c.
 
     Args:
@@ -55,7 +59,7 @@ def _sbd(
     return 1.0 - ncc[np.arange(n), best], best - (m - 1)
 
 
-def _align(X: np.ndarray, shifts: np.ndarray) -> np.ndarray:
+def _align(X: NDArray[Any], shifts: NDArray[np.intp]) -> NDArray[np.float64]:
     """Shifts each row of X right by its shift, with zero padding."""
     m = X.shape[1]
     source = np.arange(m) - shifts[:, None]  # (n, m) index in X of each aligned value
@@ -63,7 +67,7 @@ def _align(X: np.ndarray, shifts: np.ndarray) -> np.ndarray:
     return np.where(valid, np.take_along_axis(X, source.clip(0, m - 1), axis=1), 0.0)
 
 
-def _shape(S: np.ndarray, aligned: np.ndarray) -> np.ndarray:
+def _shape(S: NDArray[np.float64], aligned: NDArray[np.float64]) -> NDArray[np.float64]:
     """Returns the k-Shape centroid of the sequences whose sum of outer products is S.
 
     The centroid is the eigenvector of ``Q^T S Q`` with the largest eigenvalue, where ``Q = I - O / m``, with the sign that brings it closer to the aligned sequences.
@@ -83,7 +87,9 @@ def _shape(S: np.ndarray, aligned: np.ndarray) -> np.ndarray:
     return _znorm(mu)
 
 
-def _kshape(X: np.ndarray, k: int, rng: np.random.RandomState) -> tuple[np.ndarray, np.ndarray]:
+def _kshape(
+    X: NDArray[np.float64], k: int, rng: np.random.RandomState
+) -> tuple[NDArray[np.intp], NDArray[np.float64]]:
     """Clusters the z-normalized rows of X with k-Shape, from random labels.
 
     Args:
@@ -174,10 +180,10 @@ class SAND(BaseModel):
         )
 
         # The last subsequence_length - 1 values of the previous batch, then the current batch.
-        self.buffer_ = np.zeros(self.subsequence_length - 1 + self.batch_size)
+        self.buffer_: NDArray[np.float64] = np.zeros(self.subsequence_length - 1 + self.batch_size)
         self.count_ = 0  # values of the current batch in buffer_
         self.time_ = 0  # values seen
-        self.centroids_: np.ndarray | None = None  # (num_centroids, centroid_length)
+        self.centroids_: NDArray[np.float64] | None = None  # (num_centroids, centroid_length)
         self.matrices_: NDArray[np.float64] = np.empty(
             shape=(0, self.centroid_length, self.centroid_length)
         )
@@ -188,14 +194,14 @@ class SAND(BaseModel):
         self.last_: NDArray[np.float64] = np.empty(0)
         self.weights_: NDArray[np.float64] = np.empty(0)
         # The z-normalized windows of subsequence_length values of each centroid, and their squared norms.
-        self.windows_ = np.empty(
+        self.windows_: NDArray[np.float64] = np.empty(
             (0, self.centroid_length - self.subsequence_length + 1, self.subsequence_length)
         )
         self.window_sq_ = np.empty((0, 1, self.centroid_length - self.subsequence_length + 1))
         self.mean_ = 0.0
         self.std_ = 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> SAND:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> SAND:
         """Updates the model with the next value, and Θ when the value completes a batch.
 
         Args:
@@ -217,14 +223,15 @@ class SAND(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores the subsequence that ends with the next value.
 
         Args:
             X (np.float64 array of shape (1,)): The instance to score. This model is univariate.
 
         Returns:
-            float: The anomalousness score of the input instance.
+            float: The anomalousness score of the input instance. Higher scores represent
+                more anomalous instances.
         """
         value = check_univariate(X, "SAND")
         if self.centroids_ is None:
@@ -234,7 +241,7 @@ class SAND(BaseModel):
         d = float(self._distances(np.append(previous, value)[None])[0])
         return (d - self.mean_) / self.std_ if self.std_ > 0.0 else d - self.mean_
 
-    def _distances(self, subsequences: np.ndarray) -> np.ndarray:
+    def _distances(self, subsequences: NDArray[Any]) -> NDArray[np.float64]:
         """Returns the distance ``d`` (Eq. 5) of each subsequence to Θ.
 
         Args:
@@ -252,7 +259,7 @@ class SAND(BaseModel):
             d += weight * np.sqrt(np.maximum(sq.min(axis=1), 0.0))
         return d
 
-    def _update(self, batch: np.ndarray) -> None:
+    def _update(self, batch: NDArray[Any]) -> None:
         """Clusters a complete batch and updates Θ, its weights, ``mu`` and ``sigma`` (Algorithms 2 to 4)."""
         rng = self._rng if self._rng is not None else check_random_state(None)
         Z = _znorm(sliding_window_view(batch, self.centroid_length))

@@ -63,10 +63,17 @@ POSTPROCESSOR_PARAMS: dict[str, dict[str, Any]] = {
     "ThresholdFilter": {"threshold": 1.0},
 }
 CALIBRATOR_PARAMS: dict[str, dict[str, Any]] = {
-    "AnomalyLikelihood": {"window_size": 20, "short_window_size": 5, "probationary_period": 10},
+    "AnomalyLikelihoodProbabilityCalibrator": {
+        "window_size": 100,
+        "short_window_size": 5,
+        "learning_period": 10,
+        "num_estimation_samples": 20,
+    },
     "ConformalProbabilityCalibrator": {"window_size": 20},
+    "ConformalTSFMCalibrator": {"alpha": 0.1, "gamma": 0.005, "window_size": 20},
     "GaussianTailProbabilityCalibrator": {"window_size": 20, "short_window_size": 5},
-    "SPOT": {"init_length": 15},
+    "GroupConditionalConformalCalibrator": {"window_size": 20, "max_regimes": 4},
+    "SPOTProbabilityCalibrator": {"num_init": 15, "max_peaks": 20},
 }
 ENSEMBLER_PARAMS: dict[str, dict[str, Any]] = {
     "AverageOfMaximumScoreEnsembler": {"n_buckets": 2, "random_state": 5},
@@ -263,7 +270,7 @@ def test_statistics_update_get_and_pickle_contracts(name: str, cls: type) -> Non
         assert returned is meter
 
     val = meter.get()
-    assert isinstance(val, (int, float, np.floating)) and np.isfinite(float(val))
+    assert isinstance(val, int | float | np.floating) and np.isfinite(float(val))
 
     restored = pickle.loads(pickle.dumps(meter))
     assert restored.get() == meter.get()
@@ -324,10 +331,18 @@ def _run_stochastic_component(name: str, cls: type, seed: int) -> np.ndarray:
         meter = cls(window_size=16, stat_size=6, random_state=seed)
         vals = np.sin(np.arange(40, dtype=np.float64))
         return np.array([meter.update(float(v)).get() for v in vals])
+    if name == "KLLMeter":
+        meter = cls(k=16, random_state=seed)
+        vals = np.sin(np.arange(60, dtype=np.float64))
+        return np.array([meter.update(float(v)).get() for v in vals])
     if name == "RelativeErrorQuantileMeter":
         meter = cls(k=2, max_items=64, random_state=seed)
         vals = np.sin(np.arange(40, dtype=np.float64))
         return np.array([meter.update(float(v)).get() for v in vals])
+    if name == "CountMinSketch":
+        sketch = cls(width=16, depth=3, random_state=seed)
+        sketch.update_many(range(40))
+        return np.array([sketch.estimate(item) for item in range(80)])
     streamer = cls(shuffle=True, random_state=seed)
     if name == "PandasStreamer":
         data: Any = pd.DataFrame(X)

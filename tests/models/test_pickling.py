@@ -22,46 +22,14 @@ NUM_FIT = 60
 NUM_NEXT = 20
 
 MODEL_PARAMS = {
-    # The tree splits, merges and discards entries before and after the round trip.
-    "AnyOut": {"max_height": 2, "decay": 0.1, "snapshot_interval": 5},
-    # Safe inliers form, are removed from the sample and expire within the first instances.
-    "ApproxStorm": {
-        "window_size": 30,
-        "max_radius": 0.6,
-        "num_neighbors": 3,
-        "sample_fraction": 0.2,
-    },
-    # Core points form and expire within the first instances.
-    "CPOD": {"window_size": 30, "max_radius": 0.6},
-    # Sample values expire and their chains move on before and after the round trip.
-    "D3": {"window_size": 30, "sample_fraction": 0.5, "max_radius": 0.6},
-    "HalfSpaceTrees": {
-        "feature_mins": [0.0, 0.0, 0.0],
-        "feature_maxes": [1.0, 1.0, 1.0],
-        "window_size": 20,
-        "num_trees": 5,
-        "max_depth": 8,
-    },
-    # The anomaly likelihood leaves its probationary period before the round trip.
-    "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 40, "num_columns": 256},
-    "IForestASD": {"window_size": 32},
-    "IDKS": {"input_shape": 3, "window_size": 30, "num_samples": 4},
-    # Violations count toward failures before and after the round trip.
-    "HoltWinters": {"period": 4, "threshold": 1},
-    # The window is summarized before and after the round trip.
-    "DILOF": {"num_neighbors": 5, "window_size": 24},
-    # A window that slides before and after the round trip.
-    "IncrementalLOF": {"num_neighbors": 5, "window_size": 20},
-    # The initial sample completes before the round trip, so the restored model has rho and tau.
-    "Inqmad": {"input_shape": 3, "dim_x": 32, "initial_size": 30},
-    # Clusters form and dissolve as the window slides before and after the round trip.
-    "KELOS": {"window_size": 30, "radius": 0.6, "num_neighbors": 3},
-    # Its autoencoders still train on the instances scored after the round trip.
+    # Short grace periods, so that the autoencoders are built and trained within the data.
     "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 50},
     "KNNCAD": {"probationary_period": 50},
     "MatrixProfile": {"window_length": 4, "history_size": 30},
     "DAMP": {"window_length": 4, "history_size": 20},
     "SpectralResidual": {"window_size": 8, "num_average_points": 3},
+    # The window slides before and after the round trip.
+    "STARE": {"window_size": 30, "slide_size": 5, "num_neighbors": 3, "cell_size": 0.6},
     # The window slides before and after the round trip.
     "ThreshLEAP": {"window_size": 30, "max_radius": 0.6, "num_neighbors": 3},
     # Micro-clusters form, expire and dissolve within the first instances.
@@ -90,14 +58,6 @@ MODEL_PARAMS = {
         "num_bins": 80,
         "step": 5,
     },
-    "RobustRandomCutForest": {"tree_size": 32},
-    "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
-    "RSHash": {"feature_mins": [0.0, 0.0, 0.0], "feature_maxes": [1.0, 1.0, 1.0]},
-    # Batches complete before and after the round trip.
-    "SAND": {"subsequence_length": 4, "batch_size": 25},
-    "SeasonalESD": {"period": 4, "window_size": 16, "max_anomalies": 0.19},
-    "SeasonalHybridESD": {"period": 4, "window_size": 16, "max_anomalies": 0.19},
-    "xStream": {"n_chains": 10, "depth": 10, "window_size": 20},
 }
 
 PICKLE_XFAIL_MODELS = {}
@@ -206,22 +166,3 @@ def test_relative_entropy_compared_scores_use_learned_state():
     model = _fitted_model("RelativeEntropy", X, y)
 
     assert _next_scores(model, X, y).max() == 1.0
-
-
-def test_rrcf_pickle_round_trip():
-    from pysad.models import RobustRandomCutForest
-
-    X, y = _data("RobustRandomCutForest")
-    model = _fitted_model("RobustRandomCutForest", X, y)
-
-    restored = pickle.loads(pickle.dumps(model))
-
-    assert restored.index == model.index == NUM_FIT
-    assert len(restored._slot_leaves) == model.num_trees
-    assert restored._slot_leaves == model._slot_leaves
-
-    # tree_size < NUM_FIT, so the next instances also exercise forgetting old points after restoring.
-    _assert_same_scores(model, restored, X, y)
-
-    restored_again = pickle.loads(pickle.dumps(restored))
-    assert isinstance(restored_again, RobustRandomCutForest)

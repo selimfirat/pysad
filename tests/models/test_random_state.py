@@ -12,45 +12,11 @@ from tests.models.conftest import (
     TIMESTAMPED_MODELS,
     UNIVARIATE_MODELS,
     active_model_names,
+    num_features_for,
+    short_stream_params,
 )
 
 NUM_FEATURES = 3
-
-MODEL_PARAMS = {
-    "ApproxStorm": {
-        "window_size": 20,
-        "max_radius": 0.5,
-        "num_neighbors": 3,
-        "sample_fraction": 0.25,
-    },
-    "D3": {"window_size": 20, "sample_fraction": 0.5, "max_radius": 0.3},
-    "EXPoSE": {"num_random_features": 50},
-    "HalfSpaceTrees": {
-        "feature_mins": [0.0] * NUM_FEATURES,
-        "feature_maxes": [1.0] * NUM_FEATURES,
-        "window_size": 20,
-        "num_trees": 5,
-        "max_depth": 8,
-    },
-    "HTM": {"min_val": 0.0, "max_val": 1.0, "probationary_period": 20, "num_columns": 256},
-    "IDKS": {"input_shape": NUM_FEATURES, "window_size": 30, "num_samples": 4},
-    "Inqmad": {"input_shape": NUM_FEATURES, "dim_x": 32, "initial_size": 20},
-    # Short grace periods, so that the autoencoders are built and trained within the data.
-    "KitNet": {"grace_feature_mapping": 20, "grace_anomaly_detector": 30},
-    "LODA": {"num_random_cuts": 20},
-    "MIDAS": {"num_buckets": 4, "tick_size": 5},
-    "MiLOF": {"num_neighbors": 5, "window_size": 20, "num_summaries": 5},
-    "MemStream": {"window_size": 8, "num_epochs": 20},
-    "OeSNNUAD": {"window_size": 10},
-    "PCBIsolationForest": {"num_trees": 10, "window_size": 32, "stat_size": 10},
-    "OnlineIsolationForest": {"num_trees": 10, "max_leaf_samples": 8, "window_size": 32},
-    "OnlineKMeans": {"num_clusters": 2},
-    "RobustRandomCutForest": {"tree_size": 32},
-    "RSForest": {"window_size": 20, "num_trees": 5, "max_depth": 8},
-    "RSHash": {"feature_mins": [0.0] * NUM_FEATURES, "feature_maxes": [1.0] * NUM_FEATURES},
-    "SAND": {"subsequence_length": 4, "batch_size": 24},
-    "xStream": {"n_chains": 10, "depth": 10, "window_size": 20},
-}
 
 NAMES = [
     name
@@ -59,7 +25,11 @@ NAMES = [
 ]
 ACTIVE_NAMES = [name for name in NAMES if name in set(active_model_names())]
 MODELS = {
-    name: (lambda name=name, **kw: getattr(pysad.models, name)(**MODEL_PARAMS.get(name, {}), **kw))
+    name: (
+        lambda name=name, **kw: getattr(pysad.models, name)(
+            **{**short_stream_params(name, num_features_for(name, NUM_FEATURES)), **kw}
+        )
+    )
     for name in NAMES
 }
 
@@ -79,14 +49,25 @@ def _scores(model):
 
 
 @pytest.mark.parametrize("name", ACTIVE_NAMES)
-def test_same_seed_gives_same_scores(name):
+def test_random_state_determinism_and_global_isolation(name):
+    fix_seed(11)
+    expected_global = np.random.rand(3)
+
+    fix_seed(11)
+    scores_5a = _scores(MODELS[name](random_state=5))
+    np.testing.assert_array_equal(np.random.rand(3), expected_global)
+
+    scores_5b = _scores(MODELS[name](random_state=5))
+    np.testing.assert_array_equal(scores_5a, scores_5b)
+
+    # The global state after fix_seed(5) produces the same stream as RandomState(5).
+    fix_seed(5)
+    default = _scores(MODELS[name]())
+    np.testing.assert_array_equal(default, scores_5a)
     np.testing.assert_array_equal(
-        _scores(MODELS[name](random_state=5)), _scores(MODELS[name](random_state=5))
+        default, _scores(MODELS[name](random_state=np.random.RandomState(5)))
     )
 
-
-@pytest.mark.parametrize("name", ACTIVE_NAMES)
-def test_different_seeds_change_model(name):
     if name == "FRAHST":
         # Binary alarms can agree even when the learned bases differ.
         models = [MODELS[name](random_state=seed) for seed in (5, 6)]
@@ -94,20 +75,7 @@ def test_different_seeds_change_model(name):
             model.fit_partial(_data(model)[0])
         assert not np.array_equal(models[0].basis_, models[1].basis_)
         return
-    assert not np.array_equal(
-        _scores(MODELS[name](random_state=5)), _scores(MODELS[name](random_state=6))
-    )
-
-
-@pytest.mark.parametrize("name", ACTIVE_NAMES)
-def test_seed_leaves_global_state_alone(name):
-    fix_seed(11)
-    expected = np.random.rand(3)
-
-    fix_seed(11)
-    _scores(MODELS[name](random_state=5))
-
-    np.testing.assert_array_equal(np.random.rand(3), expected)
+    assert not np.array_equal(scores_5a, _scores(MODELS[name](random_state=6)))
 
 
 @pytest.mark.parametrize("name", ACTIVE_NAMES)
@@ -122,18 +90,6 @@ def test_models_seeded_side_by_side_do_not_interfere(name):
         other.fit_score_partial(x)
 
     np.testing.assert_array_equal(side_by_side, alone)
-
-
-@pytest.mark.parametrize("name", ACTIVE_NAMES)
-def test_default_draws_from_global_state(name):
-    # The global state after fix_seed(5) produces the same stream as RandomState(5).
-    fix_seed(5)
-    default = _scores(MODELS[name]())
-
-    np.testing.assert_array_equal(default, _scores(MODELS[name](random_state=5)))
-    np.testing.assert_array_equal(
-        default, _scores(MODELS[name](random_state=np.random.RandomState(5)))
-    )
 
 
 @pytest.mark.parametrize("name", ACTIVE_NAMES)
@@ -171,3 +127,33 @@ def test_kitnet_autoencoders_share_one_generator():
     assert same_shape
     for a, b in same_shape:
         assert not np.array_equal(a, b)
+
+
+def test_robust_random_cut_forest_score_partial_does_not_advance_rng():
+    """score_partial must not advance the model's RNG (issue #977)."""
+    from pysad.models import RobustRandomCutForest
+
+    X = np.random.default_rng(42).normal(size=(700, 4))
+
+    # Test 1: Two score_partial calls on the same point give identical scores.
+    a = RobustRandomCutForest(random_state=0)
+    for x in X[:400]:
+        a.fit_partial(x)
+    s1 = a.score_partial(X[400])
+    s2 = a.score_partial(X[400])
+    assert s1 == s2
+
+    # Test 2: Extra score_partial calls on one model do not affect later scores.
+    a = RobustRandomCutForest(random_state=0)
+    b = RobustRandomCutForest(random_state=0)
+    for x in X[:400]:
+        a.fit_partial(x)
+        b.fit_partial(x)
+    for x in X[400:420]:
+        a.score_partial(x)  # model a gets extra score calls
+    for x in X[400:600]:
+        a.fit_partial(x)
+        b.fit_partial(x)
+    sa = np.array([a.score_partial(x) for x in X[600:620]])
+    sb = np.array([b.score_partial(x) for x in X[600:620]])
+    np.testing.assert_array_equal(sa, sb)

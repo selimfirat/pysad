@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _int_at_least, check_univariate
@@ -45,7 +45,7 @@ class PredictiveAnomalyDetector(BaseModel):
         )
         self.num_values_ = 0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> PredictiveAnomalyDetector:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> PredictiveAnomalyDetector:
         """Updates the forecaster with the next value.
 
         Args:
@@ -63,7 +63,7 @@ class PredictiveAnomalyDetector(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores the next value by its deviation from the forecast of the forecaster.
 
         Args:
@@ -82,4 +82,4 @@ class PredictiveAnomalyDetector(BaseModel):
         forecast = self.model.forecast(horizon=1)[0]
         error = abs(value - forecast)
 
-        return error / abs(forecast) if self.relative else error
+        return float(error / abs(forecast) if self.relative else error)

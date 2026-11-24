@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_streamer import BaseStreamer
 from pysad.utils.array_streamer import ArrayStreamer
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
-def _iter_rows(data: pd.DataFrame | pd.Series) -> Iterator[Any]:
+def _iter_rows(data: pd.DataFrame | pd.Series) -> Iterator[NDArray[Any]]:
     dtype = data.iloc[:0].to_numpy().dtype
     if dtype.kind in "biu":
         column = data if data.ndim == 1 else data.iloc[:, 0]
@@ -33,7 +34,7 @@ def _iter_rows(data: pd.DataFrame | pd.Series) -> Iterator[Any]:
 class PandasStreamer(BaseStreamer["pd.DataFrame", "pd.DataFrame | pd.Series"]):
     """Stream DataFrame rows as NumPy arrays.
 
-    If shuffle is False, convert one row at a time.
+    If shuffle is False, convert rows using bounded buffers.
     Keep the row order and omit the index.
 
     Args:
@@ -49,16 +50,16 @@ class PandasStreamer(BaseStreamer["pd.DataFrame", "pd.DataFrame | pd.Series"]):
         self.array_iterator = ArrayStreamer(shuffle=shuffle, random_state=random_state)
 
     @overload
-    def iter(self, X: pd.DataFrame, y: None = None) -> Iterator[np.ndarray]: ...
+    def iter(self, X: pd.DataFrame, y: None = None) -> Iterator[NDArray[Any]]: ...
 
     @overload
     def iter(
         self, X: pd.DataFrame, y: pd.DataFrame | pd.Series
-    ) -> Iterator[tuple[np.ndarray, Any]]: ...
+    ) -> Iterator[tuple[NDArray[Any], Any]]: ...
 
     def iter(
         self, X: pd.DataFrame, y: pd.DataFrame | pd.Series | None = None
-    ) -> Iterator[np.ndarray | tuple[np.ndarray, Any]]:
+    ) -> Iterator[NDArray[Any] | tuple[NDArray[Any], Any]]:
         """Yield feature rows and optional labels in positional order.
 
         If shuffle is True, yield the rows in shuffled order.

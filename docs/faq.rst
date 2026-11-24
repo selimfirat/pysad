@@ -57,7 +57,7 @@ Yes. :class:`~pysad.integrations.ReferenceWindowModel` trains a PyOD detector on
 Does PySAD work with scikit-learn or River?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use :class:`~pysad.integrations.SklearnAnomalyDetector` to score batches with a fitted PySAD model in a scikit-learn ``Pipeline``.
+Use :class:`~pysad.integrations.PySADToScikitLearnAdapter` to score batches with a fitted PySAD model in a scikit-learn ``Pipeline``.
 Its ``fit`` method does not train the model. It supports fitted inference, not ``GridSearchCV``.
 ``score_samples`` returns negative PySAD scores, so lower values mean more anomalous instances.
 Set ``threshold`` in PySAD score units for ``decision_function`` and ``predict``.
@@ -84,7 +84,7 @@ To use a scikit-learn transformer, fit it to historical data. Then transform eac
        x = scaler.transform(x.reshape(1, -1))[0]  # one row in, one row out
        score = model.fit_score_partial(x)
 
-Use :class:`~pysad.integrations.RiverAnomalyDetector` to run a PySAD detector in a River pipeline.
+Use :class:`~pysad.integrations.PySADToRiverAdapter` to run a PySAD detector in a River pipeline.
 It maps feature dictionaries to arrays in a fixed feature order. For the stages that PySAD has for each point, see :doc:`guides/pipelines`. To score a univariate stream by the forecast errors of a River forecaster, wrap the forecaster in :class:`~pysad.integrations.PredictiveAnomalyDetector`.
 
 .. _faq-input:
@@ -277,7 +277,7 @@ Extend :class:`~pysad.core.BaseModel` and implement ``fit_partial`` and ``score_
 Which detectors can PySAD include?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-PySAD includes a detector only if its paper has 20 or more citations, appeared at an A* venue, or has an official GitHub repository with 50 or more stars, or if the streaming detector has a top-three score on a public streaming benchmark such as NAB. If your detector does not meet this rule yet, share it as a :class:`~pysad.core.BaseModel` subclass. We can then add a link to it in the documentation. See :doc:`inclusion_criteria`.
+PySAD includes a detector only if its paper has 20 or more citations, appeared in 2025 or later at a CORE A* conference (for example, ICLR, ICCV, ICML, or NeurIPS), or if the streaming detector has a top-three score on a public streaming benchmark such as NAB. If your detector does not meet this rule yet, share it as a :class:`~pysad.core.BaseModel` subclass. We can then add a link to it in the documentation. See :doc:`inclusion_criteria`.
 
 How do I cite PySAD?
 ~~~~~~~~~~~~~~~~~~~~

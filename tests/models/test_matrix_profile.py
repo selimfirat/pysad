@@ -120,3 +120,12 @@ def test_rejects_multivariate_instances():
 
     with pytest.raises(ValueError, match="univariate"):
         MatrixProfile(window_length=4).fit_partial(np.array([1.0, 2.0]))
+
+
+def test_subnormal_values_produce_finite_scores():
+    from pysad.models import MatrixProfile
+
+    model = MatrixProfile(window_length=4, history_size=20)
+    values = [1.11253693e-308, 0.0, 0.0, 0.0, 0.0, 0.0, 1.11253693e-308]
+    scores = [model.fit_score_partial(np.array([value])) for value in values]
+    assert all(type(score) is float and np.isfinite(score) for score in scores)

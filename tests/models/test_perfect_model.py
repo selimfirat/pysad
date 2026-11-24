@@ -7,6 +7,7 @@ def test_perfect_model():
     fix_seed(61)
 
     model = PerfectModel()
+    assert model.score_partial(np.array([0.0])) == 0.0
     y1 = np.random.randint(0, 2, 100)
     y = np.random.randint(0, 2, 100)
     X = np.random.rand(100)

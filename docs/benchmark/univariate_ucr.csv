@@ -1,8 +1,12 @@
 Detector,Series,Solved (%),AUROC
 :class:`~pysad.models.ChangeFinder`,84,61.9,0.605
+:class:`~pysad.models.StreamingAutoregressiveDetector`,84,54.8,0.578
+:class:`~pysad.models.LocalPolynomialDetector`,84,53.6,0.590
 :class:`~pysad.models.SpectralResidual`,84,36.9,0.460
 :class:`~pysad.models.MatrixProfile`,84,19.0,0.588
 :class:`~pysad.models.MedianAbsoluteDeviation`,84,11.9,0.547
+:class:`~pysad.models.OeSNNUAD`,84,11.9,0.542
+:class:`~pysad.models.PEWMA`,84,11.9,0.507
 :class:`~pysad.models.DAMP`,84,9.5,0.552
 :class:`~pysad.models.KNNCAD`,84,8.3,0.496
 :class:`~pysad.models.SAND`,84,8.3,0.579

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import math
+from typing import ClassVar
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _finite_float, _int_at_least, check_univariate
@@ -46,6 +48,17 @@ class PEWMA(BaseModel):
         ValueError: If ``alpha`` or ``beta`` is not in [0, 1], or ``training_period`` is less than 1.
     """
 
+    __bibtex__: ClassVar[str] = """
+@inproceedings{carter2012probabilistic,
+  title={Probabilistic reasoning for streaming anomaly detection},
+  author={Carter, Kevin M and Streilein, William W},
+  booktitle={2012 IEEE Statistical Signal Processing Workshop (SSP)},
+  pages={377--380},
+  year={2012},
+  doi={10.1109/SSP.2012.6319708}
+}
+"""
+
     def __init__(self, alpha: float = 0.99, beta: float = 1.0, training_period: int = 14) -> None:
         self.alpha = _finite_float(alpha, "alpha")
         self.beta = _finite_float(beta, "beta")
@@ -63,7 +76,7 @@ class PEWMA(BaseModel):
         variance = self.s2_ - self.s1_**2
         return (x - self.s1_) / math.sqrt(variance) if variance > 0.0 else 0.0
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> PEWMA:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> PEWMA:
         """Updates the averages with the next value.
 
         Args:
@@ -86,13 +99,14 @@ class PEWMA(BaseModel):
 
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the value with the current estimates, without changing the model.
 
         Args:
             X (np.float64 array of shape (1,)): The value to score. This model is univariate.
 
         Returns:
-            float: The absolute z-score :math:`|Z_t|` of the value. It is 0 while the standard deviation is 0.
+            float: The absolute z-score :math:`|Z_t|` of the value. It is 0 while the
+                standard deviation is 0. Higher scores represent more anomalous instances.
         """
         return abs(self._z(check_univariate(X, "PEWMA")))

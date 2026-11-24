@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import math
 from collections import deque
+from typing import ClassVar
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.utils.validation import _int_at_least, check_univariate
@@ -57,6 +59,8 @@ class FluxEV(BaseModel):
         alpha (float): EWMA weight in (0, 1] (Default=0.2).
         risk (float): Tail probability q in (0, 0.02) (Default=0.001).
     """
+
+    _has_decision_rule: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -146,7 +150,7 @@ class FluxEV(BaseModel):
             excess = scale * math.expm1(-shape * log_ratio) / shape
         self.threshold_ += max(excess, 0.0)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> FluxEV:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> FluxEV:
         """Updates the windows and threshold with one value.
 
         Args:
@@ -185,7 +189,7 @@ class FluxEV(BaseModel):
         self._count += 1
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Returns the smoothed fluctuation without changing the model.
 
         Args:
@@ -193,5 +197,11 @@ class FluxEV(BaseModel):
 
         Returns:
             float: The nonnegative fluctuation S, or zero during the smoothing warmup.
+            Higher scores represent more anomalous instances. A threshold
+            :math:`S_{\\text{th}}` is used for binary decision classification
+            via :meth:`_decide_from_score`.
         """
         return self._features(check_univariate(X, "FluxEV"))[2]
+
+    def _decide_from_score(self, score: float) -> int:
+        return 1 if score > self.threshold_ else 0

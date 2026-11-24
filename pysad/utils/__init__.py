@@ -5,14 +5,16 @@ The :mod:`pysad.utils` module includes utility functions used in the `PySAD` fra
 import random
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .array_streamer import ArrayStreamer
 from .array_streamer import _iterate as _iterate
+from .count_min_sketch import CountMinSketch
 from .csv_streamer import CSVStreamer
 from .data import Data
 from .hyperloglog import HyperLogLog
 from .pandas_streamer import PandasStreamer
-from .plotting import plot_stream
+from .plotting import plot_stream, plot_streaming_ribbon
 from .polars_streamer import PolarsStreamer
 from .synthetic import generate_stream
 from .validation import check_feature_bounds, check_univariate
@@ -22,6 +24,7 @@ __all__ = [
     "ArrayStreamer",
     "check_feature_bounds",
     "check_univariate",
+    "CountMinSketch",
     "CSVStreamer",
     "Data",
     "fix_seed",
@@ -31,6 +34,7 @@ __all__ = [
     "HyperLogLog",
     "PandasStreamer",
     "plot_stream",
+    "plot_streaming_ribbon",
     "PolarsStreamer",
     "RingBuffer",
     "Window",
@@ -49,7 +53,7 @@ def fix_seed(seed: int) -> None:
     np.random.seed(seed)  # noqa: NPY002 - seeding the global state is the point of this function.
 
 
-def get_minmax_array(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def get_minmax_array(X: NDArray[np.float64]) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Return the minimum and maximum of each feature across input instances.
 
     The returned arrays can be passed as ``feature_mins`` and ``feature_maxes``
@@ -67,7 +71,7 @@ def get_minmax_array(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return min, max
 
 
-def get_minmax_scalar(x: np.ndarray) -> tuple[float, float]:
+def get_minmax_scalar(x: NDArray[np.float64]) -> tuple[float, float]:
     """Return the minimum and maximum across all elements as Python floats.
 
     Args:

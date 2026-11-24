@@ -13,6 +13,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`dataset_inventory`
+
+      List each pysad.utils.Data loader with its source, license, checksum and label format.
+
+   .. container:: card
+
       :doc:`choose_detector`
 
       Find candidate detectors for your data and compare them.
@@ -37,6 +43,18 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`river_interoperability`
+
+      Run PySAD detectors in River pipelines, score before learning, detect drift, and keep state bounded.
+
+   .. container:: card
+
+      :doc:`drift_aware_composition`
+
+      Reset a detector on drift and chain stages into one pipeline.
+
+   .. container:: card
+
       :doc:`seasonal`
 
       Find anomalies in metrics with a daily or weekly cycle.
@@ -55,12 +73,65 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`serving`
+
+      Consume from Kafka or Redpanda, expose a FastAPI streaming endpoint, and checkpoint state to disk or Redis.
+
+   .. container:: card
+
       :doc:`custom_model`
 
       Implement the model interface for a published streaming method and add it to PySAD.
 
    .. container:: card
 
+      :doc:`mcp`
+
+      Run PySAD detectors, drift meters, and explainability from AI assistants via MCP.
+
+   .. container:: card
+
       :doc:`/examples`
 
       Complete scripts that run end to end.
+
+Migration guides
+----------------
+
+.. container:: cards
+
+   .. container:: card
+
+      :doc:`migrate_azure`
+
+      Replace retired Azure AI Anomaly Detector and Metrics Advisor in Python.
+
+   .. container:: card
+
+      :doc:`migrate_aws`
+
+      Replace AWS Lookout for Equipment and Kinesis RANDOM_CUT_FOREST with PySAD.
+
+   .. container:: card
+
+      :doc:`migrate_merlion`
+
+      Migrate anomaly detection pipelines from archived Salesforce Merlion.
+
+   .. container:: card
+
+      :doc:`migrate_alibi_detect`
+
+      Move from BSL 1.1 Alibi Detect to permissive BSD 3-Clause PySAD.
+
+   .. container:: card
+
+      :doc:`migrate_statsforecast`
+
+      Replace StatsForecast and Nixtla batch forecasts with PySAD streaming pipelines.
+
+   .. container:: card
+
+      :doc:`migrate_adtk`
+
+      Map ADTK batch rule-based and statistical detection to PySAD streaming detection.

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import math
 from bisect import bisect_left, insort
-from typing import cast
+from typing import Any, ClassVar, Literal, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.utils.window import Window
@@ -24,12 +25,24 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
 
     Raises:
         ValueError: If window_size is less than 1.
+        TypeError: If ``score`` is not convertible to float.
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
 
     def __init__(self, window_size: int = 300) -> None:
         self.window_size = window_size
         self.window = Window(window_size=self.window_size)
         self._sorted: list[float] = []
+
+    def _validate_score(self, score: float) -> float:
+        """Convert score to float, raising TypeError if not possible."""
+        try:
+            return float(score)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"score must be convertible to float, got {type(score).__name__}: {score!r}"
+            ) from None
 
     def fit_partial(self, score: float) -> ConformalProbabilityCalibrator:
         """Fits particular (next) timestep's score to train the postprocessor.
@@ -40,11 +53,12 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
+        score = self._validate_score(score)
         if len(self.window) == self.window_size:
-            oldest = float(self.window.window[0])
-            if not math.isnan(oldest):
+            oldest = self.window._buffer.oldest()
+            if oldest is not None and not math.isnan(oldest):
                 del self._sorted[bisect_left(self._sorted, oldest)]
-        self.window.update(score)
+        self.window.update(float(score))
         s = float(score)
         if not math.isnan(s):
             insort(self._sorted, s)
@@ -61,11 +75,12 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             float: One minus the conformal p-value of the score, or 0.0 before the first fit.
         """
         n = len(self.window)
-        if n == 0 or math.isnan(score):
+        s = self._validate_score(score)
+        if n == 0 or math.isnan(s):
             return 0.0
-        return bisect_left(self._sorted, float(score)) / n
+        return bisect_left(self._sorted, float(s)) / n
 
-    def fit(self, scores: np.ndarray) -> ConformalProbabilityCalibrator:
+    def fit(self, scores: NDArray[Any]) -> ConformalProbabilityCalibrator:
         """Fits all scores in stream order, keeping the last ``window_size`` scores."""
         if isinstance(scores, np.ndarray) and scores.ndim == 1:
             if len(scores) == 0:
@@ -74,8 +89,8 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
                 tail = cast(
                     list[float], scores[-self.window_size :].astype(np.float64, copy=False).tolist()
                 )
-                self.window.window.clear()
-                self.window.window.extend(tail)
+                self.window._buffer.clear()
+                self.window._buffer.extend(tail)
                 self._sorted = sorted(x for x in tail if not math.isnan(x))
                 return self
             vals = cast(list[float], scores.astype(np.float64, copy=False).tolist())
@@ -85,7 +100,7 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
         super().fit(scores)
         return self
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a batch of scores against the frozen calibration window."""
         arr = np.asarray(scores, dtype=np.float64)
         if arr.ndim != 1:
@@ -102,14 +117,14 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             return out
         return np.searchsorted(sorted_arr, arr, side="left") / n
 
-    def fit_transform(self, scores: np.ndarray) -> np.ndarray:
+    def fit_transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Fits and calibrates a 1-D score batch in ``O(N log W)`` time."""
         if isinstance(scores, np.ndarray) and scores.ndim == 1 and not np.isnan(scores).any():
             m = len(scores)
             out = np.empty(m, dtype=np.float64)
             if m == 0:
                 return out
-            win_dq = self.window.window
+            buf = self.window._buffer
             sorted_vals = self._sorted
             w_size = self.window_size
             _bisect_left = bisect_left
@@ -117,12 +132,12 @@ class ConformalProbabilityCalibrator(BasePostprocessor):
             _isnan = math.isnan
             vals = cast(list[float], scores.astype(np.float64, copy=False).tolist())
             for i, s in enumerate(vals):
-                if len(win_dq) == w_size:
-                    oldest = float(win_dq[0])
-                    if not _isnan(oldest):
+                if len(buf) == w_size:
+                    oldest = buf.oldest()
+                    if oldest is not None and not _isnan(oldest):
                         del sorted_vals[_bisect_left(sorted_vals, oldest)]
-                win_dq.append(s)
+                buf.append(s)
                 _insort(sorted_vals, s)
-                out[i] = _bisect_left(sorted_vals, s) / len(win_dq)
+                out[i] = _bisect_left(sorted_vals, s) / len(buf)
             return out
         return super().fit_transform(scores)

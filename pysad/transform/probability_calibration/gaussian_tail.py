@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from typing import cast
+from typing import Any, ClassVar, Literal, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_postprocessor import BasePostprocessor
 from pysad.core.base_statistic import BaseStatistic
@@ -27,7 +28,10 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
     Raises:
         ValueError: If ``window_size`` is less than 1 or ``short_window_size`` is less than 1.
+        TypeError: If ``score`` is not convertible to float.
     """
+
+    _output_kind: ClassVar[Literal["score", "probability", "decision"]] = "probability"
 
     def __init__(
         self,
@@ -53,6 +57,15 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
         self.short_window: deque[float] = deque(maxlen=self.short_window_size)
 
+    def _validate_score(self, score: float) -> float:
+        """Convert score to float, raising TypeError if not possible."""
+        try:
+            return float(score)
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"score must be convertible to float, got {type(score).__name__}: {score!r}"
+            ) from None
+
     def fit_partial(self, score: float) -> GaussianTailProbabilityCalibrator:
         """Fits particular (next) timestep's score to train the postprocessor.
 
@@ -62,6 +75,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         Returns:
             object: self.
         """
+        score = self._validate_score(score)
         self.meter.update(score)
         self.short_window.append(score)
 
@@ -80,6 +94,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
         Returns:
             float: One minus the Gaussian tail p-value of the score, or 0.0 before the first fit.
         """
+        score = self._validate_score(score)
         if not self.short_window:
             return 0.0
         if self.short_window_size == 1:
@@ -107,7 +122,7 @@ class GaussianTailProbabilityCalibrator(BasePostprocessor):
 
         return self._calibrate(sum(window) / len(window))
 
-    def transform(self, scores: np.ndarray) -> np.ndarray:
+    def transform(self, scores: NDArray[Any]) -> NDArray[Any]:
         """Transforms a 1-D batch of scores against the current frozen Gaussian statistics."""
         arr = np.asarray(scores, dtype=np.float64)
         if arr.ndim != 1:

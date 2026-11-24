@@ -99,3 +99,103 @@ def test_xstream_fit_score_partial_matches_score_then_fit():
 
     assert model.hs_chains.counts == reference.hs_chains.counts
     assert model.hs_chains.counts_cur == reference.hs_chains.counts_cur
+
+
+def test_xstream_score_explain_partial_returns_score_and_shap():
+    import numpy as np
+
+    from pysad.models import xStream
+
+    model = xStream(num_components=10, n_chains=6, depth=5, window_size=20, random_state=0)
+    X = np.random.RandomState(0).randn(60, 6)
+    model.fit(X[:40])
+
+    score, shap = model.score_explain_partial(X[41])
+
+    assert isinstance(score, float)
+    # SHAP values are in projected space (num_components dimensions)
+    assert shap.shape == (10,)
+    assert shap.dtype == np.float64
+
+
+def test_xstream_score_explain_partial_does_not_change_state():
+    import numpy as np
+
+    from pysad.models import xStream
+
+    model = xStream(num_components=10, n_chains=6, depth=5, window_size=20, random_state=0)
+    X = np.random.RandomState(0).randn(60, 6)
+    model.fit(X[:40])
+
+    before = model.score_partial(X[41])
+    score, _ = model.score_explain_partial(X[41])
+    after = model.score_partial(X[41])
+
+    assert before == after
+    assert score == before
+
+
+def test_xstream_score_explain_partial_is_reproducible():
+    import numpy as np
+
+    from pysad.models import xStream
+
+    X = np.random.RandomState(0).randn(60, 6)
+
+    model_a = xStream(num_components=10, n_chains=6, depth=5, window_size=20, random_state=0)
+    model_a.fit(X[:40])
+    score_a, shap_a = model_a.score_explain_partial(X[41])
+
+    model_b = xStream(num_components=10, n_chains=6, depth=5, window_size=20, random_state=0)
+    model_b.fit(X[:40])
+    score_b, shap_b = model_b.score_explain_partial(X[41])
+
+    assert score_a == score_b
+    np.testing.assert_array_equal(shap_a, shap_b)
+
+
+def test_xstream_score_explain_partial_shap_depends_on_instance():
+    import numpy as np
+
+    from pysad.models import xStream
+
+    model = xStream(num_components=10, n_chains=6, depth=5, window_size=20, random_state=0)
+    X = np.random.RandomState(0).randn(60, 6)
+    model.fit(X[:40])
+
+    normal_score, normal_shap = model.score_explain_partial(X[41])
+    outside_score, outside_shap = model.score_explain_partial(np.full(6, 100.0))
+
+    assert normal_score != outside_score
+    assert not np.allclose(normal_shap, outside_shap)
+
+
+def test_xstream_score_explain_partial_returns_zeros_before_first_window():
+    import numpy as np
+
+    from pysad.models import xStream
+
+    model = xStream(num_components=10, n_chains=6, depth=5, window_size=20, random_state=0)
+    # Before any instance is fitted, score_partial returns -1.0 (min depth)
+    # but score_explain_partial returns zeros for SHAP values
+    score, shap = model.score_explain_partial(np.random.RandomState(1).randn(6))
+
+    assert score == -1.0  # score_partial returns -min(depth) when no counts
+    assert shap.shape == (10,)  # num_components
+    assert np.all(shap == 0.0)
+
+
+def test_xstream_score_explain_partial_rejects_nan():
+    import numpy as np
+    import pytest
+
+    from pysad.models import xStream
+
+    model = xStream(num_components=10, n_chains=6, depth=5, window_size=20, random_state=0)
+    X = np.random.RandomState(0).randn(60, 6)
+    model.fit(X[:40])
+
+    anomalous = X[41].copy()
+    anomalous[1] = np.nan
+    with pytest.raises(ValueError, match="xStream does not accept NaN values"):
+        model.score_explain_partial(anomalous)

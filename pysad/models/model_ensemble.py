@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from typing import Any, ClassVar
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pysad.core.base_model import BaseModel
 from pysad.core.base_score_ensembler import BaseScoreEnsembler
@@ -68,7 +69,7 @@ class ModelEnsemble(BaseModel):
     def _can_batch(self) -> bool:
         return sum(_uses_global_rng(c) for c in (*self.models, self.ensembler)) <= 1
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> ModelEnsemble:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> ModelEnsemble:
         """Updates every constituent model (and the ensembler if stateful) with the next instance.
 
         Args:
@@ -91,14 +92,14 @@ class ModelEnsemble(BaseModel):
         self.ensembler.fit_partial(scores)
         return self
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[Any]) -> float:
         """Scores the next instance across all constituent models without mutating state.
 
         Args:
             X (np.float64 array of shape (num_features,)): The instance to score.
 
         Returns:
-            float: Combined anomaly score.
+            float: Combined anomaly score. Higher scores represent more anomalous instances.
         """
         scores = np.fromiter(
             (model.score_partial(X) for model in self.models),
@@ -107,7 +108,7 @@ class ModelEnsemble(BaseModel):
         )
         return self.ensembler.transform_partial(scores)
 
-    def fit_score_partial(self, X: np.ndarray, y: int | None = None) -> float:
+    def fit_score_partial(self, X: NDArray[Any], y: int | None = None) -> float:
         """Fits and scores the next instance across all constituent models in prequential order.
 
         Args:
@@ -124,8 +125,22 @@ class ModelEnsemble(BaseModel):
         )
         return self.ensembler.fit_transform_partial(scores)
 
-    def fit(self, X: np.ndarray, y: np.ndarray | None = None) -> ModelEnsemble:
-        """Fits all constituent models (and the ensembler if stateful) to a batch of instances."""
+    def fit(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> ModelEnsemble:
+        """Fits all constituent models (and the ensembler if stateful) to a batch of instances.
+
+        An empty batch leaves the ensemble unchanged.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
+            y (np.int32 array of shape (num_instances,) or None): The labels of the instances, in order, passed to each model. Models that do not use labels ignore them (Default=None).
+
+        Raises:
+            ValueError: If any instance in ``X`` holds NaN, at the first instance that does.
+            ValueError: If ``y`` is given and its length differs from that of ``X``.
+
+        Returns:
+            ModelEnsemble: The ensemble itself.
+        """
         if y is not None and len(X) != len(y):
             raise ValueError("X and y must have the same length.")
         if not self._can_batch():
@@ -140,8 +155,18 @@ class ModelEnsemble(BaseModel):
         self.fit_score(X, y)
         return self
 
-    def score(self, X: np.ndarray) -> np.ndarray:
-        """Scores a batch of instances across all constituent models without mutating state."""
+    def score(self, X: NDArray[Any]) -> NDArray[np.float64]:
+        """Scores a batch of instances across all constituent models without mutating state.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to score, in order. An empty batch produces an empty score array.
+
+        Raises:
+            ValueError: If any instance in ``X`` holds NaN, at the first instance that does.
+
+        Returns:
+            np.float64 array of shape (num_instances,): The combined anomaly scores of the instances in order.
+        """
         if not self._can_batch():
             return super().score(X)
         if len(X) == 0:
@@ -149,8 +174,22 @@ class ModelEnsemble(BaseModel):
         matrix = np.column_stack([model.score(X) for model in self.models])
         return np.asarray(self.ensembler.transform(matrix), dtype=np.float64)
 
-    def fit_score(self, X: np.ndarray, y: np.ndarray | None = None) -> np.ndarray:
-        """Fits and scores a batch of instances across all constituent models in order."""
+    def fit_score(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> NDArray[np.float64]:
+        """Fits and scores a batch of instances across all constituent models in prequential order.
+
+        Each constituent model scores each instance before it learns from that instance. A stateful ensembler learns from each score before it combines that score. This order is prequential evaluation, also called test-then-train. An empty batch produces an empty score array.
+
+        Args:
+            X (np.float64 array of shape (num_instances, num_features)): The instances to fit and score, in order.
+            y (np.int32 array of shape (num_instances,) or None): The labels of the instances, in order, passed to each model. Models that do not use labels ignore them (Default=None).
+
+        Raises:
+            ValueError: If any instance in ``X`` holds NaN, at the first instance that does.
+            ValueError: If ``y`` is given and its length differs from that of ``X``.
+
+        Returns:
+            np.float64 array of shape (num_instances,): The combined anomaly scores of the instances in order.
+        """
         if y is not None and len(X) != len(y):
             raise ValueError("X and y must have the same length.")
         if not self._can_batch():

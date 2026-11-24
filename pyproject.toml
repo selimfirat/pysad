@@ -185,6 +185,7 @@ conflicts = [
   [{group = "compare"}, {group = "compare-numpy1"}],
   [{group = "compare"}, {group = "runtime"}],
   [{group = "compare"}, {group = "dev"}],
+  [{group = "compare"}, {group = "test"}],
   [{group = "compare-numpy1"}, {group = "runtime"}],
   [{group = "compare-numpy1"}, {group = "test"}],
   [{group = "compare-numpy1"}, {group = "dev"}],

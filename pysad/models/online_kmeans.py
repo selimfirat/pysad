@@ -47,7 +47,8 @@ class OnlineKMeans(BaseModel):
 
     def _squared_distances(self, X: np.ndarray) -> np.ndarray:
         assert self._centers is not None
-        return ((self._centers[: self.num_centers_] - X) ** 2).sum(axis=1)
+        distances: np.ndarray = ((self._centers[: self.num_centers_] - X) ** 2).sum(axis=1)
+        return distances
 
     def _add_center(self, X: np.ndarray) -> None:
         assert self._centers is not None

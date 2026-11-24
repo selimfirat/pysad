@@ -175,3 +175,41 @@ def test_rolling_brier_subclass_keeps_custom_result():
     metric = RollingMetric(DoubledBrier, window_size=2)
     metric.update_batch([0, 1, 0], [0.2, 0.5, 0.5])
     assert metric.get() == pytest.approx(0.5)
+
+
+def test_rolling_precision_mixed_batch_and_single_updates():
+    from pysad.evaluation import PrecisionMetric, RollingMetric
+
+    metric = RollingMetric(PrecisionMetric, window_size=4, threshold=0.5)
+
+    # 1. Start with single updates
+    metric.update(1, 0.8)  # TP -> [TP], prec = 1/1 = 1.0
+    assert metric.get() == pytest.approx(1.0)
+    metric.update(0, 0.7)  # FP -> [TP, FP], prec = 1/2 = 0.5
+    assert metric.get() == pytest.approx(0.5)
+    metric.update(0, 0.2)  # TN -> [TP, FP, TN], prec = 1/2 = 0.5
+    assert metric.get() == pytest.approx(0.5)
+
+    # 2. Add a short batch (fills window to capacity and evicts oldest TP)
+    metric.update_batch([1, 1], [0.9, 0.1])  # (1, 0.9) TP, (1, 0.1) FN -> evicts (1, 0.8) TP
+    # Window: (0, 0.7) FP, (0, 0.2) TN, (1, 0.9) TP, (1, 0.1) FN -> TP=1, FP=1 -> prec = 1/2 = 0.5
+    assert metric.get() == pytest.approx(0.5)
+
+    # 3. Replace the window with a larger batch (length 5 >= window_size 4)
+    metric.update_batch([0, 1, 1, 1, 0], [0.1, 0.8, 0.9, 0.7, 0.2])
+    # Retained tail 4: (1, 0.8) TP, (1, 0.9) TP, (1, 0.7) TP, (0, 0.2) TN
+    # TP=3, FP=0 -> prec = 3/3 = 1.0
+    assert metric.get() == pytest.approx(1.0)
+
+    # 4. Resume single updates and verify proper eviction
+    metric.update(0, 0.6)  # FP -> evicts oldest (1, 0.8) TP
+    # Window: (1, 0.9) TP, (1, 0.7) TP, (0, 0.2) TN, (0, 0.6) FP -> TP=2, FP=1 -> prec = 2/3
+    assert metric.get() == pytest.approx(2.0 / 3.0)
+
+    metric.update(0, 0.1)  # TN -> evicts oldest (1, 0.9) TP
+    # Window: (1, 0.7) TP, (0, 0.2) TN, (0, 0.6) FP, (0, 0.1) TN -> TP=1, FP=1 -> prec = 1/2 = 0.5
+    assert metric.get() == pytest.approx(0.5)
+
+    metric.update(0, 0.2)  # TN -> evicts oldest (1, 0.7) TP
+    # Window: (0, 0.2) TN, (0, 0.6) FP, (0, 0.1) TN, (0, 0.2) TN -> TP=0, FP=1 -> prec = 0/1 = 0.0
+    assert metric.get() == pytest.approx(0.0)

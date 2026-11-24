@@ -60,7 +60,7 @@ jobs:
           set -- dist/pysad-*.whl
           WHL=$1
           . .venv/bin/activate
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade "pip==26.3"
           if [ "${SMOKE_EXTRA}" = "mcp" ]; then
             python -m pip install "${WHL}[mcp]"
           else

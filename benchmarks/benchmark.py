@@ -96,6 +96,16 @@ DRIFT = {
     "smd/machine-1-1.txt": "SMD 1-1",
     "smd/machine-2-1.txt": "SMD 2-1",
     "smd/machine-3-1.txt": "SMD 3-1",
+    "smap/P-1.npy": "SMAP P-1",
+    "smap/S-1.npy": "SMAP S-1",
+    "smap/E-1.npy": "SMAP E-1",
+    "smap/T-1.npy": "SMAP T-1",
+    "smap/A-1.npy": "SMAP A-1",
+    "msl/M-6.npy": "MSL M-6",
+    "msl/P-10.npy": "MSL P-10",
+    "msl/T-4.npy": "MSL T-4",
+    "msl/F-7.npy": "MSL F-7",
+    "msl/C-2.npy": "MSL C-2",
 }
 DRIFT_POINTS = 10_000
 

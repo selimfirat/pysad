@@ -175,6 +175,7 @@ include = ["pysad*"]
 [tool.setuptools.package-data]
 # PEP 561 marker: type checkers use pysad's inline type hints.
 pysad = ["py.typed"]
+"pysad.agent" = [".claude-plugin/plugin.json", ".mcp.json", "skills/*/SKILL.md"]
 
 [tool.uv]
 # `uv sync` would otherwise add the dev group to whatever --group asks for; Read the Docs

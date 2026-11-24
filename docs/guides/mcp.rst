@@ -14,7 +14,45 @@ The MCP server requires the ``mcp`` optional dependency:
 
    $ pip install pysad[mcp]
 
-This installs PySAD with the ``mcp`` package (version 1.26 or newer).
+This installs PySAD with the ``mcp`` package (version 2.x).
+
+Agent skills and plugin
+-----------------------
+
+``pysad.agent`` bundles two skills and a Claude Code plugin. The skills cover
+stream scoring and feature explanations through the existing MCP tools.
+They ship with the base package and add no runtime dependencies.
+The server still requires ``pysad[mcp]``.
+
+To locate the plugin in your Python environment, run:
+
+.. code-block:: console
+
+   $ python -m pysad.agent
+
+If you use Claude Code, load the plugin with:
+
+.. code-block:: console
+
+   $ claude --plugin-dir "$(python -m pysad.agent)"
+
+The plugin starts ``pysad-mcp`` from your ``PATH``. Activate the Python environment
+with ``pysad[mcp]`` before starting the client. The plugin includes the server
+configuration, so you do not need a second MCP entry for this setup.
+See the `plugin manifest reference <https://code.claude.com/docs/en/plugins-reference>`_
+for the client format.
+
+If your client supports Agent Skills, locate the skill folders with:
+
+.. code-block:: console
+
+   $ python -m pysad.agent --skills
+
+Copy ``pysad-detect`` and ``pysad-explain`` from that directory into your client's
+skills directory. Configure the MCP server as described below.
+The skills use the tool schemas from the connected server.
+Each detector tool call starts a fresh model. Separate calls do not continue
+training from earlier calls.
 
 Running the Server
 ------------------

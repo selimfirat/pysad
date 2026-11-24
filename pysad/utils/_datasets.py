@@ -705,3 +705,37 @@ _SOURCES = (
     "creditcard",
     "tsb-drift",
 )
+
+# The license of each collection, as the dataset inventory guide lists it. "telemanom" is the
+# labels file of the SMAP and MSL channels, which comes from Telemanom itself, not from the TranAD
+# copy of the channel files.
+_LICENSES = {
+    "odds": (
+        "Varies by dataset. The original source is the ODDS library of Stony Brook University. "
+        "PySAD downloads the PyOD mirror at a fixed commit."
+    ),
+    "nab": "MIT at commit ea702d75. Earlier commits of NAB are under AGPL-3.0.",
+    "ucr": (
+        "No public redistribution license. PySAD downloads the archive from the authors' site "
+        "and does not copy it."
+    ),
+    "kddcup99": "OpenML dataset 1113. OpenML terms apply.",
+    "smd": "MIT (OmniAnomaly).",
+    "smap": (
+        "BSD-3-Clause (TranAD copy of the Telemanom data at a fixed commit). "
+        "The Telemanom data is BSD-style."
+    ),
+    "msl": (
+        "BSD-3-Clause (TranAD copy of the Telemanom data at a fixed commit). "
+        "The Telemanom data is BSD-style."
+    ),
+    "insects": "CC BY 4.0.",
+    "creditcard": (
+        "ODbL 1.0 for the database and DbCL 1.0 for its contents (OpenML 1597, version 1)."
+    ),
+    "tsb-drift": (
+        "CC BY 4.0 for TSB-drift. Apache 2.0 for the TSB-AD curation. "
+        "The underlying series keep their original licenses."
+    ),
+    "telemanom": "BSD-style (Telemanom, Caltech).",
+}

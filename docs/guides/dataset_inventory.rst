@@ -3,7 +3,7 @@ Dataset inventory
 
 :class:`~pysad.utils.Data` downloads labeled datasets, checks every download against a SHA-256 checksum, and caches the files in ``~/.cache/pysad`` (or in ``PYSAD_DATA_DIR``). This page lists each loader, its source, its license, its checksum and its label format.
 
-A loader is a collection returned by :meth:`~pysad.utils.Data.datasets`, for example ``"odds"`` or ``"nab"``. Call ``Data.datasets("odds")`` to list the file names of a loader.
+A loader is a collection returned by :meth:`~pysad.utils.Data.datasets`, for example ``"odds"`` or ``"nab"``. Call ``Data.datasets("odds")`` to list the file names of a loader. Call :meth:`~pysad.utils.Data.metadata` with one file name, for example ``Data.metadata("smap/P-1.npy")``, to get its source URL, license and SHA-256 checksum from the API.
 
 .. list-table:: Dataset inventory: source, license, checksum and label format of each loader
    :header-rows: 1

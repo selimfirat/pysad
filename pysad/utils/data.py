@@ -27,6 +27,7 @@ from pysad.utils._datasets import (
     _KDDCUP99,
     _KDDCUP99_ARCHIVE,
     _KDDCUP99_CHECKSUM,
+    _LICENSES,
     _MIRROR,
     _MSL_CHECKSUMS,
     _NAB,
@@ -69,10 +70,15 @@ def _source(name: str) -> tuple[str, str]:
         return _NAB + "data/" + name[len("nab/") :], _NAB_CHECKSUMS[name[len("nab/") :]]
     if name == "creditcard/creditcard.arff":
         return _CREDITCARD, _CREDITCARD_CHECKSUM
-    if name == _UCR_ARCHIVE:
+    if name == "kddcup99/http.csv":
+        # The stream is extracted from the archive of the cup, which is what downloads.
+        return _KDDCUP99, _KDDCUP99_CHECKSUM
+    if name.startswith("ucr/"):
+        # Each series is extracted from the archive, which is what downloads.
         return _UCR, _UCR_CHECKSUM
     if name == _KDDCUP99_ARCHIVE:
         return _KDDCUP99, _KDDCUP99_CHECKSUM
+
     if name.startswith("smd/labels/"):
         return _SMD + "test_label/" + name[len("smd/labels/") :], _SMD_CHECKSUMS[
             name[len("smd/labels/") :]
@@ -92,6 +98,17 @@ def _source(name: str) -> tuple[str, str]:
         return _TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM
 
     return _MIRROR + name, _CHECKSUMS[name]
+
+
+def _license(name: str) -> str:
+    """The license of the collection that a remote dataset file belongs to."""
+    if name == _NASA_LABELS:
+        return _LICENSES["telemanom"]
+    for source in _SOURCES[1:]:
+        if name.startswith(source + "/"):
+            return _LICENSES[source]
+
+    return _LICENSES["odds"]
 
 
 def _get_default_data_dir() -> str:
@@ -123,7 +140,8 @@ class Data:
     Detection in Streams", DOI 10.1145/3770855.3817495, CC BY 4.0) and extracted from the
     TSB-AD-M archive of Liu and Paparrizos (NeurIPS 2024). Each download must match a
     SHA-256 checksum.
-    :meth:`datasets` lists the datasets, and
+    :meth:`datasets` lists the datasets, :meth:`metadata` gives the source, the license and the
+    checksum of each dataset file, and
     :meth:`get_stream` gives the stream of a run of the PySAD benchmark.
 
     Downloaded datasets are cached in a local directory. The cache directory
@@ -184,6 +202,23 @@ class Data:
         if source == "tsb-drift":
             return ["tsb-drift/" + name for name in _TSB_DRIFT_SERIES]
         raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
+
+    @staticmethod
+    def metadata(data_file: str) -> dict[str, str]:
+        """Returns the public source, license, and SHA-256 checksum of a remote dataset file.
+
+        Args:
+            data_file (str): The name of a dataset file, as :meth:`datasets` lists it, for example ``"smap/P-1.npy"``.
+
+        Returns:
+            dict[str, str]: ``"source"`` is the URL that :meth:`get_data` downloads, ``"license"`` is the license of the dataset, and ``"checksum"`` is the SHA-256 checksum that every download must match.
+
+        Raises:
+            KeyError: If ``data_file`` is not a known remote dataset.
+        """
+        url, checksum = _source(data_file)
+
+        return {"source": url, "license": _license(data_file), "checksum": checksum}
 
     def _download(self, file_name: str, target_path: str) -> None:
         """Downloads a dataset file from the remote mirror into target_path atomically.

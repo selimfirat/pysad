@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 import pysad.utils.data
-from pysad.utils._datasets import _NASA, _NASA_LABELS_URL, _SMD
+from pysad.utils._datasets import _LICENSES, _NASA, _NASA_LABELS_URL, _SMAP_CHECKSUMS, _SMD
 from pysad.utils.data import Data
 
 
@@ -499,6 +499,45 @@ def test_drift_streams_are_listed_by_source():
     assert "insects/abrupt.csv" in Data.datasets("insects")
     assert len(Data.datasets("tsb-drift")) == 75
     assert "tsb-drift/009_MSL_id_8_Sensor_tr_714_1st_1390.csv" in Data.datasets("tsb-drift")
+
+
+def test_metadata_gives_the_source_license_and_checksum_of_a_dataset_file():
+    assert Data.metadata("smap/P-1.npy") == {
+        "source": _NASA + "P-1.npy",
+        "license": _LICENSES["smap"],
+        "checksum": _SMAP_CHECKSUMS["P-1.npy"],
+    }
+    assert Data.metadata("msl/M-1.npy")["source"] == _NASA + "M-1.npy"
+    assert Data.metadata("msl/M-1.npy")["license"] == _LICENSES["msl"]
+    assert Data.metadata("telemanom/labeled_anomalies.csv") == {
+        "source": _NASA_LABELS_URL,
+        "license": _LICENSES["telemanom"],
+        "checksum": pysad.utils.data._NASA_LABELS_CHECKSUM,
+    }
+    assert Data.metadata("nab/realKnownCause/nyc_taxi.csv")["license"] == _LICENSES["nab"]
+    assert Data.metadata("nab/combined_windows.json")["license"] == _LICENSES["nab"]
+    assert Data.metadata("cardio.mat") == {
+        "source": pysad.utils.data._MIRROR + "cardio.mat",
+        "license": _LICENSES["odds"],
+        "checksum": pysad.utils.data._CHECKSUMS["cardio.mat"],
+    }
+    assert Data.metadata("kddcup99/http.csv")["license"] == _LICENSES["kddcup99"]
+    ucr = "ucr/001_UCR_Anomaly_DISTORTED1sddb40_35000_52000_52620.txt"
+    assert Data.metadata(ucr) == {
+        "source": pysad.utils.data._UCR,
+        "license": _LICENSES["ucr"],
+        "checksum": pysad.utils.data._UCR_CHECKSUM,
+    }
+    assert Data.metadata("smd/machine-1-1.txt")["license"] == _LICENSES["smd"]
+    assert Data.metadata("insects/abrupt.csv")["license"] == _LICENSES["insects"]
+    assert Data.metadata("creditcard/creditcard.arff")["license"] == _LICENSES["creditcard"]
+    series = "tsb-drift/009_MSL_id_8_Sensor_tr_714_1st_1390.csv"
+    assert Data.metadata(series)["license"] == _LICENSES["tsb-drift"]
+
+
+def test_metadata_of_an_unknown_file_raises_key_error():
+    with pytest.raises(KeyError):
+        Data.metadata("unknown/file.csv")
 
 
 def _serve(monkeypatch, files):

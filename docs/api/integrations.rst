@@ -40,3 +40,33 @@ TSFM residual adapter
 ---------------------
 
 .. autoclass:: TSFMResidualAdapter
+
+Compare residual pipelines
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Run the optional comparison from the repository root::
+
+    python benchmarks/bench_residual_adapter.py --compare --output comparison.csv
+
+The comparison chains ``ForecastingAnomalyDetector``, ``TSFMResidualAdapter``, and
+``ConformalTSFMCalibrator``. It also runs ``LODA`` and
+``StreamingAutoregressiveDetector`` on the same seasonal stream with labeled spikes.
+Each method scores before learning. Labels only enter AUROC.
+The report excludes warm-up values from AUROC and timing.
+It reports AUROC, median milliseconds per point, and score repeatability.
+If the scored labels contain only one class, AUROC is NaN.
+These synthetic results do not measure performance on real datasets.
+
+The default forecaster uses a moving average. It is a stand-in, not a TSFM.
+To compare an existing TSFM, pass a local factory::
+
+    python benchmarks/bench_residual_adapter.py --compare --forecaster my_forecaster.py:create
+
+The file must export a zero-argument ``create()`` function.
+Each call must return a fresh object with ``forecast(horizon)`` and ``learn_one(y)`` methods.
+``forecast`` returns a sequence whose first value predicts the next observation.
+``learn_one`` receives the current observation after scoring.
+The factory must reset model state and random seeds for repeatable runs.
+The benchmark adds no dependencies or model downloads.
+If your factory needs a forecasting library, use your existing environment.
+Timing excludes factory setup and includes forecasting, scoring, and learning.

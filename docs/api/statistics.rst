@@ -3,7 +3,7 @@ Statistics
 
 .. module:: pysad.statistics
 
-This module holds running statistics. A running statistic changes as you add values with ``update``, and ``get`` returns its current value. Removable meters also support removing past values with ``remove`` (and can be windowed with :class:`RunningStatistic`); :class:`ADWINMeter`, :class:`CUSUMMeter`, :class:`DDMMeter`, :class:`EDDMMeter`, :class:`ExponentialMovingAverageMeter`, :class:`FHDDMMeter`, :class:`FHDDMSAddMeter`,    :class:`FHDDMSMeter`, :class:`GeometricMovingAverageMeter`, :class:`HDDMAMeter`, :class:`HDDMWMeter`, :class:`KSWINMeter`, :class:`OnlinePeriodicityMeter`, :class:`PageHinkleyMeter`, and :class:`QuantileMeter` manage their own state without supporting ``remove``.
+This module holds running statistics. A running statistic changes as you add values with ``update``, and ``get`` returns its current value. Removable meters also support removing past values with ``remove`` (and can be windowed with :class:`RunningStatistic`); :class:`ADWINMeter`, :class:`CUSUMMeter`, :class:`DDMMeter`, :class:`EDDMMeter`, :class:`ExponentialMovingAverageMeter`, :class:`FHDDMMeter`, :class:`FHDDMSAddMeter`, :class:`FHDDMSMeter`, :class:`GeometricMovingAverageMeter`, :class:`HDDMAMeter`, :class:`HDDMWMeter`, :class:`KSWINMeter`, :class:`OnlinePeriodicityMeter`, :class:`PageHinkleyMeter`, and :class:`QuantileMeter` manage their own state without supporting ``remove``.
 
 :class:`CUSUMMeter` tracks shifts from a fixed target mean. Its ``get()`` method
 returns the larger cumulative deviation. Its ``drift_detected`` flag reports

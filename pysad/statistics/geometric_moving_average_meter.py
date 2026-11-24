@@ -74,7 +74,7 @@ class GeometricMovingAverageMeter(BaseStatistic):
             num (float): The incoming value, which must be non-negative.
 
         Returns:
-            object: self.
+            GeometricMovingAverageMeter: self.
         """
         if num < 0.0:
             raise ValueError("observations must be non-negative.")

@@ -17,11 +17,13 @@ The ``odds`` part uses |num_datasets| datasets from the `ODDS <http://odds.cs.st
 Streams with drift
 ------------------
 
-The ``drift`` part uses 8 streams from three sources:
+The ``drift`` part uses |num_drift_streams| streams from five sources:
 
 - ``Data.datasets("kddcup99")`` gives the http connections of logged in users from the 10% file of KDD Cup 99, as scikit-learn's ``fetch_kddcup99`` does. Its 3 features are the logarithms of the duration and of the bytes in each direction. The attacks are the anomalies.
 - ``Data.datasets("insects")`` gives the 4 INSECTS streams :cite:`souza2020challenges` as the ARCUS paper :cite:`yoon2022arcus` made them. The anomalies are the points of the southern house mosquito, 1.2% of each stream.
 - ``Data.datasets("smd")`` gives the test halves of the 28 machines of SMD :cite:`su2019robust`. The benchmark uses the first machine of each of the 3 groups of machines. The first half of each machine has no labels, so the benchmark does not use it.
+- ``Data.datasets("smap")`` gives 54 test streams from the SMAP satellite :cite:`hundman2018detecting`. The benchmark uses P-1, S-1, E-1, T-1, and A-1. Each point has 25 features.
+- ``Data.datasets("msl")`` gives 27 test streams from the MSL rover Curiosity :cite:`hundman2018detecting`. The benchmark uses M-6, P-10, T-4, F-7, and C-2. Each point has 55 features.
 
 The column "Points used" gives the number of points after the thinning.
 

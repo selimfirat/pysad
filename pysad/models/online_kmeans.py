@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
 from pysad.core.base_model import BaseModel
@@ -38,26 +39,26 @@ class OnlineKMeans(BaseModel):
         self._rng: np.random.RandomState | None = (
             None if random_state is None else check_random_state(random_state)
         )
-        self._centers: np.ndarray | None = None
+        self._centers: NDArray[np.float64] | None = None
         self._num_added = 0
         self.num_centers_ = 0
         self.num_seen_ = 0
         self.facility_cost_ = 0.0
         self.num_opened_ = 0
 
-    def _squared_distances(self, X: np.ndarray) -> np.ndarray:
+    def _squared_distances(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
         assert self._centers is not None
-        distances: np.ndarray = ((self._centers[: self.num_centers_] - X) ** 2).sum(axis=1)
+        distances: NDArray[np.float64] = ((self._centers[: self.num_centers_] - X) ** 2).sum(axis=1)
         return distances
 
-    def _add_center(self, X: np.ndarray) -> None:
+    def _add_center(self, X: NDArray[np.float64]) -> None:
         assert self._centers is not None
         # The centers form a ring buffer, so a new center overwrites the oldest one once it is full.
         self._centers[self._num_added % self.max_centers] = X
         self._num_added += 1
         self.num_centers_ = min(self._num_added, self.max_centers)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> OnlineKMeans:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> OnlineKMeans:
         """Updates the centers with the next instance.
 
         Args:
@@ -103,7 +104,7 @@ class OnlineKMeans(BaseModel):
         self.facility_cost_ = float(squared.min()) / 2.0 / self.num_clusters
         self.num_seen_ = self.num_clusters + 1
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance.
 
         Args:

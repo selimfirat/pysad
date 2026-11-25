@@ -87,6 +87,8 @@ jobs:
           from pysad.evaluation import evaluate_stream
 
           import pysad.core
+          import pysad.live
+          import pysad.live.server
           import pysad.utils
 
           # One real score call proves the installed wheel works, not just imports.
@@ -103,3 +105,20 @@ jobs:
           PY
         env:
           SMOKE_EXTRA: ${{ matrix.extra }}
+
+      - name: Verify pysad-live CLI
+        run: |
+          . .venv/bin/activate
+          # The console script entry point must be installed from the wheel.
+          pysad-live --help > "$RUNNER_TEMP/live-help.txt"
+          # Headless run exercises the detector, calibrator, and JSON output.
+          pysad-live --source synthetic --detector loda --calibrator conformal --json-output --max-points 2 > "$RUNNER_TEMP/live.jsonl"
+          python - "$RUNNER_TEMP" <<'PY'
+          import json, os, sys
+          tmp = sys.argv[1]
+          lines = open(os.path.join(tmp, "live.jsonl")).readlines()
+          assert lines, "pysad-live produced no output"
+          last = json.loads(lines[-1])
+          assert {"step", "calibrated_score", "alert"} <= set(last), last
+          print("pysad-live: CLI OK; headless run produced", len(lines), "lines")
+          PY

@@ -142,23 +142,23 @@ uvx --from pysad pysad-live --source synthetic
 
 ### Optional PyO3 kernels (pysad_kernels)
 
-The optional PyO3 Rust extension `pysad_kernels` provides tree traversal kernels for `HalfSpaceTrees` and `RobustRandomCutForest`. It is not published on PyPI yet, so build it from the `rust/` directory of the repository. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change.
+The optional PyO3 Rust extension `pysad_kernels` provides native kernels for four detectors: `HalfSpaceTrees` and `RobustRandomCutForest` use its tree traversal kernels automatically, while `LODA` and `StreamKMPlusPlus` use its density and Lloyd kernels when `use_rust=True`. Wheels are published to PyPI as `pysad_kernels`, so you can install the extension directly:
 
-Install `maturin`, then build and register the extension so Python can import it:
+```bash
+pip install pysad_kernels
+```
+
+If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change. The extension is never required.
+
+To build from source instead, install `maturin` and build from the `rust/` directory:
 
 ```bash
 pip install maturin
-maturin develop -m rust/pyproject.toml
+maturin build --manifest-path rust/Cargo.toml --release
+pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
 ```
 
-Or build a wheel and install it:
-
-```bash
-maturin build -m rust/pyproject.toml --release
-pip install target/wheels/pysad_kernels-0.1.0-*.whl
-```
-
-Once `pysad_kernels` can be imported, `HalfSpaceTrees` and `RobustRandomCutForest` use its kernels automatically. Verify the installation:
+Once `pysad_kernels` can be imported, the detectors use its kernels automatically. Verify the installation:
 
 ```bash
 python -c "import pysad_kernels; print(pysad_kernels.__file__)"
@@ -174,6 +174,9 @@ Use these guides to map your existing workflow to PySAD:
 - [AWS Lookout for Equipment and Kinesis RCF](https://pysad.readthedocs.io/en/stable/guides/migrate_aws.html)
 - [Salesforce Merlion](https://pysad.readthedocs.io/en/stable/guides/migrate_merlion.html)
 - [Alibi Detect](https://pysad.readthedocs.io/en/stable/guides/migrate_alibi_detect.html)
+- [ADTK](https://pysad.readthedocs.io/en/stable/guides/migrate_adtk.html)
+- [StatsForecast and Nixtla](https://pysad.readthedocs.io/en/stable/guides/migrate_statsforecast.html)
+- [River](https://pysad.readthedocs.io/en/stable/guides/river_interoperability.html)
 
 ## Quick start
 

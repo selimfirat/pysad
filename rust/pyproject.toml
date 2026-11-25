@@ -28,6 +28,5 @@ dependencies = []
 
 [tool.maturin]
 features = ["extension-module"]
-compatibility = "abi3-py311"
 bindings = "pyo3"
 skip-auditwheel = false

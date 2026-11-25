@@ -4,6 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
+from pysad import _kernels
 from pysad.core.base_model import BaseModel
 
 
@@ -29,6 +30,7 @@ class LODA(BaseModel):
         num_random_cuts (int): The number of random projections, i.e. histograms (Default=100).
         window_size (int): Number of points after which the active and scoring histograms swap. The paper uses 256 (Default=256).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the projections. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
+        use_rust (bool): Use the optional density kernel when available. Otherwise, use NumPy (Default=False).
     """
 
     def __init__(
@@ -37,6 +39,7 @@ class LODA(BaseModel):
         num_random_cuts: int = 100,
         window_size: int = 256,
         random_state: int | np.random.RandomState | None = None,
+        use_rust: bool = False,
     ) -> None:
         if window_size <= 0:
             raise ValueError("window_size must be a positive integer.")
@@ -45,6 +48,7 @@ class LODA(BaseModel):
         self.n_random_cuts = num_random_cuts
         self.window_size = window_size
         self.random_state = random_state
+        self.use_rust = use_rust
 
     def _init_model(self, num_features: int) -> None:
         self.num_features = num_features
@@ -141,6 +145,14 @@ class LODA(BaseModel):
         self.num_seen_[hist_idx] += 1
 
     def _neg_log_densities(self, inds: NDArray[np.float64], hist_idx: int) -> NDArray[np.float64]:
+        kernel = _kernels.loda_neg_log_densities
+        if self.use_rust and kernel is not None:
+            return kernel(
+                inds,
+                self.histograms_[hist_idx],
+                self.bin_widths_[hist_idx],
+                int(self.num_seen_[hist_idx]),
+            )
         ready = self.bin_widths_[hist_idx] > 0.0
         in_range = ready & (inds >= 0) & (inds < self.n_bins)
 

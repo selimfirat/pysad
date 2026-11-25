@@ -2,6 +2,14 @@ name: Rust Wheels
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "rust/**"
+      - "pysad/_kernels.py"
+      - "pysad/models/loda.py"
+      - "pysad/models/stream_km_plusplus.py"
+      - "tests/test_loda_streamkm_kernels.py"
+      - ".github/workflows/rust-wheels.yml"
   release:
     types: [published]
 
@@ -9,8 +17,28 @@ permissions:
   contents: read
 
 jobs:
+  test-kernels:
+    name: Compare native and NumPy outputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - name: Install test and build dependencies
+        run: python -m pip install --upgrade pip && python -m pip install --group test . maturin
+      - name: Build and install kernels
+        run: |
+          maturin build --manifest-path rust/Cargo.toml --release --locked
+          python -m pip install rust/target/wheels/*.whl
+      - name: Run kernel and detector tests
+        run: python -m pytest -q tests/test_loda_streamkm_kernels.py tests/test_rust_kernels.py tests/models/test_loda.py tests/models/test_stream_km_plusplus.py
+
   build-wheels:
     name: Build wheels with cibuildwheel
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository

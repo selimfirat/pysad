@@ -74,6 +74,7 @@ _EXTRA_DEPENDENCIES: dict[str, tuple[set[str], set[str]]] = {
         {"docs/examples.rst", "docs/_autodiscover.py"},
         {"examples/"},
     ),
+    "tests/test_playground_browser.py": (set(), {"spaces/playground/"}),
     "tests/test_playground_space.py": (
         set(),
         {

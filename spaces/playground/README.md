@@ -32,6 +32,19 @@ The stream targets 60 points per second. Slow models can reduce this rate withou
 At the end of the selected stream, playback stops. Click **Start live** to run it again.
 Frame rates depend on your browser, display, and device. Background tabs can pause rendering.
 
+## CSV files, Python code, and share links
+
+Select **Upload CSV**, then choose a local file with at least 10 data rows.
+The worker reads the file in browser memory. It keeps numeric feature columns and an optional binary label column.
+Text columns do not enter the detector. Missing numeric values use the last value, or zero before the first value.
+
+After a run, click **Copy Python pipeline** to copy the displayed code for the first selected detector.
+The code includes the selected calibrator and alert threshold.
+
+Click **Copy share link** to copy the current URL.
+The link stores stream, detector, calibration, feature, injection, and inspection settings.
+It does not contain CSV contents. If the link selects **Upload CSV**, choose the local file again.
+
 ## Run locally
 
 ```bash

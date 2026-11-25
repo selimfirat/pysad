@@ -174,6 +174,112 @@ Set ``embedding_dims`` to the encoder's output width.
 Keep ``context_size`` fixed to bound the history and encoder input size.
 The encoder and its runtime stay outside PySAD's dependencies.
 
+.. _tsfm-residual-composition:
+
+Calibrate errors from a frozen forecaster
+-----------------------------------------
+
+A residual is the observed value minus its forecast.
+A time-series foundation model (TSFM) can supply that forecast through :class:`~pysad.integrations.ForecasterProtocol`.
+Chain :class:`~pysad.integrations.ForecastingAnomalyDetector`, :class:`~pysad.integrations.TSFMResidualAdapter`, and :class:`~pysad.transform.probability_calibration.ConformalTSFMCalibrator` with ``|``.
+This composition needs no new dependency in PySAD.
+
+The runnable recipe uses a moving average as a stand-in for a frozen TSFM.
+It needs no model download and does not measure TSFM detection quality:
+
+.. code-block:: python
+
+   from collections import deque
+
+   import numpy as np
+
+   from pysad.integrations import ForecastingAnomalyDetector, TSFMResidualAdapter
+   from pysad.transform.probability_calibration import ConformalTSFMCalibrator
+   from pysad.utils import ArrayStreamer
+
+
+   class MovingAverageForecaster:
+       """Keep a bounded context for one-step forecasts.
+
+       Args:
+           context_size (int): Maximum number of past values (Default=24).
+       """
+
+       def __init__(self, context_size: int = 24) -> None:
+           self.context: deque[float] = deque(maxlen=context_size)
+
+       def forecast(self, horizon: int = 1) -> list[float]:
+           """Return the context mean for each requested step.
+
+           Args:
+               horizon (int): Number of future steps (Default=1).
+
+           Returns:
+               list[float]: Forecasts, or zeros if the context is empty.
+           """
+           value = float(np.mean(self.context)) if self.context else 0.0
+           return [value] * horizon
+
+       def learn_one(self, y: float) -> None:
+           """Append an observation without training model weights.
+
+           Args:
+               y (float): The current observation.
+           """
+           self.context.append(y)
+
+
+   context_size = 24
+   adapter_window = 100
+   calibration_window = 200
+   pipeline = (
+       ForecastingAnomalyDetector(
+           forecaster=MovingAverageForecaster(context_size=context_size),
+           probationary_period=context_size,
+       )
+       | TSFMResidualAdapter(window_size=adapter_window)
+       | ConformalTSFMCalibrator(alpha=0.1, gamma=0.01, window_size=calibration_window)
+   )
+
+   values = 10.0 + np.sin(np.arange(480) * 2 * np.pi / context_size)
+   values[400] += 5.0
+   scores = []
+   for point in ArrayStreamer().iter(values.reshape(-1, 1)):
+       scores.append(pipeline.fit_score_partial(point))
+
+   warmup = context_size + adapter_window + calibration_window
+   scores = np.asarray(scores, dtype=np.float64)[warmup:]
+   print(scores)
+
+Each input has shape ``(1,)``.
+The detector forecasts from past observations, returns the absolute error, then calls ``learn_one(y=...)``.
+During the first ``probationary_period`` observations, it returns zero and only updates the forecaster.
+The adapter includes the current error in its rolling mean and standard deviation before normalizing it.
+It returns zero until it sees two errors, or when the standard deviation falls below ``min_std``.
+The calibrator ranks the normalized score against its earlier scores, then updates its window and adaptive miscoverage level.
+Higher outputs mean more anomalous errors.
+
+The first calibrated output is zero because the calibration window is empty.
+The recipe excludes initial scores until the context fills and both windows replace their startup values.
+This warm-up choice does not establish a false alert rate.
+The calibrated output is the fraction of earlier window scores strictly below the current score.
+It is not the probability that the observation is an anomaly.
+``alpha`` and ``gamma`` control the adaptive threshold, not the rank output.
+The calibrator exposes ``threshold_`` on the normalized score scale, so do not compare it with the calibrated output.
+See :doc:`alerts` for alert thresholds and :doc:`evaluate` for evaluation on your data.
+
+To use a TSFM, replace ``MovingAverageForecaster`` with an object that implements the same two methods.
+Load its weights once before the loop, use inference mode, and disable gradient updates.
+``forecast(horizon=1)`` must return a sequence whose first value predicts the next observation.
+It must leave the context and model state unchanged.
+``learn_one(y=...)`` must append the observation to a bounded context without updating the frozen weights.
+Inside ``forecast``, reshape the context and use the normalization that your pretrained model requires.
+Use only past context values or fixed training statistics for normalization.
+Convert framework tensors to CPU floats before returning forecasts.
+Keep the context size fixed and set ``probationary_period`` to the required initial context length.
+Use the object interface here because the callable interface keeps the full stream history.
+The TSFM runtime and model weights stay in your existing environment, outside PySAD's dependencies.
+
 Use a PySAD model in River
 --------------------------------
 

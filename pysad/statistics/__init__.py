@@ -33,12 +33,14 @@ from .online_periodicity_meter import OnlinePeriodicityMeter
 from .quantiles import DDSketchMeter, MedianMeter, QuantileMeter
 from .relative_error_quantile_meter import RelativeErrorQuantileMeter
 from .running_statistic import RunningStatistic
+from .sketch import CountMinSketchStatistic, HyperLogLogStatistic
 
 __all__ = [
     "AbsStatistic",
     "ADWINMeter",
     "AverageMeter",
     "CountMeter",
+    "CountMinSketchStatistic",
     "CUSUMMeter",
     "DDMMeter",
     "DDSketchMeter",
@@ -51,6 +53,7 @@ __all__ = [
     "GeometricMovingAverageMeter",
     "HDDMAMeter",
     "HDDMWMeter",
+    "HyperLogLogStatistic",
     "KLLMeter",
     "KSWINMeter",
     "MaxMeter",

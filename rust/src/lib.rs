@@ -1,6 +1,6 @@
 //! Optional native kernels for PySAD.
 //!
-//! This module contains two families of kernels:
+//! This module contains tree, histogram, and clustering kernels:
 //!
 //! 1. `half_space_trees_path` - routes one point through all half-space trees
 //!    in the heap layout used by `HalfSpaceTrees`.
@@ -8,10 +8,130 @@
 //! 2. RRCF (Robust Random Cut Forest) kernels for tree traversal and collusive
 //!    displacement (CoDisp) computation. The RRCF trees use a dynamic
 //!    structure-of-arrays layout with explicit parent/child/sibling pointers.
+//!
+//! 3. LODA density scoring and StreamKM++ weighted Lloyd iterations.
 
 use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+
+/// Compute the negative log density of each LODA projection.
+///
+/// Args:
+///     indices: Bin indices with shape `(num_projections,)` and dtype `float64`.
+///     histograms: Counts with shape `(num_projections, num_bins)` and dtype `float64`.
+///     widths: Bin widths with shape `(num_projections,)` and dtype `float64`.
+///     num_seen: Number of points in these histograms.
+///
+/// Returns:
+///     A `float64` array of shape `(num_projections,)`. Zero-width histograms return zero.
+#[pyfunction]
+fn loda_neg_log_densities(
+    py: Python<'_>,
+    indices: PyReadonlyArray1<'_, f64>,
+    histograms: PyReadonlyArray2<'_, f64>,
+    widths: PyReadonlyArray1<'_, f64>,
+    num_seen: i64,
+) -> PyResult<Py<PyArray1<f64>>> {
+    let indices = indices.as_array();
+    let histograms = histograms.as_array();
+    let widths = widths.as_array();
+    let num_bins = histograms.ncols();
+    if indices.len() != histograms.nrows() || widths.len() != indices.len() {
+        return Err(PyValueError::new_err(
+            "indices, histograms, and widths must have the same number of projections.",
+        ));
+    }
+    let mut densities = vec![0.0; indices.len()];
+    for i in 0..indices.len() {
+        if widths[i] > 0.0 {
+            let index = indices[i];
+            let count = if index >= 0.0 && index < num_bins as f64 {
+                histograms[[i, index as usize]]
+            } else {
+                0.0
+            };
+            densities[i] =
+                -((count + 1.0) / ((num_seen as f64 + num_bins as f64) * widths[i])).ln();
+        }
+    }
+    Ok(PyArray1::from_vec(py, densities).into())
+}
+
+/// Run weighted Lloyd iterations from the supplied centers without changing the inputs.
+///
+/// Args:
+///     points: Points with shape `(num_points, num_features)` and dtype `float64`.
+///     weights: Point weights with shape `(num_points,)` and dtype `float64`.
+///     centers: Initial centers with shape `(num_centers, num_features)` and dtype `float64`.
+///     num_iterations: Maximum number of Lloyd iterations.
+///
+/// Returns:
+///     Centers with shape `(num_centers, num_features)` and dtype `float64`.
+///     Empty clusters keep their old centers. Distance ties select the first center.
+#[pyfunction]
+fn streamkm_lloyd(
+    py: Python<'_>,
+    points: PyReadonlyArray2<'_, f64>,
+    weights: PyReadonlyArray1<'_, f64>,
+    centers: PyReadonlyArray2<'_, f64>,
+    num_iterations: usize,
+) -> PyResult<Py<PyArray2<f64>>> {
+    let points = points.as_array();
+    let weights = weights.as_array();
+    let mut centers = centers.as_array().to_owned();
+    let (num_points, num_features) = points.dim();
+    let num_centers = centers.nrows();
+    if weights.len() != num_points || centers.ncols() != num_features || num_centers == 0 {
+        return Err(PyValueError::new_err(
+            "weights must match points, and centers must contain points with the same feature count.",
+        ));
+    }
+    let sq_norms: Vec<f64> = points.rows().into_iter().map(|row| row.dot(&row)).collect();
+    let mut center_norms = vec![0.0; num_centers];
+    let mut sums = vec![0.0; num_centers * num_features];
+    let mut counts = vec![0.0; num_centers];
+    for _ in 0..num_iterations {
+        sums.fill(0.0);
+        counts.fill(0.0);
+        for c in 0..num_centers {
+            center_norms[c] = centers.row(c).dot(&centers.row(c));
+        }
+        for i in 0..num_points {
+            let mut nearest = 0;
+            let mut best = f64::INFINITY;
+            for c in 0..num_centers {
+                let mut twice_dot = 0.0;
+                for f in 0..num_features {
+                    twice_dot += (2.0 * points[[i, f]]) * centers[[c, f]];
+                }
+                let distance = (sq_norms[i] - twice_dot + center_norms[c]).max(0.0);
+                if distance < best {
+                    best = distance;
+                    nearest = c;
+                }
+            }
+            counts[nearest] += weights[i];
+            for f in 0..num_features {
+                sums[nearest * num_features + f] += points[[i, f]] * weights[i];
+            }
+        }
+        let mut changed = false;
+        for c in 0..num_centers {
+            if counts[c] > 0.0 {
+                for f in 0..num_features {
+                    let value = sums[c * num_features + f] / counts[c];
+                    changed |= value != centers[[c, f]];
+                    centers[[c, f]] = value;
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    Ok(PyArray2::from_owned_array(py, centers).into())
+}
 
 /// Return the mass cell indices visited by one point in every tree.
 ///
@@ -49,8 +169,8 @@ fn half_space_trees_path(
         ));
     }
 
-    let depth = u32::try_from(max_depth)
-        .map_err(|_| PyValueError::new_err("max_depth is too large."))?;
+    let depth =
+        u32::try_from(max_depth).map_err(|_| PyValueError::new_err("max_depth is too large."))?;
     let expected_splits = 1usize
         .checked_shl(depth)
         .and_then(|value| value.checked_sub(1))
@@ -222,6 +342,8 @@ fn rrcf_codisp_sum(
 /// Define the `pysad_kernels` Python module.
 #[pymodule]
 fn pysad_kernels(module: &Bound<'_, PyModule>) -> PyResult<()> {
+    module.add_function(wrap_pyfunction!(loda_neg_log_densities, module)?)?;
+    module.add_function(wrap_pyfunction!(streamkm_lloyd, module)?)?;
     module.add_function(wrap_pyfunction!(half_space_trees_path, module)?)?;
     module.add_function(wrap_pyfunction!(rrcf_route_to_leaf, module)?)?;
     module.add_function(wrap_pyfunction!(rrcf_codisp_sum, module)?)?;

@@ -1,4 +1,4 @@
-"""Optional compiled PyO3 Rust kernels for streaming tree hot paths."""
+"""Load optional PyO3 kernels for streaming detectors."""
 
 from __future__ import annotations
 
@@ -35,6 +35,14 @@ RRCFCodispSumFn = Callable[
     ],
     float,
 ]
+LODADensitiesFn = Callable[
+    [NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], int],
+    NDArray[np.float64],
+]
+StreamKMLloydFn = Callable[
+    [NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], int],
+    NDArray[np.float64],
+]
 
 
 def _load_module() -> ModuleType | None:
@@ -63,4 +71,12 @@ rrcf_route_to_leaf = cast(
 rrcf_codisp_sum = cast(
     RRCFCodispSumFn | None,
     _load_kernel(_mod, "rrcf_codisp_sum"),
+)
+loda_neg_log_densities = cast(
+    LODADensitiesFn | None,
+    _load_kernel(_mod, "loda_neg_log_densities"),
+)
+streamkm_lloyd = cast(
+    StreamKMLloydFn | None,
+    _load_kernel(_mod, "streamkm_lloyd"),
 )

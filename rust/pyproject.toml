@@ -6,8 +6,6 @@ build-backend = "maturin"
 name = "pysad_kernels"
 version = "0.1.0"
 description = "Optional Rust kernels for PySAD streaming anomaly detection"
-readme = "../README.md"
-license = {file = "../LICENSE"}
 requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -28,6 +26,5 @@ dependencies = []
 
 [tool.maturin]
 features = ["extension-module"]
-compatibility = "abi3-py311"
 bindings = "pyo3"
 skip-auditwheel = false

@@ -14,6 +14,8 @@ def _args(port: int) -> object:
         max_points=2,
         csv_target=None,
         csv_timestamp=None,
+        csv_delimiter=",",
+        csv_header=True,
         detector="loda",
         detector_seed=42,
         detector_kwargs="{}",

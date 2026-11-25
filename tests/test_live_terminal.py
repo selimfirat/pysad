@@ -4,7 +4,11 @@ from io import StringIO
 import numpy as np
 import pytest
 
-from pysad.live.terminal import TerminalConfig, TerminalDashboard
+from pysad.live.terminal import (
+    TerminalConfig,
+    TerminalDashboard,
+    create_data_stream,
+)
 
 _ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
@@ -62,3 +66,30 @@ def test_render_header_box_aligned(width: int, detector_name: str) -> None:
     assert next(iter(lengths)) >= width
     if width == 120:
         assert len(header_lines[0]) == 120
+
+
+def test_csv_stream_uses_custom_delimiter_and_no_header(tmp_path):
+    path = tmp_path / "stream.csv"
+    path.write_text("1;2;3\n4;5;6\n", encoding="utf-8")
+
+    rows = list(create_data_stream(str(path), delimiter=";", has_header=False))
+
+    assert [list(x) for x, _ in rows] == [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+
+
+def test_csv_stream_skips_header_row_by_default(tmp_path):
+    path = tmp_path / "stream.csv"
+    path.write_text("a,b,c\n1,2,3\n4,5,6\n", encoding="utf-8")
+
+    rows = list(create_data_stream(str(path)))
+
+    assert [list(x) for x, _ in rows] == [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]
+
+
+def test_csv_stream_respects_max_points(tmp_path):
+    path = tmp_path / "stream.csv"
+    path.write_text("h1,h2\n1,2\n3,4\n5,6\n", encoding="utf-8")
+
+    rows = list(create_data_stream(str(path), max_points=2))
+
+    assert [list(x) for x, _ in rows] == [[1.0, 2.0], [3.0, 4.0]]

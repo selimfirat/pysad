@@ -696,6 +696,8 @@ def stream_worker(args: Any) -> None:
         csv_kwargs["target_column"] = args.csv_target
     if args.csv_timestamp:
         csv_kwargs["timestamp_column"] = args.csv_timestamp
+    csv_kwargs["delimiter"] = args.csv_delimiter
+    csv_kwargs["has_header"] = args.csv_header
 
     # Compute feature bounds for detectors that need them
     feature_mins = None

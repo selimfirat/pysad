@@ -41,6 +41,9 @@ Examples:
 
   # Run headless (no terminal UI) with JSON output
   pysad-live --source synthetic --detector loda --calibrator conformal --json-output
+
+  # Run with a semicolon-delimited, headerless CSV file
+  pysad-live --source data.csv --csv-delimiter ";" --no-csv-header --detector rs_hash
         """,
     )
 
@@ -69,6 +72,25 @@ Examples:
         type=str,
         default=None,
         help="Timestamp column name for CSV files (default: none)",
+    )
+    source_group.add_argument(
+        "--csv-delimiter",
+        type=str,
+        default=",",
+        help="Single-character field delimiter for CSV files (default: ',')",
+    )
+    source_group.add_argument(
+        "--csv-header",
+        action="store_true",
+        default=True,
+        dest="csv_header",
+        help="CSV file has a header row to skip (default: True)",
+    )
+    source_group.add_argument(
+        "--no-csv-header",
+        action="store_false",
+        dest="csv_header",
+        help="CSV file has no header row to skip",
     )
 
     # Detector options
@@ -241,6 +263,8 @@ def run_terminal_dashboard(args: argparse.Namespace) -> int:
         csv_kwargs["target_column"] = args.csv_target
     if args.csv_timestamp:
         csv_kwargs["timestamp_column"] = args.csv_timestamp
+    csv_kwargs["delimiter"] = args.csv_delimiter
+    csv_kwargs["has_header"] = args.csv_header
 
     # Compute feature bounds for detectors that need them
     feature_mins = None
@@ -385,6 +409,8 @@ def run_json_output(args: argparse.Namespace) -> int:
         csv_kwargs["target_column"] = args.csv_target
     if args.csv_timestamp:
         csv_kwargs["timestamp_column"] = args.csv_timestamp
+    csv_kwargs["delimiter"] = args.csv_delimiter
+    csv_kwargs["has_header"] = args.csv_header
 
     # Compute feature bounds for detectors that need them
     feature_mins = None

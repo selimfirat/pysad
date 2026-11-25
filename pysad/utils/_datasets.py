@@ -98,6 +98,14 @@ _NAB_CHECKSUMS = {
     "realTweets/Twitter_volume_UPS.csv": "be50f06bbb9d020f37653c8c5cf19af63f77aa0019d8cf10849d91f4af455af4",
 }
 
+# The 47 real-world series of NAB: all series of _NAB_CHECKSUMS except the 5 artificialNoAnomaly
+# and the 6 artificialWithAnomaly series, which are generated rather than measured.
+_NAB_REAL_WORLD = tuple(
+    name
+    for name in _NAB_CHECKSUMS
+    if not name.startswith(("artificialNoAnomaly/", "artificialWithAnomaly/"))
+)
+
 # The UCR Time Series Anomaly Archive of 2021. Data downloads the archive from the site of its
 # authors, because the archive has no license that lets PySAD copy it. The name of each series is
 # "<number>_UCR_Anomaly_<name>_<end of training part>_<first anomaly point>_<last anomaly point>.txt".
@@ -696,6 +704,7 @@ _TSB_DRIFT_SERIES = (
 _SOURCES = (
     "odds",
     "nab",
+    "nab-real-world",
     "ucr",
     "kddcup99",
     "smd",

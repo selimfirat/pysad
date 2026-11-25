@@ -376,6 +376,20 @@ def test_nab_datasets_are_listed_by_source():
         Data.datasets("yahoo")
 
 
+def test_nab_real_world_datasets_are_listed_by_source():
+    """The nab-real-world source lists the 47 real-world NAB series, without the 11 artificial ones."""
+    names = Data.datasets("nab-real-world")
+
+    assert len(names) == 47
+    assert "nab/realKnownCause/nyc_taxi.csv" in names
+    assert all(name.startswith("nab/") and name.endswith(".csv") for name in names)
+    assert all(
+        "artificialNoAnomaly" not in name and "artificialWithAnomaly" not in name for name in names
+    )
+    assert set(names) < set(Data.datasets("nab"))
+    assert Data.metadata("nab/realKnownCause/nyc_taxi.csv")["license"] == _LICENSES["nab"]
+
+
 def test_nab_series_are_labeled_by_their_anomaly_windows(tmp_path):
     """A point is an anomaly when its timestamp is in a window of combined_windows.json, ends included."""
     import json
@@ -1015,6 +1029,7 @@ def test_datasets_list_by_source(monkeypatch):
     expected_counts = {
         "odds": 17,
         "nab": 58,
+        "nab-real-world": 47,
         "ucr": 250,
         "kddcup99": 1,
         "smd": 28,

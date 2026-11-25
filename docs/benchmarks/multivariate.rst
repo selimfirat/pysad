@@ -51,6 +51,8 @@ In a real stream, the normal points change over time, and an old pattern can com
 - KDD http: network connections, with attacks in 10 bursts.
 - INSECTS A, I, IG and IR: optical sensor values of flying insects, with abrupt, incremental, incremental and gradual, and incremental and reoccurring drift.
 - SMD 1-1, 2-1 and 3-1: server machines, with one point of 38 metrics each minute.
+- SMAP P-1, S-1, E-1, T-1 and A-1: telemetry channels from the SMAP satellite.
+- MSL M-6, P-10, T-4, F-7 and C-2: telemetry channels from the MSL rover Curiosity.
 
 The tables have the same columns as the tables of the ODDS datasets. :doc:`datasets` describes the streams.
 

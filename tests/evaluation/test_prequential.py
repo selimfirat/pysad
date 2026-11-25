@@ -119,13 +119,6 @@ def test_evaluation_config_defaults_and_fields():
     assert config.postprocessor is None
     assert config.metrics is metrics
 
-    config_with_cal = EvaluationConfig(
-        model=model,
-        postprocessor=None,
-        metrics=metrics,
-    )
-    assert config_with_cal.postprocessor is None
-
 
 @pytest.mark.parametrize(
     "as_iterable",

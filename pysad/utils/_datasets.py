@@ -693,6 +693,86 @@ _TSB_DRIFT_SERIES = (
     "116_TAO_id_1_Environment_tr_500_1st_3.csv",
     "127_TAO_id_12_Environment_tr_500_1st_24.csv",
 )
+# Yahoo S5 A1Benchmark contains 67 real production-traffic series, with one row per hour.
+# Each row contains timestamp,value,is_anomaly. The public mirror uses a fixed commit.
+# Yahoo requires a signed Data Sharing Agreement for academic, non-commercial research.
+# The dataset README prohibits redistribution. The mirror does not grant a separate license.
+_YAHOO = (
+    "https://raw.githubusercontent.com/"
+    "ayyzenn/Real-Time-Anomaly-Detection-in-Kubernetes-Cluster-using-Three-Way-Decisions/"
+    "79453c498fef5bc23310682355e1dea1fb191b97/yahoo_data/A1Benchmark/"
+)
+# The SHA-256 checksum of each file, which a download must match.
+_YAHOO_CHECKSUMS = {
+    "real_1.csv": "8f7076dd5acb03b95b2e36646f1e190d1e6f20b1669323a37e21e35fa666c810",
+    "real_2.csv": "c8c56868243d3eb7f6de3c89f27d7222c1cf2088b4121ea47a14a1d75162feae",
+    "real_3.csv": "e87a7b0672ec9a20d76bc51f7a36e2493845df5c3b36b8d7664d5c138ef92ecd",
+    "real_4.csv": "7127ebee871dac86133243d331bd607387f1aca4030324c1fab5c177c0e69a21",
+    "real_5.csv": "1cf79413cca74d22e96d302a1fc7b2ea7802b2c61c2f8087696bf233f21038ce",
+    "real_6.csv": "89d51e16a216edbd430702542a9d72a10f5e39139c8af20a2cf63e9c4f1d914f",
+    "real_7.csv": "29abb5af7e5c8e6a4ac940d2b62247fcae9032c979700d7ffe7f60beeca61f7e",
+    "real_8.csv": "1b6877314c009ffaed2264ccd80f3450f42b20358f13d4a17882237144c848e2",
+    "real_9.csv": "ae5afb26492e475e0f984e082cd908f4310ed253fe29a749b7383ff31c531358",
+    "real_10.csv": "d50c5f8a9b465e97e001f13d3efecd21b65d4eb9142d44b680a79221186edd2c",
+    "real_11.csv": "edc9b3f047c47f8aed523127a340f5de8d929c74f89e8ed51fae80209d05d2db",
+    "real_12.csv": "d4587f29d74b140afcc0f8e44f9a5ddeab535c9d1726ac288df9623e57e8645b",
+    "real_13.csv": "b2c628db7af91b305414a4fa7d3d9d3b425b401e219cd4d3d7b29b0c7286b72d",
+    "real_14.csv": "b931dee8d23e693598f7169232ce1287ccf3b4e07982ee18a8e91610f782b39a",
+    "real_15.csv": "3978927051ad1c8bf264bb394f0599188e7e92a4c778adc4828c14c704712b87",
+    "real_16.csv": "488e30092c9d9704698ee48af245cb935704dd7963bd03a9560abd9074fa0cb0",
+    "real_17.csv": "f68a93db7da96bed4fb96087000faaf74886363c5d3c2ec5c75a8774b7ed1b56",
+    "real_18.csv": "18b6b040cd034e712114b15f9cdbd463576fe8a165d52a3f4fc07b97d8e0ecfb",
+    "real_19.csv": "efbac108e6498fc59446fc5ca7a69803b8bc832c489eedc33e8490d5ac04bab0",
+    "real_20.csv": "d64e624cb6febb19b61dfcf3a0d3750c81afe33c8f9ebe178c6e98f83c5177fb",
+    "real_21.csv": "189744caebc4761d20217a3775c1bf79f4ab39e05517b7f28ee7bee59a180237",
+    "real_22.csv": "900e4268c11b1a2502fd94c9d09f1a47ea2e12ff3620efe409f091ac36e6705f",
+    "real_23.csv": "ad43bd931e91c2dd90387d1b0da6e4ad3860b3063a33024fd824642bb105276b",
+    "real_24.csv": "ab74a401ab97eb00995b608b21e79cee90345b846f229164d3772875b804b6a5",
+    "real_25.csv": "7ab6d77359298412bf43026f76185f286ed60474bc49fb7088ce2b7535e1758c",
+    "real_26.csv": "31c96fa4489e2b1ac1e71463511e573045f7bf8fb216d554b00b2c4b49131ca0",
+    "real_27.csv": "094261e3f75d9b669659a5455ea2fbd80650cee4416b32ff376dbba3a954c122",
+    "real_28.csv": "c2925ca2a3bcbbfbc7b0ad09c71c1d4ec4677669c2393b196e9a1ed70e81e58e",
+    "real_29.csv": "9de967168623e5325592a663c79a8565ce8b7f770d4e211cb0faadfc2b0b98bb",
+    "real_30.csv": "f7db01e87e5847423e35130156118c5f1328e4be18f97377615459c5d8a7f95e",
+    "real_31.csv": "93f5d3c1f94dab0fd7d5418e1b4f46cb124baeda0e574dab3b699dea15d7345d",
+    "real_32.csv": "8a60130294d5d1025b1b6b5bb3eb1b07ea92e4f970574d9712648e46352001d3",
+    "real_33.csv": "a0b27e8ea60b407a5a20a576ec21f0f2075a1d9d1ae3758b45942b8a6256099a",
+    "real_34.csv": "bd7021478a895fcb3093b8633e8ecc39a70425cbd48a8bc534bf3b1f299dc86e",
+    "real_35.csv": "3cf804bd688b26aa73c2c652baf7c978216216b98ffd5aa03521d8cd10f8ad92",
+    "real_36.csv": "012e5a86c12430a96436c399e5b6da8c6ef8512928fe3e72ab63869bb530fe5f",
+    "real_37.csv": "ae2bde96444ce095ffdd38912b6ed38a2aa4e6bc192fa20244fcf906d3085dcd",
+    "real_38.csv": "3310b072f8bbf53b70e4e5b0f036ec486b157f3fea7748dcc969a3dc8caaab25",
+    "real_39.csv": "4bdd5172b9c4e42a5b52ad95069f2f47e074822274df259b902d23518ed339dd",
+    "real_40.csv": "71ba49f058976e9522103016df544ca4f6db891c64c22d08de17a61739d5bfc6",
+    "real_41.csv": "8f4b58c08be47834518484cbc68e699b9098233984b0e1bba95d1a3bb15076e3",
+    "real_42.csv": "00bf802e5827080c06d7a5ec0b6f85a768df07c5f6fdcff7c5670746280e3ae1",
+    "real_43.csv": "938f23bf656e777f23f78482ea7cdc0f044a0a85cebac6a2a7949a4b2902acf1",
+    "real_44.csv": "17d2c3ffd0f0bbe8f770e8118dc37ef55d9498611a3dc4537c93595505162134",
+    "real_45.csv": "4657e031d8c15847092c2a4fc1a61edb403ca56ee6cf47afa77860407abbd883",
+    "real_46.csv": "fa7ae8ded4a6313317aaf4885841e4e94661c4c2da7271ecb10086e16825c5c3",
+    "real_47.csv": "1725b13673b95e72e96de8a71c02e9654d12cfabceb02e749d93dd9c82e0c7e0",
+    "real_48.csv": "55dfbcad0f5409852afd101a89fe60ba9478b89de7f67989bc515bb1e137965d",
+    "real_49.csv": "18b6b040cd034e712114b15f9cdbd463576fe8a165d52a3f4fc07b97d8e0ecfb",
+    "real_50.csv": "5de35c0405c7e3d3cbe8098e8cfca7b702ca0f04d320952ed26cf3feb2fae231",
+    "real_51.csv": "4c2c187df286c5074b2cf6b58aa6aac26f80701fd780f20126a057d52e6e3bff",
+    "real_52.csv": "9c1d4e705a1418a6bed0ff2f469808b4c8fb19343837b97cef39e583c18a70f9",
+    "real_53.csv": "c666e2029a2965ba6e8d73138603ffd1a4d7680d94d210fc06cc82314ed5c8e4",
+    "real_54.csv": "06c23464c1ac54068d5508a5733e764f604ff63268133b1425d92da9ddff8808",
+    "real_55.csv": "806b403450e269b4da20e4685addc53873b33a9f036ba6f51fbb962c69cf0c21",
+    "real_56.csv": "659a38c3ff1f878f300b4bc98f438686b4b9d956f36540828690d8c2cf1496c4",
+    "real_57.csv": "8c1cf77d00b634849d6fadd58c7f4660d3535b0faeb1a8b63dcbabe3d31434b4",
+    "real_58.csv": "12e140fcf92befa3aeefe94dec96ad7f10de38824f28566b912a5b332c12594a",
+    "real_59.csv": "69879a3722728f42e298fad06f0355914bec6ce36d914e92dbd49e72f61c7e47",
+    "real_60.csv": "26b8814b8a14368f1ab10dc9eabfed0f539c140fe491370603de0c883e55f364",
+    "real_61.csv": "4d7dda43f80eaea1e699a4db4fb94f9f377d73428ae66f157bfb6ac1aae9d9bf",
+    "real_62.csv": "62b8b487088827fe7ad26b1ac1c0d5418901e1cd86ddd143c3fdae1fea691d0c",
+    "real_63.csv": "0fd2a85bac07d6a0ac8ad9c0e113a852d88f8b5604cae0e7daf27aa6cf3bc185",
+    "real_64.csv": "f5576b05e72feb115cc35e3e6914941644e13da18f658e592698fe14964d3c6e",
+    "real_65.csv": "f4c8413848f08434319300275dae8277e7322438b665cecc72a52bc53a4bfb46",
+    "real_66.csv": "b849a0aed52fe1a03bb0f661ca4ab81d63ddf8fe257a14e318bbfdbd49784ff7",
+    "real_67.csv": "8eb7ab6c716360dac655dd38c0e27ddf11b7f9eb7bf7e64ed7bc005dfec29c18",
+}
+
 _SOURCES = (
     "odds",
     "nab",
@@ -704,6 +784,7 @@ _SOURCES = (
     "insects",
     "creditcard",
     "tsb-drift",
+    "yahoo",
 )
 
 # The license of each collection, as the dataset inventory guide lists it. "telemanom" is the
@@ -736,6 +817,10 @@ _LICENSES = {
     "tsb-drift": (
         "CC BY 4.0 for TSB-drift. Apache 2.0 for the TSB-AD curation. "
         "The underlying series keep their original licenses."
+    ),
+    "yahoo": (
+        "Yahoo Webscope Data Sharing Agreement. Academic, non-commercial research only. "
+        "Users must sign an agreement. Yahoo prohibits redistribution."
     ),
     "telemanom": "BSD-style (Telemanom, Caltech).",
 }

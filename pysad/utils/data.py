@@ -50,6 +50,8 @@ from pysad.utils._datasets import (
     _UCR_CHECKSUM,
     _UCR_FOLDER,
     _UCR_SERIES,
+    _YAHOO,
+    _YAHOO_CHECKSUMS,
 )
 from pysad.utils.array_streamer import ArrayStreamer
 
@@ -96,6 +98,8 @@ def _source(name: str) -> tuple[str, str]:
         return _INSECTS + drive_id, checksum
     if name.startswith("tsb-drift/"):
         return _TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM
+    if name.startswith("yahoo/"):
+        return _YAHOO + name[len("yahoo/") :], _YAHOO_CHECKSUMS[name[len("yahoo/") :]]
 
     return _MIRROR + name, _CHECKSUMS[name]
 
@@ -131,7 +135,8 @@ class Data:
     ``vertebral.mat``, the labels are flipped from the ODDS file, because ODDS marks the 30
     healthy patients as the anomalies: the anomaly class of the returned labels is the 210
     unhealthy patients. The univariate
-    series come from the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly Archive.
+    series come from the Numenta Anomaly Benchmark (NAB), the UCR Time Series Anomaly Archive,
+    and the 67 real production-traffic series of Yahoo S5 A1Benchmark.
     The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD),
     the NASA SMAP and MSL telemetry of Telemanom (:cite:`hundman2018detecting`), INSECTS and
     credit-card fraud (OpenML 1597). The distribution-drift series come from TSB-drift, the
@@ -174,6 +179,7 @@ class Data:
                 - ``"creditcard"``: ``"creditcard/creditcard.arff"``, the 284,807 transactions of OpenML 1597, version 1, in their original time order. The 30 features are Time (elapsed seconds), V1 through V28 and Amount. Class is returned separately as the label: 1 for fraud, 0 otherwise. The database is under ODbL 1.0 and its contents under DbCL 1.0; see :doc:`/guides/stream_data` for the source links and license details.
                 - ``"insects"``: the 4 INSECTS streams of the ARCUS paper, for example ``"insects/abrupt.csv"``, with 33 features. The southern house mosquito is the anomaly class.
                 - ``"tsb-drift"``: the 75 series of the TSB-drift distribution-drift benchmark of Parrino et al. (KDD 2026), for example ``"tsb-drift/009_MSL_id_8_Sensor_tr_714_1st_1390.csv"``. The series are extracted from the TSB-AD-M archive, and the last column holds the binary anomaly label. The paper is under CC BY 4.0; the underlying TSB-AD series keep their original per-dataset licenses and the TSB-AD curation is provided under the Apache 2.0 license.
+                - ``"yahoo"``: the 67 real production-traffic series of Yahoo S5 A1Benchmark, for example ``"yahoo/real_1.csv"``. The value column is the only feature. Label 1 marks an anomaly. Yahoo requires a signed Data Sharing Agreement for academic, non-commercial research.
 
         Returns:
             list[str]: The names of the datasets, which :meth:`get_data` accepts.
@@ -201,6 +207,8 @@ class Data:
             return ["insects/" + name for name in _INSECTS_FILES]
         if source == "tsb-drift":
             return ["tsb-drift/" + name for name in _TSB_DRIFT_SERIES]
+        if source == "yahoo":
+            return ["yahoo/" + name for name in _YAHOO_CHECKSUMS]
         raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
 
     @staticmethod
@@ -356,6 +364,8 @@ class Data:
             return self._load_nasa(file_name, data_path, download)
         if file_name.startswith("tsb-drift/"):
             return self._load_tsb_drift(data_path)
+        if file_name.startswith("yahoo/"):
+            return self._load_yahoo(data_path)
         if data_path.endswith(".mat"):
             from scipy.io import loadmat
 
@@ -548,6 +558,15 @@ class Data:
         y = X[:, -1].ravel().astype(int)
         X = X[:, :-1]
         return X, y
+
+    def _load_yahoo(self, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Loads Yahoo S5 values and binary anomaly labels in file order.
+
+        Each row contains ``timestamp,value,is_anomaly``. The timestamp counts hours and is
+        not a feature. Label 1 marks an anomaly. A single row returns one feature row.
+        """
+        data = np.loadtxt(data_path, delimiter=",", skiprows=1, ndmin=2)
+        return data[:, 1:2], data[:, 2].astype(np.int64)
 
     def get_iterator(
         self,

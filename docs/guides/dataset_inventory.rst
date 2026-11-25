@@ -64,6 +64,18 @@ A loader is a collection returned by :meth:`~pysad.utils.Data.datasets`, for exa
      - thedatum.org TSB-AD-M.zip (Parrino et al., KDD 2026). CC BY 4.0 for TSB-drift. Apache 2.0 for the TSB-AD curation. Underlying series keep their original licenses.
      - Archive SHA-256 7de86ac27f30eeb48d833bb061055670e3f3de07defd995cf2bd5db10ccc9a0d. Verified on download.
      - Label 1 marks an anomaly and label 0 marks a normal point. The label is the last column.
+   * - **yahoo**
+     - 67 Yahoo S5 A1Benchmark real production-traffic series
+     - Public GitHub mirror at commit 79453c49. Yahoo Webscope Data Sharing Agreement. Academic, non-commercial research requires a signed agreement. Yahoo prohibits redistribution.
+     - Per-file SHA-256 (67 files). Every download must match its checksum.
+     - Label 1 marks an anomaly point and label 0 marks a normal point. The value column is the only feature. Rows keep file order.
+
+Yahoo S5 sources
+----------------
+
+``Data.datasets("yahoo")`` lists the 67 A1Benchmark series. The loader excludes the synthetic A2, A3, and A4 subsets.
+
+The `Yahoo S5 catalog <https://webscope.sandbox.yahoo.com/catalog.php?datatype=s&did=70>`_ describes the original dataset. Downloads use a `public mirror at a fixed commit <https://github.com/ayyzenn/Real-Time-Anomaly-Detection-in-Kubernetes-Cluster-using-Three-Way-Decisions/tree/79453c498fef5bc23310682355e1dea1fb191b97/yahoo_data>`_. The mirror's `WebscopeReadMe.txt <https://github.com/ayyzenn/Real-Time-Anomaly-Detection-in-Kubernetes-Cluster-using-Three-Way-Decisions/blob/79453c498fef5bc23310682355e1dea1fb191b97/yahoo_data/WebscopeReadMe.txt>`_ states Yahoo's usage restrictions. The mirror does not grant a separate data license. Users must obtain Yahoo's signed Data Sharing Agreement before use.
 
 Checksum verification
 ---------------------

@@ -138,7 +138,7 @@ uvx --from pysad pysad-live --source synthetic
 ```
 
 - The [live dashboard](https://pysad.readthedocs.io/en/stable/api/live.html) displays streaming scores and alerts in your terminal. Add `--web` to open the web dashboard, or use `--source data.csv` for your own data.
-- [`pysad.mcp`](https://pysad.readthedocs.io/en/stable/guides/mcp.html) exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install `pysad[mcp]`, then run `pysad-mcp` to connect an MCP client.
+- [`pysad.mcp`](https://pysad.readthedocs.io/en/stable/guides/mcp.html) exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install `pysad[mcp]`, then run `pysad-mcp` to connect an MCP client. The server auto-discovers detectors from `pysad.models.__all__` and statistics from `pysad.statistics.__all__`. Tool names use `pysad_<lowercase_name>`. Each tool includes metadata for constructor parameters and defaults.
 
 ### Optional PyO3 kernels (pysad_kernels)
 

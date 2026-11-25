@@ -140,13 +140,31 @@ uvx --from pysad pysad-live --source synthetic
 - The [live dashboard](https://pysad.readthedocs.io/en/stable/api/live.html) displays streaming scores and alerts in your terminal. Add `--web` to open the web dashboard, or use `--source data.csv` for your own data.
 - [`pysad.mcp`](https://pysad.readthedocs.io/en/stable/guides/mcp.html) exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install `pysad[mcp]`, then run `pysad-mcp` to connect an MCP client.
 
-### Optional Rust kernels
+### Optional PyO3 kernels (pysad_kernels)
 
-The `fast` extra installs `pysad_kernels`, a PyO3 Rust extension with optimized tree traversal for `HalfSpaceTrees` and `RobustRandomCutForest`. If the extension is available, these detectors use it automatically. Otherwise, they fall back to NumPy.
+The optional PyO3 Rust extension `pysad_kernels` provides native kernels for four detectors: `HalfSpaceTrees` and `RobustRandomCutForest` use its tree traversal kernels automatically, while `LODA` and `StreamKMPlusPlus` use its density and Lloyd kernels when `use_rust=True`. Wheels are published to PyPI as `pysad_kernels`, so you can install the extension directly:
 
 ```bash
-pip install pysad[fast]
+pip install pysad_kernels
 ```
+
+If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change. The extension is never required.
+
+To build from source instead, install `maturin` and build from the `rust/` directory:
+
+```bash
+pip install maturin
+maturin build --manifest-path rust/Cargo.toml --release
+pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
+```
+
+Once `pysad_kernels` can be imported, the detectors use its kernels automatically. Verify the installation:
+
+```bash
+python -c "import pysad_kernels; print(pysad_kernels.__file__)"
+```
+
+If the import fails, the detectors fall back to NumPy.
 
 ## Migration guides
 
@@ -355,6 +373,7 @@ These starting points come from the design of each method. They are not benchmar
 | `ZeroShotEmbeddingDetector` | Zero-shot OOD detector using semantic anchors (Maximum Concept Matching) (Ming et al., 2022) |
 | `ABSAD` | Angle-Based Subspace Anomaly Detection (ABSAD) (Zhang et al., 2017) |
 | `DenStream` | DenStream density-based streaming anomaly detector (Cao et al., 2006) |
+| `OnlineKMeans` | Scores each instance by its squared Euclidean distance to the nearest center of the online k-means clustering of Liberty et al. (Liberty et al., 2016) |
 
 **Univariate**
 

@@ -142,29 +142,33 @@ uvx --from pysad pysad-live --source synthetic
 
 ### Optional PyO3 kernels (pysad_kernels)
 
-The optional PyO3 Rust extension `pysad_kernels` provides native kernels for four detectors: `HalfSpaceTrees` and `RobustRandomCutForest` use its tree traversal kernels automatically, while `LODA` and `StreamKMPlusPlus` use its density and Lloyd kernels when `use_rust=True`. Wheels are published to PyPI as `pysad_kernels`, so you can install the extension directly:
+Install the optional PyO3 Rust extension separately from PySAD:
 
 ```bash
 pip install pysad_kernels
 ```
 
-If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change. The extension is never required.
+The extension provides kernels for four detectors:
 
-To build from source instead, install `maturin` and build from the `rust/` directory:
+- `HalfSpaceTrees` and `RobustRandomCutForest` use available tree kernels automatically.
+- `LODA` uses NumPy by default. Set `use_rust=True` to use the density kernel.
+- `StreamKMPlusPlus` uses NumPy by default. Set `use_rust=True` to use the weighted Lloyd kernel. Sampling stays in Python. Floating-point rounding can change cluster assignments.
+
+If a kernel is unavailable, the detector uses NumPy. PySAD does not require the extension. Pickles also work without it.
+
+To build from a source checkout, install `maturin` and run these commands from the repository root. This requires a Rust toolchain.
 
 ```bash
 pip install maturin
-maturin build --manifest-path rust/Cargo.toml --release
+maturin build --manifest-path rust/Cargo.toml --release --locked
 pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
 ```
 
-Once `pysad_kernels` can be imported, the detectors use its kernels automatically. Verify the installation:
+Make sure that Python can import the extension:
 
 ```bash
 python -c "import pysad_kernels; print(pysad_kernels.__file__)"
 ```
-
-If the import fails, the detectors fall back to NumPy.
 
 ## Migration guides
 

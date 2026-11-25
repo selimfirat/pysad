@@ -109,7 +109,13 @@ If you use uv, run the live dashboard with ``uvx``:
 Optional PyO3 kernels (pysad_kernels)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The optional PyO3 extension ``pysad_kernels`` provides kernels for four detectors. PySAD does not require this extension or add it as a dependency. Build it from the ``rust/`` directory.
+Install the optional PyO3 Rust extension separately from PySAD:
+
+.. code-block:: console
+
+   $ pip install pysad_kernels
+
+The extension provides kernels for four detectors:
 
 * :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest` use the available tree kernels automatically.
 * :class:`~pysad.models.LODA` uses NumPy by default. Set ``use_rust=True`` to use the density kernel.
@@ -117,18 +123,12 @@ The optional PyO3 extension ``pysad_kernels`` provides kernels for four detector
 
 If a kernel is unavailable, the detector uses NumPy. Pickles store the option and model arrays, so they also work without the extension.
 
-Install ``maturin``, then build and register the extension so Python can import it:
+To build from a source checkout, install ``maturin`` and run these commands from the repository root. This requires a Rust toolchain.
 
 .. code-block:: console
 
    $ pip install maturin
-   $ maturin develop -m rust/Cargo.toml
-
-Or build a wheel and install it:
-
-.. code-block:: console
-
-   $ maturin build -m rust/Cargo.toml --release
+   $ maturin build --manifest-path rust/Cargo.toml --release --locked
    $ pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
 
 Make sure that Python can import the extension:

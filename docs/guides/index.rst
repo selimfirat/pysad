@@ -37,6 +37,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`statistics`
+
+      Choose a running statistic, bound its memory and window it over recent values.
+
+   .. container:: card
+
       :doc:`troubleshooting`
 
       Diagnose odd scores: cold start, constant streams and NaN or infinite values.

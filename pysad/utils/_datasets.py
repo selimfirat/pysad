@@ -693,10 +693,10 @@ _TSB_DRIFT_SERIES = (
     "116_TAO_id_1_Environment_tr_500_1st_3.csv",
     "127_TAO_id_12_Environment_tr_500_1st_24.csv",
 )
-# The Yahoo S5 A1Benchmark: 67 real production-traffic series from the Yahoo Research
-# ydata-labeled-time-series-anomalies-v1_0 dataset. Each file holds one hourly sampled time
-# series with the columns timestamp,value,is_anomaly. The files come from a public mirror at
-# a fixed commit. Users must follow the Yahoo Research Dataset Terms of Use.
+# Yahoo S5 A1Benchmark contains 67 real production-traffic series, with one row per hour.
+# Each row contains timestamp,value,is_anomaly. The public mirror uses a fixed commit.
+# Yahoo requires a signed Data Sharing Agreement for academic, non-commercial research.
+# The dataset README prohibits redistribution. The mirror does not grant a separate license.
 _YAHOO = (
     "https://raw.githubusercontent.com/"
     "ayyzenn/Real-Time-Anomaly-Detection-in-Kubernetes-Cluster-using-Three-Way-Decisions/"
@@ -818,6 +818,9 @@ _LICENSES = {
         "CC BY 4.0 for TSB-drift. Apache 2.0 for the TSB-AD curation. "
         "The underlying series keep their original licenses."
     ),
-    "yahoo": "Yahoo Research Dataset Terms of Use (non-commercial research only).",
+    "yahoo": (
+        "Yahoo Webscope Data Sharing Agreement. Academic, non-commercial research only. "
+        "Users must sign an agreement. Yahoo prohibits redistribution."
+    ),
     "telemanom": "BSD-style (Telemanom, Caltech).",
 }

@@ -340,15 +340,16 @@ def test_download_does_not_try_again_after_a_client_error(tmp_path, monkeypatch)
     assert list(tmp_path.iterdir()) == []
 
 
-def test_download_with_a_wrong_checksum_raises_and_leaves_no_file(tmp_path, monkeypatch):
+@pytest.mark.parametrize("name", ["cardio.mat", "yahoo/real_1.csv"])
+def test_download_with_a_wrong_checksum_raises_and_leaves_no_file(tmp_path, monkeypatch, name):
     """A download that does not match the checksum of the dataset is not used or kept."""
 
     monkeypatch.setattr("urllib.request.urlopen", lambda req, timeout: Response(b"changed content"))
     data = Data(data_base_path=str(tmp_path))
 
     with pytest.raises(ValueError, match="SHA-256"):
-        data.get_data("cardio.mat")
-    assert list(tmp_path.iterdir()) == []
+        data.get_data(name)
+    assert not any(path.is_file() for path in tmp_path.rglob("*"))
 
 
 def test_describe_gives_the_facts_of_a_dataset():
@@ -712,16 +713,24 @@ def test_creditcard_keeps_transaction_order_and_separates_class_in_shared_cache(
     np.testing.assert_array_equal(reloaded_y, [1])
 
 
-def test_yahoo_real_series_load_the_value_and_its_anomaly_labels(tmp_path, monkeypatch):
+@pytest.mark.parametrize("num_rows", [1, 5])
+def test_yahoo_real_series_load_the_value_and_its_anomaly_labels(tmp_path, monkeypatch, num_rows):
     content = b"timestamp,value,is_anomaly\n1,83,0\n2,605,0\n3,181,0\n4,37,0\n5,45,1\n"
+    content = b"\n".join(content.splitlines()[: num_rows + 1]) + b"\n"
     _serve(monkeypatch, {pysad.utils.data._YAHOO + "real_1.csv": content})
 
     X, y = Data(data_base_path=str(tmp_path)).get_data("yahoo/real_1.csv")
 
-    assert X.shape == (5, 1)
+    assert X.shape == (num_rows, 1)
     assert X.dtype == np.float64
-    np.testing.assert_array_equal(X[:, 0], [83, 605, 181, 37, 45])
-    np.testing.assert_array_equal(y, [0, 0, 0, 0, 1])
+    assert y.dtype == np.int64
+    np.testing.assert_array_equal(X[:, 0], [83, 605, 181, 37, 45][:num_rows])
+    np.testing.assert_array_equal(y, [0, 0, 0, 0, 1][:num_rows])
+    cached_X, cached_y = Data(data_base_path=str(tmp_path)).get_data(
+        "yahoo/real_1.csv", download=False
+    )
+    np.testing.assert_array_equal(cached_X, X)
+    np.testing.assert_array_equal(cached_y, y)
 
 
 def test_data_pickle_round_trip(tmp_path):

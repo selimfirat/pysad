@@ -1545,3 +1545,34 @@ def test_ensembles_command_writes_csv(tmp_path, monkeypatch):
     assert {r["ensemble"] for r in rows} == set(benchmark.ENSEMBLES)
     assert set(rows[0]) == set(benchmark.ENSEMBLE_FIELDS)
     assert all(float(r["ms_per_point"]) > 0 for r in rows)
+
+
+@pytest.mark.parametrize(
+    ("dataset", "features"),
+    [("smd/machine-1-1.txt", 38), ("smap/P-1.npy", 25), ("msl/M-6.npy", 55)],
+)
+def test_telemetry_benchmark_keeps_time_order(monkeypatch, dataset, features):
+    benchmark = load_benchmark()
+    assert dataset in benchmark.DRIFT
+    assert dataset not in benchmark.DATASETS
+    X = np.arange(24 * features, dtype=float).reshape(24, features)
+    y = (np.arange(24) % 5 == 0).astype(int)
+    monkeypatch.setattr(benchmark.Data, "get_data", lambda self, name: (X.copy(), y.copy()))
+    monkeypatch.setattr(benchmark, "DRIFT_POINTS", 10)
+    for points in [None, 5]:
+        actual_X, actual_y = benchmark.load(dataset, 0, points)
+        n = 8 if points is None else points
+        scaled = np.broadcast_to(np.linspace(0, 1, n)[:, None], (n, features))
+        np.testing.assert_allclose(actual_X, scaled)
+        np.testing.assert_array_equal(actual_y, y[::3][:points])
+
+
+def test_drift_tables_cover_registered_streams():
+    benchmark = load_benchmark()
+    for name in ["drift_auroc.csv", "drift_aupr.csv"]:
+        with (benchmark.OUT / name).open(newline="") as stream:
+            rows = list(csv.DictReader(stream))
+        assert [row["Dataset"] for row in rows] == list(benchmark.DRIFT.values())
+    with (benchmark.OUT / "drift_streams.csv").open(newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    assert [row["Stream"] for row in rows] == list(benchmark.DRIFT)

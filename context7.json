@@ -41,6 +41,7 @@
         "Run PyOD batch models on streams with ReferenceWindowModel or OneFitModel, embed PySAD detectors in River or scikit-learn with PySADToRiverAdapter or PySADToScikitLearnAdapter, and score River forecasters with PredictiveAnomalyDetector.",
         "Run live streaming anomaly detection with the pysad-live CLI, for example: pysad-live --source synthetic --detector loda --calibrator conformal. The CLI also supports --web, --json-output, and CSV sources.",
         "Install pysad[mcp] and run pysad-mcp. The server auto-discovers tools from pysad.models.__all__ and pysad.statistics.__all__. Each discovered tool is named pysad_<lowercase_name> and lists constructor parameters and defaults in its metadata.",
-        "HalfSpaceTrees, RobustRandomCutForest, LODA, and StreamKMPlusPlus use the optional pysad_kernels PyO3 extension when installed; LODA and StreamKMPlusPlus need use_rust=True. Otherwise NumPy is used."
+        "Install the optional PyO3 extension separately with pip install pysad_kernels. HalfSpaceTrees and RobustRandomCutForest use available tree kernels automatically. LODA and StreamKMPlusPlus need use_rust=True.",
+        "If a kernel is unavailable, the detector uses NumPy. Floating-point rounding can change StreamKMPlusPlus cluster assignments."
     ]
 }

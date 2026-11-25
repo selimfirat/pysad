@@ -63,7 +63,12 @@ A loader is a collection returned by :meth:`~pysad.utils.Data.datasets`, for exa
      - 75 TSB-drift distribution-drift series
      - thedatum.org TSB-AD-M.zip (Parrino et al., KDD 2026). CC BY 4.0 for TSB-drift. Apache 2.0 for the TSB-AD curation. Underlying series keep their original licenses.
      - Archive SHA-256 7de86ac27f30eeb48d833bb061055670e3f3de07defd995cf2bd5db10ccc9a0d. Verified on download.
-     - Label 1 marks an anomaly and label 0 marks a normal point. The label is the last column.
+      - Label 1 marks an anomaly and label 0 marks a normal point. The label is the last column.
+    * - **yahoo**
+      - 67 Yahoo S5 real production-traffic series
+      - Yahoo Research release of the Yahoo Webscope S5 labeled anomalies. Yahoo Dataset Terms of Use.
+      - Per-file SHA-256 (67 files). Every download is verified.
+      - Label 1 marks an anomaly point and label 0 marks a normal point. Each row is timestamp,value,is_anomaly.
 
 Checksum verification
 ---------------------

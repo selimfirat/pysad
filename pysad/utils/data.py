@@ -50,6 +50,8 @@ from pysad.utils._datasets import (
     _UCR_CHECKSUM,
     _UCR_FOLDER,
     _UCR_SERIES,
+    _YAHOO,
+    _YAHOO_CHECKSUMS,
 )
 from pysad.utils.array_streamer import ArrayStreamer
 
@@ -96,6 +98,8 @@ def _source(name: str) -> tuple[str, str]:
         return _INSECTS + drive_id, checksum
     if name.startswith("tsb-drift/"):
         return _TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM
+    if name.startswith("yahoo/"):
+        return _YAHOO + name[len("yahoo/") :], _YAHOO_CHECKSUMS[name[len("yahoo/") :]]
 
     return _MIRROR + name, _CHECKSUMS[name]
 
@@ -201,6 +205,8 @@ class Data:
             return ["insects/" + name for name in _INSECTS_FILES]
         if source == "tsb-drift":
             return ["tsb-drift/" + name for name in _TSB_DRIFT_SERIES]
+        if source == "yahoo":
+            return ["yahoo/" + name for name in _YAHOO_CHECKSUMS]
         raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
 
     @staticmethod
@@ -356,6 +362,8 @@ class Data:
             return self._load_nasa(file_name, data_path, download)
         if file_name.startswith("tsb-drift/"):
             return self._load_tsb_drift(data_path)
+        if file_name.startswith("yahoo/"):
+            return self._load_yahoo(data_path)
         if data_path.endswith(".mat"):
             from scipy.io import loadmat
 
@@ -548,6 +556,16 @@ class Data:
         y = X[:, -1].ravel().astype(int)
         X = X[:, :-1]
         return X, y
+
+    def _load_yahoo(self, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Loads a Yahoo S5 series and separates the value from the binary is_anomaly label.
+
+        Each row is ``timestamp,value,is_anomaly``. The timestamp is an hourly index, so it is
+        not a feature. The returned features are the value column only, and the label is 1 for
+        an anomaly point and 0 otherwise.
+        """
+        data = np.loadtxt(data_path, delimiter=",", skiprows=1)
+        return data[:, 1:2], data[:, 2].ravel().astype(int)
 
     def get_iterator(
         self,

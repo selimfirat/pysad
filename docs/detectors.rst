@@ -161,6 +161,10 @@ These detectors take points with one or more features. A feature is one measured
      - Expected similarity: the inner product of each point's random Fourier features with their running or decaying mean :cite:`schneider2016expose`
      - Nothing
      - Fixed: ``num_random_features`` frequencies per feature and the mean of the features
+   * - :class:`~pysad.models.OnlineKMeans`
+     - Squared distance to the nearest center of online k-means, which opens each point as a new center with a probability that grows with its distance :cite:`liberty2016online`
+     - Nothing
+     - Fixed: the ``max_centers`` most recent centers
    * - :class:`~pysad.models.IDKS`
      - Similarity to the data distribution of a sliding window, from hypersphere partitions of the Isolation Distributional Kernel :cite:`xu2026idks`
      - Number of features, window size, partitions, samples (see concepts for warm-up)

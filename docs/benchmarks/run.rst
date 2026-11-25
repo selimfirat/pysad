@@ -110,6 +110,10 @@ A multivariate model runs on the ODDS datasets and the streams with drift. A uni
 runs on the NAB and UCR series. Custom models are not stored in the result cache, so each run
 scores them again.
 
+Pass ``--latex`` together with ``--custom`` to also write ``docs/benchmark/summary.tex``. The
+table lists each dataset and the mean AUROC of each detector on it, with your custom model as one
+column next to the built-in detectors it was compared against. Higher AUROC means more anomalous.
+
 Benchmark an embedding stream
 -----------------------------
 

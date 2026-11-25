@@ -109,29 +109,33 @@ If you use uv, run the live dashboard with ``uvx``:
 Optional PyO3 kernels (pysad_kernels)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The optional PyO3 Rust extension ``pysad_kernels`` provides tree traversal kernels for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`. It is not published on PyPI yet, so build it from the ``rust/`` directory of the repository. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change.
+The optional PyO3 extension ``pysad_kernels`` provides kernels for four detectors. PySAD does not require this extension or add it as a dependency. Build it from the ``rust/`` directory.
+
+* :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest` use the available tree kernels automatically.
+* :class:`~pysad.models.LODA` uses NumPy by default. Set ``use_rust=True`` to use the density kernel.
+* :class:`~pysad.models.StreamKMPlusPlus` uses NumPy by default. Set ``use_rust=True`` to use the weighted Lloyd kernel. Sampling stays in Python. Floating-point rounding can change cluster assignments.
+
+If a kernel is unavailable, the detector uses NumPy. Pickles store the option and model arrays, so they also work without the extension.
 
 Install ``maturin``, then build and register the extension so Python can import it:
 
 .. code-block:: console
 
    $ pip install maturin
-   $ maturin develop -m rust/pyproject.toml
+   $ maturin develop -m rust/Cargo.toml
 
 Or build a wheel and install it:
 
 .. code-block:: console
 
-   $ maturin build -m rust/pyproject.toml --release
-   $ pip install target/wheels/pysad_kernels-0.1.0-*.whl
+   $ maturin build -m rust/Cargo.toml --release
+   $ pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
 
-Once ``pysad_kernels`` can be imported, :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest` use its kernels automatically. Verify the installation:
+Make sure that Python can import the extension:
 
 .. code-block:: console
 
    $ python -c "import pysad_kernels; print(pysad_kernels.__file__)"
-
-If the import fails, the detectors fall back to NumPy.
 
 Migration guides
 ----------------

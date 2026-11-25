@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, deque
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.special import logsumexp
 
 from pysad.core.base_model import BaseModel
@@ -22,7 +23,9 @@ __bibtex__ = r"""
 _MIN_BANDWIDTH = 0.001
 
 
-def _log_density(X: np.ndarray, centers: np.ndarray, weights: np.ndarray) -> float:
+def _log_density(
+    X: NDArray[np.float64], centers: NDArray[np.float64], weights: NDArray[np.float64]
+) -> float:
     """The log of the local density of Definition 2.2 at `X` from kernel `centers` whose `weights` sum to 1."""
     dists = np.abs(centers - X)  # (k, d)
     bandwidth = weights @ dists  # (d,)
@@ -32,7 +35,9 @@ def _log_density(X: np.ndarray, centers: np.ndarray, weights: np.ndarray) -> flo
     return float(logsumexp(log_kernels.sum(axis=1), b=weights))
 
 
-def _nearest(cell_array: np.ndarray, cell: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+def _nearest(
+    cell_array: NDArray[np.float64], cell: NDArray[np.float64], k: int
+) -> tuple[NDArray[np.intp], NDArray[np.float64]]:
     """The indices of the `k` sorted cells nearest to `cell`, and the distances to all cells in cell lengths."""
     # Distances in cell lengths are exact, so equidistant cells tie, and the lowest cell wins a tie.
     dists = np.linalg.norm(cell_array - cell, axis=1)  # (num_cells,)
@@ -42,7 +47,7 @@ def _nearest(cell_array: np.ndarray, cell: np.ndarray, k: int) -> tuple[np.ndarr
 class _KernelCenter:
     """A kernel center with the local density estimate of its last update."""
 
-    def __init__(self, cell: tuple[float, ...], center: np.ndarray) -> None:
+    def __init__(self, cell: tuple[float, ...], center: NDArray[np.float64]) -> None:
         self.cell = np.array(cell)
         self.center = center
         self.error = 0.0  # the cumulative error E of Definition 4.5
@@ -52,9 +57,9 @@ class _KernelCenter:
 
     def update(
         self,
-        cell_array: np.ndarray,
-        centers: np.ndarray,
-        weights: np.ndarray,
+        cell_array: NDArray[np.float64],
+        centers: NDArray[np.float64],
+        weights: NDArray[np.float64],
         num_neighbors: int,
     ) -> None:
         """Finds the nearest of the sorted cells and estimates the local density at the center."""
@@ -122,24 +127,26 @@ class STARE(BaseModel):
         self._slide: Counter[tuple[float, ...]] = Counter()  # the counts of the incomplete slide
         self._slide_length = 0
         self._cells: list[tuple[float, ...]] = []  # the nonempty cells in sorted order
-        self._cell_array: np.ndarray = np.empty(
+        self._cell_array: NDArray[np.float64] = np.empty(
             (0, 0)
         )  # the cell indices, (num_cells, num_features)
-        self._centers: np.ndarray = np.empty(
+        self._centers: NDArray[np.float64] = np.empty(
             (0, 0)
         )  # the kernel centers, (num_cells, num_features)
-        self._weights: np.ndarray = np.empty(0)  # the weights of the kernel centers, (num_cells,)
+        self._weights: NDArray[np.float64] = np.empty(
+            0
+        )  # the weights of the kernel centers, (num_cells,)
 
-    def _cell(self, X: np.ndarray) -> tuple[float, ...]:
+    def _cell(self, X: NDArray[np.float64]) -> tuple[float, ...]:
         return tuple(np.floor(X / (self.cell_size / np.sqrt(len(X)))).tolist())
 
-    def _center(self, cell: tuple[float, ...]) -> np.ndarray:
+    def _center(self, cell: tuple[float, ...]) -> NDArray[np.float64]:
         scale = self.cell_size / np.sqrt(len(cell))
         arr = np.asarray(cell, dtype=np.float64)
         result = (arr + 0.5) * scale
         return np.asarray(result, dtype=np.float64)
 
-    def fit_partial(self, X: np.ndarray, y: int | None = None) -> STARE:
+    def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> STARE:
         """Adds the next instance to the current slide, and slides the window when the slide is complete.
 
         Args:
@@ -194,7 +201,7 @@ class STARE(BaseModel):
                 self._cell_array, self._centers, self._weights, self.num_neighbors
             )
 
-    def score_partial(self, X: np.ndarray) -> float:
+    def score_partial(self, X: NDArray[np.float64]) -> float:
         """Scores the anomalousness of the next instance against the window of the last complete slide.
 
         Args:

@@ -6,6 +6,7 @@ build-backend = "maturin"
 name = "pysad_kernels"
 version = "0.1.0"
 description = "Optional Rust kernels for PySAD streaming anomaly detection"
+readme = "../README.md"
 requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -23,6 +24,12 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/selimfirat/pysad"
+Documentation = "https://pysad.readthedocs.io/"
+Repository = "https://github.com/selimfirat/pysad/tree/master/rust"
+"Bug Tracker" = "https://github.com/selimfirat/pysad/issues"
 
 [tool.maturin]
 features = ["extension-module"]

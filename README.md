@@ -142,9 +142,13 @@ uvx --from pysad pysad-live --source synthetic
 
 ### Optional PyO3 kernels (pysad_kernels)
 
-The optional PyO3 Rust extension `pysad_kernels` provides tree traversal kernels for `HalfSpaceTrees` and `RobustRandomCutForest`. It is not published on PyPI yet, so build it from the `rust/` directory of the repository. If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change.
+The optional PyO3 Rust extension `pysad_kernels` provides kernels for four detectors: `HalfSpaceTrees` and `RobustRandomCutForest` use its tree traversal kernels automatically, and `LODA` and `StreamKMPlusPlus` use its density and Lloyd kernels when `use_rust=True`. It is published on PyPI, so you can install it with `pip install pysad_kernels`. PySAD does not require the extension and does not add it as a dependency. If it is not installed, every detector uses NumPy and its scores do not change.
 
-Install `maturin`, then build and register the extension so Python can import it:
+```bash
+pip install pysad_kernels
+```
+
+Or build and register the extension from the `rust/` directory:
 
 ```bash
 pip install maturin
@@ -155,10 +159,10 @@ Or build a wheel and install it:
 
 ```bash
 maturin build -m rust/pyproject.toml --release
-pip install target/wheels/pysad_kernels-0.1.0-*.whl
+pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
 ```
 
-Once `pysad_kernels` can be imported, `HalfSpaceTrees` and `RobustRandomCutForest` use its kernels automatically. Verify the installation:
+Once `pysad_kernels` can be imported, the detectors use its kernels automatically. Verify the installation:
 
 ```bash
 python -c "import pysad_kernels; print(pysad_kernels.__file__)"

@@ -78,6 +78,7 @@ Discussions = "https://github.com/selimfirat/pysad/discussions"
 Changelog = "https://github.com/selimfirat/pysad/releases"
 
 [project.optional-dependencies]
+fast = ["pysad_kernels>=0.1.0"]
 mcp = ["mcp>=2.0.0,<3"]
 
 [project.scripts]

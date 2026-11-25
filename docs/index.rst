@@ -109,26 +109,26 @@ If you use uv, run the live dashboard with ``uvx``:
 Optional PyO3 kernels (pysad_kernels)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The optional PyO3 extension ``pysad_kernels`` provides kernels for four detectors. PySAD does not require this extension or add it as a dependency. Build it from the ``rust/`` directory.
+The optional PyO3 extension pysad_kernels provides kernels for four detectors. PySAD does not require this extension or add it as a dependency. It is published on PyPI, so you can install it with `pip install pysad_kernels`, or build it from the rust/ directory.
 
 * :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest` use the available tree kernels automatically.
-* :class:`~pysad.models.LODA` uses NumPy by default. Set ``use_rust=True`` to use the density kernel.
-* :class:`~pysad.models.StreamKMPlusPlus` uses NumPy by default. Set ``use_rust=True`` to use the weighted Lloyd kernel. Sampling stays in Python. Floating-point rounding can change cluster assignments.
+* :class:`~pysad.models.LODA` uses NumPy by default. Set use_rust=True to use the density kernel.
+* :class:`~pysad.models.StreamKMPlusPlus` uses NumPy by default. Set use_rust=True to use the weighted Lloyd kernel. Sampling stays in Python. Floating-point rounding can change cluster assignments.
 
 If a kernel is unavailable, the detector uses NumPy. Pickles store the option and model arrays, so they also work without the extension.
 
-Install ``maturin``, then build and register the extension so Python can import it:
+Install maturin, then build and register the extension so Python can import it:
 
 .. code-block:: console
 
    $ pip install maturin
-   $ maturin develop -m rust/Cargo.toml
+   $ maturin develop -m rust/pyproject.toml
 
 Or build a wheel and install it:
 
 .. code-block:: console
 
-   $ maturin build -m rust/Cargo.toml --release
+   $ maturin build -m rust/pyproject.toml --release
    $ pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
 
 Make sure that Python can import the extension:

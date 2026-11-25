@@ -343,6 +343,11 @@ def _run_stochastic_component(name: str, cls: type, seed: int) -> np.ndarray:
         sketch = cls(width=16, depth=3, random_state=seed)
         sketch.update_many(range(40))
         return np.array([sketch.estimate(item) for item in range(80)])
+    if name == "CountMinSketchStatistic":
+        meter = cls(width=16, depth=3, random_state=seed)
+        for item in range(40):
+            meter.update(float(item))
+        return np.array([meter.update(float(item)).get() for item in range(80)])
     streamer = cls(shuffle=True, random_state=seed)
     if name == "PandasStreamer":
         data: Any = pd.DataFrame(X)

@@ -18,12 +18,15 @@ def test_unlabeled_rows_preserve_file_order(tmp_path):
 
 def test_selected_features_and_labels(tmp_path):
     path = tmp_path / "stream.csv"
-    path.write_text('name,a,label,b\n"first, row",3,0,4\nsecond,1,1,2\n', encoding="utf-8")
+    path.write_text(
+        'name,a,label,b\n"first, row",3,0,4\n"second\nline",1,1,2\nthird,5,0,6\n',
+        encoding="utf-8",
+    )
 
     rows = list(CSVStreamer(feature_columns=[3, 1], label_column=2).iter(str(path)))
 
-    np.testing.assert_array_equal([x for x, _ in rows], [[4, 3], [2, 1]])
-    assert [label for _, label in rows] == [0.0, 1.0]
+    np.testing.assert_array_equal([x for x, _ in rows], [[4, 3], [2, 1], [6, 5]])
+    assert [label for _, label in rows] == [0.0, 1.0, 0.0]
     assert all(isinstance(label, float) for _, label in rows)
 
 

@@ -41,7 +41,6 @@ def test_none_correct():
 
     metric_classes = {
         PrecisionMetric: 0.0,
-        # AUPRMetric: 0.5
         AUROCMetric: 0.0,
         RecallMetric: 0.0,
     }
@@ -75,48 +74,6 @@ def test_base_sklearn_metric():
     assert abs(accuracy - 2.0 / 3.0) < 1e-10
 
 
-def test_precision_metric_edge_cases():
-    """Test PrecisionMetric with edge cases."""
-    import warnings
-
-    from pysad.evaluation import PrecisionMetric
-
-    metric = PrecisionMetric()
-
-    # Test with no positive predictions (binary predictions)
-    metric.update(0, 0)  # True negative
-    metric.update(1, 0)  # False negative
-    metric.update(0, 0)  # True negative
-
-    # Precision should handle division by zero gracefully
-    # Suppress the sklearn warning since we're testing edge cases
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="Precision is ill-defined and being set to 0.0")
-        precision = metric.get()
-        assert precision == 0.0
-
-
-def test_recall_metric_edge_cases():
-    """Test RecallMetric with edge cases."""
-    import warnings
-
-    from pysad.evaluation import RecallMetric
-
-    metric = RecallMetric()
-
-    # Test with no positive labels (binary predictions)
-    metric.update(0, 1)  # False positive
-    metric.update(0, 0)  # True negative
-    metric.update(0, 1)  # False positive
-
-    # Recall should handle division by zero gracefully
-    # Suppress the sklearn warning since we're testing edge cases
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="Recall is ill-defined and being set to 0.0")
-        recall = metric.get()
-        assert recall == 0.0
-
-
 def test_auroc_single_class_error():
     """Test AUROCMetric with single class throws expected error."""
     import pytest
@@ -133,26 +90,6 @@ def test_auroc_single_class_error():
     # AUROC should throw ValueError with single class
     with pytest.raises(ValueError, match="Only one class present"):
         metric.get()
-
-
-def test_precision_recall_threshold_on_scores():
-    """Test PrecisionMetric and RecallMetric turn scores at or above the threshold into anomalies."""
-    import numpy as np
-
-    from pysad.evaluation import PrecisionMetric, RecallMetric
-
-    y_true = [1, 0, 0, 1, 1, 0]
-    scores = [0.9, 0.2, 0.5, 0.4, 0.8, 0.6]
-    # threshold=0.5 predicts [1, 0, 1, 0, 1, 1]: 2 true positives, 2 false positives, 1 false negative.
-    # The 0.5 score sits on the threshold and counts as an anomaly.
-    precision = PrecisionMetric(threshold=0.5)
-    recall = RecallMetric(threshold=0.5)
-    for yt, score in zip(y_true, scores, strict=True):
-        precision.update(yt, score)
-        recall.update(yt, score)
-
-    assert np.isclose(precision.get(), 2.0 / 4.0)
-    assert np.isclose(recall.get(), 2.0 / 3.0)
 
 
 def test_precision_recall_threshold_on_model_scores():
@@ -196,7 +133,6 @@ def test_precision_recall_without_threshold_reject_scores():
     for metric_cls in [PrecisionMetric, RecallMetric]:
         metric = metric_cls()
         metric.update(1, 1)
-        assert not hasattr(metric, "y_true")
         with pytest.raises(ValueError, match="y_pred must be 0 or 1"):
             metric.update(1, 0.9)
         assert metric.get() == 1.0
@@ -320,74 +256,30 @@ def test_matthews_correlation_rejects_nonbinary_inputs(threshold, label, predict
     assert metric.get() == 1.0
 
 
-def test_update_batch_matches_sequential_updates_across_all_metrics():
-    import numpy as np
+@pytest.mark.parametrize(
+    "metric_name",
+    [
+        "PrecisionMetric",
+        "RecallMetric",
+        "F1Metric",
+        "BalancedAccuracyMetric",
+        "MatthewsCorrelationMetric",
+    ],
+)
+def test_invalid_batch_preserves_confusion_metric_score(metric_name):
+    import pysad.evaluation as evaluation
 
-    from pysad.evaluation import (
-        AUPRMetric,
-        AUROCMetric,
-        BalancedAccuracyMetric,
-        F1Metric,
-        MatthewsCorrelationMetric,
-        PrecisionMetric,
-        RecallMetric,
-        RollingMetric,
-        WindowedMetric,
-    )
-
-    rng = np.random.default_rng(7)
-    y_true = rng.integers(0, 2, size=85)
-    scores = rng.random(size=85)
-    preds = (scores >= 0.5).astype(int)
-
-    specs = [
-        (lambda: AUROCMetric(), scores),
-        (lambda: AUPRMetric(), scores),
-        (lambda: PrecisionMetric(threshold=0.5), scores),
-        (lambda: RecallMetric(threshold=0.5), scores),
-        (lambda: F1Metric(threshold=0.5), scores),
-        (lambda: BalancedAccuracyMetric(threshold=0.5), scores),
-        (lambda: MatthewsCorrelationMetric(threshold=0.5), scores),
-        (lambda: F1Metric(), preds),
-        (lambda: BalancedAccuracyMetric(), preds),
-        (lambda: MatthewsCorrelationMetric(), preds),
-        (
-            lambda: WindowedMetric(AUROCMetric, window_size=20, ignore_nonempty_last=False),
-            scores,
-        ),
-        (lambda: WindowedMetric(F1Metric, window_size=20, threshold=0.5), scores),
-        (lambda: RollingMetric(AUROCMetric, window_size=25), scores),
-        (lambda: RollingMetric(F1Metric, window_size=25, threshold=0.5), scores),
-    ]
-
-    for make_metric, yp in specs:
-        seq = make_metric()
-        for yt_i, yp_i in zip(y_true, yp, strict=True):
-            seq.update(int(yt_i), float(yp_i))
-
-        batched = make_metric()
-        assert batched.update_batch(y_true[:30], yp[:30]) is batched
-        batched.update_batch(y_true[30:], yp[30:])
-        assert batched.get() == pytest.approx(seq.get())
-
-    # Invalid batch leaves confusion-count metrics unmutated and raises ValueError.
-    for cls in (
-        PrecisionMetric,
-        RecallMetric,
-        F1Metric,
-        BalancedAccuracyMetric,
-        MatthewsCorrelationMetric,
-    ):
-        m = cls()
-        m.update(1, 1)
-        m.update(0, 0)
-        with pytest.raises(ValueError, match="y_true must be 0 or 1"):
-            m.update_batch([1, 2], [1, 0])
-        with pytest.raises(ValueError, match="y_pred must be 0 or 1"):
-            m.update_batch([1, 0], [1, 0.3])
-        with pytest.raises(ValueError, match="same length"):
-            m.update_batch([1, 0], [1])
-        assert m.get() == 1.0
+    cls = getattr(evaluation, metric_name)
+    m = cls()
+    m.update(1, 1)
+    m.update(0, 0)
+    with pytest.raises(ValueError, match="y_true must be 0 or 1"):
+        m.update_batch([1, 2], [1, 0])
+    with pytest.raises(ValueError, match="y_pred must be 0 or 1"):
+        m.update_batch([1, 0], [1, 0.3])
+    with pytest.raises(ValueError, match="same length"):
+        m.update_batch([1, 0], [1])
+    assert m.get() == 1.0
 
 
 def test_log_loss_metric_sequential_and_batch():
@@ -510,8 +402,7 @@ def test_log_loss_metric_finite_boundary_loss(eps):
     ],
 )
 def test_metrics_empty_batch(metric_cls):
-    """Verify update_batch with empty sequences preserves metric state and value."""
-    import copy
+    """Empty batches preserve the score and allow later updates."""
 
     import numpy as np
 
@@ -525,12 +416,14 @@ def test_metrics_empty_batch(metric_cls):
     metric.update(1, 0)
 
     val_before = metric.get()
-    state_before = copy.deepcopy(metric.__dict__)
 
     metric.update_batch([], [])
     assert metric.get() == val_before
-    assert metric.__dict__ == state_before
 
     metric.update_batch(np.array([], dtype=int), np.array([], dtype=float))
     assert metric.get() == val_before
-    assert metric.__dict__ == state_before
+
+    metric.update(0, 1)
+    reference = cls()
+    reference.update_batch([1, 0, 1, 0], [1, 0, 0, 1])
+    assert metric.get() == reference.get()

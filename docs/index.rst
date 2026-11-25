@@ -1,5 +1,5 @@
 .. meta::
-   :description: PySAD is a Python library for streaming anomaly detection on multivariate and univariate data streams, with 50+ online detectors, conformal and SPOT calibration, drift monitoring, and prequential evaluation.
+   :description: PySAD is a Python library for streaming anomaly detection on multivariate and univariate data streams, with 50+ online detectors, conformal and SPOT calibration, drift monitoring, prequential evaluation, and an MCP server with auto-discovered tools.
 
 :hide-toc:
 
@@ -104,12 +104,18 @@ If you use uv, run the live dashboard with ``uvx``:
    $ uvx --from pysad pysad-live --source synthetic
 
 - The :doc:`live dashboard <api/live>` displays streaming scores and alerts in your terminal. Add ``--web`` to open the web dashboard, or use ``--source data.csv`` for your own data.
-- :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp`` to connect an MCP client.
+- :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp``. The server auto-discovers detectors from ``pysad.models.__all__`` and statistics from ``pysad.statistics.__all__``. Tool names use ``pysad_<lowercase_name>``. Each tool includes metadata for constructor parameters and defaults.
 
 Optional PyO3 kernels (pysad_kernels)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The optional PyO3 extension pysad_kernels provides kernels for four detectors. PySAD does not require this extension or add it as a dependency. It is published on PyPI, so you can install it with `pip install pysad_kernels`, or build it from the rust/ directory.
+Install the optional PyO3 Rust extension separately from PySAD:
+
+.. code-block:: console
+
+   $ pip install pysad_kernels
+
+The extension provides kernels for four detectors:
 
 * :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest` use the available tree kernels automatically.
 * :class:`~pysad.models.LODA` uses NumPy by default. Set use_rust=True to use the density kernel.
@@ -117,18 +123,11 @@ The optional PyO3 extension pysad_kernels provides kernels for four detectors. P
 
 If a kernel is unavailable, the detector uses NumPy. Pickles store the option and model arrays, so they also work without the extension.
 
-Install maturin, then build and register the extension so Python can import it:
+To build from a source checkout, install ``maturin`` and run these commands from the repository root. This requires a Rust toolchain.
 
 .. code-block:: console
 
-   $ pip install maturin
-   $ maturin develop -m rust/pyproject.toml
-
-Or build a wheel and install it:
-
-.. code-block:: console
-
-   $ maturin build -m rust/pyproject.toml --release
+   $ maturin build --manifest-path rust/Cargo.toml --release --locked
    $ pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
 
 Make sure that Python can import the extension:
@@ -148,6 +147,7 @@ Use these guides to map your existing workflow to PySAD:
 - :doc:`StatsForecast and Nixtla <guides/migrate_statsforecast>`
 - :doc:`Alibi Detect <guides/migrate_alibi_detect>`
 - :doc:`ADTK <guides/migrate_adtk>`
+- :doc:`River <guides/river_interoperability>`
 
 .. container:: stream-figure
 
@@ -295,6 +295,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
     guides/choose_detector
     guides/alerts
     guides/evaluate
+    guides/statistics
     guides/troubleshooting
     guides/pipelines
     guides/river_interoperability

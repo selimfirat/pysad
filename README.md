@@ -138,33 +138,37 @@ uvx --from pysad pysad-live --source synthetic
 ```
 
 - The [live dashboard](https://pysad.readthedocs.io/en/stable/api/live.html) displays streaming scores and alerts in your terminal. Add `--web` to open the web dashboard, or use `--source data.csv` for your own data.
-- [`pysad.mcp`](https://pysad.readthedocs.io/en/stable/guides/mcp.html) exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install `pysad[mcp]`, then run `pysad-mcp` to connect an MCP client.
+- [`pysad.mcp`](https://pysad.readthedocs.io/en/stable/guides/mcp.html) exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install `pysad[mcp]`, then run `pysad-mcp` to connect an MCP client. The server auto-discovers detectors from `pysad.models.__all__` and statistics from `pysad.statistics.__all__`. Tool names use `pysad_<lowercase_name>`. Each tool includes metadata for constructor parameters and defaults.
 
 ### Optional PyO3 kernels (pysad_kernels)
 
-The optional PyO3 Rust extension `pysad_kernels` provides native kernels for four detectors: `HalfSpaceTrees` and `RobustRandomCutForest` use its tree traversal kernels automatically, while `LODA` and `StreamKMPlusPlus` use its density and Lloyd kernels when `use_rust=True`. Wheels are published to PyPI as `pysad_kernels`, so you can install the extension directly:
+Install the optional PyO3 Rust extension separately from PySAD:
 
 ```bash
 pip install pysad_kernels
 ```
 
-If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change. The extension is never required.
+The extension provides kernels for four detectors:
 
-To build from source instead, install `maturin` and build from the `rust/` directory:
+- `HalfSpaceTrees` and `RobustRandomCutForest` use available tree kernels automatically.
+- `LODA` uses NumPy by default. Set `use_rust=True` to use the density kernel.
+- `StreamKMPlusPlus` uses NumPy by default. Set `use_rust=True` to use the weighted Lloyd kernel. Sampling stays in Python. Floating-point rounding can change cluster assignments.
+
+If a kernel is unavailable, the detector uses NumPy. PySAD does not require the extension. Pickles also work without it.
+
+To build from a source checkout, install `maturin` and run these commands from the repository root. This requires a Rust toolchain.
 
 ```bash
 pip install maturin
-maturin build --manifest-path rust/Cargo.toml --release
+maturin build --manifest-path rust/Cargo.toml --release --locked
 pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
 ```
 
-Once `pysad_kernels` can be imported, the detectors use its kernels automatically. Verify the installation:
+Make sure that Python can import the extension:
 
 ```bash
 python -c "import pysad_kernels; print(pysad_kernels.__file__)"
 ```
-
-If the import fails, the detectors fall back to NumPy.
 
 ## Migration guides
 
@@ -174,6 +178,9 @@ Use these guides to map your existing workflow to PySAD:
 - [AWS Lookout for Equipment and Kinesis RCF](https://pysad.readthedocs.io/en/stable/guides/migrate_aws.html)
 - [Salesforce Merlion](https://pysad.readthedocs.io/en/stable/guides/migrate_merlion.html)
 - [Alibi Detect](https://pysad.readthedocs.io/en/stable/guides/migrate_alibi_detect.html)
+- [ADTK](https://pysad.readthedocs.io/en/stable/guides/migrate_adtk.html)
+- [StatsForecast and Nixtla](https://pysad.readthedocs.io/en/stable/guides/migrate_statsforecast.html)
+- [River](https://pysad.readthedocs.io/en/stable/guides/river_interoperability.html)
 
 ## Quick start
 

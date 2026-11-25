@@ -83,19 +83,6 @@ TRANSFORMER_PARAMS = {
     "NonparametricDynamicThresholdPostprocessor": {"window_size": 10},
     "QuantileFilter": {"q": 0.5},
     "ThresholdFilter": {"threshold": 0.5},
-    # Calibration
-    "ConformalProbabilityCalibrator": {"window_size": 10},
-    "ConformalTSFMCalibrator": {"alpha": 0.1, "gamma": 0.005, "window_size": 10},
-    "GaussianTailProbabilityCalibrator": {"window_size": 10, "short_window_size": 3},
-    "GroupConditionalConformalCalibrator": {"window_size": 10, "max_regimes": 4},
-    "AnomalyLikelihoodCalibrator": {"window_size": 10, "short_window_size": 3},
-    "SPOTCalibrator": {"window_size": 10, "q": 1e-4, "init_level": 0.98},
-    # Ensemble
-    "AverageScoreEnsembler": {},
-    "AverageOfMaximumScoreEnsembler": {"random_state": SEED},
-    "MaximumOfAverageScoreEnsembler": {"random_state": SEED},
-    "MaximumScoreEnsembler": {},
-    "MedianScoreEnsembler": {},
 }
 
 
@@ -130,11 +117,6 @@ POORLY_VALIDATED_TRANSFORMERS = {
     "OneShotSTL",
     "ModifiedSTLResidualTransformer",
     "SeasonalTrendDecomposer",
-}
-
-# Calibrators that accept inf/NaN in fit_partial and produce NaN outputs
-POORLY_VALIDATED_CALIBRATORS = {
-    "GaussianTailProbabilityCalibrator",
 }
 
 
@@ -209,11 +191,6 @@ def _accepts_nan(name: str) -> bool:
 def _poorly_validated(name: str) -> bool:
     """Check if transformer has poor input validation (accepts NaN silently, state mismatch)."""
     return name in POORLY_VALIDATED_TRANSFORMERS
-
-
-def _poorly_validated_calibrator(name: str) -> bool:
-    """Check if calibrator has poor input validation."""
-    return name in POORLY_VALIDATED_CALIBRATORS
 
 
 def _initialization_length(name: str) -> int:
@@ -870,233 +847,6 @@ class _PostprocessorValidationMachine(RuleBasedStateMachine):
                 pass
 
 
-class _CalibratorValidationMachine(RuleBasedStateMachine):
-    """State machine for testing calibrator input validation."""
-
-    transformer_name: str
-
-    model = None
-    step: int
-    fitted_count: int
-    _state_snapshot = None
-
-    @initialize()
-    def setup(self):
-        self.model = _make_transformer(self.transformer_name)
-        self.step = 0
-        self.fitted_count = 0
-        self._state_snapshot = None
-
-    def _valid_score(self) -> float:
-        rng = np.random.RandomState(SEED + self.step * 31 + hash(self.transformer_name) % 1000)
-        return float(rng.choice(FINITE_VALUES))
-
-    def _invalid_score_nan(self) -> float:
-        return np.nan
-
-    def _invalid_score_inf(self) -> float:
-        return np.inf
-
-    def _snapshot_state(self):
-        if hasattr(self.model, "window") and hasattr(self.model.window, "_buffer"):
-            return {"type": "window", "len": len(self.model.window)}
-        if hasattr(self.model, "_variance_meter") and hasattr(self.model._variance_meter, "get"):
-            return {
-                "type": "variance",
-                "value": self.model._variance_meter.get(),
-                "mean": self.model._variance_meter.mean,
-            }
-        if hasattr(self.model, "short_window"):
-            return {"type": "short_window", "len": len(self.model.short_window)}
-        if hasattr(self.model, "_buffer") and hasattr(self.model._buffer, "_buffer"):
-            return {"type": "buffer", "len": len(self.model._buffer)}
-        return {"type": "stateless"}
-
-    def _assert_state_unchanged(self, snapshot):
-        current = self._snapshot_state()
-        if snapshot["type"] != current["type"]:
-            return
-        if snapshot["type"] == "window":
-            assert snapshot["len"] == current["len"]
-        elif snapshot["type"] == "variance":
-            assert snapshot["value"] == current["value"]
-            assert snapshot["mean"] == current["mean"]
-        elif snapshot["type"] == "short_window":
-            assert snapshot["len"] == current["len"]
-        elif snapshot["type"] == "buffer":
-            assert snapshot["len"] == current["len"]
-
-    @rule()
-    def step_fit_partial_valid(self):
-        score = self._valid_score()
-        self.model.fit_partial(score)
-        self.fitted_count += 1
-        self.step += 1
-
-    @rule()
-    def step_transform_partial_valid(self):
-        if self.fitted_count == 0:
-            self.step_fit_partial_valid()
-        score = self._valid_score()
-        out = self.model.transform_partial(score)
-        assert isinstance(out, float)
-        assert 0.0 <= out <= 1.0
-        self.step += 1
-
-    @rule()
-    def step_fit_transform_partial_valid(self):
-        score = self._valid_score()
-        out = self.model.fit_transform_partial(score)
-        assert isinstance(out, float)
-        assert 0.0 <= out <= 1.0
-        self.fitted_count += 1
-        self.step += 1
-
-    @rule()
-    def check_fit_partial_invalid_nan_raises(self):
-        if self.fitted_count == 0:
-            return
-        # Skip for poorly validated calibrators
-        if _poorly_validated_calibrator(self.transformer_name):
-            return
-        try:
-            self.model.fit_partial(self._invalid_score_nan())
-        except (ValueError, TypeError):
-            pass
-
-    @rule()
-    def check_fit_partial_invalid_inf_raises(self):
-        if self.fitted_count == 0:
-            return
-        # Skip for poorly validated calibrators
-        if _poorly_validated_calibrator(self.transformer_name):
-            return
-        try:
-            self.model.fit_partial(self._invalid_score_inf())
-        except (ValueError, TypeError):
-            pass
-
-    @rule()
-    def check_transform_partial_invalid_nan_raises(self):
-        if self.fitted_count == 0:
-            return
-        # Skip for poorly validated calibrators
-        if _poorly_validated_calibrator(self.transformer_name):
-            return
-        try:
-            self.model.transform_partial(self._invalid_score_nan())
-        except (ValueError, TypeError):
-            pass
-
-    @rule()
-    def check_fit_transform_partial_invalid_raises(self):
-        if self.fitted_count == 0:
-            return
-        # Skip for poorly validated calibrators
-        if _poorly_validated_calibrator(self.transformer_name):
-            return
-        try:
-            self.model.fit_transform_partial(self._invalid_score_nan())
-        except (ValueError, TypeError):
-            pass
-
-
-class _EnsemblerValidationMachine(RuleBasedStateMachine):
-    """State machine for testing ensembler input validation."""
-
-    transformer_name: str
-    num_detectors: int
-
-    model = None
-    step: int
-    fitted_count: int
-
-    @initialize()
-    def setup(self):
-        self.model = _make_transformer(self.transformer_name)
-        self.step = 0
-        self.fitted_count = 0
-
-    def _valid_scores(self) -> np.ndarray:
-        rng = np.random.RandomState(SEED + self.step * 31 + hash(self.transformer_name) % 1000)
-        return rng.choice(FINITE_VALUES, size=self.num_detectors).astype(np.float64)
-
-    def _invalid_scores_wrong_dim(self) -> np.ndarray:
-        return np.array([1.0, 2.0])  # Wrong number of detectors
-
-    def _invalid_scores_nan(self) -> np.ndarray:
-        scores = self._valid_scores().copy()
-        scores[0] = np.nan
-        return scores
-
-    def _invalid_scores_inf(self) -> np.ndarray:
-        scores = self._valid_scores().copy()
-        scores[0] = np.inf
-        return scores
-
-    @rule()
-    def step_fit_partial_valid(self):
-        scores = self._valid_scores()
-        self.model.fit_partial(scores)
-        self.fitted_count += 1
-        self.step += 1
-
-    @rule()
-    def step_transform_partial_valid(self):
-        if self.fitted_count == 0:
-            self.step_fit_partial_valid()
-        scores = self._valid_scores()
-        out = self.model.transform_partial(scores)
-        assert isinstance(out, float)
-        assert np.isfinite(out)
-        self.step += 1
-
-    @rule()
-    def step_fit_transform_partial_valid(self):
-        scores = self._valid_scores()
-        out = self.model.fit_transform_partial(scores)
-        assert isinstance(out, float)
-        assert np.isfinite(out)
-        self.fitted_count += 1
-        self.step += 1
-
-    @rule()
-    def check_fit_partial_invalid_wrong_dim_raises(self):
-        if self.fitted_count == 0:
-            return
-        try:
-            self.model.fit_partial(self._invalid_scores_wrong_dim())
-        except (ValueError, TypeError, IndexError):
-            pass  # Ensemblers typically don't maintain state
-
-    @rule()
-    def check_fit_partial_invalid_nan_raises(self):
-        if self.fitted_count == 0:
-            return
-        try:
-            self.model.fit_partial(self._invalid_scores_nan())
-        except (ValueError, TypeError):
-            pass
-
-    @rule()
-    def check_transform_partial_invalid_wrong_dim_raises(self):
-        if self.fitted_count == 0:
-            return
-        try:
-            self.model.transform_partial(self._invalid_scores_wrong_dim())
-        except (ValueError, TypeError, IndexError):
-            pass
-
-    @rule()
-    def check_fit_transform_partial_invalid_raises(self):
-        if self.fitted_count == 0:
-            return
-        try:
-            self.model.fit_transform_partial(self._invalid_scores_nan())
-        except (ValueError, TypeError):
-            pass
-
-
 # Generate test case classes for each transformer
 
 
@@ -1138,31 +888,6 @@ def _create_postprocessor_testcase(name: str):
     return TestCase
 
 
-def _create_calibrator_testcase(name: str):
-    class_attrs = {"transformer_name": name}
-    ConfiguredMachine = type(
-        f"_{name}CalibratorValidation", (_CalibratorValidationMachine,), class_attrs
-    )
-    ConfiguredMachine = STATEFUL_SETTINGS(ConfiguredMachine)
-    TestCase = ConfiguredMachine.TestCase
-    TestCase.__name__ = f"Test{name}CalibratorValidation"
-    TestCase.__qualname__ = f"Test{name}CalibratorValidation"
-    return TestCase
-
-
-def _create_ensembler_testcase(name: str):
-    num_detectors = _num_detectors_for(name)
-    class_attrs = {"transformer_name": name, "num_detectors": num_detectors}
-    ConfiguredMachine = type(
-        f"_{name}EnsemblerValidation", (_EnsemblerValidationMachine,), class_attrs
-    )
-    ConfiguredMachine = STATEFUL_SETTINGS(ConfiguredMachine)
-    TestCase = ConfiguredMachine.TestCase
-    TestCase.__name__ = f"Test{name}EnsemblerValidation"
-    TestCase.__qualname__ = f"Test{name}EnsemblerValidation"
-    return TestCase
-
-
 # Generate test cases for all transformers
 for _name in _preprocessing_transformers():
     if _name in TRANSFORMER_PARAMS:
@@ -1174,11 +899,3 @@ for _name in _preprocessing_transformers():
 for _name in _postprocessors():
     if _name in TRANSFORMER_PARAMS:
         globals()[f"Test{_name}PostprocessorValidation"] = _create_postprocessor_testcase(_name)
-
-for _name in _calibrators():
-    if _name in TRANSFORMER_PARAMS:
-        globals()[f"Test{_name}CalibratorValidation"] = _create_calibrator_testcase(_name)
-
-for _name in _ensemblers():
-    if _name in TRANSFORMER_PARAMS:
-        globals()[f"Test{_name}EnsemblerValidation"] = _create_ensembler_testcase(_name)

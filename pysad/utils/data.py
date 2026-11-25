@@ -32,6 +32,7 @@ from pysad.utils._datasets import (
     _MSL_CHECKSUMS,
     _NAB,
     _NAB_CHECKSUMS,
+    _NAB_REAL_WORLD,
     _NAB_WINDOWS,
     _NASA,
     _NASA_LABELS,
@@ -50,6 +51,8 @@ from pysad.utils._datasets import (
     _UCR_CHECKSUM,
     _UCR_FOLDER,
     _UCR_SERIES,
+    _YAHOO,
+    _YAHOO_CHECKSUMS,
 )
 from pysad.utils.array_streamer import ArrayStreamer
 
@@ -96,6 +99,8 @@ def _source(name: str) -> tuple[str, str]:
         return _INSECTS + drive_id, checksum
     if name.startswith("tsb-drift/"):
         return _TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM
+    if name.startswith("yahoo/"):
+        return _YAHOO + name[len("yahoo/") :], _YAHOO_CHECKSUMS[name[len("yahoo/") :]]
 
     return _MIRROR + name, _CHECKSUMS[name]
 
@@ -131,7 +136,8 @@ class Data:
     ``vertebral.mat``, the labels are flipped from the ODDS file, because ODDS marks the 30
     healthy patients as the anomalies: the anomaly class of the returned labels is the 210
     unhealthy patients. The univariate
-    series come from the Numenta Anomaly Benchmark (NAB) and the UCR Time Series Anomaly Archive.
+    series come from the Numenta Anomaly Benchmark (NAB), the UCR Time Series Anomaly Archive,
+    and the 67 real production-traffic series of Yahoo S5 A1Benchmark.
     The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD),
     the NASA SMAP and MSL telemetry of Telemanom (:cite:`hundman2018detecting`), INSECTS and
     credit-card fraud (OpenML 1597). The distribution-drift series come from TSB-drift, the
@@ -166,6 +172,7 @@ class Data:
 
                 - ``"odds"``: the 17 multivariate datasets of ODDS, for example ``"cardio.mat"``. For ``"vertebral.mat"``, the labels are flipped from the ODDS file, so the anomaly class is the unhealthy patients, not the healthy patients that ODDS marks as anomalies.
                 - ``"nab"``: the 58 univariate series of the Numenta Anomaly Benchmark, for example ``"nab/realKnownCause/nyc_taxi.csv"``. The points in an anomaly window of NAB have the label 1.
+                - ``"nab-real-world"``: the 47 real-world series of NAB, that is all NAB series except the 11 artificial ones under ``artificialNoAnomaly`` and ``artificialWithAnomaly``, for example ``"nab/realKnownCause/nyc_taxi.csv"``. :meth:`metadata` gives the source, the license, and the SHA-256 checksum of each of these series.
                 - ``"ucr"``: the 250 univariate series of the UCR Time Series Anomaly Archive, for example ``"ucr/025_UCR_Anomaly_DISTORTEDInternalBleeding14_2800_5607_5634.txt"``. The last two numbers of a name are the first and the last point of the anomaly, counted from 1. These points have the label 1. The number before them is the length of the training part, which has no anomalies. The first series download the archive of 184 MB.
                 - ``"kddcup99"``: ``"kddcup99/http.csv"``, the 58,724 http connections of logged in users of the KDD Cup 99 10% file, in their original order. The 3 features are ``log(x + 0.1)`` of the duration, the bytes from the source and the bytes to the destination. The attacks have the label 1. The first use downloads the file of 74 MB, which the server compresses to 2 MB.
                 - ``"smd"``: the test halves of the 28 machines of the Server Machine Dataset, for example ``"smd/machine-1-1.txt"``, with one point of 38 features each minute.
@@ -174,6 +181,7 @@ class Data:
                 - ``"creditcard"``: ``"creditcard/creditcard.arff"``, the 284,807 transactions of OpenML 1597, version 1, in their original time order. The 30 features are Time (elapsed seconds), V1 through V28 and Amount. Class is returned separately as the label: 1 for fraud, 0 otherwise. The database is under ODbL 1.0 and its contents under DbCL 1.0; see :doc:`/guides/stream_data` for the source links and license details.
                 - ``"insects"``: the 4 INSECTS streams of the ARCUS paper, for example ``"insects/abrupt.csv"``, with 33 features. The southern house mosquito is the anomaly class.
                 - ``"tsb-drift"``: the 75 series of the TSB-drift distribution-drift benchmark of Parrino et al. (KDD 2026), for example ``"tsb-drift/009_MSL_id_8_Sensor_tr_714_1st_1390.csv"``. The series are extracted from the TSB-AD-M archive, and the last column holds the binary anomaly label. The paper is under CC BY 4.0; the underlying TSB-AD series keep their original per-dataset licenses and the TSB-AD curation is provided under the Apache 2.0 license.
+                - ``"yahoo"``: the 67 real production-traffic series of Yahoo S5 A1Benchmark, for example ``"yahoo/real_1.csv"``. The value column is the only feature. Label 1 marks an anomaly. Yahoo requires a signed Data Sharing Agreement for academic, non-commercial research.
 
         Returns:
             list[str]: The names of the datasets, which :meth:`get_data` accepts.
@@ -185,6 +193,8 @@ class Data:
             return list(_CHECKSUMS)
         if source == "nab":
             return ["nab/" + name for name in _NAB_CHECKSUMS]
+        if source == "nab-real-world":
+            return ["nab/" + name for name in _NAB_REAL_WORLD]
         if source == "ucr":
             return ["ucr/" + name for name in _UCR_SERIES]
         if source == "kddcup99":
@@ -201,6 +211,8 @@ class Data:
             return ["insects/" + name for name in _INSECTS_FILES]
         if source == "tsb-drift":
             return ["tsb-drift/" + name for name in _TSB_DRIFT_SERIES]
+        if source == "yahoo":
+            return ["yahoo/" + name for name in _YAHOO_CHECKSUMS]
         raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
 
     @staticmethod
@@ -356,6 +368,8 @@ class Data:
             return self._load_nasa(file_name, data_path, download)
         if file_name.startswith("tsb-drift/"):
             return self._load_tsb_drift(data_path)
+        if file_name.startswith("yahoo/"):
+            return self._load_yahoo(data_path)
         if data_path.endswith(".mat"):
             from scipy.io import loadmat
 
@@ -548,6 +562,15 @@ class Data:
         y = X[:, -1].ravel().astype(int)
         X = X[:, :-1]
         return X, y
+
+    def _load_yahoo(self, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Loads Yahoo S5 values and binary anomaly labels in file order.
+
+        Each row contains ``timestamp,value,is_anomaly``. The timestamp counts hours and is
+        not a feature. Label 1 marks an anomaly. A single row returns one feature row.
+        """
+        data = np.loadtxt(data_path, delimiter=",", skiprows=1, ndmin=2)
+        return data[:, 1:2], data[:, 2].astype(np.int64)
 
     def get_iterator(
         self,

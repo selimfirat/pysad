@@ -7,7 +7,7 @@ from pysad.evaluation import AUROCMetric, evaluate_stream, export_report
 from pysad.models import LODA
 
 
-def _write_and_read(tmp_path, name, format):
+def _write_and_read(tmp_path, format):
     path = tmp_path / f"report.{format}"
     results = {"AUROC": 0.95, "AUPR": 0.49, "Undefined": None}
     export_report(
@@ -22,7 +22,7 @@ def _write_and_read(tmp_path, name, format):
 
 
 def test_export_report_json(tmp_path):
-    text = _write_and_read(tmp_path, "r", "json")
+    text = _write_and_read(tmp_path, "json")
     document = json.loads(text)
     assert document == {
         "metadata": {
@@ -35,7 +35,7 @@ def test_export_report_json(tmp_path):
 
 
 def test_export_report_csv(tmp_path):
-    text = _write_and_read(tmp_path, "r", "csv")
+    text = _write_and_read(tmp_path, "csv")
     lines = text.strip().splitlines()
     assert lines[0] == "model,postprocessor,dataset,metric,value"
     assert "LODA,ConformalProbabilityCalibrator,cardio,AUROC,0.95" in lines
@@ -44,7 +44,7 @@ def test_export_report_csv(tmp_path):
 
 
 def test_export_report_markdown(tmp_path):
-    text = _write_and_read(tmp_path, "r", "markdown")
+    text = _write_and_read(tmp_path, "markdown")
     assert "# Evaluation Report" in text
     assert "| Metric | Value |" in text
     assert "| AUROC | 0.95 |" in text

@@ -148,6 +148,7 @@ Use these guides to map your existing workflow to PySAD:
 - :doc:`StatsForecast and Nixtla <guides/migrate_statsforecast>`
 - :doc:`Alibi Detect <guides/migrate_alibi_detect>`
 - :doc:`ADTK <guides/migrate_adtk>`
+- :doc:`River <guides/river_interoperability>`
 
 .. container:: stream-figure
 

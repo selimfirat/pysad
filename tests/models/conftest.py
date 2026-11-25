@@ -293,6 +293,7 @@ def short_stream_params(
         "NETS": {"window_size": 20, "max_radius": 0.5},
         "OeSNNUAD": {"window_size": 10, "num_output_neurons": 5},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
+        "OnlineKMeans": {"num_clusters": 2},
         "OnlineOneClassSVM": {"window_size": 10},
         "PCBIsolationForest": {"num_trees": 5, "window_size": 20, "stat_size": 6},
         "RelativeEntropy": {

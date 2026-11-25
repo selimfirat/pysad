@@ -1,7 +1,7 @@
 {
     "$schema": "https://context7.com/schema/context7.json",
     "projectTitle": "PySAD",
-    "description": "Streaming anomaly detection in Python for multivariate and univariate data streams: 64 online detectors (LODA, HalfSpaceTrees, RobustRandomCutForest, RSHash, xStream, DenStream, SeasonalHybridESD, DAMP, SAND), conformal & SPOT alert calibration, drift monitoring, composable pipelines, prequential evaluation, live CLI dashboard (pysad-live), MCP server for LLM agents (pysad-mcp), and optional PyO3 kernels pysad_kernels for HalfSpaceTrees, RobustRandomCutForest, LODA, StreamKMPlusPlus.",
+    "description": "Streaming anomaly detection in Python for multivariate and univariate data streams: 64 online detectors (LODA, HalfSpaceTrees, RobustRandomCutForest, RSHash, xStream, DenStream, SeasonalHybridESD, DAMP, SAND), conformal & SPOT alert calibration, drift monitoring, composable pipelines, prequential evaluation, live CLI dashboard (pysad-live), MCP server for LLM agents (pysad-mcp), and optional PyO3 kernels for HalfSpaceTrees, RobustRandomCutForest, LODA, and StreamKMPlusPlus.",
     "branch": "master",
     "folders": ["docs", "examples", "pysad/live", "pysad/mcp"],
     "excludeFolders": [
@@ -41,6 +41,6 @@
         "Run PyOD batch models on streams with ReferenceWindowModel or OneFitModel, embed PySAD detectors in River or scikit-learn with PySADToRiverAdapter or PySADToScikitLearnAdapter, and score River forecasters with PredictiveAnomalyDetector.",
         "Run live streaming anomaly detection with the pysad-live CLI, for example: pysad-live --source synthetic --detector loda --calibrator conformal. The CLI also supports --web, --json-output, and CSV sources.",
         "Expose PySAD detectors, drift meters, and explainability via the MCP server: pip install pysad[mcp] then run pysad-mcp. The server registers every detector and drift meter from pysad.models and pysad.statistics as a pysad_<lowercase_name> tool.",
-        "HalfSpaceTrees and RobustRandomCutForest use pysad_kernels for tree traversal when installed. LODA and StreamKMPlusPlus use it with use_rust=True. Otherwise they run NumPy."
+        "HalfSpaceTrees, RobustRandomCutForest, LODA, and StreamKMPlusPlus use the optional pysad_kernels PyO3 extension when installed; LODA and StreamKMPlusPlus need use_rust=True. Otherwise NumPy is used."
     ]
 }

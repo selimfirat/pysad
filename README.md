@@ -142,23 +142,19 @@ uvx --from pysad pysad-live --source synthetic
 
 ### Optional PyO3 kernels (pysad_kernels)
 
-The optional PyO3 Rust extension `pysad_kernels` provides kernels for four detectors: `HalfSpaceTrees` and `RobustRandomCutForest` use its tree traversal kernels automatically, and `LODA` and `StreamKMPlusPlus` use its density and Lloyd kernels when `use_rust=True`. It is published on PyPI, so you can install it with `pip install pysad_kernels`. PySAD does not require the extension and does not add it as a dependency. If it is not installed, every detector uses NumPy and its scores do not change.
+The optional PyO3 Rust extension `pysad_kernels` provides native kernels for four detectors: `HalfSpaceTrees` and `RobustRandomCutForest` use its tree traversal kernels automatically, while `LODA` and `StreamKMPlusPlus` use its density and Lloyd kernels when `use_rust=True`. Wheels are published to PyPI as `pysad_kernels`, so you can install the extension directly:
 
 ```bash
 pip install pysad_kernels
 ```
 
-Or build and register the extension from the `rust/` directory:
+If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change. The extension is never required.
+
+To build from source instead, install `maturin` and build from the `rust/` directory:
 
 ```bash
 pip install maturin
-maturin develop -m rust/pyproject.toml
-```
-
-Or build a wheel and install it:
-
-```bash
-maturin build -m rust/pyproject.toml --release
+maturin build --manifest-path rust/Cargo.toml --release
 pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
 ```
 
@@ -377,6 +373,7 @@ These starting points come from the design of each method. They are not benchmar
 | `ZeroShotEmbeddingDetector` | Zero-shot OOD detector using semantic anchors (Maximum Concept Matching) (Ming et al., 2022) |
 | `ABSAD` | Angle-Based Subspace Anomaly Detection (ABSAD) (Zhang et al., 2017) |
 | `DenStream` | DenStream density-based streaming anomaly detector (Cao et al., 2006) |
+| `OnlineKMeans` | Scores each instance by its squared Euclidean distance to the nearest center of the online k-means clustering of Liberty et al. (Liberty et al., 2016) |
 
 **Univariate**
 

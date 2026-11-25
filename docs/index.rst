@@ -106,16 +106,36 @@ If you use uv, run the live dashboard with ``uvx``:
 - The :doc:`live dashboard <api/live>` displays streaming scores and alerts in your terminal. Add ``--web`` to open the web dashboard, or use ``--source data.csv`` for your own data.
 - :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp`` to connect an MCP client.
 
-Optional Rust kernels (pysad_kernels)
+Optional PyO3 kernels (pysad_kernels)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The optional ``pysad_kernels`` PyO3 extension provides tree traversal kernels for :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest`. Install it with:
+The optional PyO3 extension ``pysad_kernels`` provides kernels for four detectors. PySAD does not require this extension or add it as a dependency. Build it from the ``rust/`` directory.
+
+* :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest` use the available tree kernels automatically.
+* :class:`~pysad.models.LODA` uses NumPy by default. Set ``use_rust=True`` to use the density kernel.
+* :class:`~pysad.models.StreamKMPlusPlus` uses NumPy by default. Set ``use_rust=True`` to use the weighted Lloyd kernel. Sampling stays in Python. Floating-point rounding can change cluster assignments.
+
+If a kernel is unavailable, the detector uses NumPy. Pickles store the option and model arrays, so they also work without the extension.
+
+Install ``maturin``, then build and register the extension so Python can import it:
 
 .. code-block:: console
 
-   $ pip install pysad[fast]
+   $ pip install maturin
+   $ maturin develop -m rust/Cargo.toml
 
-If the extension is available, these detectors load its kernels automatically. Otherwise, they use NumPy, and their scores do not change.
+Or build a wheel and install it:
+
+.. code-block:: console
+
+   $ maturin build -m rust/Cargo.toml --release
+   $ pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
+
+Make sure that Python can import the extension:
+
+.. code-block:: console
+
+   $ python -c "import pysad_kernels; print(pysad_kernels.__file__)"
 
 Migration guides
 ----------------
@@ -275,6 +295,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
     guides/choose_detector
     guides/alerts
     guides/evaluate
+    guides/troubleshooting
     guides/pipelines
     guides/river_interoperability
     guides/drift_aware_composition

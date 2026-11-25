@@ -37,6 +37,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`troubleshooting`
+
+      Diagnose odd scores: cold start, constant streams and NaN or infinite values.
+
+   .. container:: card
+
       :doc:`pipelines`
 
       Add preprocessing, projections, postprocessing and ensembles.

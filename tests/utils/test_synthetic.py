@@ -45,6 +45,22 @@ def test_generate_stream_anomalies_are_far_from_normal():
     assert distances[y == 1].min() > np.median(distances[y == 0])
 
 
+def test_generate_stream_without_anomalies():
+    from pysad.utils import generate_stream
+
+    X, y = generate_stream(
+        num_instances=200,
+        num_features=3,
+        num_points=0,
+        num_bursts=0,
+        num_drifts=0,
+        random_state=0,
+    )
+
+    np.testing.assert_array_equal(X, np.random.RandomState(0).standard_normal((200, 3)))
+    np.testing.assert_array_equal(y, np.zeros(200, dtype=np.int64))
+
+
 def test_generate_stream_too_many_anomalies():
     from pysad.utils import generate_stream
 

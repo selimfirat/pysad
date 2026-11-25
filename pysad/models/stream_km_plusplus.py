@@ -6,6 +6,7 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.utils import check_random_state
 
+from pysad import _kernels
 from pysad.core.base_model import BaseModel
 
 
@@ -51,6 +52,7 @@ class StreamKMPlusPlus(BaseModel):
         num_iterations (int): The number of Lloyd iterations for the centers (Default=10).
         n_max (int): The stream length the level cap is sized for; the number of merge-and-reduce levels is capped at ``ceil(log2(n_max))`` (Default=1000000).
         random_state (int, np.random.RandomState or None): Seed or random number generator for the coreset sampling and the k-means++ seeding. None draws from NumPy's global random state, which `pysad.utils.fix_seed` seeds (Default=None).
+        use_rust (bool): Use the optional Lloyd kernel when available. Otherwise, use NumPy. Floating-point rounding can change cluster assignments (Default=False).
     """
 
     def __init__(
@@ -60,6 +62,7 @@ class StreamKMPlusPlus(BaseModel):
         num_iterations: int = 10,
         n_max: int = 1_000_000,
         random_state: int | np.random.RandomState | None = None,
+        use_rust: bool = False,
     ) -> None:
         if num_clusters < 1:
             raise ValueError("num_clusters must be positive.")
@@ -75,6 +78,7 @@ class StreamKMPlusPlus(BaseModel):
         self.num_iterations = num_iterations
         self.n_max = n_max
         self.random_state = random_state
+        self.use_rust = use_rust
         self.rng_ = check_random_state(random_state)
         self.centers_: NDArray[np.float64] = np.empty(
             (0, 0)
@@ -293,6 +297,10 @@ class StreamKMPlusPlus(BaseModel):
                 min_dists,
                 np.maximum(sq_norms - 2.0 * points @ points[idx] + sq_norms[idx], 0.0),
             )
+
+        kernel = _kernels.streamkm_lloyd
+        if self.use_rust and kernel is not None:
+            return kernel(points, weights, centers, self.num_iterations)
 
         weighted_points = points * weights[:, None]
         for _ in range(self.num_iterations):

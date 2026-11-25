@@ -96,6 +96,16 @@ DRIFT = {
     "smd/machine-1-1.txt": "SMD 1-1",
     "smd/machine-2-1.txt": "SMD 2-1",
     "smd/machine-3-1.txt": "SMD 3-1",
+    "smap/P-1.npy": "SMAP P-1",
+    "smap/S-1.npy": "SMAP S-1",
+    "smap/E-1.npy": "SMAP E-1",
+    "smap/T-1.npy": "SMAP T-1",
+    "smap/A-1.npy": "SMAP A-1",
+    "msl/M-6.npy": "MSL M-6",
+    "msl/P-10.npy": "MSL P-10",
+    "msl/T-4.npy": "MSL T-4",
+    "msl/F-7.npy": "MSL F-7",
+    "msl/C-2.npy": "MSL C-2",
 }
 DRIFT_POINTS = 10_000
 
@@ -374,6 +384,18 @@ FIELDS = [
     "ms_per_point",
     "solved",  # UCR series only
     *ALERT_FIELDS,
+    "commit",
+]
+# Results table omits the alert fields; they live in alerts.csv.
+# This keeps results.csv small enough for the repository's file-size limit.
+RESULT_FIELDS = [
+    "dataset",
+    "detector",
+    "seed",
+    "auroc",
+    "aupr",
+    "ms_per_point",
+    "solved",  # UCR series only
     "commit",
 ]
 COMMIT_URL = "https://github.com/selimfirat/pysad/commit/"
@@ -1096,7 +1118,12 @@ def write_tables(results, nab=None):
             r["detector"],
         ),
     )
-    write_csv("results.csv", FIELDS, [[r.get(f, "") for f in FIELDS] for r in rows])
+    # results.csv keeps the multivariate detector results on the ODDS datasets.
+    # NAB, drift, and UCR results live in their own tables, which keeps results.csv small.
+    odds_rows = [r for r in rows if r["dataset"] in DATASETS]
+    write_csv(
+        "results.csv", RESULT_FIELDS, [[r.get(f, "") for f in RESULT_FIELDS] for r in odds_rows]
+    )
     write_univariate_tables(
         {k: r for k, r in results.items() if k[0].startswith(("nab/", "ucr/"))}, nab or read_nab()
     )

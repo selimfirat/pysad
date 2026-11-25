@@ -1,5 +1,5 @@
 .. meta::
-   :description: PySAD is a Python library for streaming anomaly detection on multivariate and univariate data streams, with 50+ online detectors, conformal and SPOT calibration, drift monitoring, and prequential evaluation.
+   :description: PySAD is a Python library for streaming anomaly detection on multivariate and univariate data streams, with 50+ online detectors, conformal and SPOT calibration, drift monitoring, prequential evaluation, and an MCP server with auto-discovered tools.
 
 :hide-toc:
 
@@ -104,7 +104,7 @@ If you use uv, run the live dashboard with ``uvx``:
    $ uvx --from pysad pysad-live --source synthetic
 
 - The :doc:`live dashboard <api/live>` displays streaming scores and alerts in your terminal. Add ``--web`` to open the web dashboard, or use ``--source data.csv`` for your own data.
-- :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp`` to connect an MCP client.
+- :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp``. The server auto-discovers detectors from ``pysad.models.__all__`` and statistics from ``pysad.statistics.__all__``. Tool names use ``pysad_<lowercase_name>``. Each tool includes metadata for constructor parameters and defaults.
 
 Optional PyO3 kernels (pysad_kernels)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

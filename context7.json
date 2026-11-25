@@ -1,7 +1,7 @@
 {
     "$schema": "https://context7.com/schema/context7.json",
     "projectTitle": "PySAD",
-    "description": "Streaming anomaly detection for multivariate and univariate data streams: 68 streaming models (62 detectors such as LODA, HalfSpaceTrees, RSHash, xStream, OnlineKMeans, DenStream, DAMP, SAND, plus StreamPipeline, ModelEnsemble, DriftAdaptiveDetector), conformal & SPOT calibration, drift monitoring, composable pipelines, prequential evaluation, pysad-live CLI, pysad-mcp server, labeled SMAP/MSL/SMD, optional PyO3 kernels for HalfSpaceTrees, RobustRandomCutForest, LODA, and StreamKMPlusPlus",
+    "description": "Streaming anomaly detection for multivariate and univariate data streams: 68 models, including LODA, HalfSpaceTrees, RSHash, xStream, OnlineKMeans, DenStream, DAMP, and SAND; conformal and SPOT calibration; drift monitoring; composable pipelines; prequential evaluation; pysad-live CLI; pysad-mcp server with auto-discovered tools and parameter metadata; labeled SMAP, MSL, and SMD datasets; optional PyO3 kernels.",
     "branch": "master",
     "folders": ["docs", "examples", "pysad/live", "pysad/mcp"],
     "excludeFolders": [
@@ -40,7 +40,7 @@
         "Use LODA.explain_partial(x), HalfSpaceTrees.explain_partial(x), or KitNet.explain_partial(x) to attribute per-feature contributions to an anomaly score.",
         "Run PyOD batch models on streams with ReferenceWindowModel or OneFitModel, embed PySAD detectors in River or scikit-learn with PySADToRiverAdapter or PySADToScikitLearnAdapter, and score River forecasters with PredictiveAnomalyDetector.",
         "Run live streaming anomaly detection with the pysad-live CLI, for example: pysad-live --source synthetic --detector loda --calibrator conformal. The CLI also supports --web, --json-output, and CSV sources.",
-        "Expose PySAD detectors, drift meters, and explainability via the MCP server: pip install pysad[mcp] then run pysad-mcp. The server registers every detector and drift meter from pysad.models and pysad.statistics as a pysad_<lowercase_name> tool.",
+        "Install pysad[mcp] and run pysad-mcp. The server auto-discovers tools from pysad.models.__all__ and pysad.statistics.__all__. Each discovered tool is named pysad_<lowercase_name> and lists constructor parameters and defaults in its metadata.",
         "HalfSpaceTrees, RobustRandomCutForest, LODA, and StreamKMPlusPlus use the optional pysad_kernels PyO3 extension when installed; LODA and StreamKMPlusPlus need use_rust=True. Otherwise NumPy is used."
     ]
 }

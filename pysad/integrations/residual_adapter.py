@@ -13,29 +13,13 @@ from pysad.statistics.running_statistic import RunningStatistic
 class TSFMResidualAdapter(BasePostprocessor):
     """Normalizes forecasting residuals using rolling statistics for conformal calibration.
 
-    This postprocessor transforms raw residuals (e.g., absolute prediction errors from a
-    forecaster) into normalized scores using a rolling window of recent residuals. The
-    normalized scores are better suited for :class:`~pysad.transform.probability_calibration.ConformalTSFMCalibrator`
-    because they have more stable scale and distribution over time.
+    The adapter subtracts the rolling mean and divides by the rolling standard deviation.
+    With absolute prediction errors as inputs, higher outputs mean more anomalous errors.
+    ``fit_transform_partial`` includes the current error before normalizing it.
+    ``transform_partial`` uses the current statistics without updating them.
 
-    The adapter maintains a rolling window of the most recent residuals and normalizes
-    each new residual by subtracting the rolling mean and dividing by the rolling standard
-    deviation. This is equivalent to a rolling Z-score normalization.
-
-    The output is a continuous score where higher values mean more anomalous. The adapter
-    can be chained with a conformal calibrator using the ``|`` operator:
-
-    .. code-block:: python
-
-        from pysad.integrations import ForecastingAnomalyDetector, TSFMResidualAdapter
-        from pysad.transform.probability_calibration import ConformalTSFMCalibrator
-
-        detector = ForecastingAnomalyDetector(forecaster)
-        adapter = TSFMResidualAdapter(window_size=100)
-        calibrator = ConformalTSFMCalibrator(alpha=0.1, gamma=0.01, window_size=200)
-
-        # Chain: detector -> adapter -> calibrator
-        pipeline = detector | adapter | calibrator
+    See :ref:`the composition guide <tsfm-residual-composition>` for a runnable pipeline
+    with :class:`~pysad.transform.probability_calibration.ConformalTSFMCalibrator`.
 
     Args:
         window_size (int): Size of the rolling window for mean and variance estimation.

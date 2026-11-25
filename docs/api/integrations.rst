@@ -41,6 +41,8 @@ TSFM residual adapter
 
 .. autoclass:: TSFMResidualAdapter
 
+See :ref:`tsfm-residual-composition` for a runnable recipe with no model download or new dependency.
+
 Compare residual pipelines
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -373,6 +373,7 @@ These starting points come from the design of each method. They are not benchmar
 | `ZeroShotEmbeddingDetector` | Zero-shot OOD detector using semantic anchors (Maximum Concept Matching) (Ming et al., 2022) |
 | `ABSAD` | Angle-Based Subspace Anomaly Detection (ABSAD) (Zhang et al., 2017) |
 | `DenStream` | DenStream density-based streaming anomaly detector (Cao et al., 2006) |
+| `OnlineKMeans` | Scores each instance by its squared Euclidean distance to the nearest center of the online k-means clustering of Liberty et al. (Liberty et al., 2016) |
 
 **Univariate**
 

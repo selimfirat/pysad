@@ -147,3 +147,9 @@ Migration guides
       :doc:`migrate_adtk`
 
       Map ADTK batch rule-based and statistical detection to PySAD streaming detection.
+
+   .. container:: card
+
+      :doc:`migrate_pyod`
+
+      Move from PyOD batch detection to PySAD prequential streaming detection.

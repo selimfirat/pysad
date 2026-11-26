@@ -35,4 +35,8 @@ def __getattr__(name: str) -> Any:
         from .river_drift_detector import RiverDriftDetector
 
         return RiverDriftDetector
+    if name == "PySADToCapyMoaAdapter":
+        from .pysad_to_capymoa_adapter import PySADToCapyMoaAdapter
+
+        return PySADToCapyMoaAdapter
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -101,11 +101,13 @@ def _run(library, detector, dataset):
 
 
 def _run_job(job):
-    """Run one detector on one dataset from a ``(library, detector, dataset)`` job tuple.
+    """Unpack one job for a worker process.
 
-    ``ProcessPoolExecutor.map`` passes one argument per job, so this wrapper unpacks the tuple
-    into the three arguments of :func:`_run`. A top-level function is required so the spawn
-    start method can pickle it for the worker processes.
+    Args:
+        job (tuple): Library, detector, and dataset names.
+
+    Returns:
+        dict: AUROC, AUPR, and time per point for the detector and dataset.
     """
     return _run(*job)
 

@@ -257,8 +257,8 @@ With ``--ci`` it keeps only the first 2,000 points of each dataset. The results 
 Compare PySAD with River through the adapter
 --------------------------------------------
 
-To check that :class:`~pysad.integrations.PySADToRiverAdapter` keeps the scores of a PySAD
-detector, run ``benchmarks/compare_river_adapter.py``:
+To compare detectors through :class:`~pysad.integrations.PySADToRiverAdapter`, run
+``benchmarks/compare_river_adapter.py`` from the repository root:
 
 .. code-block:: console
 
@@ -271,15 +271,15 @@ streaming detectors on the same points. It writes ``docs/benchmark/comparison_ri
 with one row for each detector and dataset. The columns are the library, the detector, the
 dataset, the AUROC, the AUPR and the milliseconds per point. The script prints the same rows.
 
-Each detector scores a point before it learns from the point. The metrics leave out the scores of
-the warm-up points, the first 256 points of a stream. The harness uses the seed 0 and the
-shuffled ODDS datasets of the :doc:`benchmark </benchmark>`, so a rerun gives the same AUROC and
-AUPR. Only the times change.
+Each detector scores a point before it learns from the point. The metrics exclude the first
+``min(256, num_points // 4)`` scores as warm-up. Timing includes those points.
+The harness uses seed 0 and the shuffled, scaled ODDS datasets of the :doc:`benchmark </benchmark>`.
+With the same library versions, a rerun gives the same AUROC and AUPR. Only the times change.
 
 River is optional. Without it, the script prints a message and writes nothing.
 
-The harness runs this loop for each detector. Use the same loop to compare a PySAD detector with a
-River detector on your own stream:
+The harness uses this score-before-learn order for each detector.
+To compare detectors on your own stream, use this loop:
 
 .. code-block:: python
 

@@ -16,6 +16,7 @@ so no duplicate tests are added here.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 
 def _mean_callable(history, horizon=1):
@@ -103,3 +104,72 @@ def test_scoring_a_stream_twice_gives_the_same_scores():
     second_pass = [model.score_partial(np.array([value])) for value in values]
 
     np.testing.assert_array_equal(first_pass, second_pass)
+
+
+# ---------------------------------------------------------------------------
+# ForecastingAnomalyDetector constructor and scoring modes
+# ---------------------------------------------------------------------------
+
+
+def test_invalid_forecaster_raises_type_error():
+    """A non-callable object without forecast and learn_one raises TypeError."""
+    from pysad.integrations import ForecastingAnomalyDetector
+
+    with pytest.raises(TypeError, match="forecaster must implement"):
+        ForecastingAnomalyDetector(forecaster=object())
+
+
+def test_object_forecaster_forecast_returning_list_is_unwrapped():
+    """An object forecaster whose forecast returns a list is unwrapped to its first value."""
+    from pysad.integrations import ForecastingAnomalyDetector
+
+    class ListForecaster:
+        def forecast(self, horizon: int = 1) -> list[float]:
+            return [7.0]
+
+        def learn_one(self, y: float) -> None:
+            pass
+
+    model = ForecastingAnomalyDetector(forecaster=ListForecaster())
+    # value 1.0, forecast 7.0 -> |1.0 - 7.0| = 6.0
+    assert model.fit_score_partial(np.array([1.0])) == 6.0
+
+
+def test_relative_error_divides_by_absolute_forecast():
+    """relative=True returns the absolute error divided by the absolute forecast."""
+    from pysad.integrations import ForecastingAnomalyDetector
+
+    def forecast(history, horizon=1):
+        return 5.0
+
+    model = ForecastingAnomalyDetector(forecaster=forecast, relative=True)
+    # value 1.0, forecast 5.0 -> |1.0 - 5.0| / |5.0| = 0.8
+    assert model.fit_score_partial(np.array([1.0])) == 0.8
+    # value 9.0, forecast 5.0 -> |9.0 - 5.0| / |5.0| = 0.8
+    assert model.fit_score_partial(np.array([9.0])) == 0.8
+
+
+def test_relative_error_with_zero_forecast_raises_zero_division_error():
+    """relative=True with a forecast of exactly 0 raises ZeroDivisionError."""
+    from pysad.integrations import ForecastingAnomalyDetector
+
+    def forecast(history, horizon=1):
+        return 0.0
+
+    model = ForecastingAnomalyDetector(forecaster=forecast, relative=True)
+    with pytest.raises(ZeroDivisionError):
+        model.score_partial(np.array([1.0]))
+
+
+def test_probationary_period_returns_zero():
+    """The first probationary_period values score 0.0 before the forecaster has history."""
+    from pysad.integrations import ForecastingAnomalyDetector
+
+    def forecast(history, horizon=1):
+        return 5.0
+
+    model = ForecastingAnomalyDetector(forecaster=forecast, probationary_period=2)
+    assert model.fit_score_partial(np.array([1.0])) == 0.0
+    assert model.fit_score_partial(np.array([9.0])) == 0.0
+    # After probation, the forecast is used: value 1.0, forecast 5.0 -> |1.0 - 5.0| = 4.0
+    assert model.fit_score_partial(np.array([1.0])) == 4.0

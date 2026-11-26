@@ -126,6 +126,12 @@ Migration guides
 
    .. container:: card
 
+      :doc:`migrate_darts`
+
+      Move from unit8co Darts whole-series forecasting scores to PySAD streaming detection.
+
+   .. container:: card
+
       :doc:`migrate_merlion`
 
       Migrate anomaly detection pipelines from archived Salesforce Merlion.
@@ -153,3 +159,9 @@ Migration guides
       :doc:`migrate_pyod`
 
       Move from PyOD batch detection to PySAD prequential streaming detection.
+
+   .. container:: card
+
+      :doc:`migrate_river`
+
+      Translate River streaming anomaly detection to PySAD streaming detection.

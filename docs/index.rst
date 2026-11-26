@@ -146,12 +146,13 @@ Use these guides to map your existing workflow to PySAD:
 
 - :doc:`Azure AI Anomaly Detector and Metrics Advisor <guides/migrate_azure>`
 - :doc:`AWS Lookout for Equipment and Kinesis RCF <guides/migrate_aws>`
+- :doc:`Darts <guides/migrate_darts>`
 - :doc:`Salesforce Merlion <guides/migrate_merlion>`
 - :doc:`StatsForecast and Nixtla <guides/migrate_statsforecast>`
 - :doc:`Alibi Detect <guides/migrate_alibi_detect>`
 - :doc:`ADTK <guides/migrate_adtk>`
 - :doc:`PyOD <guides/migrate_pyod>`
-- :doc:`River <guides/river_interoperability>`
+- :doc:`River <guides/migrate_river>`
 
 .. container:: stream-figure
 
@@ -282,6 +283,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    :caption: Learn
 
    getting_started
+   cheatsheet
    installation
    examples
 
@@ -314,11 +316,13 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
     guides/mcp
     guides/migrate_azure
     guides/migrate_aws
+    guides/migrate_darts
     guides/migrate_merlion
     guides/migrate_statsforecast
     guides/migrate_alibi_detect
     guides/migrate_adtk
     guides/migrate_pyod
+    guides/migrate_river
 
 .. toctree::
    :hidden:

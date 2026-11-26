@@ -39,7 +39,11 @@
         "Import public classes from their subpackages (pysad.models, pysad.integrations, pysad.utils, pysad.evaluation, pysad.statistics, pysad.transform.*) rather than private module paths.",
         "Use LODA.explain_partial(x), HalfSpaceTrees.explain_partial(x), or KitNet.explain_partial(x) to attribute per-feature contributions to an anomaly score.",
         "Run PyOD batch models on streams with ReferenceWindowModel or OneFitModel, embed PySAD detectors in River or scikit-learn with PySADToRiverAdapter or PySADToScikitLearnAdapter, and score River forecasters with PredictiveAnomalyDetector.",
-        "Run live streaming anomaly detection with the pysad-live CLI, for example: pysad-live --source synthetic --detector loda --calibrator conformal. The CLI also supports --web, --json-output, and CSV sources.",
+        "Run live streaming anomaly detection with the pysad-live CLI, for example: pysad-live --source synthetic --detector loda --calibrator conformal.",
+        "Supported sources are synthetic, nyc_taxi, arrhythmia, creditcard, or a path to a CSV file; use --csv-delimiter and --no-csv-header for custom CSV files, and --max-points to limit the stream.",
+        "Choose a detector (loda, half_space_trees, rs_hash, lof, rrcf, knncad, smart_sifter, seasonal_esd, xstream, mad) and calibrator (conformal, spot, gaussian_tail, anomaly_likelihood, group_conformal).",
+        "Tune the run with --detector-seed, --detector-kwargs, --calibrator-window, --calibrator-kwargs, and --threshold; adjust the terminal with --width, --height, --history, --refresh-rate, --max-features, --no-labels, and --no-ribbon.",
+        "Open the web dashboard with --web --port 8080 --host 127.0.0.1, or run headless JSON output with --json-output and log alerts to a file with --log-file.",
         "Install pysad[mcp] and run pysad-mcp. The server auto-discovers tools from pysad.models.__all__ and pysad.statistics.__all__. Each discovered tool is named pysad_<lowercase_name> and lists constructor parameters and defaults in its metadata.",
         "Install the optional PyO3 extension separately with pip install pysad_kernels. HalfSpaceTrees and RobustRandomCutForest use available tree kernels automatically. LODA and StreamKMPlusPlus need use_rust=True.",
         "If a kernel is unavailable, the detector uses NumPy. Floating-point rounding can change StreamKMPlusPlus cluster assignments."

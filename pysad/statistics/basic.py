@@ -112,9 +112,9 @@ class AverageMeter(_SumCountMeter):
         """Method to obtain the tracked statistic.
 
         Returns:
-            float: The statistic.
+            float: The statistic, or 0.0 before any value has been added.
         """
-        return self.sum / self.num_items
+        return self.sum / self.num_items if self.num_items else 0.0
 
 
 class CountMeter(RemovableStatistic):
@@ -252,9 +252,10 @@ class MaxMeter(_ExtremumMeter):
         """Return the current extremum.
 
         Returns:
-            float: The statistic.
+            float: The statistic, or 0.0 before any value has been added. The
+            running maximum starts at ``-inf``, so an empty meter reports 0.0.
         """
-        return self.max
+        return self.max if self.max != -math.inf else 0.0
 
     def _push(self, num: float) -> None:
         # A candidate smaller than num is removed before num, so it can no longer be the maximum.
@@ -317,9 +318,10 @@ class MinMeter(_ExtremumMeter):
         """Return the current extremum.
 
         Returns:
-            float: The statistic.
+            float: The statistic, or 0.0 before any value has been added. The
+            running minimum starts at ``inf``, so an empty meter reports 0.0.
         """
-        return self.min
+        return self.min if self.min != math.inf else 0.0
 
     def _push(self, num: float) -> None:
         # A candidate larger than num is removed before num, so it can no longer be the minimum.
@@ -451,6 +453,6 @@ class VarianceMeter(RemovableStatistic):
         """Method to obtain the tracked statistic.
 
         Returns:
-            float: The statistic.
+            float: The statistic, or 0.0 before any value has been added.
         """
-        return self.m2 / self.count
+        return self.m2 / self.count if self.count else 0.0

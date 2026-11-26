@@ -123,6 +123,8 @@ The extension provides kernels for four detectors:
 
 If a kernel is unavailable, the detector uses NumPy. Pickles store the option and model arrays, so they also work without the extension.
 
+See :doc:`benchmarks/kernels` for the traversal timings of the optional kernels.
+
 To build from a source checkout, install ``maturin`` and run these commands from the repository root. This requires a Rust toolchain.
 
 .. code-block:: console

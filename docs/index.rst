@@ -123,6 +123,8 @@ The extension provides kernels for four detectors:
 
 If a kernel is unavailable, the detector uses NumPy. Pickles store the option and model arrays, so they also work without the extension.
 
+See :doc:`benchmarks/kernels` for the traversal timings of the optional kernels.
+
 To build from a source checkout, install ``maturin`` and run these commands from the repository root. This requires a Rust toolchain.
 
 .. code-block:: console
@@ -262,6 +264,7 @@ What PySAD contains
 - Metrics update after every point. :doc:`guides/evaluate` explains each metric.
 - Preprocessors, random projections, score postprocessors and ensemblers work with every detector. Preprocessors change each point before the detector scores it. Postprocessors change the scores, for example to smooth them. Ensemblers combine the scores of several detectors.
 - :class:`~pysad.integrations.ReferenceWindowModel` runs any `PyOD <https://github.com/yzhao062/pyod>`_ detector on a sliding window (the most recent points).
+- :class:`~pysad.integrations.PySADToCapyMoaAdapter` exposes any PySAD detector through CapyMoa's streaming interface (`partial_fit`, `score`, `predict`, `predict_proba`, `reset`) without importing CapyMoa or needing Java.
 
 PySAD is free software under the BSD 3-Clause License. If you use it in research, see :ref:`citing-pysad`.
 

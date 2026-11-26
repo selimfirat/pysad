@@ -39,6 +39,7 @@
         "Import public classes from their subpackages (pysad.models, pysad.integrations, pysad.utils, pysad.evaluation, pysad.statistics, pysad.transform.*) rather than private module paths.",
         "Use LODA.explain_partial(x), HalfSpaceTrees.explain_partial(x), or KitNet.explain_partial(x) to attribute per-feature contributions to an anomaly score.",
         "Run PyOD batch models on streams with ReferenceWindowModel or OneFitModel, embed PySAD detectors in River or scikit-learn with PySADToRiverAdapter or PySADToScikitLearnAdapter, and score River forecasters with PredictiveAnomalyDetector.",
+        "Expose any PySAD detector through CapyMoa's streaming interface (partial_fit, score, predict, predict_proba, reset) without installing CapyMoa or Java with PySADToCapyMoaAdapter.",
         "Run live streaming anomaly detection with the pysad-live CLI, for example: pysad-live --source synthetic --detector loda --calibrator conformal.",
         "Supported sources are synthetic, nyc_taxi, arrhythmia, creditcard, or a path to a CSV file; use --csv-delimiter and --no-csv-header for custom CSV files, and --max-points to limit the stream.",
         "Choose a detector (loda, half_space_trees, rs_hash, lof, rrcf, knncad, smart_sifter, seasonal_esd, xstream, mad) and calibrator (conformal, spot, gaussian_tail, anomaly_likelihood, group_conformal).",

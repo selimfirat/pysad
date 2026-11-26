@@ -62,7 +62,7 @@ class _SlidingErrorWindow:
     @property
     def error_rate(self) -> float:
         """Returns the error rate of the values in the window."""
-        return self.num_errors / len(self.values)
+        return self.num_errors / len(self.values) if self.values else 0.0
 
     def update(self, num: float) -> None:
         """Adds a value and removes the oldest value when the window is full.
@@ -170,9 +170,9 @@ class ADWINMeter(BaseStatistic):
         """Method to obtain the tracked statistic.
 
         Returns:
-            float: The mean of the window.
+            float: The mean of the window, or 0.0 before any value has been added.
         """
-        return self._sum / self.width
+        return self._sum / self.width if self.width else 0.0
 
     def _compress(self) -> None:
         for level, buckets in enumerate(self._buckets):
@@ -347,9 +347,10 @@ class DDMMeter(BaseStatistic):
         """Method to obtain the tracked statistic.
 
         Returns:
-            float: The error rate of the values since the last drift.
+            float: The error rate of the values since the last drift, or 0.0
+            before any value has been added.
         """
-        return self._num_errors / self.num_items
+        return self._num_errors / self.num_items if self.num_items else 0.0
 
 
 class EDDMMeter(BaseStatistic):
@@ -982,9 +983,10 @@ class HDDMAMeter(BaseStatistic):
         """Method to obtain the tracked statistic.
 
         Returns:
-            float: The mean of the values since the last drift.
+            float: The mean of the values since the last drift, or 0.0 before
+            any value has been added.
         """
-        return self._sum / self.num_items
+        return self._sum / self.num_items if self.num_items else 0.0
 
 
 class HDDMWMeter(BaseStatistic):

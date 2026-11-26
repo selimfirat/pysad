@@ -14,7 +14,7 @@ Stream wrappers for external models
    :nosignatures:
    :template: class.rst
    :toctree: ../generated
-   :exclude: PySADToRiverAdapter, RiverDriftDetector, PySADToScikitLearnAdapter, PySADToScikitMultiflowAdapter, ForecastingAnomalyDetector, ForecasterProtocol, TSFMResidualAdapter
+   :exclude: PySADToRiverAdapter, RiverDriftDetector, PySADToScikitLearnAdapter, PySADToScikitMultiflowAdapter, PySADToCapyMoaAdapter, ForecastingAnomalyDetector, ForecasterProtocol, TSFMResidualAdapter
    :tail: ReferenceWindowModel, OneFitModel, PredictiveAnomalyDetector
 
 River and scikit-learn pipeline adapters

@@ -265,6 +265,7 @@ What PySAD contains
 - Preprocessors, random projections, score postprocessors and ensemblers work with every detector. Preprocessors change each point before the detector scores it. Postprocessors change the scores, for example to smooth them. Ensemblers combine the scores of several detectors.
 - :class:`~pysad.integrations.ReferenceWindowModel` runs any `PyOD <https://github.com/yzhao062/pyod>`_ detector on a sliding window (the most recent points).
 - :class:`~pysad.integrations.PySADToCapyMoaAdapter` exposes any PySAD detector through CapyMoa's streaming interface (`partial_fit`, `score`, `predict`, `predict_proba`, `reset`) without importing CapyMoa or needing Java.
+- :doc:`benchmarks/run` shows how to compare PySAD detectors with River's streaming detectors through :class:`~pysad.integrations.PySADToRiverAdapter` using ``benchmarks/compare_river_adapter.py``.
 
 PySAD is free software under the BSD 3-Clause License. If you use it in research, see :ref:`citing-pysad`.
 

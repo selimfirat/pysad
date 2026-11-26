@@ -309,6 +309,8 @@ Comparing implementations of the same streaming algorithm under the exact same p
 
 <sub>PySAD, River 0.26.1, CapyMOA 0.15.1, and PyOD 3.6.7 (via `ReferenceWindowModel`) ran on the same computer; StreamAD 0.3.1 requires Python `&lt;3.12` and NumPy 1 (tabled for `LODA` only because StreamAD's `HSTreeDetector`, `RShashDetector`, and `xStreamDetector` invert score orientation). See the full [benchmark results](https://pysad.readthedocs.io/en/stable/benchmark.html) and detailed [library comparisons](https://pysad.readthedocs.io/en/stable/comparisons/index.html) (River, CapyMOA, StreamAD, PyOD, Alibi Detect, and Darts).</sub>
 
+To compare PySAD detectors with River's streaming detectors, run `benchmarks/compare_river_adapter.py`. It scores each PySAD detector through `PySADToRiverAdapter` against River on the same shuffled, scaled ODDS points and writes `docs/benchmark/comparison_river_adapter.csv` with AUROC, AUPR and milliseconds per point for each detector and dataset. River is optional. Without it, the script prints a message and writes nothing.
+
 ## Detectors
 
 ### Which detector to start with
@@ -381,6 +383,7 @@ These starting points come from the design of each method. They are not benchmar
 | `ABSAD` | Angle-Based Subspace Anomaly Detection (ABSAD) (Zhang et al., 2017) |
 | `DenStream` | DenStream density-based streaming anomaly detector (Cao et al., 2006) |
 | `OnlineKMeans` | Scores each instance by its squared Euclidean distance to the nearest center of the online k-means clustering of Liberty et al. (Liberty et al., 2016) |
+| `StreamingRHF` | Scores each instance with a streaming random histogram forest (Nesic et al., 2022) |
 
 **Univariate**
 

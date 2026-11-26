@@ -254,6 +254,66 @@ The mode scores every instance of each ODDS dataset before the ensemble learns f
 With ``--ci`` it keeps only the first 2,000 points of each dataset. The results go to
 ``docs/benchmark/ensemble_results.csv``, one row per dataset and ensemble.
 
+Compare PySAD with River through the adapter
+--------------------------------------------
+
+To check that :class:`~pysad.integrations.PySADToRiverAdapter` keeps the scores of a PySAD
+detector, run ``benchmarks/compare_river_adapter.py``:
+
+.. code-block:: console
+
+   $ pip install -e . --group test
+   $ python benchmarks/compare_river_adapter.py
+   $ python benchmarks/compare_river_adapter.py --jobs 2
+
+The harness scores every multivariate PySAD detector through the adapter. It scores River's own
+streaming detectors on the same points. It writes ``docs/benchmark/comparison_river_adapter.csv``,
+with one row for each detector and dataset. The columns are the library, the detector, the
+dataset, the AUROC, the AUPR and the milliseconds per point. The script prints the same rows.
+
+Each detector scores a point before it learns from the point. The metrics leave out the scores of
+the warm-up points, the first 256 points of a stream. The harness uses the seed 0 and the
+shuffled ODDS datasets of the :doc:`benchmark </benchmark>`, so a rerun gives the same AUROC and
+AUPR. Only the times change.
+
+River is optional. Without it, the script prints a message and writes nothing.
+
+The harness runs this loop for each detector. Use the same loop to compare a PySAD detector with a
+River detector on your own stream:
+
+.. code-block:: python
+
+   from river import anomaly
+   from sklearn.metrics import roc_auc_score
+
+   from pysad.integrations import PySADToRiverAdapter
+   from pysad.models import LODA
+   from pysad.utils import generate_stream
+
+   X, y = generate_stream(num_instances=1000, num_features=2, random_state=0)
+   points = [dict(enumerate(x)) for x in X]
+
+   adapter = PySADToRiverAdapter(lambda: LODA(random_state=0))
+   river_model = anomaly.LODA(seed=0)
+
+   adapter_scores, river_scores = [], []
+   for features in points:
+       adapter_scores.append(adapter.score_one(features))
+       adapter.learn_one(features)
+       river_scores.append(river_model.score_one(features))
+       river_model.learn_one(features)
+
+   print("PySAD AUROC:", round(roc_auc_score(y, adapter_scores), 3))
+   print("River AUROC:", round(roc_auc_score(y, river_scores), 3))
+
+.. code-block:: text
+
+   PySAD AUROC: 0.885
+   River AUROC: 0.792
+
+The example counts every point. The harness leaves out the warm-up points. The features are
+dictionaries, as :doc:`/guides/river_interoperability` describes.
+
 Performance badges
 ------------------
 

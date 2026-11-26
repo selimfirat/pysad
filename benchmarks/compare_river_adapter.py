@@ -4,7 +4,8 @@ The harness wraps PySAD detectors in ``pysad.integrations.PySADToRiverAdapter``,
 them as ``river.base.AnomalyDetector`` instances, and scores each point before the model learns
 from it, exactly as PySAD does. It then compares the AUROC, AUPR and milliseconds per point of
 the PySAD detectors with those of River's native streaming detectors on the shuffled ODDS
-datasets of benchmarks/benchmark.py.
+datasets of benchmarks/benchmark.py. The River detectors come from benchmarks/compare.py, so
+both scripts compare the same detectors.
 
 River is optional. The script imports river only when it is installed, and river is not a
 runtime dependency of PySAD (it belongs to the test and compare dependency groups). When river
@@ -29,6 +30,7 @@ from concurrent.futures import ProcessPoolExecutor
 from importlib.util import find_spec
 
 import benchmark
+import compare
 import numpy as np
 from sklearn.metrics import average_precision_score, roc_auc_score
 
@@ -40,18 +42,6 @@ SEED = 0
 def installed() -> bool:
     """True when river is installed and the harness can run."""
     return find_spec("river") is not None
-
-
-def river_detectors():
-    """River's native streaming anomaly detectors."""
-    from river import anomaly
-
-    return {
-        "HalfSpaceTrees": lambda X, seed: anomaly.HalfSpaceTrees(seed=seed),
-        "LODA": lambda X, seed: anomaly.LODA(seed=seed),
-        "LocalOutlierFactor": lambda X, seed: anomaly.LocalOutlierFactor(),
-        "OneClassSVM": lambda X, seed: anomaly.OneClassSVM(),
-    }
 
 
 def pysad_adapter_detectors():
@@ -72,7 +62,7 @@ def libraries():
     """The compared detectors, built only when river is installed."""
     return {
         "PySAD (adapter)": pysad_adapter_detectors(),
-        "River": river_detectors(),
+        "River": compare.river(),
     }
 
 
@@ -108,6 +98,16 @@ def _run(library, detector, dataset):
         "aupr": aupr,
         "ms_per_point": round(1000.0 * seconds / len(X), 3),
     }
+
+
+def _run_job(job):
+    """Run one detector on one dataset from a ``(library, detector, dataset)`` job tuple.
+
+    ``ProcessPoolExecutor.map`` passes one argument per job, so this wrapper unpacks the tuple
+    into the three arguments of :func:`_run`. A top-level function is required so the spawn
+    start method can pickle it for the worker processes.
+    """
+    return _run(*job)
 
 
 def _write_table(results):
@@ -148,7 +148,7 @@ def main():
         benchmark.Data().get_data(f"{dataset}.mat")
     jobs = [(lib, d, ds) for lib in libs for d in libs[lib] for ds in benchmark.DATASETS]
     with ProcessPoolExecutor(args.jobs, mp_context=multiprocessing.get_context("spawn")) as pool:
-        results = {job: row for job, row in zip(jobs, pool.map(_run, jobs), strict=True)}
+        results = {job: row for job, row in zip(jobs, pool.map(_run_job, jobs), strict=True)}
     _write_table(results)
     return 0
 

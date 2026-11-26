@@ -135,4 +135,5 @@ Next steps
 - :doc:`evaluate` shows how to measure a detector before you deploy it.
 - :doc:`pipelines` shows the short adapter example and how to combine preprocessing, projections, postprocessing and ensembles.
 - :doc:`production` shows how to run one detector per source and control the time per point.
+- :doc:`../benchmarks/run` shows how to compare PySAD with River through the adapter.
 - :doc:`/api/integrations` lists the adapter and drift detector classes.

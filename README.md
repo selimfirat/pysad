@@ -176,6 +176,7 @@ Use these guides to map your existing workflow to PySAD:
 
 - [Azure AI Anomaly Detector and Metrics Advisor](https://pysad.readthedocs.io/en/stable/guides/migrate_azure.html)
 - [AWS Lookout for Equipment and Kinesis RCF](https://pysad.readthedocs.io/en/stable/guides/migrate_aws.html)
+- [Darts](https://pysad.readthedocs.io/en/stable/guides/migrate_darts.html)
 - [Salesforce Merlion](https://pysad.readthedocs.io/en/stable/guides/migrate_merlion.html)
 - [Alibi Detect](https://pysad.readthedocs.io/en/stable/guides/migrate_alibi_detect.html)
 - [ADTK](https://pysad.readthedocs.io/en/stable/guides/migrate_adtk.html)

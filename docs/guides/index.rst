@@ -91,6 +91,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`live_dashboard`
+
+      Open the pysad-live web dashboard and watch streaming scores and alerts as points arrive.
+
+   .. container:: card
+
       :doc:`custom_model`
 
       Implement the model interface for a published streaming method and add it to PySAD.

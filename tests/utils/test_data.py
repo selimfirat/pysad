@@ -15,6 +15,8 @@ from pysad.utils._datasets import (
     _NASA_LABELS_URL,
     _SMAP_CHECKSUMS,
     _SMD,
+    _SWAT,
+    _SWAT_CHECKSUMS,
     _YAHOO,
     _YAHOO_CHECKSUMS,
 )
@@ -577,6 +579,25 @@ def test_yahoo_metadata_gives_the_source_license_and_checksum():
     assert Data.metadata("yahoo/real_67.csv")["checksum"] == _YAHOO_CHECKSUMS["real_67.csv"]
 
 
+def test_swat_datasets_are_listed_by_source():
+    names = Data.datasets("swat")
+
+    assert len(names) == 2
+    assert "swat/swat_train.csv" in names
+    assert "swat/swat_test.csv" in names
+    assert all(name.startswith("swat/") and name.endswith(".csv") for name in names)
+
+
+def test_swat_metadata_gives_the_source_license_and_checksum():
+    assert Data.metadata("swat/swat_train.csv") == {
+        "source": _SWAT + "swat_train.csv",
+        "license": _LICENSES["swat"],
+        "checksum": _SWAT_CHECKSUMS["swat_train.csv"],
+    }
+    assert Data.metadata("swat/swat_test.csv")["source"] == _SWAT + "swat_test.csv"
+    assert Data.metadata("swat/swat_test.csv")["checksum"] == _SWAT_CHECKSUMS["swat_test.csv"]
+
+
 def test_metadata_of_an_unknown_file_raises_key_error():
     with pytest.raises(KeyError):
         Data.metadata("unknown/file.csv")
@@ -669,6 +690,31 @@ def test_insects_streams_have_the_label_in_the_last_column(tmp_path, monkeypatch
 
     np.testing.assert_array_equal(X, [[0.5, 0.25], [0.75, 1.0]])
     np.testing.assert_array_equal(y, [0, 1])
+
+
+def test_swat_streams_load_the_features_and_the_binary_labels(tmp_path, monkeypatch):
+    """A SWaT CSV has a header row, 51 features and a binary Normal/Attack label column."""
+    content = b"FIT101,LIT101,Normal/Attack\n0.0,124.3,0\n1.0,125.1,1\n"
+    url = pysad.utils.data._SWAT + "swat_test.csv"
+    _serve(monkeypatch, {url: content})
+
+    X, y = Data(data_base_path=str(tmp_path)).get_data("swat/swat_test.csv")
+
+    np.testing.assert_array_equal(X, [[0.0, 124.3], [1.0, 125.1]])
+    np.testing.assert_array_equal(y, [0, 1])
+    assert X.dtype == np.float64
+    assert y.dtype == np.int64
+
+    # The downloaded file is cached and a second call reads it without the network.
+    def offline(req, timeout):
+        pytest.fail("A cached dataset must not need the network")
+
+    monkeypatch.setattr("urllib.request.urlopen", offline)
+    cached_X, cached_y = Data(data_base_path=str(tmp_path)).get_data(
+        "swat/swat_test.csv", download=False
+    )
+    np.testing.assert_array_equal(cached_X, X)
+    np.testing.assert_array_equal(cached_y, y)
 
 
 def test_creditcard_keeps_transaction_order_and_separates_class_in_shared_cache(
@@ -1087,6 +1133,7 @@ def test_datasets_list_by_source(monkeypatch):
         "creditcard": 1,
         "tsb-drift": 75,
         "yahoo": 67,
+        "swat": 2,
     }
     for source, expected in expected_counts.items():
         names = d.datasets(source)

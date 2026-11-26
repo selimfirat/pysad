@@ -65,10 +65,15 @@ A loader is a collection returned by :meth:`~pysad.utils.Data.datasets`, for exa
      - Archive SHA-256 7de86ac27f30eeb48d833bb061055670e3f3de07defd995cf2bd5db10ccc9a0d. Verified on download.
      - Label 1 marks an anomaly and label 0 marks a normal point. The label is the last column.
    * - **yahoo**
-     - 67 Yahoo S5 A1Benchmark real production-traffic series
-     - Public GitHub mirror at commit 79453c49. Yahoo Webscope Data Sharing Agreement. Academic, non-commercial research requires a signed agreement. Yahoo prohibits redistribution.
-     - Per-file SHA-256 (67 files). Every download must match its checksum.
-     - Label 1 marks an anomaly point and label 0 marks a normal point. The value column is the only feature. Rows keep file order.
+      - 67 Yahoo S5 A1Benchmark real production-traffic series
+      - Public GitHub mirror at commit 79453c49. Yahoo Webscope Data Sharing Agreement. Academic, non-commercial research requires a signed agreement. Yahoo prohibits redistribution.
+      - Per-file SHA-256 (67 files). Every download must match its checksum.
+      - Label 1 marks an anomaly point and label 0 marks a normal point. The value column is the only feature. Rows keep file order.
+   * - **swat**
+      - SWaT (Secure Water Treatment) of iTrust, SUTD: 51 sensor and actuator readings per point with a binary Normal/Attack label
+      - iTrust, SUTD. Free for research upon request; iTrust's terms of usage apply (credit iTrust, do not redistribute). Public mirror: PaddlePaddle PaddleTS.
+      - Per-file SHA-256 (2 files). Every download is verified.
+      - Label 1 marks an attack and label 0 marks normal operation. The first row of the file is a header and is skipped.
 
 Yahoo S5 sources
 ----------------

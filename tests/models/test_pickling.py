@@ -20,6 +20,7 @@ from tests.models.conftest import (
 SEED = 61
 NUM_FIT = 60
 NUM_NEXT = 20
+NUM_NEW = 20
 
 MODEL_PARAMS = {
     # Short grace periods, so that the autoencoders are built and trained within the data.
@@ -127,6 +128,35 @@ def _assert_same_scores(original, restored, X, y):
     np.testing.assert_allclose(actual, expected)
 
 
+def _new_data(model_name):
+    """Fresh unseen stream used to test continued learning after a round trip."""
+    rng = np.random.RandomState(SEED + 777)
+    num_instances = NUM_NEW
+    if model_name in UNIVARIATE_MODELS:
+        t = np.arange(num_instances)
+        X = (0.5 + 0.4 * np.sin(2 * np.pi * t / 4) + 0.05 * rng.rand(num_instances)).reshape(-1, 1)
+    elif model_name in TIMESTAMPED_MODELS:
+        t = np.arange(num_instances)
+        values = 0.5 + 0.4 * np.sin(2 * np.pi * t / 4) + 0.05 * rng.rand(num_instances)
+        X = np.column_stack([3600.0 * t, values])
+    elif model_name in EDGE_MODELS:
+        X = rng.randint(0, 5, size=(num_instances, 2)).astype(np.float64)
+    else:
+        X = rng.rand(num_instances, 3)
+    y = (rng.rand(num_instances) > 0.9).astype(int)
+
+    return X, y
+
+
+def _fit_scores(model, X, y, seed):
+    # fit_score_partial learns from each instance and returns its score; reseeding makes the draw
+    # sequence identical for the original and the restored model.
+    fix_seed(seed)
+    scores = [model.fit_score_partial(xi, yi) for xi, yi in zip(X, y, strict=True)]
+
+    return np.array([np.asarray(score, dtype=np.float64).ravel() for score in scores])
+
+
 def _model_params(xfail_models):
     params = []
     for model_name in active_model_names():
@@ -166,3 +196,95 @@ def test_relative_entropy_compared_scores_use_learned_state():
     model = _fitted_model("RelativeEntropy", X, y)
 
     assert _next_scores(model, X, y).max() == 1.0
+
+
+# Models that store check_random_state(None) (NumPy's global RandomState) as their RNG. Pickling
+# copies that RNG by value, so fitting after an unfitted round trip draws from a detached snapshot
+# and does not reproduce against a never-pickled model. Learned state is still preserved, as shown
+# by test_pickle_mid_stream_then_learn_new_data and test_pickle_at_end_of_stream_then_learn_new_data.
+UNFITTED_XFAIL_MODELS = {
+    "IDKS": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
+    "Inqmad": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
+    "MiLOF": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
+}
+
+SCORE_ONLY_XFAIL_MODELS = {
+    "IDKS": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
+    "Inqmad": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
+}
+
+
+def _edge_model_params(xfail_models):
+    params = []
+    for model_name in active_model_names():
+        marks = []
+        if model_name in xfail_models:
+            marks.append(pytest.mark.xfail(reason=xfail_models[model_name], strict=True))
+        params.append(pytest.param(model_name, marks=marks))
+
+    return params
+
+
+@pytest.mark.parametrize("model_name", _edge_model_params(UNFITTED_XFAIL_MODELS))
+def test_pickle_unfitted_model(model_name):
+    # Pickling a model before any fit_partial call must preserve its initial state.
+    X, y = _data(model_name)
+    original = _make_model(model_name, X)
+    restored = pickle.loads(pickle.dumps(original))
+
+    assert type(restored) is type(original)
+    np.testing.assert_allclose(
+        _fit_scores(restored, X, y, SEED + 2),
+        _fit_scores(original, X, y, SEED + 2),
+    )
+
+
+@pytest.mark.parametrize("model_name", _edge_model_params(SCORE_ONLY_XFAIL_MODELS))
+def test_pickle_after_score_only(model_name):
+    # score_partial does not learn; pickling after scoring only must still round trip.
+    X, y = _data(model_name)
+    original = _make_model(model_name, X)
+    for xi in X[:NUM_FIT]:
+        original.score_partial(xi)
+
+    restored = pickle.loads(pickle.dumps(original))
+
+    assert type(restored) is type(original)
+    np.testing.assert_allclose(
+        _fit_scores(restored, X[NUM_FIT:], y[NUM_FIT:], SEED + 2),
+        _fit_scores(original, X[NUM_FIT:], y[NUM_FIT:], SEED + 2),
+    )
+
+
+@pytest.mark.parametrize("model_name", _edge_model_params({}))
+def test_pickle_mid_stream_then_learn_new_data(model_name):
+    # After a mid-stream round trip, the restored model must learn new instances identically.
+    X, y = _data(model_name)
+    X_new, y_new = _new_data(model_name)
+    original = _fitted_model(model_name, X, y)
+    restored = pickle.loads(pickle.dumps(original))
+
+    assert type(restored) is type(original)
+    np.testing.assert_allclose(
+        _fit_scores(restored, X_new, y_new, SEED + 2),
+        _fit_scores(original, X_new, y_new, SEED + 2),
+    )
+
+
+@pytest.mark.parametrize("model_name", _edge_model_params({}))
+def test_pickle_at_end_of_stream_then_learn_new_data(model_name):
+    # A round trip at the end of the stream must preserve state for continued learning.
+    X, y = _data(model_name)
+    X_new, y_new = _new_data(model_name)
+    original = _make_model(model_name, X)
+    fix_seed(SEED)
+    for xi, yi in zip(X, y, strict=True):
+        original.fit_partial(xi, yi)
+
+    restored = pickle.loads(pickle.dumps(original))
+
+    assert type(restored) is type(original)
+    np.testing.assert_allclose(
+        _fit_scores(restored, X_new, y_new, SEED + 2),
+        _fit_scores(original, X_new, y_new, SEED + 2),
+    )

@@ -6,13 +6,6 @@ LLM clients.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from mcp.server.mcpserver import MCPServer
-
-mcp_server: MCPServer | None
-
 try:
     from .server import (
         SessionState,
@@ -25,7 +18,6 @@ try:
         list_data_sources,
         list_detectors,
         main,
-        mcp_server,
         reset_session,
         score_batch,
         score_point,
@@ -41,7 +33,6 @@ except ImportError:  # pragma: no cover - mcp is an optional dependency
     list_data_sources = None  # type: ignore[assignment]
     list_detectors = None  # type: ignore[assignment]
     main = None  # type: ignore[assignment]
-    mcp_server = None
     reset_session = None  # type: ignore[assignment]
     score_batch = None  # type: ignore[assignment]
     score_point = None  # type: ignore[assignment]
@@ -57,7 +48,6 @@ __all__ = [
     "list_data_sources",
     "list_detectors",
     "main",
-    "mcp_server",
     "reset_session",
     "score_batch",
     "score_point",

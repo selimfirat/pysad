@@ -787,6 +787,76 @@ Each standalone ``call_tool`` call uses a fresh context, so detector and calibra
 
 For HTTP or WebSocket serving, use the FastAPI recipes earlier in this guide instead.
 
+Prometheus metrics export
+-------------------------
+
+Prometheus scrapes metrics from an HTTP endpoint. The ``prometheus_client`` package belongs in your application environment, not in PySAD dependencies. The examples below wrap pysad-live and pysad.mcp so their points and alerts are exposed as counters on port 8001. Use the ``prometheus.yml`` and ``pysad_alerts.yml`` from the Prometheus alerting recipe to scrape and alert on these counters.
+
+pysad-live
+~~~~~~~~~~
+
+pysad-live prints one JSON line per point when you run it with ``--json-output``. Pipe that output into a small exporter process that increments Prometheus counters:
+
+.. code-block:: python
+
+   import json
+   import subprocess
+
+   from prometheus_client import Counter, start_http_server
+
+   start_http_server(port=8001, addr="127.0.0.1")
+   points = Counter("pysad_points_total", "Points scored")
+   alerts = Counter("pysad_alerts_total", "Points above the alert threshold")
+
+   proc = subprocess.Popen(
+       [
+           "pysad-live",
+           "--source",
+           "synthetic",
+           "--detector",
+           "loda",
+           "--calibrator",
+           "conformal",
+           "--json-output",
+       ],
+       stdout=subprocess.PIPE,
+       text=True,
+   )
+   for line in proc.stdout:
+       point = json.loads(line)
+       points.inc()
+       if point.get("alert"):
+           alerts.inc()
+
+Run pysad-live in one terminal and this exporter in another. Prometheus scrapes ``http://127.0.0.1:8001/metrics``.
+
+pysad.mcp
+~~~~~~~~~
+
+The MCP server runs over stdio, so run it in your own process and wrap ``call_tool`` to count calls. Start a Prometheus HTTP server in the same process:
+
+.. code-block:: python
+
+   import asyncio
+
+   from prometheus_client import Counter, start_http_server
+
+   from pysad.mcp.server import create_mcp_server
+
+   start_http_server(port=8001, addr="127.0.0.1")
+   calls = Counter("pysad_mcp_calls_total", "MCP tool calls", ["tool"])
+
+   async def call_tool_counted(server, name, arguments):
+       calls.labels(tool=name).inc()
+       return await server.call_tool(name, arguments)
+
+   async def main():
+       server = create_mcp_server()
+       _, info = await call_tool_counted(server, "list_detectors", {})
+       print("Detectors:", [d["name"] for d in info["detectors"][:5]])
+
+   asyncio.run(main())
+
 Next steps
 ----------
 

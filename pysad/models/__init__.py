@@ -63,6 +63,7 @@ from .stare import STARE
 from .stream_km_plusplus import StreamKMPlusPlus
 from .stream_pipeline import StreamPipeline
 from .streaming_autoregressive import StreamingAutoregressiveDetector
+from .streamingrhf import StreamingRHF
 from .teda import TEDA
 from .thresh_leap import ThreshLEAP
 from .xstream import xStream
@@ -131,6 +132,7 @@ __all__ = [
     "StandardAbsoluteDeviation",
     "STARE",
     "StreamingAutoregressiveDetector",
+    "StreamingRHF",
     "StreamKMPlusPlus",
     "StreamPipeline",
     "StrictModelEnsemble",

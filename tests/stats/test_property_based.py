@@ -1231,11 +1231,13 @@ class _CUSUMMachine(RuleBasedStateMachine):
         super().__init__()
         self.detector = None
         self.last_was_drift = False
+        self.last_value = 0.0
 
     @initialize()
     def setup(self):
         self.detector = CUSUMMeter(mean=0.0, delta=0.5, threshold=3.0)
         self.last_was_drift = False
+        self.last_value = 0.0
 
     @rule(data=st.data())
     def append_value(self, data):
@@ -1243,6 +1245,7 @@ class _CUSUMMachine(RuleBasedStateMachine):
             st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False)
         )
         self.last_was_drift = bool(self.detector.drift_detected)
+        self.last_value = value
         self.detector.update(value)
 
     @rule()
@@ -1252,9 +1255,12 @@ class _CUSUMMachine(RuleBasedStateMachine):
     @rule()
     def check_drift_resets_on_next_update(self):
         # After drift_detected, the next update resets g_plus_ and g_minus_
+        # to zero before it adds the new value, so both sums reflect only
+        # the latest value's deviation.
         if self.last_was_drift:
-            assert self.detector.g_plus_ == 0.0
-            assert self.detector.g_minus_ == 0.0
+            deviation = self.last_value - self.detector.mean
+            assert self.detector.g_plus_ == max(0.0, deviation - self.detector.delta)
+            assert self.detector.g_minus_ == min(0.0, deviation + self.detector.delta)
 
 
 _CUSUMMachine = STATEFUL_SETTINGS(_CUSUMMachine)

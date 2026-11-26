@@ -52,6 +52,9 @@ Each page lists the public classes and functions of one module. Each name has a 
    * - :doc:`api/live`
      - Live CLI and dashboard entry point
      - ``pysad.live``
+   * - :doc:`api/mcp`
+     - Model Context Protocol server and optional server tools
+     - ``pysad.mcp``
 
 .. toctree::
    :hidden:
@@ -70,3 +73,4 @@ Each page lists the public classes and functions of one module. Each name has a 
    api/utils
    api/core
    api/live
+   api/mcp

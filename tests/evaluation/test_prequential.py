@@ -189,3 +189,88 @@ def test_evaluate_postprocessor_rejects_length_mismatch():
             metrics={"AUROC": AUROCMetric()},
             postprocessor=ConformalProbabilityCalibrator(),
         )
+
+
+def test_evaluate_stream_scores_before_fitting():
+    """evaluate_stream scores each instance before the model learns from it.
+
+    A recording wrapper logs the order of score_partial and fit_partial calls. The
+    default fit_score_partial is prequential (score then fit), so the events must
+    alternate score(i), fit(i) for every instance i. A change that fits before scoring
+    would reorder or duplicate these events and fail this assertion.
+    """
+    from typing import Any
+
+    from numpy.typing import NDArray
+
+    from pysad.core.base_model import BaseModel
+    from pysad.evaluation import AUROCMetric, evaluate_stream
+    from pysad.models import LODA
+
+    class _OrderRecordingModel(BaseModel):
+        """Records score_partial/fit_partial call order, delegating to a wrapped model."""
+
+        def __init__(self, model: BaseModel) -> None:
+            self._model = model
+            self.events: list[tuple[str, int]] = []
+            self._n = 0
+
+        def score_partial(self, X: NDArray[Any], y: int | None = None) -> float:
+            self.events.append(("score", self._n))
+            return self._model.score_partial(X)
+
+        def fit_partial(self, X: NDArray[Any], y: int | None = None) -> BaseModel:
+            self.events.append(("fit", self._n))
+            self._model.fit_partial(X, y)
+            self._n += 1
+            return self
+
+    rng = np.random.default_rng(0)
+    X = [np.array([value]) for value in rng.normal(size=60)]
+    y = [i % 2 for i in range(len(X))]
+
+    recorder = _OrderRecordingModel(LODA(random_state=0))
+    results = evaluate_stream(
+        model=recorder,
+        X=X,
+        y=y,
+        metrics={"AUROC": AUROCMetric()},
+    )
+
+    assert isinstance(results, dict)
+    assert results["AUROC"] is not None
+
+    expected: list[tuple[str, int]] = []
+    for i in range(len(X)):
+        expected.append(("score", i))
+        expected.append(("fit", i))
+    assert recorder.events == expected
+
+
+def test_fit_score_partial_equals_score_then_fit():
+    """fit_score_partial matches scoring then fitting the instance sequentially.
+
+    Two identically seeded models process the same stream: one with fit_score_partial,
+    the other with score_partial followed by fit_partial. Their scores and their
+    behavior on new instances must agree (public behavior only).
+    """
+    from pysad.models import LODA
+
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(60, 3))
+    X_new = rng.normal(size=(10, 3))
+
+    fit_score_model = LODA(random_state=0)
+    sequential_model = LODA(random_state=0)
+
+    fit_score_scores = [fit_score_model.fit_score_partial(x) for x in X]
+    sequential_scores = []
+    for x in X:
+        sequential_scores.append(sequential_model.score_partial(x))
+        sequential_model.fit_partial(x)
+
+    assert fit_score_scores == pytest.approx(sequential_scores)
+
+    assert [fit_score_model.score_partial(x) for x in X_new] == pytest.approx(
+        [sequential_model.score_partial(x) for x in X_new]
+    )

@@ -18,9 +18,9 @@ from hypothesis.stateful import RuleBasedStateMachine, initialize, rule
 from pysad.statistics import (
     ADWINMeter,
     AverageMeter,
-    CUSUMMeter,
     CountMeter,
     CountMinSketchStatistic,
+    CUSUMMeter,
     DDMMeter,
     DDSketchMeter,
     EDDMMeter,
@@ -79,9 +79,7 @@ STREAM_LENGTH = st.integers(min_value=1, max_value=50)
 def _stream(draw, min_length=1, max_length=50):
     """Draw a stream of floats with constant features and duplicates."""
     num_instances = draw(st.integers(min_length, max_length))
-    values = draw(
-        hnp.arrays(np.float64, (num_instances,), elements=FINITE_VALUES)
-    )
+    values = draw(hnp.arrays(np.float64, (num_instances,), elements=FINITE_VALUES))
     # Make some values constant or duplicated.
     if num_instances > 1 and draw(st.booleans()):
         idx = draw(st.integers(1, num_instances - 1))
@@ -141,7 +139,9 @@ def test_basic_stat_get_is_idempotent(stat_cls, stream):
     assert first == second
 
 
-@pytest.mark.parametrize("stat_cls", REMOVABLE_BASIC_STATS, ids=[c.__name__ for c in REMOVABLE_BASIC_STATS])
+@pytest.mark.parametrize(
+    "stat_cls", REMOVABLE_BASIC_STATS, ids=[c.__name__ for c in REMOVABLE_BASIC_STATS]
+)
 @PROPERTY_SETTINGS
 @given(stream=_stream(min_length=3, max_length=20))
 def test_removable_basic_stat_remove_restores(stat_cls, stream):
@@ -263,7 +263,9 @@ REMOVABLE_FOR_RUNNING = [
 ]
 
 
-@pytest.mark.parametrize("stat_cls", REMOVABLE_FOR_RUNNING, ids=[c.__name__ for c in REMOVABLE_FOR_RUNNING])
+@pytest.mark.parametrize(
+    "stat_cls", REMOVABLE_FOR_RUNNING, ids=[c.__name__ for c in REMOVABLE_FOR_RUNNING]
+)
 @PROPERTY_SETTINGS
 @given(stream=_stream(min_length=10, max_length=40), window_size=st.integers(3, 15))
 def test_running_statistic_window_size_bound(stat_cls, stream, window_size):
@@ -276,7 +278,9 @@ def test_running_statistic_window_size_bound(stat_cls, stream, window_size):
     assert len(running.window) <= window_size
 
 
-@pytest.mark.parametrize("stat_cls", REMOVABLE_FOR_RUNNING, ids=[c.__name__ for c in REMOVABLE_FOR_RUNNING])
+@pytest.mark.parametrize(
+    "stat_cls", REMOVABLE_FOR_RUNNING, ids=[c.__name__ for c in REMOVABLE_FOR_RUNNING]
+)
 @PROPERTY_SETTINGS
 @given(stream=_stream(min_length=10, max_length=40), window_size=st.integers(3, 15))
 def test_running_statistic_matches_manual_window(stat_cls, stream, window_size):
@@ -334,6 +338,7 @@ def test_running_statistic_with_non_removable_raises(stream):
 # ==============================================================================
 # EXPONENTIAL MOVING AVERAGE/VARIANCE INVARIANTS
 # ==============================================================================
+
 
 @PROPERTY_SETTINGS
 @given(
@@ -438,6 +443,7 @@ def test_ema_rejects_both_alpha_and_half_life(alpha, half_life):
 # GEOMETRIC MOVING AVERAGE INVARIANTS
 # ==============================================================================
 
+
 @PROPERTY_SETTINGS
 @given(
     stream=_stream(min_length=5, max_length=30).filter(lambda s: all(v > 0 for v in s)),
@@ -484,7 +490,9 @@ QUANTILE_STATS = [
 ]
 
 
-@pytest.mark.parametrize("stat_cls,kwargs", QUANTILE_STATS, ids=[c.__name__ for c, _ in QUANTILE_STATS])
+@pytest.mark.parametrize(
+    "stat_cls,kwargs", QUANTILE_STATS, ids=[c.__name__ for c, _ in QUANTILE_STATS]
+)
 @PROPERTY_SETTINGS
 @given(stream=_stream(min_length=10, max_length=50).filter(lambda s: len(s) > 0))
 def test_quantile_meter_constant_stream(stat_cls, kwargs, stream):
@@ -499,7 +507,9 @@ def test_quantile_meter_constant_stream(stat_cls, kwargs, stream):
     assert meter.get() == pytest.approx(const_value, abs=tol)
 
 
-@pytest.mark.parametrize("stat_cls,kwargs", QUANTILE_STATS, ids=[c.__name__ for c, _ in QUANTILE_STATS])
+@pytest.mark.parametrize(
+    "stat_cls,kwargs", QUANTILE_STATS, ids=[c.__name__ for c, _ in QUANTILE_STATS]
+)
 @PROPERTY_SETTINGS
 @given(
     stream=_stream(min_length=20, max_length=100).filter(lambda s: len(s) > 0),
@@ -538,7 +548,9 @@ def test_quantile_bounds(stat_cls, kwargs, stream, q):
         assert stream_min - tol <= estimate <= stream_max + tol
 
 
-@pytest.mark.parametrize("stat_cls,kwargs", QUANTILE_STATS, ids=[c.__name__ for c, _ in QUANTILE_STATS])
+@pytest.mark.parametrize(
+    "stat_cls,kwargs", QUANTILE_STATS, ids=[c.__name__ for c, _ in QUANTILE_STATS]
+)
 @PROPERTY_SETTINGS
 @given(stream=_stream(min_length=20, max_length=100))
 def test_quantile_monotonicity(stat_cls, kwargs, stream):
@@ -596,6 +608,7 @@ def test_kll_merge_commutative(stream, q):
 # ==============================================================================
 # COUNT-MIN SKETCH AND HYPERLOGLOG INVARIANTS
 # ==============================================================================
+
 
 @PROPERTY_SETTINGS
 @given(
@@ -714,14 +727,21 @@ DRIFT_DETECTORS_BINARY = [
 DRIFT_DETECTORS_REAL = [
     (ADWINMeter, {"delta": 0.002, "max_buckets": 5}),
     (HDDMAMeter, {"drift_confidence": 0.001, "warning_confidence": 0.005, "two_sided": False}),
-    (HDDMWMeter, {"drift_confidence": 0.001, "warning_confidence": 0.005, "alpha": 0.05, "two_sided": False}),
+    (
+        HDDMWMeter,
+        {"drift_confidence": 0.001, "warning_confidence": 0.005, "alpha": 0.05, "two_sided": False},
+    ),
     (KSWINMeter, {"alpha": 0.0001, "window_size": 100, "stat_size": 10, "random_state": 42}),
     (PageHinkleyMeter, {"delta": 0.0, "threshold": 50.0, "min_instances": 30}),
     (CUSUMMeter, {"mean": 0.0, "delta": 0.5, "threshold": 5.0}),
 ]
 
 
-@pytest.mark.parametrize("detector_cls,kwargs", DRIFT_DETECTORS_BINARY, ids=[c.__name__ for c, _ in DRIFT_DETECTORS_BINARY])
+@pytest.mark.parametrize(
+    "detector_cls,kwargs",
+    DRIFT_DETECTORS_BINARY,
+    ids=[c.__name__ for c, _ in DRIFT_DETECTORS_BINARY],
+)
 @PROPERTY_SETTINGS
 @given(stream=BINARY_STREAM)
 def test_binary_drift_detector_drift_flag_is_boolean(detector_cls, kwargs, stream):
@@ -732,7 +752,9 @@ def test_binary_drift_detector_drift_flag_is_boolean(detector_cls, kwargs, strea
         assert _is_bool_or_numpy_bool(meter.drift_detected)
 
 
-@pytest.mark.parametrize("detector_cls,kwargs", DRIFT_DETECTORS_REAL, ids=[c.__name__ for c, _ in DRIFT_DETECTORS_REAL])
+@pytest.mark.parametrize(
+    "detector_cls,kwargs", DRIFT_DETECTORS_REAL, ids=[c.__name__ for c, _ in DRIFT_DETECTORS_REAL]
+)
 @PROPERTY_SETTINGS
 @given(stream=REAL_STREAM)
 def test_real_drift_detector_drift_flag_is_boolean(detector_cls, kwargs, stream):
@@ -743,7 +765,11 @@ def test_real_drift_detector_drift_flag_is_boolean(detector_cls, kwargs, stream)
         assert _is_bool_or_numpy_bool(meter.drift_detected)
 
 
-@pytest.mark.parametrize("detector_cls,kwargs", DRIFT_DETECTORS_BINARY, ids=[c.__name__ for c, _ in DRIFT_DETECTORS_BINARY])
+@pytest.mark.parametrize(
+    "detector_cls,kwargs",
+    DRIFT_DETECTORS_BINARY,
+    ids=[c.__name__ for c, _ in DRIFT_DETECTORS_BINARY],
+)
 @PROPERTY_SETTINGS
 @given(stream=BINARY_STREAM)
 def test_binary_drift_detector_get_returns_finite(detector_cls, kwargs, stream):
@@ -756,7 +782,9 @@ def test_binary_drift_detector_get_returns_finite(detector_cls, kwargs, stream):
     assert math.isfinite(result)
 
 
-@pytest.mark.parametrize("detector_cls,kwargs", DRIFT_DETECTORS_REAL, ids=[c.__name__ for c, _ in DRIFT_DETECTORS_REAL])
+@pytest.mark.parametrize(
+    "detector_cls,kwargs", DRIFT_DETECTORS_REAL, ids=[c.__name__ for c, _ in DRIFT_DETECTORS_REAL]
+)
 @PROPERTY_SETTINGS
 @given(stream=REAL_STREAM)
 def test_real_drift_detector_get_returns_finite(detector_cls, kwargs, stream):
@@ -769,7 +797,11 @@ def test_real_drift_detector_get_returns_finite(detector_cls, kwargs, stream):
     assert math.isfinite(result)
 
 
-@pytest.mark.parametrize("detector_cls,kwargs", DRIFT_DETECTORS_BINARY, ids=[c.__name__ for c, _ in DRIFT_DETECTORS_BINARY])
+@pytest.mark.parametrize(
+    "detector_cls,kwargs",
+    DRIFT_DETECTORS_BINARY,
+    ids=[c.__name__ for c, _ in DRIFT_DETECTORS_BINARY],
+)
 @PROPERTY_SETTINGS
 @given(stream=BINARY_STREAM)
 def test_binary_drift_detector_drift_resets_on_next_update(detector_cls, kwargs, stream):
@@ -789,7 +821,11 @@ def test_binary_drift_detector_drift_resets_on_next_update(detector_cls, kwargs,
     # Test passes if no exception raised.
 
 
-@pytest.mark.parametrize("detector_cls,kwargs", DRIFT_DETECTORS_BINARY + DRIFT_DETECTORS_REAL, ids=[c.__name__ for c, _ in DRIFT_DETECTORS_BINARY + DRIFT_DETECTORS_REAL])
+@pytest.mark.parametrize(
+    "detector_cls,kwargs",
+    DRIFT_DETECTORS_BINARY + DRIFT_DETECTORS_REAL,
+    ids=[c.__name__ for c, _ in DRIFT_DETECTORS_BINARY + DRIFT_DETECTORS_REAL],
+)
 @PROPERTY_SETTINGS
 @given(stream=st.lists(st.sampled_from([0.0]), min_size=50, max_size=100))
 def test_drift_detector_no_drift_on_constant_zero_stream(detector_cls, kwargs, stream):
@@ -965,7 +1001,9 @@ def test_kswin_distance_non_negative(stream):
 @given(stream=REAL_STREAM)
 def test_kswin_drift_detected_when_distance_exceeds_threshold(stream):
     """KSWIN drift_detected when KS distance > threshold."""
-    meter = KSWINMeter(window_size=50, stat_size=10, alpha=0.5, random_state=42)  # High alpha = low threshold
+    meter = KSWINMeter(
+        window_size=50, stat_size=10, alpha=0.5, random_state=42
+    )  # High alpha = low threshold
     for value in stream:
         meter.update(value)
     # If drift detected, distance must exceed threshold.
@@ -1112,6 +1150,7 @@ def test_adwin_rejects_delta_above_one(delta):
 # ONLINE PERIODICITY METER INVARIANTS
 # ==============================================================================
 
+
 @PROPERTY_SETTINGS
 @given(
     stream=_stream(min_length=20, max_length=100),
@@ -1200,7 +1239,9 @@ class _CUSUMMachine(RuleBasedStateMachine):
 
     @rule(data=st.data())
     def append_value(self, data):
-        value = data.draw(st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False))
+        value = data.draw(
+            st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False)
+        )
         self.last_was_drift = bool(self.detector.drift_detected)
         self.detector.update(value)
 
@@ -1237,7 +1278,9 @@ class _PageHinkleyMachine(RuleBasedStateMachine):
 
     @rule(data=st.data())
     def append_value(self, data):
-        value = data.draw(st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False))
+        value = data.draw(
+            st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False)
+        )
         self.last_was_drift = bool(self.detector.drift_detected)
         self.detector.update(value)
 
@@ -1279,18 +1322,38 @@ ALL_STATISTICS = [
     ("KLLMeter", KLLMeter, {"q": 0.5, "k": 64, "random_state": 42}),
     ("DDSketchMeter", DDSketchMeter, {"q": 0.5}),
     ("RelativeErrorQuantileMeter", RelativeErrorQuantileMeter, {"q": 0.5, "random_state": 42}),
-    ("CountMinSketchStatistic", CountMinSketchStatistic, {"width": 32, "depth": 3, "random_state": 42}),
+    (
+        "CountMinSketchStatistic",
+        CountMinSketchStatistic,
+        {"width": 32, "depth": 3, "random_state": 42},
+    ),
     ("HyperLogLogStatistic", HyperLogLogStatistic, {"precision": 8}),
     ("OnlinePeriodicityMeter", OnlinePeriodicityMeter, {"window_size": 10}),
     ("ADWINMeter", ADWINMeter, {"delta": 0.002, "max_buckets": 5}),
     ("DDMMeter", DDMMeter, {"warning_level": 2.0, "drift_level": 3.0, "min_num_items": 30}),
-    ("EDDMMeter", EDDMMeter, {"warning_threshold": 0.95, "drift_threshold": 0.9, "min_num_errors": 30}),
+    (
+        "EDDMMeter",
+        EDDMMeter,
+        {"warning_threshold": 0.95, "drift_threshold": 0.9, "min_num_errors": 30},
+    ),
     ("FHDDMMeter", FHDDMMeter, {"window_size": 50, "delta": 1e-6}),
     ("FHDDMSMeter", FHDDMSMeter, {"short_window_size": 25, "long_window_size": 50, "delta": 1e-7}),
     ("FHDDMSAddMeter", FHDDMSAddMeter, {"short_window_size": 25, "stack_size": 2, "delta": 1e-7}),
-    ("HDDMAMeter", HDDMAMeter, {"drift_confidence": 0.001, "warning_confidence": 0.005, "two_sided": False}),
-    ("HDDMWMeter", HDDMWMeter, {"drift_confidence": 0.001, "warning_confidence": 0.005, "alpha": 0.05, "two_sided": False}),
-    ("KSWINMeter", KSWINMeter, {"alpha": 0.0001, "window_size": 100, "stat_size": 10, "random_state": 42}),
+    (
+        "HDDMAMeter",
+        HDDMAMeter,
+        {"drift_confidence": 0.001, "warning_confidence": 0.005, "two_sided": False},
+    ),
+    (
+        "HDDMWMeter",
+        HDDMWMeter,
+        {"drift_confidence": 0.001, "warning_confidence": 0.005, "alpha": 0.05, "two_sided": False},
+    ),
+    (
+        "KSWINMeter",
+        KSWINMeter,
+        {"alpha": 0.0001, "window_size": 100, "stat_size": 10, "random_state": 42},
+    ),
     ("PageHinkleyMeter", PageHinkleyMeter, {"delta": 0.0, "threshold": 50.0, "min_instances": 30}),
     ("CUSUMMeter", CUSUMMeter, {"mean": 0.0, "delta": 0.5, "threshold": 5.0}),
 ]
@@ -1304,6 +1367,7 @@ def test_all_statistics_basic_contract(name, cls, kwargs, data):
     # Handle classes that need special handling.
     if name == "AbsStatistic":
         from pysad.statistics import AbsStatistic, AverageMeter
+
         meter = AbsStatistic(AverageMeter)
     else:
         meter = cls(**kwargs)
@@ -1316,7 +1380,9 @@ def test_all_statistics_basic_contract(name, cls, kwargs, data):
         stream = data.draw(st.lists(st.sampled_from([0.0, 1.0]), min_size=10, max_size=50))
     elif name == "GeometricMovingAverageMeter":
         # GMA needs positive values.
-        stream = data.draw(st.lists(st.floats(min_value=0.01, max_value=100.0), min_size=10, max_size=50))
+        stream = data.draw(
+            st.lists(st.floats(min_value=0.01, max_value=100.0), min_size=10, max_size=50)
+        )
     else:
         stream = data.draw(_stream(min_length=10, max_length=50))
 
@@ -1342,6 +1408,7 @@ def test_all_statistics_basic_contract(name, cls, kwargs, data):
 # ==============================================================================
 # PARAMETER VALIDATION TESTS
 # ==============================================================================
+
 
 @PROPERTY_SETTINGS
 @given(q=st.floats(min_value=-1.0, max_value=2.0).filter(lambda x: x < 0 or x > 1))

@@ -1,6 +1,30 @@
 {
-  "benchmark_date": "2026-11-23",
-  "commit": "dd79d69",
+  "audit": {
+    "aupr_changes": 400,
+    "auroc_changes_above_tolerance": 299,
+    "cache_hits": 4690,
+    "changed_rows": 400,
+    "computed_runs": 3763,
+    "false_alert_rate_changes_above_tolerance": 7,
+    "historical_reference_mismatches": 0,
+    "historical_reference_replays": 5,
+    "new_runs": 853,
+    "reference_commit": "bbcb660",
+    "reference_results_sha256": "40da87fd2fdb4893b97dafcf84c0c30e9a0b154b0e8171f8f40988a1248e4220",
+    "reference_rows": 7600,
+    "runs": 8453,
+    "second_platform_tested": false,
+    "solved_changes": 0,
+    "tolerances": {
+      "auroc": 0.005,
+      "false_alert_rate": 0.02,
+      "nab_score": 1.0
+    },
+    "uncached_repeat_mismatches": 0,
+    "uncached_repeated_rows": 400
+  },
+  "benchmark_date": "2026-11-26",
+  "commit": "bbcb660",
   "dataset_checksums": {
     "arrhythmia.mat": "e4d47e499591ae31e5d7f0cd983367092353eac240f48e14c9b36457edb3460d",
     "cardio.mat": "5e568b6a73711012c481fa6cc984ab9c68e9a4fa44d6aeb3b43efa381c3f695b",
@@ -19,5 +43,12 @@
     "vertebral.mat": "84b50b055f118f54b5c976650ccd284ab7c1adee822f8b3eb517c7e2c890d15e",
     "vowels.mat": "51d5397bad1ceeda22b7cd44fd58125c5d603c9c2edb53aa59933330e259ac7b",
     "wbc.mat": "afe6b26953cc196b9a480318c903e0edef22529c2f61bd02082438c6e70630a7"
+  },
+  "runtime": {
+    "numpy": "2.2.6",
+    "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+    "python": "3.13.2",
+    "scikit-learn": "1.7.2",
+    "scipy": "1.18.1"
   }
 }

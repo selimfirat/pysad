@@ -199,8 +199,6 @@ class ForecastingAnomalyDetector(BaseModel):
         else:
             forecast = self.forecaster.forecast(horizon=1)[0]
 
-        if isinstance(forecast, (list, tuple)):
-            forecast = forecast[0]
         forecast = float(forecast)
         error = abs(value - forecast)
 

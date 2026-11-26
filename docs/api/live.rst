@@ -27,6 +27,21 @@ Examples:
    # Tab-delimited CSV with a header row
    pysad-live --source data.csv --csv-delimiter $'\t' --detector loda
 
+Open the web dashboard
+----------------------
+
+Add ``--web`` to open the web dashboard in your browser. The dashboard streams scores, conformal ribbons, and alerts with Server-Sent Events. It uses the Python standard library only, so no extra package is needed.
+
+.. code-block:: console
+
+   # Open the dashboard on the default port 8080
+   pysad-live --source synthetic --detector loda --calibrator conformal --web
+
+   # Choose another port and host
+   pysad-live --source nyc_taxi --detector half_space_trees --calibrator spot --web --port 9090 --host 0.0.0.0
+
+Open ``http://127.0.0.1:8080`` in your browser. See :doc:`/guides/live_dashboard` for the full usage, including data sources, detectors, calibrators, and what the dashboard shows.
+
 Functions
 ---------
 

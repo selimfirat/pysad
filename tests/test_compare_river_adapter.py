@@ -1,10 +1,11 @@
 """The optional River adapter benchmark harness.
 
 River is a test dependency, so these tests run whenever river is installed. They verify the
-harness imports cleanly, reports whether river is available, and scores through the
-``PySADToRiverAdapter`` adapter in prequential order.
+harness imports cleanly, reports whether river is available, scores through the
+``PySADToRiverAdapter`` adapter in prequential order, and runs every job of the process pool.
 """
 
+import csv
 import sys
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -95,3 +96,52 @@ def test_main_exits_early_without_river(monkeypatch, capsys):
     assert harness.main() == 0
     captured = capsys.readouterr()
     assert "river is not installed" in captured.out
+
+
+def test_main_runs_every_job_and_writes_the_table(monkeypatch, tmp_path):
+    """main() runs each job of the pool and writes one row for every detector and dataset."""
+    rng = np.random.RandomState(0)
+    X = rng.rand(120, 3)
+    y = np.zeros(120, dtype=int)
+    y[::10] = 1
+
+    def fake_load(dataset, seed, points=None):
+        return X, y
+
+    class DummyExecutor:
+        """A pool that runs the jobs in the current process, like the real pool does."""
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def map(self, fn, jobs):
+            return [fn(job) for job in jobs]
+
+    monkeypatch.setattr(harness, "ProcessPoolExecutor", DummyExecutor)
+    monkeypatch.setattr(
+        harness.benchmark,
+        "DETECTORS",
+        {"LODA": harness.benchmark.DETECTORS["LODA"]},
+    )
+    monkeypatch.setattr(harness.benchmark, "DATASETS", ["odds/annthyroid.mat"])
+    monkeypatch.setattr(harness.benchmark, "load", fake_load)
+    monkeypatch.setattr(harness.benchmark, "OUT", tmp_path)
+    monkeypatch.setattr(harness.benchmark.Data, "get_data", lambda self, name: None)
+    monkeypatch.setattr(sys, "argv", ["compare_river_adapter.py", "--jobs", "1"])
+
+    assert harness.main() == 0
+
+    with (tmp_path / "comparison_river_adapter.csv").open(encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    keys = {(row["Library"], row["Detector"], row["Dataset"]) for row in rows}
+    assert ("PySAD (adapter)", "LODA", "odds/annthyroid.mat") in keys
+    assert ("River", "HalfSpaceTrees", "odds/annthyroid.mat") in keys
+    for row in rows:
+        assert 0.0 <= float(row["AUROC"]) <= 1.0
+        assert float(row["Time per point (ms)"]) >= 0.0

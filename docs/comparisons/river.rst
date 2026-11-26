@@ -82,3 +82,5 @@ To run the comparison, install the ``compare`` dependency group, which needs Pyt
    $ python benchmarks/compare.py
 
 The script runs the libraries that are installed. With this group, it writes ``docs/benchmark/comparison_river.csv``, ``docs/benchmark/comparison_pyod.csv`` and ``docs/benchmark/comparison_capymoa.csv``. StreamAD and Alibi Detect need NumPy 1, so they have their own group, as :doc:`streamad` describes. With the same versions of the libraries, a new run gives the same AUROC and AUPR. Only the times change.
+
+To run the same detectors through :class:`~pysad.integrations.PySADToRiverAdapter`, run ``benchmarks/compare_river_adapter.py``. :doc:`../benchmarks/run` describes this harness.

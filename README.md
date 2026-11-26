@@ -35,6 +35,7 @@
 <p align="center">
   <a href="https://pysad.readthedocs.io/en/stable/"><b>Documentation</b></a> ·
   <a href="https://pysad.readthedocs.io/en/stable/getting_started.html">Getting started</a> ·
+  <a href="https://pysad.readthedocs.io/en/stable/cheatsheet.html">Quick reference</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/guides/index.html">How-to guides</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/benchmark.html">Benchmarks</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/detectors.html">Detectors</a> ·
@@ -182,6 +183,7 @@ Use these guides to map your existing workflow to PySAD:
 
 - [Azure AI Anomaly Detector and Metrics Advisor](https://pysad.readthedocs.io/en/stable/guides/migrate_azure.html)
 - [AWS Lookout for Equipment and Kinesis RCF](https://pysad.readthedocs.io/en/stable/guides/migrate_aws.html)
+- [Darts](https://pysad.readthedocs.io/en/stable/guides/migrate_darts.html)
 - [Salesforce Merlion](https://pysad.readthedocs.io/en/stable/guides/migrate_merlion.html)
 - [Alibi Detect](https://pysad.readthedocs.io/en/stable/guides/migrate_alibi_detect.html)
 - [ADTK](https://pysad.readthedocs.io/en/stable/guides/migrate_adtk.html)

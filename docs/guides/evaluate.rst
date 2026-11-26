@@ -172,6 +172,19 @@ AUROC and AUPR reads take O(window_size * log(window_size)) time because they so
 Read less often to reduce this cost.
 See ``examples/example_rolling_metric.py`` for a complete stream example.
 
+Choose between WindowedMetric and RollingMetric
+-----------------------------------------------
+
+Use :class:`~pysad.evaluation.WindowedMetric` (``pysad/evaluation/windowed_metric.py``) to evaluate
+non-overlapping stream chunks, and :class:`~pysad.evaluation.RollingMetric`
+(``pysad/evaluation/rolling_metric.py``) to track only the most recent pairs:
+
+- ``WindowedMetric`` creates a fresh metric instance after every ``window_size`` instances and
+  averages completed windows that contain both classes (an empty window or no completed valid
+  windows returns ``None``).
+- ``RollingMetric`` keeps a sliding buffer of the most recent ``window_size`` label-score pairs
+  and drops the oldest pair on each update; an empty window returns ``None``.
+
 Report a stable result
 ----------------------
 

@@ -57,7 +57,6 @@ __all__ = [
     "list_data_sources",
     "list_detectors",
     "main",
-    "mcp_server",
     "reset_session",
     "score_batch",
     "score_point",

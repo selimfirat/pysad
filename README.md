@@ -35,6 +35,7 @@
 <p align="center">
   <a href="https://pysad.readthedocs.io/en/stable/"><b>Documentation</b></a> ·
   <a href="https://pysad.readthedocs.io/en/stable/getting_started.html">Getting started</a> ·
+  <a href="https://pysad.readthedocs.io/en/stable/cheatsheet.html">Quick reference</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/guides/index.html">How-to guides</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/benchmark.html">Benchmarks</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/detectors.html">Detectors</a> ·

@@ -40,7 +40,7 @@ from .median_absolute_deviation import MedianAbsoluteDeviation
 from .memstream import MemStream
 from .midas import MIDAS
 from .milof import MiLOF
-from .model_ensemble import ModelEnsemble
+from .model_ensemble import ModelEnsemble, StrictModelEnsemble
 from .mstream import MStream
 from .nets import NETS
 from .oesnn_uad import OeSNNUAD
@@ -133,6 +133,7 @@ __all__ = [
     "StreamingAutoregressiveDetector",
     "StreamKMPlusPlus",
     "StreamPipeline",
+    "StrictModelEnsemble",
     "TEDA",
     "ThreshLEAP",
     "xStream",

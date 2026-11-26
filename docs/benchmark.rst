@@ -13,6 +13,7 @@ The results are on these pages:
 - :doc:`benchmarks/multivariate`: the multivariate detectors on |num_datasets| ODDS datasets and on |num_drift_streams| real streams with drift.
 - :doc:`benchmarks/univariate`: the univariate detectors on the NAB and UCR series, and the multivariate detectors on the NAB series.
 - :doc:`benchmarks/calibration`: the alerts of the two probability calibrators.
+- :doc:`benchmarks/kernels`: the optional PyO3 tree kernels and their traversal timings.
 
 Benchmark setup
 ---------------
@@ -27,6 +28,7 @@ Benchmark setup
    benchmarks/multivariate
    benchmarks/univariate
    benchmarks/calibration
+   benchmarks/kernels
    benchmarks/methodology
    benchmarks/datasets
    benchmarks/run

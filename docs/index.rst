@@ -300,35 +300,36 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    concepts
 
 .. toctree::
-    :hidden:
-    :caption: How-to guides
+   :hidden:
+   :caption: How-to guides
 
-    guides/index
-    guides/stream_data
-    guides/dataset_inventory
-    guides/choose_detector
-    guides/alerts
-    guides/evaluate
-    guides/statistics
-    guides/troubleshooting
-    guides/pipelines
-    guides/river_interoperability
-    guides/drift_aware_composition
-    guides/seasonal
-    guides/pyod
-    guides/production
-    guides/serving
-    guides/custom_model
-    guides/mcp
-    guides/migrate_azure
-    guides/migrate_aws
-    guides/migrate_darts
-    guides/migrate_merlion
-    guides/migrate_statsforecast
-    guides/migrate_alibi_detect
-    guides/migrate_adtk
-    guides/migrate_pyod
-    guides/migrate_river
+   guides/index
+   guides/stream_data
+   guides/dataset_inventory
+   guides/choose_detector
+   guides/alerts
+   guides/evaluate
+   guides/statistics
+   guides/troubleshooting
+   guides/pipelines
+   guides/river_interoperability
+   guides/drift_aware_composition
+   guides/seasonal
+   guides/pyod
+   guides/production
+   guides/serving
+   guides/live_dashboard
+   guides/custom_model
+   guides/mcp
+   guides/migrate_azure
+   guides/migrate_aws
+   guides/migrate_darts
+   guides/migrate_merlion
+   guides/migrate_statsforecast
+   guides/migrate_alibi_detect
+   guides/migrate_adtk
+   guides/migrate_pyod
+   guides/migrate_river
 
 .. toctree::
    :hidden:

@@ -80,6 +80,7 @@ Changelog = "https://github.com/selimfirat/pysad/releases"
 
 [project.optional-dependencies]
 mcp = ["mcp>=2.0.0,<3"]
+kernels = ["pysad_kernels"]
 
 [project.scripts]
 pysad-live = "pysad.live.cli:main"

@@ -115,6 +115,12 @@ Install the optional PyO3 Rust extension separately from PySAD:
 
    $ pip install pysad_kernels
 
+Or install PySAD together with the kernels:
+
+.. code-block:: console
+
+   $ pip install pysad[kernels]
+
 The extension provides kernels for four detectors:
 
 * :class:`~pysad.models.HalfSpaceTrees` and :class:`~pysad.models.RobustRandomCutForest` use the available tree kernels automatically.

@@ -178,6 +178,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: coverage.lcov
+          coverage-reporter-version: v0.6.22
       - name: Upload to Qlty
         # Forked PRs get no OIDC token, so upload only from this repo.
         if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository

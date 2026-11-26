@@ -323,6 +323,7 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | `ZeroShotEmbeddingDetector` | 基于语义锚点最大概念匹配的零样本分布外检测 (Ming et al., NeurIPS 2022) |
 | `ABSAD` | 基于角度的子空间异常检测 (ABSAD) (Zhang et al., 2017) |
 | `DenStream` | 密度基准流式异常检测器 (DenStream) (Cao et al., 2006) |
+| `OnlineKMeans` | 在线 K-Means 聚类按到最近中心的平方欧氏距离对每个实例打分 (Liberty et al., 2016) |
 | `StreamingRHF` | 流式随机直方林对每个实例打分 (Nesic et al., 2022) |
 
 **单变量**

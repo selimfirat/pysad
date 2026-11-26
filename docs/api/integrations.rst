@@ -34,6 +34,11 @@ scikit-multiflow pipeline adapter
 
 .. autoclass:: PySADToScikitMultiflowAdapter
 
+CapyMoa stream adapter
+----------------------
+
+.. autoclass:: PySADToCapyMoaAdapter
+
 Forecasting adapters
 --------------------
 

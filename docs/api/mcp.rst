@@ -98,7 +98,6 @@ Functions
    :nosignatures:
    :toctree: ../generated
    :kind: functions
-   :exclude: mcp_server
 
 The ``mcp_server`` instance is the configured MCP server returned by
 :func:`create_mcp_server`. Call :func:`main` to run it over stdio transport.

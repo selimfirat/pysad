@@ -210,6 +210,22 @@ def test_score_rejects_mismatched_row_counts():
         adapter.score(np.array([[1.0], [2.0]]), np.array([1]))
 
 
+def test_predict_rejects_three_dimensional_X():
+    """A three-dimensional X raises ValueError from predict."""
+    model = _DecisionModel()
+    adapter = PySADToScikitMultiflowAdapter(model)
+    with pytest.raises(ValueError, match="one- or two-dimensional"):
+        adapter.predict(np.array([[[1.0], [2.0]]]))
+
+
+def test_score_rejects_three_dimensional_X():
+    """A three-dimensional X raises ValueError from score."""
+    model = _DecisionModel()
+    adapter = PySADToScikitMultiflowAdapter(model)
+    with pytest.raises(ValueError, match="one- or two-dimensional"):
+        adapter.score(np.array([[[1.0], [2.0]]]), np.array([1, 0]))
+
+
 def test_batch_partial_fit_matches_sequential_fit_partial():
     """One batch partial_fit call records the same calls as sequential single-row calls."""
     model1 = _RecordingModel()

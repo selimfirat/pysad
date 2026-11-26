@@ -130,6 +130,22 @@ def test_partial_fit_accepts_a_raw_array():
     _calls_match(model.calls, [(np.array([1.0, 2.0, 3.0]), None)])
 
 
+def test_partial_fit_accepts_a_scalar():
+    """A scalar feature value is reshaped to a one-dimensional vector."""
+    model = _RecordingModel()
+    adapter = PySADToCapyMoaAdapter(model)
+    adapter.partial_fit(np.float64(3.0))
+    _calls_match(model.calls, [(np.array([3.0]), None)])
+
+
+def test_score_accepts_a_scalar():
+    """A scalar feature value is treated as a one-dimensional instance without learning."""
+    model = _RecordingModel()
+    adapter = PySADToCapyMoaAdapter(model)
+    assert adapter.score(np.float64(3.0)) == 0.0
+    assert model.calls == []
+
+
 def test_score_returns_the_model_score():
     """score calls score_partial on the instance's x without learning."""
     model = _RecordingModel()

@@ -18,6 +18,7 @@ try:
         list_data_sources,
         list_detectors,
         main,
+        mcp_server,
         reset_session,
         score_batch,
         score_point,
@@ -32,6 +33,7 @@ except ImportError:  # pragma: no cover - mcp is an optional dependency
     list_calibrators = None  # type: ignore[assignment]
     list_data_sources = None  # type: ignore[assignment]
     list_detectors = None  # type: ignore[assignment]
+    mcp_server = None  # type: ignore[assignment]
     main = None  # type: ignore[assignment]
     reset_session = None  # type: ignore[assignment]
     score_batch = None  # type: ignore[assignment]
@@ -48,6 +50,7 @@ __all__ = [
     "list_data_sources",
     "list_detectors",
     "main",
+    "mcp_server",
     "reset_session",
     "score_batch",
     "score_point",

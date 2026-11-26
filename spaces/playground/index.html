@@ -1946,6 +1946,13 @@
 
     async function boot() {
       wireUI();
+      if ("serviceWorker" in navigator) {
+        try {
+          await navigator.serviceWorker.register("./sw.js");
+        } catch {
+          // Service Worker is optional; offline support degrades gracefully.
+        }
+      }
       const urlParams = parseUrlParams();
       applyUrlParams(urlParams);
       try {

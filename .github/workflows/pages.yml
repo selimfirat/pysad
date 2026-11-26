@@ -55,7 +55,7 @@ jobs:
         run: |
           stage="_site/playground"
           mkdir -p "$stage/data/nab"
-          cp spaces/playground/index.html spaces/playground/worker.js spaces/playground/engine.py "$stage/"
+          cp spaces/playground/index.html spaces/playground/worker.js spaces/playground/engine.py spaces/playground/sw.js "$stage/"
           cp -r examples/data/nab/. "$stage/data/nab/"
           cp examples/data/arrhythmia.mat "$stage/data/arrhythmia.mat"
           uv build --wheel --out-dir "$stage"

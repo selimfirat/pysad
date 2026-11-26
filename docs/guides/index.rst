@@ -153,3 +153,9 @@ Migration guides
       :doc:`migrate_pyod`
 
       Move from PyOD batch detection to PySAD prequential streaming detection.
+
+   .. container:: card
+
+      :doc:`migrate_river`
+
+      Translate River streaming anomaly detection to PySAD streaming detection.

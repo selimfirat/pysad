@@ -151,7 +151,7 @@ Use these guides to map your existing workflow to PySAD:
 - :doc:`Alibi Detect <guides/migrate_alibi_detect>`
 - :doc:`ADTK <guides/migrate_adtk>`
 - :doc:`PyOD <guides/migrate_pyod>`
-- :doc:`River <guides/river_interoperability>`
+- :doc:`River <guides/migrate_river>`
 
 .. container:: stream-figure
 
@@ -319,6 +319,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
     guides/migrate_alibi_detect
     guides/migrate_adtk
     guides/migrate_pyod
+    guides/migrate_river
 
 .. toctree::
    :hidden:

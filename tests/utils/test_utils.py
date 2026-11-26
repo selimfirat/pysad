@@ -506,22 +506,32 @@ class TestPlotStream:
         plt.close("all")
 
     def test_plot_stream_draws_alert_spikes(self):
-        """With alerts and labels, the alerts panel shows the spikes."""
+        """With alerts and labels, the alerts panel draws each spike at its position and row."""
         self._use_agg_backend()
         import matplotlib.pyplot as plt
         import numpy as np
 
         from pysad.utils import plot_stream
 
-        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8])
-        alerts = np.array([2])
-        labels = np.array([0, 0, 0, 0, 1])
+        scores = np.array([0.1, 0.5, 0.9, 0.2, 0.8, 0.3, 0.7])
+        alerts = np.array([False, True, False, True, False, False, False])
+        labels = np.array([0, 0, 0, 0, 1, 0, 1])
 
-        _, axes = plot_stream(scores.reshape(-1, 1), scores, alerts=alerts, labels=labels)
+        fig, axes = plot_stream(scores.reshape(-1, 1), scores, alerts=alerts, labels=labels)
+        alerts_ax = axes[2]
 
-        assert len(axes[2].collections) >= 1
+        rows = {
+            collection.get_lineoffset(): sorted(collection.get_positions())
+            for collection in alerts_ax.collections
+        }
+        assert rows == {0: [1, 3], 1: [4, 6]}
+        ticks = {
+            tick: label.get_text()
+            for tick, label in zip(alerts_ax.get_yticks(), alerts_ax.get_yticklabels(), strict=True)
+        }
+        assert ticks == {0: "alert", 1: "anomaly"}
 
-        plt.close("all")
+        plt.close(fig)
 
     def test_plot_stream_without_optional_args(self):
         """plot_stream works with only the features and the scores."""

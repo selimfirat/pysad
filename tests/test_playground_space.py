@@ -173,6 +173,24 @@ def test_generated_pipeline_code_is_valid_python():
             assert " | " in code
 
 
+def test_generated_pipeline_code_runs_end_to_end():
+    """Generated snippet executes cleanly, including the LODA attribution block on alerts."""
+    import numpy as np
+
+    code = engine.generate_pipeline_code(
+        stream_name=engine.STREAM_SYNTHETIC,
+        detectors=["LODA"],
+        calibrator_name=engine.CALIBRATOR_CONFORMAL,
+        threshold=0.985,
+        calibrator_window=350,
+        warmup=100,
+    )
+    ast.parse(code)
+    ns = {"np": np}
+    exec(code, ns)
+    assert isinstance(ns["alerts"], list)
+
+
 def test_gradio_ui_builds_and_evaluates_if_installed():
     """When Gradio is available locally, build_demo() and evaluate_ui() execute without error."""
     if importlib.util.find_spec("gradio") is None or importlib.util.find_spec("plotly") is None:

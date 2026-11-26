@@ -241,6 +241,31 @@ The first load downloads the ARFF file into the shared dataset cache and verifie
 .. literalinclude:: ../../examples/example_creditcard.py
    :language: python
 
+Numenta Anomaly Benchmark (NAB)
+-------------------------------
+
+``Data.datasets("nab")`` lists the 58 univariate series of the Numenta Anomaly Benchmark, for example ``"nab/realKnownCause/nyc_taxi.csv"``. Each series is a CSV with the header ``timestamp,value``. The points in an anomaly window of NAB have the label 1.
+
+``Data.datasets("nab-real-world")`` lists the 47 real-world series of NAB, that is all series except the 11 artificial ones under ``artificialNoAnomaly`` and ``artificialWithAnomaly``.
+
+.. code-block:: python
+
+   from pysad.utils import Data
+
+   data = Data()
+   X, y = data.get_data("nab/realKnownCause/nyc_taxi.csv")  # arrays with all the points
+
+   for x, label in data.get_iterator("nab/realKnownCause/nyc_taxi.csv"):  # one point at a time
+       ...
+
+``get_iterator`` shuffles by default. Set ``random_state=0`` for reproducible order or ``shuffle=False`` to preserve file order. ``Data.datasets()`` lists available datasets.
+
+With ``timestamps=True``, ``get_data`` returns each point as ``[timestamp, value]``, with the timestamp in seconds since the Unix epoch, as :class:`~pysad.models.HTM` takes it. NAB gives local times without a time zone, and the timestamps read them as UTC.
+
+``Data.metadata("nab/realKnownCause/nyc_taxi.csv")`` gives the source URL, the license, and the SHA-256 checksum that every download must match. NAB is under the MIT license at commit ea702d75; earlier commits of NAB are under AGPL-3.0.
+
+``Data`` downloads each series once to ``~/.cache/pysad``. Override the folder with ``PYSAD_DATA_DIR`` or ``Data("path/to/folder")``.
+
 Server Machine Dataset (SMD)
 ----------------------------
 

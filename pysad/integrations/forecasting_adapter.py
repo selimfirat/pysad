@@ -52,13 +52,28 @@ class ForecasterProtocol(Protocol):
         ...
 
 
+def _is_forecaster_object(forecaster: Any) -> bool:
+    """Returns True if ``forecaster`` exposes the ``ForecasterProtocol`` methods.
+
+    The check uses duck typing so any object with callable ``forecast`` and ``learn_one``
+    methods qualifies, without importing River or another forecasting library.
+    """
+    return (
+        hasattr(forecaster, "forecast")
+        and hasattr(forecaster, "learn_one")
+        and callable(forecaster.forecast)
+        and callable(forecaster.learn_one)
+    )
+
+
 class ForecastingAnomalyDetector(BaseModel):
     """Scores each value of a univariate stream by its deviation from the one-step
-    forecast of a duck-typed forecaster.
+    forecast of a duck-typed forecaster or a user callable.
 
-    This is a zero-dependency version of :class:`~pysad.integrations.PredictiveAnomalyDetector`
-    that works with any forecaster implementing :class:`ForecasterProtocol`. The forecaster
-    is not required to come from River or any specific library.
+    This is a zero-dependency version of :class:`~pysad.integrations.PredictiveAnomalyDetector`.
+    It works with any forecaster implementing :class:`ForecasterProtocol`, and it also
+    accepts a plain user callable. The forecaster is not required to come from River or
+    any specific forecasting library such as Chronos, TimesFM, or StatsForecast.
 
     The anomaly score of ``x_t`` is the absolute prediction error ``|x_t - u_t|`` by default,
     or the absolute relative error ``|x_t - u_t| / |u_t|`` with ``relative=True``. A forecast
@@ -67,15 +82,32 @@ class ForecastingAnomalyDetector(BaseModel):
     The first ``probationary_period`` values receive a score of 0.0, allowing the forecaster
     to accumulate enough history before producing meaningful forecasts.
 
+    A user callable must have the signature ``forecast(history, horizon=1) -> float``, where
+    ``history`` is the list of values observed so far. The detector keeps this history and
+    calls the callable to forecast the next value before it learns from the current one.
+    This makes it easy to wrap Chronos, TimesFM, or StatsForecast:
+
+    .. code-block:: python
+
+        from pysad.integrations import ForecastingAnomalyDetector
+
+        def chronos_forecast(history, horizon=1):
+            # history is the list of observed values; close over a fitted Chronos pipeline.
+            return float(predict_next(history))
+
+        detector = ForecastingAnomalyDetector(forecaster=chronos_forecast)
+
     The model differs from :class:`~pysad.integrations.PredictiveAnomalyDetector` as follows:
 
     - It accepts any forecaster with ``forecast(horizon)`` and ``learn_one(y)`` methods,
       not only River forecasters.
+    - It accepts a user callable ``forecast(history, horizon=1) -> float``.
     - It does not depend on River or any external forecasting library.
 
     Args:
-        forecaster (object): A forecaster implementing :class:`ForecasterProtocol`.
-            The detector trains this object in place.
+        forecaster (object or callable): A forecaster implementing :class:`ForecasterProtocol`,
+            or a callable ``forecast(history, horizon=1) -> float``. The detector trains the
+            forecaster in place and keeps the observed history for a callable.
         relative (bool): Whether to divide the absolute prediction error by the absolute
             forecast. A forecast of exactly 0 then raises ``ZeroDivisionError``
             (Default=False).
@@ -83,7 +115,8 @@ class ForecastingAnomalyDetector(BaseModel):
             (Default=0).
 
     Raises:
-        TypeError: If ``probationary_period`` is not an int.
+        TypeError: If ``probationary_period`` is not an int, or if ``forecaster`` is neither
+            a forecaster object with ``forecast`` and ``learn_one`` methods nor a callable.
         ValueError: If ``probationary_period`` is negative.
     """
 
@@ -95,15 +128,18 @@ class ForecastingAnomalyDetector(BaseModel):
         relative: bool = False,
         probationary_period: int = 0,
     ) -> None:
-        if not isinstance(forecaster, ForecasterProtocol):
-            # Allow any object with the required methods (duck typing)
-            required = ("forecast", "learn_one")
-            for method in required:
-                if not hasattr(forecaster, method) or not callable(getattr(forecaster, method)):
-                    raise TypeError(
-                        f"forecaster must have a callable '{method}' method, "
-                        f"got {type(forecaster).__name__}"
-                    )
+        if _is_forecaster_object(forecaster):
+            self._use_callable = False
+            self._forecast_fn = None
+        elif callable(forecaster):
+            self._use_callable = True
+            self._forecast_fn = forecaster
+        else:
+            raise TypeError(
+                "forecaster must implement forecast(horizon) and learn_one(y), "
+                "or be a callable forecast(history, horizon=1) -> float; "
+                f"got {type(forecaster).__name__}"
+            )
         self.forecaster = forecaster
         self.relative = relative
         self.probationary_period = _int_at_least(
@@ -112,6 +148,8 @@ class ForecastingAnomalyDetector(BaseModel):
             minimum=0,
         )
         self.num_values_ = 0
+        # Observed history, used to forecast the next value when a user callable is given.
+        self._history: list[float] = []
 
     def fit_partial(self, X: NDArray[Any], y: int | None = None) -> ForecastingAnomalyDetector:
         """Updates the forecaster with the next value.
@@ -128,7 +166,10 @@ class ForecastingAnomalyDetector(BaseModel):
             ValueError: If ``X`` does not hold exactly one value.
         """
         value = check_univariate(X, "ForecastingAnomalyDetector")
-        self.forecaster.learn_one(y=value)
+        if self._use_callable:
+            self._history.append(value)
+        else:
+            self.forecaster.learn_one(y=value)
         self.num_values_ += 1
         return self
 
@@ -151,7 +192,14 @@ class ForecastingAnomalyDetector(BaseModel):
         if self.num_values_ < self.probationary_period:
             return 0.0
 
-        forecast = self.forecaster.forecast(horizon=1)[0]
+        if self._use_callable:
+            forecast_fn = self._forecast_fn
+            assert forecast_fn is not None
+            forecast = forecast_fn(self._history, horizon=1)
+        else:
+            forecast = self.forecaster.forecast(horizon=1)[0]
+
+        forecast = float(forecast)
         error = abs(value - forecast)
 
         return float(error / abs(forecast) if self.relative else error)

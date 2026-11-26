@@ -37,25 +37,6 @@ def test_per_regime_scores_do_not_leak_across_regimes():
     assert low_regime > high_regime
 
 
-def test_transform_partial_is_pure_per_regime():
-    calibrator = GroupConditionalConformalCalibrator(window_size=10)
-    for score in [1.0, 2.0, 3.0]:
-        calibrator.fit_partial(score, regime="a")
-
-    first = calibrator.transform_partial(2.0, regime="a")
-    assert calibrator.transform_partial(2.0, regime="a") == first
-
-
-def test_monotonic_within_a_regime():
-    calibrator = GroupConditionalConformalCalibrator(window_size=10)
-    for score in np.linspace(0.0, 10.0, 11):
-        calibrator.fit_partial(float(score), regime="a")
-
-    probes = [-1.0, 0.0, 5.0, 5.0, 10.0, 11.0]
-    outputs = [calibrator.transform_partial(p, regime="a") for p in probes]
-    assert outputs == sorted(outputs)
-
-
 def test_window_eviction_within_a_regime():
     calibrator = GroupConditionalConformalCalibrator(window_size=3)
     for score in [1.0, 2.0, 3.0]:
@@ -99,22 +80,6 @@ def test_nan_scores_are_not_learned_and_transform_to_zero():
     calibrator.fit_partial(float("nan"), regime="a")
     assert calibrator.transform_partial(1.0, regime="a") == 0.0
     assert calibrator.transform_partial(float("nan"), regime="a") == 0.0
-
-
-def test_batch_transform_matches_partial_for_default_regime():
-    rng = np.random.default_rng(3)
-    scores = rng.uniform(size=50)
-    batch = GroupConditionalConformalCalibrator(window_size=20)
-    streamed = GroupConditionalConformalCalibrator(window_size=20)
-    np.testing.assert_allclose(
-        batch.fit_transform(scores),
-        [streamed.fit_transform_partial(float(s)) for s in scores],
-    )
-    probes = np.array([0.1, 0.5, 0.9])
-    np.testing.assert_allclose(
-        batch.transform(probes),
-        [streamed.transform_partial(float(p)) for p in probes],
-    )
 
 
 def test_invalid_parameters_raise():

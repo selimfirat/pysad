@@ -40,11 +40,12 @@ from .median_absolute_deviation import MedianAbsoluteDeviation
 from .memstream import MemStream
 from .midas import MIDAS
 from .milof import MiLOF
-from .model_ensemble import ModelEnsemble
+from .model_ensemble import ModelEnsemble, StrictModelEnsemble
 from .mstream import MStream
 from .nets import NETS
 from .oesnn_uad import OeSNNUAD
 from .online_isolation_forest import OnlineIsolationForest
+from .online_kmeans import OnlineKMeans
 from .online_one_class_svm import OnlineOneClassSVM
 from .pcb_isolation_forest import PCBIsolationForest
 from .pewma import PEWMA
@@ -58,9 +59,11 @@ from .seasonal_esd import SeasonalESD, SeasonalHybridESD
 from .smart_sifter import SmartSifter
 from .spectral_residual import SpectralResidual
 from .standard_absolute_deviation import StandardAbsoluteDeviation
+from .stare import STARE
 from .stream_km_plusplus import StreamKMPlusPlus
 from .stream_pipeline import StreamPipeline
 from .streaming_autoregressive import StreamingAutoregressiveDetector
+from .streamingrhf import StreamingRHF
 from .teda import TEDA
 from .thresh_leap import ThreshLEAP
 from .xstream import xStream
@@ -110,6 +113,7 @@ __all__ = [
     "NullModel",
     "OeSNNUAD",
     "OnlineIsolationForest",
+    "OnlineKMeans",
     "OnlineOneClassSVM",
     "PCBIsolationForest",
     "PerfectModel",
@@ -126,9 +130,12 @@ __all__ = [
     "SmartSifter",
     "SpectralResidual",
     "StandardAbsoluteDeviation",
+    "STARE",
     "StreamingAutoregressiveDetector",
+    "StreamingRHF",
     "StreamKMPlusPlus",
     "StreamPipeline",
+    "StrictModelEnsemble",
     "TEDA",
     "ThreshLEAP",
     "xStream",

@@ -110,6 +110,50 @@ A multivariate model runs on the ODDS datasets and the streams with drift. A uni
 runs on the NAB and UCR series. Custom models are not stored in the result cache, so each run
 scores them again.
 
+Pass ``--latex`` together with ``--custom`` to also write ``docs/benchmark/summary.tex``. The
+table lists each dataset and the mean AUROC of each detector on it, with your custom model as one
+column next to the built-in detectors it was compared against. Higher AUROC means more anomalous.
+
+Benchmark an embedding stream
+-----------------------------
+
+To benchmark a frozen encoder, for example the output of a pretrained time-series foundation
+model, save the encoder as a callable in a file and pass
+``--encoder path/to/file.py:encode``. The script encodes every instance of a deterministic
+synthetic stream, scores each embedding with
+:class:`~pysad.models.ZeroShotEmbeddingDetector`, and reports the AUROC, the milliseconds per
+point, and whether a second run on the same stream gives exactly the same scores.
+
+The encoder receives one instance as a one dimensional NumPy array of shape
+``(num_features,)`` and must return one embedding vector of shape ``(embedding_dim,)`` with the
+same width on every call. It must be deterministic: if the encoder returns the same embedding for the same instance, a
+second run gives exactly the same scores. No framework or new dependency is needed. The encoder
+and its runtime stay outside PySAD.
+
+The semantic anchors of the detector are the embeddings of the warm-up points, so no labels are
+used to build them and the warm-up points do not count in the AUROC.
+
+For example, save this encoder as ``my_encoder.py``:
+
+.. code-block:: python
+
+   import numpy as np
+
+
+   def encode(x):
+       x = np.asarray(x, dtype=np.float64)
+       return x.copy()
+
+
+Then run:
+
+.. code-block:: console
+
+   $ python benchmarks/bench_embedding_stream.py --encoder my_encoder.py:encode --points 2000 --seed 7
+
+The command prints one row per run. If you pass ``--output results.csv``, the script writes the
+results to that CSV file.
+
 Result cache
 ------------
 
@@ -151,6 +195,124 @@ To check that detector memory stays bounded over a long stream, run ``benchmarks
    $ python benchmarks/memory_stability.py --detectors LODA,RSHash --points 100000 --checkpoint 10000
 
 The script generates one point at a time, warms up on 1,000 points, and records ``tracemalloc`` memory every ``--checkpoint`` points (default 100,000) over ``--points`` points (default 1,000,000). It exits with a non-zero status if traced memory grows by more than ``--max-growth-kb`` KiB (default 512.0) between the second and last checkpoints.
+
+Edge-memory and throughput benchmark
+------------------------------------
+
+To measure the peak traced memory and the milliseconds per point of the pure-Python streaming
+detectors on a deterministic stream of a fixed length, run ``benchmarks/bench_stream.py``:
+
+.. code-block:: console
+
+   $ python benchmarks/bench_stream.py --detectors all --points 10000 --repeats 3
+   $ python benchmarks/bench_stream.py --detectors LODA,RSHash,MIDAS --points 50000 --output docs/benchmark/stream_benchmark.csv
+
+Each detector warms up on 64 points, then scores every point before it learns from it. The stream
+length and the seed are fixed, so a rerun gives the same memory and timing. tracemalloc records
+the peak traced memory, and the script reports the median milliseconds per point across the timed
+runs. Multivariate detectors see five features from the unit interval, univariate detectors see
+one value, timestamped detectors see ``(timestamp, value)``, and edge-stream detectors see
+``(source, destination)``.
+
+Reproducible drift benchmark (TSB-drift)
+----------------------------------------
+
+To benchmark the public detectors on the real streams with drift in a reproducible way, run
+``benchmarks/bench_tsb_drift.py``:
+
+.. code-block:: console
+
+   $ python benchmarks/bench_tsb_drift.py --points 10000 --seed 0 --repeats 3 --output drift.csv
+
+The script loads each stream with drift (KDD http, INSECTS A/I/IG/IR, SMD 1-1/2-1/3-1), keeps at
+most ``--points`` points in time order, scales each feature to the range from 0 to 1, and scores
+every public multivariate detector with ``fit_score_partial``. It reports streaming AUROC and AUPR
+after the warm-up, milliseconds per point (throughput), and traced memory from ``tracemalloc``. A
+second run on the same stream must give exactly the same scores, so the run is reproducible.
+
+Use ``--detectors`` to score only some detectors and ``--streams`` to score only some streams. The
+results go to the file given with ``--output``; without it, the script prints a table only.
+
+Streaming detector ensembles
+----------------------------
+
+To report prequential (test-then-train) metrics of streaming detector ensembles, run the
+``--ensembles`` mode:
+
+.. code-block:: console
+
+   $ python benchmarks/benchmark.py --ensembles
+   $ python benchmarks/benchmark.py --ensembles --ci --jobs 1
+
+Each ensemble combines the same fast multivariate detectors (LODA, xStream, RSHash, and
+HalfSpaceTrees) with a different score ensembler: average, maximum, median, average of the bucket
+maxima, or maximum of the bucket averages. Every detector is wrapped in a normalizing pipeline so
+that its scores are on a comparable scale before they are combined.
+
+The mode scores every instance of each ODDS dataset before the ensemble learns from it, using
+:func:`~pysad.evaluation.evaluate_stream`, and reports AUROC, AUPR, and milliseconds per point.
+With ``--ci`` it keeps only the first 2,000 points of each dataset. The results go to
+``docs/benchmark/ensemble_results.csv``, one row per dataset and ensemble.
+
+Compare PySAD with River through the adapter
+--------------------------------------------
+
+To compare detectors through :class:`~pysad.integrations.PySADToRiverAdapter`, run
+``benchmarks/compare_river_adapter.py`` from the repository root:
+
+.. code-block:: console
+
+   $ pip install -e . --group test
+   $ python benchmarks/compare_river_adapter.py
+   $ python benchmarks/compare_river_adapter.py --jobs 2
+
+The harness scores every multivariate PySAD detector through the adapter. It scores River's own
+streaming detectors on the same points. It writes ``docs/benchmark/comparison_river_adapter.csv``,
+with one row for each detector and dataset. The columns are the library, the detector, the
+dataset, the AUROC, the AUPR and the milliseconds per point. The script prints the same rows.
+
+Each detector scores a point before it learns from the point. The metrics exclude the first
+``min(256, num_points // 4)`` scores as warm-up. Timing includes those points.
+The harness uses seed 0 and the shuffled, scaled ODDS datasets of the :doc:`benchmark </benchmark>`.
+With the same library versions, a rerun gives the same AUROC and AUPR. Only the times change.
+
+River is optional. Without it, the script prints a message and writes nothing.
+
+The harness uses this score-before-learn order for each detector.
+To compare detectors on your own stream, use this loop:
+
+.. code-block:: python
+
+   from river import anomaly
+   from sklearn.metrics import roc_auc_score
+
+   from pysad.integrations import PySADToRiverAdapter
+   from pysad.models import LODA
+   from pysad.utils import generate_stream
+
+   X, y = generate_stream(num_instances=1000, num_features=2, random_state=0)
+   points = [dict(enumerate(x)) for x in X]
+
+   adapter = PySADToRiverAdapter(lambda: LODA(random_state=0))
+   river_model = anomaly.LODA(seed=0)
+
+   adapter_scores, river_scores = [], []
+   for features in points:
+       adapter_scores.append(adapter.score_one(features))
+       adapter.learn_one(features)
+       river_scores.append(river_model.score_one(features))
+       river_model.learn_one(features)
+
+   print("PySAD AUROC:", round(roc_auc_score(y, adapter_scores), 3))
+   print("River AUROC:", round(roc_auc_score(y, river_scores), 3))
+
+.. code-block:: text
+
+   PySAD AUROC: 0.885
+   River AUROC: 0.792
+
+The example counts every point. The harness leaves out the warm-up points. The features are
+dictionaries, as :doc:`/guides/river_interoperability` describes.
 
 Performance badges
 ------------------

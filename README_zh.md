@@ -306,6 +306,7 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | `DILOF` | 密度汇总增量局部离群因子 (Na et al., KDD 2018) |
 | `MiLOF` | 带聚类摘要的高内存效率增量 LOF (Salehi et al., IEEE TKDE 2016) |
 | `KELOS` | 基于窗口微簇的核密度局部离群点检测 (Qin et al., EDBT 2019) |
+| `STARE` | 基于网格单元的核密度局部离群点检测，仅更新窗口变化的区域 (Yoon et al., KDD 2020) |
 | `AnyOut` | 基于 ClusTree 最近簇距离的随时离群点检测 (Assent et al., DASFAA 2012) |
 | `SDOstream` | 带指数衰减的稀疏数据观测器低密度流模型 (Hartl et al., ESANN 2020) |
 | `ADeMS` | Frequent Directions 矩阵概要 (Huang & Kasiviswanathan, VLDB 2015) |
@@ -322,6 +323,8 @@ PySAD 采用逐点预评估（使用默认参数与随机种子 0，在学习每
 | `ZeroShotEmbeddingDetector` | 基于语义锚点最大概念匹配的零样本分布外检测 (Ming et al., NeurIPS 2022) |
 | `ABSAD` | 基于角度的子空间异常检测 (ABSAD) (Zhang et al., 2017) |
 | `DenStream` | 密度基准流式异常检测器 (DenStream) (Cao et al., 2006) |
+| `OnlineKMeans` | 在线 K-Means 聚类按到最近中心的平方欧氏距离对每个实例打分 (Liberty et al., 2016) |
+| `StreamingRHF` | 流式随机直方林对每个实例打分 (Nesic et al., 2022) |
 
 **单变量**
 

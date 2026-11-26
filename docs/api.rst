@@ -16,8 +16,11 @@ Each page lists the public classes and functions of one module. Each name has a 
    * - :doc:`api/integrations`
      - Bidirectional wrappers and adapters for PyOD, scikit-learn, and River
      - ``pysad.integrations``
+   * - :doc:`api/transform`
+     - Transformers, projectors, postprocessors, ensemblers, and calibrators
+     - ``pysad.transform``
    * - :doc:`api/preprocessing`
-     - Scalers and seasonal decomposition
+     - Scalers, encoders, log parser, and seasonal decomposition
      - ``pysad.transform.preprocessing``
    * - :doc:`api/projection`
      - Random projections
@@ -52,12 +55,16 @@ Each page lists the public classes and functions of one module. Each name has a 
    * - :doc:`api/live`
      - Live CLI and dashboard entry point
      - ``pysad.live``
+   * - :doc:`api/mcp`
+     - Model Context Protocol server and optional server tools
+     - ``pysad.mcp``
 
 .. toctree::
    :hidden:
 
    api/models
    api/integrations
+   api/transform
    api/preprocessing
    api/projection
    api/stream_generators
@@ -70,3 +77,4 @@ Each page lists the public classes and functions of one module. Each name has a 
    api/utils
    api/core
    api/live
+   api/mcp

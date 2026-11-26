@@ -6,13 +6,6 @@ LLM clients.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
-
-mcp_server: FastMCP | None
-
 try:
     from .server import (
         SessionState,
@@ -40,8 +33,8 @@ except ImportError:  # pragma: no cover - mcp is an optional dependency
     list_calibrators = None  # type: ignore[assignment]
     list_data_sources = None  # type: ignore[assignment]
     list_detectors = None  # type: ignore[assignment]
+    mcp_server = None  # type: ignore[assignment]
     main = None  # type: ignore[assignment]
-    mcp_server = None
     reset_session = None  # type: ignore[assignment]
     score_batch = None  # type: ignore[assignment]
     score_point = None  # type: ignore[assignment]

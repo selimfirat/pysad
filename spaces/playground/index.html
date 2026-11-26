@@ -763,7 +763,7 @@
           <div id="csvUploadWrap" class="hidden">
             <label class="field-label" for="csvFileInput">Upload CSV (numeric + optional label)</label>
             <input id="csvFileInput" type="file" accept=".csv" disabled />
-            <p class="muted-note">Processed locally in browser memory.</p>
+            <p class="muted-note">Processed locally in browser memory. Share links include settings only. Upload the CSV again when opening a shared link.</p>
           </div>
 
           <label class="field-label" for="numPointsSlider">
@@ -1030,7 +1030,10 @@
         <section class="panel">
           <div class="card-header">
             <h2 class="card-title">Reproducible PySAD pipeline</h2>
-            <button id="copyCodeBtn" type="button" class="btn-secondary">Copy</button>
+            <div>
+              <button id="copyCodeBtn" type="button" class="btn-secondary">Copy Python pipeline</button>
+              <button id="copyLinkBtn" type="button" class="btn-secondary" disabled>Copy share link</button>
+            </div>
           </div>
           <pre><code id="pipelineCode"># Pipeline snippet updates after the first run.</code></pre>
         </section>
@@ -1086,6 +1089,7 @@
       injected: [],
       inspectStep: null,
       csvBytes: null,
+      initialFeature: null,
       featureNames: ["sensor_1"],
       lastPayload: null,
     };
@@ -1094,6 +1098,18 @@
 
     function parseUrlParams() {
       const params = new URLSearchParams(window.location.search);
+      let injected = [];
+      try {
+        const parsed = JSON.parse(params.get("injected") || "[]");
+        if (Array.isArray(parsed)) {
+          injected = parsed.filter(item => item &&
+            Number.isInteger(item.index) && item.index >= 0 &&
+            Number.isInteger(item.feature_idx) && item.feature_idx >= 0 &&
+            Number.isFinite(item.magnitude_sigma));
+        }
+      } catch {
+        // Ignore malformed injections so shared links can still open.
+      }
       return {
         stream: params.get("stream") || null,
         detectors: params.get("detectors") ? params.get("detectors").split(",") : null,
@@ -1102,7 +1118,7 @@
         calWindow: params.get("calWindow") ? Number(params.get("calWindow")) : null,
         points: params.get("points") ? Number(params.get("points")) : null,
         feature: params.get("feature") || null,
-        injected: params.get("injected") ? JSON.parse(params.get("injected")) : null,
+        injected,
         inspect: params.get("inspect") ? Number(params.get("inspect")) : null,
       };
     }
@@ -1149,6 +1165,7 @@
     }
 
     function applyUrlParams(urlParams) {
+      state.initialFeature = urlParams.feature;
       if (urlParams.stream) {
         const streamSelect = $("streamSelect");
         const optionExists = Array.from(streamSelect.options).some((opt) => opt.value === urlParams.stream);
@@ -1181,10 +1198,8 @@
         $("numPointsSlider").value = String(urlParams.points);
         $("numPointsValue").textContent = String(urlParams.points);
       }
-      if (urlParams.injected !== null) {
-        state.injected = urlParams.injected;
-        updateInjectedSummary();
-      }
+      state.injected = urlParams.injected;
+      updateInjectedSummary();
       if (urlParams.inspect !== null) {
         state.inspectStep = urlParams.inspect;
         $("inspectStepSlider").value = String(urlParams.inspect);
@@ -1535,7 +1550,7 @@
     function syncFeatureOptions(featureNames) {
       state.featureNames = featureNames;
       const select = $("featureSelect");
-      const current = select.value;
+      const current = state.initialFeature || select.value;
       const opts = featureNames.map((name) => {
         const opt = document.createElement("option");
         opt.value = name;
@@ -1552,6 +1567,7 @@
         ? `${data.status_note} Preview loaded; initializing WebAssembly timing...`
         : data.status_note;
       syncFeatureOptions(data.stream.feature_names);
+      if (!data.precomputed) state.initialFeature = null;
       updateInjectedSummary();
 
       const maxStep = Math.max(1, data.stream.num_points - 1);
@@ -1588,7 +1604,7 @@
         calibrator_name: getSelectedCalibrator(),
         threshold: Number($("thresholdSlider").value),
         calibrator_window: Number($("calWindowSlider").value),
-        primary_feature_name: $("featureSelect").value || null,
+        primary_feature_name: state.initialFeature || $("featureSelect").value || null,
         injected: state.injected,
       };
     }
@@ -1908,16 +1924,24 @@
         updateUrlParams();
       });
 
-      $("copyCodeBtn").addEventListener("click", async () => {
-        const text = $("pipelineCode").textContent || "";
-        try {
-          await navigator.clipboard.writeText(text);
-          $("copyCodeBtn").textContent = "Copied";
-          setTimeout(() => { $("copyCodeBtn").textContent = "Copy"; }, 1400);
-        } catch {
-          $("copyCodeBtn").textContent = "Select manually";
-        }
+      $("copyCodeBtn").addEventListener("click", () => {
+        copyText($("copyCodeBtn"), $("pipelineCode").textContent || "");
       });
+      $("copyLinkBtn").addEventListener("click", () => {
+        updateUrlParams();
+        copyText($("copyLinkBtn"), window.location.href);
+      });
+    }
+
+    async function copyText(button, text) {
+      const label = button.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = "Copied";
+      } catch {
+        button.textContent = "Select manually";
+      }
+      setTimeout(() => { button.textContent = label; }, 1400);
     }
 
     async function boot() {
@@ -1948,6 +1972,7 @@
         };
         state.worker.onerror = (event) => {
           state.ready = false;
+          $("copyLinkBtn").disabled = true;
           $("liveStart").disabled = true;
           setControlsEnabled(false);
           for (const request of pending.values()) request.reject(new Error(event.message));
@@ -1959,6 +1984,7 @@
 
         setBootProgress(94, "Measuring client-side execution speed...");
         state.ready = true;
+        $("copyLinkBtn").disabled = false;
         $("liveStart").disabled = false;
         setControlsEnabled(true);
         await evaluate();

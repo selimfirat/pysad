@@ -171,7 +171,7 @@ The initial learning period is called warm-up. Full-stream metrics include it. T
 Warm-up behavior of selected detectors
 --------------------------------------
 
-Each detector has a warm-up period before it produces meaningful scores. During warm-up, ``score_partial`` and ``fit_score_partial`` return a fixed value (usually 0.0 or 0.5) that does not reflect anomalousness.
+Each detector has a warm-up period before it produces meaningful scores. During warm-up, ``score_partial`` and ``fit_score_partial`` return a fixed value (usually 0.0 or 0.5) that does not reflect anomalousness. See :doc:`guides/troubleshooting` for how to handle the cold start.
 
 - :class:`~pysad.models.HTM`: The anomaly likelihood is 0.5 for the first ``probationary_period`` points (default 750). The raw anomaly score (fraction of unpredicted columns) is available immediately if ``likelihood=False``. Spatial anomalies (values outside the observed range by more than 5%) return 1.0 at any time.
 - :class:`~pysad.models.IDKS`: Returns 0.0 until the first window of ``window_size`` points (default 100) is full. After the window fills, the hypersphere partitions are initialized and scores reflect similarity to the window distribution.
@@ -215,7 +215,7 @@ Normal behavior changes over time. This change is drift. A detector follows drif
      - Detectors
      - Effect
    * - A window of recent data
-     - :class:`~pysad.models.xStream`, :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.ExactStorm`, :class:`~pysad.models.ApproxStorm`, :class:`~pysad.models.MCOD`, :class:`~pysad.models.NETS`, :class:`~pysad.models.CPOD`, :class:`~pysad.models.D3`, :class:`~pysad.models.ThreshLEAP`, :class:`~pysad.models.IncrementalLOF`, :class:`~pysad.models.KELOS`, :class:`~pysad.models.IForestASD`, :class:`~pysad.models.SeasonalESD`, :class:`~pysad.models.SeasonalHybridESD`, :class:`~pysad.models.KNNCAD`, :class:`~pysad.models.MatrixProfile`, :class:`~pysad.models.DAMP`, :class:`~pysad.models.MedianAbsoluteDeviation`, :class:`~pysad.models.SpectralResidual`
+     - :class:`~pysad.models.xStream`, :class:`~pysad.models.HalfSpaceTrees`, :class:`~pysad.models.ExactStorm`, :class:`~pysad.models.ApproxStorm`, :class:`~pysad.models.MCOD`, :class:`~pysad.models.NETS`, :class:`~pysad.models.CPOD`, :class:`~pysad.models.D3`, :class:`~pysad.models.ThreshLEAP`, :class:`~pysad.models.IncrementalLOF`, :class:`~pysad.models.KELOS`, :class:`~pysad.models.STARE`, :class:`~pysad.models.IForestASD`, :class:`~pysad.models.SeasonalESD`, :class:`~pysad.models.SeasonalHybridESD`, :class:`~pysad.models.KNNCAD`, :class:`~pysad.models.MatrixProfile`, :class:`~pysad.models.DAMP`, :class:`~pysad.models.MedianAbsoluteDeviation`, :class:`~pysad.models.SpectralResidual`
      - Data older than the window has no effect. A smaller window follows drift faster.
    * - Time decay
      - :class:`~pysad.models.RSHash`, :class:`~pysad.models.RobustRandomCutForest`, :class:`~pysad.models.Inqmad`, :class:`~pysad.models.OnlineOneClassSVM`, :class:`~pysad.models.ChangeFinder`, :class:`~pysad.models.AnyOut`, :class:`~pysad.models.HoltWinters`

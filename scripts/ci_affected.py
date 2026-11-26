@@ -24,6 +24,7 @@ _GLOBAL_TRIGGERS = frozenset(
 _SHARED_MODEL_FILES = frozenset(
     {
         "tests/models/test_discrimination.py",
+        "tests/models/test_edge_cases.py",
         "tests/models/test_models.py",
         "tests/models/test_nan_input.py",
         "tests/models/test_pickling.py",
@@ -36,6 +37,7 @@ _SHARED_MODEL_FILES = frozenset(
 _SHARED_MODEL_CONFTEST_TRIGGERS = frozenset(
     {
         "tests/models/test_discrimination.py",
+        "tests/models/test_edge_cases.py",
         "tests/models/test_models.py",
         "tests/models/test_nan_input.py",
         "tests/models/test_pickling.py",
@@ -72,6 +74,7 @@ _EXTRA_DEPENDENCIES: dict[str, tuple[set[str], set[str]]] = {
         {"docs/examples.rst", "docs/_autodiscover.py"},
         {"examples/"},
     ),
+    "tests/test_playground_browser.py": (set(), {"spaces/playground/"}),
     "tests/test_playground_space.py": (
         set(),
         {

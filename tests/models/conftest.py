@@ -22,6 +22,7 @@ _SHARED_MODEL_TEST_FILES = frozenset(
         ".github/workflows/coverage.yml",
         "tests/models/conftest.py",
         "tests/models/test_discrimination.py",
+        "tests/models/test_edge_cases.py",
         "tests/models/test_models.py",
         "tests/models/test_nan_input.py",
         "tests/models/test_pickling.py",
@@ -292,6 +293,7 @@ def short_stream_params(
         "NETS": {"window_size": 20, "max_radius": 0.5},
         "OeSNNUAD": {"window_size": 10, "num_output_neurons": 5},
         "OnlineIsolationForest": {"num_trees": 5, "max_leaf_samples": 4, "window_size": 10},
+        "OnlineKMeans": {"num_clusters": 2},
         "OnlineOneClassSVM": {"window_size": 10},
         "PCBIsolationForest": {"num_trees": 5, "window_size": 20, "stat_size": 6},
         "RelativeEntropy": {
@@ -331,6 +333,17 @@ def short_stream_params(
             "model": pysad.models.LODA(num_bins=5, num_random_cuts=10),
             "preprocessors": [ShingleTransformer(shingle_size=2)],
             "postprocessors": [ZScorePostprocessor(window_size=10)],
+        },
+        "StrictModelEnsemble": {
+            "models": [
+                pysad.models.LODA(num_bins=5, num_random_cuts=10, random_state=0)
+                | ZScorePostprocessor(window_size=10),
+                pysad.models.xStream(
+                    num_components=10, n_chains=10, depth=5, window_size=10, random_state=1
+                )
+                | ZScorePostprocessor(window_size=10),
+            ],
+            "ensembler": AverageScoreEnsembler(),
         },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
         "ZeroShotEmbeddingDetector": {

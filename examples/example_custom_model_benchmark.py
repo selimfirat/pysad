@@ -3,9 +3,9 @@
 This script shows how to benchmark a detector that is not part of PySAD. The detector lives in
 its own file, and the runner loads it with ``--custom path/to/file.py:ClassName``.
 
-Run the benchmark runner on this detector:
+Run the benchmark runner on this detector, with a LaTeX summary table:
 
-    python benchmarks/benchmark.py --custom examples/example_custom_model_benchmark.py:EWMAZScore
+    python benchmarks/benchmark.py --custom examples/example_custom_model_benchmark.py:EWMAZScore --latex
 
 By default the runner adds the custom model to the parts that match its input kind. A
 multivariate model runs on the ODDS datasets and the streams with drift. A univariate model runs

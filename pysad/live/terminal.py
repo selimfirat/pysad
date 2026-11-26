@@ -442,6 +442,11 @@ def create_data_stream(
     Yields:
         Tuples of (feature_vector, label_or_none).
     """
+    # CSV-specific options are only meaningful for file sources, so pop them
+    # here and keep them from reaching the in-memory generators below.
+    delimiter = kwargs.pop("delimiter", ",")
+    has_header = kwargs.pop("has_header", True)
+
     if source == "synthetic":
         n_instances = max(max_points or 1000, 200)
         X, y = generate_stream(num_instances=n_instances, **kwargs)
@@ -493,7 +498,10 @@ def create_data_stream(
         feature_columns = kwargs.pop("feature_columns", None)
         label_column = kwargs.pop("label_column", None)
         csv_streamer = CSVStreamer(
-            feature_columns=feature_columns, label_column=label_column, **kwargs
+            feature_columns=feature_columns,
+            label_column=label_column,
+            delimiter=delimiter,
+            has_header=has_header,
         )
         count = 0
         for item in csv_streamer.iter(source):

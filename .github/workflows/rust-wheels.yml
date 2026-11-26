@@ -2,6 +2,14 @@ name: Rust Wheels
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "rust/**"
+      - "pysad/_kernels.py"
+      - "pysad/models/loda.py"
+      - "pysad/models/stream_km_plusplus.py"
+      - "tests/test_loda_streamkm_kernels.py"
+      - ".github/workflows/rust-wheels.yml"
   release:
     types: [published]
 
@@ -9,8 +17,28 @@ permissions:
   contents: read
 
 jobs:
+  test-kernels:
+    name: Compare native and NumPy outputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - name: Install test and build dependencies
+        run: python -m pip install --upgrade pip && python -m pip install --group test . "maturin==1.8.0"
+      - name: Build and install kernels
+        run: |
+          maturin build --manifest-path rust/Cargo.toml --release --locked
+          python -m pip install rust/target/wheels/*.whl
+      - name: Run kernel and detector tests
+        run: python -m pytest -q tests/test_loda_streamkm_kernels.py tests/test_rust_kernels.py tests/models/test_loda.py tests/models/test_stream_km_plusplus.py
+
   build-wheels:
     name: Build wheels with cibuildwheel
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -19,10 +47,10 @@ jobs:
           persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Build wheels with cibuildwheel
-        uses: pypa/cibuildwheel@63fd63b352a9a8bdcc24791c9dbee952ee9a8abc # v3.3.0
+        uses: pypa/cibuildwheel@f9b966cfadf4109556cadc5bb39ddb72d0ce664e # v4.3.5
         env:
           CIBW_BUILD: cp311-*
           CIBW_SKIP: "*-win32 *-musllinux_*"

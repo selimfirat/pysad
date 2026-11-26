@@ -190,7 +190,15 @@ def expand_api_autosummary(text: str) -> str:
         if kind == "classes":
             selected = [n for n in selected if inspect.isclass(getattr(module, n))]
         elif kind == "functions":
-            selected = [n for n in selected if not inspect.isclass(getattr(module, n))]
+            selected = [n for n in selected if inspect.isroutine(getattr(module, n))]
+        elif kind == "variables":
+            selected = [
+                n
+                for n in selected
+                if not inspect.isclass(getattr(module, n))
+                and not inspect.isroutine(getattr(module, n))
+                and not inspect.ismodule(getattr(module, n))
+            ]
         if tail_names:
             tail_set = set(tail_names)
             selected = [

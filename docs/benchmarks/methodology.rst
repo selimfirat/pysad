@@ -65,6 +65,69 @@ One threshold for all the series needs scores with the same scale on each series
 
 The benchmark uses the scoring code of NAB. With it, :class:`~pysad.models.KNNCAD` gets NAB scores of 58.0, 43.4 and 64.8, the scores that the scoreboard of NAB lists for its KNN-CAD detector. :class:`~pysad.models.RelativeEntropy` gets higher scores than on the scoreboard, because its histogram follows the paper. :class:`~pysad.models.HTM` gets 64.2, 56.8 and 68.3. The scoreboard lists 64.6, 56.7 and 69.2 for the numentaTM detector of NAB, which uses the same kind of temporal memory, and 70.1, 63.1 and 74.3 for the numenta detector, which uses the backtracking temporal memory of NuPIC.
 
+Full-suite audit, 26 November 2026
+----------------------------------
+
+The audit compared 8,453 runs with 7,600 committed reference rows.
+It reused 4,690 matching cache entries and computed 3,763 entries.
+The suite added 853 runs. All 17 ODDS file checksums matched the previous metadata.
+The :download:`comparison CSV </benchmark/reproducibility.csv>` records the 400 rows with changed metrics.
+It includes AUROC, AUPR, false alert rate changes, seed 0, and each source commit.
+
+AUROC changed by more than 0.005 in 299 runs.
+AUPR changed at four decimal places in 400 runs.
+All 400 changed rows matched their cached metrics exactly in uncached reruns.
+The reruns also matched their cached NAB score arrays exactly.
+No UCR solved flag changed.
+Seven false alert rates changed by more than 0.02.
+
+The source history contains these changes. Counts include runs with shingles.
+
+.. list-table:: AUROC changes above 0.005
+   :header-rows: 1
+   :widths: 25 15 60
+
+   * - Detector
+     - Runs
+     - Source change
+   * - Inqmad
+     - 92
+     - ``173cfc9`` increased the initial sample from 256 to 500 and changed the numerical guard.
+   * - RobustRandomCutForest
+     - 75
+     - ``e7ded17`` stopped scoring from advancing the random state used for learning.
+   * - LODA
+     - 110
+     - ``fb4b427`` replaced growing histograms with alternating windows.
+   * - FluxEV
+     - 9
+     - ``7251cd8`` kept the default local window instead of forcing a seasonal window.
+   * - HoltWinters
+     - 13
+     - ``7251cd8`` kept the default violation window instead of forcing a seasonal window.
+
+MatrixProfile changed its distance calculation in ``342626d``.
+Its six changed AUPR values differ by at most 0.0005.
+StandardAbsoluteDeviation now reads the mean from VarianceMeter, following ``78a5513``.
+Its changed AUPR moved from 0.1344 to 0.1320.
+These source changes require separate explanations from platform rounding.
+Five reruns with older source or window settings reproduced reference AUROC and AUPR exactly.
+They covered Inqmad on arrhythmia, RRCF on glass, and LODA on NAB's ``art_daily_flatmiddle``.
+They also covered FluxEV and HoltWinters on NAB's ``art_daily_jumpsdown``.
+
+The audit used macOS arm64, Python 3.13.2, NumPy 2.2.6, SciPy 1.18.1, and scikit-learn 1.7.2.
+The cache key includes source contents, job settings, platform, Python, and installed package versions.
+A cache hit cannot establish agreement across platforms.
+This run did not use a second operating system.
+
+For a comparison across platforms, keep source, seed, and data files fixed.
+Use tolerances of 0.005 for AUROC, 0.02 for false alert rates, and 1.0 for NAB scores.
+AUPR has no cross-platform pass threshold.
+Timing comparisons need fresh runs with ``--jobs 1 --no-cache`` on the same machine.
+The refreshed ``results.csv`` removes obsolete rows outside ODDS and duplicate alert columns, following the runner's existing table layout.
+The throughput badge reports 4.7k points/s. Its previous 5.8k value included rows outside ODDS.
+Cached timings and different dataset coverage cannot measure a speed change.
+
 What the results do not show
 ----------------------------
 

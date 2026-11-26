@@ -134,3 +134,63 @@ def test_predict_on_edge_stream(name, stream_name):
     assert predictions.shape == (len(X),)
     assert set(np.unique(predictions)) <= {0, 1}
     assert partial_prediction in (0, 1)
+
+
+def _single_instance_vector(num_features):
+    """One constant instance of the given dimensionality."""
+    return np.full(num_features, 0.5)
+
+
+def _fit_label(name):
+    """Returns the label PerfectModel requires in fit_partial, or None for other models."""
+    if name == "PerfectModel":
+        return 0
+    return None
+
+
+@pytest.mark.parametrize("name", ACTIVE_MODELS, ids=ACTIVE_MODELS)
+def test_fit_partial_then_score_partial_on_single_instance(name):
+    """Fitting on one instance and scoring one instance returns a finite float score."""
+    num_features = num_features_for(name)
+    model = _make_model(name)
+    fix_seed(63)
+    xi = _single_instance_vector(num_features)
+    with np.errstate(all="raise"):
+        model.fit_partial(xi, y=_fit_label(name))
+        score = model.score_partial(xi)
+
+    assert type(score) is float
+    assert np.isfinite(score)
+
+
+@pytest.mark.parametrize("name", ACTIVE_MODELS, ids=ACTIVE_MODELS)
+def test_score_partial_does_not_mutate_state_on_single_instance(name):
+    """Scoring the same single instance twice returns the same score and does not learn."""
+    if name in ("PerfectModel", "RandomModel"):
+        pytest.skip("score_partial intentionally consumes or randomizes its output")
+    num_features = num_features_for(name)
+    model = _make_model(name)
+    fix_seed(64)
+    xi = _single_instance_vector(num_features)
+    with np.errstate(all="raise"):
+        model.fit_partial(xi, y=_fit_label(name))
+        first = model.score_partial(xi)
+        second = model.score_partial(xi)
+
+    assert type(first) is float and type(second) is float
+    assert first == second
+    assert np.isfinite(first)
+
+
+@pytest.mark.parametrize("name", DECISION_MODELS, ids=DECISION_MODELS)
+def test_fit_partial_then_predict_partial_on_single_instance(name):
+    """Fitting on one instance and predicting on one instance returns 0 or 1."""
+    num_features = num_features_for(name)
+    model = _make_model(name)
+    fix_seed(65)
+    xi = _single_instance_vector(num_features)
+    with np.errstate(all="raise"):
+        model.fit_partial(xi)
+        decision = model.predict_partial(xi)
+
+    assert decision in (0, 1)

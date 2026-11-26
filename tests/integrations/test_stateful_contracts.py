@@ -767,3 +767,71 @@ def test_tsfm_residual_adapter_raises_on_non_positive_min_std():
         assert "min_std must be positive" in str(e)
     else:
         raise AssertionError("Expected ValueError for min_std=-1e-8")
+
+
+def test_tsfm_residual_adapter_batch_transform_matches_sequential():
+    """Batch transform equals sequential transform_partial with frozen statistics."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    adapter = TSFMResidualAdapter(window_size=5, min_std=1e-8)
+    for v in [1.0, 2.0, 3.0, 4.0, 5.0]:
+        adapter.fit_partial(v)
+    # Frozen statistics: mean 3.0, population variance 2.0
+    batch = adapter.transform(np.array([6.0, 7.0]))
+    expected = np.array([(6.0 - 3.0) / np.sqrt(2.0), (7.0 - 3.0) / np.sqrt(2.0)])
+    np.testing.assert_allclose(batch, expected)
+    # Sequential calls use the same frozen statistics and give the same values.
+    for value, expected_value in zip([6.0, 7.0], expected, strict=True):
+        assert adapter.transform_partial(value) == expected_value
+
+
+def test_tsfm_residual_adapter_fit_transform_partial():
+    """fit_transform_partial updates the statistics with the value, then transforms it."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    adapter = TSFMResidualAdapter(window_size=5, min_std=1e-8)
+    # Not enough data yet: num_seen_ is 1.
+    assert adapter.fit_transform_partial(1.0) == 0.0
+    # Zero variance: all values equal so far.
+    assert adapter.fit_transform_partial(1.0) == 0.0
+    # Statistics now cover [1.0, 1.0, 2.0].
+    result = adapter.fit_transform_partial(2.0)
+    values = np.array([1.0, 1.0, 2.0])
+    mean = values.mean()
+    variance = values.var()
+    expected = (2.0 - mean) / np.sqrt(variance)
+    assert np.isclose(result, expected)
+
+
+def test_tsfm_residual_adapter_transform_before_enough_data_returns_zeros():
+    """transform returns zeros before at least two values are seen."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    adapter = TSFMResidualAdapter(window_size=5, min_std=1e-8)
+    adapter.fit_partial(1.0)
+    np.testing.assert_array_equal(
+        adapter.transform(np.array([1.0, 2.0])), np.zeros(2, dtype=np.float64)
+    )
+
+
+def test_tsfm_residual_adapter_transform_empty_returns_empty():
+    """transform of an empty array returns an empty float64 array."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    adapter = TSFMResidualAdapter(window_size=5, min_std=1e-8)
+    result = adapter.transform(np.array([], dtype=np.float64))
+    assert result.shape == (0,)
+    assert result.dtype == np.float64
+
+
+def test_tsfm_residual_adapter_transform_low_variance_returns_zeros():
+    """transform returns zeros when the rolling variance is below min_std squared."""
+    from pysad.integrations import TSFMResidualAdapter
+
+    adapter = TSFMResidualAdapter(window_size=5, min_std=1.0)
+    adapter.fit_partial(1.0)
+    adapter.fit_partial(1.0)
+    # Variance 0.0 is below min_std ** 2 = 1.0.
+    np.testing.assert_array_equal(
+        adapter.transform(np.array([1.0, 2.0])), np.zeros(2, dtype=np.float64)
+    )

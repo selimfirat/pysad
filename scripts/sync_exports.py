@@ -27,6 +27,7 @@ PURE_REEXPORT_PACKAGES: tuple[str, ...] = (
 EXCLUDED_SYMBOLS: dict[str, frozenset[str]] = {
     "pysad/core": frozenset({"RemovableStatistic"}),
     "pysad/evaluation": frozenset({"EvaluationConfig"}),
+    "pysad/integrations": frozenset({"PySADToCapyMoaAdapter"}),
     "pysad/transform/ensemble": frozenset({"PYODScoreEnsembler"}),
 }
 

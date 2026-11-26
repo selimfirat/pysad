@@ -89,5 +89,5 @@ Press Ctrl+C to stop the server and the stream worker. The command exits cleanly
 Next steps
 ----------
 
-- :doc:`guides/alerts` explains thresholds and probability calibration.
-- :doc:`api/live` documents the ``pysad-live`` command and its options.
+- :doc:`alerts` explains thresholds and probability calibration.
+- :doc:`../api/live` documents the ``pysad-live`` command and its options.

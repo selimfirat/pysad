@@ -16,6 +16,9 @@ Each page lists the public classes and functions of one module. Each name has a 
    * - :doc:`api/integrations`
      - Bidirectional wrappers and adapters for PyOD, scikit-learn, and River
      - ``pysad.integrations``
+   * - :doc:`api/transform`
+     - Transformers, projectors, postprocessors, ensemblers, and calibrators
+     - ``pysad.transform``
    * - :doc:`api/preprocessing`
      - Scalers, encoders, log parser, and seasonal decomposition
      - ``pysad.transform.preprocessing``
@@ -58,6 +61,7 @@ Each page lists the public classes and functions of one module. Each name has a 
 
    api/models
    api/integrations
+   api/transform
    api/preprocessing
    api/projection
    api/stream_generators

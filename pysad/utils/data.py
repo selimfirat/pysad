@@ -253,12 +253,11 @@ class Data:
         if target_dir:
             os.makedirs(target_dir, exist_ok=True)
 
-        temp_file = tempfile.NamedTemporaryFile(
-            dir=target_dir or None, prefix=f"tmp_{os.path.basename(file_name)}_", delete=False
+        fd, temp_path = tempfile.mkstemp(
+            prefix=f"tmp_{os.path.basename(file_name)}_", dir=target_dir or None
         )
-        temp_path = temp_file.name
+        os.close(fd)
         try:
-            temp_file.close()
             req = urllib.request.Request(
                 url, headers={"User-Agent": "pysad", "Accept-Encoding": "gzip"}
             )

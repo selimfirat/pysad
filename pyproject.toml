@@ -192,6 +192,10 @@ conflicts = [
   [{group = "compare-numpy1"}, {group = "dev"}],
 ]
 
+[tool.uv.sources]
+# Resolve the unpublished kernel package from its source tree.
+pysad-kernels = {path = "rust"}
+
 [tool.uv.dependency-groups]
 compare-numpy1 = {requires-python = "<3.12"}
 

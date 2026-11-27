@@ -115,6 +115,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`mcp_monitoring`
+
+      Observe a running MCP server: session status, logs, tool calls, and health checks.
+
+   .. container:: card
+
       :doc:`configuration`
 
       Configure pysad-live, pysad.mcp, and the optional PyO3 kernels in one place.

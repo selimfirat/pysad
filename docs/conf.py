@@ -212,6 +212,8 @@ linkcheck_ignore = [
     r"https://doi\.org/10\.1145/",  # ACM
     r"https://doi\.org/10\.1109/",  # IEEE
     r"https://doi\.org/10\.14778/",  # VLDB papers on ACM
+    r"https://doi\.org/10\.1609/",  # AAAI (ojs.aaai.org returns Cloudflare bot challenges)
+    r"https://doi\.org/10\.1613/",  # Journal of Artificial Intelligence Research
     r"https://doi\.org/10\.3390/",  # MDPI
     # Coveralls blocks automated clients with a 403; the badge links to a valid page.
     r"https://coveralls\.io/",

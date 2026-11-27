@@ -135,6 +135,16 @@ class SessionState:
     initialized: bool = False
 
 
+async def _log(ctx: Context[Any, Any] | None, message: str, level: str = "info") -> None:
+    """Log *message* through the MCP context at *level* when a context is available."""
+    if ctx is None:
+        return
+    try:
+        await getattr(ctx, level)(message)
+    except Exception:
+        pass
+
+
 def _get_state(ctx: Context[Any, Any]) -> SessionState:
     """Get or create session state from MCP context."""
     context: Any = ctx
@@ -142,6 +152,47 @@ def _get_state(ctx: Context[Any, Any]) -> SessionState:
         context._pysad_state = SessionState()
     state: SessionState = context._pysad_state
     return state
+
+
+def _build_detector_map() -> dict[str, tuple[str, str]]:
+    """Map snake_case detector keys to ``(module, class_name)`` entries in pysad.models."""
+    skip_names = {"BaseModel", "StreamPipeline", "ModelEnsemble"}
+    detectors: dict[str, tuple[str, str]] = {}
+    for name in MODEL_NAMES:
+        if name in skip_names or name.startswith("_"):
+            continue
+        detectors[_class_name_to_key(name)] = ("pysad.models", name)
+    return detectors
+
+
+def _set_stream_data(state: SessionState, X: NDArray[Any], y: NDArray[Any] | None) -> None:
+    """Populate session stream state from a feature matrix and an optional label vector."""
+    state.stream_data = [x for x in ArrayStreamer().iter(X)]
+    state.stream_labels = y.tolist() if y is not None else None
+    state.step = 0
+
+
+def _load_stream_data(
+    path: str, max_points: int | None, drop_first_column: bool = False
+) -> tuple[NDArray[Any], NDArray[Any] | None]:
+    """Load a bundled data source and trim it to *max_points* when given."""
+    data = Data()
+    X, y = data.get_data(path, download=True)
+    if drop_first_column:
+        X = X[:, 1:]
+    if max_points:
+        X = X[:max_points]
+        y = y[:max_points] if y is not None else None
+    return X, y
+
+
+def _calibrate(state: SessionState, score: float, thresh: float) -> dict[str, Any]:
+    """Calibrate *score* with the session calibrator and return result fields."""
+    calibrated = state.calibrator.fit_transform_partial(score)
+    return {
+        "calibrated_score": float(calibrated),
+        "alert": bool(calibrated > thresh),
+    }
 
 
 def create_mcp_server() -> MCPServer:
@@ -201,23 +252,11 @@ async def initialize_detector(
     """
     if ctx:
         state = _get_state(ctx)
-        try:
-            await ctx.info(f"Initializing detector: {detector_name}")
-        except Exception:
-            pass
     else:
         state = SessionState()
+    await _log(ctx, f"Initializing detector: {detector_name}")
 
-    # Build detector map from pysad.models.__all__ dynamically
-    # Skip base classes and utilities
-    skip_names = {"BaseModel", "StreamPipeline", "ModelEnsemble"}
-    detectors = {}
-    for name in MODEL_NAMES:
-        if name in skip_names or name.startswith("_"):
-            continue
-        key = _class_name_to_key(name)
-        detectors[key] = ("pysad.models", name)
-
+    detectors = _build_detector_map()
     name_lower = detector_name.lower().replace("-", "_")
     if name_lower not in detectors:
         available = ", ".join(sorted(detectors.keys()))
@@ -239,11 +278,7 @@ async def initialize_detector(
         state.detector_name = class_name
         state.initialized = True
 
-        if ctx:
-            try:
-                await ctx.info(f"Detector {class_name} initialized successfully")
-            except Exception:
-                pass
+        await _log(ctx, f"Detector {class_name} initialized successfully")
 
         return {
             "success": True,
@@ -251,11 +286,7 @@ async def initialize_detector(
             "parameters": kwargs,
         }
     except Exception as e:
-        if ctx:
-            try:
-                await ctx.error(f"Failed to initialize detector: {e}")
-            except Exception:
-                pass
+        await _log(ctx, f"Failed to initialize detector: {e}", level="error")
         return {"success": False, "error": str(e)}
 
 
@@ -279,12 +310,9 @@ async def initialize_calibrator(
     """
     if ctx:
         state = _get_state(ctx)
-        try:
-            await ctx.info(f"Initializing calibrator: {calibrator_name}")
-        except Exception:
-            pass
     else:
         state = SessionState()
+    await _log(ctx, f"Initializing calibrator: {calibrator_name}")
 
     calibrators = {
         "conformal": ("pysad.transform.probability_calibration", "ConformalProbabilityCalibrator"),
@@ -330,11 +358,7 @@ async def initialize_calibrator(
         state.calibrator = calibrator_class(**kwargs)
         state.calibrator_name = class_name
 
-        if ctx:
-            try:
-                await ctx.info(f"Calibrator {class_name} initialized successfully")
-            except Exception:
-                pass
+        await _log(ctx, f"Calibrator {class_name} initialized successfully")
 
         return {
             "success": True,
@@ -342,19 +366,13 @@ async def initialize_calibrator(
             "parameters": kwargs,
         }
     except Exception as e:
-        if ctx:
-            try:
-                await ctx.error(f"Failed to initialize calibrator: {e}")
-            except Exception:
-                pass
+        await _log(ctx, f"Failed to initialize calibrator: {e}", level="error")
         return {"success": False, "error": str(e)}
 
 
 async def initialize_stream(
     source: str = "synthetic",
     max_points: int | None = None,
-    csv_target: str | None = None,
-    csv_timestamp: str | None = None,
     feature_columns: str | None = None,
     label_column: str | None = None,
     ctx: Context[Any, Any] | None = None,
@@ -364,8 +382,6 @@ async def initialize_stream(
     Args:
         source: Data source (synthetic, nyc_taxi, arrhythmia, creditcard, or CSV file path).
         max_points: Maximum number of points to process.
-        csv_target: Target column name for CSV files.
-        csv_timestamp: Timestamp column name for CSV files.
         feature_columns: Feature column names for CSV files (comma-separated).
         label_column: Label column name for CSV files.
         ctx: MCP context for logging.
@@ -375,15 +391,11 @@ async def initialize_stream(
     """
     if ctx:
         state = _get_state(ctx)
-        try:
-            await ctx.info(f"Initializing stream from source: {source}")
-        except Exception:
-            pass
     else:
         state = SessionState()
+    await _log(ctx, f"Initializing stream from source: {source}")
 
     try:
-        # CSVStreamer uses integer column indices
         csv_feature_columns: list[int] | None = None
         csv_label_column: int | None = None
         csv_has_header: bool = True
@@ -391,42 +403,28 @@ async def initialize_stream(
             csv_feature_columns = [int(c.strip()) for c in feature_columns.split(",")]
         if label_column:
             csv_label_column = int(label_column)
-        # csv_target and csv_timestamp are not used by CSVStreamer directly
-        # but kept for compatibility with terminal CLI
+
+        X: NDArray[Any]
+        y: NDArray[Any] | None
 
         if source == "synthetic":
             n_instances = max(max_points or 1000, 200)
             X, y = generate_stream(num_instances=n_instances)
-            state.stream_data = [x for x in ArrayStreamer().iter(X)]
-            state.stream_labels = y.tolist() if y is not None else None
+            _set_stream_data(state, X, y)
 
         elif source == "nyc_taxi":
-            data = Data()
-            X, y = data.get_data("nab/realKnownCause/nyc_taxi.csv", download=True)
-            X = X[:, 1:]  # Remove timestamp column
-            if max_points:
-                X = X[:max_points]
-                y = y[:max_points] if y is not None else None
-            state.stream_data = [x for x in ArrayStreamer().iter(X)]
-            state.stream_labels = y.tolist() if y is not None else None
+            X, y = _load_stream_data(
+                "nab/realKnownCause/nyc_taxi.csv", max_points, drop_first_column=True
+            )
+            _set_stream_data(state, X, y)
 
         elif source == "arrhythmia":
-            data = Data()
-            X, y = data.get_data("arrhythmia.mat", download=True)
-            if max_points:
-                X = X[:max_points]
-                y = y[:max_points] if y is not None else None
-            state.stream_data = [x for x in ArrayStreamer().iter(X)]
-            state.stream_labels = y.tolist() if y is not None else None
+            X, y = _load_stream_data("arrhythmia.mat", max_points)
+            _set_stream_data(state, X, y)
 
         elif source == "creditcard":
-            data = Data()
-            X, y = data.get_data("creditcard/creditcard.arff", download=True)
-            if max_points:
-                X = X[:max_points]
-                y = y[:max_points] if y is not None else None
-            state.stream_data = [x for x in ArrayStreamer().iter(X)]
-            state.stream_labels = y.tolist() if y is not None else None
+            X, y = _load_stream_data("creditcard/creditcard.arff", max_points)
+            _set_stream_data(state, X, y)
 
         elif source.endswith(".csv"):
             from pysad.utils import CSVStreamer
@@ -450,18 +448,12 @@ async def initialize_stream(
                     state.stream_labels.append(0)
                 state.stream_data.append(x_arr)
                 count += 1
+            state.step = 0
 
         else:
             return {"success": False, "error": f"Unknown data source: {source}"}
 
-        state.step = 0
-
-        if ctx:
-            try:
-                await ctx.info(f"Stream initialized with {len(state.stream_data)} points")
-            except Exception:
-                pass
-
+        await _log(ctx, f"Stream initialized with {len(state.stream_data)} points")
         return {
             "success": True,
             "num_points": len(state.stream_data),
@@ -469,11 +461,7 @@ async def initialize_stream(
             "has_labels": state.stream_labels is not None and len(state.stream_labels) > 0,
         }
     except Exception as e:
-        if ctx:
-            try:
-                await ctx.error(f"Failed to initialize stream: {e}")
-            except Exception:
-                pass
+        await _log(ctx, f"Failed to initialize stream: {e}", level="error")
         return {"success": False, "error": str(e)}
 
 
@@ -497,12 +485,9 @@ async def score_point(
     """
     if ctx:
         state = _get_state(ctx)
-        try:
-            await ctx.info("Scoring data point")
-        except Exception:
-            pass
     else:
         state = SessionState()
+    await _log(ctx, "Scoring data point")
 
     if state.detector is None:
         return {
@@ -538,37 +523,25 @@ async def score_point(
 
         # Apply calibrator if available
         if state.calibrator is not None:
-            calibrated = state.calibrator.fit_transform_partial(score)
-            result["calibrated_score"] = float(calibrated)
-
-            # Check alert
             thresh = threshold if threshold is not None else state.threshold
-            alert = calibrated > thresh
-            result["alert"] = bool(alert)
+            result.update(_calibrate(state, score, thresh))
             result["threshold"] = thresh
 
         state.step += 1
 
-        if ctx:
-            try:
-                await ctx.info(
-                    f"Score: {score:.4f}"
-                    + (
-                        f", Calibrated: {result.get('calibrated_score', 'N/A'):.4f}"
-                        if "calibrated_score" in result
-                        else ""
-                    )
-                )
-            except Exception:
-                pass
+        await _log(
+            ctx,
+            f"Score: {score:.4f}"
+            + (
+                f", Calibrated: {result.get('calibrated_score', 'N/A'):.4f}"
+                if "calibrated_score" in result
+                else ""
+            ),
+        )
 
         return result
     except Exception as e:
-        if ctx:
-            try:
-                await ctx.error(f"Failed to score point: {e}")
-            except Exception:
-                pass
+        await _log(ctx, f"Failed to score point: {e}", level="error")
         return {"success": False, "error": str(e)}
 
 
@@ -589,12 +562,9 @@ async def score_batch(
     """
     if ctx:
         state = _get_state(ctx)
-        try:
-            await ctx.info(f"Scoring batch of {len(features_list)} points")
-        except Exception:
-            pass
     else:
         state = SessionState()
+    await _log(ctx, f"Scoring batch of {len(features_list)} points")
 
     if state.detector is None:
         return {
@@ -617,20 +587,15 @@ async def score_batch(
             }
 
             if state.calibrator is not None:
-                calibrated = state.calibrator.fit_transform_partial(score)
-                result["calibrated_score"] = float(calibrated)
-                result["alert"] = bool(calibrated > thresh)
+                result.update(_calibrate(state, score, thresh))
 
             results.append(result)
             state.step += 1
 
-        if ctx:
-            try:
-                await ctx.info(
-                    f"Batch scoring complete. Alerts: {sum(1 for r in results if r.get('alert', False))}"
-                )
-            except Exception:
-                pass
+        await _log(
+            ctx,
+            f"Batch scoring complete. Alerts: {sum(1 for r in results if r.get('alert', False))}",
+        )
 
         return {
             "success": True,
@@ -638,11 +603,7 @@ async def score_batch(
             "threshold": thresh,
         }
     except Exception as e:
-        if ctx:
-            try:
-                await ctx.error(f"Failed to score batch: {e}")
-            except Exception:
-                pass
+        await _log(ctx, f"Failed to score batch: {e}", level="error")
         return {"success": False, "error": str(e)}
 
 
@@ -684,12 +645,9 @@ async def reset_session(ctx: Context[Any, Any] | None = None) -> dict[str, Any]:
     """
     if ctx:
         state = _get_state(ctx)
-        try:
-            await ctx.info("Resetting session")
-        except Exception:
-            pass
     else:
         state = SessionState()
+    await _log(ctx, "Resetting session")
 
     state.detector = None
     state.calibrator = None
@@ -712,24 +670,20 @@ async def list_detectors(ctx: Context[Any, Any] | None = None) -> dict[str, Any]
     Returns:
         Dictionary with list of available detectors and their descriptions.
     """
-    # Build detector map from pysad.models.__all__ dynamically
-    skip_names = {"BaseModel", "StreamPipeline", "ModelEnsemble"}
-    detectors = {}
-    for name in MODEL_NAMES:
-        if name in skip_names or name.startswith("_"):
-            continue
-        key = _class_name_to_key(name)
-        # Get the class docstring for description
+    detectors: dict[str, str] = {}
+    for key, (module_name, class_name) in _build_detector_map().items():
         try:
-            module = __import__("pysad.models", fromlist=[name])
-            cls = getattr(module, name)
+            module = __import__(module_name, fromlist=[class_name])
+            cls = getattr(module, class_name)
             doc = cls.__doc__ or ""
             # Extract first line of docstring as description
             desc = (
-                doc.strip().split("\n")[0] if doc.strip() else f"{name} streaming anomaly detector"
+                doc.strip().split("\n")[0]
+                if doc.strip()
+                else f"{class_name} streaming anomaly detector"
             )
         except Exception:
-            desc = f"{name} streaming anomaly detector"
+            desc = f"{class_name} streaming anomaly detector"
         detectors[key] = desc
 
     return {

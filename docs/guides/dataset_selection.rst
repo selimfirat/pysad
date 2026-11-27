@@ -1,53 +1,45 @@
-.. meta::
-   :description: Choose between the NAB, Yahoo S5 and ODDS streaming dataset loaders of pysad.utils.Data by the kind of data, the labels, the size and the license.
-
 Choose a streaming dataset
 ==========================
 
-PySAD loads labeled streams from three public collections: NAB, Yahoo S5 and ODDS. This guide helps you choose the collection that fits your data.
+:class:`~pysad.utils.Data` downloads labeled datasets, verifies every download against a SHA-256 checksum, and caches the files in ``~/.cache/pysad``. This guide compares the three collections that ship labeled streaming series: NAB, Yahoo S5, and ODDS. Pick the collection that matches your data.
 
-NAB and Yahoo S5 are univariate: one value per point. ODDS is multivariate: several features per point. Choose by the shape of your data, the label style you need, and the license you can comply with.
-
-NAB, Yahoo S5 and ODDS at a glance
-----------------------------------
-
-.. list-table:: Choose a collection by the kind of data, the labels, the size and the license
+.. list-table:: NAB, Yahoo S5 and ODDS at a glance
    :header-rows: 1
-   :widths: 20 26 26 28
+   :widths: 16 26 28 30
 
    * -
      - NAB
      - Yahoo S5
      - ODDS
-   * - Kind of data
-     - One value per point (univariate)
-     - One value per point (univariate)
-     - Several features per point (multivariate)
    * - Series
-     - 58 series
-     - 67 series
-     - 17 datasets
+     - 58 univariate series. 47 are real-world and 11 are artificial.
+     - 67 univariate real production-traffic series.
+     - 17 multivariate datasets.
+   * - Features
+     - One feature: the value.
+     - One feature: the value.
+     - Two or more features per dataset.
    * - Labels
-     - Anomaly windows
-     - One label per point
-     - One label column per file
-   * - Size
-     - Small to medium series
-     - Medium series, one point per hour
-     - Small to large tabular datasets
+     - Label 1 marks the points in an anomaly window.
+     - Label 1 marks an anomaly point. The last column holds the label.
+     - Label 1 marks the anomaly class. For vertebral.mat the labels are flipped.
+   * - Order
+     - File order. get_iterator shuffles by default.
+     - File order. Rows keep file order. One row per hour.
+     - File order for the arrays in each .mat file.
+   * - Timestamps
+     - Yes, with timestamps=True. NAB gives local times read as UTC.
+     - Yes, the first column counts hours. It is not a feature.
+     - No timestamps.
    * - License
-     - MIT
-     - Yahoo Data Sharing Agreement
-     - Varies by dataset
-   * - Best for
-     - Server metrics, CPU, traffic, tweets
-     - Production traffic of a Kubernetes cluster
-     - Tabular anomaly benchmarks
+     - MIT at commit ea702d75. Earlier commits of NAB are under AGPL-3.0.
+     - Yahoo Webscope Data Sharing Agreement. Academic, non-commercial research only. Yahoo prohibits redistribution.
+     - Varies by dataset. PySAD downloads the PyOD mirror at a fixed commit.
 
-Load each collection
---------------------
+NAB — univariate metrics with anomaly windows
+---------------------------------------------
 
-NAB
+NAB (Numenta Anomaly Benchmark) holds 58 univariate series, for example ``nab/realKnownCause/nyc_taxi.csv``. Each series is a CSV with the header ``timestamp,value``. The points in an anomaly window have the label 1, from ``combined_windows.json``. Use NAB for univariate server and cloud metrics with labeled anomaly windows, for example CPU utilization, request latency and network traffic.
 
 .. code-block:: python
 
@@ -56,7 +48,14 @@ NAB
    data = Data()
    X, y = data.get_data("nab/realKnownCause/nyc_taxi.csv")
 
-Yahoo S5
+With ``timestamps=True``, :meth:`~pysad.utils.Data.get_data` returns each point as ``[timestamp, value]``, as :class:`~pysad.models.HTM` takes it. NAB gives local times without a time zone, and the timestamps read them as UTC.
+
+:meth:`~pysad.utils.Data.datasets` with ``"nab"`` lists all 58 series. With ``"nab-real-world"`` it lists the 47 real-world series only, excluding the artificial series under ``artificialNoAnomaly`` and ``artificialWithAnomaly``.
+
+Yahoo S5 — hourly production traffic
+------------------------------------
+
+Yahoo S5 A1Benchmark holds 67 univariate real production-traffic series, for example ``yahoo/real_1.csv``. Each row contains ``timestamp,value,is_anomaly``. The value column is the only feature, label 1 marks an anomaly, and rows keep file order. One row counts one hour.
 
 .. code-block:: python
 
@@ -65,7 +64,14 @@ Yahoo S5
    data = Data()
    X, y = data.get_data("yahoo/real_1.csv")
 
-ODDS
+Yahoo S5 requires a signed Yahoo Webscope Data Sharing Agreement for academic, non-commercial research. Yahoo prohibits redistribution. The loader downloads from a public mirror at a fixed commit. The mirror does not grant a separate data license. Get the agreement before you use this loader.
+
+:meth:`~pysad.utils.Data.datasets` with ``"yahoo"`` lists all 67 series. The loader excludes the synthetic A2, A3, and A4 subsets.
+
+ODDS — multivariate outlier detection
+-------------------------------------
+
+ODDS holds 17 multivariate datasets, for example ``cardio.mat``. Each dataset has two or more features, and label 1 marks the anomaly class. For ``vertebral.mat``, PySAD flips the labels from the ODDS file: ODDS marks the 30 healthy patients as anomalies, so the returned labels make the 210 unhealthy patients the anomalies.
 
 .. code-block:: python
 
@@ -74,42 +80,42 @@ ODDS
    data = Data()
    X, y = data.get_data("cardio.mat")
 
-Stream each point with :meth:`~pysad.utils.Data.get_iterator`, which shuffles by default. Set ``shuffle=False`` to preserve file order, which matters when the order carries time. See :doc:`stream_data` for the full how-to of each loader and for :meth:`~pysad.utils.Data.get_stream`, which gives the stream of the PySAD benchmark.
+Use ODDS for multivariate outlier detection, where each point has several features and you want to score the whole point. :meth:`~pysad.utils.Data.datasets` with ``"odds"`` lists the 17 file names.
 
-NAB gives each point as ``[timestamp, value]`` with ``timestamps=True``. Yahoo S5 gives one row per hour with ``timestamp,value,is_anomaly``. ODDS gives a ``.mat`` file with features and labels already separated.
+Which loader to choose
+----------------------
 
-Labels
-------
+- Your stream has one value per point and labeled anomaly windows: start with NAB.
+- Your stream has one value per point, one row per hour, and you can sign the Yahoo agreement: use Yahoo S5.
+- Your stream has several features per point: use ODDS.
+- You want only real measured series and no generated ones: use NAB with ``nab-real-world``.
+- You want to benchmark a detector on a public labeled stream: use NAB or Yahoo S5.
+- You want multivariate outlier detection on a fixed set of datasets: use ODDS.
 
-Label 1 always marks the anomaly and label 0 marks the normal point, except where a loader notes otherwise.
+Example: score an ODDS stream one point at a time
+-------------------------------------------------
 
-- NAB labels the points inside an anomaly window from ``combined_windows.json``.
-- Yahoo S5 labels each point with its own ``is_anomaly`` column.
-- ODDS keeps one label column per file. For ``vertebral.mat``, PySAD flips the labels so the unhealthy patients are the anomaly class.
+.. code-block:: python
 
-See :doc:`dataset_inventory` for the label format, source, license and checksum of every loader.
+   import numpy as np
 
-License
--------
+   from pysad.models import LODA
+   from pysad.utils import Data
 
-- NAB is under the MIT license at the commit PySAD uses. Earlier commits of NAB are under AGPL-3.0.
-- Yahoo S5 requires a signed Yahoo Data Sharing Agreement for academic, non-commercial research, and Yahoo prohibits redistribution.
-- ODDS licenses vary by dataset. The original source is the ODDS library of Stony Brook University, and PySAD downloads the PyOD mirror at a fixed commit.
+   data = Data()
+   X, y = data.get_data("cardio.mat")
 
-Check :meth:`~pysad.utils.Data.metadata` for the source URL, license and SHA-256 checksum of each file before you download it.
+   model = LODA(random_state=0)
+   scores = []
+   for x, label in data.get_iterator("cardio.mat", shuffle=False, random_state=0):
+       scores.append(model.fit_score_partial(x))
 
-How to choose
--------------
+   print(f"Scored {len(scores)} points. Anomaly rate: {np.mean(y):.3f}")
 
-- You have one series of values and want anomaly windows: start with NAB.
-- You have one series of values with one point per hour and per-point labels: start with Yahoo S5.
-- You have several features per point: start with ODDS, for example ``cardio.mat``.
-- You cannot sign a data sharing agreement: avoid Yahoo S5 and use NAB or ODDS.
-- You want a multivariate tabular benchmark: use ODDS.
+:meth:`~pysad.utils.Data.get_iterator` shuffles by default. Pass ``shuffle=False`` to preserve file order, which matters when order carries time.
 
-Next steps
-----------
+See also
+--------
 
-- :doc:`stream_data` shows how to load and stream each collection.
-- :doc:`choose_detector` shows how to find a detector for your data.
-- :doc:`evaluate` shows how to score and compare detectors on labeled data.
+- :doc:`dataset_inventory`: every loader with its source, license, checksum and label format.
+- :doc:`stream_data`: connect CSV files, DataFrames and message queues to a detector.

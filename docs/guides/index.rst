@@ -21,7 +21,7 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
       :doc:`dataset_selection`
 
-      Choose between the NAB, Yahoo S5 and ODDS streaming dataset loaders.
+      Compare NAB, Yahoo S5 and ODDS and pick the loader for your stream.
 
    .. container:: card
 

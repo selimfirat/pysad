@@ -15,7 +15,7 @@ Install PySAD with pip:
 
    $ pip install pysad
 
-For conda and other installation options, see :ref:`installation`.
+For conda and other installation options, see :doc:`/installation`.
 
 Make a stream
 -------------
@@ -82,7 +82,7 @@ Measure the ranking with AUROC. A perfect ranking gets 1.0. Random scores get 0.
 
    print(f"AUROC: {metric.get():.3f}")
 
-Scoring before learning is prequential evaluation. Each score is computed on a point the model has not seen yet. See :ref:`concepts`.
+Scoring before learning is prequential evaluation. Each score is computed on a point the model has not seen yet. See :doc:`/concepts`.
 
 Raise alerts
 ------------
@@ -105,13 +105,13 @@ Raw score scales differ between detectors. Conformal calibration ranks each scor
 
    print(f"{len(alerts)} alerts")
 
-A value of 0.99 means that 99% of recent scores are lower. The calibrator keeps up to 500 scores. We skip alerts for the first 200 points while the model and calibrator warm up. Choose a threshold and window for your data using :ref:`guides/alerts`.
+A value of 0.99 means that 99% of recent scores are lower. The calibrator keeps up to 500 scores. We skip alerts for the first 200 points while the model and calibrator warm up. Choose a threshold and window for your data using :doc:`/guides/alerts`.
 
 Next steps
 ----------
 
-- :ref:`guides/stream_data` streams CSV files, DataFrames and message queues.
-- :ref:`guides/choose_detector` helps you choose a detector for your data.
-- :ref:`guides/evaluate` measures performance over time.
-- :ref:`concepts` explains the streaming model and prequential evaluation.
+- :doc:`/guides/stream_data` streams CSV files, DataFrames and message queues.
+- :doc:`/guides/choose_detector` helps you choose a detector for your data.
+- :doc:`/guides/evaluate` measures performance over time.
+- :doc:`/concepts` explains the streaming model and prequential evaluation.
 - :ref:`api` lists every class and parameter.

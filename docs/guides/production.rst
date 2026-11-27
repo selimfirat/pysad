@@ -193,6 +193,8 @@ Wrap the server in your own process to add metrics or logging. :doc:`serving` sh
 
 Each detector tool accepts a list of points and constructor arguments. Make sure that the feature order matches the history that the detector learned from. The server has no built-in authentication, rate limiting, or TLS. See :doc:`hardening` to add these in front of the server.
 
+See :doc:`mcp_hardening` for production hardening: process isolation, input limits, error handling, and monitoring.
+
 Next steps
 ----------
 

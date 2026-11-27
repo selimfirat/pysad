@@ -8,33 +8,33 @@ Choose a streaming dataset
    :widths: 16 26 28 30
 
    * -
-      - NAB
-      - Yahoo S5
-      - ODDS
+     - NAB
+     - Yahoo S5
+     - ODDS
    * - Series
-      - 58 univariate series. 47 are real-world and 11 are artificial.
-      - 67 univariate real production-traffic series.
-      - 17 multivariate datasets.
+     - 58 univariate series. 47 are real-world and 11 are artificial.
+     - 67 univariate real production-traffic series.
+     - 17 multivariate datasets.
    * - Features
-      - One feature: the value.
-      - One feature: the value.
-      - Two or more features per dataset.
+     - One feature: the value.
+     - One feature: the value.
+     - Two or more features per dataset.
    * - Labels
-      - Label 1 marks the points in an anomaly window.
-      - Label 1 marks an anomaly point. The last column holds the label.
-      - Label 1 marks the anomaly class. For vertebral.mat the labels are flipped.
+     - Label 1 marks the points in an anomaly window.
+     - Label 1 marks an anomaly point. The last column holds the label.
+     - Label 1 marks the anomaly class. For vertebral.mat the labels are flipped.
    * - Order
-      - File order. get_iterator shuffles by default.
-      - File order. Rows keep file order. One row per hour.
-      - File order for the arrays in each .mat file.
+     - File order. get_iterator shuffles by default.
+     - File order. Rows keep file order. One row per hour.
+     - File order for the arrays in each .mat file.
    * - Timestamps
-      - Yes, with timestamps=True. NAB gives local times read as UTC.
-      - Yes, the first column counts hours. It is not a feature.
-      - No timestamps.
+     - Yes, with timestamps=True. NAB gives local times read as UTC.
+     - Yes, the first column counts hours. It is not a feature.
+     - No timestamps.
    * - License
-      - MIT at commit ea702d75. Earlier commits of NAB are under AGPL-3.0.
-      - Yahoo Webscope Data Sharing Agreement. Academic, non-commercial research only. Yahoo prohibits redistribution.
-      - Varies by dataset. PySAD downloads the PyOD mirror at a fixed commit.
+     - MIT at commit ea702d75. Earlier commits of NAB are under AGPL-3.0.
+     - Yahoo Webscope Data Sharing Agreement. Academic, non-commercial research only. Yahoo prohibits redistribution.
+     - Varies by dataset. PySAD downloads the PyOD mirror at a fixed commit.
 
 NAB — univariate metrics with anomaly windows
 ---------------------------------------------
@@ -117,5 +117,5 @@ Example: score an ODDS stream one point at a time
 See also
 --------
 
-- :doc:`guides/dataset_inventory`: every loader with its source, license, checksum and label format.
-- :doc:`guides/stream_data`: connect CSV files, DataFrames and message queues to a detector.
+- :doc:`dataset_inventory`: every loader with its source, license, checksum and label format.
+- :doc:`stream_data`: connect CSV files, DataFrames and message queues to a detector.

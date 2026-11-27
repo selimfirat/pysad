@@ -103,6 +103,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`authentication_and_multi_tenancy`
+
+      Bind pysad-live to localhost, add a reverse proxy with authentication, and run one isolated dashboard per tenant.
+
+   .. container:: card
+
       :doc:`custom_model`
 
       Implement the model interface for a published streaming method and add it to PySAD.

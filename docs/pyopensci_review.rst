@@ -96,9 +96,16 @@ Review requirements
 
    * - Releases are published.
      - Met
-     - `.github/workflows/release.yml` publishes releases, and GitHub Releases lists the changelog.
+     - `.github/workflows/publish.yml` builds, signs and publishes releases to PyPI and GitHub Releases, and GitHub Releases lists the changelog.
 
 How to use this list
 --------------------
 
 Open each evidence link and make sure that the file matches the requirement. If a file is missing or out of date, open an issue or a pull request that fixes it. Each pull request fixes one issue.
+
+Investigation summary
+---------------------
+
+This checklist was checked against the repository on the master branch. Every evidence file listed above exists, so all twenty requirements are met.
+
+One out-of-date reference was corrected: the "Releases are published" row previously pointed to `.github/workflows/release.yml`, which does not exist. Releases are built, signed and published by `.github/workflows/publish.yml`. The link now points to the correct workflow.

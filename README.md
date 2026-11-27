@@ -36,6 +36,7 @@
   <a href="https://pysad.readthedocs.io/en/stable/"><b>Documentation</b></a> ·
   <a href="https://pysad.readthedocs.io/en/stable/getting_started.html">Getting started</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/cheatsheet.html">Quick reference</a> ·
+  <a href="#live-cli">Live CLI</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/guides/index.html">How-to guides</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/benchmark.html">Benchmarks</a> ·
   <a href="https://pysad.readthedocs.io/en/stable/detectors.html">Detectors</a> ·
@@ -130,15 +131,20 @@ pip install git+https://github.com/selimfirat/pysad.git
 
 For an editable installation with development dependencies, follow the [contributing guide](https://pysad.readthedocs.io/en/latest/contributing.html).
 
-## Live dashboard, MCP, and optional kernels
+### Live CLI: `pysad-live`
 
-If you use uv, run the live dashboard with `uvx`:
+<a id="live-cli"></a>
+
+`pip install pysad` installs the `pysad-live` command. Score a stream in your terminal:
 
 ```bash
-uvx --from pysad pysad-live --source synthetic
+pysad-live --source synthetic --detector loda --calibrator conformal
 ```
 
-- The [live dashboard](https://pysad.readthedocs.io/en/stable/api/live.html) displays streaming scores and alerts in your terminal. Add `--web` to open the web dashboard, or use `--source data.csv` for your own data.
+Add `--web` to open the dashboard in your browser, or `--source data.csv` to score your own file. See the [live dashboard guide](https://pysad.readthedocs.io/en/stable/guides/live_dashboard.html) and the [CLI reference](https://pysad.readthedocs.io/en/stable/api/live.html) for all options.
+
+## MCP server and optional kernels
+
 - [`pysad.mcp`](https://pysad.readthedocs.io/en/stable/guides/mcp.html) exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install `pysad[mcp]`, then run `pysad-mcp` to connect an MCP client. The server auto-discovers detectors from `pysad.models.__all__` and statistics from `pysad.statistics.__all__`. Tool names use `pysad_<lowercase_name>`. Each tool includes metadata for constructor parameters and defaults.
 
 ### Optional PyO3 kernels (pysad_kernels)

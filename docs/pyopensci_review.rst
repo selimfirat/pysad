@@ -95,8 +95,8 @@ Review requirements
      - `.github/workflows/stale.yml` labels and closes issues with no recent activity.
 
    * - Releases are published.
-      - Met
-      - `.github/workflows/publish.yml` builds, signs and publishes releases to PyPI and GitHub Releases, and GitHub Releases lists the changelog.
+     - Met
+     - `.github/workflows/publish.yml` builds, signs and publishes releases to PyPI and GitHub Releases, and GitHub Releases lists the changelog.
 
 How to use this list
 --------------------

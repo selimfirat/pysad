@@ -217,95 +217,6 @@ def test_stream_pipeline_with_each_postprocessor(
     np.testing.assert_array_equal(batch, stream)
 
 
-def _calibrator_cases():
-    import numpy as np
-
-    from pysad.transform.probability_calibration import (
-        AnomalyLikelihoodProbabilityCalibrator,
-        ConformalProbabilityCalibrator,
-        ConformalTSFMCalibrator,
-        GaussianTailProbabilityCalibrator,
-        GroupConditionalConformalCalibrator,
-        SPOTProbabilityCalibrator,
-    )
-
-    X = np.random.RandomState(0).rand(120, 3)
-    return [
-        (
-            lambda: AnomalyLikelihoodProbabilityCalibrator(
-                learning_period=5,
-                num_estimation_samples=10,
-                window_size=30,
-                reestimation_period=5,
-                short_window_size=3,
-            ),
-            X,
-            "probability",
-        ),
-        (lambda: ConformalProbabilityCalibrator(window_size=30), X, "probability"),
-        (
-            lambda: ConformalTSFMCalibrator(alpha=0.1, gamma=0.05, window_size=30),
-            X,
-            "probability",
-        ),
-        (
-            lambda: GaussianTailProbabilityCalibrator(window_size=30, short_window_size=3),
-            X,
-            "probability",
-        ),
-        (lambda: GroupConditionalConformalCalibrator(window_size=30), X, "probability"),
-        (lambda: SPOTProbabilityCalibrator(num_init=20, level=0.8), X, "probability"),
-    ]
-
-
-@pytest.mark.parametrize("calibrator_factory,X,expected_kind", _calibrator_cases())
-def test_stream_pipeline_with_each_calibrator(calibrator_factory, X, expected_kind):
-    import numpy as np
-
-    from pysad.models import LODA, StreamPipeline
-
-    batch_pipe = StreamPipeline(model=LODA(random_state=0), postprocessors=[calibrator_factory()])
-    stream_pipe = StreamPipeline(model=LODA(random_state=0), postprocessors=[calibrator_factory()])
-    assert batch_pipe.output_kind == expected_kind
-
-    batch = batch_pipe.fit_score(X)
-    assert batch.shape == (len(X),)
-    assert np.isfinite(batch).all()
-    assert ((batch >= 0.0) & (batch <= 1.0)).all()
-
-    stream = np.array([stream_pipe.fit_score_partial(x) for x in X])
-    np.testing.assert_array_equal(batch, stream)
-
-
-def _score_postprocessor_chain_cases():
-    import numpy as np
-
-    from pysad.models import LODA, RelativeEntropy
-    from pysad.transform.postprocessing import (
-        AveragePostprocessor,
-        MaxPostprocessor,
-        MedianPostprocessor,
-        NonparametricDynamicThresholdPostprocessor,
-        ZScorePostprocessor,
-    )
-
-    X = np.random.RandomState(0).rand(120, 3)
-    # NonparametricDynamicThresholdPostprocessor needs nonnegative scores
-    # (documented in its docstring), so it is paired with RelativeEntropy, which
-    # emits 0.0/1.0 decisions on univariate data.
-    return [
-        (lambda: AveragePostprocessor(window_size=20), lambda: LODA(random_state=0), X),
-        (lambda: MaxPostprocessor(window_size=20), lambda: LODA(random_state=0), X),
-        (lambda: MedianPostprocessor(window_size=20), lambda: LODA(random_state=0), X),
-        (lambda: ZScorePostprocessor(window_size=20), lambda: LODA(random_state=0), X),
-        (
-            lambda: NonparametricDynamicThresholdPostprocessor(window_size=20),
-            lambda: RelativeEntropy(min_val=0.0, max_val=1.0),
-            X[:, :1],
-        ),
-    ]
-
-
 def _calibrator_factories():
     from pysad.transform.probability_calibration import (
         AnomalyLikelihoodProbabilityCalibrator,
@@ -332,6 +243,30 @@ def _calibrator_factories():
     ]
 
 
+@pytest.mark.parametrize("calibrator_factory", _calibrator_factories())
+def test_stream_pipeline_with_each_calibrator(calibrator_factory):
+    import numpy as np
+
+    from pysad.models import LODA, StreamPipeline
+
+    X = np.random.RandomState(0).rand(120, 3)
+    batch_pipe = StreamPipeline(model=LODA(random_state=0), postprocessors=[calibrator_factory()])
+    stream_pipe = StreamPipeline(model=LODA(random_state=0), postprocessors=[calibrator_factory()])
+    assert batch_pipe.output_kind == "probability"
+
+    batch = batch_pipe.fit_score(X)
+    assert batch.shape == (len(X),)
+    assert np.isfinite(batch).all()
+    assert ((batch >= 0.0) & (batch <= 1.0)).all()
+
+    stream = np.array([stream_pipe.fit_score_partial(x) for x in X])
+    np.testing.assert_array_equal(batch, stream)
+
+
+def _score_postprocessor_chain_cases():
+    return [(post, model, X) for post, model, X, kind in _postprocessor_cases() if kind == "score"]
+
+
 def _decision_postprocessor_factories():
     from pysad.transform.postprocessing import QuantileFilter, ThresholdFilter
 
@@ -352,27 +287,88 @@ def _decision_postprocessor_factories():
 def test_stream_pipeline_score_postprocessor_then_calibrator(
     postprocessor_factory, model_factory, X, calibrator_factory
 ):
+    _assert_pipeline_matches_manual_loop(
+        model_factory, X, (postprocessor_factory, calibrator_factory)
+    )
+
+
+def _assert_pipeline_matches_manual_loop(model_factory, X, stage_factories):
     import numpy as np
 
     from pysad.models import StreamPipeline
 
-    batch_pipe = StreamPipeline(
-        model=model_factory(),
-        postprocessors=[postprocessor_factory(), calibrator_factory()],
-    )
-    stream_pipe = StreamPipeline(
-        model=model_factory(),
-        postprocessors=[postprocessor_factory(), calibrator_factory()],
-    )
-    assert batch_pipe.output_kind == "probability"
+    def make_pipeline():
+        return StreamPipeline(
+            model=model_factory(),
+            postprocessors=[factory() for factory in stage_factories],
+        )
 
+    model = model_factory()
+    stages = [factory() for factory in stage_factories]
+    stream_pipe = make_pipeline()
+    expected = []
+    streamed = []
+    for x in X:
+        score = model.fit_score_partial(x)
+        for stage in stages:
+            score = stage.fit_transform_partial(score)
+        expected.append(score)
+        actual = stream_pipe.fit_score_partial(x)
+        assert isinstance(actual, float)
+        streamed.append(actual)
+        stream_pipe.score_partial(x)
+
+    batch_pipe = make_pipeline()
     batch = batch_pipe.fit_score(X)
+    assert batch_pipe.output_kind == stages[-1].output_kind
     assert batch.shape == (len(X),)
+    assert batch.dtype == np.float64
     assert np.isfinite(batch).all()
-    assert ((batch >= 0.0) & (batch <= 1.0)).all()
+    if batch_pipe.output_kind == "probability":
+        assert ((batch >= 0.0) & (batch <= 1.0)).all()
+    if batch_pipe.output_kind == "decision":
+        assert np.isin(batch, [0.0, 1.0]).all()
+    np.testing.assert_array_equal(batch, expected)
+    np.testing.assert_array_equal(streamed, expected)
 
-    stream = np.array([stream_pipe.fit_score_partial(x) for x in X])
-    np.testing.assert_array_equal(batch, stream)
+    fitted = make_pipeline()
+    assert fitted.fit(X) is fitted
+    partial_fitted = make_pipeline()
+    for x in X:
+        assert partial_fitted.fit_partial(x) is partial_fitted
+
+    probes = X[::-1]
+    expected_scores = []
+    for x in probes:
+        score = model.score_partial(x)
+        for stage in stages:
+            score = stage.transform_partial(score)
+        expected_scores.append(score)
+    for pipeline in (batch_pipe, stream_pipe, fitted, partial_fitted):
+        np.testing.assert_array_equal(pipeline.score(probes), expected_scores)
+        np.testing.assert_array_equal([pipeline.score_partial(x) for x in probes], expected_scores)
+    continuation = stream_pipe.fit_score(X)
+    for pipeline in (batch_pipe, fitted, partial_fitted):
+        np.testing.assert_array_equal(pipeline.fit_score(X), continuation)
+
+
+@pytest.mark.parametrize(
+    "calibrator_factory,postprocessor_factory",
+    [
+        pytest.param(cal, post, id=f"{type(cal()).__name__}-{type(post()).__name__}")
+        for cal in _calibrator_factories()
+        for post, _, _, _ in _postprocessor_cases()
+    ],
+)
+def test_stream_pipeline_calibrator_then_postprocessor(calibrator_factory, postprocessor_factory):
+    import numpy as np
+
+    from pysad.models import LODA
+
+    X = np.random.RandomState(0).rand(120, 3)
+    _assert_pipeline_matches_manual_loop(
+        lambda: LODA(random_state=0), X, (calibrator_factory, postprocessor_factory)
+    )
 
 
 @pytest.mark.parametrize(

@@ -280,8 +280,10 @@ def test_service_worker_caches_essential_assets():
     assert "caches.open" in sw_js
     assert "cache.addAll" in sw_js
     assert "fetch" in sw_js
-    hosts = {urlparse(url).hostname for url in re.findall(r'"(https://[^"]+)"', sw_js)}
-    assert "cdn.jsdelivr.net" in hosts
+    assert any(
+        urlparse(url).hostname == "cdn.jsdelivr.net"
+        for url in re.findall(r'"(https://[^"]+)"', sw_js)
+    )
 
 
 def test_initial_snapshot_json_omits_host_timings():

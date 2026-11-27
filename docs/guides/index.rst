@@ -19,6 +19,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`dataset_selection`
+
+      Compare NAB, Yahoo S5 and ODDS and pick the loader for your stream.
+
+   .. container:: card
+
       :doc:`choose_detector`
 
       Find candidate detectors for your data and compare them.

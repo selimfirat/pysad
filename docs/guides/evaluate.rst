@@ -125,6 +125,11 @@ Full-stream metrics can hide performance changes after drift. Evaluate consecuti
 
 .. code-block:: python
 
+   from pysad.evaluation import AUROCMetric
+   from pysad.models import LODA
+   from pysad.utils import ArrayStreamer, Data
+
+   X, y = Data().get_data("cardio.mat")
    model = LODA(random_state=0)
    metric = AUROCMetric()
    per_window = []

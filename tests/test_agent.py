@@ -45,3 +45,12 @@ def test_agent_subpackage():
     assert pysad.agent is not None
     assert "agent" in dir(pysad)
     assert "agent" in pysad.__all__
+
+
+def test_root_mcp_registry_metadata():
+    """The repository ships MCP registry metadata so clients discover pysad-mcp."""
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
+    servers = manifest["mcpServers"]
+    assert servers["pysad"]["command"] == "pysad-mcp"
+    assert servers["pysad"]["args"] == []

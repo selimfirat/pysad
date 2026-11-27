@@ -63,6 +63,7 @@ from pysad.transform.postprocessing import ZScorePostprocessor
 from pysad.transform.preprocessing import ShingleTransformer
 from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 from pysad.utils import Data, fix_seed
+from pysad.utils._datasets import _SOURCES
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "benchmark"
@@ -1391,6 +1392,27 @@ def commit():
     return git("rev-parse", "--short", "HEAD").strip() + ("-dirty" if dirty else "")
 
 
+def list_datasets():
+    """Print the loader name, source, license, and SHA-256 checksum of every dataset.
+
+    Every dataset that :class:`~pysad.utils.Data` can download is listed once, sorted by name.
+    The source is the URL that :meth:`~pysad.utils.Data.get_data` downloads, the license is the
+    license of the collection, and the checksum is the SHA-256 that every download must match.
+    """
+    header = ("loader", "source", "license", "checksum")
+    rows = []
+    for source in _SOURCES:
+        for name in Data.datasets(source):
+            meta = Data.metadata(name)
+            rows.append((name, meta["source"], meta["license"], meta["checksum"]))
+    rows.sort()
+    widths = [max(len(header[i]), max(len(row[i]) for row in rows)) for i in range(len(header))]
+    print("  ".join(h.ljust(w) for h, w in zip(header, widths, strict=False)))
+    print("  ".join("-" * w for w in widths))
+    for row in rows:
+        print("  ".join(field.ljust(w) for field, w in zip(row, widths, strict=False)))
+
+
 _DETECTOR_TABLES = {
     "DETECTORS",
     "DETECTOR_OVERRIDES",
@@ -1957,6 +1979,11 @@ def main():
         help="with --ci-plan, include every detector instead of only detectors changed since BASE",
     )
     parser.add_argument(
+        "--list-datasets",
+        action="store_true",
+        help="print the loader name, source, license, and SHA-256 checksum of every dataset and exit",
+    )
+    parser.add_argument(
         "--base-cache-dir",
         metavar="DIR",
         help="with --ci, read and populate per-detector <detector>-<hash>.csv cache files in DIR",
@@ -2021,6 +2048,9 @@ def main():
         return
     if args.ci_plan is not None:
         print(json.dumps(ci_plan(args.ci_plan, all_detectors=args.all_detectors)))
+        return
+    if args.list_datasets:
+        list_datasets()
         return
     if args.dimensions:
         if args.dimension_points <= 0:

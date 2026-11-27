@@ -1,5 +1,5 @@
 .. meta::
-   :description: Deploy PySAD streaming anomaly detectors in production: warm up from history, serialize state safely, run per-source detectors, and monitor latency.
+   :description: Deploy PySAD streaming anomaly detectors in production: warm up from history, serialize state safely, run per-source detectors, monitor latency, and run pysad-live and pysad.mcp.
 
 Run a detector in production
 ============================
@@ -128,6 +128,70 @@ Score distribution changes indicate data problems, such as a broken sensor. Trac
        recent_mean.update(score)
 
 Compare ``recent_mean.get()`` with its value on historical data. If the difference is large, find its cause.
+
+Run pysad-live in production
+----------------------------
+
+The ``pysad-live`` command scores a stream one point at a time and prints one JSON line per point. Install PySAD without extras:
+
+.. code-block:: console
+
+   $ pip install pysad
+
+Run pysad-live on your own data with a CSV file. Each row becomes one stream point:
+
+.. code-block:: console
+
+   $ pysad-live --source data.csv --detector loda --calibrator conformal --threshold 0.95
+
+Use ``--csv-delimiter`` for another delimiter. Use ``--no-csv-header`` when the file has no header row.
+
+Add ``--web`` to open a dashboard in your browser. The default host is 127.0.0.1 and the default port is 8080. To make the dashboard reachable from another machine, bind to all interfaces:
+
+.. code-block:: console
+
+   $ pysad-live --source data.csv --detector loda --calibrator conformal --web --host 0.0.0.0 --port 9090
+
+Open ``http://<host>:9090`` in your browser. The dashboard uses Server-Sent Events and the Python standard library only, so no extra package is needed.
+
+Pipe the JSON output to a monitoring exporter. The exporter counts points and alerts:
+
+.. code-block:: console
+
+   $ pysad-live --source data.csv --detector loda --calibrator conformal --json-output
+
+Use ``--max-points`` to stop after a fixed number of points, for example in a scheduled job. Use ``--refresh-rate`` to set the seconds between points.
+
+See :doc:`live_dashboard` for all options and :doc:`serving` for a Prometheus exporter that wraps pysad-live.
+
+Run pysad.mcp in production
+---------------------------
+
+The ``pysad-mcp`` command runs an MCP server over stdio. Install the optional mcp extra:
+
+.. code-block:: console
+
+   $ pip install pysad[mcp]
+
+Start the server:
+
+.. code-block:: console
+
+   $ pysad-mcp
+
+Or run it as a module:
+
+.. code-block:: console
+
+   $ python -m pysad.mcp.server
+
+The server uses stdio transport, so no network configuration is needed. Connect an MCP client such as Claude Desktop, Cursor, or VS Code. See :doc:`mcp` for the client configuration and the list of tools.
+
+A session-based client keeps detector and calibrator state across calls. Use ``initialize_detector`` and ``score_point`` for a stateful session. A standalone ``call_tool`` call uses a fresh context, so state does not carry over between calls.
+
+Wrap the server in your own process to add metrics or logging. :doc:`serving` shows a Prometheus exporter that counts MCP tool calls.
+
+Each detector tool accepts a list of points and constructor arguments. Make sure that the feature order matches the history that the detector learned from.
 
 Next steps
 ----------

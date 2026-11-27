@@ -19,6 +19,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`dataset_selection`
+
+      Compare NAB, Yahoo S5 and ODDS and pick the loader for your stream.
+
+   .. container:: card
+
       :doc:`choose_detector`
 
       Find candidate detectors for your data and compare them.
@@ -103,6 +109,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`authentication_and_multi_tenancy`
+
+      Bind pysad-live to localhost, add a reverse proxy with authentication, and run one isolated dashboard per tenant.
+
+   .. container:: card
+
       :doc:`customize_live_dashboard`
 
       Customize the pysad-live dashboard: what it shows, its size and refresh rate, and its colors.
@@ -136,6 +148,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
       :doc:`configuration`
 
       Configure pysad-live, pysad.mcp, and the optional PyO3 kernels in one place.
+
+   .. container:: card
+
+      :doc:`hardening`
+
+      Run the pysad.mcp server with a dedicated user, authentication, rate limiting, and TLS in front of it.
 
    .. container:: card
 

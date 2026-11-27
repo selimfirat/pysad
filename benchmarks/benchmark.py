@@ -1410,6 +1410,8 @@ def list_datasets():
     print("  ".join(h.ljust(w) for h, w in zip(header, widths, strict=True)))
     print("  ".join("-" * w for w in widths))
     for row in rows:
+        # The credit-card dataset URL and checksum are public metadata, not card records.
+        # lgtm [py/clear-text-logging-sensitive-data]
         print("  ".join(field.ljust(w) for field, w in zip(row, widths, strict=True)))
 
 

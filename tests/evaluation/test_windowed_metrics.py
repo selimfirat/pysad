@@ -68,6 +68,26 @@ def test_single_class_windows_do_not_contribute(ignore_nonempty_last):
     assert metric.get() == 1.0
 
 
+def test_windowed_metric_averages_only_valid_windows():
+    """Single-class windows are skipped; the average covers valid windows only."""
+    from pysad.evaluation import AUROCMetric, WindowedMetric
+
+    metric = WindowedMetric(
+        metric_cls=AUROCMetric,
+        window_size=2,
+    )
+    # Window 1: both classes, AUROC = 1.0.
+    metric.update_batch([1, 0], [0.9, 0.1])
+    # Window 2: both classes, AUROC = 0.0.
+    metric.update_batch([1, 0], [0.1, 0.9])
+    # Window 3: single class only, skipped.
+    metric.update_batch([0, 0], [0.3, 0.4])
+    # Window 4: both classes, AUROC = 1.0.
+    metric.update_batch([1, 0], [0.8, 0.2])
+
+    assert metric.get() == pytest.approx(2 / 3)
+
+
 def test_windowed_metric_log_loss():
     """Test WindowedMetric with LogLossMetric across consecutive windows."""
     import numpy as np

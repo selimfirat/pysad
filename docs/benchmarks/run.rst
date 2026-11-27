@@ -62,49 +62,13 @@ A univariate custom model sets ``_input_kind = "univariate"`` and is built with
 are parameters. Give every other constructor argument a default value. The runner passes
 ``random_state=0`` when the constructor accepts it.
 
-For example, save this detector as ``my_model.py``:
-
-.. code-block:: python
-
-   import numpy as np
-   from pysad.core import BaseModel
-
-
-   class MyModel(BaseModel):
-       """Scores each point by its distance from an exponentially weighted mean.
-
-       Args:
-           alpha (float): The weight of the newest point, between 0 and 1 (Default=0.05).
-       """
-
-       def __init__(self, alpha=0.05):
-           self.alpha = alpha
-           self.mean_ = None
-           self.var_ = None
-
-       def fit_partial(self, X, y=None):
-           if self.mean_ is None:
-               self.mean_ = X.astype(float)
-               self.var_ = np.ones_like(self.mean_)
-               return self
-
-           diff = X - self.mean_
-           self.mean_ += self.alpha * diff
-           self.var_ = (1 - self.alpha) * (self.var_ + self.alpha * diff**2)
-           return self
-
-       def score_partial(self, X):
-           if self.mean_ is None:
-               return 0.0
-
-           z = (X - self.mean_) / np.sqrt(self.var_ + 1e-12)
-           return float(np.abs(z).max())
+A ready-to-run custom model script is in ``examples/example_custom_model_benchmark.py``.
 
 Then run the benchmark runner on this model:
 
 .. code-block:: console
 
-   $ python benchmarks/benchmark.py --custom my_model.py:MyModel
+   $ python benchmarks/benchmark.py --custom examples/example_custom_model_benchmark.py:EWMAZScore
 
 A multivariate model runs on the ODDS datasets and the streams with drift. A univariate model
 runs on the NAB and UCR series. Custom models are not stored in the result cache, so each run

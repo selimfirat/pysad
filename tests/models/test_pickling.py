@@ -1,4 +1,5 @@
 import copy
+import inspect
 import pickle
 
 import numpy as np
@@ -83,7 +84,18 @@ def _data(model_name):
     return X, y
 
 
-def _make_model(model_name, X):
+_RANDOM_STATE_SUPPORT: dict[type, bool] = {}
+
+
+def _model_accepts_random_state(model_cls: type) -> bool:
+    accepted = _RANDOM_STATE_SUPPORT.get(model_cls)
+    if accepted is None:
+        accepted = "random_state" in inspect.signature(model_cls.__init__).parameters
+        _RANDOM_STATE_SUPPORT[model_cls] = accepted
+    return accepted
+
+
+def _make_model(model_name, X, random_state=None):
     model_cls = getattr(pysad.models, model_name)
     if model_name == "LocalOutlierProbability":
         return model_cls(X[:20])
@@ -97,9 +109,10 @@ def _make_model(model_name, X):
             ],
         )
 
-    return model_cls(
-        **(MODEL_PARAMS.get(model_name) or short_stream_params(model_name, X.shape[1]))
-    )
+    params = dict(MODEL_PARAMS.get(model_name) or short_stream_params(model_name, X.shape[1]))
+    if random_state is not None and _model_accepts_random_state(model_cls):
+        params["random_state"] = random_state
+    return model_cls(**params)
 
 
 def _fitted_model(model_name, X, y):
@@ -198,20 +211,12 @@ def test_relative_entropy_compared_scores_use_learned_state():
     assert _next_scores(model, X, y).max() == 1.0
 
 
-# Models that store check_random_state(None) (NumPy's global RandomState) as their RNG. Pickling
-# copies that RNG by value, so fitting after an unfitted round trip draws from a detached snapshot
-# and does not reproduce against a never-pickled model. Learned state is still preserved, as shown
-# by test_pickle_mid_stream_then_learn_new_data and test_pickle_at_end_of_stream_then_learn_new_data.
-UNFITTED_XFAIL_MODELS = {
-    "IDKS": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
-    "Inqmad": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
-    "MiLOF": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
-}
+# Both tests below give each model a fixed random_state, so the model owns its RNG and pickling
+# copies an identical RNG snapshot alongside the learned state. The restored model reproduces the
+# original on every platform, and no model needs to be xfailed here.
+UNFITTED_XFAIL_MODELS = {}
 
-SCORE_ONLY_XFAIL_MODELS = {
-    "IDKS": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
-    "Inqmad": "unfitted stochastic model draws from a copied NumPy global RNG snapshot after unpickling",
-}
+SCORE_ONLY_XFAIL_MODELS = {}
 
 
 def _edge_model_params(xfail_models):
@@ -229,7 +234,7 @@ def _edge_model_params(xfail_models):
 def test_pickle_unfitted_model(model_name):
     # Pickling a model before any fit_partial call must preserve its initial state.
     X, y = _data(model_name)
-    original = _make_model(model_name, X)
+    original = _make_model(model_name, X, random_state=SEED)
     restored = pickle.loads(pickle.dumps(original))
 
     assert type(restored) is type(original)
@@ -243,7 +248,7 @@ def test_pickle_unfitted_model(model_name):
 def test_pickle_after_score_only(model_name):
     # score_partial does not learn; pickling after scoring only must still round trip.
     X, y = _data(model_name)
-    original = _make_model(model_name, X)
+    original = _make_model(model_name, X, random_state=SEED)
     for xi in X[:NUM_FIT]:
         original.score_partial(xi)
 

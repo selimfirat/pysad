@@ -1,6 +1,7 @@
 """The metrics of benchmarks/benchmark.py."""
 
 import csv
+import sys
 
 import numpy as np
 import pytest
@@ -1576,3 +1577,28 @@ def test_drift_tables_cover_registered_streams():
     with (benchmark.OUT / "drift_streams.csv").open(newline="") as stream:
         rows = list(csv.DictReader(stream))
     assert [row["Stream"] for row in rows] == list(benchmark.DRIFT)
+
+
+def test_list_datasets_prints_every_dataset(monkeypatch, capsys):
+    benchmark = load_benchmark()
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--list-datasets"])
+    benchmark.main()
+    out = capsys.readouterr().out
+    lines = out.splitlines()
+    assert lines[0].split() == ["loader", "source", "license", "checksum"]
+    # Two separator lines (header + dashes), then one row per dataset. The loader name is the
+    # first token and the checksum is the last token; the license in between contains spaces.
+    data_lines = [line.split() for line in lines[2:]]
+    expected = 0
+    for source in benchmark._SOURCES:
+        expected += len(benchmark.Data.datasets(source))
+    assert len(data_lines) == expected
+    seen = {parts[0] for parts in data_lines}
+    for source in benchmark._SOURCES:
+        for name in benchmark.Data.datasets(source):
+            assert name in seen
+            meta = benchmark.Data.metadata(name)
+            parts = next(p for p in data_lines if p[0] == name)
+            assert parts[-1] == meta["checksum"]
+            assert meta["source"] in out
+            assert meta["license"] in out

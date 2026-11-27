@@ -701,6 +701,18 @@ _TSB_DRIFT_SERIES = (
     "116_TAO_id_1_Environment_tr_500_1st_3.csv",
     "127_TAO_id_12_Environment_tr_500_1st_24.csv",
 )
+# The SWaT (Secure Water Treatment) dataset of iTrust, Singapore University of Technology
+# and Design, mirrored by PaddlePaddle's PaddleTS. The train file holds 495,000 points of
+# normal operation and the test file holds 449,919 points with 54,621 attack points. Each
+# row has 51 sensor and actuator readings followed by a binary Normal/Attack label.
+# iTrust provides the data free for research upon request; iTrust's terms of usage apply.
+_SWAT = "https://paddlets.bj.bcebos.com/"
+# The SHA-256 checksum of each file, which a download must match.
+_SWAT_CHECKSUMS = {
+    "swat_train.csv": "cfdba4611fd7b093246309eae7b249da05decff8cde640c8283bfef8e6eaf5fb",
+    "swat_test.csv": "23c5bacf78de7527aac031ad43acc7ac99ec49b17b645aaa2a74a4a7d60a0a80",
+}
+
 # Yahoo S5 A1Benchmark contains 67 real production-traffic series, with one row per hour.
 # Each row contains timestamp,value,is_anomaly. The public mirror uses a fixed commit.
 # Yahoo requires a signed Data Sharing Agreement for academic, non-commercial research.
@@ -794,6 +806,7 @@ _SOURCES = (
     "creditcard",
     "tsb-drift",
     "yahoo",
+    "swat",
 )
 
 # The license of each collection, as the dataset inventory guide lists it. "telemanom" is the
@@ -830,6 +843,10 @@ _LICENSES = {
     "yahoo": (
         "Yahoo Webscope Data Sharing Agreement. Academic, non-commercial research only. "
         "Users must sign an agreement. Yahoo prohibits redistribution."
+    ),
+    "swat": (
+        "iTrust, SUTD. Free for research upon request; iTrust's terms of usage apply "
+        "(credit iTrust, do not redistribute). Public mirror: PaddlePaddle PaddleTS."
     ),
     "telemanom": "BSD-style (Telemanom, Caltech).",
 }

@@ -42,6 +42,8 @@ from pysad.utils._datasets import (
     _SMD,
     _SMD_CHECKSUMS,
     _SOURCES,
+    _SWAT,
+    _SWAT_CHECKSUMS,
     _TSB_DRIFT_ARCHIVE,
     _TSB_DRIFT_ARCHIVE_CHECKSUM,
     _TSB_DRIFT_ARCHIVE_KEY,
@@ -101,6 +103,8 @@ def _source(name: str) -> tuple[str, str]:
         return _TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM
     if name.startswith("yahoo/"):
         return _YAHOO + name[len("yahoo/") :], _YAHOO_CHECKSUMS[name[len("yahoo/") :]]
+    if name.startswith("swat/"):
+        return _SWAT + name[len("swat/") :], _SWAT_CHECKSUMS[name[len("swat/") :]]
 
     return _MIRROR + name, _CHECKSUMS[name]
 
@@ -140,7 +144,8 @@ class Data:
     and the 67 real production-traffic series of Yahoo S5 A1Benchmark.
     The multivariate streams in time order come from KDD Cup 99, the Server Machine Dataset (SMD),
     the NASA SMAP and MSL telemetry of Telemanom (:cite:`hundman2018detecting`), INSECTS and
-    credit-card fraud (OpenML 1597). The distribution-drift series come from TSB-drift, the
+    credit-card fraud (OpenML 1597), and SWaT (Secure Water Treatment) of iTrust, Singapore
+    University of Technology and Design. The distribution-drift series come from TSB-drift, the
     top-75 subset of the TSB-AD-M benchmark introduced by Parrino et al. (KDD 2026,
     "In a Streaming World, Should You Stand Still? A Comprehensive Benchmark of Anomaly
     Detection in Streams", DOI 10.1145/3770855.3817495, CC BY 4.0) and extracted from the
@@ -182,6 +187,7 @@ class Data:
                 - ``"insects"``: the 4 INSECTS streams of the ARCUS paper, for example ``"insects/abrupt.csv"``, with 33 features. The southern house mosquito is the anomaly class.
                 - ``"tsb-drift"``: the 75 series of the TSB-drift distribution-drift benchmark of Parrino et al. (KDD 2026), for example ``"tsb-drift/009_MSL_id_8_Sensor_tr_714_1st_1390.csv"``. The series are extracted from the TSB-AD-M archive, and the last column holds the binary anomaly label. The paper is under CC BY 4.0; the underlying TSB-AD series keep their original per-dataset licenses and the TSB-AD curation is provided under the Apache 2.0 license.
                 - ``"yahoo"``: the 67 real production-traffic series of Yahoo S5 A1Benchmark, for example ``"yahoo/real_1.csv"``. The value column is the only feature. Label 1 marks an anomaly. Yahoo requires a signed Data Sharing Agreement for academic, non-commercial research.
+                - ``"swat"``: SWaT (Secure Water Treatment) of iTrust, Singapore University of Technology and Design, mirrored by PaddlePaddle PaddleTS, for example ``"swat/swat_test.csv"``. Each point has 51 sensor and actuator readings and a binary Normal/Attack label; label 1 marks an attack. iTrust provides the data free for research upon request, and iTrust's terms of usage apply: credit iTrust and do not redistribute the data.
 
         Returns:
             list[str]: The names of the datasets, which :meth:`get_data` accepts.
@@ -213,6 +219,8 @@ class Data:
             return ["tsb-drift/" + name for name in _TSB_DRIFT_SERIES]
         if source == "yahoo":
             return ["yahoo/" + name for name in _YAHOO_CHECKSUMS]
+        if source == "swat":
+            return ["swat/" + name for name in _SWAT_CHECKSUMS]
         raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
 
     @staticmethod
@@ -370,6 +378,8 @@ class Data:
             return self._load_tsb_drift(data_path)
         if file_name.startswith("yahoo/"):
             return self._load_yahoo(data_path)
+        if file_name.startswith("swat/"):
+            return self._load_swat(data_path)
         if data_path.endswith(".mat"):
             from scipy.io import loadmat
 
@@ -571,6 +581,24 @@ class Data:
         """
         data = np.loadtxt(data_path, delimiter=",", skiprows=1, ndmin=2)
         return data[:, 1:2], data[:, 2].astype(np.int64)
+
+    def _load_swat(self, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Loads a SWaT CSV of 51 sensor and actuator readings and a binary Normal/Attack label.
+
+        The file has a header row, which is skipped. Label 1 marks an attack and label 0
+        marks normal operation.
+
+        Args:
+            data_path (str): Path of the downloaded SWaT CSV file.
+
+        Returns:
+            tuple[NDArray[np.float64], NDArray[np.int64]]: The feature vectors of shape
+            (num_instances, 51) and the binary labels of shape (num_instances,).
+        """
+        data = np.loadtxt(data_path, delimiter=",", skiprows=1, ndmin=2)
+        X = data[:, :-1]
+        y = data[:, -1].ravel().astype(np.int64)
+        return X, y
 
     def get_iterator(
         self,

@@ -92,6 +92,33 @@ Use the detector like any other PySAD detector. The ``cardio`` dataset has all i
 
    AUROC: 0.930
 
+Benchmark your custom model
+---------------------------
+
+Benchmark a detector that is not part of PySAD with the benchmark runner. Save the detector in a file and pass ``--custom path/to/file.py:ClassName``. The runner loads the class and scores it on the datasets whose part matches its input kind, the same way it scores the built-in detectors. See :doc:`/benchmarks/run` for the full usage, including the constructor arguments the runner fills in automatically.
+
+The ``EWMAZScore`` detector defined earlier in this guide works with the runner. Save it as ``ewma_zscore.py`` and run:
+
+.. code-block:: console
+
+   $ python benchmarks/benchmark.py --custom ewma_zscore.py:EWMAZScore
+
+A multivariate model runs on the ODDS datasets and the streams with drift. A univariate model runs on the NAB and UCR series. Custom models are not stored in the result cache, so each run scores them again.
+
+Pass ``--latex`` together with ``--custom`` to also write ``docs/benchmark/summary.tex``:
+
+.. code-block:: console
+
+   $ python benchmarks/benchmark.py --custom ewma_zscore.py:EWMAZScore --latex
+
+The table lists each dataset and the mean AUROC of each detector on it, with your custom model as one column next to the built-in detectors it was compared against.
+
+A ready-to-run custom model script is in ``examples/example_custom_model_benchmark.py``. It defines ``EWMAZScore`` with ``_input_kind = "multivariate"`` and scores it through the runner:
+
+.. code-block:: console
+
+   $ python examples/example_custom_model_benchmark.py
+
 Other components
 ----------------
 

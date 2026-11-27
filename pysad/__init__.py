@@ -8,11 +8,22 @@ from typing import Any
 from .version import __version__
 
 _SUBPACKAGES = frozenset(
-    {"core", "evaluation", "explainability", "models", "mcp", "statistics", "transform", "utils"}
+    {
+        "agent",
+        "core",
+        "evaluation",
+        "explainability",
+        "models",
+        "mcp",
+        "statistics",
+        "transform",
+        "utils",
+    }
 )
 
 __all__ = [
     "__version__",
+    "agent",
     "core",
     "evaluation",
     "explainability",

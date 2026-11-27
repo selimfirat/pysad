@@ -1,0 +1,9 @@
+{
+  "name": "pysad",
+  "version": "0.1.0",
+  "description": "Score data streams and explain anomalies with the optional PySAD MCP server.",
+  "author": {"name": "PySAD maintainers"},
+  "homepage": "https://pysad.readthedocs.io/en/stable/guides/mcp.html",
+  "repository": "https://github.com/selimfirat/pysad",
+  "license": "BSD-3-Clause"
+}

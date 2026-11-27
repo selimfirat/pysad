@@ -319,6 +319,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    guides/custom_model
    guides/configuration
    guides/mcp
+   guides/hardening
    guides/mcp_monitoring
    guides/migrate_azure
    guides/migrate_aws

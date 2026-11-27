@@ -139,6 +139,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`hardening`
+
+      Run the pysad.mcp server with a dedicated user, authentication, rate limiting, and TLS in front of it.
+
+   .. container:: card
+
       :doc:`/examples`
 
       Complete scripts that run end to end.

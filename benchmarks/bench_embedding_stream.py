@@ -2,13 +2,18 @@
 
 Run it from the repository root:
 
+    python benchmarks/bench_embedding_stream.py --points 2000 --seed 7 --repeats 3
     python benchmarks/bench_embedding_stream.py --encoder my_encoder.py:encode --points 2000 --seed 7 --repeats 3
 
-The benchmark loads a user-supplied frozen encoder (a plain callable that maps one raw instance to
-an embedding vector, so no framework or new dependency is needed), encodes every instance of a
-deterministic synthetic stream, scores each embedding with
+The benchmark encodes every instance of a deterministic synthetic stream, scores each embedding with
 :class:`~pysad.models.ZeroShotEmbeddingDetector`, and reports the AUROC, the milliseconds per
 point, and whether a second run on the same stream gives exactly the same scores.
+
+Pass ``--encoder path/to/file.py:encode`` to score a user-supplied frozen encoder (a plain callable
+that maps one raw instance to one embedding vector, so no framework or new dependency is needed).
+Without ``--encoder``, the benchmark uses a built-in deterministic NumPy projection as the encoder,
+so the command runs with no dependencies beyond PySAD. This built-in preset is the same on every
+run.
 
 The semantic anchors of the detector are the embeddings of the warm-up points, so no labels are
 used to build them and the warm-up points do not count in the AUROC. The encoder must be
@@ -28,6 +33,7 @@ import typing
 from pathlib import Path
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.metrics import roc_auc_score
 
 _HERE = Path(__file__).resolve().parent
@@ -127,8 +133,34 @@ def _encode(stream: np.ndarray, encoder) -> np.ndarray:
     return embeddings
 
 
+_DEFAULT_EMBEDDING_DIM = 16
+_DEFAULT_SEED = 0
+_DEFAULT_PROJECTIONS: dict[int, NDArray[np.float64]] = {}
+
+
+def _default_encoder(x: np.ndarray) -> np.ndarray:
+    """The built-in deterministic encoder used when no ``--encoder`` is given.
+
+    It projects the instance with a fixed random matrix (NumPy only, no new dependency), cached per
+    input dimension. The same instance always gives the same embedding, so the benchmark is
+    deterministic and needs no framework or extra package.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    if x.ndim != 1:
+        raise ValueError(f"The encoder must receive a one-dimensional vector, got shape {x.shape}.")
+    dim = int(x.shape[0])
+    projection = _DEFAULT_PROJECTIONS.get(dim)
+    if projection is None:
+        rng = np.random.default_rng(_DEFAULT_SEED)
+        projection = rng.standard_normal((dim, _DEFAULT_EMBEDDING_DIM)) / np.sqrt(
+            _DEFAULT_EMBEDDING_DIM
+        )
+        _DEFAULT_PROJECTIONS[dim] = projection
+    return x @ projection
+
+
 def run_benchmark(
-    encoder: typing.Callable[[np.ndarray], np.ndarray],
+    encoder: typing.Callable[[np.ndarray], np.ndarray] | None = None,
     points: int = 2000,
     seed: int = 7,
     num_features: int = 8,
@@ -157,12 +189,15 @@ def run_benchmark(
         num_anchors (int): The number of warm-up embeddings used as semantic anchors
             (Default=10).
         temperature (float): The softmax temperature of ZeroShotEmbeddingDetector (Default=1.0).
-        encoder (typing.Callable): The frozen encoder that maps one instance to one embedding.
+        encoder (typing.Callable | None): The frozen encoder that maps one instance to one embedding.
+            Without it, the built-in deterministic NumPy projection is used (Default=None).
 
     Returns:
         A mapping with the stream settings, the median milliseconds per point, the determinism
         flag, the AUROC, and the score range.
     """
+    if encoder is None:
+        encoder = _default_encoder
     stream, labels = _make_stream(points, seed, num_features, anomaly_fraction)
     warmup = min(warmup, points // 2)
     num_points = len(stream) - warmup
@@ -216,8 +251,9 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--encoder",
-        required=True,
-        help="Frozen encoder as 'path/to/file.py:function_name'.",
+        default=None,
+        help="Frozen encoder as 'path/to/file.py:function_name'. Without it, the benchmark uses a "
+        "built-in deterministic NumPy projection, so no encoder file or new dependency is needed.",
     )
     parser.add_argument("--points", type=int, default=2000, help="Points in the stream")
     parser.add_argument("--seed", type=int, default=7, help="Random seed of the stream")
@@ -247,7 +283,7 @@ def _parse_args() -> argparse.Namespace:
 def main() -> int:
     """Run the benchmark command."""
     args = _parse_args()
-    encoder = _load_encoder(args.encoder)
+    encoder = _load_encoder(args.encoder) if args.encoder is not None else _default_encoder
     results = run_benchmark(
         points=args.points,
         seed=args.seed,

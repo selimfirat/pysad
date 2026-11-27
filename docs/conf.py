@@ -210,9 +210,24 @@ linkcheck_ignore = [
     r"https://doi\.org/10\.1093/",  # Oxford University Press
     r"https://doi\.org/10\.1137/",  # SIAM
     r"https://doi\.org/10\.1145/",  # ACM
+    r"https://doi\.org/10\.1109/",  # IEEE
     r"https://doi\.org/10\.14778/",  # VLDB papers on ACM
     r"https://doi\.org/10\.3390/",  # MDPI
+    # Coveralls blocks automated clients with a 403; the badge links to a valid page.
+    r"https://coveralls\.io/",
+    # shields.io exceeds the linkcheck timeout when it renders the dynamic performance and star
+    # badges from CI runners. The badge click targets are separate links, so they stay checked.
+    r"https://img\.shields\.io/.*",
+    # Relative image click targets that resolve to documents in the HTML build. linkcheck
+    # cannot resolve relative ``.html`` targets to source files, so ignore them here.
+    r"benchmark\.html",
+    r"detectors\.html",
+    r"benchmarks/multivariate\.html",
 ]
+
+# CI runners can be slow to reach external services; give linkcheck more time.
+linkcheck_timeout = 60
+linkcheck_retries = 1
 
 if not _FAST_DOCS:
     # llms.txt lists the rendered pages, because the API pages get their text from docstrings.

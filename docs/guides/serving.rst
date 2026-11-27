@@ -502,7 +502,7 @@ Prometheus alerting
 
 Prometheus collects metrics from an HTTP endpoint. A counter records a total that increases with each event.
 Run this recipe in one scoring process. Keep port 8001 reachable from your Prometheus server.
-Use the `Prometheus Python client <https://prometheus.github.io/client_python/getting-started/three-step-demo/>`_ in your application environment.
+Use the `Prometheus Python client <https://github.com/prometheus/client_python>`_ in your application environment.
 
 .. code-block:: python
 

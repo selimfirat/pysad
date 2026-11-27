@@ -115,6 +115,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`configuration`
+
+      Configure pysad-live, pysad.mcp, and the optional PyO3 kernels in one place.
+
+   .. container:: card
+
       :doc:`/examples`
 
       Complete scripts that run end to end.

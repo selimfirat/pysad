@@ -193,6 +193,8 @@ Wrap the server in your own process to add metrics or logging. :doc:`serving` sh
 
 Each detector tool accepts a list of points and constructor arguments. Make sure that the feature order matches the history that the detector learned from.
 
+See :doc:`mcp_hardening` for production hardening: process isolation, input limits, error handling, and monitoring.
+
 Next steps
 ----------
 

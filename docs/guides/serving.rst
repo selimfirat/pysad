@@ -732,6 +732,67 @@ The print sink does not provide exactly-once delivery.
 Set state expiration or limit active keys to bound the total number of detectors.
 See :doc:`alerts` to calibrate scores before applying an alert threshold.
 
+Zero-dependency keyed state
+---------------------------
+
+This recipe follows the PyFlink keyed-state pattern without adding any dependency. It keeps one detector per source key in a plain Python dict and checkpoints the dict to disk. It needs only the Python standard library and NumPy, which is already a PySAD dependency. Use it when you want per-source state without running a Flink cluster.
+
+Save the recipe as ``keyed_serving.py``:
+
+.. code-block:: python
+
+   import pickle
+   from pathlib import Path
+
+   import numpy as np
+
+   from pysad.models import LODA
+   from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
+
+   STATE_PATH = Path("keyed_state.pkl")
+
+   def load_states():
+       if not STATE_PATH.exists():
+           return {}
+       with open(STATE_PATH, "rb") as f:
+           return pickle.load(f)
+
+   def save_states(states):
+       tmp_path = STATE_PATH.with_suffix(".tmp")
+       with open(tmp_path, "wb") as f:
+           pickle.dump(states, f)
+       tmp_path.replace(STATE_PATH)
+
+   def get_entry(states, source_id):
+       if source_id not in states:
+           states[source_id] = {
+               "model": LODA(random_state=0),
+               "calibrator": ConformalProbabilityCalibrator(window_size=1000),
+           }
+       return states[source_id]
+
+   states = load_states()
+   points_seen = 0
+   for source_id, x in stream_with_source_ids():
+       entry = get_entry(states, source_id)
+       score = entry["model"].fit_score_partial(np.asarray(x, dtype=float))
+       prob = entry["calibrator"].fit_transform_partial(score)
+
+       points_seen += 1
+       if points_seen % 1000 == 0:
+           save_states(states)
+
+   save_states(states)
+
+.. note::
+
+   Load pickles only from sources you trust. A pickle can execute arbitrary code when loaded.
+   Pin the PySAD version in your requirements (e.g. ``pysad==0.6.0``) to ensure the same pickle format.
+
+   This recipe runs in a single process. For a distributed Flink job, use the PyFlink keyed state recipe above, which needs pyflink, Java, and PySAD on every worker.
+
+   Limit active keys or remove idle state to bound the total number of detectors. See :doc:`alerts` to calibrate scores before applying an alert threshold.
+
 Model Context Protocol (MCP) server
 -----------------------------------
 

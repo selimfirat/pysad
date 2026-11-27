@@ -1407,10 +1407,10 @@ def list_datasets():
             rows.append((name, meta["source"], meta["license"], meta["checksum"]))
     rows.sort()
     widths = [max(len(header[i]), max(len(row[i]) for row in rows)) for i in range(len(header))]
-    print("  ".join(h.ljust(w) for h, w in zip(header, widths, strict=False)))
+    print("  ".join(h.ljust(w) for h, w in zip(header, widths, strict=True)))
     print("  ".join("-" * w for w in widths))
     for row in rows:
-        print("  ".join(field.ljust(w) for field, w in zip(row, widths, strict=False)))
+        print("  ".join(field.ljust(w) for field, w in zip(row, widths, strict=True)))
 
 
 _DETECTOR_TABLES = {

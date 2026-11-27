@@ -1,7 +1,7 @@
 {
     "$schema": "https://context7.com/schema/context7.json",
     "projectTitle": "PySAD",
-    "description": "Streaming anomaly detection for multivariate and univariate data streams: 68 models, including LODA, HalfSpaceTrees, RSHash, xStream, OnlineKMeans, DenStream, DAMP, and SAND; conformal and SPOT calibration; drift monitoring; composable pipelines; prequential evaluation; pysad-live CLI; pysad-mcp server with auto-discovered tools and parameter metadata; labeled SMAP, MSL, and SMD datasets; optional PyO3 kernels.",
+    "description": "Streaming anomaly detection for multivariate and univariate data streams: 70 models, including LODA, HalfSpaceTrees, RSHash, xStream, OnlineKMeans, DenStream, DAMP, and SAND; conformal and SPOT calibration; drift monitoring; composable pipelines; prequential evaluation; pysad-live CLI; pysad-mcp server with auto-discovered tools and parameter metadata; labeled SMAP, MSL, and SMD datasets; optional PyO3 kernels.",
     "branch": "master",
     "folders": ["docs", "examples", "pysad/live", "pysad/mcp"],
     "excludeFolders": [

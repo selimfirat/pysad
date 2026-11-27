@@ -75,7 +75,10 @@ for local LLM clients like Claude Desktop, Cursor, or VS Code with MCP extension
 Configuring MCP Clients
 -----------------------
 
-To use the PySAD MCP server with an MCP client, add it to your client configuration.
+PySAD ships a root-level ``.mcp.json`` that declares the ``pysad`` server
+(``command: pysad-mcp``). MCP clients that scan the workspace root, such as
+Cursor, discover it automatically. You can also add it manually to your client
+configuration as shown below.
 
 **Claude Desktop** (``~/Library/Application Support/Claude/claude_desktop_config.json`` on macOS):
 

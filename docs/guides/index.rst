@@ -109,6 +109,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`customize_live_dashboard`
+
+      Customize the pysad-live dashboard: what it shows, its size and refresh rate, and its colors.
+
+   .. container:: card
+
       :doc:`custom_model`
 
       Implement the model interface for a published streaming method and add it to PySAD.
@@ -118,6 +124,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
       :doc:`mcp`
 
       Run PySAD detectors, drift meters, and explainability from AI assistants via MCP.
+
+   .. container:: card
+
+      :doc:`mcp_monitoring`
+
+      Observe a running MCP server: session status, logs, tool calls, and health checks.
 
    .. container:: card
 

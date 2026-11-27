@@ -89,5 +89,6 @@ Press Ctrl+C to stop the server and the stream worker. The command exits cleanly
 Next steps
 ----------
 
+- :doc:`customize_live_dashboard` explains how to change what the dashboard shows and its colors.
 - :doc:`alerts` explains thresholds and probability calibration.
 - :doc:`../api/live` documents the ``pysad-live`` command and its options.

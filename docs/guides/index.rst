@@ -7,6 +7,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`quickstart`
+
+      Score a stream point by point, measure AUROC, and raise alerts.
+
+   .. container:: card
+
       :doc:`stream_data`
 
       Stream CSV files, DataFrames, sensor values, messages and benchmark datasets.

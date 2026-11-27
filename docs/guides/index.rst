@@ -109,6 +109,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`customize_live_dashboard`
+
+      Customize the pysad-live dashboard: what it shows, its size and refresh rate, and its colors.
+
+   .. container:: card
+
       :doc:`custom_model`
 
       Implement the model interface for a published streaming method and add it to PySAD.

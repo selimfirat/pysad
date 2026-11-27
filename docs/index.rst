@@ -315,6 +315,7 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    guides/serving
    guides/live_dashboard
    guides/authentication_and_multi_tenancy
+   guides/customize_live_dashboard
    guides/custom_model
    guides/configuration
    guides/mcp

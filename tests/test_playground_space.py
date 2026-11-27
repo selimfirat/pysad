@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import json
 from pathlib import Path
 
 import numpy as np
@@ -310,3 +311,119 @@ def test_live_batches_match_prequential_run(calibrator):
     assert session.next_batch(8) == {"points": [], "done": True}
     restarted = engine.LiveSession(**options)
     assert restarted.next_batch(8)["points"] == rows[:8]
+
+
+def test_share_link_settings_round_trip_reproduces_identical_result():
+    """Settings stored in a share link round-trip through the engine to the same scores and alerts."""
+    settings = dict(
+        stream_name=engine.STREAM_SYNTHETIC,
+        detectors=["RSHash", "HalfSpaceTrees", "LODA"],
+        calibrator_name=engine.CALIBRATOR_SPOT,
+        threshold=0.970,
+        calibrator_window=400,
+        max_points=500,
+        injected=[{"index": 250, "feature_idx": 1, "magnitude_sigma": 7.0}],
+        inspect_step=250,
+        primary_feature_name="sensor_2",
+    )
+    first = engine.run_playground(**settings)
+
+    # Serialize the settings exactly as the share link does (updateUrlParams), then parse
+    # them back exactly as the page does (parseUrlParams), and rebuild the engine options.
+    params = {
+        "stream": settings["stream_name"],
+        "detectors": ",".join(settings["detectors"]),
+        "calibrator": settings["calibrator_name"],
+        "threshold": f"{settings['threshold']:.3f}",
+        "calWindow": str(settings["calibrator_window"]),
+        "points": str(settings["max_points"]),
+        "feature": settings["primary_feature_name"],
+        "injected": json.dumps(settings["injected"]),
+        "inspect": str(settings["inspect_step"]),
+    }
+    restored_injected = []
+    parsed_injected = json.loads(params["injected"] or "[]")
+    if isinstance(parsed_injected, list):
+        for item in parsed_injected:
+            if (
+                item
+                and isinstance(item.get("index"), int)
+                and item["index"] >= 0
+                and isinstance(item.get("feature_idx"), int)
+                and item["feature_idx"] >= 0
+                and isinstance(item.get("magnitude_sigma"), (int, float))
+                and np.isfinite(item["magnitude_sigma"])
+            ):
+                restored_injected.append(item)
+
+    restored = dict(
+        stream_name=params["stream"],
+        detectors=params["detectors"].split(","),
+        calibrator_name=params["calibrator"],
+        threshold=float(params["threshold"]),
+        calibrator_window=int(params["calWindow"]),
+        max_points=int(params["points"]),
+        injected=restored_injected,
+        inspect_step=int(params["inspect"]),
+        primary_feature_name=params["feature"],
+    )
+    second = engine.run_playground(**restored)
+
+    assert len(first.traces) == len(second.traces)
+    for first_trace, second_trace in zip(first.traces, second.traces, strict=True):
+        np.testing.assert_array_equal(first_trace.calibrated_scores, second_trace.calibrated_scores)
+        assert first_trace.alerts.tolist() == second_trace.alerts.tolist()
+        assert first_trace.auroc == second_trace.auroc
+        assert first_trace.aupr == second_trace.aupr
+        assert first_trace.precision == second_trace.precision
+        assert first_trace.recall == second_trace.recall
+        assert first_trace.injected_caught == second_trace.injected_caught
+        assert first_trace.injected_total == second_trace.injected_total
+    np.testing.assert_array_equal(first.explanation.contributions, second.explanation.contributions)
+    assert first.explanation.step == second.explanation.step
+    assert first.pipeline_code == second.pipeline_code
+    assert first.status_note == second.status_note
+
+
+def test_run_playground_rejects_unknown_stream():
+    """An unknown stream name raises a clear ValueError instead of a silent failure."""
+    with pytest.raises(ValueError, match="Unknown stream choice"):
+        engine.run_playground(
+            stream_name="Not a real stream",
+            detectors=["LODA"],
+            calibrator_name=engine.CALIBRATOR_CONFORMAL,
+            max_points=200,
+        )
+
+
+def test_run_playground_rejects_unsupported_calibrator():
+    """An unsupported calibrator name raises a clear ValueError."""
+    with pytest.raises(ValueError, match="Unsupported calibrator"):
+        engine.run_playground(
+            stream_name=engine.STREAM_SYNTHETIC,
+            detectors=["LODA"],
+            calibrator_name="Not a real calibrator",
+            max_points=200,
+        )
+
+
+def test_load_stream_csv_without_csv_data_raises():
+    """Upload CSV mode without CSV data raises a clear ValueError."""
+    with pytest.raises(ValueError, match="Upload a CSV file"):
+        engine.load_stream(engine.STREAM_CSV, csv_data=None)
+
+
+def test_parse_csv_stream_rejects_short_csv():
+    """A CSV with fewer than 10 data rows raises a clear ValueError."""
+    with pytest.raises(ValueError, match="at least 10 non-empty data rows"):
+        engine.parse_csv_stream(b"cpu,mem\n0.1,0.2\n")
+
+
+def test_parse_csv_stream_rejects_no_numeric_columns():
+    """A CSV with only text columns raises a clear ValueError."""
+    rows = ["name,city"]
+    for i in range(12):
+        rows.append(f"person_{i},city_{i}")
+    csv_bytes = "\n".join(rows).encode("utf-8")
+    with pytest.raises(ValueError, match="no numeric feature columns"):
+        engine.parse_csv_stream(csv_bytes)

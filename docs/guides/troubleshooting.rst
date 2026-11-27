@@ -18,7 +18,7 @@ The examples on this page use synthetic data. Replace it with your own stream:
 Installation
 ------------
 
-PySAD installs from PyPI, conda-forge, or from source. See :doc:`installation` for the full steps. This section covers the most common installation problems.
+PySAD installs from PyPI, conda-forge, or from source. See :doc:`/installation` for the full steps. This section covers the most common installation problems.
 
 ``ModuleNotFoundError: No module named 'pysad'``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -141,7 +141,7 @@ A detector takes one point as an array of shape ``(num_features,)``. A plain num
 Fix it:
 
 - Give each point as a 1-D array, for example ``np.array([2.5])`` for one feature.
-- To stream a 1-D array of values, reshape it first with ``values.reshape(-1, 1)``. See :doc:`guides/stream_data`.
+- To stream a 1-D array of values, reshape it first with ``values.reshape(-1, 1)``. See :doc:`stream_data`.
 
 ``ValueError: the point has the wrong number of features``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -151,7 +151,7 @@ A detector fixes the number of features at the first point. A later point with m
 Fix it:
 
 - Make sure that every point has the same number of features as the first point.
-- To change the features, start a new detector and fit it to historical data with the new features. See :doc:`guides/production`.
+- To change the features, start a new detector and fit it to historical data with the new features. See :doc:`production`.
 
 ``TypeError: this model has no predict method``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -161,7 +161,7 @@ Fix it:
 Fix it:
 
 - Check ``model.output_kind``. A score-only model has ``output_kind == "score"``. Use ``score_partial`` instead of ``predict_partial``.
-- Wrap a score-only model with a threshold or a calibrator to get decisions. See :doc:`guides/alerts`.
+- Wrap a score-only model with a threshold or a calibrator to get decisions. See :doc:`alerts`.
 
 ``Every run gives a different result``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -172,7 +172,7 @@ Fix it:
 
 - Pass ``random_state=0``, or another integer, to each detector that uses randomness.
 - Or call :func:`pysad.utils.fix_seed` at the start of the script to seed the global state that ``random_state=None`` draws from.
-- To report a stable result, repeat the run with three to five seeds and give the mean. See :doc:`concepts`.
+- To report a stable result, repeat the run with three to five seeds and give the mean. See :doc:`/concepts`.
 
 ``Loading a pickle fails or gives the wrong scores``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -182,7 +182,7 @@ PySAD detectors and calibrators can be pickled, but you must load a pickle with 
 Fix it:
 
 - Save the detector and its calibrator together, so a restart continues from the same state.
-- Check ``pysad.__version__`` before you load the pickle. Use the version that saved it. See :doc:`guides/production`.
+- Check ``pysad.__version__`` before you load the pickle. Use the version that saved it. See :doc:`production`.
 
 ``ReferenceWindowModel is slow at the first points``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -191,7 +191,7 @@ Without ``initial_window_X``, :class:`~pysad.integrations.ReferenceWindowModel` 
 
 Fix it:
 
-- Pass initial points to ``initial_window_X`` to train once instead. See :doc:`guides/pyod`.
+- Pass initial points to ``initial_window_X`` to train once instead. See :doc:`pyod`.
 
 Next steps
 ----------

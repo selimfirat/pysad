@@ -75,7 +75,7 @@ Yahoo S5 sources
 
 ``Data.datasets("yahoo")`` lists the 67 A1Benchmark series. The loader excludes the synthetic A2, A3, and A4 subsets.
 
-The `Yahoo S5 catalog <https://webscope.sandbox.yahoo.com/catalog.php?datatype=s&did=70>`_ describes the original dataset. Downloads use a `public mirror at a fixed commit <https://github.com/ayyzenn/Real-Time-Anomaly-Detection-in-Kubernetes-Cluster-using-Three-Way-Decisions/tree/79453c498fef5bc23310682355e1dea1fb191b97/yahoo_data>`_. The mirror's `WebscopeReadMe.txt <https://github.com/ayyzenn/Real-Time-Anomaly-Detection-in-Kubernetes-Cluster-using-Three-Way-Decisions/blob/79453c498fef5bc23310682355e1dea1fb191b97/yahoo_data/WebscopeReadMe.txt>`_ states Yahoo's usage restrictions. The mirror does not grant a separate data license. Users must obtain Yahoo's signed Data Sharing Agreement before use.
+The Yahoo S5 catalog describes the original dataset. Downloads use a `public mirror at a fixed commit <https://github.com/ayyzenn/Real-Time-Anomaly-Detection-in-Kubernetes-Cluster-using-Three-Way-Decisions/tree/79453c498fef5bc23310682355e1dea1fb191b97/yahoo_data>`_. The mirror's `WebscopeReadMe.txt <https://github.com/ayyzenn/Real-Time-Anomaly-Detection-in-Kubernetes-Cluster-using-Three-Way-Decisions/blob/79453c498fef5bc23310682355e1dea1fb191b97/yahoo_data/WebscopeReadMe.txt>`_ states Yahoo's usage restrictions. The mirror does not grant a separate data license. Users must obtain Yahoo's signed Data Sharing Agreement before use.
 
 Checksum verification
 ---------------------

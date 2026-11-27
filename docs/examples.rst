@@ -1089,6 +1089,32 @@ It prints (when Kafka is unavailable and the synthetic fallback runs):
    [1000] score=2.1387 label=0 AUROC=0.839
     Finished synthetic stream. Final AUROC: 0.839
 
+Bytewax stream processor
+------------------------
+
+This recipe runs a PySAD detector inside a Bytewax dataflow. Bytewax routes each string
+key to its own state, so the recipe keeps one detector per source key and scores each
+point before learning from it. Bytewax is not a PySAD dependency; install it in your
+application environment to run the dataflow. If it is not installed, the script falls
+back to a synthetic stream so it runs anywhere for demonstration.
+
+.. literalinclude:: ../examples/example_bytewax.py
+   :language: python
+
+It prints (when bytewax is unavailable and the synthetic fallback runs):
+
+.. code-block:: text
+
+   bytewax is not installed; running a synthetic stream instead.
+   Install bytewax in your application environment to run the dataflow recipe.
+     [100] score=0.8449 label=0 AUROC=N/A (single class so far)
+     [200] score=0.8806 label=0 AUROC=0.978
+     [300] score=0.8660 label=0 AUROC=0.977
+     [400] score=0.9052 label=0 AUROC=0.980
+     [500] score=1.3779 label=1 AUROC=0.842
+     [600] score=0.6683 label=0 AUROC=0.855
+   Finished synthetic stream. Points: 600, keys: 3, Final AUROC: 0.855
+
 Benchmark a custom model
 ------------------------
 

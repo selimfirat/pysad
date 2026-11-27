@@ -1,21 +1,10 @@
-"""Property-based tests for the guarantees every postprocessor makes, whatever the scores.
-
-Each test draws a stream of scores with Hypothesis and checks one guarantee for every concrete
-class in ``pysad.transform.postprocessing.__all__``:
-
-- ``transform_partial`` does not change the state, so two calls with the same score give the
-  same output, and the outputs that follow do not change;
-- the batch methods (``fit``, ``transform``, ``fit_transform``) agree with the per-score methods;
-- in the same state, a higher score never gets a lower output. Higher output means more anomalous
-  for every postprocessor (AGENTS.md), and each postprocessor maps a score either to a statistic
-  of the previous scores, which does not depend on the score, or to its Z-score, which grows with
-  it (class docstrings).
-"""
+"""Generated scores exercise postprocessor state, ordering, and batch equivalence."""
 
 import copy
 import inspect
 
 import numpy as np
+import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
@@ -78,46 +67,12 @@ def _needs_nonnegative(name: str) -> bool:
     return name == "NonparametricDynamicThresholdPostprocessor"
 
 
-@st.composite
-def _name_and_scores(draw, min_length=1):
-    name = draw(st.sampled_from(_postprocessors()))
-    nonnegative = _needs_nonnegative(name)
-    scores = draw(_scores(min_length=min_length, nonnegative=nonnegative))
-    return name, scores
-
-
-@st.composite
-def _name_and_scores_probe(draw):
-    name = draw(st.sampled_from(_postprocessors()))
-    nonnegative = _needs_nonnegative(name)
-    scores = draw(_scores(min_length=2, nonnegative=nonnegative))
-    probe = draw(NONNEGATIVE_SCORES if nonnegative else FINITE_SCORES)
-    return name, scores, probe
-
-
-@st.composite
-def _name_scores_new_scores(draw):
-    name = draw(st.sampled_from(_postprocessors()))
-    nonnegative = _needs_nonnegative(name)
-    scores = draw(_scores(nonnegative=nonnegative))
-    new_scores = draw(_scores(nonnegative=nonnegative))
-    return name, scores, new_scores
-
-
-@st.composite
-def _name_scores_probes(draw):
-    name = draw(st.sampled_from(_postprocessors()))
-    nonnegative = _needs_nonnegative(name)
-    scores = draw(_scores(nonnegative=nonnegative))
-    probe_elements = NONNEGATIVE_SCORES if nonnegative else FINITE_SCORES
-    probes = draw(st.lists(probe_elements, min_size=1, max_size=10))
-    return name, scores, probes
-
-
+@pytest.mark.parametrize("name", _postprocessors())
 @PROPERTIES
-@given(data=_name_and_scores_probe())
-def test_transform_partial_does_not_change_state(data):
-    name, scores, probe = data
+@given(data=st.data())
+def test_transform_partial_does_not_change_state(name, data):
+    scores = data.draw(_scores(min_length=2, nonnegative=_needs_nonnegative(name)))
+    probe = data.draw(NONNEGATIVE_SCORES if _needs_nonnegative(name) else FINITE_SCORES)
     fitted, rest = scores[: len(scores) // 2], scores[len(scores) // 2 :]
     postprocessor = _make(name).fit(fitted)
     untouched = copy.deepcopy(postprocessor)
@@ -132,10 +87,12 @@ def test_transform_partial_does_not_change_state(data):
     )
 
 
+@pytest.mark.parametrize("name", _postprocessors())
 @PROPERTIES
-@given(data=_name_scores_new_scores())
-def test_batch_methods_agree_with_partial_methods(data):
-    name, scores, new_scores = data
+@given(data=st.data())
+def test_batch_methods_agree_with_partial_methods(name, data):
+    scores = data.draw(_scores(nonnegative=_needs_nonnegative(name)))
+    new_scores = data.draw(_scores(nonnegative=_needs_nonnegative(name)))
     postprocessor = _make(name)
     streamed = [postprocessor.fit_transform_partial(score) for score in scores]
     np.testing.assert_array_equal(_make(name).fit_transform(scores), streamed)
@@ -147,17 +104,35 @@ def test_batch_methods_agree_with_partial_methods(data):
     np.testing.assert_array_equal(_make(name).fit(scores).transform(new_scores), streamed)
 
 
+@pytest.mark.parametrize("name", _postprocessors())
 @PROPERTIES
-@given(data=_name_scores_probes())
-def test_higher_score_never_gets_lower_output(data):
-    name, scores, probes = data
+@given(data=st.data())
+def test_higher_score_never_gets_lower_output(name, data):
+    scores = data.draw(_scores(nonnegative=_needs_nonnegative(name)))
+    elements = NONNEGATIVE_SCORES if _needs_nonnegative(name) else FINITE_SCORES
+    probes = data.draw(st.lists(elements, min_size=1, max_size=10))
     postprocessor = _make(name)
     for score in scores:
         postprocessor.fit_partial(score)
 
-    # Each probe gets its own copy, so all probes see the same state. The fitted scores are
-    # probes too, since a postprocessor transforms a score right after it fits it.
+    # Copies give every probe the same fitted state.
     probes = np.sort(np.concatenate([scores, probes]))
     outputs = [copy.deepcopy(postprocessor).transform_partial(probe) for probe in probes]
 
     assert all(np.diff(outputs) >= 0), list(zip(probes, outputs, strict=True))
+
+
+@pytest.mark.parametrize("name", _postprocessors())
+@PROPERTIES
+@given(data=st.data())
+def test_finite_scores_return_finite_float_outputs(name, data):
+    scores = data.draw(_scores(min_length=20, nonnegative=_needs_nonnegative(name)))
+    postprocessor = _make(name)
+    for score in scores:
+        output = postprocessor.fit_transform_partial(score)
+        assert isinstance(output, float)
+        assert np.isfinite(output)
+    output = _make(name).fit_transform(scores)
+    assert output.shape == scores.shape
+    assert output.dtype == np.float64
+    assert np.isfinite(output).all()

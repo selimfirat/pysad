@@ -102,3 +102,18 @@ def test_batch_methods_agree_with_partial_methods(name, data):
         ensembler.fit_partial(row)
     streamed = [ensembler.transform_partial(row) for row in new_scores]
     np.testing.assert_array_equal(_make(name).fit(scores).transform(new_scores), streamed)
+
+
+@pytest.mark.parametrize("name", _ensemblers())
+@PROPERTIES
+@given(data=st.data())
+def test_combined_scores_stay_within_detector_range(name, data):
+    num_detectors = data.draw(st.sampled_from(NUM_DETECTORS), label="num_detectors")
+    scores = data.draw(_scores(num_detectors), label="scores")
+    output = _make(name).fit_transform(scores)
+    assert output.shape == (len(scores),)
+    assert output.dtype == np.float64
+    assert np.isfinite(output).all()
+    np.testing.assert_array_less(scores.min(axis=1) - 1e-8, output)
+    np.testing.assert_array_less(output, scores.max(axis=1) + 1e-8)
+    assert isinstance(_make(name).transform_partial(scores[0]), float)

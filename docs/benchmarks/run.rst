@@ -88,6 +88,14 @@ synthetic stream, scores each embedding with
 :class:`~pysad.models.ZeroShotEmbeddingDetector`, and reports the AUROC, the milliseconds per
 point, and whether a second run on the same stream gives exactly the same scores.
 
+The encoder is optional. Without ``--encoder``, the script uses a built-in deterministic NumPy
+projection as the encoder, so the benchmark runs with no dependencies beyond PySAD. This built-in
+preset is deterministic and is the same on every run:
+
+.. code-block:: console
+
+   $ python benchmarks/bench_embedding_stream.py --points 2000 --seed 7
+
 The encoder receives one instance as a one dimensional NumPy array of shape
 ``(num_features,)`` and must return one embedding vector of shape ``(embedding_dim,)`` with the
 same width on every call. It must be deterministic: if the encoder returns the same embedding for the same instance, a

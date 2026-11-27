@@ -17,10 +17,10 @@ The examples on this page use a synthetic stream. Replace ``X`` with your own da
    X = np.random.default_rng(42).normal(size=(2000, 4))
    streamer = ArrayStreamer()
 
-Calibrate the scores and raise alerts
--------------------------------------
+Calibrate with conformal prediction
+-----------------------------------
 
-:class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator` converts each score into the fraction of recent scores that are lower than that score:
+:class:`~pysad.transform.probability_calibration.ConformalProbabilityCalibrator` converts each score into the fraction of recent scores that are lower than it. One minus the output is the conformal p-value. An alert at ``calibrated >= 0.95`` means the p-value is at most 0.05.
 
 .. code-block:: python
 
@@ -33,10 +33,12 @@ Calibrate the scores and raise alerts
    for t, x in enumerate(streamer.iter(X)):
        score = model.fit_score_partial(x)
        calibrated = calibrator.fit_transform_partial(score)
-       if t >= 200 and calibrated >= 0.99:
+       if t >= 1000 and calibrated >= 0.99:
            print(f"alert at t={t}")
 
-``t >= 200`` suppresses alerts during the first 200 points while the model and calibrator initialize.
+``fit_transform_partial`` adds the score to the window and then ranks it, so the current score counts in its own rank. Skip the first ``window_size`` points while the window fills. After that, the rank is stable.
+
+``window_size`` sets the calibration history. A larger window gives more stable ranks. A smaller window adapts faster. With 1,000 scores, only the highest reaches 0.999. For a 0.999 threshold, use ``window_size`` of 5,000 or more.
 
 :class:`~pysad.transform.postprocessing.ThresholdFilter` produces 0/1 labels for metrics such as :class:`~pysad.evaluation.PrecisionMetric`: 1 at or above the threshold, 0 otherwise:
 
@@ -84,9 +86,9 @@ Calibrate with a Gaussian fit
 The Gaussian fit assumes approximately bell-shaped scores. Skewed scores with a long upper tail can raise more alerts than expected. Use conformal calibration if this assumption is uncertain.
 
 Calibrate with extreme value theory
------------------------------------
+------------------------------------
 
-:class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator` fits a Generalized Pareto distribution to the scores above a high quantile of the first ``num_init`` scores. You set the risk ``q``, which is the probability that a normal score raises an alert:
+:class:`~pysad.transform.probability_calibration.SPOTProbabilityCalibrator` fits a Generalized Pareto distribution to the scores above a high quantile of the first ``num_init`` scores. It makes no assumption about the score distribution. You set the risk ``q``, which is the probability that a normal score raises an alert:
 
 .. code-block:: python
 
@@ -96,12 +98,23 @@ Calibrate with extreme value theory
 
    alerts = []
    for t, x in enumerate(streamer.iter(X)):
-       if calibrator.fit_transform_partial(model.fit_score_partial(x)) > 1 - 1e-3:
+       score = model.fit_score_partial(x)
+       calibrated = calibrator.fit_transform_partial(score)
+       if calibrated >= 1 - 1e-3:
            alerts.append(t)
 
-Scores above ``calibrator.threshold_`` map above ``1 - q`` and are excluded from fitting. The fitted tail extends beyond observed scores, so small ``q`` values do not require large windows. The first ``num_init`` scores return 0.
+A score at the alarm threshold gets ``1 - q``. You can also alert on the raw score: ``score > calibrator.threshold_``. Scores above ``threshold_`` are anomalies, and the calibrator does not learn from them.
 
-For drifting scores, set ``depth``, for example ``depth=10``, to fit differences from the mean of the last ``depth`` scores.
+The calibrator returns 0 for the first ``num_init`` scores while it initializes. After initialization, scores at or below the initial threshold return 0. ``q`` is the expected alert rate on normal points: ``q=1e-3`` expects about 1 alert in 1,000 normal points. The fitted tail extends beyond observed scores, so small ``q`` values do not require large windows.
+
+For drifting scores, set ``depth``, for example ``depth=10``. This runs DSPOT on the difference between each score and the mean of the last ``depth`` scores that are not anomalies.
+
+Conformal or SPOT?
+------------------
+
+Use conformal calibration when you want a rank-based alert rate without a distribution assumption, and you can keep a window of recent scores. The alert rate follows the threshold directly: 0.99 alerts about 1 in 100 normal points. Conformal works best when the score distribution is stable over the window.
+
+Use SPOT when you need very rare alerts, for example q = 1e-4 or smaller. SPOT fits the tail beyond the observed scores, so a small q does not require a large window. It needs ``num_init`` scores to start, and it stops learning from scores above the alarm threshold. Use ``depth`` for DSPOT when the scores drift.
 
 Calibrate with the anomaly likelihood of HTM
 --------------------------------------------

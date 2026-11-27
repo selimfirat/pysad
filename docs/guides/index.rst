@@ -49,9 +49,9 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
-      :doc:`troubleshooting`
+       :doc:`troubleshooting`
 
-      Diagnose odd scores: cold start, constant streams and NaN or infinite values.
+       Diagnose installation problems and odd scores: cold start, constant streams, NaN or infinite values.
 
    .. container:: card
 

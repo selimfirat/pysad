@@ -1407,12 +1407,12 @@ def list_datasets():
             rows.append((name, meta["source"], meta["license"], meta["checksum"]))
     rows.sort()
     widths = [max(len(header[i]), max(len(row[i]) for row in rows)) for i in range(len(header))]
-    print("  ".join(h.ljust(w) for h, w in zip(header, widths, strict=True)))
-    print("  ".join("-" * w for w in widths))
-    for row in rows:
-        # The credit-card dataset URL and checksum are public metadata, not card records.
-        # lgtm [py/clear-text-logging-sensitive-data]
-        print("  ".join(field.ljust(w) for field, w in zip(row, widths, strict=True)))
+    lines = [
+        "  ".join(h.ljust(w) for h, w in zip(header, widths, strict=True)),
+        "  ".join("-" * w for w in widths),
+        *("  ".join(field.ljust(w) for field, w in zip(row, widths, strict=True)) for row in rows),
+    ]
+    sys.stdout.write("\n".join(lines) + "\n")
 
 
 _DETECTOR_TABLES = {

@@ -19,6 +19,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`dataset_selection`
+
+      Compare NAB, Yahoo S5 and ODDS and pick the loader for your stream.
+
+   .. container:: card
+
       :doc:`choose_detector`
 
       Find candidate detectors for your data and compare them.
@@ -100,6 +106,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
       :doc:`live_dashboard`
 
       Open the pysad-live web dashboard and watch streaming scores and alerts as points arrive.
+
+   .. container:: card
+
+      :doc:`customize_live_dashboard`
+
+      Customize the pysad-live dashboard: what it shows, its size and refresh rate, and its colors.
 
    .. container:: card
 

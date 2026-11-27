@@ -66,3 +66,34 @@ def test_generate_stream_too_many_anomalies():
 
     with pytest.raises(ValueError, match="do not fit"):
         generate_stream(num_instances=100, random_state=0)
+
+
+def test_generate_stream_burst_constant_offset():
+    from pysad.utils import generate_stream
+
+    num_instances = 200
+    num_features = 4
+    burst_length = 15
+    magnitude = 5.0
+    seed = 42
+
+    X, y = generate_stream(
+        num_instances=num_instances,
+        num_features=num_features,
+        num_points=0,
+        num_bursts=1,
+        burst_length=burst_length,
+        num_drifts=0,
+        magnitude=magnitude,
+        random_state=seed,
+    )
+    baseline = np.random.RandomState(seed).standard_normal((num_instances, num_features))
+
+    anomaly_idx = np.flatnonzero(y == 1)
+    assert len(anomaly_idx) == burst_length
+    assert np.array_equal(anomaly_idx, np.arange(anomaly_idx[0], anomaly_idx[0] + burst_length))
+
+    offsets = X[anomaly_idx] - baseline[anomaly_idx]
+    assert np.allclose(offsets, offsets[0])
+    assert np.isclose(np.linalg.norm(offsets[0]), magnitude)
+    np.testing.assert_array_equal(X[y == 0], baseline[y == 0])

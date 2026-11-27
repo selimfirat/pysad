@@ -265,6 +265,8 @@ def test_static_space_bundle_metadata():
 
 def test_service_worker_caches_essential_assets():
     """Service Worker precaches the assets needed for offline playback."""
+    import re
+
     sw_js = (Path(__file__).resolve().parents[1] / "spaces/playground/sw.js").read_text(
         encoding="utf-8"
     )
@@ -277,7 +279,8 @@ def test_service_worker_caches_essential_assets():
     assert "caches.open" in sw_js
     assert "cache.addAll" in sw_js
     assert "fetch" in sw_js
-    assert "cdn.jsdelivr.net" in sw_js
+    origins = set(re.findall(r'"(https://[^"]+)"', sw_js))
+    assert "https://cdn.jsdelivr.net" in origins
 
 
 def test_initial_snapshot_json_omits_host_timings():

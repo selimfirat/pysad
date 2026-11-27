@@ -16,33 +16,33 @@ NAB, Yahoo S5 and ODDS at a glance
    :widths: 20 26 26 28
 
    * -
-      - NAB
-      - Yahoo S5
-      - ODDS
+     - NAB
+     - Yahoo S5
+     - ODDS
    * - Kind of data
-      - One value per point (univariate)
-      - One value per point (univariate)
-      - Several features per point (multivariate)
+     - One value per point (univariate)
+     - One value per point (univariate)
+     - Several features per point (multivariate)
    * - Series
-      - 58 series
-      - 67 series
-      - 17 datasets
+     - 58 series
+     - 67 series
+     - 17 datasets
    * - Labels
-      - Anomaly windows
-      - One label per point
-      - One label column per file
+     - Anomaly windows
+     - One label per point
+     - One label column per file
    * - Size
-      - Small to medium series
-      - Medium series, one point per hour
-      - Small to large tabular datasets
+     - Small to medium series
+     - Medium series, one point per hour
+     - Small to large tabular datasets
    * - License
-      - MIT
-      - Yahoo Data Sharing Agreement
-      - Varies by dataset
+     - MIT
+     - Yahoo Data Sharing Agreement
+     - Varies by dataset
    * - Best for
-      - Server metrics, CPU, traffic, tweets
-      - Production traffic of a Kubernetes cluster
-      - Tabular anomaly benchmarks
+     - Server metrics, CPU, traffic, tweets
+     - Production traffic of a Kubernetes cluster
+     - Tabular anomaly benchmarks
 
 Load each collection
 --------------------

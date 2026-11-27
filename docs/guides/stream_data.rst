@@ -266,6 +266,27 @@ With ``timestamps=True``, ``get_data`` returns each point as ``[timestamp, value
 
 ``Data`` downloads each series once to ``~/.cache/pysad``. Override the folder with ``PYSAD_DATA_DIR`` or ``Data("path/to/folder")``.
 
+Yahoo S5 A1Benchmark
+--------------------
+
+``Data.datasets("yahoo")`` lists the 67 real production-traffic series of the Yahoo S5 A1Benchmark, for example ``"yahoo/real_1.csv"``. Each row contains ``timestamp,value,is_anomaly``, with one row per hour. The timestamp is not a feature, the value column is the only feature, and label 1 marks an anomaly point. Rows keep file order.
+
+.. code-block:: python
+
+   from pysad.utils import Data
+
+   data = Data()
+   X, y = data.get_data("yahoo/real_1.csv")  # arrays with all the points
+
+   for x, label in data.get_iterator("yahoo/real_1.csv"):  # one point at a time
+       ...
+
+``get_iterator`` shuffles by default. Set ``random_state=0`` for reproducible order or ``shuffle=False`` to preserve the hourly file order. ``Data.datasets()`` lists available datasets.
+
+``Data.metadata("yahoo/real_1.csv")`` gives the source URL, the license, and the SHA-256 checksum that every download must match. Yahoo S5 requires a signed Yahoo Data Sharing Agreement for academic, non-commercial research, and Yahoo prohibits redistribution. PySAD downloads from a public mirror at a fixed commit; the mirror does not grant a separate data license.
+
+``Data`` downloads each series once to ``~/.cache/pysad``. Override the folder with ``PYSAD_DATA_DIR`` or ``Data("path/to/folder")``.
+
 Server Machine Dataset (SMD)
 ----------------------------
 

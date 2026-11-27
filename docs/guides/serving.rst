@@ -793,6 +793,122 @@ Save the recipe as ``keyed_serving.py``:
 
    Limit active keys or remove idle state to bound the total number of detectors. See :doc:`alerts` to calibrate scores before applying an alert threshold.
 
+Zero-dependency streaming recipes
+---------------------------------
+
+These recipes run PySAD detectors inside River, CapyMOA, scikit-learn, and scikit-multiflow streams. PySAD does not add any of these libraries as a dependency. Install the library you use in your own application environment. The CapyMOA and scikit-multiflow adapters never import those libraries, so they run with PySAD alone.
+
+River
+~~~~~
+
+River learns from one point at a time, like PySAD. :class:`~pysad.integrations.PySADToRiverAdapter` exposes a PySAD detector through River's ``learn_one`` and ``score_one`` methods. Install River in your application environment. PySAD does not declare it.
+
+.. code-block:: python
+
+   from functools import partial
+
+   from river import preprocessing
+
+   from pysad.integrations import PySADToRiverAdapter
+   from pysad.models import LODA
+   from pysad.utils import ArrayStreamer
+
+   import numpy as np
+
+   rng = np.random.default_rng(0)
+   stream = rng.normal(size=(400, 3))
+
+   pipeline = preprocessing.StandardScaler() | PySADToRiverAdapter(partial(LODA, random_state=0))
+
+   scores = []
+   for x in ArrayStreamer().iter(stream):
+       features = dict(enumerate(x))
+       score = pipeline.score_one(features)
+       pipeline.learn_one(features)
+       scores.append(score)
+
+Call ``score_one`` before ``learn_one`` for each point. This is the prequential order: score before learning. The adapter keeps only the wrapped model, so memory stays bounded as the stream grows.
+
+The first dictionary fixes the feature order. Later dictionaries may list keys in any order, but missing or new keys raise ``ValueError``. Set the order explicitly with ``feature_names``, for example ``feature_names=("cpu", "latency")``. Access the wrapped model as ``model_``.
+
+CapyMOA
+~~~~~~~
+
+CapyMOA evaluates streaming detectors on a stream of instances. :class:`~pysad.integrations.PySADToCapyMoaAdapter` exposes a PySAD detector through CapyMoa's interface: ``partial_fit``, ``score``, ``predict``, ``predict_proba`` and ``reset``. This adapter never imports CapyMOA, so it runs with PySAD alone. If CapyMOA is installed, pass a CapyMOA ``Instance`` directly. Its ``x`` attribute holds the feature vector.
+
+.. code-block:: python
+
+   import numpy as np
+
+   from pysad.integrations import PySADToCapyMoaAdapter
+   from pysad.models import LODA
+
+   rng = np.random.default_rng(0)
+   stream = rng.normal(size=(400, 3))
+
+   adapter = PySADToCapyMoaAdapter(LODA(random_state=0))
+
+   scores = []
+   for x in stream:
+       score = adapter.score(x)
+       adapter.partial_fit(x)
+       scores.append(score)
+
+Call ``score`` before ``partial_fit`` for each instance. Higher scores mean more anomalous instances. ``predict`` returns binary labels 0 or 1 and needs a decision-capable model, such as one piped into :class:`~pysad.transform.postprocessing.ThresholdFilter`. ``predict_proba`` returns ``[P(normal), P(anomaly)]`` and needs a probability-calibrated model. ``reset`` is a no-op. Build a fresh adapter around a fresh model to start over.
+
+scikit-learn
+~~~~~~~~~~~~
+
+scikit-learn is a PySAD dependency, so no extra install is needed. :class:`~pysad.integrations.PySADToScikitLearnAdapter` exposes a fitted PySAD model through scikit-learn's outlier interface. Fit the PySAD model on a warm-up batch first. The adapter's ``fit`` method does not learn from ``X``. It keeps the fitted model.
+
+.. code-block:: python
+
+   import numpy as np
+
+   from pysad.integrations import PySADToScikitLearnAdapter
+   from pysad.models import LODA
+   from pysad.utils import ArrayStreamer
+
+   rng = np.random.default_rng(0)
+   stream = rng.normal(size=(400, 3))
+
+   warmup = stream[:200]
+   model = LODA(random_state=0)
+   for x in ArrayStreamer().iter(warmup):
+       model.fit_partial(x)
+
+   adapter = PySADToScikitLearnAdapter(model, threshold=2.5)
+
+   X_test = stream[200:]
+   scores = -adapter.score_samples(X_test)
+   labels = adapter.predict(X_test)
+
+``score_samples`` returns negative PySAD scores, so lower values mean more anomalous instances. Negate it to recover PySAD scores, where higher means more anomalous. ``predict`` returns -1 for outliers and 1 for inliers, the scikit-learn convention. Set ``threshold`` in PySAD score units before calling ``decision_function`` or ``predict``.
+
+scikit-multiflow
+~~~~~~~~~~~~~~~~
+
+scikit-multiflow evaluates streaming estimators one batch at a time. :class:`~pysad.integrations.PySADToScikitMultiflowAdapter` exposes a PySAD model through scikit-multiflow's interface: ``partial_fit``, ``predict``, ``predict_proba`` and ``score``. This adapter never imports scikit-multiflow, so it runs with PySAD alone. If scikit-multiflow is installed, plug the adapter into its streams and evaluators.
+
+.. code-block:: python
+
+   import numpy as np
+
+   from pysad.integrations import PySADToScikitMultiflowAdapter
+   from pysad.models import LODA
+   from pysad.transform.postprocessing import ThresholdFilter
+
+   rng = np.random.default_rng(0)
+   stream = rng.normal(size=(400, 3))
+
+   model = LODA(random_state=0) | ThresholdFilter(threshold=0.9)
+   adapter = PySADToScikitMultiflowAdapter(model)
+
+   X_batch = np.atleast_2d(stream[:50])
+   labels = adapter.predict(X_batch)
+
+Call ``partial_fit(X, y)`` to learn each row of a batch. PySAD models are unsupervised and ignore ``y``. ``predict`` returns binary labels 0 for normal and 1 for anomalous, and needs a decision-capable model. ``predict_proba`` returns ``[P(normal), P(anomaly)]`` per row and needs a probability-calibrated model. ``score(X, y)`` returns the fraction of predicted labels that equal ``y``.
+
 Model Context Protocol (MCP) server
 -----------------------------------
 

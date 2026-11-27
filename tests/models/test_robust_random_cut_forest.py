@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 
 def _fitted_forest(**params):
@@ -300,3 +301,29 @@ def test_rrcf_score_explain_partial_rejects_nan():
     anomalous[1] = np.nan
     with pytest.raises(ValueError, match="RobustRandomCutForest does not accept NaN values"):
         model.score_explain_partial(anomalous)
+
+
+@pytest.mark.parametrize(
+    ("num_trees", "time_decay", "totals"),
+    [
+        (1, 0.0, [0, 0, 1, 1, 2, 1, 1, 2, 1, 1, 3, 1]),
+        (1, 50.0, [0, 0, 1, 1, 2, 1, 2, 3, 1, 1, 1, 1]),
+        (12, 0.0, [0, 0, 12, 21, 17, 22, 26, 24, 16, 21, 23, 21]),
+        (12, 50.0, [0, 0, 12, 21, 17, 25, 26, 22, 12, 15, 23, 17]),
+    ],
+)
+def test_rrcf_seeded_scores_through_reservoir_replacement(num_trees, time_decay, totals):
+    from pysad.models import RobustRandomCutForest
+
+    model = RobustRandomCutForest(
+        num_trees=num_trees,
+        tree_size=3,
+        shingle_size=2,
+        time_decay=time_decay,
+        random_state=7,
+    )
+    points = np.array([0.0, 0.0, 1.0, 2.0, 2.0, -1.0, 5.0, 0.0, 3.0, 3.0, -4.0, 1.0])[:, None]
+
+    scores = model.fit_score(points)
+
+    np.testing.assert_array_equal(scores, np.array(totals) / num_trees)

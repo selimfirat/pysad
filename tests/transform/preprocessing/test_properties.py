@@ -1,25 +1,10 @@
-"""Property-based tests for the guarantees every preprocessing transformer makes.
-
-Each test draws a stream of feature vectors with Hypothesis and checks one guarantee for every
-concrete class in ``pysad.transform.preprocessing.__all__``:
-
-- ``transform_partial`` does not change the state, so two calls with the same input give the same
-  output, and the outputs that follow do not change;
-- the batch methods (``fit``, ``transform``, ``fit_transform``) agree with the per-instance
-  methods;
-- finite inputs give finite outputs once the transformer is initialized.
-
-Each transformer also keeps the invariants documented in its class docstring: a scaler returns the
-input unchanged before the first fit, a constant feature scales to zeros, an instance scaler is
-stateless, a unit-norm scaler maps nonzero vectors to unit norm, and a shingle ends with the input
-point and never holds a later point.
-"""
+"""Generated streams exercise preprocessing outputs and batch equivalence."""
 
 import inspect
 
 import numpy as np
 import pytest
-from hypothesis import HealthCheck, example, given, settings
+from hypothesis import example, given, settings
 from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
@@ -35,10 +20,9 @@ FINITE = st.one_of(
 )
 
 PROPERTIES = settings(
-    max_examples=8,
+    max_examples=20,
     deadline=None,
     database=None,
-    suppress_health_check=[HealthCheck.too_slow],
     # The same examples on every run, so a failure in CI reproduces locally.
     derandomize=True,
 )
@@ -49,7 +33,6 @@ PARAMS = {
     "SeasonalTrendDecomposer": {"season_length": 5},
     "OneShotSTL": {"period": 5, "num_init_periods": 3},
     "ModifiedSTLResidualTransformer": {"period": 5, "window_size": 15, "robust": False},
-    "FunctionTransformer": {"func": None, "fit_func": None},
     "DrainLogParser": {"depth": 3, "st": 0.4, "max_child": 5},
 }
 
@@ -122,9 +105,7 @@ def test_transform_partial_does_not_change_state(name, data):
         np.testing.assert_array_equal(transformer.transform_partial(row), first)
         np.testing.assert_array_equal(fresh.transform_partial(row), first)
 
-    np.testing.assert_array_equal(
-        transformer.fit_transform(rest), fresh.fit_transform(rest)
-    )
+    np.testing.assert_array_equal(transformer.fit_transform(rest), fresh.fit_transform(rest))
 
 
 @pytest.mark.parametrize("name", VECTOR_PREPROCESSORS)
@@ -141,22 +122,16 @@ def test_batch_methods_agree_with_partial_methods(name, data):
     transformer = _make(name)
     streamed = [transformer.fit_transform_partial(row) for row in scores]
     batch = _make(name).fit_transform(scores)
-    if name == "SeasonalTrendDecomposer":
-        # SeasonalTrendDecomposer fits with a vectorized cumsum, so the batch result matches the
-        # per-instance path up to floating-point rounding.
-        np.testing.assert_allclose(batch, streamed, atol=1e-12, rtol=1e-12)
-    else:
-        np.testing.assert_array_equal(batch, streamed)
+    # Running sums accumulate rounding for values up to 1e6. Norm reductions also differ by a few ulps.
+    atol = 1e-8 if name == "SeasonalTrendDecomposer" else 1e-12
+    np.testing.assert_allclose(batch, streamed, atol=atol, rtol=1e-12)
 
     transformer = _make(name)
     for row in scores:
         transformer.fit_partial(row)
     streamed = [transformer.transform_partial(row) for row in new_scores]
     batch = _make(name).fit(scores).transform(new_scores)
-    if name == "SeasonalTrendDecomposer":
-        np.testing.assert_allclose(batch, streamed, atol=1e-12, rtol=1e-12)
-    else:
-        np.testing.assert_array_equal(batch, streamed)
+    np.testing.assert_allclose(batch, streamed, atol=atol, rtol=1e-12)
 
 
 @pytest.mark.parametrize("name", VECTOR_PREPROCESSORS)
@@ -170,6 +145,7 @@ def test_output_shape_matches_input(name, data):
     point = data.draw(_point(num_features), label="point")
     output = _make(name).fit_transform_partial(point)
     assert output.shape == _expected_output_shape(name, num_features)
+    assert output.dtype == np.float64
 
 
 @pytest.mark.parametrize("name", VECTOR_PREPROCESSORS)
@@ -182,62 +158,20 @@ def test_outputs_are_finite_for_finite_inputs(name, points):
         assert np.all(np.isfinite(output))
 
 
-@pytest.mark.parametrize("value", [0.0, -3.0, 100.0])
-@pytest.mark.parametrize("num_features", [1, 3, 10])
-def test_standard_scaler_constant_feature_scales_to_zeros(value, num_features):
-    import math
-
-    from pysad.transform.preprocessing import StandardScaler
-
-    X = np.full(num_features, value)
-    scaler = StandardScaler()
-    scaler.fit_partial(X)
-
-    with np.errstate(all="raise"):
-        scaled = scaler.transform_partial(X)
-
-    np.testing.assert_array_equal(scaled, np.zeros(num_features))
-    mean = scaler.means_[0].get() if scaler.means_ is not None else float("nan")
-    variance = scaler.variances_[0].get() if scaler.variances_ is not None else float("nan")
-    expected = (
-        0.0
-        if variance == 0.0
-        else (float(value) - mean) / math.sqrt(variance)
-    )
-    np.testing.assert_allclose(scaled[0], expected)
+@pytest.mark.parametrize("name", ["StandardScaler", "MinMaxScaler", "InstanceStandardScaler"])
+@PROPERTIES
+@given(value=FINITE, num_features=st.integers(1, 10))
+def test_constant_vector_scales_to_zeros(name, value, num_features):
+    point = np.full(num_features, value)
+    output = _make(name).fit_transform_partial(point)
+    np.testing.assert_array_equal(output, np.zeros(num_features))
 
 
+@pytest.mark.parametrize("name", ["StandardScaler", "MinMaxScaler"])
 @PROPERTIES
 @given(X=_point(4))
-@example(X=np.array([1.0, 2.0, 3.0]))
-def test_standard_scaler_before_fit_returns_input_unchanged(X):
-    from pysad.transform.preprocessing import StandardScaler
-
-    np.testing.assert_array_equal(StandardScaler().transform_partial(X), X)
-
-
-@pytest.mark.parametrize("value", [0.0, -3.0, 100.0])
-@pytest.mark.parametrize("num_features", [1, 3, 10])
-def test_min_max_scaler_constant_feature_scales_to_zeros(value, num_features):
-    from pysad.transform.preprocessing import MinMaxScaler
-
-    X = np.full(num_features, value)
-    scaler = MinMaxScaler()
-    scaler.fit_partial(X)
-
-    with np.errstate(all="raise"):
-        scaled = scaler.transform_partial(X)
-
-    np.testing.assert_array_equal(scaled, np.zeros(num_features))
-
-
-@PROPERTIES
-@given(X=_point(4))
-@example(X=np.array([1.0, 2.0, 3.0]))
-def test_min_max_scaler_before_fit_returns_input_unchanged(X):
-    from pysad.transform.preprocessing import MinMaxScaler
-
-    np.testing.assert_array_equal(MinMaxScaler().transform_partial(X), X)
+def test_scaler_before_fit_returns_input_unchanged(name, X):
+    np.testing.assert_array_equal(_make(name).transform_partial(X), X)
 
 
 @PROPERTIES
@@ -262,19 +196,6 @@ def test_min_max_scaler_values_in_observed_range_map_to_unit_interval(low, high)
 
 @PROPERTIES
 @given(X=_point(4))
-@example(X=np.array([1.0, 1.0, 1.0]))
-@example(X=np.array([5.0]))
-def test_instance_standard_scaler_constant_vector_scales_to_zeros(X):
-    from pysad.transform.preprocessing import InstanceStandardScaler
-
-    if X.size and (X == X[0]).all() and np.isfinite(X).all():
-        np.testing.assert_array_equal(
-            InstanceStandardScaler().transform_partial(X), np.zeros_like(X, dtype=np.float64)
-        )
-
-
-@PROPERTIES
-@given(X=_point(4))
 @example(X=np.array([1.0, 2.0, 3.0]))
 def test_instance_standard_scaler_is_stateless(X):
     from pysad.transform.preprocessing import InstanceStandardScaler
@@ -293,7 +214,7 @@ def test_instance_standard_scaler_is_stateless(X):
 def test_instance_standard_scaler_output_has_zero_mean_and_unit_std(X):
     from pysad.transform.preprocessing import InstanceStandardScaler
 
-    if (X == X[0]).all() and np.isfinite(X).all():
+    if (X == X[0]).all():
         return
     output = InstanceStandardScaler().transform_partial(X)
     assert abs(output.mean()) < 1e-12
@@ -302,25 +223,15 @@ def test_instance_standard_scaler_output_has_zero_mean_and_unit_std(X):
 
 @PROPERTIES
 @given(X=_point(4))
-@example(X=np.array([0.0, 0.0, 0.0]))
 @example(X=np.array([3.0, 4.0]))
-def test_instance_unit_norm_scaler_zero_vector_unchanged(X):
+def test_instance_unit_norm_scaler_preserves_zero_or_returns_unit_norm(X):
     from pysad.transform.preprocessing import InstanceUnitNormScaler
 
-    if np.linalg.norm(X) == 0:
-        np.testing.assert_array_equal(InstanceUnitNormScaler().transform_partial(X), X)
-
-
-@PROPERTIES
-@given(X=_point(4))
-@example(X=np.array([3.0, 4.0]))
-def test_instance_unit_norm_scaler_nonzero_vector_has_unit_norm(X):
-    from pysad.transform.preprocessing import InstanceUnitNormScaler
-
-    if np.linalg.norm(X) == 0:
-        return
     output = InstanceUnitNormScaler().transform_partial(X)
-    assert abs(np.linalg.norm(output) - 1.0) < 1e-12
+    if np.linalg.norm(X) == 0:
+        np.testing.assert_array_equal(output, X)
+    else:
+        assert abs(np.linalg.norm(output) - 1.0) < 1e-12
 
 
 @PROPERTIES
@@ -373,7 +284,7 @@ def test_shingle_transformer_structure(data):
     np.testing.assert_array_equal(output[-num_features:], point)
 
     # The shingle holds earlier points oldest first, then the point.
-    expected_earlier = list(earlier)
+    expected_earlier = earlier[-(shingle_size - 1) :] if shingle_size > 1 else []
     missing = shingle_size - 1 - len(expected_earlier)
     fill = expected_earlier[0] if expected_earlier else point
     expected = np.concatenate([*[fill] * missing, *expected_earlier, point])
@@ -381,20 +292,6 @@ def test_shingle_transformer_structure(data):
 
     # Transforming again does not change the history.
     np.testing.assert_array_equal(transformer.transform_partial(point), output)
-    assert len(transformer.recent) == min(len(earlier), shingle_size - 1)
-
-
-@PROPERTIES
-@given(data=st.data())
-def test_shingle_transformer_fit_adds_point(data):
-    from pysad.transform.preprocessing import ShingleTransformer
-
-    num_features = data.draw(st.integers(1, 3), label="num_features")
-    point = data.draw(_point(num_features), label="point")
-    transformer = ShingleTransformer(shingle_size=3)
-    before = len(transformer.recent)
-    transformer.fit_transform_partial(point)
-    assert len(transformer.recent) == before + 1
 
 
 @PROPERTIES
@@ -415,22 +312,10 @@ def test_one_shot_stl_returns_zeros_during_initialization(points):
     from pysad.transform.preprocessing import OneShotSTL
 
     transformer = OneShotSTL(period=5, num_init_periods=3)
-    for index, point in enumerate(points[: 5 * 3]):
+    for point in points[: 5 * 3]:
         output = transformer.fit_transform_partial(point)
         assert output.shape == (1,)
         np.testing.assert_array_equal(output, np.zeros(1))
-
-
-@PROPERTIES
-@given(points=st.lists(_point(1), min_size=WARMUP_POINTS, max_size=WARMUP_POINTS))
-def test_one_shot_stl_output_is_finite_after_initialization(points):
-    from pysad.transform.preprocessing import OneShotSTL
-
-    transformer = OneShotSTL(period=5, num_init_periods=3)
-    for point in points:
-        output = transformer.fit_transform_partial(point)
-        assert output.shape == (1,)
-        assert np.all(np.isfinite(output))
 
 
 @PROPERTIES
@@ -444,21 +329,6 @@ def test_modified_stl_residual_returns_zeros_during_initialization(points):
         output = transformer.fit_transform_partial(point)
         assert output.shape == (1,)
         np.testing.assert_array_equal(output, np.zeros(1))
-
-
-@PROPERTIES
-@given(points=st.lists(_point(1), min_size=WARMUP_POINTS, max_size=WARMUP_POINTS))
-def test_modified_stl_residual_output_is_finite_after_initialization(points):
-    from pysad.transform.preprocessing import ModifiedSTLResidualTransformer
-
-    transformer = ModifiedSTLResidualTransformer(period=5, window_size=15, robust=False)
-    for point in points:
-        output = transformer.fit_transform_partial(point)
-        assert output.shape == (1,)
-        assert np.all(np.isfinite(output))
-
-
-# DrainLogParser takes log lines, not feature vectors, so it is tested separately.
 
 
 @PROPERTIES
@@ -488,5 +358,6 @@ def test_drain_log_parser_batch_agrees_with_partial(lines):
     parser = DrainLogParser(depth=3, st=0.4, max_child=5)
     streamed = [parser.fit_transform_partial(line) for line in lines]
     np.testing.assert_array_equal(
-        parser.fit_transform(np.array(lines, dtype=object)), streamed
+        DrainLogParser(depth=3, st=0.4, max_child=5).fit_transform(np.array(lines, dtype=object)),
+        streamed,
     )

@@ -1,21 +1,11 @@
-"""Property-based tests for the guarantees every projector makes, whatever the input.
-
-Each test draws a stream of feature vectors with Hypothesis and checks one guarantee for every
-concrete class in ``pysad.transform.projection.__all__``:
-
-- ``transform_partial`` does not change the state, so two calls with the same input give the same
-  output, and the outputs that follow do not change;
-- the batch methods (``fit``, ``transform``, ``fit_transform``) agree with the per-instance
-  methods;
-- finite inputs give finite outputs once the projector is initialized.
-"""
+"""Generated vectors exercise projection shape, linearity, and batch equivalence."""
 
 import copy
 import inspect
 
 import numpy as np
 import pytest
-from hypothesis import HealthCheck, given, settings
+from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
@@ -31,16 +21,15 @@ FINITE = st.one_of(
 )
 
 PROPERTIES = settings(
-    max_examples=8,
+    max_examples=20,
     deadline=None,
     database=None,
-    suppress_health_check=[HealthCheck.too_slow],
     # The same examples on every run, so a failure in CI reproduces locally.
     derandomize=True,
 )
 
 # Number of components for each projector.
-NUM_COMPONENTS = 5
+NUM_COMPONENTS = 2
 
 # Constructor arguments by class.
 PARAMS = {
@@ -61,7 +50,7 @@ def _make(name):
 
 
 def _draw_num_features(data):
-    return data.draw(st.integers(1, 4), label="num_features")
+    return data.draw(st.integers(2, 6), label="num_features")
 
 
 def _point(num_features):
@@ -72,11 +61,6 @@ def _points(num_features, min_length=1):
     return st.integers(min_length, MAX_STREAM_LENGTH).flatmap(
         lambda length: hnp.arrays(np.float64, (length, num_features), elements=FINITE)
     )
-
-
-# StreamhashProjector can handle any number of features, but sklearn projectors need
-# num_components or auto sizing from a batch.
-PROJECTORS_REQUIRING_BATCH = {"GaussianRandomProjector", "SparseRandomProjector"}
 
 
 @pytest.mark.parametrize("name", _projectors())
@@ -97,9 +81,7 @@ def test_transform_partial_does_not_change_state(name, data):
         np.testing.assert_array_equal(fresh.transform_partial(row), first)
 
     rest = scores[len(scores) // 2 :]
-    np.testing.assert_array_equal(
-        fitted.fit_transform(rest), copy.deepcopy(fresh).fit_transform(rest)
-    )
+    np.testing.assert_array_equal(fitted.fit_transform(rest), fresh.fit_transform(rest))
 
 
 @pytest.mark.parametrize("name", _projectors())
@@ -152,4 +134,21 @@ def test_transform_partial_output_shape(name, data):
     output = projector.transform_partial(point)
 
     expected_shape = (NUM_COMPONENTS,)
-    assert output.shape == expected_shape, f"Expected {expected_shape}, got {output.shape}"
+    assert output.shape == expected_shape
+    assert output.dtype == np.float64
+
+
+@pytest.mark.parametrize("name", _projectors())
+@PROPERTIES
+@given(data=st.data())
+def test_projection_is_linear(name, data):
+    num_features = _draw_num_features(data)
+    left = data.draw(_point(num_features), label="left")
+    right = data.draw(_point(num_features), label="right")
+    projector = _make(name).fit_partial(left)
+    np.testing.assert_allclose(
+        projector.transform_partial(left + right),
+        projector.transform_partial(left) + projector.transform_partial(right),
+        rtol=1e-12,
+        atol=1e-8,
+    )

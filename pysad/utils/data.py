@@ -595,7 +595,7 @@ class Data:
             tuple[NDArray[np.float64], NDArray[np.int64]]: The feature vectors of shape
             (num_instances, 51) and the binary labels of shape (num_instances,).
         """
-        data = np.loadtxt(data_path, delimiter=",", skiprows=1)
+        data = np.loadtxt(data_path, delimiter=",", skiprows=1, ndmin=2)
         X = data[:, :-1]
         y = data[:, -1].ravel().astype(np.int64)
         return X, y

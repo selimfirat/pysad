@@ -54,6 +54,8 @@ Run a drift detector on the scores of the PySAD model to spot when the stream ch
 
 .. code-block:: python
 
+   from functools import partial
+
    import numpy as np
 
    from pysad.integrations import PySADToRiverAdapter, RiverDriftDetector
@@ -64,7 +66,7 @@ Run a drift detector on the scores of the PySAD model to spot when the stream ch
    X = np.concatenate([rng.normal(0, 1, (200, 2)), rng.normal(3, 1, (200, 2))])
 
    detector = PySADToRiverAdapter(partial(LODA, random_state=0))
-   drift = RiverDriftDetector(PageHinkleyMeter, threshold=5.0, min_instances=1)
+   drift = RiverDriftDetector(partial(PageHinkleyMeter, threshold=5.0, min_instances=1))
 
    for i, x in enumerate(X):
        features = dict(enumerate(x))

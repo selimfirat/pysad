@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "pysad": {
+      "command": "pysad-mcp",
+      "args": []
+    }
+  }
+}

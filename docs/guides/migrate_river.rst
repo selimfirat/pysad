@@ -87,7 +87,11 @@ PySAD scores an array, then learns from it:
 
    from pysad.models import HalfSpaceTrees
 
-   model = HalfSpaceTrees(random_state=0)
+   model = HalfSpaceTrees(
+       feature_mins=np.array([0.0, 0.0]),
+       feature_maxes=np.array([10.0, 10.0]),
+       random_state=0,
+   )
    x = np.array([1.0, 2.0])
    score = model.fit_score_partial(x)
 
@@ -116,7 +120,11 @@ PySAD chains a scaler and a detector through a stream pipeline:
    from pysad.models import HalfSpaceTrees, StreamPipeline
    from pysad.transform.preprocessing import StandardScaler
 
-   pipeline = StandardScaler() | HalfSpaceTrees(random_state=0)
+   pipeline = StandardScaler() | HalfSpaceTrees(
+       feature_mins=np.array([0.0, 0.0]),
+       feature_maxes=np.array([10.0, 10.0]),
+       random_state=0,
+   )
    x = np.array([1.0, 2.0])
    score = pipeline.fit_score_partial(x)
 
@@ -130,13 +138,12 @@ River flags extreme scores with a filter:
 .. code-block:: python
 
    from river import anomaly
-   from river.preprocessing import QuantileFilter
 
-   model = anomaly.HalfSpaceTrees(seed=0)
-   filter = QuantileFilter(q=0.99)
+   model = anomaly.QuantileFilter(anomaly.HalfSpaceTrees(seed=0), q=0.99)
+   x = {"feature_0": 1.0, "feature_1": 2.0}
    score = model.score_one(x)
    model.learn_one(x)
-   alert = filter.transform_one(score)
+   alert = model.classify(score)
 
 PySAD calibrates the score, then thresholds it:
 
@@ -148,7 +155,11 @@ PySAD calibrates the score, then thresholds it:
    from pysad.transform.postprocessing import ThresholdFilter
    from pysad.transform.probability_calibration import ConformalProbabilityCalibrator
 
-   model = HalfSpaceTrees(random_state=0)
+   model = HalfSpaceTrees(
+       feature_mins=np.array([0.0, 0.0]),
+       feature_maxes=np.array([10.0, 10.0]),
+       random_state=0,
+   )
    calibrator = ConformalProbabilityCalibrator(window_size=200)
    alerts = ThresholdFilter(threshold=0.99)
 
@@ -186,7 +197,11 @@ PySAD evaluates prequentially, scoring each point before learning from it:
    y = np.zeros(400, dtype=int)
    y[300:320] = 1
 
-   model = HalfSpaceTrees(random_state=0)
+   model = HalfSpaceTrees(
+       feature_mins=np.full(2, -5.0),
+       feature_maxes=np.full(2, 5.0),
+       random_state=0,
+   )
 
    metrics = evaluate_stream(
        model,

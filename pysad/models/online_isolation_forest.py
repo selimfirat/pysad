@@ -541,6 +541,35 @@ class OnlineIsolationForest(BaseModel):
                 p_right[s] = u.children[1].slot
                 p_leaf_pl[s] = 0.0
 
+    def _update_packed_leaf(self, tree_index: int, changed: bool, leaf: Any) -> bool:
+        """Sync packed arrays for one tree after learn_one/unlearn_one and return whether repacked."""
+        if changed:
+            self._pack_tree(tree_index)
+            return True
+        if leaf is not None:
+            ns = leaf.data_size
+            mls = self.max_leaf_samples
+            self._p_leaf_pl[tree_index, leaf.slot] = leaf.depth + (
+                0.0 if ns <= mls else math.log(ns / mls) * self._inv_log
+            )
+        return False
+
+    def _unlearn_oldest(self) -> bool:
+        """Evict and unlearn the oldest window instance and return whether any tree was repacked."""
+        old_x, old_selected = self.window_.popleft()
+        binary = self.branching_factor == 2
+        any_repacked = False
+        for i, tree in enumerate(self.trees_):
+            was_sel = bool(old_selected[i]) if old_selected is not None else True
+            changed, leaf = tree.unlearn_one(
+                X=old_x,
+                rng=self.rng_,
+                selected=was_sel,
+            )
+            if binary and was_sel and self._update_packed_leaf(i, changed, leaf):
+                any_repacked = True
+        return any_repacked
+
     def fit_partial(self, X: NDArray[Any], y: int | None = None) -> OnlineIsolationForest:
         """Learns one instance, then forgets the oldest if the window is full.
 
@@ -554,51 +583,26 @@ class OnlineIsolationForest(BaseModel):
         x = np.array(X, dtype=np.float64, copy=True)
         selected = np.empty(self.num_trees, dtype=bool) if self.subsample < 1.0 else None
         binary = self.branching_factor == 2
-        mls = self.max_leaf_samples
-        inv_log = self._inv_log
         any_repacked = False
 
         for i, tree in enumerate(self.trees_):
             learned, changed, leaf = tree.learn_one(x, self.rng_)
             if selected is not None:
                 selected[i] = learned
-            if binary and learned:
-                if changed:
-                    self._pack_tree(i)
-                    any_repacked = True
-                elif leaf is not None:
-                    ns = leaf.data_size
-                    self._p_leaf_pl[i, leaf.slot] = leaf.depth + (
-                        0.0 if ns <= mls else math.log(ns / mls) * inv_log
-                    )
+            if binary and learned and self._update_packed_leaf(i, changed, leaf):
+                any_repacked = True
 
         self.window_.append((x, selected))
-        if len(self.window_) > self.window_size:
-            old_x, old_selected = self.window_.popleft()
-            for i, tree in enumerate(self.trees_):
-                was_sel = bool(old_selected[i]) if old_selected is not None else True
-                changed, leaf = tree.unlearn_one(
-                    X=old_x,
-                    rng=self.rng_,
-                    selected=was_sel,
-                )
-                if binary and was_sel:
-                    if changed:
-                        self._pack_tree(i)
-                        any_repacked = True
-                    elif leaf is not None:
-                        ns = leaf.data_size
-                        self._p_leaf_pl[i, leaf.slot] = leaf.depth + (
-                            0.0 if ns <= mls else math.log(ns / mls) * inv_log
-                        )
+        if len(self.window_) > self.window_size and self._unlearn_oldest():
+            any_repacked = True
 
         if any_repacked:
             self._p_max_depth = max(t.max_depth for t in self.trees_)
 
         self.normalization_ = _path_length(
             num_samples=len(self.window_) * self.subsample,
-            max_leaf_samples=mls,
-            inv_log=inv_log,
+            max_leaf_samples=self.max_leaf_samples,
+            inv_log=self._inv_log,
         )
         return self
 
@@ -642,6 +646,55 @@ class OnlineIsolationForest(BaseModel):
         depth = sum(tree.predict_one(X) for tree in self.trees_) / self.num_trees
         return float(2.0 ** (-depth / (self.normalization_ + np.finfo(float).eps)))
 
+    def _tree_left_fractions(self, tree_idx: int, node_count: int) -> NDArray[np.float64]:
+        """Compute empirical left-child cover fractions at each node of one packed tree."""
+        left_fractions = np.full(node_count, 0.5, dtype=np.float64)
+        root = self.trees_[tree_idx].root
+        if root is None:
+            return left_fractions
+
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            if node.children is None:
+                continue
+            left_child, right_child = node.children
+            total = left_child.data_size + right_child.data_size
+            if total > 0:
+                left_fractions[node.slot] = left_child.data_size / total
+            stack.append(right_child)
+            stack.append(left_child)
+        return left_fractions
+
+    def _packed_tree_for_shap(
+        self, tree_idx: int
+    ) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]:
+        """Extract packed tree arrays and cover fractions formatted for TreeSHAP."""
+        tree = self.trees_[tree_idx]
+        if tree.max_depth == 0:
+            return (
+                np.array([-1], dtype=np.intp),
+                np.array([0.0], dtype=np.float64),
+                np.array([0], dtype=np.intp),
+                np.array([0], dtype=np.intp),
+                np.array([0.0], dtype=np.float64),
+                np.array([0.5], dtype=np.float64),
+            )
+
+        nc = tree.node_count
+        p_left = self._p_left[tree_idx, :nc]
+        p_right = self._p_right[tree_idx, :nc]
+        features = self._p_dim[tree_idx, :nc].copy()
+        features[p_left == p_right] = -1
+        return (
+            features,
+            self._p_split[tree_idx, :nc],
+            p_left,
+            p_right,
+            self._p_leaf_pl[tree_idx, :nc],
+            self._tree_left_fractions(tree_idx, nc),
+        )
+
     def explain_partial(self, X: NDArray[Any]) -> NDArray[Any]:
         """Returns per-feature SHAP values for the anomaly score of the next instance.
 
@@ -670,72 +723,16 @@ class OnlineIsolationForest(BaseModel):
         if x.dtype.kind in "fc" and bool(np.isnan(x).any()):
             raise ValueError(f"{type(self).__name__} does not accept NaN values.")
 
-        if not self.window_:
-            return np.zeros(x.shape[0], dtype=np.float64)
-
-        if self.branching_factor != 2:
+        if not self.window_ or self.branching_factor != 2:
             # TreeSHAP currently only supports binary trees.
             return np.zeros(x.shape[0], dtype=np.float64)
 
-        # Extract tree structures from packed representation.
         num_features = x.shape[0]
-        trees_features: list[NDArray[Any]] = []
-        trees_thresholds: list[NDArray[Any]] = []
-        trees_left: list[NDArray[Any]] = []
-        trees_right: list[NDArray[Any]] = []
-        trees_values: list[NDArray[Any]] = []
-        trees_left_fractions: list[NDArray[Any]] = []
-
-        for t_idx in range(self.num_trees):
-            max_d = self.trees_[t_idx].max_depth
-            if max_d == 0:
-                # Empty tree: single leaf node with value 0.
-                trees_features.append(np.array([-1], dtype=np.intp))
-                trees_thresholds.append(np.array([0.0], dtype=np.float64))
-                trees_left.append(np.array([0], dtype=np.intp))
-                trees_right.append(np.array([0], dtype=np.intp))
-                trees_values.append(np.array([0.0], dtype=np.float64))
-                trees_left_fractions.append(np.array([0.5], dtype=np.float64))
-                continue
-
-            nc = self.trees_[t_idx].node_count
-            # Packed arrays for this tree.
-            p_dim = self._p_dim[t_idx, :nc]
-            p_split = self._p_split[t_idx, :nc]
-            p_left = self._p_left[t_idx, :nc]
-            p_right = self._p_right[t_idx, :nc]
-            p_leaf_pl = self._p_leaf_pl[t_idx, :nc]
-
-            # TreeSHAP expects leaf nodes to have feature = -1.
-            # In our packed representation, leaf nodes have p_dim = 0 and p_left = p_right = node.
-            # We need to convert: for leaf nodes, set feature to -1.
-            features = p_dim.copy()
-            is_leaf = p_left == p_right
-            features[is_leaf] = -1
-
-            left_fractions = np.full(nc, 0.5, dtype=np.float64)
-            root = self.trees_[t_idx].root
-            if root is not None:
-                stack = [root]
-                while stack:
-                    node = stack.pop()
-                    if node.children is not None:
-                        left_child, right_child = node.children
-                        total = left_child.data_size + right_child.data_size
-                        if total > 0:
-                            left_fractions[node.slot] = left_child.data_size / total
-                        stack.append(right_child)
-                        stack.append(left_child)
-
-            trees_features.append(features)
-            trees_thresholds.append(p_split)
-            trees_left.append(p_left)
-            trees_right.append(p_right)
-            trees_values.append(p_leaf_pl)
-            trees_left_fractions.append(left_fractions)
-
-        # Compute SHAP values for the average path length.
-        phi = treeshap_ensemble(
+        extracted = [self._packed_tree_for_shap(t_idx) for t_idx in range(self.num_trees)]
+        trees_features, trees_thresholds, trees_left, trees_right, trees_values, trees_fracs = zip(
+            *extracted, strict=True
+        )
+        return treeshap_ensemble(
             x,
             trees_features,
             trees_thresholds,
@@ -743,7 +740,5 @@ class OnlineIsolationForest(BaseModel):
             trees_right,
             trees_values,
             num_features,
-            trees_left_fractions=trees_left_fractions,
+            trees_left_fractions=trees_fracs,
         )
-
-        return phi

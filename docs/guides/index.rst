@@ -21,13 +21,7 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
       :doc:`dataset_inventory`
 
-      List each pysad.utils.Data loader with its source, license, checksum and label format.
-
-   .. container:: card
-
-      :doc:`dataset_selection`
-
-      Compare NAB, Yahoo S5 and ODDS and pick the loader for your stream.
+      Compare and choose a dataset, and list each pysad.utils.Data loader with its source, license, checksum and label format.
 
    .. container:: card
 
@@ -141,7 +135,7 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
       :doc:`mcp_hardening`
 
-      Harden the PySAD MCP server for production: process isolation, input limits, and monitoring.
+      Harden the PySAD MCP server for production: dedicated user, authentication, rate limiting, TLS proxy, input limits, and monitoring.
 
    .. container:: card
 
@@ -154,12 +148,6 @@ Choose a guide for the task you need to complete. These guides assume familiarit
       :doc:`configuration`
 
       Configure pysad-live, pysad.mcp, and the optional PyO3 kernels in one place.
-
-   .. container:: card
-
-      :doc:`hardening`
-
-      Run the pysad.mcp server with a dedicated user, authentication, rate limiting, and TLS in front of it.
 
    .. container:: card
 

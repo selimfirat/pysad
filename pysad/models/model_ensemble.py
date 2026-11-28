@@ -69,7 +69,7 @@ class ModelEnsemble(BaseModel):
     def _can_batch(self) -> bool:
         return sum(_uses_global_rng(c) for c in (*self.models, self.ensembler)) <= 1
 
-    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> ModelEnsemble:
+    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> Self:
         """Updates every constituent model (and the ensembler if stateful) with the next instance.
 
         Args:
@@ -77,7 +77,7 @@ class ModelEnsemble(BaseModel):
             y (int or None): The label of the instance, passed to each model (Default=None).
 
         Returns:
-            ModelEnsemble: The ensemble itself.
+            Self: The ensemble itself.
         """
         if self.ensembler._stateless:
             for model in self.models:
@@ -125,7 +125,7 @@ class ModelEnsemble(BaseModel):
         )
         return self.ensembler.fit_transform_partial(scores)
 
-    def fit(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> ModelEnsemble:
+    def fit(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> Self:
         """Fits all constituent models (and the ensembler if stateful) to a batch of instances.
 
         An empty batch leaves the ensemble unchanged.
@@ -139,7 +139,7 @@ class ModelEnsemble(BaseModel):
             ValueError: If ``y`` is given and its length differs from that of ``X``.
 
         Returns:
-            ModelEnsemble: The ensemble itself.
+            Self: The ensemble itself.
         """
         if y is not None and len(X) != len(y):
             raise ValueError("X and y must have the same length.")
@@ -198,59 +198,6 @@ class ModelEnsemble(BaseModel):
             return np.empty(0, dtype=np.float64)
         matrix = np.column_stack([model.fit_score(X, y) for model in self.models])
         return np.asarray(self.ensembler.fit_transform(matrix), dtype=np.float64)
-
-
-class StrictModelEnsemble(ModelEnsemble):
-    """A strictly-typed :class:`ModelEnsemble`.
-
-    Behaves like :class:`ModelEnsemble`. The score ``ensembler`` is required. There is no implicit
-    default. The mutating methods return ``Self`` so the strict type survives chaining. Use this
-    when mypy must enforce that an ensembler is always chosen explicitly.
-
-    Args:
-        models (sequence of BaseModel): At least one detector or pipeline to ensemble, in order.
-        ensembler (BaseScoreEnsembler): Score combiner applied to the vector of model scores.
-
-    Raises:
-        ValueError: If ``models`` is empty.
-    """
-
-    _is_detector: ClassVar[bool] = False
-
-    def __init__(
-        self,
-        models: Sequence[BaseModel],
-        ensembler: BaseScoreEnsembler,
-    ) -> None:
-        super().__init__(models, ensembler)
-
-    def fit_partial(self, X: NDArray[Any], y: int | None = None) -> Self:
-        """Updates every constituent model with the next instance and returns this ensemble.
-
-        Args:
-            X (np.float64 array of shape (num_features,)): The instance to fit.
-            y (int or None): The label of the instance, passed to each model (Default=None).
-
-        Returns:
-            Self: This strict ensemble.
-        """
-        super().fit_partial(X, y)
-        return self
-
-    def fit(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> Self:
-        """Fits all constituent models to a batch of instances and returns this ensemble.
-
-        An empty batch leaves the ensemble unchanged.
-
-        Args:
-            X (np.float64 array of shape (num_instances, num_features)): The instances to fit, in order.
-            y (np.int32 array of shape (num_instances,) or None): The labels of the instances, in order (Default=None).
-
-        Returns:
-            Self: This strict ensemble.
-        """
-        super().fit(X, y)
-        return self
 
 
 BaseModel._ensemble_cls = ModelEnsemble

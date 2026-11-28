@@ -168,8 +168,6 @@ PySAD calibrates the score, then thresholds it:
    calibrated = calibrator.fit_transform_partial(score)
    alert = alerts.transform_partial(calibrated)
 
-``step >= 200`` suppresses alerts while the model and calibrator warm up.
-
 Evaluate on labeled data
 ------------------------
 
@@ -213,6 +211,7 @@ PySAD evaluates prequentially, scoring each point before learning from it:
 Next steps
 ----------
 
+- Run PySAD detectors inside River pipelines in :doc:`river_interoperability`.
 - Calibrate scores and pick an alert threshold in :doc:`alerts`.
 - Stream CSV files and DataFrames in :doc:`stream_data`.
 - Run PyOD batch detectors on sliding windows in :doc:`pyod`.

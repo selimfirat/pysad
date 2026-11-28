@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.linalg.blas import ddot, dsymv, dsyr, dsyrk
@@ -113,10 +115,10 @@ def _adapt_features(
         # The divisions above re-use nx, ny which already have the epsilon floor.
         grads = [x.T @ dzx + y.T @ dzy, dzx.sum(axis=0) + dzy.sum(axis=0)]
         lr = learning_rate + (1e-7 - learning_rate) * (step - 1) / num_steps
-        for param, grad, (m, v) in zip(params, grads, moments, strict=True):
+        for idx, (grad, (m, v)) in enumerate(zip(grads, moments, strict=True)):
             m += (1 - beta1) * (grad - m)
             v += (1 - beta2) * (grad**2 - v)
-            param -= lr * (m / (1 - beta1**step)) / (np.sqrt(v / (1 - beta2**step)) + eps)
+            params[idx] -= lr * (m / (1 - beta1**step)) / (np.sqrt(v / (1 - beta2**step)) + eps)
 
     return params[0], params[1]
 
@@ -224,9 +226,11 @@ class Inqmad(BaseModel):
     def _materialize_rho(self) -> None:
         """Materializes the symmetric ``(dim_x, dim_x)`` density matrix ``_rho`` from any buffered states or pending triangular updates."""
         if self._states_buf is not None:
-            assert self._weights_buf is not None
+            weights_buf = self._weights_buf
+            if weights_buf is None:
+                raise RuntimeError("Inqmad state buffer weights are not initialized.")
             states = self._states_buf[: self._num_states]
-            weights = self._weights_buf[: self._num_states] * self._rho_scale
+            weights = weights_buf[: self._num_states] * self._rho_scale
             self._rho = (states.T * weights) @ states
             self._states_buf = None
             self._weights_buf = None
@@ -234,7 +238,7 @@ class Inqmad(BaseModel):
             self._rho_scale = 1.0
             self._rho_dirty = False
         elif self._rho is not None and self._rho_dirty:
-            if self._rho_scale != 1.0:
+            if not math.isclose(self._rho_scale, 1.0):
                 self._rho *= self._rho_scale
                 self._rho_scale = 1.0
             i, j = np.triu_indices_from(self._rho, k=1)
@@ -272,22 +276,25 @@ class Inqmad(BaseModel):
         feature_range = np.ptp(X, axis=0)
         return X.min(axis=0), np.where(feature_range == 0, 1.0, feature_range)
 
+    def _warmup_density(self, X: NDArray[np.float64]) -> float:
+        """Compute kernel density against the warmup sample before adaptive features fit."""
+        if self._initial_len == 0:
+            return 0.0
+        if self._initial_buf is None or self._warmup_min is None or self._warmup_max is None:
+            raise RuntimeError("Inqmad warmup buffers are not initialized.")
+        span = self._warmup_max - self._warmup_min
+        feature_range = np.where(span == 0, 1.0, span)
+        diff = (self._initial_buf[: self._initial_len] - X) / feature_range
+        sq_dists = np.einsum("ij,ij->i", diff, diff)
+        return float(np.exp(-2 * self.gamma * sq_dists).mean())
+
     def _measure(self, X: NDArray[np.float64]) -> tuple[NDArray[np.float64] | None, float]:
         """The state of the 1-D instance ``X`` (None before rho exists) and its density."""
         if self._rho is None and self._states_buf is None:
-            if self._initial_len == 0:
-                return None, 0.0
-            assert self._initial_buf is not None
-            assert self._warmup_min is not None
-            assert self._warmup_max is not None
-            span = self._warmup_max - self._warmup_min
-            feature_range = np.where(span == 0, 1.0, span)
-            diff = (self._initial_buf[: self._initial_len] - X) / feature_range
-            sq_dists = np.einsum("ij,ij->i", diff, diff)
-            return None, float(np.exp(-2 * self.gamma * sq_dists).mean())
+            return None, self._warmup_density(X)
+        if self.feature_min is None or self.feature_range is None:
+            raise RuntimeError("Inqmad feature scaling bounds are not initialized.")
 
-        assert self.feature_min is not None
-        assert self.feature_range is not None
         scaled = (X - self.feature_min) / self.feature_range
         dim_x = self.weights.shape[1]
         psi = self._psi_buf
@@ -300,7 +307,8 @@ class Inqmad(BaseModel):
         psi /= float(np.sqrt(ddot(psi, psi)))
 
         if self._states_buf is not None:
-            assert self._weights_buf is not None
+            if self._weights_buf is None:
+                raise RuntimeError("Inqmad state buffer weights are not initialized.")
             k = self._num_states
             if self._proj_buf.shape[0] < k:
                 self._proj_buf = np.empty(len(self._states_buf), dtype=np.float64)
@@ -309,97 +317,125 @@ class Inqmad(BaseModel):
             np.square(proj, out=proj)
             return psi, self._rho_scale * float(ddot(self._weights_buf[:k], proj))
 
-        assert self._rho is not None
+        if self._rho is None:
+            raise RuntimeError("Inqmad density matrix is not initialized.")
         return psi, float(ddot(psi, dsymv(self._rho_scale, self._rho.T, psi)))
+
+    def _finalize_warmup(self, initial_buf: NDArray[np.float64]) -> None:
+        """Fit adaptive Fourier features and initialize the density matrix after warmup completes."""
+        if self._warmup_min is None or self._warmup_max is None:
+            raise RuntimeError("Inqmad warmup min/max trackers are not initialized.")
+        raw_initial = initial_buf[: self._initial_len]
+        span = self._warmup_max - self._warmup_min
+        self.feature_min = self._warmup_min
+        self.feature_range = np.where(span == 0, 1.0, span)
+        initial = (raw_initial - self.feature_min) / self.feature_range
+        n, d = initial.shape
+        num_uniform = 10_000 - n if n < 1000 else 2 * n
+        adapt_data = np.empty((n + num_uniform, d), dtype=np.float64)
+        adapt_data[:n] = initial
+        adapt_data[n:] = self.rng.uniform(-0.5, 1.5, size=(num_uniform, d))
+        self.weights, self.offset = _adapt_features(
+            adapt_data,
+            self.weights,
+            self.offset,
+            self.gamma,
+            self.learning_rate,
+            self.rng,
+        )
+        states = _states(initial, self.weights, self.offset)
+        gram = states @ states.T
+        np.square(gram, out=gram)
+        densities = gram.mean(axis=1)
+        self.tau = float(np.quantile(densities, self.beta))
+        dim_x = self.weights.shape[1]
+        self._max_states = dim_x
+        if n <= dim_x:
+            cap = min(dim_x, max(n * 2, 512))
+            self._states_buf = np.empty((cap, dim_x), dtype=np.float64)
+            self._weights_buf = np.empty(cap, dtype=np.float64)
+            self._proj_buf = np.empty(cap, dtype=np.float64)
+            self._states_buf[:n] = states
+            self._weights_buf[:n] = 1.0 / n
+            self._num_states = n
+            self._rho_scale = 1.0
+        else:
+            self._rho = dsyrk(1.0 / n, states, trans=1).T
+            self._rho_scale = 1.0
+            self._rho_dirty = True
+        self.initial = None
+
+    def _append_warmup(self, X: NDArray[np.float64]) -> None:
+        """Record one instance in the warmup buffer and finalize once `initial_size` is reached."""
+        initial_buf = self._initial_buf
+        if initial_buf is None:
+            raise RuntimeError("Inqmad warmup buffer is not initialized.")
+        idx = self._initial_len
+        initial_buf[idx] = X
+        if idx == 0:
+            self._warmup_min = X.copy()
+            self._warmup_max = X.copy()
+        elif self._warmup_min is not None and self._warmup_max is not None:
+            np.minimum(self._warmup_min, X, out=self._warmup_min)
+            np.maximum(self._warmup_max, X, out=self._warmup_max)
+        self._initial_len = idx + 1
+        if self._initial_len == self.initial_size:
+            self._finalize_warmup(initial_buf)
+
+    def _update_states_buffer(self, psi: NDArray[np.float64]) -> None:
+        """Append one rank-1 normal state update into the low-rank buffer."""
+        states_buf = self._states_buf
+        weights_buf = self._weights_buf
+        if states_buf is None or weights_buf is None:
+            raise RuntimeError("Inqmad state buffer is not initialized.")
+        if self._num_states == len(states_buf):
+            new_cap = min(self._max_states, len(states_buf) * 2)
+            new_states = np.empty((new_cap, states_buf.shape[1]), dtype=np.float64)
+            new_states[: self._num_states] = states_buf
+            states_buf = new_states
+            self._states_buf = new_states
+            new_weights = np.empty(new_cap, dtype=np.float64)
+            new_weights[: self._num_states] = weights_buf
+            weights_buf = new_weights
+            self._weights_buf = new_weights
+            self._proj_buf = np.empty(new_cap, dtype=np.float64)
+        self._rho_scale *= 1.0 - self.alpha
+        if self._rho_scale < 1e-100:
+            weights_buf[: self._num_states] *= self._rho_scale
+            self._rho_scale = 1.0
+        states_buf[self._num_states] = psi
+        weights_buf[self._num_states] = self.alpha / self._rho_scale
+        self._num_states += 1
+
+    def _update_dense_rho(self, psi: NDArray[np.float64]) -> None:
+        """Apply a symmetric rank-1 update directly into the dense density matrix."""
+        if self._states_buf is not None:
+            self._materialize_rho()
+        if self._rho is None:
+            raise RuntimeError("Inqmad density matrix is not initialized.")
+        self._rho_scale *= 1.0 - self.alpha
+        if self._rho_scale < 1e-100:
+            self._rho *= self._rho_scale
+            self._rho_scale = 1.0
+        # self._rho.T is Fortran-contiguous, so dsyr updates its upper triangle (the lower
+        # triangle of self._rho) in place, which dsymv(self._rho_scale, self._rho.T, psi) reads.
+        dsyr(self.alpha / self._rho_scale, psi, a=self._rho.T, overwrite_a=1)
+        self._rho_dirty = True
 
     def _fit(self, X: NDArray[np.float64], psi: NDArray[np.float64] | None, density: float) -> None:
         if self._rho is None and self._states_buf is None:
-            assert self._initial_buf is not None
-            idx = self._initial_len
-            self._initial_buf[idx] = X
-            if idx == 0:
-                self._warmup_min = X.copy()
-                self._warmup_max = X.copy()
-            else:
-                assert self._warmup_min is not None and self._warmup_max is not None
-                np.minimum(self._warmup_min, X, out=self._warmup_min)
-                np.maximum(self._warmup_max, X, out=self._warmup_max)
-            self._initial_len = idx + 1
-            if self._initial_len == self.initial_size:
-                raw_initial = self._initial_buf[: self._initial_len]
-                assert self._warmup_min is not None and self._warmup_max is not None
-                span = self._warmup_max - self._warmup_min
-                self.feature_min = self._warmup_min
-                self.feature_range = np.where(span == 0, 1.0, span)
-                initial = (raw_initial - self.feature_min) / self.feature_range
-                n, d = initial.shape
-                num_uniform = 10_000 - n if n < 1000 else 2 * n
-                adapt_data = np.empty((n + num_uniform, d), dtype=np.float64)
-                adapt_data[:n] = initial
-                adapt_data[n:] = self.rng.uniform(-0.5, 1.5, size=(num_uniform, d))
-                self.weights, self.offset = _adapt_features(
-                    adapt_data,
-                    self.weights,
-                    self.offset,
-                    self.gamma,
-                    self.learning_rate,
-                    self.rng,
-                )
-                states = _states(initial, self.weights, self.offset)
-                gram = states @ states.T
-                np.square(gram, out=gram)
-                densities = gram.mean(axis=1)
-                self.tau = float(np.quantile(densities, self.beta))
-                dim_x = self.weights.shape[1]
-                self._max_states = dim_x
-                if n <= dim_x:
-                    cap = min(dim_x, max(n * 2, 512))
-                    self._states_buf = np.empty((cap, dim_x), dtype=np.float64)
-                    self._weights_buf = np.empty(cap, dtype=np.float64)
-                    self._proj_buf = np.empty(cap, dtype=np.float64)
-                    self._states_buf[:n] = states
-                    self._weights_buf[:n] = 1.0 / n
-                    self._num_states = n
-                    self._rho_scale = 1.0
-                else:
-                    self._rho = dsyrk(1.0 / n, states, trans=1).T
-                    self._rho_scale = 1.0
-                    self._rho_dirty = True
-                self.initial = None
-        elif self.tau is not None and density >= self.tau * (1.0 - 1e-12) and self.alpha > 0.0:
-            assert psi is not None
-            if self.alpha == 1.0:
-                self.rho = np.ascontiguousarray(np.outer(psi, psi), dtype=np.float64)
-            elif self._states_buf is not None and self._num_states < self._max_states:
-                assert self._weights_buf is not None
-                if self._num_states == len(self._states_buf):
-                    new_cap = min(self._max_states, len(self._states_buf) * 2)
-                    new_states = np.empty((new_cap, self._states_buf.shape[1]), dtype=np.float64)
-                    new_states[: self._num_states] = self._states_buf
-                    self._states_buf = new_states
-                    new_weights = np.empty(new_cap, dtype=np.float64)
-                    new_weights[: self._num_states] = self._weights_buf
-                    self._weights_buf = new_weights
-                    self._proj_buf = np.empty(new_cap, dtype=np.float64)
-                self._rho_scale *= 1.0 - self.alpha
-                if self._rho_scale < 1e-100:
-                    self._weights_buf[: self._num_states] *= self._rho_scale
-                    self._rho_scale = 1.0
-                self._states_buf[self._num_states] = psi
-                self._weights_buf[self._num_states] = self.alpha / self._rho_scale
-                self._num_states += 1
-            else:
-                if self._states_buf is not None:
-                    self._materialize_rho()
-                assert self._rho is not None
-                self._rho_scale *= 1.0 - self.alpha
-                if self._rho_scale < 1e-100:
-                    self._rho *= self._rho_scale
-                    self._rho_scale = 1.0
-                # self._rho.T is Fortran-contiguous, so dsyr updates its upper triangle (the lower
-                # triangle of self._rho) in place, which dsymv(self._rho_scale, self._rho.T, psi) reads.
-                dsyr(self.alpha / self._rho_scale, psi, a=self._rho.T, overwrite_a=1)
-                self._rho_dirty = True
+            self._append_warmup(X)
+            return
+        if self.tau is None or density < self.tau * (1.0 - 1e-12) or self.alpha <= 0.0:
+            return
+        if psi is None:
+            raise RuntimeError("Inqmad quantum state vector is missing.")
+        if math.isclose(self.alpha, 1.0):
+            self.rho = np.ascontiguousarray(np.outer(psi, psi), dtype=np.float64)
+        elif self._states_buf is not None and self._num_states < self._max_states:
+            self._update_states_buffer(psi)
+        else:
+            self._update_dense_rho(psi)
 
     def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> Inqmad:
         """Updates the model with the next instance: adds it to the initial sample, or, once the sample is complete, adds it to the density matrix if its density is at least the threshold.

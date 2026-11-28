@@ -124,11 +124,41 @@ class _OnlineIsolationTree:
 
         return self._learn_path(X, rng)
 
+    @staticmethod
+    def _searchsorted_child(node: _OnlineIsolationNode, X: NDArray[Any]) -> int:
+        """Select a non-binary node child index from sorted split thresholds."""
+        if node.split_values is None:
+            raise RuntimeError("Non-binary node is missing split_values.")
+        return int(np.searchsorted(node.split_values, X[node.dim], side="right"))
+
+    def _maybe_split_leaf(
+        self,
+        curr: _OnlineIsolationNode,
+        parent: _OnlineIsolationNode | None,
+        child_idx: int,
+        rng: np.random.RandomState,
+    ) -> tuple[bool, bool, _OnlineIsolationNode | None]:
+        """Split a leaf when it reaches the threshold below depth_limit."""
+        if curr.data_size < curr.threshold or curr.depth >= self.depth_limit:
+            return True, False, curr
+        samples = rng.uniform(
+            low=curr.min_values,
+            high=curr.max_values,
+            size=(curr.data_size, len(curr.min_values)),
+        )
+        rebuilt = self._build(samples, curr.depth, rng)
+        if parent is None:
+            self.root = rebuilt
+        elif parent.children is not None:
+            parent.children[child_idx] = rebuilt
+        return True, True, None
+
     def _learn_path(
         self, X: NDArray[Any], rng: np.random.RandomState
     ) -> tuple[bool, bool, _OnlineIsolationNode | None]:
-        assert self.root is not None
         curr = self.root
+        if curr is None:
+            raise RuntimeError("Tree root is not initialized.")
         parent: _OnlineIsolationNode | None = None
         child_idx = 0
         binary = self.branching_factor == 2
@@ -138,27 +168,13 @@ class _OnlineIsolationTree:
             if binary:
                 child_idx = 1 if X[curr.dim] >= curr.split_val else 0
             else:
-                assert curr.split_values is not None
-                child_idx = int(np.searchsorted(curr.split_values, X[curr.dim], side="right"))
+                child_idx = self._searchsorted_child(curr, X)
             curr = curr.children[child_idx]
 
         curr.data_size += 1
         np.minimum(curr.min_values, X, out=curr.min_values)
         np.maximum(curr.max_values, X, out=curr.max_values)
-        if curr.data_size >= curr.threshold and curr.depth < self.depth_limit:
-            samples = rng.uniform(
-                low=curr.min_values,
-                high=curr.max_values,
-                size=(curr.data_size, len(curr.min_values)),
-            )
-            rebuilt = self._build(samples, curr.depth, rng)
-            if parent is None:
-                self.root = rebuilt
-            else:
-                assert parent.children is not None
-                parent.children[child_idx] = rebuilt
-            return True, True, None
-        return True, False, curr
+        return self._maybe_split_leaf(curr, parent, child_idx, rng)
 
     def _learn_all(
         self, node: _OnlineIsolationNode, X: NDArray[Any] | None, rng: np.random.RandomState
@@ -244,7 +260,8 @@ class _OnlineIsolationTree:
             inv_log=self._inv_log,
         )
         self._settled_limit = min(self._settled_limit, math.ceil(self.depth_limit))
-        assert self.root is not None
+        if self.root is None:
+            raise RuntimeError("Tree root is not initialized.")
         return self._unlearn(self.root, X)
 
     def _unlearn(
@@ -263,19 +280,19 @@ class _OnlineIsolationTree:
             if binary:
                 curr = children[1 if X[curr.dim] >= curr.split_val else 0]
             else:
-                assert curr.split_values is not None
-                idx = int(np.searchsorted(curr.split_values, X[curr.dim], side="right"))
-                curr = children[idx]
+                curr = children[self._searchsorted_child(curr, X)]
 
     def _refresh_bounds(self, node: _OnlineIsolationNode) -> None:
-        assert node.children is not None
-        if len(node.children) == 2:
-            c0, c1 = node.children[0], node.children[1]
+        children = node.children
+        if children is None:
+            return
+        if len(children) == 2:
+            c0, c1 = children[0], children[1]
             np.minimum(c0.min_values, c1.min_values, out=node.min_values)
             np.maximum(c0.max_values, c1.max_values, out=node.max_values)
         else:
-            np.minimum.reduce([c.min_values for c in node.children], out=node.min_values)
-            np.maximum.reduce([c.max_values for c in node.children], out=node.max_values)
+            np.minimum.reduce([c.min_values for c in children], out=node.min_values)
+            np.maximum.reduce([c.max_values for c in children], out=node.max_values)
 
     def _unbuild(self, node: _OnlineIsolationNode) -> None:
         if node.children is None:
@@ -294,9 +311,7 @@ class _OnlineIsolationTree:
             if binary:
                 node = children[1 if X[node.dim] >= node.split_val else 0]
             else:
-                assert node.split_values is not None
-                idx = int(np.searchsorted(node.split_values, X[node.dim], side="right"))
-                node = children[idx]
+                node = children[self._searchsorted_child(node, X)]
         return node.depth + _path_length(
             num_samples=node.data_size,
             max_leaf_samples=self.max_leaf_samples,

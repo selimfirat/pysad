@@ -101,7 +101,7 @@ class StreamingRHF(BaseModel):
         # value inside the observed feature range. Drawing them once makes the model deterministic
         # for a given random_state and avoids consuming randomness during fit or score.
         self.r_seeds_ = rng.uniform(0.0, 1.0, size=(self.num_trees, self.num_splits, 2))
-        zero_mask = self.r_seeds_ == 0.0
+        zero_mask = self.r_seeds_ <= 0.0
         if bool(zero_mask.any()):
             self.r_seeds_[zero_mask] = rng.uniform(0.0, 1.0, size=int(zero_mask.sum()))
 
@@ -133,6 +133,12 @@ class StreamingRHF(BaseModel):
         else:
             raw = (2 ** (self.height - depth)) * (node_id + 1) - 1
         return int(raw - self.num_splits)
+
+    def _require_window_buffer(self) -> NDArray[np.float64]:
+        """Return the allocated window buffer or raise if called before initialization."""
+        if self.window_buffer_ is None:
+            raise RuntimeError("StreamingRHF window buffer is not initialized.")
+        return self.window_buffer_
 
     def _allocate_window_buffer(self, num_features: int) -> None:
         """Allocates the rolling buffer of point values once the feature dimension is known."""
@@ -177,7 +183,7 @@ class StreamingRHF(BaseModel):
         col = vals[:, feature]
         a_min = float(col.min())
         a_max = float(col.max())
-        if not a_max > a_min:
+        if a_max <= a_min:
             # A constant feature cannot be split on; the caller turns the node into a leaf.
             return feature, a_min
         split_value = a_min + seed1 * (a_max - a_min)
@@ -215,9 +221,7 @@ class StreamingRHF(BaseModel):
         becomes a leaf when it holds a single point, reaches the maximum height, or every feature
         has zero kurtosis.
         """
-        window_buffer = self.window_buffer_
-        assert window_buffer is not None
-        vals = window_buffer[slots]
+        vals = self._require_window_buffer()[slots]
         npts = int(vals.shape[0])
         split_atts = self.split_atts_[tree]
         split_values = self.split_values_[tree]
@@ -231,7 +235,7 @@ class StreamingRHF(BaseModel):
 
         log_kurt = self._feature_log_kurtosis(vals)
         ks = float(log_kurt.sum())
-        if ks == 0.0:
+        if ks <= 0.0:
             if internal:
                 split_atts[node_id] = -1
             self._fill_leaf(tree, node_id, depth, slots)
@@ -281,6 +285,23 @@ class StreamingRHF(BaseModel):
             self._rht(tree, 0, 0, slots)
         self.n_active_ = self.window_size
 
+    def _updated_split_feature(
+        self, tree: int, node_id: int, all_slots: NDArray[np.int64], fallback: int
+    ) -> int:
+        """Recompute a node's split feature after adding a point into `all_slots`."""
+        vals = self._require_window_buffer()[all_slots]
+        log_kurt = self._feature_log_kurtosis(vals)
+        ks = float(log_kurt.sum())
+        if ks <= 0.0:
+            return fallback
+        r_a = self.r_seeds_[tree, node_id, 0] * ks
+        cumul = 0.0
+        for f in range(self.num_features_):
+            cumul += log_kurt[f]
+            if r_a <= cumul:
+                return f
+        return fallback
+
     def _insert(self, tree: int, x: NDArray[np.float64], slot: int) -> None:
         """Inserts one instance into one tree, rebuilding subtrees whose split attribute changes."""
         node_id = 0
@@ -291,38 +312,14 @@ class StreamingRHF(BaseModel):
         while node_id < self.num_splits and split_atts[node_id] != -1:
             feature = int(split_atts[node_id])
             split_value = float(split_values[node_id])
-
-            # Does inserting x change the split attribute of this node?
-            node_slots = self._collect_subtree_slots(tree, node_id, depth)
-            all_slots = np.append(node_slots, slot)
-            window_buffer = self.window_buffer_
-            assert window_buffer is not None
-            vals = window_buffer[all_slots]
-            log_kurt = self._feature_log_kurtosis(vals)
-            ks = float(log_kurt.sum())
-
-            new_feature = feature
-            if ks > 0.0:
-                seed0 = self.r_seeds_[tree, node_id, 0]
-                r_a = seed0 * ks
-                cumul = 0.0
-                for f in range(self.num_features_):
-                    cumul += log_kurt[f]
-                    if r_a <= cumul:
-                        new_feature = f
-                        break
-
-            if new_feature != feature:
+            all_slots = np.append(self._collect_subtree_slots(tree, node_id, depth), slot)
+            if self._updated_split_feature(tree, node_id, all_slots, feature) != feature:
                 self._rht(tree, node_id, depth, all_slots)
                 return
 
-            if x[feature] <= split_value:
-                node_id = 2 * node_id + 1
-            else:
-                node_id = 2 * node_id + 2
+            node_id = 2 * node_id + (1 if x[feature] <= split_value else 2)
             depth += 1
 
-        # Reached a leaf: record x in it, extending its depth when it is not yet maximal.
         leaf_index = self._leaf_index(node_id, depth)
         count = int(self.leaf_counts_[tree, leaf_index])
         old_slots = self.leaf_members_[tree, leaf_index, :count]
@@ -348,18 +345,14 @@ class StreamingRHF(BaseModel):
         if not self.forest_built_:
             if self.window_buffer_ is None:
                 self._allocate_window_buffer(x.shape[0])
-            window_buffer = self.window_buffer_
-            assert window_buffer is not None
-            window_buffer[self.point_count_] = x
+            self._require_window_buffer()[self.point_count_] = x
             self.point_count_ += 1
             if self.point_count_ == self.window_size:
                 self._build_forest()
             return self
 
-        window_buffer = self.window_buffer_
-        assert window_buffer is not None
         slot = self.point_count_ % self.buffer_size
-        window_buffer[slot] = x
+        self._require_window_buffer()[slot] = x
         self.point_count_ += 1
         self.n_active_ += 1
         for tree in range(self.num_trees):

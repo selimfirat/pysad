@@ -77,7 +77,36 @@ def test_main_json_output_half_space_trees_with_target(tmp_path, capsys):
     assert main(argv) == 0
     lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
     assert len(lines) == 2
-    assert {"step", "features", "score", "calibrated_score", "alert"} <= set(json.loads(lines[1]))
+    first = json.loads(lines[0])
+    second = json.loads(lines[1])
+    assert first["features"] == [1.0, 2.0] and first["label"] == 0
+    assert second["features"] == [3.0, 4.0] and second["label"] == 1
+    assert {"step", "features", "score", "calibrated_score", "alert", "label"} <= set(second)
+
+
+def test_main_json_output_csv_timestamp_and_numeric_target(tmp_path, capsys):
+    path = tmp_path / "timed.csv"
+    path.write_text(
+        "ts,f1,f2,target\n2026-01-01T00:00:00Z,1.0,2.0,0\n2026-01-01T00:01:00Z,3.0,4.0,1\n",
+        encoding="utf-8",
+    )
+    argv = [
+        "--source",
+        str(path),
+        "--csv-target",
+        "3",
+        "--csv-timestamp",
+        "ts",
+        "--detector",
+        "loda",
+        "--json-output",
+    ]
+    assert main(argv) == 0
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
+    assert len(lines) == 2
+    payload = json.loads(lines[1])
+    assert payload["features"] == [3.0, 4.0]
+    assert payload["label"] == 1
 
 
 def test_main_terminal_dashboard_with_log_file(tmp_path):

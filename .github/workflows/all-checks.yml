@@ -104,9 +104,9 @@ jobs:
                           retry_raw = hdr.get("Retry-After")
                           now_ts = int(time.time())
                           if retry_raw and retry_raw.isdigit():
-                              wait_s = max(30, min(int(retry_raw) + 5, 1800))
+                              wait_s = max(60, min(int(retry_raw) + 5, 600))
                           elif reset_raw and reset_raw.isdigit():
-                              wait_s = max(30, min(int(reset_raw) - now_ts + 5, 1800))
+                              wait_s = max(60, min(int(reset_raw) - now_ts + 5, 600))
                           else:
                               wait_s = 120
                           reset_iso = datetime.fromtimestamp(now_ts + wait_s, tz=timezone.utc).isoformat()
@@ -119,7 +119,7 @@ jobs:
                       raise
               return runs, new_etag, rem, reset_ts
 
-          time.sleep(45)
+          time.sleep(60)
           etag: str | None = None
           last_runs: list[dict] | None = None
           empty_polls = 0
@@ -161,9 +161,9 @@ jobs:
               )
 
               if rem is not None and rem < 25 and reset_ts is not None:
-                  wait_s = max(30, min(reset_ts - int(time.time()) + 5, 1800))
+                  wait_s = max(60, min(reset_ts - int(time.time()) + 5, 600))
               else:
-                  wait_s = 30 if poll <= 3 else (45 if poll <= 8 else 60)
+                  wait_s = 60 if poll <= 3 else (90 if poll <= 8 else 120)
               time.sleep(wait_s)
 
           print("Timed out waiting for status checks.", flush=True)

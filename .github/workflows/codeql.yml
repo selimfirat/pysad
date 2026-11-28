@@ -5,26 +5,8 @@ name: codeql
 on:
   push:
     branches: [master]
-    paths:
-      - "pysad/**/*.py"
-      - "benchmarks/**/*.py"
-      - "scripts/**/*.py"
-      - "spaces/**/*.py"
-      - "docs/*.py"
-      - ".github/workflows/*.yml"
-      - ".github/workflows/*.yaml"
-      - ".github/actions/**"
   pull_request:
     branches: [master]
-    paths:
-      - "pysad/**/*.py"
-      - "benchmarks/**/*.py"
-      - "scripts/**/*.py"
-      - "spaces/**/*.py"
-      - "docs/*.py"
-      - ".github/workflows/*.yml"
-      - ".github/workflows/*.yaml"
-      - ".github/actions/**"
   schedule:
     # Weekly, so new queries also run against code that has not changed.
     - cron: "41 5 * * 1"

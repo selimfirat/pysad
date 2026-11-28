@@ -181,6 +181,15 @@ def test_rejects_bandwidth_and_learning_rate_that_are_not_positive(name, value):
         _model(**{name: value})
 
 
+@pytest.mark.parametrize("value", [-0.1, 1.5])
+def test_unit_interval_rejects_finite_out_of_bounds(value):
+    """_unit_interval raises for finite values outside [0, 1]."""
+    from pysad.models.inqmad import _unit_interval
+
+    with pytest.raises(ValueError, match="must be between 0 and 1"):
+        _unit_interval(value, "test_param")
+
+
 def test_first_instance_scores_zero():
     """Before anything has been fitted the density is 0, so the score is
     0.0, the most anomalous possible score, instead of an error.
@@ -487,6 +496,16 @@ def test_inqmad_initial_setter_with_array():
     np.testing.assert_array_equal(model._warmup_max, new_initial.max(axis=0))
 
 
+def test_inqmad_initial_getter_returns_buffer_slice():
+    """The initial getter returns the current buffer slice when initialized."""
+    model = _model()
+    model.initial = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+    initial_arr = model.initial
+    assert initial_arr is not None
+    assert initial_arr.shape == (2, 3)
+    np.testing.assert_array_equal(initial_arr, model.initial)
+
+
 def test_inqmad_initial_setter_with_none():
     """The initial setter with None clears the warmup buffers."""
     model = _model()
@@ -515,6 +534,26 @@ def test_inqmad_materialize_rho_with_none_weights_buf():
     model._weights_buf = None
     with pytest.raises(RuntimeError, match="Inqmad state buffer weights are not initialized"):
         model._materialize_rho()
+
+
+def test_inqmad_materialize_rho_dirty_with_scale():
+    """_materialize_rho handles dirty rho with scale != 1.0."""
+    # Use dim_x < initial_size to get dense rho (no states_buf)
+    model = _model(dim_x=2, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    # With n > dim_x, _states_buf is None and _rho is dense
+    model._rho_scale = 2.0
+    model._rho_dirty = True
+    model._materialize_rho()
+    assert model._rho_scale == 1.0
+    assert not model._rho_dirty
+
+
+def test_inqmad_materialize_rho_dirty_scale_one():
+    """_materialize_rho handles dirty rho with scale == 1.0."""
+    model = _model(dim_x=2, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    model._rho_dirty = True
+    model._materialize_rho()
+    assert not model._rho_dirty
 
 
 def test_inqmad_min_range_static_method():
@@ -552,6 +591,23 @@ def test_inqmad_measure_resizes_psi_buffer():
     # _measure should not recreate it for same dimension
     psi, _ = model._measure(np.array([0.5, 0.5, 0.5]))
     assert model._psi_buf is original_psi_buf
+
+
+def test_inqmad_measure_resizes_psi_buffer_on_dim_change():
+    """_measure resizes _psi_buf when weights dimension changes."""
+    # Use dense rho model to avoid states_buf dimension conflicts
+    model = _model(dim_x=2, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    model._states_buf = None
+    original_psi_buf = model._psi_buf
+    # Change weights and offset to new dimension
+    model.weights = np.random.randn(3, 16)
+    model.offset = np.random.randn(16)
+    model._rho = np.eye(16)  # Match new dimension
+    model.feature_min = np.zeros(3)
+    model.feature_range = np.ones(3)
+    psi, _ = model._measure(np.array([0.5, 0.5, 0.5]))
+    assert model._psi_buf.shape[0] == 16
+    assert model._psi_buf is not original_psi_buf
 
 
 def test_inqmad_measure_raises_on_none_weights_buf():

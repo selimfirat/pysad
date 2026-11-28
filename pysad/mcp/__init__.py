@@ -6,38 +6,30 @@ LLM clients.
 
 from __future__ import annotations
 
+from typing import Any
+
+_server: Any
 try:
-    from .server import (
-        SessionState,
-        create_mcp_server,
-        get_status,
-        initialize_calibrator,
-        initialize_detector,
-        initialize_stream,
-        list_calibrators,
-        list_data_sources,
-        list_detectors,
-        main,
-        mcp_server,
-        reset_session,
-        score_batch,
-        score_point,
-    )
+    from . import server as _mod
+
+    _server = _mod
 except ImportError:  # pragma: no cover - mcp is an optional dependency
-    SessionState = None  # type: ignore[assignment, misc]
-    create_mcp_server = None  # type: ignore[assignment]
-    get_status = None  # type: ignore[assignment]
-    initialize_calibrator = None  # type: ignore[assignment]
-    initialize_detector = None  # type: ignore[assignment]
-    initialize_stream = None  # type: ignore[assignment]
-    list_calibrators = None  # type: ignore[assignment]
-    list_data_sources = None  # type: ignore[assignment]
-    list_detectors = None  # type: ignore[assignment]
-    mcp_server = None  # type: ignore[assignment]
-    main = None  # type: ignore[assignment]
-    reset_session = None  # type: ignore[assignment]
-    score_batch = None  # type: ignore[assignment]
-    score_point = None  # type: ignore[assignment]
+    _server = None
+
+SessionState: Any = getattr(_server, "SessionState", None)
+create_mcp_server: Any = getattr(_server, "create_mcp_server", None)
+get_status: Any = getattr(_server, "get_status", None)
+initialize_calibrator: Any = getattr(_server, "initialize_calibrator", None)
+initialize_detector: Any = getattr(_server, "initialize_detector", None)
+initialize_stream: Any = getattr(_server, "initialize_stream", None)
+list_calibrators: Any = getattr(_server, "list_calibrators", None)
+list_data_sources: Any = getattr(_server, "list_data_sources", None)
+list_detectors: Any = getattr(_server, "list_detectors", None)
+main: Any = getattr(_server, "main", None)
+mcp_server: Any = getattr(_server, "mcp_server", None)
+reset_session: Any = getattr(_server, "reset_session", None)
+score_batch: Any = getattr(_server, "score_batch", None)
+score_point: Any = getattr(_server, "score_point", None)
 
 __all__ = [
     "SessionState",

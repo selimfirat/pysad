@@ -36,6 +36,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Check whether linkcheck is needed
+        id: linkcheck-gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ] || [ -z "$BASE_REF" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --depth=1 origin "$BASE_REF"
+          changed=$(git diff --name-only "origin/$BASE_REF...HEAD" -- docs/ README.md || true)
+          if [ -n "$changed" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           # Matches build.tools.python in .readthedocs.yaml.
@@ -101,9 +118,10 @@ jobs:
         # -W turns warnings into errors and --keep-going reports all of them in one run.
         run: python -m sphinx -j auto -W --keep-going -b html docs docs/_build/html
       - name: Check documentation links
+        if: steps.linkcheck-gate.outputs.run == 'true'
         # Sphinx linkcheck returns a non-zero exit code when any link is broken, so a dead
         # link in a guide, API reference, or the detector catalog fails the pull request.
-        # Runs on every docs change so broken links are caught before they reach Read the Docs.
+        # Runs whenever docs/ or README.md change so broken links are caught before Read the Docs.
         run: python -m sphinx -j auto --keep-going -b linkcheck docs docs/_build/linkcheck
       - name: Upload built documentation
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

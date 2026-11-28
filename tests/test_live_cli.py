@@ -107,6 +107,8 @@ def test_main_web_dispatches_to_run_server(monkeypatch):
     from pysad.live import server
 
     called = {}
-    monkeypatch.setattr(server, "run_server", lambda args: called.setdefault("port", args.port) and 0)
+    monkeypatch.setattr(
+        server, "run_server", lambda args: called.setdefault("port", args.port) and 0
+    )
     assert main(["--web", "--port", "9191"]) == 0
     assert called["port"] == 9191

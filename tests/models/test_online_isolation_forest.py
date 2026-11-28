@@ -387,3 +387,199 @@ def test_online_isolation_forest_explain_satisfies_local_accuracy():
             for tree in model.trees_
         ]
         np.testing.assert_allclose(phi.sum(), float(np.mean(diffs)), atol=1e-10)
+
+
+def test_online_isolation_tree_searchsorted_child_raises_on_missing_split_values():
+    """_searchsorted_child raises RuntimeError when split_values is None."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationNode, _OnlineIsolationTree
+
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=4, growth_criterion="fixed", subsample=1.0, branching_factor=4
+    )
+    node = _OnlineIsolationNode(np.array([[0.0, 0.0]]), depth=0, threshold=4)
+    node.split_values = None
+    with pytest.raises(RuntimeError, match="Non-binary node is missing split_values"):
+        tree._searchsorted_child(node, np.array([0.5, 0.5]))
+
+
+def test_online_isolation_tree_learn_path_raises_on_none_root():
+    """_learn_path raises RuntimeError when root is not initialized."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationTree
+
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=4, growth_criterion="fixed", subsample=1.0, branching_factor=2
+    )
+    with pytest.raises(RuntimeError, match="Tree root is not initialized"):
+        tree._learn_path(np.array([0.5, 0.5]), np.random.RandomState(0))
+
+
+def test_online_isolation_tree_unlearn_raises_on_none_root():
+    """_unlearn raises RuntimeError when root is not initialized."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationTree
+
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=4, growth_criterion="fixed", subsample=1.0, branching_factor=2
+    )
+    with pytest.raises(RuntimeError, match="Tree root is not initialized"):
+        tree.unlearn_one(np.array([0.5, 0.5]), np.random.RandomState(0), selected=True)
+
+
+def test_online_isolation_tree_refresh_bounds_on_leaf():
+    """_refresh_bounds returns early for leaf nodes."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationNode, _OnlineIsolationTree
+
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=4, growth_criterion="fixed", subsample=1.0, branching_factor=2
+    )
+    leaf = _OnlineIsolationNode(np.array([[0.0, 0.0]]), depth=0, threshold=4)
+    tree._refresh_bounds(leaf)  # Should return without error
+
+
+def test_online_isolation_tree_predict_one_returns_zero_for_none_root():
+    """predict_one returns 0.0 when root is None."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationTree
+
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=4, growth_criterion="fixed", subsample=1.0, branching_factor=2
+    )
+    assert tree.predict_one(np.array([0.5, 0.5])) == 0.0
+
+
+def test_online_isolation_tree_maybe_split_leaf_on_root():
+    """_maybe_split_leaf updates root when parent is None (splitting the root)."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationTree
+
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=1, growth_criterion="fixed", subsample=1.0, branching_factor=2
+    )
+    # Create a root node with enough data to trigger split
+    # Need depth_limit > 0 to allow splitting, so we need enough samples
+    # With max_leaf_samples=1 and fixed growth, threshold=1 at depth 0
+    # data_size=2 >= threshold=1, and depth_limit = log(2/1)/log(4) = 0.5 > depth=0
+    root = tree._build(np.array([[0.0, 0.0], [1.0, 1.0]]), depth=0, rng=np.random.RandomState(0))
+    tree.root = root
+    tree.data_size = 2
+    tree.depth_limit = 0.5
+    # Now call _maybe_split_leaf on the root (parent=None)
+    # The root has data_size=2 >= threshold=1, so it should split
+    selected, changed, leaf = tree._maybe_split_leaf(
+        root, parent=None, child_idx=0, rng=np.random.RandomState(1)
+    )
+    assert changed is True
+    assert leaf is None
+    assert tree.root is not root  # Root should be replaced
+
+
+def test_online_isolation_forest_getstate_setstate_global_rng():
+    """__getstate__ and __setstate__ handle global RNG correctly."""
+    import pickle
+
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(
+        num_trees=4, max_leaf_samples=4, window_size=10, random_state=None
+    )
+    model.fit_partial(np.array([0.5, 0.5]))
+    # Use global RNG
+    model.rng_ = np.random.mtrand._rand
+    pickled = pickle.dumps(model)
+    restored = pickle.loads(pickled)
+    assert restored.rng_ is np.random.mtrand._rand
+
+
+def test_online_isolation_forest_ensure_packed_cap_expands():
+    """_ensure_packed_cap expands the packed arrays when needed."""
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=4, max_leaf_samples=4, window_size=10, random_state=0)
+    # Initial capacity is 16
+    assert model._p_cap == 16
+    model._ensure_packed_cap(20)
+    assert model._p_cap == 32
+    # Arrays should be expanded
+    assert model._p_dim.shape == (4, 32)
+    assert model._p_split.shape == (4, 32)
+    assert model._p_left.shape == (4, 32)
+    assert model._p_right.shape == (4, 32)
+    assert model._p_leaf_pl.shape == (4, 32)
+    # Old data should be preserved
+    assert model._p_dim[0, 0] == 0
+
+
+def test_online_isolation_forest_pack_tree_with_none_root():
+    """_pack_tree handles None root by setting defaults."""
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=4, max_leaf_samples=4, window_size=10, random_state=0)
+    # Tree 0 has no root yet
+    model._pack_tree(0)
+    assert model.trees_[0].max_depth == 0
+    assert model.trees_[0].node_count == 0
+    assert model._p_dim[0, 0] == 0
+    assert model._p_split[0, 0] == 0.0
+    assert model._p_left[0, 0] == 0
+    assert model._p_right[0, 0] == 0
+    assert model._p_leaf_pl[0, 0] == 0.0
+
+
+def test_online_isolation_forest_update_packed_leaf_updates_leaf_pl():
+    """_update_packed_leaf updates leaf path length when leaf is provided."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=4, max_leaf_samples=4, window_size=10, random_state=0)
+    # Fit one point to create a tree
+    model.fit_partial(np.array([0.5, 0.5]))
+    # Get the leaf node
+    tree = model.trees_[0]
+    assert tree.root is not None
+    leaf = tree.root
+    # Update leaf data_size
+    leaf.data_size = 5
+    # Update packed leaf
+    model._update_packed_leaf(0, changed=False, leaf=leaf)
+    # Check that leaf_pl was updated
+    expected_pl = 0.0 if leaf.data_size <= 4 else np.log(leaf.data_size / 4) * model._inv_log
+    assert model._p_leaf_pl[0, leaf.slot] == leaf.depth + expected_pl
+
+
+def test_online_isolation_forest_tree_left_fractions_returns_default_for_none_root():
+    """_tree_left_fractions returns default 0.5 fractions for None root."""
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=4, max_leaf_samples=4, window_size=10, random_state=0)
+    fractions = model._tree_left_fractions(0, 1)
+    assert fractions.shape == (1,)
+    assert fractions[0] == 0.5
+
+
+def test_online_isolation_forest_packed_tree_for_shap_returns_defaults_for_zero_depth():
+    """_packed_tree_for_shap returns defaults for tree with max_depth == 0."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=4, max_leaf_samples=4, window_size=10, random_state=0)
+    # Tree 0 has no root (max_depth == 0)
+    features, thresholds, left, right, values, fractions = model._packed_tree_for_shap(0)
+    np.testing.assert_array_equal(features, np.array([-1], dtype=np.intp))
+    np.testing.assert_array_equal(thresholds, np.array([0.0], dtype=np.float64))
+    np.testing.assert_array_equal(left, np.array([0], dtype=np.intp))
+    np.testing.assert_array_equal(right, np.array([0], dtype=np.intp))
+    np.testing.assert_array_equal(values, np.array([0.0], dtype=np.float64))
+    np.testing.assert_array_equal(fractions, np.array([0.5], dtype=np.float64))

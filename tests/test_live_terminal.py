@@ -210,7 +210,9 @@ def test_create_data_stream_resolves_target_and_timestamp_columns(tmp_path):
 
     no_hdr = tmp_path / "no_header.csv"
     no_hdr.write_text("100,1.5,2.5,1\n", encoding="utf-8")
-    no_hdr_rows = list(create_data_stream(str(no_hdr), has_header=False, target_column="3", timestamp_column="0"))
+    no_hdr_rows = list(
+        create_data_stream(str(no_hdr), has_header=False, target_column="3", timestamp_column="0")
+    )
     np.testing.assert_allclose(no_hdr_rows[0][0], [1.5, 2.5])
     assert no_hdr_rows[0][1] == 1
 

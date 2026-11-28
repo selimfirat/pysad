@@ -181,6 +181,15 @@ def test_rejects_bandwidth_and_learning_rate_that_are_not_positive(name, value):
         _model(**{name: value})
 
 
+@pytest.mark.parametrize("value", [-0.1, 1.5])
+def test_unit_interval_rejects_finite_out_of_bounds(value):
+    """_unit_interval raises for finite values outside [0, 1]."""
+    from pysad.models.inqmad import _unit_interval
+
+    with pytest.raises(ValueError, match="must be between 0 and 1"):
+        _unit_interval(value, "test_param")
+
+
 def test_first_instance_scores_zero():
     """Before anything has been fitted the density is 0, so the score is
     0.0, the most anomalous possible score, instead of an error.
@@ -475,3 +484,241 @@ def test_inqmad_is_robust_on_the_nab_two_value_series():
     model.score_partial(X[100])
     np.testing.assert_array_equal(model.rho, rho_before)
     assert model.score_partial(X[100]) == score_before
+
+
+def test_inqmad_initial_setter_with_array():
+    """The initial setter accepts an array and sets warmup min/max."""
+    model = _model()
+    new_initial = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+    model.initial = new_initial
+    assert model._initial_len == 2
+    np.testing.assert_array_equal(model._warmup_min, new_initial.min(axis=0))
+    np.testing.assert_array_equal(model._warmup_max, new_initial.max(axis=0))
+
+
+def test_inqmad_initial_getter_returns_buffer_slice():
+    """The initial getter returns the current buffer slice when initialized."""
+    model = _model()
+    model.initial = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+    initial_arr = model.initial
+    assert initial_arr is not None
+    assert initial_arr.shape == (2, 3)
+    np.testing.assert_array_equal(initial_arr, model.initial)
+
+
+def test_inqmad_initial_setter_with_none():
+    """The initial setter with None clears the warmup buffers."""
+    model = _model()
+    model.fit_partial(np.array([0.5, 0.5, 0.5]))
+    model.initial = None
+    assert model._initial_buf is None
+    assert model._initial_len == 0
+    assert model._warmup_min is None
+    assert model._warmup_max is None
+
+
+def test_inqmad_initial_setter_with_empty_array():
+    """The initial setter with empty array sets warmup min/max to None."""
+    model = _model()
+    model.fit_partial(np.array([0.5, 0.5, 0.5]))
+    model.initial = np.empty((0, 3))
+    assert model._initial_len == 0
+    assert model._warmup_min is None
+    assert model._warmup_max is None
+
+
+def test_inqmad_materialize_rho_with_none_weights_buf():
+    """_materialize_rho raises when weights_buf is None but states_buf exists."""
+    model = _model(dim_x=8, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    # Force states_buf to exist but weights_buf to be None
+    model._weights_buf = None
+    with pytest.raises(RuntimeError, match="Inqmad state buffer weights are not initialized"):
+        model._materialize_rho()
+
+
+def test_inqmad_materialize_rho_dirty_with_scale():
+    """_materialize_rho handles dirty rho with scale != 1.0."""
+    # Use dim_x < initial_size to get dense rho (no states_buf)
+    model = _model(dim_x=2, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    # With n > dim_x, _states_buf is None and _rho is dense
+    model._rho_scale = 2.0
+    model._rho_dirty = True
+    model._materialize_rho()
+    assert model._rho_scale == 1.0
+    assert not model._rho_dirty
+
+
+def test_inqmad_materialize_rho_dirty_scale_one():
+    """_materialize_rho handles dirty rho with scale == 1.0."""
+    model = _model(dim_x=2, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    model._rho_dirty = True
+    model._materialize_rho()
+    assert not model._rho_dirty
+
+
+def test_inqmad_min_range_static_method():
+    """_min_range returns per-feature min and range with zero range replaced by 1."""
+    X = np.array([[0.0, 1.0], [2.0, 1.0], [4.0, 1.0]])
+    mins, ranges = Inqmad._min_range(X)
+    np.testing.assert_array_equal(mins, [0.0, 1.0])
+    np.testing.assert_array_equal(ranges, [4.0, 1.0])
+
+
+def test_inqmad_warmup_density_raises_on_uninitialized_buffers():
+    """_warmup_density raises RuntimeError when warmup buffers are not initialized."""
+    model = _model()
+    # Manually set _initial_len > 0 but leave buffers None
+    model._initial_len = 1
+    model._initial_buf = None
+    with pytest.raises(RuntimeError, match="Inqmad warmup buffers are not initialized"):
+        model._warmup_density(np.array([0.5, 0.5, 0.5]))
+
+
+def test_inqmad_measure_raises_on_missing_feature_bounds():
+    """_measure raises RuntimeError when feature scaling bounds are not initialized."""
+    model = _model()
+    model._rho = np.eye(8)  # Has rho but no feature bounds
+    with pytest.raises(RuntimeError, match="Inqmad feature scaling bounds are not initialized"):
+        model._measure(np.array([0.5, 0.5, 0.5]))
+
+
+def test_inqmad_measure_resizes_psi_buffer():
+    """_measure resizes _psi_buf when dimension changes."""
+    model = _model(dim_x=8, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    # _psi_buf is initially sized for dim_x=8
+    original_psi_buf = model._psi_buf
+    assert original_psi_buf.shape[0] == 8
+    # _measure should not recreate it for same dimension
+    psi, _ = model._measure(np.array([0.5, 0.5, 0.5]))
+    assert model._psi_buf is original_psi_buf
+
+
+def test_inqmad_measure_resizes_psi_buffer_on_dim_change():
+    """_measure resizes _psi_buf when weights dimension changes."""
+    # Use dense rho model to avoid states_buf dimension conflicts
+    model = _model(dim_x=2, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    model._states_buf = None
+    original_psi_buf = model._psi_buf
+    # Change weights and offset to new dimension
+    model.weights = np.random.randn(3, 16)
+    model.offset = np.random.randn(16)
+    model._rho = np.eye(16)  # Match new dimension
+    model.feature_min = np.zeros(3)
+    model.feature_range = np.ones(3)
+    psi, _ = model._measure(np.array([0.5, 0.5, 0.5]))
+    assert model._psi_buf.shape[0] == 16
+    assert model._psi_buf is not original_psi_buf
+
+
+def test_inqmad_measure_raises_on_none_weights_buf():
+    """_measure raises RuntimeError when weights_buf is None but states_buf exists."""
+    model = _model(dim_x=8, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    model._weights_buf = None
+    with pytest.raises(RuntimeError, match="Inqmad state buffer weights are not initialized"):
+        model._measure(np.array([0.5, 0.5, 0.5]))
+
+
+def test_inqmad_measure_resizes_proj_buf():
+    """_measure resizes _proj_buf when number of states grows beyond current size."""
+    # Use dim_x > 512 so initial cap = 512 < max_states = dim_x
+    model = _model(dim_x=1024, initial_size=5).fit(np.random.RandomState(0).random((5, 3)))
+    # _proj_buf starts at size cap = min(1024, max(10, 512)) = 512
+    initial_cap = model._proj_buf.shape[0]
+    assert initial_cap == 512
+    # Manually increase _num_states beyond current _proj_buf size to trigger resize
+    # (This tests the resize logic at line 313-314)
+    model._num_states = 600
+    model._states_buf = np.empty((600, 1024))
+    model._weights_buf = np.ones(600)
+    psi, _ = model._measure(np.array([0.5, 0.5, 0.5]))
+    # _proj_buf should be resized to at least 600
+    assert model._proj_buf.shape[0] >= 600
+
+
+def test_inqmad_finalize_warmup_raises_on_missing_trackers():
+    """_finalize_warmup raises RuntimeError when warmup min/max trackers are not initialized."""
+    model = _model()
+    model._warmup_min = None
+    model._warmup_max = None
+    with pytest.raises(RuntimeError, match="Inqmad warmup min/max trackers are not initialized"):
+        model._finalize_warmup(np.zeros((5, 3)))
+
+
+def test_inqmad_append_warmup_raises_on_uninitialized_buffer():
+    """_append_warmup raises RuntimeError when warmup buffer is not initialized."""
+    model = _model()
+    model._initial_buf = None
+    with pytest.raises(RuntimeError, match="Inqmad warmup buffer is not initialized"):
+        model._append_warmup(np.array([0.5, 0.5, 0.5]))
+
+
+def test_inqmad_update_states_buffer_raises_on_uninitialized():
+    """_update_states_buffer raises RuntimeError when state buffer is not initialized."""
+    model = _model()
+    model._states_buf = None
+    with pytest.raises(RuntimeError, match="Inqmad state buffer is not initialized"):
+        model._update_states_buffer(np.zeros(8))
+
+
+def test_inqmad_update_states_buffer_expands_capacity():
+    """_update_states_buffer expands the buffer when not at max_states."""
+    # Use dim_x > 512 so initial cap = 512 < max_states = dim_x
+    model = _model(dim_x=1024, initial_size=4).fit(np.random.RandomState(0).random((4, 3)))
+    # Initial cap = min(1024, max(8, 512)) = 512
+    # Fill the buffer up to capacity
+    for _ in range(508):
+        model._update_states_buffer(np.random.RandomState(1).random(1024))
+    # Buffer should have 512 states now (4 initial + 508 added)
+    assert model._num_states == 512
+    # Next update should expand capacity (cap=512, max_states=1024, so new_cap = min(1024, 1024) = 1024)
+    model._update_states_buffer(np.random.RandomState(2).random(1024))
+    assert model._num_states == 513
+    assert model._states_buf.shape[0] == 1024
+
+
+def test_inqmad_update_states_buffer_rho_scale_underflow():
+    """_update_states_buffer handles rho_scale underflow by rescaling weights."""
+    model = _model(dim_x=8, initial_size=4, alpha=0.5).fit(np.random.RandomState(0).random((4, 3)))
+    # Set rho_scale very small to trigger underflow
+    model._rho_scale = 1e-101
+    model._update_states_buffer(np.random.RandomState(1).random(8))
+    # rho_scale should be reset to 1.0 and weights rescaled
+    assert model._rho_scale == 1.0
+
+
+def test_inqmad_update_dense_rho_raises_on_uninitialized():
+    """_update_dense_rho raises RuntimeError when rho is not initialized."""
+    model = _model()
+    model._states_buf = None
+    model._rho = None
+    with pytest.raises(RuntimeError, match="Inqmad density matrix is not initialized"):
+        model._update_dense_rho(np.zeros(8))
+
+
+def test_inqmad_update_dense_rho_rho_scale_underflow():
+    """_update_dense_rho handles rho_scale underflow by rescaling rho."""
+    model = _model(dim_x=8, initial_size=4, alpha=0.5).fit(np.random.RandomState(0).random((4, 3)))
+    # Force dense rho path (more states than dim_x)
+    model._states_buf = None
+    model._rho = np.eye(8)
+    model._rho_scale = 1e-101
+    model._update_dense_rho(np.random.RandomState(1).random(8))
+    assert model._rho_scale == 1.0
+    assert model._rho_dirty
+
+
+def test_inqmad_fit_raises_on_missing_psi():
+    """_fit raises RuntimeError when psi is missing for a normal instance."""
+    model = _model(initial_size=4).fit(np.random.RandomState(0).random((4, 3)))
+    # Try to fit a normal instance with psi=None
+    with pytest.raises(RuntimeError, match="Inqmad quantum state vector is missing"):
+        model._fit(np.array([0.5, 0.5, 0.5]), None, 1.0)
+
+
+def test_inqmad_fit_alpha_one_replaces_rho():
+    """_fit with alpha=1 replaces rho with the new state outer product."""
+    model = _model(dim_x=8, initial_size=4, alpha=1.0).fit(np.random.RandomState(0).random((4, 3)))
+    psi = np.random.RandomState(1).random(8)
+    psi = psi / np.linalg.norm(psi)
+    model._fit(np.array([0.5, 0.5, 0.5]), psi, 1.0)
+    np.testing.assert_array_equal(model.rho, np.outer(psi, psi))

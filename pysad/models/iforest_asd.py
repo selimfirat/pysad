@@ -38,7 +38,7 @@ def _average_path_length(n_samples_leaf: NDArray[np.float64]) -> NDArray[np.floa
     return out
 
 
-class _IsolationForest(IsolationForest):  # type: ignore[misc]
+class _IsolationForest(IsolationForest):
     _higher_is_anomalous = True
 
     def fit(

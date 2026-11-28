@@ -81,16 +81,38 @@ class SeasonalESD(BaseModel):
 
         resolved_pws = period_window_size if period_window_size is not None else window_size
         resolved_max = max_period if max_period is not None else resolved_pws // 2
-        if auto_period:
-            resolved_period = min_period if period is None else period
-            if window_size <= 2 * min_period:
-                raise ValueError(
-                    "window_size must be greater than 2 * min_period when auto_period=True."
-                )
-            if resolved_max < min_period:
-                raise ValueError("max_period must be at least min_period.")
-            return resolved_period, resolved_pws, resolved_max
 
+        if auto_period:
+            return SeasonalESD._resolve_auto_period(
+                period, window_size, min_period, resolved_max, resolved_pws
+            )
+
+        return SeasonalESD._resolve_fixed_period(period, window_size, resolved_pws, resolved_max)
+
+    @staticmethod
+    def _resolve_auto_period(
+        period: int | None,
+        window_size: int,
+        min_period: int,
+        resolved_max: int,
+        resolved_pws: int,
+    ) -> tuple[int, int, int]:
+        resolved_period = min_period if period is None else period
+        if window_size <= 2 * min_period:
+            raise ValueError(
+                "window_size must be greater than 2 * min_period when auto_period=True."
+            )
+        if resolved_max < min_period:
+            raise ValueError("max_period must be at least min_period.")
+        return resolved_period, resolved_pws, resolved_max
+
+    @staticmethod
+    def _resolve_fixed_period(
+        period: int | None,
+        window_size: int,
+        resolved_pws: int,
+        resolved_max: int,
+    ) -> tuple[int, int, int]:
         if period is None:
             raise ValueError("period is required when auto_period=False.")
         if period < 2:
@@ -195,6 +217,17 @@ class SeasonalESD(BaseModel):
             return False, (float(s[hi]) - center) / scale
         if direction == "neg":
             return True, (center - float(s[lo])) / scale
+        return SeasonalESD._select_extreme_both(s, orig_idx, lo, hi, center, scale)
+
+    @staticmethod
+    def _select_extreme_both(
+        s: NDArray[np.float64],
+        orig_idx: NDArray[np.intp],
+        lo: int,
+        hi: int,
+        center: float,
+        scale: float,
+    ) -> tuple[bool, float]:
         stat_lo = abs(float(s[lo]) - center) / scale
         stat_hi = abs(float(s[hi]) - center) / scale
         if stat_lo != stat_hi:
@@ -218,11 +251,20 @@ class SeasonalESD(BaseModel):
         if pick_low:
             return int(orig_idx[lo]), lo + 1, hi
         if hi > lo and s[hi - 1] == s[hi]:
-            p = lo + int(np.searchsorted(s[lo : hi + 1], s[hi], side="left"))
-            peeled_idx = int(orig_idx[p])
-            orig_idx[p:hi] = orig_idx[p + 1 : hi + 1]
-            return peeled_idx, lo, hi - 1
+            return SeasonalESD._peel_tied_high(orig_idx, s, lo, hi)
         return int(orig_idx[hi]), lo, hi - 1
+
+    @staticmethod
+    def _peel_tied_high(
+        orig_idx: NDArray[np.intp],
+        s: NDArray[np.float64],
+        lo: int,
+        hi: int,
+    ) -> tuple[int, int, int]:
+        p = lo + int(np.searchsorted(s[lo : hi + 1], s[hi], side="left"))
+        peeled_idx = int(orig_idx[p])
+        orig_idx[p:hi] = orig_idx[p + 1 : hi + 1]
+        return peeled_idx, lo, hi - 1
 
     def _window_center_scale(
         self,
@@ -265,12 +307,12 @@ class SeasonalESD(BaseModel):
 
         lo = 0
         hi = n - 1
-        direction = self.direction
         target_stat: float | None = None
 
         for i in range(1, max_k + 1):
-            if hi - lo + 1 <= 1:
+            if self._should_stop_peeling(lo, hi, min_scale):
                 break
+
             center, scale = self._window_center_scale(
                 s, lo, hi, mid, ref, left_s1, right_s1, left_s2, right_s2
             )
@@ -278,19 +320,45 @@ class SeasonalESD(BaseModel):
                 break
 
             pick_low, statistic = self._select_extreme(
-                direction, s, orig_idx, lo, hi, center, scale
+                self.direction, s, orig_idx, lo, hi, center, scale
             )
             peeled_idx, lo, hi = self._peel_extreme(orig_idx, s, lo, hi, pick_low)
 
             critical_value = self._critical_value(n, i)
-            if peeled_idx == target_idx:
-                if statistic > critical_value:
-                    return float(statistic)
-                target_stat = float(statistic)
-            elif target_stat is not None and statistic > critical_value:
-                return target_stat
+            result = self._check_peeled_target(
+                peeled_idx, target_idx, statistic, critical_value, target_stat
+            )
+            if result is not None:
+                return result
+            target_stat = self._update_target_stat(peeled_idx, target_idx, statistic, target_stat)
 
         return 0.0
+
+    def _should_stop_peeling(self, lo: int, hi: int, min_scale: float) -> bool:
+        return hi - lo + 1 <= 1
+
+    def _check_peeled_target(
+        self,
+        peeled_idx: int,
+        target_idx: int,
+        statistic: float,
+        critical_value: float,
+        target_stat: float | None,
+    ) -> float | None:
+        if peeled_idx == target_idx:
+            return float(statistic) if statistic > critical_value else None
+        if target_stat is not None and statistic > critical_value:
+            return target_stat
+        return None
+
+    def _update_target_stat(
+        self,
+        peeled_idx: int,
+        target_idx: int,
+        statistic: float,
+        target_stat: float | None,
+    ) -> float | None:
+        return float(statistic) if peeled_idx == target_idx else target_stat
 
     def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> SeasonalESD:
         """Adds the next instance to the model window.
@@ -305,21 +373,34 @@ class SeasonalESD(BaseModel):
         value = self._as_value(X)
         self._window.append(value)
 
-        if self.auto_period and self._period_meter is not None:
-            self._period_meter.update(value)
-            estimated_period = self._period_meter.get()
-            if estimated_period > 0:
-                new_period = int(round(estimated_period))
-                if self.min_period <= new_period <= self.max_period and new_period != self.period:
-                    if self.window_size > 2 * new_period:
-                        self.period = new_period
-                        self.residual_transformer = ModifiedSTLResidualTransformer(
-                            period=new_period,
-                            window_size=self.window_size,
-                            robust=self.residual_transformer.robust,
-                        )
+        if self.auto_period:
+            self._update_period_if_needed(value)
 
         return self
+
+    def _update_period_if_needed(self, value: float) -> None:
+        if self._period_meter is None:
+            return
+        self._period_meter.update(value)
+        estimated_period = self._period_meter.get()
+        if estimated_period <= 0:
+            return
+        new_period = int(round(estimated_period))
+        if not self._is_valid_new_period(new_period):
+            return
+        self.period = new_period
+        self.residual_transformer = ModifiedSTLResidualTransformer(
+            period=new_period,
+            window_size=self.window_size,
+            robust=self.residual_transformer.robust,
+        )
+
+    def _is_valid_new_period(self, new_period: int) -> bool:
+        return (
+            self.min_period <= new_period <= self.max_period
+            and new_period != self.period
+            and self.window_size > 2 * new_period
+        )
 
     def _score_window(self, values: NDArray[np.float64]) -> float:
         residuals = self.residual_transformer.transform_window(values)

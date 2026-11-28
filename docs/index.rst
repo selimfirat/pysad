@@ -361,6 +361,5 @@ PySAD is free software under the BSD 3-Clause License. If you use it in research
    contributing
    inclusion_criteria
    license
-   pyopensci_review
    GitHub <https://github.com/selimfirat/pysad>
    Changelog <https://github.com/selimfirat/pysad/releases>

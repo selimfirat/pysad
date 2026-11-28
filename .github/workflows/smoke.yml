@@ -59,12 +59,10 @@ jobs:
         run: |
           set -- dist/pysad-*.whl
           WHL=$1
-          . .venv/bin/activate
-          python -m pip install --upgrade "pip==26.3"
           if [ "${SMOKE_EXTRA}" = "mcp" ]; then
-            python -m pip install "${WHL}[mcp]"
+            uv pip install --python .venv/bin/python "${WHL}[mcp]"
           else
-            python -m pip install "$WHL"
+            uv pip install --python .venv/bin/python "$WHL"
           fi
         env:
           SMOKE_EXTRA: ${{ matrix.extra }}

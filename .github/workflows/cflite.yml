@@ -26,12 +26,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Build Fuzzers
-        uses: google/clusterfuzzlite/actions/build_fuzzers@52ecc61cb587ee99c26825a112a21abf19c7448c # v1
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           language: python
           sanitizer: address
       - name: Run Fuzzers
-        uses: google/clusterfuzzlite/actions/run_fuzzers@52ecc61cb587ee99c26825a112a21abf19c7448c # v1
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fuzz-seconds: 120

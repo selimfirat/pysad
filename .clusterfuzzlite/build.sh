@@ -1,12 +1,15 @@
 #!/bin/bash -eu
 
+pip3 install --no-cache-dir --upgrade pyinstaller
 pip3 install --no-cache-dir .
 
 for fuzzer in "$SRC"/pysad/fuzz/*_fuzzer.py; do
   fuzzer_basename=$(basename -s .py "$fuzzer")
   fuzzer_package=${fuzzer_basename}.pkg
 
-  pyinstaller --distpath "$OUT" --onefile --name "$fuzzer_package" "$fuzzer"
+  pyinstaller --distpath "$OUT" --onefile --name "$fuzzer_package" \
+    --collect-all numpy --collect-submodules scipy --collect-submodules sklearn --collect-submodules pysad \
+    "$fuzzer"
 
   cat > "$OUT/$fuzzer_basename" <<EOF
 #!/bin/sh

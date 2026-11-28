@@ -1,12 +1,9 @@
 name: all checks
 
 # The status check that the branch rules require, next to the `pre-commit.ci - pr` and
-# `qlty check` commit statuses. The other workflows skip themselves on pull requests that
-# don't touch their paths, so requiring them directly would leave those pull requests
-# waiting forever. This job always runs: it waits for every check run on the pull request's
-# head commit and fails if any of them did not succeed. Skipped runs count as passed.
-# Commit statuses such as `pre-commit.ci - pr` and `qlty check` are not check runs. The
-# rules require those separately.
+# `qlty check` commit statuses. Uses ETag-cached GitHub REST polling (`If-None-Match` returns
+# `304 Not Modified` with zero rate-limit charge) and automatic reset backoff instead of tight
+# fixed-interval polling. Skipped check runs count as passed.
 on:
   pull_request:
     # ready_for_review starts the gate again when a draft becomes ready.
@@ -16,24 +13,149 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # No `name:` on purpose: the action skips its own check run by matching the job id.
+  # No `name:` on purpose: the waiter skips its own check run by matching `all-checks`.
   all-checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     permissions:
       # Reads the check runs of the pull request's head commit.
       checks: read
     steps:
-      - uses: poseidon/wait-for-status-checks@e7e24423722c5b8e97a6dd5848827d2a412f812d # v0.7.0
-        with:
-          token: ${{ github.token }}
-          # Gives the other workflows time to register their check runs.
-          delay: 10s
-          interval: 5s
-          # Code scanning's summary check run can report "neutral" before the analyses have
-          # uploaded and flip to "success" later, which fails this job. The "analyze" jobs that
-          # produce the analyses are still watched.
-          ignore: CodeQL
+      - name: Wait for status checks (ETag + rate-limit aware)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+
+          repo = os.environ["GH_REPO"]
+          sha = os.environ["HEAD_SHA"]
+          token = os.environ["GH_TOKEN"]
+          ignored = {"all-checks", "CodeQL"}
+          passed_conclusions = {"success", "skipped"}
+          base_url = f"https://api.github.com/repos/{repo}/commits/{sha}/check-runs?per_page=100"
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "User-Agent": "pysad-all-checks",
+          }
+
+          def parse_next_url(link_header: str) -> str | None:
+              for part in link_header.split(","):
+                  m = re.search(r'<([^>]+)>;\s*rel="next"', part)
+                  if m:
+                      return m.group(1)
+              return None
+
+          def fetch_check_runs(cached_etag: str | None) -> tuple[list[dict] | None, str | None, int | None, int | None]:
+              url: str | None = base_url
+              runs: list[dict] = []
+              first_page = True
+              new_etag = cached_etag
+              rem: int | None = None
+              reset_ts: int | None = None
+              while url:
+                  req_headers = dict(headers)
+                  if first_page and cached_etag:
+                      req_headers["If-None-Match"] = cached_etag
+                  req = urllib.request.Request(url, headers=req_headers)
+                  try:
+                      with urllib.request.urlopen(req, timeout=20) as resp:
+                          hdr = resp.headers
+                          rem_raw = hdr.get("X-RateLimit-Remaining")
+                          reset_raw = hdr.get("X-RateLimit-Reset")
+                          rem = int(rem_raw) if rem_raw is not None else rem
+                          reset_ts = int(reset_raw) if reset_raw is not None else reset_ts
+                          body = json.loads(resp.read().decode("utf-8"))
+                          runs.extend(body.get("check_runs") or [])
+                          next_url = parse_next_url(hdr.get("Link") or "")
+                          if first_page:
+                              new_etag = hdr.get("ETag") if next_url is None else None
+                          first_page = False
+                          url = next_url
+                  except urllib.error.HTTPError as err:
+                      hdr = err.headers
+                      if err.code == 304 and first_page:
+                          rem_raw = hdr.get("X-RateLimit-Remaining")
+                          reset_raw = hdr.get("X-RateLimit-Reset")
+                          rem = int(rem_raw) if rem_raw is not None else rem
+                          reset_ts = int(reset_raw) if reset_raw is not None else reset_ts
+                          return None, cached_etag, rem, reset_ts
+                      if err.code in (403, 429):
+                          reset_raw = hdr.get("X-RateLimit-Reset")
+                          retry_raw = hdr.get("Retry-After")
+                          if retry_raw and retry_raw.isdigit():
+                              wait_s = max(30, min(int(retry_raw) + 5, 900))
+                          elif reset_raw and reset_raw.isdigit():
+                              wait_s = max(30, min(int(reset_raw) - int(time.time()) + 5, 900))
+                          else:
+                              wait_s = 120
+                          print(f"Rate limited (HTTP {err.code}); backing off {wait_s}s.", flush=True)
+                          time.sleep(wait_s)
+                          return None, None, 0, int(time.time()) + wait_s
+                      raise
+              return runs, new_etag, rem, reset_ts
+
+          time.sleep(30)
+          etag: str | None = None
+          last_runs: list[dict] | None = None
+          empty_polls = 0
+          poll = 0
+          deadline = time.monotonic() + 33 * 60
+
+          while time.monotonic() < deadline:
+              poll += 1
+              runs, etag, rem, reset_ts = fetch_check_runs(etag)
+              if runs is not None:
+                  last_runs = runs
+              watched = [r for r in (last_runs or []) if r.get("name") not in ignored]
+              failed = [
+                  r for r in watched
+                  if r.get("status") == "completed" and r.get("conclusion") not in passed_conclusions
+              ]
+              if failed:
+                  for r in failed:
+                      print(f"FAILED: {r.get('name')} ({r.get('conclusion')})", flush=True)
+                  sys.exit(1)
+
+              pending = [r for r in watched if r.get("status") != "completed"]
+              if watched and not pending:
+                  print(f"All {len(watched)} watched check runs passed/skipped.", flush=True)
+                  sys.exit(0)
+
+              if not watched:
+                  empty_polls += 1
+                  if empty_polls >= 3:
+                      print("No watched check runs registered; passing.", flush=True)
+                      sys.exit(0)
+              else:
+                  empty_polls = 0
+
+              print(
+                  f"Poll #{poll}: {len(watched) - len(pending)}/{len(watched)} completed"
+                  + (f", remaining={rem}" if rem is not None else ""),
+                  flush=True,
+              )
+
+              if rem is not None and rem < 25 and reset_ts is not None:
+                  wait_s = max(30, min(reset_ts - int(time.time()) + 5, 900))
+              else:
+                  wait_s = 20 if poll <= 3 else (30 if poll <= 8 else 45)
+              time.sleep(wait_s)
+
+          print("Timed out waiting for status checks.", flush=True)
+          sys.exit(1)
+          PY

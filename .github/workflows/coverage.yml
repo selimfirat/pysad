@@ -26,6 +26,9 @@ on:
       - ".github/workflows/scorecard.yml"
       - ".github/workflows/stale.yml"
       - ".github/workflows/weekly.yml"
+      - ".clusterfuzzlite/**"
+      - ".github/workflows/cflite.yml"
+      - "fuzz/**"
   pull_request:
     paths-ignore:
       - "docs/**"
@@ -50,6 +53,9 @@ on:
       - ".github/workflows/scorecard.yml"
       - ".github/workflows/stale.yml"
       - ".github/workflows/weekly.yml"
+      - ".clusterfuzzlite/**"
+      - ".github/workflows/cflite.yml"
+      - "fuzz/**"
 
 permissions:
   contents: read

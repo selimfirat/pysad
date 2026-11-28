@@ -6,7 +6,7 @@ rust-version = "1.74"
 description = "Optional Rust kernels for PySAD streaming anomaly detection"
 license = "BSD-3-Clause"
 repository = "https://github.com/selimfirat/pysad"
-publish = false
+publish = true
 
 [lib]
 name = "pysad_kernels"

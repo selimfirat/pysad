@@ -107,13 +107,19 @@ If you use uv, run the live dashboard with ``uvx``:
 - :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp``. The server auto-discovers detectors from ``pysad.models.__all__`` and statistics from ``pysad.statistics.__all__``. Tool names use ``pysad_<lowercase_name>``. Each tool includes metadata for constructor parameters and defaults.
 
 Optional PyO3 kernels (pysad_kernels)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Install the optional PyO3 Rust extension separately from PySAD:
 
 .. code-block:: console
 
    $ pip install pysad_kernels
+
+Or install it as an optional dependency of PySAD:
+
+.. code-block:: console
+
+   $ pip install pysad[kernels]
 
 The extension provides kernels for four detectors:
 

@@ -137,8 +137,10 @@ def _save_npz_cache(
         _cleanup_file(tmp_path)
 
 
-def _parse_creditcard_arff(data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
-    """Parse the OpenML credit-card ARFF file into contiguous features and integer labels."""
+def _parse_arff_table(
+    data_path: str, label_column: str = "Class"
+) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+    """Parse a numeric ARFF table into contiguous features and integer labels."""
     attributes: list[str] = []
     with open(data_path, encoding="utf-8") as f:
         for line in f:
@@ -164,7 +166,7 @@ def _parse_creditcard_arff(data_path: str) -> tuple[NDArray[np.float64], NDArray
     body = body.replace("'", "").replace('"', "").strip(" \t,")
 
     num_cols = len(attributes)
-    class_idx = attributes.index("Class")
+    class_idx = attributes.index(label_column)
     arr = np.fromstring(body, dtype=np.float64, sep=",").reshape(-1, num_cols)
     if class_idx == num_cols - 1:
         X = np.ascontiguousarray(arr[:, :class_idx])
@@ -466,7 +468,7 @@ class Data:
         cached = _load_npz_cache(cache_path, data_path)
         if cached is not None:
             return cached
-        X, y = _parse_creditcard_arff(data_path)
+        X, y = _parse_arff_table(data_path)
         _save_npz_cache(cache_path, data_path, X, y)
         return X, y
 

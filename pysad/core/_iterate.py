@@ -1,26 +1,24 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator, Sized
 from typing import Any
 
-import numpy.typing as npt
 
-
-def _iterate(
-    X: npt.NDArray[Any], y: npt.NDArray[Any] | None = None
-) -> Iterator[tuple[npt.NDArray[Any], Any | None]]:
-    """Iterates array of features and possibly labels.
+def _iterate(X: Iterable[Any], y: Iterable[Any] | None = None) -> Iterator[tuple[Any, Any | None]]:
+    """Iterates sequence or iterable of features and possibly labels.
 
     Args:
-        X (np.array of shape (num_instances, num_features)): The features array.
-        y (np.array of shape (num_instances,)): The array containing labels (Default=None).
+        X (np.array of shape (num_instances, num_features) or iterable of instances): The features input.
+        y (np.array of shape (num_instances,) or sequence of labels): The labels input (Default=None).
     """
     if y is None:
         for xi in X:
             yield xi, None
         return
 
-    if len(X) != len(y):
+    x_seq = X if isinstance(X, Sized) else list(X)
+    y_seq = y if isinstance(y, Sized) else list(y)
+    if len(x_seq) != len(y_seq):
         raise ValueError("X and y must have the same length.")
-    for xi, yi in zip(X, y, strict=True):
+    for xi, yi in zip(x_seq, y_seq, strict=True):
         yield xi, yi

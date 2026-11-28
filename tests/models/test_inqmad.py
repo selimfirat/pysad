@@ -185,6 +185,7 @@ def test_rejects_bandwidth_and_learning_rate_that_are_not_positive(name, value):
 def test_unit_interval_rejects_finite_out_of_bounds(value):
     """_unit_interval raises for finite values outside [0, 1]."""
     from pysad.models.inqmad import _unit_interval
+
     with pytest.raises(ValueError, match="must be between 0 and 1"):
         _unit_interval(value, "test_param")
 

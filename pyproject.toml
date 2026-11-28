@@ -262,3 +262,8 @@ warn_unused_ignores = false
 [[tool.mypy.overrides]]
 module = ["pandas.*", "polars.*", "river.*", "scipy.*", "sklearn.*"]
 ignore_missing_imports = true
+
+# Allow subclassing sklearn's IsolationForest (typed as Any due to missing stubs).
+[[tool.mypy.overrides]]
+module = "pysad.models.iforest_asd"
+disallow_subclassing_any = false

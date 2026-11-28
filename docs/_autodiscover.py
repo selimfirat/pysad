@@ -156,7 +156,8 @@ def expand_api_autosummary(text: str) -> str:
         exclude_names: set[str] = set()
         while i < len(lines) and re.match(r"^\s+:[A-Za-z0-9_-]+:", lines[i]):
             opt_match = re.match(r"^\s+:([A-Za-z0-9_-]+):\s*(.*)$", lines[i])
-            assert opt_match is not None
+            if opt_match is None:
+                raise ValueError(f"Invalid autosummary option line: {lines[i]!r}")
             opt_name, opt_val = opt_match.group(1), opt_match.group(2).strip()
             if opt_name == "kind":
                 kind = opt_val

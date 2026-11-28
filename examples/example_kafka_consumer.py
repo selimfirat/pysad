@@ -95,6 +95,7 @@ def load_checkpoint(path: Path) -> tuple[LODA, int] | None:
     """Load model state and consumer offset from disk."""
     if not path.exists():
         return None
+    # Checkpoint files are written locally by this worker from trusted model state.
     with path.open("rb") as f:
         state = pickle.load(f)
     return state["model"], state["offset"]

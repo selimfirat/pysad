@@ -7,6 +7,7 @@ PySAD functionality to AI assistants.
 
 from __future__ import annotations
 
+import contextlib
 import inspect
 import json
 from typing import Any, cast
@@ -412,13 +413,10 @@ def register_detector_tools(mcp: MCPServer) -> None:
             continue
         if name.startswith("_"):
             continue
-        try:
+        with contextlib.suppress(Exception):
             model_class = _get_model_class(name)
             defaults = DETECTOR_DEFAULTS.get(name, {})
             _create_detector_tool(mcp, name, model_class, defaults)
-        except Exception:
-            # Skip models that can't be registered
-            pass
 
 
 def register_statistic_tools(mcp: MCPServer) -> None:
@@ -426,12 +424,10 @@ def register_statistic_tools(mcp: MCPServer) -> None:
     for name in STAT_NAMES:
         if name.startswith("_"):
             continue
-        try:
+        with contextlib.suppress(Exception):
             stat_class = _get_stat_class(name)
             defaults = DRIFT_DEFAULTS.get(name, {})
             _create_stat_tool(mcp, name, stat_class, defaults)
-        except Exception:
-            pass
 
 
 def register_explainability_tools(mcp: MCPServer) -> None:

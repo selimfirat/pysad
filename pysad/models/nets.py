@@ -88,7 +88,8 @@ class NETS(BaseModel):
 
     def _index(self, X: NDArray[np.float64]) -> NDArray[np.int64]:
         """The grid index of the cell that holds each instance in X."""
-        assert self.radius_ is not None
+        if self.radius_ is None:
+            raise RuntimeError("Radius is not calibrated.")
         if self.radius_ == 0:
             # A cell with a diagonal of 0 holds equal instances only, so the bits of X index it (-0.0 + 0.0 is 0.0).
             return (X + 0.0).view(np.int64)

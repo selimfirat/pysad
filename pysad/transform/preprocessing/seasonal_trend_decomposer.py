@@ -52,7 +52,8 @@ class SeasonalTrendDecomposer(BaseTransformer):
         self._window_sum = np.zeros(X.shape[0], dtype=np.float64)
 
     def _push_window(self, X: NDArray[Any]) -> NDArray[Any]:
-        assert self._window_sum is not None
+        if self._window_sum is None:
+            raise RuntimeError("Window sum is not initialized.")
         if len(self.window) == self.trend_window:
             evicted = self.window.popleft()
             self.window.append(X)
@@ -95,8 +96,8 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
         if self.seasonal_sums is None:
             self._init_seasonal_state(X)
-        assert self.seasonal_sums is not None
-        assert self.seasonal_counts is not None
+        if self.seasonal_sums is None or self.seasonal_counts is None:
+            raise RuntimeError("Seasonal state failed to initialize.")
 
         phase = self.num_seen % self.season_length
         trend = self._push_window(X)
@@ -139,8 +140,8 @@ class SeasonalTrendDecomposer(BaseTransformer):
 
         if self.seasonal_sums is None:
             self._init_seasonal_state(X)
-        assert self.seasonal_sums is not None
-        assert self.seasonal_counts is not None
+        if self.seasonal_sums is None or self.seasonal_counts is None:
+            raise RuntimeError("Seasonal state failed to initialize.")
 
         phase = self.num_seen % self.season_length
         trend = self._push_window(X)

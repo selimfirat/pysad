@@ -115,7 +115,8 @@ class ZeroShotEmbeddingDetector(BaseModel):
             self._init_model(X.shape[0])
 
         anchors = self._anchors_normalized
-        assert anchors is not None
+        if anchors is None:
+            raise RuntimeError("Anchors failed to initialize.")
         x_norm = self._normalize(X)
         similarities = anchors @ x_norm
         probs = softmax(similarities / self.temperature)

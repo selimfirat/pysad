@@ -45,7 +45,8 @@ class _CorClust:
         z_mat = linkage(dist[np.triu_indices(self.n, 1)])
         bound = min(max(max_clust, 1), self.n)
         root = to_tree(z_mat)
-        assert isinstance(root, ClusterNode)
+        if not isinstance(root, ClusterNode):
+            raise RuntimeError("Expected a ClusterNode root from hierarchical linkage.")
         return self._break_clusters(root, bound)
 
     @staticmethod

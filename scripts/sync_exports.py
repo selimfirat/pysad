@@ -129,7 +129,8 @@ def _extract_docstring_block(text: str) -> str:
         and isinstance(tree.body[0].value.value, str)
     ):
         end_lineno = tree.body[0].end_lineno
-        assert end_lineno is not None
+        if end_lineno is None:
+            raise ValueError("Package docstring AST node is missing end_lineno.")
         return "\n".join(lines[:end_lineno])
     return ""
 
@@ -168,7 +169,8 @@ def _render_utils_package() -> str:
         ):
             all_end_lineno = node.end_lineno
 
-    assert first_rel_idx is not None and all_end_lineno is not None
+    if first_rel_idx is None or all_end_lineno is None:
+        raise ValueError(f"Expected relative imports and __all__ in {init_path}.")
     prefix = "\n".join(lines[:first_rel_idx]).rstrip()
     suffix = "\n".join(lines[all_end_lineno:]).lstrip("\n")
     imports = "\n".join(_format_import(mod, names) for mod, names in by_module.items())
@@ -204,7 +206,8 @@ def _render_integrations_package() -> str:
         ):
             all_end_lineno = node.end_lineno
 
-    assert first_rel_idx is not None and all_end_lineno is not None
+    if first_rel_idx is None or all_end_lineno is None:
+        raise ValueError(f"Expected relative imports and __all__ in {init_path}.")
     prefix = "\n".join(lines[:first_rel_idx]).rstrip()
     suffix = "\n".join(lines[all_end_lineno:]).lstrip("\n")
     imports = "\n".join(_format_import(mod, names) for mod, names in eager_by_module.items())

@@ -57,7 +57,8 @@ class MinMaxScaler(BaseTransformer):
 
         minimums = self.minimums_
         maximums = self.maximums_
-        assert minimums is not None and maximums is not None
+        if minimums is None or maximums is None:
+            raise RuntimeError("MinMaxScaler meters failed to initialize.")
 
         for minimum, maximum, x in zip(minimums, maximums, X, strict=True):
             value = float(x)
@@ -86,7 +87,8 @@ class MinMaxScaler(BaseTransformer):
 
         minimums = self.minimums_
         maximums = self.maximums_
-        assert minimums is not None and maximums is not None
+        if minimums is None or maximums is None:
+            raise RuntimeError("MinMaxScaler meters failed to initialize.")
 
         scaled = np.empty(X.size, dtype=np.float64)
         for i, (x, minimum, maximum) in enumerate(zip(X, minimums, maximums, strict=True)):

@@ -72,7 +72,8 @@ class BaseSKLearnProjector(BaseTransformer):
         if isinstance(X, np.ndarray) and X.ndim == 2:
             if len(X) == 0:
                 return np.empty((0, self.output_dims), dtype=np.float64)
-            assert self._components is not None
+            if self._components is None:
+                raise RuntimeError("Projection matrix is not fitted.")
             if issparse(self._components):
                 return np.asarray(self._components.dot(X.T).T, dtype=np.float64)
             with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
@@ -119,7 +120,8 @@ class BaseSKLearnProjector(BaseTransformer):
 
         # .dot rather than sklearn's transform: its matmul raises spurious FPE warnings with macOS Accelerate BLAS.
         # Sparse components stay sparse and use scipy's sparse product.
-        assert self._components is not None
+        if self._components is None:
+            raise RuntimeError("Projection matrix is not fitted.")
         projected: NDArray[Any] = self._components.dot(X)
         return projected
 

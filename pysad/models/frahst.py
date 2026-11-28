@@ -84,7 +84,8 @@ class FRAHST(BaseModel):
         self, X: NDArray[np.float64]
     ) -> tuple[NDArray[np.float64], NDArray[np.float64], float, float, bool]:
         """Computes Figure 1 without changing the current state."""
-        assert self.basis_ is not None
+        if self.basis_ is None:
+            raise RuntimeError("Basis is not initialized.")
         Q = self.basis_
         h = Q.T.dot(X)
         energy = float(X.dot(X))

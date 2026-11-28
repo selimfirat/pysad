@@ -32,6 +32,7 @@ import inspect
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1381,8 +1382,9 @@ def alert_rows(results, detectors):
 
 
 def git(*args):
+    git_exe = shutil.which("git") or "git"
     return subprocess.run(
-        ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
+        [git_exe, *args], cwd=ROOT, capture_output=True, text=True, check=True
     ).stdout
 
 

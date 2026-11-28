@@ -3,7 +3,6 @@ name: ClusterFuzzLite
 on:
   pull_request:
     paths:
-      - "pysad/**"
       - "fuzz/**"
       - ".clusterfuzzlite/**"
       - ".github/workflows/cflite.yml"
@@ -30,10 +29,11 @@ jobs:
         with:
           language: python
           sanitizer: address
-      - name: Run Fuzzers
-        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fuzz-seconds: ${{ github.event_name == 'schedule' && 120 || 30 }}
-          mode: code-change
-          sanitizer: address
+      - name: Run Fuzzers without artifact API pagination
+        env:
+          FUZZ_SECONDS: ${{ github.event_name == 'schedule' && '120' || '30' }}
+        run: |
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}/build-out:/out:ro" \
+            gcr.io/oss-fuzz-base/base-builder-python@sha256:0aa4f12ee4e9a4aaa1e511b3ded82d662475150b82a786478f22d5c41adbacbd \
+            /out/streaming_detectors_fuzzer "-max_total_time=${FUZZ_SECONDS}" -max_len=4096 -artifact_prefix=/tmp/

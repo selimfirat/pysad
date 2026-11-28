@@ -259,13 +259,14 @@ class DenStream(BaseModel):
             return None, None, float("inf")
 
         min_dist = float("inf")
-        nearest_idx = None
+        nearest_idx: int | None = None
         for i, cluster in enumerate(clusters):
             dist = self._distance(x, cluster.center)
             if dist < min_dist:
                 min_dist = dist
                 nearest_idx = i
-        assert nearest_idx is not None
+        if nearest_idx is None:
+            return None, None, float("inf")
         return nearest_idx, clusters[nearest_idx], min_dist
 
     def _merge_into_cluster(
@@ -289,7 +290,7 @@ class DenStream(BaseModel):
         # Prune o-micro-clusters
         # xi = (2^(-lambda * (t - creation_time + T_p)) - 1) / (2^(-lambda * T_p) - 1)
         denom = 2.0 ** (-self.decaying_factor * self.prune_interval_) - 1.0
-        if denom == 0.0:
+        if math.isclose(denom, 0.0):
             # Avoid division by zero when prune_interval is 0
             return
 
@@ -303,66 +304,81 @@ class DenStream(BaseModel):
                 new_o_clusters.append(cluster)
         self.o_micro_clusters_ = new_o_clusters
 
+    def _expand_cluster(
+        self,
+        points: NDArray[np.float64],
+        labels: NDArray[np.intp],
+        seed_neighbors: NDArray[np.intp],
+        cluster_id: int,
+    ) -> None:
+        """Expand a DBSCAN seed cluster across density-reachable buffer points."""
+        seed_set = list(seed_neighbors)
+        for idx in seed_set:
+            if labels[idx] != -1:
+                continue
+            labels[idx] = cluster_id
+            distances_idx = np.linalg.norm(points - points[idx], axis=1)
+            neighbors_idx = np.nonzero(distances_idx <= self.epsilon)[0]
+            if len(neighbors_idx) < self.mu:
+                continue
+            for n_idx in neighbors_idx:
+                if labels[n_idx] == -1:
+                    labels[n_idx] = cluster_id
+                    seed_set.append(n_idx)
+
     def _initialize_clusters(self) -> None:
         """Runs DBSCAN-like clustering on buffered points to create initial p-micro-clusters."""
         if len(self._init_buffer) < 2:
-            # Not enough points for clustering, create o-micro-clusters
             for point in self._init_buffer:
                 mc = _DenStreamMicroCluster(point, self.timestamp_, self.decaying_factor)
                 self.o_micro_clusters_.append(mc)
             return
 
-        # Simple DBSCAN-like clustering
         points = np.array(self._init_buffer)
         n_points = len(points)
-        labels = np.full(n_points, -1, dtype=int)  # -1 = noise
+        labels: NDArray[np.intp] = np.full(n_points, -1, dtype=int)
         cluster_id = 0
 
         for i in range(n_points):
             if labels[i] != -1:
-                continue  # Already processed
-
-            # Find neighbors within epsilon
-            distances = np.linalg.norm(points - points[i], axis=1)
-            neighbors = np.where(distances <= self.epsilon)[0]
-
-            if len(neighbors) < self.mu:
-                # Not enough neighbors, mark as noise (will become o-micro-cluster)
                 continue
-
-            # Start new cluster
+            distances = np.linalg.norm(points - points[i], axis=1)
+            neighbors = np.nonzero(distances <= self.epsilon)[0]
+            if len(neighbors) < self.mu:
+                continue
             labels[i] = cluster_id
-            # Expand cluster
-            seed_set = list(neighbors)
-            for idx in seed_set:
-                if labels[idx] == -1:
-                    labels[idx] = cluster_id
-                    # Find neighbors of this point
-                    distances_idx = np.linalg.norm(points - points[idx], axis=1)
-                    neighbors_idx = np.where(distances_idx <= self.epsilon)[0]
-                    if len(neighbors_idx) >= self.mu:
-                        # Add new neighbors to seed set
-                        for n_idx in neighbors_idx:
-                            if labels[n_idx] == -1:
-                                labels[n_idx] = cluster_id
-                                seed_set.append(n_idx)
-
+            self._expand_cluster(points, labels, neighbors, cluster_id)
             cluster_id += 1
 
-        # Create micro-clusters from clusters
         for c_id in range(cluster_id):
             cluster_points = points[labels == c_id]
-            # Create micro-cluster from cluster points
             mc = _DenStreamMicroCluster(cluster_points[0], self.timestamp_, self.decaying_factor)
             for point in cluster_points[1:]:
                 mc.insert(point, self.timestamp_)
             self.p_micro_clusters_.append(mc)
 
-        # Create o-micro-clusters from noise points
-        noise_points = points[labels == -1]
-        for point in noise_points:
+        for point in points[labels == -1]:
             mc = _DenStreamMicroCluster(point, self.timestamp_, self.decaying_factor)
             self.o_micro_clusters_.append(mc)
+
+    def _insert_online(self, X: NDArray[np.float64]) -> None:
+        """Insert one instance into the nearest p-micro-cluster, o-micro-cluster, or create new."""
+        if self.p_micro_clusters_:
+            _, nearest_p, _ = self._get_nearest_cluster(X, self.p_micro_clusters_)
+            if nearest_p is not None and self._merge_into_cluster(X, nearest_p, self.timestamp_):
+                return
+
+        if self.o_micro_clusters_:
+            idx, nearest_o, _ = self._get_nearest_cluster(X, self.o_micro_clusters_)
+            if nearest_o is not None and self._merge_into_cluster(X, nearest_o, self.timestamp_):
+                if nearest_o.calc_weight(self.timestamp_) > self._core_threshold and idx is not None:
+                    self.o_micro_clusters_.pop(idx)
+                    self.p_micro_clusters_.append(nearest_o)
+                return
+
+        self.o_micro_clusters_.append(
+            _DenStreamMicroCluster(X, self.timestamp_, self.decaying_factor)
+        )
 
     def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> DenStream:
         """Updates the model with the next instance.
@@ -391,28 +407,7 @@ class DenStream(BaseModel):
                 self._init_buffer = []  # Clear buffer
             return self
 
-        # Online phase: try to merge into nearest p-micro-cluster
-        merged = False
-        if self.p_micro_clusters_:
-            idx, nearest_p, dist = self._get_nearest_cluster(X, self.p_micro_clusters_)
-            if nearest_p is not None and self._merge_into_cluster(X, nearest_p, self.timestamp_):
-                merged = True
-
-        # Try to merge into nearest o-micro-cluster
-        if not merged and self.o_micro_clusters_:
-            idx, nearest_o, dist = self._get_nearest_cluster(X, self.o_micro_clusters_)
-            if nearest_o is not None and self._merge_into_cluster(X, nearest_o, self.timestamp_):
-                merged = True
-                # Check if o-micro-cluster becomes a p-micro-cluster
-                if nearest_o.calc_weight(self.timestamp_) > self._core_threshold:
-                    assert idx is not None
-                    self.o_micro_clusters_.pop(idx)
-                    self.p_micro_clusters_.append(nearest_o)
-
-        # Create new o-micro-cluster if not merged
-        if not merged:
-            mc = _DenStreamMicroCluster(X, self.timestamp_, self.decaying_factor)
-            self.o_micro_clusters_.append(mc)
+        self._insert_online(X)
 
         # Periodic pruning
         if self.timestamp_ > 0 and self.timestamp_ % self.prune_interval_ == 0:

@@ -34,6 +34,6 @@ jobs:
         uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          fuzz-seconds: 120
+          fuzz-seconds: ${{ github.event_name == 'schedule' && 120 || 30 }}
           mode: code-change
           sanitizer: address

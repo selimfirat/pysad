@@ -110,3 +110,27 @@ def test_removable_statistic_remove_undoes_update(name: str, cls: type[Any]) -> 
     meter.update(CONSTANT)
     meter.remove(CONSTANT)
     assert meter.get() == previous_value
+
+
+@pytest.mark.parametrize(("name", "cls"), STATISTIC_CLASSES, ids=STATISTIC_IDS)
+def test_statistic_get_does_not_affect_later_update(name: str, cls: type[Any]) -> None:
+    """Repeated ``get`` calls do not change the result of a later ``update``.
+
+    Args:
+        name: The exported name of the statistic.
+        cls: The statistic class.
+    """
+    meter = _make_statistic(name, cls)
+    for _ in range(NUM_UPDATES):
+        meter.update(CONSTANT)
+    # Call get multiple times
+    for _ in range(5):
+        meter.get()
+    # Update with a new value
+    meter.update(1.0)
+    # The result should be the same as if get was never called
+    meter2 = _make_statistic(name, cls)
+    for _ in range(NUM_UPDATES):
+        meter2.update(CONSTANT)
+    meter2.update(1.0)
+    assert meter.get() == meter2.get()

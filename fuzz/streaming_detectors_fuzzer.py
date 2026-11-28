@@ -57,7 +57,7 @@ def fuzz_one_input(data: bytes) -> None:
             feature_maxes=maxes,
             num_components=4,
             num_hash_fns=2,
-            decaying_factor=0.5,
+            decay=0.5,
             random_state=0,
         ),
         xStream(num_components=6, n_chains=4, depth=3, window_size=8, random_state=0),

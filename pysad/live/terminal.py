@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import importlib
 import sys
 import time
@@ -453,22 +454,73 @@ def _stream_remote_dataset(
         yield x, int(label) if label is not None else None
 
 
-def _stream_csv(
+def _parse_csv_col_spec(
+    spec: str | int,
+    header: list[str] | None,
+    has_header: bool,
+    width: int | None,
+) -> int:
+    """Resolve a CSV column name or integer index into a validated 0-based column index."""
+    if isinstance(spec, int):
+        idx = spec
+    elif has_header and header is not None and spec in header:
+        idx = header.index(spec)
+    elif spec.strip().isdigit():
+        idx = int(spec.strip())
+    elif not has_header:
+        raise ValueError(f"CSV column name {spec!r} requires has_header=True.")
+    else:
+        raise ValueError(f"Unknown CSV column {spec!r}; header columns are {header!r}.")
+
+    if idx < 0 or (width is not None and idx >= width):
+        raise ValueError(f"CSV column index {idx} is out of range for width {width}.")
+    return idx
+
+
+def _peek_csv_layout(
+    source: str, delimiter: str, has_header: bool
+) -> tuple[list[str] | None, int | None]:
+    """Read header names (if `has_header`) and column width from the first CSV row."""
+    with open(source, encoding="utf-8", newline="") as f:
+        first_row = next(csv.reader(f, delimiter=delimiter), None)
+    if first_row is None:
+        return None, None
+    return (first_row if has_header else None), len(first_row)
+
+
+def _resolve_csv_columns(
     source: str,
-    max_points: int | None,
     delimiter: str,
     has_header: bool,
     kwargs: dict[str, Any],
-) -> Iterator[tuple[NDArray[Any], int | None]]:
-    """Yield `(x, label)` pairs from a local CSV file."""
-    from pysad.utils import CSVStreamer
+) -> tuple[Any, int | None]:
+    """Resolve `target_column` and `timestamp_column` CLI options into CSVStreamer indices."""
+    feature_columns = kwargs.pop("feature_columns", None)
+    label_column = kwargs.pop("label_column", None)
+    target_column = kwargs.pop("target_column", None)
+    timestamp_column = kwargs.pop("timestamp_column", None)
 
-    csv_streamer = CSVStreamer(
-        feature_columns=kwargs.pop("feature_columns", None),
-        label_column=kwargs.pop("label_column", None),
-        delimiter=delimiter,
-        has_header=has_header,
-    )
+    if target_column is None and timestamp_column is None:
+        return feature_columns, label_column
+
+    header, width = _peek_csv_layout(source, delimiter, has_header)
+    if label_column is None and target_column is not None:
+        label_column = _parse_csv_col_spec(target_column, header, has_header, width)
+
+    if timestamp_column is not None:
+        ts_idx = _parse_csv_col_spec(timestamp_column, header, has_header, width)
+        if feature_columns is None and width is not None:
+            feature_columns = tuple(i for i in range(width) if i not in (label_column, ts_idx))
+
+    return feature_columns, label_column
+
+
+def _iter_csv_items(
+    csv_streamer: Any,
+    source: str,
+    max_points: int | None,
+) -> Iterator[tuple[NDArray[Any], int | None]]:
+    """Iterate rows from a configured `CSVStreamer`, honoring `max_points`."""
     count = 0
     for item in csv_streamer.iter(source):
         if max_points and count >= max_points:
@@ -481,6 +533,26 @@ def _stream_csv(
             label = None
         yield x_arr, label
         count += 1
+
+
+def _stream_csv(
+    source: str,
+    max_points: int | None,
+    delimiter: str,
+    has_header: bool,
+    kwargs: dict[str, Any],
+) -> Iterator[tuple[NDArray[Any], int | None]]:
+    """Yield `(x, label)` pairs from a local CSV file."""
+    from pysad.utils import CSVStreamer
+
+    feature_columns, label_column = _resolve_csv_columns(source, delimiter, has_header, kwargs)
+    csv_streamer = CSVStreamer(
+        feature_columns=feature_columns,
+        label_column=label_column,
+        delimiter=delimiter,
+        has_header=has_header,
+    )
+    return _iter_csv_items(csv_streamer, source, max_points)
 
 
 def create_data_stream(

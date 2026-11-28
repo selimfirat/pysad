@@ -190,3 +190,31 @@ def test_terminal_stream_bounds_and_factories(tmp_path):
     assert cal.__class__.__name__ == "ConformalProbabilityCalibrator"
     with pytest.raises(ValueError, match="Unknown calibrator"):
         get_calibrator("unknown_calibrator")
+
+
+def test_create_data_stream_resolves_target_and_timestamp_columns(tmp_path):
+    csv_path = tmp_path / "telemetry.csv"
+    csv_path.write_text(
+        "ts,f1,f2,target\n2026-01-01T00:00:00Z,1.0,2.0,0\n2026-01-01T00:01:00Z,3.0,4.0,1\n",
+        encoding="utf-8",
+    )
+    rows = list(create_data_stream(str(csv_path), target_column="target", timestamp_column="ts"))
+    assert len(rows) == 2
+    np.testing.assert_allclose(rows[0][0], [1.0, 2.0])
+    assert rows[0][1] == 0
+    np.testing.assert_allclose(rows[1][0], [3.0, 4.0])
+    assert rows[1][1] == 1
+
+    with pytest.raises(ValueError, match="Unknown CSV column"):
+        create_data_stream(str(csv_path), target_column="missing")
+
+    no_hdr = tmp_path / "no_header.csv"
+    no_hdr.write_text("100,1.5,2.5,1\n", encoding="utf-8")
+    no_hdr_rows = list(
+        create_data_stream(str(no_hdr), has_header=False, target_column="3", timestamp_column="0")
+    )
+    np.testing.assert_allclose(no_hdr_rows[0][0], [1.5, 2.5])
+    assert no_hdr_rows[0][1] == 1
+
+    with pytest.raises(ValueError, match="requires has_header=True"):
+        create_data_stream(str(no_hdr), has_header=False, target_column="label")

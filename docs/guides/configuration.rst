@@ -95,11 +95,11 @@ The server uses stdio transport, so it needs no network port or host. Connect an
 Optional PyO3 kernels
 ---------------------
 
-PySAD works with pure NumPy. Install the separate ``pysad_kernels`` package to speed up the traversal hot path of some detectors:
+PySAD works with pure NumPy. Install the ``pysad[kernels]`` extra to speed up the traversal hot path of some detectors:
 
 .. code-block:: console
 
-   $ pip install pysad_kernels
+   $ pip install "pysad[kernels]"
 
 HalfSpaceTrees and RobustRandomCutForest use the available tree kernels automatically. LODA and StreamKMPlusPlus use NumPy by default. Set ``use_rust=True`` to use the density kernel for LODA or the weighted Lloyd kernel for StreamKMPlusPlus.
 
@@ -112,19 +112,13 @@ HalfSpaceTrees and RobustRandomCutForest use the available tree kernels automati
 
 If a kernel is unavailable, the detector uses NumPy. Pickles store the option and model arrays, so they also work without the extension.
 
-Make sure that Python can import the extension:
-
-.. code-block:: console
-
-   $ python -c "import pysad_kernels; print(pysad_kernels.__file__)"
-
 To build from a source checkout, install ``maturin`` and run these commands from the repository root. This requires a Rust toolchain.
 
 .. code-block:: console
 
    $ pip install maturin
    $ maturin build --manifest-path rust/Cargo.toml --release --locked
-   $ pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
+   $ pip install rust/target/wheels/*.whl
 
 See :doc:`/benchmarks/kernels` for the traversal timings of the optional kernels.
 

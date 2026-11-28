@@ -1,7 +1,7 @@
 Optional PyO3 traversal kernels
 ===============================
 
-PySAD ships with optional PyO3 Rust kernels in the separate ``pysad_kernels`` package. These kernels speed up the tree traversal hot path of two detectors:
+PySAD ships with optional PyO3 Rust kernels via the ``pysad[kernels]`` extra. These kernels speed up the tree traversal hot path of two detectors:
 
 - :class:`~pysad.models.HalfSpaceTrees` routes each point down its trees.
 - :class:`~pysad.models.RobustRandomCutForest` routes each point to a leaf and computes CoDisp.
@@ -12,7 +12,7 @@ Install the extension to run the Rust path:
 
 .. code-block:: console
 
-   $ pip install pysad_kernels
+   $ pip install "pysad[kernels]"
 
 Then run the benchmarks. Each script compares NumPy with Rust and checks that both paths give the same result:
 
@@ -45,6 +45,6 @@ The table shows the NumPy traversal time per point, measured on this machine. Yo
 |                                  | tree size 256     |                        |
 +----------------------------------+-------------------+------------------------+
 
-The PyO3 kernels replace the NumPy loops with Rust code. When ``pysad_kernels`` is installed, the detectors use the Rust path automatically. The same benchmarks then print the Rust time and the speedup over NumPy.
+The PyO3 kernels replace the NumPy loops with Rust code. When ``pysad[kernels]`` is installed, the detectors use the Rust path automatically. The same benchmarks then print the Rust time and the speedup over NumPy.
 
 Traversal cost stays bounded. The cost of routing one point does not grow with the stream length, because each tree holds a fixed window of instances.

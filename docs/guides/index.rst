@@ -103,6 +103,12 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
+      :doc:`streaming_engines`
+
+      Run PySAD detectors inside Polars, Bytewax, PyFlink, River, CapyMOA, scikit-learn, and scikit-multiflow without adding core dependencies.
+
+   .. container:: card
+
       :doc:`live_dashboard`
 
       Open the pysad-live web dashboard and watch streaming scores and alerts as points arrive.

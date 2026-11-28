@@ -4,6 +4,7 @@ For every class in ``pysad.statistics.__all__`` these tests check that:
 
 * ``get`` returns a finite number after many updates with the same value,
 * repeated calls to ``get`` without new updates return the same value,
+* repeated ``get`` calls do not change the result of a later ``update``,
 * ``remove(x)`` right after ``update(x)`` restores the previous value, for statistics that support removal.
 
 Only public methods are used. Stochastic statistics are seeded so the tests are reproducible.

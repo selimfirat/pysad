@@ -431,7 +431,7 @@ class FeedbackHST(BaseModel):
         # Build sparse matrix: each instance has num_trees non-zero entries
         # Value is the region score for that leaf
         rows = np.repeat(np.arange(n), self.num_trees)
-        cols = np.arange(self.num_trees) * num_leaves + leaf_indices.T.ravel()
+        cols = (leaf_indices + np.arange(self.num_trees) * num_leaves).ravel()
 
         # Get region scores for each active leaf
         if self._region_scores is None:
@@ -503,7 +503,7 @@ class FeedbackHST(BaseModel):
                     active_ha = ha[active]
                     # For each active anomaly, decrement the weight of its active leaf per tree
                     X_feat_anom = X_feat[active_ha]
-                    grad -= X_feat_anom.sum(axis=0).A1 / max(1, len(active_ha))
+                    grad -= np.asarray(X_feat_anom.sum(axis=0)).ravel() / max(1, len(active_ha))
 
             # Nominal constraints: for each nominal, add weight of its active leaves
             if len(hn) > 0:
@@ -512,13 +512,13 @@ class FeedbackHST(BaseModel):
                 if np.any(active):
                     active_hn = hn[active]
                     X_feat_noml = X_feat[active_hn]
-                    grad += X_feat_noml.sum(axis=0).A1 / max(1, len(active_hn))
+                    grad += np.asarray(X_feat_noml.sum(axis=0)).ravel() / max(1, len(active_hn))
 
             # Tau instance constraint
             margin = scores[tau_idx] - q_val
             if abs(margin) > 1e-8:
                 X_feat_tau = X_feat[tau_idx]
-                grad += np.sign(margin) * X_feat_tau.A1
+                grad += np.sign(margin) * X_feat_tau.toarray().ravel()
 
             # Prior regularization (pull toward uniform)
             prior_influence = self.prior_influence / max(1.0, len(ha) + len(hn))

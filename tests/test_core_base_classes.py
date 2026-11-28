@@ -234,3 +234,95 @@ def test_base_metric_update_batch_default():
     assert metric.get() == pytest.approx(2.0 / 3.0)
     with pytest.raises(ValueError):
         metric.update_batch([1, 0], [0.5])
+
+
+class DecisionPostprocessor(BasePostprocessor):
+    """Binary decision postprocessor for exercising output_kind and decision chains."""
+
+    _output_kind = "decision"
+
+    def fit_partial(self, score):
+        return self
+
+    def transform_partial(self, score):
+        return 1.0 if score > 0.5 else 0.0
+
+
+class ProbabilityPostprocessor(BasePostprocessor):
+    """Probability calibrator-like postprocessor for chain validation checks."""
+
+    _output_kind = "probability"
+
+    def fit_partial(self, score):
+        return self
+
+    def transform_partial(self, score):
+        return min(max(float(score), 0.0), 1.0)
+
+
+class _ShapedSeq:
+    """Iterable container with `.shape` to exercise non-ndarray `_iterate` fallback paths."""
+
+    def __init__(self, items, shape):
+        self._items = items
+        self.shape = shape
+
+    def __len__(self):
+        return len(self._items)
+
+    def __iter__(self):
+        return iter(self._items)
+
+
+def test_base_postprocessor_batch_chain_and_decision_rules():
+    p1 = ConcretePostprocessor(multiplier=2.0)
+    p2 = ConcretePostprocessor(multiplier=3.0)
+    assert p1.output_kind == "score"
+    assert p1._can_predict() is False
+    with pytest.raises(TypeError, match="continuous outputs"):
+        p1._decide_from_score(0.5)
+
+    assert p1.fit(np.array([1.0, 2.0])) is p1
+    assert p1.fit(_ShapedSeq([3.0, 4.0], (2,))) is p1
+    assert len(p1.fitted_scores) == 4
+    np.testing.assert_allclose(p1.transform(_ShapedSeq([1.5, 2.5], (2,))), [3.0, 5.0])
+    np.testing.assert_allclose(p1.transform(np.array([1.5, 2.5])), [3.0, 5.0])
+
+    chain = p1 | p2
+    assert chain.output_kind == "score"
+    assert chain._can_predict() is False
+    assert chain.fit_partial(2.0) is chain
+    assert chain.transform_partial(2.0) == pytest.approx(12.0)
+    assert chain.fit_transform_partial(2.0) == pytest.approx(12.0)
+    assert chain.fit(np.array([1.0, 2.0])) is chain
+    np.testing.assert_allclose(chain.transform(np.array([1.0, 2.0])), [6.0, 12.0])
+
+    dec = DecisionPostprocessor()
+    assert dec._can_predict() is True
+    assert dec._decide_from_score(0.9) == 1
+    assert dec._decide_from_score(0.0) == 0
+
+    dec_chain = p1 | dec
+    assert dec_chain.output_kind == "decision"
+    assert dec_chain._can_predict() is True
+    assert dec_chain._decide_from_score(1.0) == 1
+
+    with pytest.raises(ValueError, match="Cannot apply probability calibrator"):
+        _ = dec | ProbabilityPostprocessor()
+
+
+def test_base_transformer_iterate_and_chain_methods():
+    t1 = ConcreteTransformer()
+    t2 = ConcreteTransformer()
+    chain = (t1 | t2) | ConcreteTransformer()
+
+    assert len(chain.steps) == 3
+    x_seq = _ShapedSeq([np.array([1.0, 2.0]), np.array([3.0, 4.0])], (2, 2))
+    assert chain.fit(x_seq) is chain
+    assert len(t1.fitted_data) == 2
+    np.testing.assert_allclose(chain.transform(x_seq), np.array([[4.0, 5.0], [6.0, 7.0]]))
+    np.testing.assert_allclose(
+        chain.fit_transform_partial(np.array([0.0, 1.0])), np.array([3.0, 4.0])
+    )
+    assert chain.fit_partial(np.array([2.0, 3.0])) is chain
+    np.testing.assert_allclose(chain.transform_partial(np.array([2.0, 3.0])), np.array([5.0, 6.0]))

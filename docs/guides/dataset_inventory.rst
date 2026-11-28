@@ -91,3 +91,29 @@ Labels
 ------
 
 Label 1 always marks the anomaly class and label 0 marks the normal class, except where the table notes otherwise. The label format depends on the loader: anomaly windows for NAB, anomaly ranges for SMAP and MSL, a Class column for credit-card fraud, and a last binary column for TSB-drift.
+
+Choose a dataset
+----------------
+
+- **Univariate series with labeled anomaly windows**: start with ``nab``. Use ``"nab-real-world"`` in :meth:`~pysad.utils.Data.datasets` to exclude synthetic series, or pass ``timestamps=True`` to :meth:`~pysad.utils.Data.get_data` for ``[timestamp, value]`` points (timestamps are local times read as UTC, as :class:`~pysad.models.HTM` expects).
+- **Hourly univariate production traffic (academic, non-commercial)**: use ``yahoo`` (67 A1Benchmark series; requires a signed Yahoo agreement).
+- **Multivariate tabular streams**: start with ``odds`` (17 datasets), or use ``smd``, ``smap``, ``msl``, or ``swat`` for multivariate telemetry and industrial benchmarks.
+
+.. code-block:: python
+
+   import numpy as np
+
+   from pysad.models import LODA
+   from pysad.utils import Data
+
+   data = Data()
+   X, y = data.get_data("cardio.mat")
+
+   model = LODA(random_state=0)
+   scores = []
+   for x, label in data.get_iterator("cardio.mat", shuffle=False, random_state=0):
+       scores.append(model.fit_score_partial(x))
+
+   print(f"Scored {len(scores)} points. Anomaly rate: {np.mean(y):.3f}")
+
+:meth:`~pysad.utils.Data.get_iterator` shuffles by default; pass ``shuffle=False`` to preserve file order when order carries time. See :doc:`stream_data` to connect CSV files, DataFrames, and message queues.

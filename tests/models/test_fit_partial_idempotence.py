@@ -67,7 +67,6 @@ NON_IDEMPOTENT_MODELS = frozenset(
         "RSHash",
         "SmartSifter",
         "StreamingAutoregressiveDetector",
-        "StrictModelEnsemble",
         "ThreshLEAP",
         "xStream",
     }

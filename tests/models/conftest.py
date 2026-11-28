@@ -334,17 +334,6 @@ def short_stream_params(
             "preprocessors": [ShingleTransformer(shingle_size=2)],
             "postprocessors": [ZScorePostprocessor(window_size=10)],
         },
-        "StrictModelEnsemble": {
-            "models": [
-                pysad.models.LODA(num_bins=5, num_random_cuts=10, random_state=0)
-                | ZScorePostprocessor(window_size=10),
-                pysad.models.xStream(
-                    num_components=10, n_chains=10, depth=5, window_size=10, random_state=1
-                )
-                | ZScorePostprocessor(window_size=10),
-            ],
-            "ensembler": AverageScoreEnsembler(),
-        },
         "xStream": {"num_components": 10, "n_chains": 10, "depth": 5, "window_size": 10},
         "ZeroShotEmbeddingDetector": {
             "semantic_anchors": np.random.RandomState(seed).rand(10, num_features)

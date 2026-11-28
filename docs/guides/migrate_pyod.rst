@@ -49,43 +49,7 @@ API mapping
 Keep running PyOD on sliding windows
 ------------------------------------
 
-:class:`~pysad.integrations.ReferenceWindowModel` trains a PyOD detector on a recent window and retrains every ``sliding_size`` points:
-
-.. code-block:: python
-
-   import numpy as np
-
-   from pyod.models.iforest import IForest
-
-   from pysad.integrations import ReferenceWindowModel
-   from pysad.utils import ArrayStreamer
-
-   X = np.random.default_rng(42).normal(size=(2000, 4))
-   streamer = ArrayStreamer()
-
-   model = ReferenceWindowModel(
-       IForest,
-       window_size=500,
-       sliding_size=100,
-       initial_window_X=X[:500],
-       random_state=0,
-   )
-
-   for x in streamer.iter(X[500:]):
-       score = model.fit_score_partial(x)
-
-:class:`~pysad.integrations.OneFitModel` trains once on initial data and only scores after that. Use it as a stable baseline:
-
-.. code-block:: python
-
-   from pyod.models.knn import KNN
-
-   from pysad.integrations import OneFitModel
-
-   model = OneFitModel(KNN, initial_X=X[:500], n_neighbors=10)
-
-   for x in streamer.iter(X[500:]):
-       score = model.fit_score_partial(x)
+Use :class:`~pysad.integrations.ReferenceWindowModel` to retrain a PyOD batch detector every ``sliding_size`` points, or :class:`~pysad.integrations.OneFitModel` to fit once on initial data and keep the baseline fixed. See :doc:`pyod` for full working examples of both wrappers.
 
 Replace batch scoring with native streaming detectors
 -----------------------------------------------------

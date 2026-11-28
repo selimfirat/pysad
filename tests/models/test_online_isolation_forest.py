@@ -583,3 +583,266 @@ def test_online_isolation_forest_packed_tree_for_shap_returns_defaults_for_zero_
     np.testing.assert_array_equal(right, np.array([0], dtype=np.intp))
     np.testing.assert_array_equal(values, np.array([0.0], dtype=np.float64))
     np.testing.assert_array_equal(fractions, np.array([0.5], dtype=np.float64))
+
+
+def test_online_isolation_forest_non_binary_tree_learn_and_score():
+    """Test learn_one, _learn_path, _build, _unlearn, _refresh_bounds, predict_one, score_partial with branching_factor > 2."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationTree
+
+    # Test non-binary _build with sufficient depth_limit
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=1, growth_criterion="fixed", subsample=1.0, branching_factor=4
+    )
+    # Set depth_limit high enough to allow splitting at depth 0
+    tree.depth_limit = 2.0
+    root = tree._build(
+        np.array([[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]),
+        depth=0,
+        rng=np.random.RandomState(0),
+    )
+    assert root.split_values is not None
+    assert len(root.split_values) == 3  # branching_factor - 1
+    assert root.children is not None
+    assert len(root.children) == 4
+
+    # Test non-binary _learn_path
+    tree.root = root
+    tree.data_size = 4
+    tree.depth_limit = 2.0
+    selected, changed, leaf = tree._learn_path(np.array([1.5, 1.5]), np.random.RandomState(1))
+    assert selected is True
+
+    # Test non-binary _refresh_bounds
+    tree._refresh_bounds(root)
+    assert root.min_values is not None
+    assert root.max_values is not None
+
+    # Test non-binary predict_one
+    score = tree.predict_one(np.array([1.5, 1.5]))
+    assert isinstance(score, float)
+    assert score >= 0.0
+
+    # Test non-binary _unlearn
+    changed, leaf = tree.unlearn_one(np.array([0.0, 0.0]), np.random.RandomState(0), selected=True)
+    assert isinstance(changed, bool)
+
+    # Test non-binary score_partial through OnlineIsolationForest
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(
+        num_trees=2, max_leaf_samples=2, window_size=20, branching_factor=4, random_state=0
+    )
+    model.fit_partial(np.array([0.5, 0.5]))
+    model.fit_partial(np.array([1.5, 1.5]))
+    score = model.score_partial(np.array([0.5, 0.5]))
+    assert isinstance(score, float)
+    assert 0.0 <= score <= 1.0
+
+
+def test_online_isolation_forest_subsample_learn_and_forget():
+    """Test subsample < 1.0 code paths including selected tracking and _unlearn_oldest."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    # Test with subsample < 1.0 and small window to trigger eviction
+    model = OnlineIsolationForest(
+        num_trees=4, max_leaf_samples=2, window_size=5, subsample=0.5, random_state=0
+    )
+
+    # Fit enough points to fill window and trigger eviction
+    for i in range(10):
+        model.fit_partial(np.array([float(i), float(i)]))
+
+    # Window should be at max size
+    assert len(model.window_) == 5
+
+    # Score should work
+    score = model.score_partial(np.array([5.0, 5.0]))
+    assert isinstance(score, float)
+    assert 0.0 <= score <= 1.0
+
+    # Test _unlearn_oldest directly
+    model2 = OnlineIsolationForest(
+        num_trees=2, max_leaf_samples=2, window_size=3, subsample=0.5, random_state=0
+    )
+    model2.fit_partial(np.array([0.0, 0.0]))
+    model2.fit_partial(np.array([1.0, 1.0]))
+    model2.fit_partial(np.array([2.0, 2.0]))
+    # Now window is full, next fit triggers _unlearn_oldest
+    model2.fit_partial(np.array([3.0, 3.0]))
+    assert len(model2.window_) == 3
+
+
+def test_online_isolation_forest_score_partial_max_depth_zero():
+    """Test score_partial when _p_max_depth == 0 (trees have no splits yet)."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    # With very small max_leaf_samples and few points, trees may not split
+    model = OnlineIsolationForest(num_trees=2, max_leaf_samples=10, window_size=20, random_state=0)
+    # Fit just one point - trees won't split yet (max_depth == 0)
+    model.fit_partial(np.array([0.5, 0.5]))
+    # Score should use the max_d == 0 branch
+    score = model.score_partial(np.array([0.5, 0.5]))
+    assert isinstance(score, float)
+    assert 0.0 <= score <= 1.0
+
+
+def test_online_isolation_forest_getstate_setstate_non_global_rng():
+    """__getstate__ and __setstate__ handle non-global RNG correctly."""
+    import pickle
+
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=4, max_leaf_samples=4, window_size=10, random_state=42)
+    model.fit_partial(np.array([0.5, 0.5]))
+    # Use seeded RNG (not global)
+    assert model.rng_ is not np.random.mtrand._rand
+    pickled = pickle.dumps(model)
+    restored = pickle.loads(pickled)
+    assert restored.rng_ is not np.random.mtrand._rand
+    # Scores should match
+    np.testing.assert_allclose(
+        model.score_partial(np.array([0.5, 0.5])),
+        restored.score_partial(np.array([0.5, 0.5])),
+    )
+
+
+def test_online_isolation_forest_tree_left_fractions_with_tree():
+    """_tree_left_fractions computes fractions for actual tree with children."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=2, max_leaf_samples=2, window_size=10, random_state=0)
+    # Fit enough points to create splits
+    model.fit_partial(np.array([0.0, 0.0]))
+    model.fit_partial(np.array([1.0, 1.0]))
+    model.fit_partial(np.array([2.0, 2.0]))
+    model.fit_partial(np.array([3.0, 3.0]))
+
+    # Now tree has structure, test _tree_left_fractions
+    fractions = model._tree_left_fractions(0, model.trees_[0].node_count)
+    assert fractions.shape == (model.trees_[0].node_count,)
+    assert np.all(fractions >= 0.0)
+    assert np.all(fractions <= 1.0)
+
+
+def test_online_isolation_forest_packed_tree_for_shap_with_tree():
+    """_packed_tree_for_shap extracts arrays for actual tree with splits."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=2, max_leaf_samples=2, window_size=10, random_state=0)
+    # Fit enough points to create splits
+    model.fit_partial(np.array([0.0, 0.0]))
+    model.fit_partial(np.array([1.0, 1.0]))
+    model.fit_partial(np.array([2.0, 2.0]))
+    model.fit_partial(np.array([3.0, 3.0]))
+
+    # Now tree has structure, test _packed_tree_for_shap
+    features, thresholds, left, right, values, fractions = model._packed_tree_for_shap(0)
+    assert features.shape == (model.trees_[0].node_count,)
+    assert thresholds.shape == (model.trees_[0].node_count,)
+    assert left.shape == (model.trees_[0].node_count,)
+    assert right.shape == (model.trees_[0].node_count,)
+    assert values.shape == (model.trees_[0].node_count,)
+    assert fractions.shape == (model.trees_[0].node_count,)
+    # Leaf nodes should have feature -1
+    leaf_mask = left == right
+    assert np.all(features[leaf_mask] == -1)
+
+
+def test_online_isolation_tree_learn_all_with_none():
+    """_learn_all handles X=None for recursive calls on other branches."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationTree
+
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=2, growth_criterion="adaptive", subsample=1.0, branching_factor=2
+    )
+    # Build initial tree
+    tree.learn_one(np.array([0.0, 0.0]), np.random.RandomState(0))
+    tree.learn_one(np.array([1.0, 1.0]), np.random.RandomState(0))
+    # Force depth limit increase
+    tree.depth_limit = 2.0
+    tree._settled_limit = 1
+    # Call _learn_all with X=None (simulates depth limit increase without new point)
+    new_root, changed = tree._learn_all(tree.root, None, np.random.RandomState(1))
+    assert new_root is not None
+    assert isinstance(changed, bool)
+
+
+def test_online_isolation_forest_update_packed_leaf_changed_true():
+    """_update_packed_leaf repacks tree when changed=True."""
+    import numpy as np
+
+    from pysad.models import OnlineIsolationForest
+
+    model = OnlineIsolationForest(num_trees=2, max_leaf_samples=2, window_size=10, random_state=0)
+    # Fit enough points to create a tree structure
+    model.fit_partial(np.array([0.0, 0.0]))
+    model.fit_partial(np.array([1.0, 1.0]))
+    model.fit_partial(np.array([2.0, 2.0]))
+
+    # Now _update_packed_leaf with changed=True should trigger repack
+    # This happens when tree structure changes during learn_one
+    # We can't easily trigger changed=True without internal access,
+    # but we can test the changed=True branch directly
+    tree = model.trees_[0]
+    assert tree.root is not None
+    # Call with changed=True (simulates structure change)
+    result = model._update_packed_leaf(0, changed=True, leaf=None)
+    assert result is True  # Should return True when repacked
+
+
+def test_online_isolation_forest_learn_one_subsample_rejection():
+    """Test learn_one subsample rejection path."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationTree
+
+    # Create a tree with subsample=0.5
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=4, growth_criterion="fixed", subsample=0.5, branching_factor=2
+    )
+
+    # Mock RNG to always reject (return > 0.5)
+    class RejectRNG(np.random.RandomState):
+        def random_sample(self, size=None):
+            return 1.0  # Always reject
+
+    rng = RejectRNG(0)
+    selected, changed, leaf = tree.learn_one(np.array([0.5, 0.5]), rng)
+    assert selected is False
+    assert changed is False
+    assert leaf is None
+    assert tree.root is None  # No tree created
+
+
+def test_online_isolation_forest_unlearn_non_selected():
+    """Test unlearn_one with selected=False returns early."""
+    import numpy as np
+
+    from pysad.models.online_isolation_forest import _OnlineIsolationTree
+
+    tree = _OnlineIsolationTree(
+        max_leaf_samples=4, growth_criterion="fixed", subsample=1.0, branching_factor=2
+    )
+    # Build a tree
+    tree.learn_one(np.array([0.0, 0.0]), np.random.RandomState(0))
+    tree.learn_one(np.array([1.0, 1.0]), np.random.RandomState(0))
+
+    # Unlearn with selected=False should return early without changing tree
+    changed, leaf = tree.unlearn_one(np.array([0.0, 0.0]), np.random.RandomState(0), selected=False)
+    assert changed is False
+    assert leaf is None
+    assert tree.data_size == 2  # Unchanged

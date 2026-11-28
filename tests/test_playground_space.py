@@ -6,6 +6,7 @@ import ast
 import importlib.util
 import json
 from pathlib import Path
+from urllib.parse import urlparse
 
 import numpy as np
 import pytest
@@ -249,6 +250,8 @@ def test_static_space_bundle_metadata():
     readme = (space_dir / "README.md").read_text(encoding="utf-8")
     index_html = (space_dir / "index.html").read_text(encoding="utf-8")
     assert "sdk: static" in readme
+    assert (space_dir / "sw.js").is_file()
+    assert "./sw.js" in index_html
     worker_js = (space_dir / "worker.js").read_text(encoding="utf-8")
     assert "./worker.js" in index_html
     assert "./engine.py" in worker_js
@@ -259,6 +262,28 @@ def test_static_space_bundle_metadata():
     assert "unpackArchive" in worker_js
     for default_detector in ("LocalOutlierProbability", "RSHash", "LODA"):
         assert f'value="{default_detector}" checked' in index_html
+
+
+def test_service_worker_caches_essential_assets():
+    """Service Worker precaches the assets needed for offline playback."""
+    import re
+
+    sw_js = (Path(__file__).resolve().parents[1] / "spaces/playground/sw.js").read_text(
+        encoding="utf-8"
+    )
+    assert "PRECACHE_URLs" in sw_js
+    assert "./worker.js" in sw_js
+    assert "./engine.py" in sw_js
+    assert "./manifest.json" in sw_js
+    assert "./initial_snapshot.json" in sw_js
+    assert "./data/arrhythmia.mat" in sw_js
+    assert "caches.open" in sw_js
+    assert "cache.addAll" in sw_js
+    assert "fetch" in sw_js
+    assert any(
+        urlparse(url).hostname == "cdn.jsdelivr.net"
+        for url in re.findall(r'"(https://[^"]+)"', sw_js)
+    )
 
 
 def test_initial_snapshot_json_omits_host_timings():

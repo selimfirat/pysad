@@ -301,7 +301,9 @@ class TerminalDashboard:
         return lines
 
     @staticmethod
-    def _build_history_line(label: str, color: str, items: Sequence[int] | Sequence[bool], on_symbol: str) -> str:
+    def _build_history_line(
+        label: str, color: str, items: Sequence[int] | Sequence[bool], on_symbol: str
+    ) -> str:
         """Render a compact 20-step status strip for alerts or ground-truth labels."""
         recent = list(items[-20:])
         strip = "".join(on_symbol if item else "⚪" for item in recent)
@@ -329,9 +331,7 @@ class TerminalDashboard:
             lines.append(self._build_history_line("Alerts:", YELLOW, state.alerts, "🔴"))
         if cfg.show_labels and state.labels:
             lines.append(
-                self._build_history_line(
-                    "Labels:", GREEN, [lab == 1 for lab in state.labels], "🟢"
-                )
+                self._build_history_line("Labels:", GREEN, [lab == 1 for lab in state.labels], "🟢")
             )
 
         elapsed = time.time() - getattr(self, "_start_time", time.time())

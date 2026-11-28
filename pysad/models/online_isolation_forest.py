@@ -668,9 +668,7 @@ class OnlineIsolationForest(BaseModel):
 
     def _packed_tree_for_shap(
         self, tree_idx: int
-    ) -> tuple[
-        NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]
-    ]:
+    ) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any], NDArray[Any]]:
         """Extract packed tree arrays and cover fractions formatted for TreeSHAP."""
         tree = self.trees_[tree_idx]
         if tree.max_depth == 0:

@@ -364,7 +364,10 @@ class Data:
         data_path = os.path.join(self.data_base_path, data_file)
         if os.path.exists(data_path) or not self._is_default_path:
             return data_path
-        for fallback in (os.path.join("data", data_file), os.path.join("examples", "data", data_file)):
+        for fallback in (
+            os.path.join("data", data_file),
+            os.path.join("examples", "data", data_file),
+        ):
             if os.path.exists(fallback):
                 return fallback
         return data_path

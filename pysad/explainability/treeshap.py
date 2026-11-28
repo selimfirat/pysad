@@ -74,8 +74,8 @@ class _PathState:
                 orig_w = m_w[i]
                 unwound_w = next_one * (unique_depth + 1) / (one_fraction * (i + 1))
                 m_w[i] = unwound_w
-                next_one = (
-                    orig_w - unwound_w * zero_fraction * (unique_depth - i) / (unique_depth + 1)
+                next_one = orig_w - unwound_w * zero_fraction * (unique_depth - i) / (
+                    unique_depth + 1
                 )
         else:
             for i in range(unique_depth - 1, -1, -1):
@@ -98,8 +98,8 @@ class _PathState:
             for i in range(unique_depth - 1, -1, -1):
                 unwound_w = next_one * (unique_depth + 1) / (one_fraction * (i + 1))
                 total += unwound_w
-                next_one = (
-                    m_w[i] - unwound_w * zero_fraction * (unique_depth - i) / (unique_depth + 1)
+                next_one = m_w[i] - unwound_w * zero_fraction * (unique_depth - i) / (
+                    unique_depth + 1
                 )
             return total
 
@@ -154,7 +154,9 @@ def _accumulate_leaf(
     """Accumulate Shapley contributions at a leaf node across active path features."""
     for i in range(1, unique_depth + 1):
         weight = state.unwound_sum(unique_depth, i)
-        phi[state.feature_index[i]] += weight * (state.one_fraction[i] - state.zero_fraction[i]) * leaf_value
+        phi[state.feature_index[i]] += (
+            weight * (state.one_fraction[i] - state.zero_fraction[i]) * leaf_value
+        )
 
 
 def _recurse_tree(

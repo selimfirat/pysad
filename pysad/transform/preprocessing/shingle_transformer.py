@@ -140,7 +140,8 @@ class ShingleTransformer(BaseTransformer):
         """Adds all points in the batch to the history, keeping the last ``shingle_size - 1``."""
         arr = self._validate_batch(X)
         if arr is None:
-            return super().fit(X)  # type: ignore[return-value]
+            super().fit(X)
+            return self
         k = self.shingle_size
         if k > 1 and len(arr) > 0:
             for row in arr[-(k - 1) :]:

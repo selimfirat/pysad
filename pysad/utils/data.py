@@ -66,6 +66,11 @@ _ATTEMPTS = 3
 _RETRY_SECONDS = 5.0
 _TIMEOUT_SECONDS = 60.0
 
+_SMAP_PREFIX = "smap/"
+_CREDITCARD_FILE = "creditcard/creditcard.arff"
+_TSB_DRIFT_PREFIX = "tsb-drift/"
+_YAHOO_PREFIX = "yahoo/"
+_SWAT_PREFIX = "swat/"
 
 _DATASET_GROUPS: dict[str, tuple[str, Callable[[], Any]]] = {
     "odds": ("", lambda: _CHECKSUMS),
@@ -74,13 +79,13 @@ _DATASET_GROUPS: dict[str, tuple[str, Callable[[], Any]]] = {
     "ucr": ("ucr/", lambda: _UCR_SERIES),
     "kddcup99": ("", lambda: ["kddcup99/http.csv"]),
     "smd": ("smd/", lambda: _SMD_CHECKSUMS),
-    "smap": ("smap/", lambda: _SMAP_CHECKSUMS),
+    "smap": (_SMAP_PREFIX, lambda: _SMAP_CHECKSUMS),
     "msl": ("msl/", lambda: _MSL_CHECKSUMS),
-    "creditcard": ("", lambda: ["creditcard/creditcard.arff"]),
+    "creditcard": ("", lambda: [_CREDITCARD_FILE]),
     "insects": ("insects/", lambda: _INSECTS_FILES),
-    "tsb-drift": ("tsb-drift/", lambda: _TSB_DRIFT_SERIES),
-    "yahoo": ("yahoo/", lambda: _YAHOO_CHECKSUMS),
-    "swat": ("swat/", lambda: _SWAT_CHECKSUMS),
+    "tsb-drift": (_TSB_DRIFT_PREFIX, lambda: _TSB_DRIFT_SERIES),
+    "yahoo": (_YAHOO_PREFIX, lambda: _YAHOO_CHECKSUMS),
+    "swat": (_SWAT_PREFIX, lambda: _SWAT_CHECKSUMS),
 }
 
 
@@ -93,11 +98,14 @@ def _cleanup_file(path: str) -> None:
 
 def _fetch_url_to_file(url: str, dest_path: str) -> None:
     """Fetch `url` into `dest_path` with exponential backoff retries."""
+    if not url.startswith(("https://", "http://")):
+        raise ValueError(f"Unsupported URL scheme for download: {url!r}.")
     req = urllib.request.Request(url, headers={"User-Agent": "pysad", "Accept-Encoding": "gzip"})
+    open_url = urllib.request.urlopen
     for attempt in range(_ATTEMPTS):
         try:
             with (
-                urllib.request.urlopen(req, timeout=_TIMEOUT_SECONDS) as response,
+                open_url(req, timeout=_TIMEOUT_SECONDS) as response,
                 open(dest_path, "wb") as f,
             ):
                 gzipped = response.headers.get("Content-Encoding") == "gzip"
@@ -180,7 +188,7 @@ def _source(name: str) -> tuple[str, str]:
     """The URL and the SHA-256 checksum of a remote file of a dataset."""
     exact_resolvers: dict[str, Callable[[], tuple[str, str]]] = {
         "nab/combined_windows.json": lambda: (_NAB + "labels/combined_windows.json", _NAB_WINDOWS),
-        "creditcard/creditcard.arff": lambda: (_CREDITCARD, _CREDITCARD_CHECKSUM),
+        _CREDITCARD_FILE: lambda: (_CREDITCARD, _CREDITCARD_CHECKSUM),
         "kddcup99/http.csv": lambda: (_KDDCUP99, _KDDCUP99_CHECKSUM),
         _KDDCUP99_ARCHIVE: lambda: (_KDDCUP99, _KDDCUP99_CHECKSUM),
         _NASA_LABELS: lambda: (_NASA_LABELS_URL, _NASA_LABELS_CHECKSUM),
@@ -193,12 +201,12 @@ def _source(name: str) -> tuple[str, str]:
         ("smd/", lambda rel: (_SMD + "test/" + rel, _SMD_CHECKSUMS[rel][0])),
         ("insects/", lambda rel: (_INSECTS + _INSECTS_FILES[rel][0], _INSECTS_FILES[rel][1])),
         ("ucr/", lambda _rel: (_UCR, _UCR_CHECKSUM)),
-        ("tsb-drift/", lambda _rel: (_TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM)),
+        (_TSB_DRIFT_PREFIX, lambda _rel: (_TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM)),
         ("nab/", lambda rel: (_NAB + "data/" + rel, _NAB_CHECKSUMS[rel])),
-        ("smap/", lambda rel: (_NASA + rel, _SMAP_CHECKSUMS[rel])),
+        (_SMAP_PREFIX, lambda rel: (_NASA + rel, _SMAP_CHECKSUMS[rel])),
         ("msl/", lambda rel: (_NASA + rel, _MSL_CHECKSUMS[rel])),
-        ("yahoo/", lambda rel: (_YAHOO + rel, _YAHOO_CHECKSUMS[rel])),
-        ("swat/", lambda rel: (_SWAT + rel, _SWAT_CHECKSUMS[rel])),
+        (_YAHOO_PREFIX, lambda rel: (_YAHOO + rel, _YAHOO_CHECKSUMS[rel])),
+        (_SWAT_PREFIX, lambda rel: (_SWAT + rel, _SWAT_CHECKSUMS[rel])),
     )
     for prefix, resolve in prefix_resolvers:
         if name.startswith(prefix):
@@ -385,7 +393,7 @@ class Data:
             self._extract_ucr(file_name, data_path)
         elif file_name.startswith("kddcup99/"):
             self._extract_kddcup99(data_path)
-        elif file_name.startswith("tsb-drift/"):
+        elif file_name.startswith(_TSB_DRIFT_PREFIX):
             self._extract_tsb_drift(file_name, data_path)
         else:
             self._download(file_name, data_path)
@@ -394,7 +402,7 @@ class Data:
         self, file_name: str, data_path: str, download: bool, timestamps: bool
     ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Dispatch a resolved dataset file path to its format-specific loader."""
-        if file_name == "creditcard/creditcard.arff":
+        if file_name == _CREDITCARD_FILE:
             return self._load_creditcard(data_path)
 
         prefix_loaders: tuple[
@@ -407,10 +415,10 @@ class Data:
             ("nab/", lambda: self._load_nab(file_name, data_path, download, timestamps)),
             ("ucr/", lambda: self._load_ucr(file_name, data_path)),
             ("smd/", lambda: self._load_smd(file_name, data_path, download)),
-            (("smap/", "msl/"), lambda: self._load_nasa(file_name, data_path, download)),
-            ("tsb-drift/", lambda: self._load_tsb_drift(data_path)),
-            ("yahoo/", lambda: self._load_yahoo(data_path)),
-            ("swat/", lambda: self._load_swat(data_path)),
+            ((_SMAP_PREFIX, "msl/"), lambda: self._load_nasa(file_name, data_path, download)),
+            (_TSB_DRIFT_PREFIX, lambda: self._load_tsb_drift(data_path)),
+            (_YAHOO_PREFIX, lambda: self._load_yahoo(data_path)),
+            (_SWAT_PREFIX, lambda: self._load_swat(data_path)),
         )
         for prefix, loader in prefix_loaders:
             if file_name.startswith(prefix):
@@ -579,7 +587,10 @@ class Data:
         archive = os.path.join(self.data_base_path, _TSB_DRIFT_ARCHIVE_KEY)
         if not os.path.exists(archive):
             self._download(_TSB_DRIFT_ARCHIVE_KEY, archive)
-        with zipfile.ZipFile(archive) as z, z.open("TSB-AD-M/" + name[len("tsb-drift/") :]) as f:
+        with (
+            zipfile.ZipFile(archive) as z,
+            z.open("TSB-AD-M/" + name[len(_TSB_DRIFT_PREFIX) :]) as f,
+        ):
             content = f.read()
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
         with open(data_path, "wb") as f:

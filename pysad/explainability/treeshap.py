@@ -18,6 +18,7 @@ Deviations from the paper:
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -68,7 +69,7 @@ class _PathState:
         zero_fraction = self.zero_fraction[path_index]
         m_w = self.weight
 
-        if one_fraction != 0.0:
+        if one_fraction > 0.0:
             next_one = m_w[unique_depth]
             for i in range(unique_depth - 1, -1, -1):
                 orig_w = m_w[i]
@@ -93,7 +94,7 @@ class _PathState:
         m_w = self.weight
         total = 0.0
 
-        if one_fraction != 0.0:
+        if one_fraction > 0.0:
             next_one = m_w[unique_depth]
             for i in range(unique_depth - 1, -1, -1):
                 unwound_w = next_one * (unique_depth + 1) / (one_fraction * (i + 1))
@@ -190,8 +191,8 @@ def _recurse_tree(
         state.unwind(unique_depth, incoming_index)
         incoming_depth -= 1
 
-    visit_hot = hot_zero != 0.0 or hot_one != 0.0
-    visit_cold = cold_zero != 0.0
+    visit_hot = hot_zero > 0.0 or hot_one > 0.0
+    visit_cold = cold_zero > 0.0
     next_depth = incoming_depth + 1
 
     if visit_hot and visit_cold:
@@ -326,7 +327,7 @@ def treeshap_ensemble_weighted(
     """
     total_phi = np.zeros(num_features, dtype=np.float64)
     total_weight = float(tree_weights.sum())
-    if total_weight == 0.0:
+    if math.isclose(total_weight, 0.0, abs_tol=0.0):
         return total_phi
 
     if trees_left_fractions is None:
@@ -342,7 +343,7 @@ def treeshap_ensemble_weighted(
         trees_left_fractions,
         strict=True,
     ):
-        if len(features) == 0 or weight == 0.0:
+        if len(features) == 0 or math.isclose(float(weight), 0.0, abs_tol=0.0):
             continue
         tree = _make_tree_arrays(features, thresholds, left, right, values, left_fracs)
         total_phi += _treeshap_tree(x, tree, num_features) * weight

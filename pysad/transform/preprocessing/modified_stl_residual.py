@@ -9,6 +9,9 @@ from numpy.typing import ArrayLike, NDArray
 from pysad.core.base_transformer import BaseTransformer
 from pysad.utils import Window
 
+_CYCLE_FIT_EINSUM = "pfc,pc->pf"
+_WINDOW_REQUIRED_ERROR = "window_size is required for partial transforms."
+
 # The STL functions below follow the NETLIB Fortran STL of Cleveland et al. (1990) that R's stl()
 # calls, with the settings of stl(s.window = "periodic"). They are adapted from the port in
 # statsmodels 0.15.0 (statsmodels/tsa/stl/_stl.pyx, https://github.com/statsmodels/statsmodels),
@@ -49,7 +52,8 @@ def _loess(
         total = w.sum(axis=1)
         w /= total[:, None]
         if degree > 0:
-            assert rng is not None
+            if rng is None:
+                raise ValueError("rng is required when degree > 0.")
             if not finite_j:
                 J = np.where(np.isfinite(J), J, 0.0)
             center = (w * J).sum(axis=1)
@@ -198,11 +202,11 @@ def _periodic_stl_seasonal(y: NDArray[Any], period: int, robust: bool) -> NDArra
         for _ in range(num_inner):
             Y = np.where(valid, (y - trend)[cycle_idx], 0.0)
             if rw is None:
-                fits = np.einsum("pfc,pc->pf", base_norm, Y)
+                fits = np.einsum(_CYCLE_FIT_EINSUM, base_norm, Y)
             else:
                 rw_c = np.where(valid, rw[cycle_idx], 0.0)
-                numer = np.einsum("pfc,pc->pf", base4, rw_c * Y)
-                total = np.einsum("pfc,pc->pf", base4, rw_c)
+                numer = np.einsum(_CYCLE_FIT_EINSUM, base4, rw_c * Y)
+                total = np.einsum(_CYCLE_FIT_EINSUM, base4, rw_c)
                 with np.errstate(divide="ignore", invalid="ignore"):
                     fits = numer / total
                 fits[total <= 0] = np.nan
@@ -327,12 +331,13 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
         return float(arr[0])
 
     def _current_values(self) -> NDArray[Any]:
-        assert self.window is not None
+        if self.window is None:
+            raise ValueError(_WINDOW_REQUIRED_ERROR)
         return np.asarray(self.window.get(), dtype=np.float64)
 
     def _candidate_values(self, X: ArrayLike) -> NDArray[Any]:
-        assert self.window is not None
-        assert self.window_size is not None
+        if self.window is None or self.window_size is None:
+            raise ValueError(_WINDOW_REQUIRED_ERROR)
         value = self._as_partial_value(X)
         values = self.window.get() + [value]
         values = values[-self.window_size :]
@@ -354,7 +359,7 @@ class ModifiedSTLResidualTransformer(BaseTransformer):
             np.float64 array of shape (1,): The modified STL residual of ``X``, or ``[0.0]`` if the window has at most ``2 * period`` observations.
         """
         if self.window is None:
-            raise ValueError("window_size is required for partial transforms.")
+            raise ValueError(_WINDOW_REQUIRED_ERROR)
 
         return self._latest_residual(self._candidate_values(X))
 

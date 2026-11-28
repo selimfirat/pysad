@@ -15,7 +15,8 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.stateful import RuleBasedStateMachine, initialize, rule
 
-from pysad.utils import RingBuffer
+from pysad.utils import RingBuffer, Window
+from pysad.utils.window import _median_and_mad_sorted
 
 MAX_EXAMPLES = 40
 
@@ -365,3 +366,66 @@ _VectorRingBufferMachine = STATEFUL_SETTINGS(_VectorRingBufferMachine)
 TestVectorRingBufferChronology = _VectorRingBufferMachine.TestCase
 TestVectorRingBufferChronology.__name__ = "TestVectorRingBufferChronology"
 TestVectorRingBufferChronology.__qualname__ = "TestVectorRingBufferChronology"
+
+
+def test_ring_buffer_extend_slices_oldest_and_clear():
+    buf = RingBuffer(4)
+    buf.extend([])
+    assert buf.window_slices()[0].size == 0
+    assert buf.window_slices()[1] is None
+    assert buf.oldest() is None
+
+    buf.extend([1.0, 2.0, 3.0])
+    assert buf.oldest() == 1.0
+    s1, s2 = buf.window_slices()
+    assert s2 is None
+    np.testing.assert_array_equal(s1, [1.0, 2.0, 3.0])
+
+    # Wrap around with a 3-element extend on a 4-slot buffer.
+    buf.extend([4.0, 5.0, 6.0])
+    assert buf.oldest() == 3.0
+    p1, p2 = buf.window_slices()
+    ordered = np.concatenate((p1, p2)) if p2 is not None else p1
+    np.testing.assert_array_equal(ordered, [3.0, 4.0, 5.0, 6.0])
+
+    # Batch larger than capacity keeps only the tail window_size items.
+    buf.extend([10.0, 11.0, 12.0, 13.0, 14.0])
+    np.testing.assert_array_equal(buf.to_array(), [11.0, 12.0, 13.0, 14.0])
+
+    with pytest.raises(ValueError, match="items must have shape"):
+        buf.extend(np.array([[1.0, 2.0], [3.0, 4.0]]))
+
+    buf.clear()
+    assert len(buf) == 0
+    assert buf.oldest() is None
+
+    vbuf = RingBuffer(2)
+    vbuf.extend(np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]))
+    np.testing.assert_array_equal(vbuf.oldest(), [3.0, 4.0])
+    np.testing.assert_array_equal(vbuf.to_array(), [[3.0, 4.0], [5.0, 6.0]])
+
+
+def test_window_batch_and_sorted_mad():
+    with pytest.raises(ValueError, match="window_size"):
+        Window(0)
+
+    win = Window(3)
+    win.update(1.0)
+    win.update_batch([2.0, 3.0, 4.0])
+    assert len(win) == 3
+    np.testing.assert_array_equal(win.get_array(), [2.0, 3.0, 4.0])
+    assert list(win) == [2.0, 3.0, 4.0]
+
+    with pytest.raises(ValueError, match="1-D sequence"):
+        win.update_batch(np.array([[1.0, 2.0]]))
+
+    for arr in (
+        np.array([5.0]),
+        np.array([2.0, 2.0, 2.0, 2.0]),
+        np.array([1.0, 2.0, 3.0, 7.0, 11.0]),
+        np.array([1.0, 1.5, 2.0, 10.0, 10.0, 20.0]),
+        np.array([0.0, 0.0, 1.0, 10.0, 100.0]),
+    ):
+        med, mad = _median_and_mad_sorted(arr)
+        assert med == pytest.approx(float(np.median(arr)))
+        assert mad == pytest.approx(float(np.median(np.abs(arr - np.median(arr)))))

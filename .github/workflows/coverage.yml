@@ -26,6 +26,9 @@ on:
       - ".github/workflows/scorecard.yml"
       - ".github/workflows/stale.yml"
       - ".github/workflows/weekly.yml"
+      - ".clusterfuzzlite/**"
+      - ".github/workflows/cflite.yml"
+      - "fuzz/**"
   pull_request:
     paths-ignore:
       - "docs/**"
@@ -50,6 +53,9 @@ on:
       - ".github/workflows/scorecard.yml"
       - ".github/workflows/stale.yml"
       - ".github/workflows/weekly.yml"
+      - ".clusterfuzzlite/**"
+      - ".github/workflows/cflite.yml"
+      - "fuzz/**"
 
 permissions:
   contents: read
@@ -174,6 +180,7 @@ jobs:
           coverage combine coverage.shard-*
           coverage lcov -o coverage.lcov
       - name: Upload to Coveralls
+        continue-on-error: true
         uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

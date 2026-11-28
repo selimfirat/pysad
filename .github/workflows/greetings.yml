@@ -15,6 +15,9 @@ permissions:
 
 jobs:
   greeting:
+    if: >-
+      (github.event_name == 'pull_request_target' && !contains(fromJson('["OWNER","MEMBER","COLLABORATOR","CONTRIBUTOR"]'), github.event.pull_request.author_association)) ||
+      (github.event_name == 'issues' && !contains(fromJson('["OWNER","MEMBER","COLLABORATOR","CONTRIBUTOR"]'), github.event.issue.author_association))
     runs-on: ubuntu-latest
     permissions:
       issues: write

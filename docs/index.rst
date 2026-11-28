@@ -106,14 +106,14 @@ If you use uv, run the live dashboard with ``uvx``:
 - The :doc:`live dashboard <api/live>` displays streaming scores and alerts in your terminal. Add ``--web`` to open the web dashboard, or use ``--source data.csv`` for your own data.
 - :doc:`pysad.mcp <guides/mcp>` exposes detectors, drift meters, and explanations through the Model Context Protocol (MCP). Install ``pysad[mcp]``, then run ``pysad-mcp``. The server auto-discovers detectors from ``pysad.models.__all__`` and statistics from ``pysad.statistics.__all__``. Tool names use ``pysad_<lowercase_name>``. Each tool includes metadata for constructor parameters and defaults.
 
-Optional PyO3 kernels (pysad_kernels)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Optional PyO3 kernels
+^^^^^^^^^^^^^^^^^^^^^
 
-Install the optional PyO3 Rust extension separately from PySAD:
+Install the optional PyO3 Rust kernels with PySAD:
 
 .. code-block:: console
 
-   $ pip install pysad_kernels
+   $ pip install "pysad[kernels]"
 
 The extension provides kernels for four detectors:
 
@@ -131,13 +131,7 @@ To build from a source checkout, install ``maturin`` and run these commands from
 
    $ pip install maturin
    $ maturin build --manifest-path rust/Cargo.toml --release --locked
-   $ pip install rust/target/wheels/pysad_kernels-0.1.0-*.whl
-
-Make sure that Python can import the extension:
-
-.. code-block:: console
-
-   $ python -c "import pysad_kernels; print(pysad_kernels.__file__)"
+   $ pip install rust/target/wheels/*.whl
 
 Migration guides
 ----------------

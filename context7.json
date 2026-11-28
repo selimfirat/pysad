@@ -46,7 +46,7 @@
         "Tune the run with --detector-seed, --detector-kwargs, --calibrator-window, --calibrator-kwargs, and --threshold; adjust the terminal with --width, --height, --history, --refresh-rate, --max-features, --no-labels, and --no-ribbon.",
         "Open the web dashboard with --web --port 8080 --host 127.0.0.1, or run headless JSON output with --json-output and log alerts to a file with --log-file.",
         "Install pysad[mcp] and run pysad-mcp. The server auto-discovers tools from pysad.models.__all__ and pysad.statistics.__all__. Each discovered tool is named pysad_<lowercase_name> and lists constructor parameters and defaults in its metadata.",
-        "Install the optional PyO3 extension separately with pip install pysad_kernels. HalfSpaceTrees and RobustRandomCutForest use available tree kernels automatically. LODA and StreamKMPlusPlus need use_rust=True.",
+        "Install the optional PyO3 kernels with pip install pysad[kernels]. HalfSpaceTrees and RobustRandomCutForest use available tree kernels automatically. LODA and StreamKMPlusPlus need use_rust=True.",
         "If a kernel is unavailable, the detector uses NumPy. Floating-point rounding can change StreamKMPlusPlus cluster assignments."
     ]
 }

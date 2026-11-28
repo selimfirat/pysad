@@ -365,18 +365,18 @@ class BaseModel(ABC):
         Returns:
             np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
         """
-        y_pred = np.empty(X.shape[0], dtype=np.float64)
         if _clean_numeric_batch(X):
+            y_pred = np.empty(len(X), dtype=np.float64)
             score_fn = type(self)._raw_score_partial.__get__(self)
             for i in range(len(X)):
                 raw = score_fn(X[i])
                 y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
             return y_pred
 
-        for i, (xi, _) in enumerate(_iterate(X)):
-            y_pred[i] = _to_float_score(self.score_partial(xi))
-
-        return y_pred
+        return np.array(
+            [_to_float_score(self.score_partial(xi)) for xi, _ in _iterate(X)],
+            dtype=np.float64,
+        )
 
     def fit_score(self, X: NDArray[Any], y: NDArray[Any] | None = None) -> NDArray[Any]:
         """Applies ``fit_score_partial`` to each instance in order and returns the scores.
@@ -391,14 +391,15 @@ class BaseModel(ABC):
         Returns:
             np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
         """
-        y_pred = np.empty(X.shape[0], dtype=np.float64)
         if not _clean_numeric_batch(X):
-            for i, (xi, yi) in enumerate(_iterate(X, y)):
-                y_pred[i] = _to_float_score(self.fit_score_partial(xi, yi))
-            return y_pred
+            return np.array(
+                [_to_float_score(self.fit_score_partial(xi, yi)) for xi, yi in _iterate(X, y)],
+                dtype=np.float64,
+            )
 
         if y is not None and len(X) != len(y):
             raise ValueError("X and y must have the same length.")
+        y_pred = np.empty(len(X), dtype=np.float64)
         cls = type(self)
         if cls._raw_fit_score_partial is None:
             _run_separate_fit_score(

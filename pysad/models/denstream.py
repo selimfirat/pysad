@@ -371,7 +371,10 @@ class DenStream(BaseModel):
         if self.o_micro_clusters_:
             idx, nearest_o, _ = self._get_nearest_cluster(X, self.o_micro_clusters_)
             if nearest_o is not None and self._merge_into_cluster(X, nearest_o, self.timestamp_):
-                if nearest_o.calc_weight(self.timestamp_) > self._core_threshold and idx is not None:
+                if (
+                    nearest_o.calc_weight(self.timestamp_) > self._core_threshold
+                    and idx is not None
+                ):
                     self.o_micro_clusters_.pop(idx)
                     self.p_micro_clusters_.append(nearest_o)
                 return

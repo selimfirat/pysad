@@ -198,6 +198,65 @@ class FeedbackHST(BaseModel):
     # Streaming buffer
     _stream_buffer: list[NDArray[np.float64]]
 
+    @staticmethod
+    def _validate_init_params(
+        int_params: list[tuple[str, Any]],
+        random_work_space: bool,
+        check_kl_divergence: bool,
+        kl_alpha: float,
+        replace_frac: float,
+        tau: float,
+        learning_rate: float,
+        max_epochs: int,
+        rmsprop_decay: float,
+        rmsprop_eps: float,
+        prior_influence: float,
+        score_transition_window: int,
+    ) -> None:
+        """Validate constructor hyperparameters and raise ValueError on invalid values."""
+        for name, value in int_params:
+            if isinstance(value, bool) or not isinstance(value, numbers.Integral) or value < 1:
+                raise ValueError(f"{name} must be a positive integer, got {value!r}.")
+        for name, flag in (
+            ("random_work_space", random_work_space),
+            ("check_kl_divergence", check_kl_divergence),
+        ):
+            if not isinstance(flag, bool | np.bool_):
+                raise ValueError(f"{name} must be a bool, got {flag!r}.")
+        FeedbackHST._check_range(kl_alpha, "kl_alpha", 0.0, 1.0, False, False)
+        FeedbackHST._check_range(replace_frac, "replace_frac", 0.0, 1.0, True, True)
+        FeedbackHST._check_range(tau, "tau", 0.0, 1.0, False, False)
+        FeedbackHST._check_range(rmsprop_decay, "rmsprop_decay", 0.0, 1.0, True, False)
+        for name, value, min_val in (
+            ("learning_rate", learning_rate, 0.0),
+            ("rmsprop_eps", rmsprop_eps, 0.0),
+        ):
+            if value <= min_val:
+                raise ValueError(f"{name} must be positive, got {value!r}.")
+        if prior_influence < 0.0:
+            raise ValueError(f"prior_influence must be non-negative, got {prior_influence!r}.")
+        if not isinstance(max_epochs, numbers.Integral) or max_epochs < 1:
+            raise ValueError(f"max_epochs must be a positive integer, got {max_epochs!r}.")
+        if not isinstance(score_transition_window, numbers.Integral) or score_transition_window < 0:
+            raise ValueError(
+                f"score_transition_window must be a non-negative integer, got {score_transition_window!r}."
+            )
+
+    @staticmethod
+    def _check_range(
+        value: float,
+        name: str,
+        lo: float,
+        hi: float,
+        lo_inc: bool,
+        hi_inc: bool,
+    ) -> None:
+        """Raise ValueError when `value` falls outside `(lo, hi)` / `[lo, hi]`."""
+        below = value < lo if lo_inc else value <= lo
+        above = value > hi if hi_inc else value >= hi
+        if below or above:
+            raise ValueError(f"{name} out of valid range [{lo}, {hi}], got {value!r}.")
+
     def __init__(
         self,
         feature_mins: NDArray[Any] | list[float] | tuple[float, ...],
@@ -223,50 +282,25 @@ class FeedbackHST(BaseModel):
         # after first feedback to avoid discontinuity. 0 = immediate switch.
         score_transition_window: int = 50,
     ) -> None:
-        # Validate parameters
-        for name, value in [
-            ("window_size", window_size),
-            ("num_trees", num_trees),
-            ("max_depth", max_depth),
-            ("feedback_budget", feedback_budget),
-        ]:
-            if isinstance(value, bool) or not isinstance(value, numbers.Integral) or value < 1:
-                raise ValueError(f"{name} must be a positive integer, got {value!r}.")
-
-        if not isinstance(random_work_space, bool | np.bool_):
-            raise ValueError(f"random_work_space must be a bool, got {random_work_space!r}.")
-
-        if not isinstance(check_kl_divergence, bool | np.bool_):
-            raise ValueError(f"check_kl_divergence must be a bool, got {check_kl_divergence!r}.")
-
-        if not (0.0 < kl_alpha < 1.0):
-            raise ValueError(f"kl_alpha must be in (0, 1), got {kl_alpha!r}.")
-
-        if not (0.0 <= replace_frac <= 1.0):
-            raise ValueError(f"replace_frac must be in [0, 1], got {replace_frac!r}.")
-
-        if not (0.0 < tau < 1.0):
-            raise ValueError(f"tau must be in (0, 1), got {tau!r}.")
-
-        if not (0.0 < learning_rate):
-            raise ValueError(f"learning_rate must be positive, got {learning_rate!r}.")
-
-        if not isinstance(max_epochs, numbers.Integral) or max_epochs < 1:
-            raise ValueError(f"max_epochs must be a positive integer, got {max_epochs!r}.")
-
-        if not (0.0 <= rmsprop_decay < 1.0):
-            raise ValueError(f"rmsprop_decay must be in [0, 1), got {rmsprop_decay!r}.")
-
-        if not (0.0 < rmsprop_eps):
-            raise ValueError(f"rmsprop_eps must be positive, got {rmsprop_eps!r}.")
-
-        if not (0.0 <= prior_influence):
-            raise ValueError(f"prior_influence must be non-negative, got {prior_influence!r}.")
-
-        if not isinstance(score_transition_window, numbers.Integral) or score_transition_window < 0:
-            raise ValueError(
-                f"score_transition_window must be a non-negative integer, got {score_transition_window!r}."
-            )
+        self._validate_init_params(
+            int_params=[
+                ("window_size", window_size),
+                ("num_trees", num_trees),
+                ("max_depth", max_depth),
+                ("feedback_budget", feedback_budget),
+            ],
+            random_work_space=random_work_space,
+            check_kl_divergence=check_kl_divergence,
+            kl_alpha=kl_alpha,
+            replace_frac=replace_frac,
+            tau=tau,
+            learning_rate=learning_rate,
+            max_epochs=max_epochs,
+            rmsprop_decay=rmsprop_decay,
+            rmsprop_eps=rmsprop_eps,
+            prior_influence=prior_influence,
+            score_transition_window=score_transition_window,
+        )
 
         self.feature_mins, self.feature_maxes = check_feature_bounds(feature_mins, feature_maxes)
 
@@ -441,6 +475,24 @@ class FeedbackHST(BaseModel):
 
         return csr_matrix((data, (rows, cols)), shape=(n, m))
 
+    @staticmethod
+    def _margin_gradient(
+        X_feat: csr_matrix,
+        indices: NDArray[np.intp],
+        scores: NDArray[np.float64],
+        q_val: float,
+        sign: float,
+    ) -> NDArray[np.float64] | None:
+        """Compute average sparse feature gradient across violated anomaly or nominal margins."""
+        if len(indices) == 0:
+            return None
+        margins = (q_val - scores[indices]) if sign < 0 else (scores[indices] - q_val)
+        active = margins > 0
+        if not np.any(active):
+            return None
+        active_rows = indices[active]
+        return sign * np.asarray(X_feat[active_rows].sum(axis=0)).ravel() / max(1, len(active_rows))
+
     def _update_weights_from_feedback(
         self,
         X_labeled: NDArray[np.float64],
@@ -456,79 +508,45 @@ class FeedbackHST(BaseModel):
         """
         if self._region_weights is None:
             self._initialize_weights()
+        if self._region_weights is None or self._uniform_weights is None:
+            raise RuntimeError("FeedbackHST weights are not initialized.")
 
-        # Combine labeled and unlabeled
-        n_labeled = X_labeled.shape[0]
-        n_unlabeled = X_unlabeled.shape[0]
-        n_total = n_labeled + n_unlabeled
+        n_total = X_labeled.shape[0] + X_unlabeled.shape[0]
+        X_feat = self._transform_to_ensemble_features(np.vstack([X_labeled, X_unlabeled]))
+        ha = np.nonzero(y_labeled == 1)[0]
+        hn = np.nonzero(y_labeled == 0)[0]
 
-        X_all = np.vstack([X_labeled, X_unlabeled])
-
-        # Transform to ensemble feature space (sparse)
-        X_feat = self._transform_to_ensemble_features(X_all)
-
-        # Indices of labeled anomalies and nominals
-        ha = np.where(y_labeled == 1)[0]
-        hn = np.where(y_labeled == 0)[0]
-
-        # Tau-quantile threshold
         bt_topK = max(1, int(self.tau * n_total))
         tau_rank = min(bt_topK, n_total - 1)
+        prior_weight = self.prior_influence / max(1.0, len(ha) + len(hn))
 
-        # RMSProp optimization (as in reference)
-        assert self._region_weights is not None
-        assert self._uniform_weights is not None
         w = self._region_weights.copy()
+        uniform_w = self._uniform_weights
         cache = np.zeros_like(w)
         decay = self.rmsprop_decay
         eps = self.rmsprop_eps
 
         for _ in range(self.max_epochs):
-            # Compute scores: X_feat @ w
             scores = X_feat.dot(w).ravel()
-
-            # Constraint: anomalies should score above tau-th quantile, nominals below
             q_val = float(np.quantile(scores, 1.0 - bt_topK / n_total))
-            sorted_idx = np.argsort(scores)[::-1]
-            tau_idx = sorted_idx[tau_rank]
+            tau_idx = np.argsort(scores)[::-1][tau_rank]
 
-            # Gradient of linear loss
             grad = np.zeros_like(w)
+            anom_grad = self._margin_gradient(X_feat, ha, scores, q_val, -1.0)
+            if anom_grad is not None:
+                grad += anom_grad
+            noml_grad = self._margin_gradient(X_feat, hn, scores, q_val, 1.0)
+            if noml_grad is not None:
+                grad += noml_grad
 
-            # Anomaly constraints: for each anomaly, subtract weight of its active leaves
-            if len(ha) > 0:
-                anomaly_margins = q_val - scores[ha]
-                active = anomaly_margins > 0
-                if np.any(active):
-                    active_ha = ha[active]
-                    # For each active anomaly, decrement the weight of its active leaf per tree
-                    X_feat_anom = X_feat[active_ha]
-                    grad -= np.asarray(X_feat_anom.sum(axis=0)).ravel() / max(1, len(active_ha))
-
-            # Nominal constraints: for each nominal, add weight of its active leaves
-            if len(hn) > 0:
-                nominal_margins = scores[hn] - q_val
-                active = nominal_margins > 0
-                if np.any(active):
-                    active_hn = hn[active]
-                    X_feat_noml = X_feat[active_hn]
-                    grad += np.asarray(X_feat_noml.sum(axis=0)).ravel() / max(1, len(active_hn))
-
-            # Tau instance constraint
             margin = scores[tau_idx] - q_val
             if abs(margin) > 1e-8:
-                X_feat_tau = X_feat[tau_idx]
-                grad += np.sign(margin) * X_feat_tau.toarray().ravel()
+                grad += np.sign(margin) * X_feat[tau_idx].toarray().ravel()
 
-            # Prior regularization (pull toward uniform)
-            prior_influence = self.prior_influence / max(1.0, len(ha) + len(hn))
-            grad += prior_influence * (w - self._uniform_weights)
-
-            # RMSProp update
+            grad += prior_weight * (w - uniform_w)
             cache = decay * cache + (1 - decay) * grad**2
             w -= self.learning_rate * grad / (np.sqrt(cache) + eps)
 
-            # Normalize
             w_norm = np.sqrt(w.dot(w))
             if w_norm > 0:
                 w = w / w_norm
@@ -607,11 +625,13 @@ class FeedbackHST(BaseModel):
             return False
 
         new_dists = self._compute_node_distributions(X_new)
-        assert self._ref_node_dists is not None
+        if self._ref_node_dists is None:
+            raise RuntimeError("Drift reference distributions are not initialized.")
         kl_trees, _ = self._compute_kl_divergence(self._ref_node_dists, new_dists)
 
         if self.check_kl_divergence:
-            assert self._kl_q_alpha is not None
+            if self._kl_q_alpha is None:
+                raise RuntimeError("KL thresholds are not initialized.")
             replace_mask = kl_trees > self._kl_q_alpha
             n_replace = int(np.sum(replace_mask))
             n_threshold = int(2 * self.kl_alpha * self.num_trees)
@@ -646,6 +666,35 @@ class FeedbackHST(BaseModel):
             kl_trees[tree] = kl
         return kl_trees, float(np.mean(kl_trees))
 
+    def _rebuild_tree(self, tree: int) -> None:
+        """Rebuild one half-space tree's split attributes and threshold values."""
+        num_splits = 2**self.max_depth - 1
+        mins, maxes = self._hst._work_space(self._rng)
+        atts_depth_first = self._rng.randint(self.num_dimensions, size=num_splits)
+
+        level = np.zeros(1, dtype=np.intp)
+        levels = [level]
+        for k in range(self.max_depth - 1):
+            level = np.stack([level + 1, level + 2 ** (self.max_depth - k - 1)], axis=1).ravel()
+            levels.append(level)
+        atts = atts_depth_first[np.concatenate(levels)]
+
+        values = np.empty(num_splits)
+        for k in range(self.max_depth):
+            nodes = np.arange(2**k - 1, 2 ** (k + 1) - 1)
+            q = atts[nodes]
+            lower, upper = mins[q], maxes[q]
+            for ancestor_depth in range(k):
+                ancestors = ((nodes + 1) >> (k - ancestor_depth)) - 1
+                goes_right = (((nodes + 1) >> (k - ancestor_depth - 1)) & 1) == 1
+                splits_q = atts[ancestors] == q
+                upper = np.where(splits_q & ~goes_right, values[ancestors], upper)
+                lower = np.where(splits_q & goes_right, values[ancestors], lower)
+            values[nodes] = (upper + lower) / 2.0
+
+        self._hst.split_atts[tree] = atts
+        self._hst.split_values[tree] = values
+
     def _replace_trees(self, replace_mask: NDArray[np.bool_], X_new: NDArray[np.float64]) -> None:
         """Rebuild trees marked for replacement using new window data.
 
@@ -654,40 +703,10 @@ class FeedbackHST(BaseModel):
         window; the ``ad_examples`` reference implementation only updates node counts
         and raises ``NotImplementedError`` for HSTree replacement.
         """
-        num_splits = 2**self.max_depth - 1
         num_leaves = 2**self.max_depth
-
         for tree in range(self.num_trees):
             if replace_mask[tree]:
-                # Rebuild this tree's splits using the same logic as HalfSpaceTrees
-                mins, maxes = self._hst._work_space(self._rng)
-                atts_depth_first = self._rng.randint(self.num_dimensions, size=num_splits)
-
-                # Position in depth-first order of every internal node, level by level in heap order
-                level = np.zeros(1, dtype=np.intp)
-                levels = [level]
-                for k in range(self.max_depth - 1):
-                    level = np.stack(
-                        [level + 1, level + 2 ** (self.max_depth - k - 1)], axis=1
-                    ).ravel()
-                    levels.append(level)
-                atts = atts_depth_first[np.concatenate(levels)]
-
-                values = np.empty(num_splits)
-                for k in range(self.max_depth):
-                    nodes = np.arange(2**k - 1, 2 ** (k + 1) - 1)
-                    q = atts[nodes]
-                    lower, upper = mins[q], maxes[q]
-                    for ancestor_depth in range(k):
-                        ancestors = ((nodes + 1) >> (k - ancestor_depth)) - 1
-                        goes_right = (((nodes + 1) >> (k - ancestor_depth - 1)) & 1) == 1
-                        splits_q = atts[ancestors] == q
-                        upper = np.where(splits_q & ~goes_right, values[ancestors], upper)
-                        lower = np.where(splits_q & goes_right, values[ancestors], lower)
-                    values[nodes] = (upper + lower) / 2.0
-
-                self._hst.split_atts[tree] = atts
-                self._hst.split_values[tree] = values
+                self._rebuild_tree(tree)
 
                 # Reset masses for this tree
                 self._hst.l_mass[tree].fill(0)

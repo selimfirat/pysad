@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import importlib
 import sys
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -184,6 +185,24 @@ class TerminalDashboard:
 
         return "".join(bar)
 
+    @staticmethod
+    def _norm_pos(value: float, min_val: float, span: float, width: int) -> int:
+        """Normalize a metric into `[0, width - 1]` for ASCII ribbon placement."""
+        pos = int(((value - min_val) / span) * (width - 1))
+        return max(0, min(pos, width - 1))
+
+    @staticmethod
+    def _ribbon_chars(l_pos: int, u_pos: int, s_pos: int, width: int) -> tuple[str, str]:
+        """Return `(upper_char, lower_char)` for one ribbon column."""
+        if width <= 0:
+            return " ", " "
+        upper_char = f"{RIBBON_COLOR}═{RESET}"
+        if l_pos > u_pos:
+            return upper_char, " "
+        if l_pos == s_pos:
+            return upper_char, f"{SCORE_COLOR}●{RESET}"
+        return upper_char, f"{RIBBON_COLOR}░{RESET}"
+
     def _render_ribbon(self, width: int) -> str:
         """Render the conformal ribbon (confidence band)."""
         if not self.state.lower_bounds or not self.state.upper_bounds:
@@ -192,75 +211,30 @@ class TerminalDashboard:
         recent_lower = self.state.lower_bounds[-width:]
         recent_upper = self.state.upper_bounds[-width:]
         recent_scores = self.state.calibrated_scores[-width:]
-
         if len(recent_lower) < 2:
             return ""
 
         min_val = min(min(recent_lower), min(recent_scores))
         max_val = max(max(recent_upper), max(recent_scores))
-        if max_val == min_val:
-            max_val = min_val + 1e-6
+        span = max_val - min_val if max_val != min_val else 1e-6
 
-        # Create a two-line ribbon visualization
-        # Top line: upper bound
-        # Bottom line: lower bound with filled area between
-        upper_line = []
-        lower_line = []
-
+        upper_line: list[str] = []
+        lower_line: list[str] = []
         for i in range(len(recent_lower)):
-            u_val = recent_upper[i]
-            l_val = recent_lower[i]
             s_val = recent_scores[i] if i < len(recent_scores) else 0
-
-            u_norm = (u_val - min_val) / (max_val - min_val)
-            l_norm = (l_val - min_val) / (max_val - min_val)
-            s_norm = (s_val - min_val) / (max_val - min_val)
-
-            u_pos = int(u_norm * (width - 1))
-            l_pos = int(l_norm * (width - 1))
-            s_pos = int(s_norm * (width - 1))
-
-            u_pos = max(0, min(u_pos, width - 1))
-            l_pos = max(0, min(l_pos, width - 1))
-            s_pos = max(0, min(s_pos, width - 1))
-
-            # Build upper line
-            upper_char = " "
-            for pos in range(width):
-                if pos == u_pos:
-                    upper_char = f"{RIBBON_COLOR}═{RESET}"
-                    break
-            upper_line.append(upper_char)
-
-            # Build lower line with fill
-            lower_char = " "
-            for pos in range(width):
-                if l_pos <= pos <= u_pos:
-                    if pos == s_pos:
-                        lower_char = f"{SCORE_COLOR}●{RESET}"
-                    else:
-                        lower_char = f"{RIBBON_COLOR}░{RESET}"
-                    break
-            lower_line.append(lower_char)
+            u_pos = self._norm_pos(recent_upper[i], min_val, span, width)
+            l_pos = self._norm_pos(recent_lower[i], min_val, span, width)
+            s_pos = self._norm_pos(s_val, min_val, span, width)
+            u_char, l_char = self._ribbon_chars(l_pos, u_pos, s_pos, width)
+            upper_line.append(u_char)
+            lower_line.append(l_char)
 
         return f"{''.join(upper_line)}\n{''.join(lower_line)}"
 
-    def render(self) -> None:
-        """Render the current dashboard state."""
-        if self._first_render:
-            self._clear_screen()
-            self._hide_cursor()
-            self._first_render = False
-
-        # Move cursor to top if we've rendered before
-        if self._lines_rendered > 0:
-            self._move_cursor_up(self._lines_rendered)
-
-        lines = []
+    def _build_header_box(self) -> str:
+        """Build the bordered ANSI header box for the terminal dashboard."""
         cfg = self.config
         state = self.state
-
-        # Header
         plain_header = (
             f"PySAD Live Anomaly Detection │ "
             f"{state.detector_name} + {state.calibrator_name} │ "
@@ -275,89 +249,100 @@ class TerminalDashboard:
         )
         box_width = max(cfg.width, len(plain_header) + 4)
         pad = " " * (box_width - 4 - len(plain_header))
-        header = (
-            f"{BRIGHT_WHITE}╔{'═' * (box_width - 2)}╗{RESET}\n"
+        border = "═" * (box_width - 2)
+        return (
+            f"{BRIGHT_WHITE}╔{border}╗{RESET}\n"
             f"{BRIGHT_WHITE}║{RESET} {colored_header}{pad} {BRIGHT_WHITE}║{RESET}\n"
-            f"{BRIGHT_WHITE}╚{'═' * (box_width - 2)}╝{RESET}"
+            f"{BRIGHT_WHITE}╚{border}╝{RESET}"
         )
-        lines.append(header)
 
-        # Feature streams
-        if state.feature_values:
-            num_features = min(len(state.feature_values[0]), cfg.max_features)
-            feature_lines = []
+    def _build_feature_lines(self) -> list[str]:
+        """Render recent feature sparklines capped at `config.max_features`."""
+        state = self.state
+        if not state.feature_values:
+            return []
+        cfg = self.config
+        num_features = min(len(state.feature_values[0]), cfg.max_features)
+        lines: list[str] = []
+        for feat_idx in range(num_features):
+            feat_name = (
+                state.feature_names[feat_idx]
+                if feat_idx < len(state.feature_names)
+                else f"feature_{feat_idx}"
+            )
+            feat_vals = [v[feat_idx] for v in state.feature_values]
+            color = FEATURE_COLORS[feat_idx % len(FEATURE_COLORS)]
+            spark = self._render_sparkline(feat_vals, cfg.width - 20, color)
+            lines.append(f"  {color}{feat_name:<16}{RESET} {spark} {feat_vals[-1]:>8.3f}")
+        return lines
 
-            for feat_idx in range(num_features):
-                feat_name = (
-                    state.feature_names[feat_idx]
-                    if feat_idx < len(state.feature_names)
-                    else f"feature_{feat_idx}"
-                )
-                feat_vals = [v[feat_idx] for v in state.feature_values]
-                color = FEATURE_COLORS[feat_idx % len(FEATURE_COLORS)]
-
-                spark = self._render_sparkline(feat_vals, cfg.width - 20, color)
-                current_val = feat_vals[-1] if feat_vals else 0.0
-
-                line = f"  {color}{feat_name:<16}{RESET} {spark} {current_val:>8.3f}"
-                feature_lines.append(line)
-
-            lines.extend(feature_lines)
-
-        # Separator
-        lines.append(f"  {DIM_COLOR}{'─' * (cfg.width - 4)}{RESET}")
-
-        # Score with ribbon
-        if state.calibrated_scores:
-            current_score = state.calibrated_scores[-1]
-            is_alert = current_score > state.threshold
-
-            alert_badge = f" {BRIGHT_RED}🔔 ALERT{RESET}" if is_alert else ""
-            score_line = (
+    def _build_score_lines(self) -> list[str]:
+        """Render current score bar and optional conformal prediction ribbon."""
+        state = self.state
+        if not state.calibrated_scores:
+            return []
+        cfg = self.config
+        current_score = state.calibrated_scores[-1]
+        is_alert = current_score > state.threshold
+        alert_badge = f" {BRIGHT_RED}🔔 ALERT{RESET}" if is_alert else ""
+        lines = [
+            (
                 f"  {SCORE_COLOR}Score:{RESET}      "
                 f"{self._render_score_bar(current_score, state.threshold, cfg.width - 25)} "
                 f"{ALERT_COLOR if is_alert else SCORE_COLOR}{current_score:.4f}{RESET}"
                 f"{alert_badge}"
             )
-            lines.append(score_line)
+        ]
+        if cfg.show_ribbon and state.lower_bounds and state.upper_bounds:
+            ribbon = self._render_ribbon(cfg.width - 10)
+            if ribbon:
+                lines.append(f"  {RIBBON_COLOR}Ribbon:{RESET}")
+                lines.extend(f"         {r_line}" for r_line in ribbon.split("\n"))
+        return lines
 
-            # Conformal ribbon
-            if cfg.show_ribbon and state.lower_bounds and state.upper_bounds:
-                ribbon = self._render_ribbon(cfg.width - 10)
-                if ribbon:
-                    lines.append(f"  {RIBBON_COLOR}Ribbon:{RESET}")
-                    for r_line in ribbon.split("\n"):
-                        lines.append(f"         {r_line}")
+    @staticmethod
+    def _build_history_line(label: str, color: str, items: Sequence[int] | Sequence[bool], on_symbol: str) -> str:
+        """Render a compact 20-step status strip for alerts or ground-truth labels."""
+        recent = list(items[-20:])
+        strip = "".join(on_symbol if item else "⚪" for item in recent)
+        total = sum(int(bool(item)) for item in recent)
+        return f"  {color}{label:<12}{RESET}{strip} ({total}/{len(recent)})"
 
-        # Alert history (last 20)
+    def render(self) -> None:
+        """Render the current dashboard state."""
+        if self._first_render:
+            self._clear_screen()
+            self._hide_cursor()
+            self._first_render = False
+
+        if self._lines_rendered > 0:
+            self._move_cursor_up(self._lines_rendered)
+
+        cfg = self.config
+        state = self.state
+        lines = [self._build_header_box()]
+        lines.extend(self._build_feature_lines())
+        lines.append(f"  {DIM_COLOR}{'─' * (cfg.width - 4)}{RESET}")
+        lines.extend(self._build_score_lines())
+
         if state.alerts:
-            recent_alerts = state.alerts[-20:]
-            alert_str = "".join("🔴" if a else "⚪" for a in recent_alerts)
-            lines.append(
-                f"  {YELLOW}Alerts:{RESET}     {alert_str} ({sum(recent_alerts)}/{len(recent_alerts)})"
-            )
-
-        # Ground truth labels (if available)
+            lines.append(self._build_history_line("Alerts:", YELLOW, state.alerts, "🔴"))
         if cfg.show_labels and state.labels:
-            recent_labels = state.labels[-20:]
-            label_str = "".join("🟢" if lab == 1 else "⚪" for lab in recent_labels)
             lines.append(
-                f"  {GREEN}Labels:{RESET}     {label_str} ({sum(recent_labels)}/{len(recent_labels)})"
+                self._build_history_line(
+                    "Labels:", GREEN, [lab == 1 for lab in state.labels], "🟢"
+                )
             )
 
-        # Status line
         elapsed = time.time() - getattr(self, "_start_time", time.time())
         rate = state.step / elapsed if elapsed > 0 else 0
-        status = (
+        lines.append(
             f"  {DIM_COLOR}Points: {state.step} │ Rate: {rate:.1f} pts/s │ "
             f"Alerts: {sum(state.alerts)} │ "
             f"Press Ctrl+C to stop{RESET}"
         )
-        lines.append(status)
 
-        # Render all lines
-        output_text = "\n".join(lines) + "\n"
-        self._write(output_text)
+        self._write("\n".join(lines) + "\n")
         self._lines_rendered = len(lines)
 
     def update(
@@ -432,6 +417,72 @@ class TerminalDashboard:
         self._write("\n")
 
 
+_DATASET_STREAMS = {
+    "nyc_taxi": ("nab/realKnownCause/nyc_taxi.csv", True),
+    "arrhythmia": ("arrhythmia.mat", False),
+    "creditcard": ("creditcard/creditcard.arff", False),
+}
+
+
+def _stream_synthetic(
+    max_points: int | None, **kwargs: Any
+) -> Iterator[tuple[NDArray[Any], int | None]]:
+    """Yield `(x, label)` pairs from the synthetic benchmark generator."""
+    n_instances = max(max_points or 1000, 200)
+    X, y = generate_stream(num_instances=n_instances, **kwargs)
+    streamer = ArrayStreamer()
+    for x, label in zip(streamer.iter(X), y, strict=False):
+        yield x, int(label)
+
+
+def _stream_remote_dataset(
+    dataset_file: str,
+    drop_timestamp: bool,
+    max_points: int | None,
+) -> Iterator[tuple[NDArray[Any], int | None]]:
+    """Yield `(x, label)` pairs from a named cached/remote dataset."""
+    X, y = Data().get_data(dataset_file, download=True)
+    if drop_timestamp:
+        X = X[:, 1:]
+    if max_points:
+        X = X[:max_points]
+        y = y[:max_points] if y is not None else None
+    streamer = ArrayStreamer()
+    labels: Any = y if y is not None else [None] * len(X)
+    for x, label in zip(streamer.iter(X), labels, strict=False):
+        yield x, int(label) if label is not None else None
+
+
+def _stream_csv(
+    source: str,
+    max_points: int | None,
+    delimiter: str,
+    has_header: bool,
+    kwargs: dict[str, Any],
+) -> Iterator[tuple[NDArray[Any], int | None]]:
+    """Yield `(x, label)` pairs from a local CSV file."""
+    from pysad.utils import CSVStreamer
+
+    csv_streamer = CSVStreamer(
+        feature_columns=kwargs.pop("feature_columns", None),
+        label_column=kwargs.pop("label_column", None),
+        delimiter=delimiter,
+        has_header=has_header,
+    )
+    count = 0
+    for item in csv_streamer.iter(source):
+        if max_points and count >= max_points:
+            break
+        if isinstance(item, tuple):
+            x_arr, y_val = item
+            label = int(y_val) if y_val is not None else None
+        else:
+            x_arr = item
+            label = None
+        yield x_arr, label
+        count += 1
+
+
 def create_data_stream(
     source: str,
     max_points: int | None = None,
@@ -442,82 +493,17 @@ def create_data_stream(
     Yields:
         Tuples of (feature_vector, label_or_none).
     """
-    # CSV-specific options are only meaningful for file sources, so pop them
-    # here and keep them from reaching the in-memory generators below.
     delimiter = kwargs.pop("delimiter", ",")
     has_header = kwargs.pop("has_header", True)
 
     if source == "synthetic":
-        n_instances = max(max_points or 1000, 200)
-        X, y = generate_stream(num_instances=n_instances, **kwargs)
-        streamer = ArrayStreamer()
-        for x, label in zip(streamer.iter(X), y, strict=False):
-            yield x, int(label)
-
-    elif source == "nyc_taxi":
-        data = Data()
-        X, y = data.get_data("nab/realKnownCause/nyc_taxi.csv", download=True)
-        X = X[:, 1:]  # Remove timestamp column
-        if max_points:
-            X = X[:max_points]
-            y = y[:max_points] if y is not None else None
-        streamer = ArrayStreamer()
-        for x, label in zip(
-            streamer.iter(X), y if y is not None else [None] * len(X), strict=False
-        ):
-            yield x, int(label) if label is not None else None
-
-    elif source == "arrhythmia":
-        data = Data()
-        X, y = data.get_data("arrhythmia.mat", download=True)
-        if max_points:
-            X = X[:max_points]
-            y = y[:max_points] if y is not None else None
-        streamer = ArrayStreamer()
-        for x, label in zip(
-            streamer.iter(X), y if y is not None else [None] * len(X), strict=False
-        ):
-            yield x, int(label) if label is not None else None
-
-    elif source == "creditcard":
-        data = Data()
-        X, y = data.get_data("creditcard/creditcard.arff", download=True)
-        if max_points:
-            X = X[:max_points]
-            y = y[:max_points] if y is not None else None
-        streamer = ArrayStreamer()
-        for x, label in zip(
-            streamer.iter(X), y if y is not None else [None] * len(X), strict=False
-        ):
-            yield x, int(label) if label is not None else None
-
-    elif source.endswith(".csv"):
-        from pysad.utils import CSVStreamer
-
-        # Extract CSV-specific kwargs
-        feature_columns = kwargs.pop("feature_columns", None)
-        label_column = kwargs.pop("label_column", None)
-        csv_streamer = CSVStreamer(
-            feature_columns=feature_columns,
-            label_column=label_column,
-            delimiter=delimiter,
-            has_header=has_header,
-        )
-        count = 0
-        for item in csv_streamer.iter(source):
-            if max_points and count >= max_points:
-                break
-            if isinstance(item, tuple):
-                x_arr, y_val = item
-                label = int(y_val) if y_val is not None else None
-            else:
-                x_arr = item
-                label = None
-            yield x_arr, label
-            count += 1
-
-    else:
-        raise ValueError(f"Unknown data source: {source}")
+        return _stream_synthetic(max_points, **kwargs)
+    if source in _DATASET_STREAMS:
+        dataset_file, drop_ts = _DATASET_STREAMS[source]
+        return _stream_remote_dataset(dataset_file, drop_ts, max_points)
+    if source.endswith(".csv"):
+        return _stream_csv(source, max_points, delimiter, has_header, kwargs)
+    raise ValueError(f"Unknown data source: {source}")
 
 
 def compute_feature_bounds(
@@ -587,34 +573,38 @@ def get_detector(
     return detector_class(**kwargs)
 
 
+_CALIBRATOR_CLASSES = {
+    "conformal": "ConformalProbabilityCalibrator",
+    "spot": "SPOTProbabilityCalibrator",
+    "conformal_tsfm": "ConformalTSFMCalibrator",
+    "gaussian_tail": "GaussianTailProbabilityCalibrator",
+    "anomaly_likelihood": "AnomalyLikelihoodProbabilityCalibrator",
+    "group_conditional_conformal": "GroupConditionalConformalCalibrator",
+}
+
+
 def get_calibrator(name: str, **kwargs: Any) -> Any:
     """Get a calibrator instance by name."""
-    calibrators = {
-        "conformal": ("pysad.transform.probability_calibration", "ConformalProbabilityCalibrator"),
-        "spot": ("pysad.transform.probability_calibration", "SPOTProbabilityCalibrator"),
-        "conformal_tsfm": ("pysad.transform.probability_calibration", "ConformalTSFMCalibrator"),
-        "gaussian_tail": (
-            "pysad.transform.probability_calibration",
-            "GaussianTailProbabilityCalibrator",
-        ),
-        "anomaly_likelihood": (
-            "pysad.transform.probability_calibration",
-            "AnomalyLikelihoodProbabilityCalibrator",
-        ),
-        "group_conditional_conformal": (
-            "pysad.transform.probability_calibration",
-            "GroupConditionalConformalCalibrator",
-        ),
-    }
-
     name_lower = name.lower().replace("-", "_")
-    if name_lower not in calibrators:
-        raise ValueError(f"Unknown calibrator: {name}. Available: {list(calibrators.keys())}")
+    class_name = _CALIBRATOR_CLASSES.get(name_lower)
+    if class_name is None:
+        raise ValueError(
+            f"Unknown calibrator: {name}. Available: {list(_CALIBRATOR_CLASSES.keys())}"
+        )
 
-    module_name, class_name = calibrators[name_lower]
-    module = __import__(module_name, fromlist=[class_name])
-    calibrator_class = getattr(module, class_name)
-    return calibrator_class(**kwargs)
+    module = importlib.import_module("pysad.transform.probability_calibration")
+    return getattr(module, class_name)(**kwargs)
+
+
+def _quantile_interval(sorted_scores: Sequence[float], confidence: float) -> tuple[float, float]:
+    """Compute clipped lower/upper quantile bounds from pre-sorted calibration scores."""
+    n = len(sorted_scores)
+    if n == 0:
+        return 0.0, 1.0
+    alpha = 1.0 - confidence
+    lower_idx = max(0, min(int(np.floor(alpha / 2 * n)), n - 1))
+    upper_idx = max(0, min(int(np.ceil((1 - alpha / 2) * n)) - 1, n - 1))
+    return float(sorted_scores[lower_idx]), float(sorted_scores[upper_idx])
 
 
 def compute_conformal_bounds(
@@ -627,48 +617,10 @@ def compute_conformal_bounds(
     For the ConformalProbabilityCalibrator, the bounds are based on the
     quantiles of the calibration window.
     """
-    # ConformalProbabilityCalibrator and similar
     if hasattr(calibrator, "window") and hasattr(calibrator, "_sorted"):
-        sorted_scores = calibrator._sorted
-        if not sorted_scores:
-            return 0.0, 1.0
-
-        n = len(sorted_scores)
-        alpha = 1.0 - confidence
-        lower_idx = int(np.floor(alpha / 2 * n))
-        upper_idx = int(np.ceil((1 - alpha / 2) * n)) - 1
-
-        lower_idx = max(0, min(lower_idx, n - 1))
-        upper_idx = max(0, min(upper_idx, n - 1))
-
-        lower = sorted_scores[lower_idx]
-        upper = sorted_scores[upper_idx]
-
-        return float(lower), float(upper)
-
-    # SPOTProbabilityCalibrator uses a deque window
+        return _quantile_interval(calibrator._sorted, confidence)
     if hasattr(calibrator, "window_") and hasattr(calibrator.window_, "__iter__"):
-        window_scores = list(calibrator.window_)
-        if not window_scores:
-            return 0.0, 1.0
-
-        sorted_scores = sorted(window_scores)
-        n = len(sorted_scores)
-        alpha = 1.0 - confidence
-        lower_idx = int(np.floor(alpha / 2 * n))
-        upper_idx = int(np.ceil((1 - alpha / 2) * n)) - 1
-
-        lower_idx = max(0, min(lower_idx, n - 1))
-        upper_idx = max(0, min(upper_idx, n - 1))
-
-        lower = sorted_scores[lower_idx]
-        upper = sorted_scores[upper_idx]
-
-        return float(lower), float(upper)
-
-    # ConformalTSFMCalibrator has adaptive threshold
+        return _quantile_interval(sorted(calibrator.window_), confidence)
     if hasattr(calibrator, "threshold_"):
-        thresh = calibrator.threshold_
-        return 0.0, float(thresh)
-
+        return 0.0, float(calibrator.threshold_)
     return 0.0, 1.0

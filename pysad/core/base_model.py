@@ -77,6 +77,45 @@ def _clean_numeric_batch(X: Any) -> bool:
     )
 
 
+def _run_separate_fit_score(
+    score_fn: Any,
+    fit_fn: Any,
+    X: NDArray[Any],
+    y: NDArray[Any] | None,
+    y_pred: NDArray[Any],
+) -> None:
+    """Evaluates separate `score_partial` then `fit_partial` over a clean numeric batch."""
+    if y is None:
+        for i in range(len(X)):
+            xi = X[i]
+            raw = score_fn(xi)
+            y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+            fit_fn(xi, None)
+        return
+    for i in range(len(X)):
+        xi = X[i]
+        raw = score_fn(xi)
+        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+        fit_fn(xi, y[i])
+
+
+def _run_combined_fit_score(
+    fit_score_fn: Any,
+    X: NDArray[Any],
+    y: NDArray[Any] | None,
+    y_pred: NDArray[Any],
+) -> None:
+    """Evaluates an overridden `fit_score_partial` over a clean numeric batch."""
+    if y is None:
+        for i in range(len(X)):
+            raw = fit_score_fn(X[i], None)
+            y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+        return
+    for i in range(len(X)):
+        raw = fit_score_fn(X[i], y[i])
+        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+
+
 def _returns_float_score(method: Callable[..., Any]) -> Callable[..., float]:
     """Wraps a single-instance scoring method so that it returns a Python float."""
 
@@ -350,40 +389,25 @@ class BaseModel(ABC):
             np.float64 array of shape (num_instances,): The anomalousness scores of the instances in order.
         """
         y_pred = np.empty(X.shape[0], dtype=np.float64)
-        if _clean_numeric_batch(X):
-            if y is not None and len(X) != len(y):
-                raise ValueError("X and y must have the same length.")
-            cls = type(self)
-            if cls._raw_fit_score_partial is None:
-                score_fn = cls._raw_score_partial.__get__(self)
-                fit_fn = cls._raw_fit_partial.__get__(self)
-                if y is None:
-                    for i in range(len(X)):
-                        xi = X[i]
-                        raw = score_fn(xi)
-                        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
-                        fit_fn(xi, None)
-                else:
-                    for i in range(len(X)):
-                        xi = X[i]
-                        raw = score_fn(xi)
-                        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
-                        fit_fn(xi, y[i])
-            else:
-                fit_score_fn = cls._raw_fit_score_partial.__get__(self)
-                if y is None:
-                    for i in range(len(X)):
-                        raw = fit_score_fn(X[i], None)
-                        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
-                else:
-                    for i in range(len(X)):
-                        raw = fit_score_fn(X[i], y[i])
-                        y_pred[i] = raw if type(raw) is float else _to_float_score(raw)
+        if not _clean_numeric_batch(X):
+            for i, (xi, yi) in enumerate(_iterate(X, y)):
+                y_pred[i] = _to_float_score(self.fit_score_partial(xi, yi))
             return y_pred
 
-        for i, (xi, yi) in enumerate(_iterate(X, y)):
-            y_pred[i] = _to_float_score(self.fit_score_partial(xi, yi))
+        if y is not None and len(X) != len(y):
+            raise ValueError("X and y must have the same length.")
+        cls = type(self)
+        if cls._raw_fit_score_partial is None:
+            _run_separate_fit_score(
+                cls._raw_score_partial.__get__(self),
+                cls._raw_fit_partial.__get__(self),
+                X,
+                y,
+                y_pred,
+            )
+            return y_pred
 
+        _run_combined_fit_score(cls._raw_fit_score_partial.__get__(self), X, y, y_pred)
         return y_pred
 
     def predict_partial(self, X: NDArray[Any]) -> int:

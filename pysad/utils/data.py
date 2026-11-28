@@ -10,7 +10,7 @@ import time
 import urllib.error
 import urllib.request
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import numpy as np
@@ -67,45 +67,140 @@ _RETRY_SECONDS = 5.0
 _TIMEOUT_SECONDS = 60.0
 
 
+_DATASET_GROUPS: dict[str, tuple[str, Callable[[], Any]]] = {
+    "odds": ("", lambda: _CHECKSUMS),
+    "nab": ("nab/", lambda: _NAB_CHECKSUMS),
+    "nab-real-world": ("nab/", lambda: _NAB_REAL_WORLD),
+    "ucr": ("ucr/", lambda: _UCR_SERIES),
+    "kddcup99": ("", lambda: ["kddcup99/http.csv"]),
+    "smd": ("smd/", lambda: _SMD_CHECKSUMS),
+    "smap": ("smap/", lambda: _SMAP_CHECKSUMS),
+    "msl": ("msl/", lambda: _MSL_CHECKSUMS),
+    "creditcard": ("", lambda: ["creditcard/creditcard.arff"]),
+    "insects": ("insects/", lambda: _INSECTS_FILES),
+    "tsb-drift": ("tsb-drift/", lambda: _TSB_DRIFT_SERIES),
+    "yahoo": ("yahoo/", lambda: _YAHOO_CHECKSUMS),
+    "swat": ("swat/", lambda: _SWAT_CHECKSUMS),
+}
+
+
+def _cleanup_file(path: str) -> None:
+    """Remove a temporary file if it exists, ignoring OS errors."""
+    if os.path.exists(path):
+        with contextlib.suppress(OSError):
+            os.remove(path)
+
+
+def _fetch_url_to_file(url: str, dest_path: str) -> None:
+    """Fetch `url` into `dest_path` with exponential backoff retries."""
+    req = urllib.request.Request(url, headers={"User-Agent": "pysad", "Accept-Encoding": "gzip"})
+    for attempt in range(_ATTEMPTS):
+        try:
+            with (
+                urllib.request.urlopen(req, timeout=_TIMEOUT_SECONDS) as response,
+                open(dest_path, "wb") as f,
+            ):
+                gzipped = response.headers.get("Content-Encoding") == "gzip"
+                shutil.copyfileobj(gzip.GzipFile(fileobj=response) if gzipped else response, f)
+            return
+        except OSError as error:  # URLError, or TimeoutError while reading the response
+            client_error = isinstance(error, urllib.error.HTTPError) and error.code < 500
+            if client_error or attempt == _ATTEMPTS - 1:
+                raise
+            time.sleep(_RETRY_SECONDS * 2**attempt)
+
+
+def _load_npz_cache(
+    cache_path: str, data_path: str
+) -> tuple[NDArray[np.float64], NDArray[np.int64]] | None:
+    """Return cached `(X, y)` arrays if fresh and readable, else `None`."""
+    if not (
+        os.path.exists(cache_path) and os.path.getmtime(cache_path) >= os.path.getmtime(data_path)
+    ):
+        return None
+    try:
+        with np.load(cache_path) as cached:
+            return cached["X"], cached["y"]
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _save_npz_cache(
+    cache_path: str, data_path: str, X: NDArray[np.float64], y: NDArray[np.int64]
+) -> None:
+    """Persist parsed arrays atomically next to `data_path`."""
+    tmp_path = f"{data_path}.{os.getpid()}.tmp.npz"
+    try:
+        np.savez(tmp_path, X=X, y=y)
+        os.replace(tmp_path, cache_path)
+    except OSError:
+        _cleanup_file(tmp_path)
+
+
+def _parse_creditcard_arff(data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+    """Parse the OpenML credit-card ARFF file into contiguous features and integer labels."""
+    attributes: list[str] = []
+    with open(data_path, encoding="utf-8") as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("%"):
+                continue
+            head = stripped.split(maxsplit=2)
+            tag = head[0].lower()
+            if tag == "@attribute" and len(head) >= 2:
+                attributes.append(head[1].strip("'\""))
+            elif tag == "@data":
+                break
+        raw_body = f.read()
+
+    if "%" in raw_body:
+        body = ",".join(
+            line.strip()
+            for line in raw_body.splitlines()
+            if line.strip() and not line.lstrip().startswith("%")
+        )
+    else:
+        body = raw_body.replace("\r", "").replace("\n", ",")
+    body = body.replace("'", "").replace('"', "").strip(" \t,")
+
+    num_cols = len(attributes)
+    class_idx = attributes.index("Class")
+    arr = np.fromstring(body, dtype=np.float64, sep=",").reshape(-1, num_cols)
+    if class_idx == num_cols - 1:
+        X = np.ascontiguousarray(arr[:, :class_idx])
+    else:
+        feature_cols = [i for i in range(num_cols) if i != class_idx]
+        X = np.ascontiguousarray(arr[:, feature_cols])
+    return X, arr[:, class_idx].astype(int)
+
+
 def _source(name: str) -> tuple[str, str]:
     """The URL and the SHA-256 checksum of a remote file of a dataset."""
-    if name == "nab/combined_windows.json":
-        return _NAB + "labels/combined_windows.json", _NAB_WINDOWS
-    if name.startswith("nab/"):
-        return _NAB + "data/" + name[len("nab/") :], _NAB_CHECKSUMS[name[len("nab/") :]]
-    if name == "creditcard/creditcard.arff":
-        return _CREDITCARD, _CREDITCARD_CHECKSUM
-    if name == "kddcup99/http.csv":
-        # The stream is extracted from the archive of the cup, which is what downloads.
-        return _KDDCUP99, _KDDCUP99_CHECKSUM
-    if name.startswith("ucr/"):
-        # Each series is extracted from the archive, which is what downloads.
-        return _UCR, _UCR_CHECKSUM
-    if name == _KDDCUP99_ARCHIVE:
-        return _KDDCUP99, _KDDCUP99_CHECKSUM
+    exact_resolvers: dict[str, Callable[[], tuple[str, str]]] = {
+        "nab/combined_windows.json": lambda: (_NAB + "labels/combined_windows.json", _NAB_WINDOWS),
+        "creditcard/creditcard.arff": lambda: (_CREDITCARD, _CREDITCARD_CHECKSUM),
+        "kddcup99/http.csv": lambda: (_KDDCUP99, _KDDCUP99_CHECKSUM),
+        _KDDCUP99_ARCHIVE: lambda: (_KDDCUP99, _KDDCUP99_CHECKSUM),
+        _NASA_LABELS: lambda: (_NASA_LABELS_URL, _NASA_LABELS_CHECKSUM),
+    }
+    if name in exact_resolvers:
+        return exact_resolvers[name]()
 
-    if name.startswith("smd/labels/"):
-        return _SMD + "test_label/" + name[len("smd/labels/") :], _SMD_CHECKSUMS[
-            name[len("smd/labels/") :]
-        ][1]
-    if name.startswith("smd/"):
-        return _SMD + "test/" + name[len("smd/") :], _SMD_CHECKSUMS[name[len("smd/") :]][0]
-    if name == _NASA_LABELS:
-        return _NASA_LABELS_URL, _NASA_LABELS_CHECKSUM
-    if name.startswith("smap/"):
-        return _NASA + name[len("smap/") :], _SMAP_CHECKSUMS[name[len("smap/") :]]
-    if name.startswith("msl/"):
-        return _NASA + name[len("msl/") :], _MSL_CHECKSUMS[name[len("msl/") :]]
-    if name.startswith("insects/"):
-        drive_id, checksum = _INSECTS_FILES[name[len("insects/") :]]
-        return _INSECTS + drive_id, checksum
-    if name.startswith("tsb-drift/"):
-        return _TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM
-    if name.startswith("yahoo/"):
-        return _YAHOO + name[len("yahoo/") :], _YAHOO_CHECKSUMS[name[len("yahoo/") :]]
-    if name.startswith("swat/"):
-        return _SWAT + name[len("swat/") :], _SWAT_CHECKSUMS[name[len("swat/") :]]
-
+    prefix_resolvers: tuple[tuple[str, Callable[[str], tuple[str, str]]], ...] = (
+        ("smd/labels/", lambda rel: (_SMD + "test_label/" + rel, _SMD_CHECKSUMS[rel][1])),
+        ("smd/", lambda rel: (_SMD + "test/" + rel, _SMD_CHECKSUMS[rel][0])),
+        ("insects/", lambda rel: (_INSECTS + _INSECTS_FILES[rel][0], _INSECTS_FILES[rel][1])),
+        ("ucr/", lambda _rel: (_UCR, _UCR_CHECKSUM)),
+        ("tsb-drift/", lambda _rel: (_TSB_DRIFT_ARCHIVE, _TSB_DRIFT_ARCHIVE_CHECKSUM)),
+        ("nab/", lambda rel: (_NAB + "data/" + rel, _NAB_CHECKSUMS[rel])),
+        ("smap/", lambda rel: (_NASA + rel, _SMAP_CHECKSUMS[rel])),
+        ("msl/", lambda rel: (_NASA + rel, _MSL_CHECKSUMS[rel])),
+        ("yahoo/", lambda rel: (_YAHOO + rel, _YAHOO_CHECKSUMS[rel])),
+        ("swat/", lambda rel: (_SWAT + rel, _SWAT_CHECKSUMS[rel])),
+    )
+    for prefix, resolve in prefix_resolvers:
+        if name.startswith(prefix):
+            return resolve(name[len(prefix) :])
     return _MIRROR + name, _CHECKSUMS[name]
 
 
@@ -195,33 +290,11 @@ class Data:
         Raises:
             ValueError: If ``source`` is not one of the collections above.
         """
-        if source == "odds":
-            return list(_CHECKSUMS)
-        if source == "nab":
-            return ["nab/" + name for name in _NAB_CHECKSUMS]
-        if source == "nab-real-world":
-            return ["nab/" + name for name in _NAB_REAL_WORLD]
-        if source == "ucr":
-            return ["ucr/" + name for name in _UCR_SERIES]
-        if source == "kddcup99":
-            return ["kddcup99/http.csv"]
-        if source == "smd":
-            return ["smd/" + name for name in _SMD_CHECKSUMS]
-        if source == "smap":
-            return ["smap/" + name for name in _SMAP_CHECKSUMS]
-        if source == "msl":
-            return ["msl/" + name for name in _MSL_CHECKSUMS]
-        if source == "creditcard":
-            return ["creditcard/creditcard.arff"]
-        if source == "insects":
-            return ["insects/" + name for name in _INSECTS_FILES]
-        if source == "tsb-drift":
-            return ["tsb-drift/" + name for name in _TSB_DRIFT_SERIES]
-        if source == "yahoo":
-            return ["yahoo/" + name for name in _YAHOO_CHECKSUMS]
-        if source == "swat":
-            return ["swat/" + name for name in _SWAT_CHECKSUMS]
-        raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
+        if source not in _DATASET_GROUPS:
+            raise ValueError(f"source must be one of {_SOURCES}, got {source!r}.")
+        prefix, get_entries = _DATASET_GROUPS[source]
+        entries = get_entries()
+        return [prefix + name for name in entries] if prefix else list(entries)
 
     @staticmethod
     def metadata(data_file: str) -> dict[str, str]:
@@ -258,25 +331,7 @@ class Data:
         )
         os.close(fd)
         try:
-            req = urllib.request.Request(
-                url, headers={"User-Agent": "pysad", "Accept-Encoding": "gzip"}
-            )
-            for attempt in range(_ATTEMPTS):
-                try:
-                    with (
-                        urllib.request.urlopen(req, timeout=_TIMEOUT_SECONDS) as response,
-                        open(temp_path, "wb") as f,
-                    ):
-                        gzipped = response.headers.get("Content-Encoding") == "gzip"
-                        shutil.copyfileobj(
-                            gzip.GzipFile(fileobj=response) if gzipped else response, f
-                        )
-                    break
-                except OSError as error:  # URLError, or TimeoutError while reading the response
-                    client_error = isinstance(error, urllib.error.HTTPError) and error.code < 500
-                    if client_error or attempt == _ATTEMPTS - 1:
-                        raise
-                    time.sleep(_RETRY_SECONDS * 2**attempt)
+            _fetch_url_to_file(url, temp_path)
             with open(temp_path, "rb") as f:
                 checksum = hashlib.sha256(f.read()).hexdigest()
             if checksum != expected:
@@ -286,11 +341,7 @@ class Data:
                 )
             os.replace(temp_path, target_path)
         except Exception:
-            if os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                except OSError:
-                    pass
+            _cleanup_file(temp_path)
             raise
 
     def _load_via_txt(self, path: str) -> NDArray[np.float64]:
@@ -305,6 +356,73 @@ class Data:
         X = np.loadtxt(path, delimiter=",")
 
         return X
+
+    def _resolve_local_data_path(self, data_file: str) -> str:
+        """Resolve an existing local path across explicit, default cache, and repo fallbacks."""
+        if os.path.exists(data_file):
+            return data_file
+        data_path = os.path.join(self.data_base_path, data_file)
+        if os.path.exists(data_path) or not self._is_default_path:
+            return data_path
+        for fallback in (os.path.join("data", data_file), os.path.join("examples", "data", data_file)):
+            if os.path.exists(fallback):
+                return fallback
+        return data_path
+
+    def _ensure_remote_dataset(self, file_name: str, data_path: str, data_file: str) -> None:
+        """Validate `file_name` and download or extract it when missing locally."""
+        if not any(file_name in self.datasets(source) for source in _SOURCES):
+            raise FileNotFoundError(
+                f"Dataset file '{data_file}' was not found at '{data_path}' and is not a known remote dataset. "
+                f"Available datasets: {self.datasets()}, and the streams of datasets(source) for each source in {_SOURCES[1:]}."
+            )
+        if file_name.startswith("ucr/"):
+            self._extract_ucr(file_name, data_path)
+        elif file_name.startswith("kddcup99/"):
+            self._extract_kddcup99(data_path)
+        elif file_name.startswith("tsb-drift/"):
+            self._extract_tsb_drift(file_name, data_path)
+        else:
+            self._download(file_name, data_path)
+
+    def _load_resolved_data(
+        self, file_name: str, data_path: str, download: bool, timestamps: bool
+    ) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
+        """Dispatch a resolved dataset file path to its format-specific loader."""
+        if file_name == "creditcard/creditcard.arff":
+            return self._load_creditcard(data_path)
+
+        prefix_loaders: tuple[
+            tuple[
+                str | tuple[str, ...],
+                Callable[[], tuple[NDArray[np.float64], NDArray[np.int64]]],
+            ],
+            ...,
+        ] = (
+            ("nab/", lambda: self._load_nab(file_name, data_path, download, timestamps)),
+            ("ucr/", lambda: self._load_ucr(file_name, data_path)),
+            ("smd/", lambda: self._load_smd(file_name, data_path, download)),
+            (("smap/", "msl/"), lambda: self._load_nasa(file_name, data_path, download)),
+            ("tsb-drift/", lambda: self._load_tsb_drift(data_path)),
+            ("yahoo/", lambda: self._load_yahoo(data_path)),
+            ("swat/", lambda: self._load_swat(data_path)),
+        )
+        for prefix, loader in prefix_loaders:
+            if file_name.startswith(prefix):
+                return loader()
+
+        if data_path.endswith(".mat"):
+            from scipy.io import loadmat
+
+            f = loadmat(data_path)
+            y = f["y"].ravel()
+            if file_name in _INVERTED_LABELS:
+                y = 1 - y
+            return f["X"], y
+
+        X = self._load_via_txt(data_path)
+        y_txt: Any = X[:, -1].ravel()
+        return X[:, :-1], y_txt
 
     def get_data(
         self, data_file: str, download: bool = True, timestamps: bool = False
@@ -324,133 +442,29 @@ class Data:
         """
         if timestamps and not data_file.startswith("nab/"):
             raise ValueError(f"Only the NAB series have timestamps, got {data_file!r}.")
-        if os.path.exists(data_file):
-            data_path = data_file
-        else:
-            data_path = os.path.join(self.data_base_path, data_file)
+        data_path = self._resolve_local_data_path(data_file)
 
         # An ODDS dataset is known by its file name, and a stream of another collection by its full name.
         series = data_file.startswith(tuple(f"{source}/" for source in _SOURCES[1:]))
         file_name = data_file if series else os.path.basename(data_file)
 
         if not os.path.exists(data_path):
-            if self._is_default_path:
-                local_fallback = os.path.join("data", data_file)
-                if os.path.exists(local_fallback):
-                    data_path = local_fallback
-                else:
-                    examples_fallback = os.path.join("examples", "data", data_file)
-                    if os.path.exists(examples_fallback):
-                        data_path = examples_fallback
-
-        if not os.path.exists(data_path):
             if not download:
                 raise FileNotFoundError(
                     f"Dataset file '{data_file}' was not found at '{data_path}' and download=False."
                 )
+            self._ensure_remote_dataset(file_name, data_path, data_file)
 
-            if not any(file_name in self.datasets(source) for source in _SOURCES):
-                raise FileNotFoundError(
-                    f"Dataset file '{data_file}' was not found at '{data_path}' and is not a known remote dataset. "
-                    f"Available datasets: {self.datasets()}, and the streams of datasets(source) for each source in {_SOURCES[1:]}."
-                )
-
-            if file_name.startswith("ucr/"):
-                self._extract_ucr(file_name, data_path)
-            elif file_name.startswith("kddcup99/"):
-                self._extract_kddcup99(data_path)
-            elif file_name.startswith("tsb-drift/"):
-                self._extract_tsb_drift(file_name, data_path)
-            else:
-                self._download(file_name, data_path)
-
-        if file_name == "creditcard/creditcard.arff":
-            return self._load_creditcard(data_path)
-        if file_name.startswith("nab/"):
-            return self._load_nab(file_name, data_path, download, timestamps)
-        if file_name.startswith("ucr/"):
-            return self._load_ucr(file_name, data_path)
-        if file_name.startswith("smd/"):
-            return self._load_smd(file_name, data_path, download)
-        if file_name.startswith(("smap/", "msl/")):
-            return self._load_nasa(file_name, data_path, download)
-        if file_name.startswith("tsb-drift/"):
-            return self._load_tsb_drift(data_path)
-        if file_name.startswith("yahoo/"):
-            return self._load_yahoo(data_path)
-        if file_name.startswith("swat/"):
-            return self._load_swat(data_path)
-        if data_path.endswith(".mat"):
-            from scipy.io import loadmat
-
-            f = loadmat(data_path)
-
-            X = f["X"]
-            y = f["y"].ravel()
-            if file_name in _INVERTED_LABELS:
-                y = 1 - y
-        else:
-            X = self._load_via_txt(data_path)
-
-            y = X[:, -1].ravel()
-            X = X[:, :-1]
-
-        return X, y
+        return self._load_resolved_data(file_name, data_path, download, timestamps)
 
     def _load_creditcard(self, data_path: str) -> tuple[NDArray[np.float64], NDArray[np.int64]]:
         """Loads the numeric credit-card ARFF file and separates features from ``Class``."""
         cache_path = f"{data_path}.npz"
-        if os.path.exists(cache_path) and os.path.getmtime(cache_path) >= os.path.getmtime(
-            data_path
-        ):
-            try:
-                with np.load(cache_path) as cached:
-                    return cached["X"], cached["y"]
-            except (OSError, ValueError, KeyError):
-                pass
-
-        attributes: list[str] = []
-        with open(data_path, encoding="utf-8") as f:
-            for line in f:
-                stripped = line.strip()
-                if not stripped or stripped.startswith("%"):
-                    continue
-                head = stripped.split(maxsplit=2)
-                tag = head[0].lower()
-                if tag == "@attribute" and len(head) >= 2:
-                    attributes.append(head[1].strip("'\""))
-                elif tag == "@data":
-                    break
-            raw_body = f.read()
-
-        if "%" in raw_body:
-            body = ",".join(
-                line.strip()
-                for line in raw_body.splitlines()
-                if line.strip() and not line.lstrip().startswith("%")
-            )
-        else:
-            body = raw_body.replace("\r", "").replace("\n", ",")
-        body = body.replace("'", "").replace('"', "").strip(" \t,")
-
-        num_cols = len(attributes)
-        class_idx = attributes.index("Class")
-        arr = np.fromstring(body, dtype=np.float64, sep=",").reshape(-1, num_cols)
-        if class_idx == num_cols - 1:
-            X = np.ascontiguousarray(arr[:, :class_idx])
-        else:
-            feature_cols = [i for i in range(num_cols) if i != class_idx]
-            X = np.ascontiguousarray(arr[:, feature_cols])
-        y = arr[:, class_idx].astype(int)
-
-        tmp_path = f"{data_path}.{os.getpid()}.tmp.npz"
-        try:
-            np.savez(tmp_path, X=X, y=y)
-            os.replace(tmp_path, cache_path)
-        except OSError:
-            if os.path.exists(tmp_path):
-                with contextlib.suppress(OSError):
-                    os.remove(tmp_path)
+        cached = _load_npz_cache(cache_path, data_path)
+        if cached is not None:
+            return cached
+        X, y = _parse_creditcard_arff(data_path)
+        _save_npz_cache(cache_path, data_path, X, y)
         return X, y
 
     def _load_nab(

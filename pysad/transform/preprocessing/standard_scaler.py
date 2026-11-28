@@ -49,7 +49,8 @@ class StandardScaler(BaseTransformer):
 
         means = self.means_
         variances = self.variances_
-        assert means is not None and variances is not None
+        if means is None or variances is None:
+            raise RuntimeError("StandardScaler meters failed to initialize.")
 
         for mean, variance, x in zip(means, variances, X, strict=True):
             value = float(x)
@@ -72,7 +73,8 @@ class StandardScaler(BaseTransformer):
 
         means = self.means_
         variances = self.variances_
-        assert means is not None and variances is not None
+        if means is None or variances is None:
+            raise RuntimeError("StandardScaler meters failed to initialize.")
 
         scaled = np.empty(X.size, dtype=np.float64)
         for i, (x, mean, variance) in enumerate(zip(X, means, variances, strict=True)):

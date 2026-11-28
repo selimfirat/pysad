@@ -128,7 +128,8 @@ class CPOD(BaseModel):
 
     def _ring(self, dists: NDArray[np.float64]) -> NDArray[np.int8]:
         """The ring k of each distance, with k = 4 for distances above 2R."""
-        assert self._ring_thresholds is not None
+        if self._ring_thresholds is None:
+            raise RuntimeError("Ring thresholds are not initialized.")
         return np.searchsorted(self._ring_thresholds, dists).astype(np.int8)
 
     def _build(self) -> None:
@@ -188,7 +189,8 @@ class CPOD(BaseModel):
         dists: NDArray[np.float64] | None = None,
     ) -> None:
         """Algorithm 2 of the paper for the instance in slot i."""
-        assert self.radius_ is not None
+        if self.radius_ is None:
+            raise RuntimeError("Radius is not calibrated.")
         pt = self.points_[i]
         if active is None or dists is None:
             active = np.flatnonzero(self.linked_)

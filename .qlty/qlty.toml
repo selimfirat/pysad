@@ -104,6 +104,18 @@ match.rules = ["shellcheck:2016"]
 match.file_patterns = [".github/scripts/release_contributors.sh"]
 set.ignored = true
 
+# Internal CI and benchmark helpers run fixed git subcommands with shell=False.
+[[triage]]
+match.rules = ["bandit:B404", "bandit:B603"]
+match.file_patterns = ["scripts/ci_affected.py", "benchmarks/benchmark.py"]
+set.ignored = true
+
+# Example script demonstrates local self-written pickle checkpointing on synthetic/Kafka runs.
+[[triage]]
+match.rules = ["bandit:B403", "bandit:B301"]
+match.file_patterns = ["examples/example_kafka_consumer.py"]
+set.ignored = true
+
 [smells]
 mode = "monitor"
 

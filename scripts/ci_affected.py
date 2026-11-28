@@ -7,6 +7,7 @@ import ast
 import functools
 import json
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -104,9 +105,14 @@ _EXTRA_DEPENDENCIES: dict[str, tuple[set[str], set[str]]] = {
 
 
 @functools.cache
+def _git_executable() -> str:
+    return shutil.which("git") or "git"
+
+
+@functools.cache
 def _changed_files_since(base: str) -> frozenset[str]:
     out = subprocess.run(
-        ["git", "-C", str(ROOT), "diff", "--name-only", base],
+        [_git_executable(), "-C", str(ROOT), "diff", "--name-only", base],
         check=True,
         capture_output=True,
         text=True,
@@ -120,7 +126,7 @@ def _deps_changed_since(base: str) -> bool:
     if "pyproject.toml" not in _changed_files_since(base):
         return False
     proc = subprocess.run(
-        ["git", "-C", str(ROOT), "show", f"{base}:pyproject.toml"],
+        [_git_executable(), "-C", str(ROOT), "show", f"{base}:pyproject.toml"],
         check=False,
         capture_output=True,
         text=True,
@@ -136,7 +142,7 @@ def _runtime_toml_changed_since(base: str) -> bool:
     if "pyproject.toml" not in _changed_files_since(base):
         return False
     proc = subprocess.run(
-        ["git", "-C", str(ROOT), "show", f"{base}:pyproject.toml"],
+        [_git_executable(), "-C", str(ROOT), "show", f"{base}:pyproject.toml"],
         check=False,
         capture_output=True,
         text=True,
@@ -499,7 +505,7 @@ def examples_plan(base: str) -> dict[str, object]:
     base_outputs: dict[str, tuple[str, str]] = {}
     if "docs/examples.rst" in changed:
         proc = subprocess.run(
-            ["git", "-C", str(ROOT), "show", f"{base}:docs/examples.rst"],
+            [_git_executable(), "-C", str(ROOT), "show", f"{base}:docs/examples.rst"],
             check=False,
             capture_output=True,
             text=True,

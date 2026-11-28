@@ -36,7 +36,8 @@ class _Node:
     ) -> None:
         self.n[self.size], self.ls[self.size], self.ss[self.size] = n, ls, ss
         if child is not None:
-            assert self.children is not None
+            if self.children is None:
+                raise RuntimeError("Leaf node cannot hold child nodes.")
             self.children.append(child)
         self.size += 1
 

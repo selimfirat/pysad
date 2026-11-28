@@ -158,7 +158,8 @@ class OneShotSTL(BaseTransformer):
         return np.array([residual])
 
     def _initialize(self, y: float) -> None:
-        assert self.init_values_ is not None
+        if self.init_values_ is None:
+            raise RuntimeError("OneShotSTL initialization buffer is missing.")
         self.init_values_.append(y)
         if len(self.init_values_) == self.num_init_periods * self.period:
             values = np.array(self.init_values_)

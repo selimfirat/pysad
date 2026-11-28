@@ -76,9 +76,11 @@ def fuzz_one_input(data: bytes) -> None:
         arr = np.asarray(row, dtype=np.float64)
         try:
             score = model.fit_score_partial(arr)
-            assert isinstance(score, float)
+            if not isinstance(score, float):
+                raise AssertionError(f"Expected float score, got {type(score).__name__}")
             decision = pipeline.fit_predict_partial(arr)
-            assert decision in (0, 1)
+            if decision not in (0, 1):
+                raise AssertionError(f"Expected binary decision, got {decision!r}")
             ring.append(arr)
             win.update(score)
         except ValueError:

@@ -56,12 +56,13 @@ class _AdversarialStream(BaseTransformer):
         return x
 
     def _ensure_direction(self, num_features: int) -> NDArray[Any]:
-        if self._direction is None:
-            direction = self._rng.standard_normal(num_features)
-            norm = float(np.linalg.norm(direction))
-            self._direction = direction / norm if norm > 0.0 else np.ones(num_features)
-        assert self._direction is not None
-        return self._direction
+        direction = self._direction
+        if direction is None:
+            raw = self._rng.standard_normal(num_features)
+            norm = float(np.linalg.norm(raw))
+            direction = raw / norm if norm > 0.0 else np.ones(num_features)
+            self._direction = direction
+        return direction
 
     def _update_normal(self, x: NDArray[Any]) -> None:
         self._ensure_direction(x.shape[0])

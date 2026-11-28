@@ -194,7 +194,8 @@ class ForecastingAnomalyDetector(BaseModel):
 
         if self._use_callable:
             forecast_fn = self._forecast_fn
-            assert forecast_fn is not None
+            if forecast_fn is None:
+                raise RuntimeError("Forecasting callable is not initialized.")
             forecast = forecast_fn(self._history, horizon=1)
         else:
             forecast = self.forecaster.forecast(horizon=1)[0]

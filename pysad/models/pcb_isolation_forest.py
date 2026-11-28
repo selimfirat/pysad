@@ -147,7 +147,8 @@ class PCBIsolationForest(BaseModel):
             )
 
     def _drift(self) -> bool:
-        assert self.window_ is not None
+        if self.window_ is None:
+            raise RuntimeError("Window is not initialized.")
         recent = np.sort(self.window_[-self.stat_size :], axis=0)
         for j in range(self.window_.shape[1]):
             rows = self.rng_.choice(

@@ -162,7 +162,8 @@ class MCOD(BaseModel):
 
     def _insert(self, i: int) -> None:
         """Steps 2 and 3 of the paper for the instance in slot i, which is in PD."""
-        assert self.radius_ is not None
+        if self.radius_ is None:
+            raise RuntimeError("Radius is not calibrated.")
         if self._num_active > 0:
             active = self._active_clusters[: self._num_active]
             dists = scipy.spatial.distance.cdist(
@@ -178,7 +179,8 @@ class MCOD(BaseModel):
 
     def _form(self, i: int) -> None:
         """Step 3b of the paper: a new micro-cluster centered at slot i if more than k instances of PD are within R/2."""
-        assert self.radius_ is not None
+        if self.radius_ is None:
+            raise RuntimeError("Radius is not calibrated.")
         if self._num_pd < self.num_neighbors + 2:
             return
         pd = self._pd_slots[: self._num_pd]

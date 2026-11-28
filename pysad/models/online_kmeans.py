@@ -47,12 +47,14 @@ class OnlineKMeans(BaseModel):
         self.num_opened_ = 0
 
     def _squared_distances(self, X: NDArray[np.float64]) -> NDArray[np.float64]:
-        assert self._centers is not None
+        if self._centers is None:
+            raise RuntimeError("Centers are not initialized.")
         distances: NDArray[np.float64] = ((self._centers[: self.num_centers_] - X) ** 2).sum(axis=1)
         return distances
 
     def _add_center(self, X: NDArray[np.float64]) -> None:
-        assert self._centers is not None
+        if self._centers is None:
+            raise RuntimeError("Centers are not initialized.")
         # The centers form a ring buffer, so a new center overwrites the oldest one once it is full.
         self._centers[self._num_added % self.max_centers] = X
         self._num_added += 1
@@ -96,7 +98,8 @@ class OnlineKMeans(BaseModel):
         return self
 
     def _init_facility_cost(self) -> None:
-        assert self._centers is not None
+        if self._centers is None:
+            raise RuntimeError("Centers are not initialized.")
         initial = self._centers[: self.num_centers_]
         # (num_clusters + 1, num_clusters + 1) squared distances between the initial centers.
         squared = ((initial[:, None, :] - initial[None, :, :]) ** 2).sum(axis=2)

@@ -208,10 +208,42 @@ PySAD evaluates prequentially, scoring each point before learning from it:
        {"auroc": AUROCMetric()},
    )
 
+Run PySAD detectors inside River pipelines
+------------------------------------------
+
+:class:`~pysad.integrations.PySADToRiverAdapter` exposes any PySAD detector through River's ``score_one`` and ``learn_one`` interface, and :class:`~pysad.integrations.RiverDriftDetector` wraps PySAD drift meters such as :class:`~pysad.statistics.PageHinkleyMeter`:
+
+.. code-block:: python
+
+   from functools import partial
+
+   from river import preprocessing
+
+   from pysad.evaluation import AUROCMetric
+   from pysad.integrations import PySADToRiverAdapter, RiverDriftDetector
+   from pysad.models import LODA
+   from pysad.statistics import PageHinkleyMeter
+   from pysad.utils import generate_stream
+
+   X, y = generate_stream(num_instances=800, num_features=2, random_state=0)
+   pipeline = preprocessing.StandardScaler() | PySADToRiverAdapter(partial(LODA, random_state=0))
+   drift = RiverDriftDetector(partial(PageHinkleyMeter, threshold=5.0, min_instances=1))
+   metric = AUROCMetric()
+
+   for x, label in zip(X, y):
+       features = dict(enumerate(x))
+       score = pipeline.score_one(features)
+       metric.update(int(label), score)
+       drift.update(score)
+       pipeline.learn_one(features)
+
+The adapter keeps bounded state inside the wrapped model and supports River's ``clone()`` (untrained reset), ``clone(include_attributes=True)`` (copied weights and feature mapping), and ``pickle`` serialization within the same pinned PySAD version (only load pickles from trusted sources).
+
 Next steps
 ----------
 
-- Run PySAD detectors inside River pipelines in :doc:`river_interoperability`.
-- Calibrate scores and pick an alert threshold in :doc:`alerts`.
-- Stream CSV files and DataFrames in :doc:`stream_data`.
-- Run PyOD batch detectors on sliding windows in :doc:`pyod`.
+- :doc:`../benchmarks/run` shows how to benchmark PySAD detectors against River using ``benchmarks/compare_river_adapter.py``.
+- :doc:`alerts` explains thresholds and probability calibration.
+- :doc:`stream_data` covers CSV files and DataFrames.
+- :doc:`pyod` covers running PyOD batch detectors on sliding windows.
+- :doc:`/api/integrations` lists the adapter and drift detector classes.

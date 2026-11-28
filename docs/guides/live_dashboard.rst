@@ -84,11 +84,23 @@ The stream worker behind the dashboard runs this loop for each point:
 Stop the dashboard
 ------------------
 
-Press Ctrl+C to stop the server and the stream worker. The command exits cleanly.
+Press Ctrl+C to stop the server and the stream worker cleanly.
+
+Customize display, output, and colors
+-------------------------------------
+
+Configure what appears and how the dashboard runs with CLI options (see :doc:`/guides/configuration` for the full option list and :doc:`/guides/production` for JSON logging setups):
+
+- ``--max-features`` (default 4) sets how many feature cards appear, and ``--history`` (default 100) sets how many points sparklines and ribbons retain.
+- ``--no-labels`` hides ground truth labels, ``--no-ribbon`` hides the conformal ribbon, and ``--width`` / ``--height`` (defaults 80 by 24) set terminal size.
+- ``--json-output`` prints one JSON line per point instead of the terminal UI, and ``--log-file`` appends alerts to a JSON lines file.
+- ``--csv-target`` (column name or 0-based index) and ``--csv-timestamp`` (excluded from features) configure CSV streaming from custom files.
+
+The web dashboard uses a dark theme defined in ``DASHBOARD_HTML`` inside ``pysad/live/server.py`` (background ``#0d1b22``, panels ``#142833``, normal ``#00d4aa``, alert ``#ff4444``, threshold ``#ffaa00``). Terminal ANSI palette constants (``SCORE_COLOR``, ``ALERT_COLOR``, ``THRESHOLD_COLOR``, ``RIBBON_COLOR``, ``FEATURE_COLORS``) live at the top of ``pysad/live/terminal.py``.
 
 Next steps
 ----------
 
-- :doc:`customize_live_dashboard` explains how to change what the dashboard shows and its colors.
+- :doc:`configuration` lists every ``pysad-live`` option.
 - :doc:`alerts` explains thresholds and probability calibration.
 - :doc:`../api/live` documents the ``pysad-live`` command and its options.

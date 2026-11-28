@@ -315,7 +315,8 @@ def _create_detector_tool(
             return {"error": str(e), "detector": name}
 
     # Set the signature on the function
-    detector_tool.__signature__ = sig  # type: ignore[attr-defined]
+    tool_ref: Any = detector_tool
+    tool_ref.__signature__ = sig
     detector_tool.__doc__ = f"""Run PySAD {name} streaming anomaly detector.
 
 Parameters:
@@ -384,7 +385,8 @@ def _create_stat_tool(
         except Exception as e:
             return {"error": str(e), "statistic": name}
 
-    stat_tool.__signature__ = sig  # type: ignore[attr-defined]
+    tool_ref: Any = stat_tool
+    tool_ref.__signature__ = sig
     stat_tool.__doc__ = f"""Run PySAD {name} drift meter/statistic.
 
 Parameters:

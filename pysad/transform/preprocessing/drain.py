@@ -439,18 +439,17 @@ def _merge(template: list[str], tokens: list[str]) -> list[str]:
     Returns:
         list[str]: The generalized template.
     """
-    n = max(len(template), len(tokens))
+    min_len = min(len(template), len(tokens))
     out: list[str] = []
-    for i in range(n):
-        t = template[i] if i < len(template) else None
-        tok = tokens[i] if i < len(tokens) else None
-        if t is None:
-            # ``i`` is below the maximum length, so the line still has a token here.
-            out.append(tok)  # type: ignore[arg-type]
-        elif tok is None:
-            out.append(t)
-        elif t == _WILDCARD or t == tok:
+    for i in range(min_len):
+        t = template[i]
+        tok = tokens[i]
+        if t == _WILDCARD or t == tok:
             out.append(t)
         else:
             out.append(_WILDCARD)
+    if len(template) > min_len:
+        out.extend(template[min_len:])
+    elif len(tokens) > min_len:
+        out.extend(tokens[min_len:])
     return out

@@ -65,6 +65,40 @@ class SeasonalESD(BaseModel):
 
     _use_median = False
 
+    @staticmethod
+    def _resolve_period_params(
+        period: int | None,
+        window_size: int,
+        auto_period: bool,
+        period_window_size: int | None,
+        min_period: int,
+        max_period: int | None,
+    ) -> tuple[int, int, int]:
+        if min_period < 2:
+            raise ValueError("min_period must be at least 2.")
+        if period_window_size is not None and period_window_size < 4:
+            raise ValueError("period_window_size must be at least 4.")
+
+        resolved_pws = period_window_size if period_window_size is not None else window_size
+        resolved_max = max_period if max_period is not None else resolved_pws // 2
+        if auto_period:
+            resolved_period = min_period if period is None else period
+            if window_size <= 2 * min_period:
+                raise ValueError(
+                    "window_size must be greater than 2 * min_period when auto_period=True."
+                )
+            if resolved_max < min_period:
+                raise ValueError("max_period must be at least min_period.")
+            return resolved_period, resolved_pws, resolved_max
+
+        if period is None:
+            raise ValueError("period is required when auto_period=False.")
+        if period < 2:
+            raise ValueError("period must be at least 2.")
+        if window_size <= 2 * period:
+            raise ValueError("window_size must be greater than 2 * period.")
+        return period, resolved_pws, resolved_max
+
     def __init__(
         self,
         period: int | None = None,
@@ -80,59 +114,31 @@ class SeasonalESD(BaseModel):
     ) -> None:
         if not 0 < max_anomalies <= 0.49:
             raise ValueError("max_anomalies must be greater than 0 and at most 0.49.")
-
         if not np.isfinite(alpha) or not (0 < alpha < 1):
             raise ValueError("alpha must be finite and between 0 and 1.")
-
         if direction not in ("pos", "neg", "both"):
             raise ValueError("direction must be 'pos', 'neg' or 'both'.")
 
-        if min_period < 2:
-            raise ValueError("min_period must be at least 2.")
-
-        if period_window_size is not None and period_window_size < 4:
-            raise ValueError("period_window_size must be at least 4.")
+        resolved_period, resolved_pws, resolved_max = self._resolve_period_params(
+            period, window_size, auto_period, period_window_size, min_period, max_period
+        )
 
         self.auto_period = auto_period
-        self.period_window_size = (
-            period_window_size if period_window_size is not None else window_size
-        )
+        self.period_window_size = resolved_pws
         self.min_period = min_period
-        self.max_period = max_period if max_period is not None else self.period_window_size // 2
-
-        if self.auto_period:
-            if period is None:
-                period = self.min_period
-            if window_size <= 2 * self.min_period:
-                raise ValueError(
-                    "window_size must be greater than 2 * min_period when auto_period=True."
-                )
-            if self.max_period < self.min_period:
-                raise ValueError("max_period must be at least min_period.")
-        else:
-            if period is None:
-                raise ValueError("period is required when auto_period=False.")
-            if period < 2:
-                raise ValueError("period must be at least 2.")
-            if window_size <= 2 * period:
-                raise ValueError("window_size must be greater than 2 * period.")
-
-        self.period = period
+        self.max_period = resolved_max
+        self.period = resolved_period
         self.window_size = window_size
         self.max_anomalies = max_anomalies
         self.alpha = alpha
         self.direction = direction
         self._window = RingBuffer(window_size)
         self.residual_transformer = ModifiedSTLResidualTransformer(
-            period=period, window_size=window_size, robust=robust
+            period=resolved_period, window_size=window_size, robust=robust
         )
-
-        if self.auto_period:
-            self._period_meter: OnlinePeriodicityMeter | None = OnlinePeriodicityMeter(
-                window_size=self.period_window_size
-            )
-        else:
-            self._period_meter = None
+        self._period_meter: OnlinePeriodicityMeter | None = (
+            OnlinePeriodicityMeter(window_size=resolved_pws) if auto_period else None
+        )
 
     def _as_value(self, X: NDArray[np.float64]) -> float:
         return check_univariate(X, "SeasonalESD")
@@ -143,6 +149,106 @@ class SeasonalESD(BaseModel):
     def _critical_value(self, n: int, i: int) -> float:
         return _critical_value(self.alpha, 2.0 if self.direction == "both" else 1.0, n, i)
 
+    @staticmethod
+    def _build_shifted_prefix_sums(
+        s: NDArray[np.float64], mid: int
+    ) -> tuple[
+        float,
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+    ]:
+        n = s.shape[0]
+        ref = float(s[mid])
+        d = s - ref
+        right_len = n - mid
+        right_s1 = np.empty(right_len + 1, dtype=np.float64)
+        right_s2 = np.empty(right_len + 1, dtype=np.float64)
+        right_s1[0] = 0.0
+        right_s2[0] = 0.0
+        dr = d[mid:]
+        np.cumsum(dr, out=right_s1[1:])
+        np.cumsum(dr * dr, out=right_s2[1:])
+
+        left_s1 = np.empty(mid + 1, dtype=np.float64)
+        left_s2 = np.empty(mid + 1, dtype=np.float64)
+        left_s1[mid] = 0.0
+        left_s2[mid] = 0.0
+        if mid > 0:
+            dl_rev = d[mid - 1 :: -1]
+            left_s1[mid - 1 :: -1] = np.cumsum(dl_rev)
+            left_s2[mid - 1 :: -1] = np.cumsum(dl_rev * dl_rev)
+        return ref, left_s1, right_s1, left_s2, right_s2
+
+    @staticmethod
+    def _select_extreme(
+        direction: str,
+        s: NDArray[np.float64],
+        orig_idx: NDArray[np.intp],
+        lo: int,
+        hi: int,
+        center: float,
+        scale: float,
+    ) -> tuple[bool, float]:
+        if direction == "pos":
+            return False, (float(s[hi]) - center) / scale
+        if direction == "neg":
+            return True, (center - float(s[lo])) / scale
+        stat_lo = abs(float(s[lo]) - center) / scale
+        stat_hi = abs(float(s[hi]) - center) / scale
+        if stat_lo != stat_hi:
+            return (True, stat_lo) if stat_lo > stat_hi else (False, stat_hi)
+        min_lo = int(orig_idx[lo])
+        if s[hi - 1] == s[hi]:
+            p_tie = lo + int(np.searchsorted(s[lo : hi + 1], s[hi], side="left"))
+            min_hi = int(orig_idx[p_tie])
+        else:
+            min_hi = int(orig_idx[hi])
+        return min_lo < min_hi, stat_lo
+
+    @staticmethod
+    def _peel_extreme(
+        orig_idx: NDArray[np.intp],
+        s: NDArray[np.float64],
+        lo: int,
+        hi: int,
+        pick_low: bool,
+    ) -> tuple[int, int, int]:
+        if pick_low:
+            return int(orig_idx[lo]), lo + 1, hi
+        if hi > lo and s[hi - 1] == s[hi]:
+            p = lo + int(np.searchsorted(s[lo : hi + 1], s[hi], side="left"))
+            peeled_idx = int(orig_idx[p])
+            orig_idx[p:hi] = orig_idx[p + 1 : hi + 1]
+            return peeled_idx, lo, hi - 1
+        return int(orig_idx[hi]), lo, hi - 1
+
+    def _window_center_scale(
+        self,
+        s: NDArray[np.float64],
+        lo: int,
+        hi: int,
+        mid: int,
+        ref: float,
+        left_s1: NDArray[np.float64],
+        right_s1: NDArray[np.float64],
+        left_s2: NDArray[np.float64],
+        right_s2: NDArray[np.float64],
+    ) -> tuple[float, float]:
+        if self._use_median:
+            return _median_mad_sorted(s[lo : hi + 1])
+        m = hi - lo + 1
+        if lo <= mid <= hi + 1:
+            sum1 = float(left_s1[lo] + right_s1[hi + 1 - mid])
+            sum2 = float(left_s2[lo] + right_s2[hi + 1 - mid])
+            mean_shifted = sum1 / m
+            center = ref + mean_shifted
+            var = (sum2 - sum1 * mean_shifted) / (m - 1)
+            scale = float(np.sqrt(var)) if var > 0.0 else 0.0
+            return center, scale
+        return self._center_scale(s[lo : hi + 1])
+
     def _esd_target(self, values: NDArray[np.float64], min_scale: float, target_idx: int) -> float:
         arr = np.asarray(values, dtype=np.float64)
         n = arr.shape[0]
@@ -150,30 +256,12 @@ class SeasonalESD(BaseModel):
         orig_idx = np.argsort(arr, kind="stable")
         s = arr[orig_idx]
 
-        use_median = self._use_median
         mid = n >> 1
-        ref = 0.0
-        left_s1 = right_s1 = left_s2 = right_s2 = arr
-        if not use_median:
-            ref = float(s[mid])
-            d = s - ref
-            right_len = n - mid
-            right_s1 = np.empty(right_len + 1, dtype=np.float64)
-            right_s2 = np.empty(right_len + 1, dtype=np.float64)
-            right_s1[0] = 0.0
-            right_s2[0] = 0.0
-            dr = d[mid:]
-            np.cumsum(dr, out=right_s1[1:])
-            np.cumsum(dr * dr, out=right_s2[1:])
-
-            left_s1 = np.empty(mid + 1, dtype=np.float64)
-            left_s2 = np.empty(mid + 1, dtype=np.float64)
-            left_s1[mid] = 0.0
-            left_s2[mid] = 0.0
-            if mid > 0:
-                dl_rev = d[mid - 1 :: -1]
-                left_s1[mid - 1 :: -1] = np.cumsum(dl_rev)
-                left_s2[mid - 1 :: -1] = np.cumsum(dl_rev * dl_rev)
+        if self._use_median:
+            ref = 0.0
+            left_s1 = right_s1 = left_s2 = right_s2 = arr
+        else:
+            ref, left_s1, right_s1, left_s2, right_s2 = self._build_shifted_prefix_sums(s, mid)
 
         lo = 0
         hi = n - 1
@@ -181,60 +269,18 @@ class SeasonalESD(BaseModel):
         target_stat: float | None = None
 
         for i in range(1, max_k + 1):
-            m = hi - lo + 1
-            if m <= 1:
+            if hi - lo + 1 <= 1:
                 break
-            if use_median:
-                center, scale = _median_mad_sorted(s[lo : hi + 1])
-            elif lo <= mid <= hi + 1:
-                sum1 = float(left_s1[lo] + right_s1[hi + 1 - mid])
-                sum2 = float(left_s2[lo] + right_s2[hi + 1 - mid])
-                mean_shifted = sum1 / m
-                center = ref + mean_shifted
-                var = (sum2 - sum1 * mean_shifted) / (m - 1)
-                scale = float(np.sqrt(var)) if var > 0.0 else 0.0
-            else:
-                center, scale = self._center_scale(s[lo : hi + 1])
-
+            center, scale = self._window_center_scale(
+                s, lo, hi, mid, ref, left_s1, right_s1, left_s2, right_s2
+            )
             if scale <= min_scale:
                 break
 
-            if direction == "pos":
-                pick_low = False
-                statistic = (float(s[hi]) - center) / scale
-            elif direction == "neg":
-                pick_low = True
-                statistic = (center - float(s[lo])) / scale
-            else:
-                stat_lo = abs(float(s[lo]) - center) / scale
-                stat_hi = abs(float(s[hi]) - center) / scale
-                if stat_lo > stat_hi:
-                    pick_low = True
-                    statistic = stat_lo
-                elif stat_hi > stat_lo:
-                    pick_low = False
-                    statistic = stat_hi
-                else:
-                    min_lo = int(orig_idx[lo])
-                    if s[hi - 1] == s[hi]:
-                        p_tie = lo + int(np.searchsorted(s[lo : hi + 1], s[hi], side="left"))
-                        min_hi = int(orig_idx[p_tie])
-                    else:
-                        min_hi = int(orig_idx[hi])
-                    pick_low = min_lo < min_hi
-                    statistic = stat_lo
-
-            if pick_low:
-                peeled_idx = int(orig_idx[lo])
-                lo += 1
-            elif hi > lo and s[hi - 1] == s[hi]:
-                p = lo + int(np.searchsorted(s[lo : hi + 1], s[hi], side="left"))
-                peeled_idx = int(orig_idx[p])
-                orig_idx[p:hi] = orig_idx[p + 1 : hi + 1]
-                hi -= 1
-            else:
-                peeled_idx = int(orig_idx[hi])
-                hi -= 1
+            pick_low, statistic = self._select_extreme(
+                direction, s, orig_idx, lo, hi, center, scale
+            )
+            peeled_idx, lo, hi = self._peel_extreme(orig_idx, s, lo, hi, pick_low)
 
             critical_value = self._critical_value(n, i)
             if peeled_idx == target_idx:

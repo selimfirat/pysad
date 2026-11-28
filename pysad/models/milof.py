@@ -97,8 +97,7 @@ class MiLOF(IncrementalLOF):
         c = self._num_centers()
         out = np.empty(combined.shape, dtype=np.float64)
         is_center = combined < c
-        if np.any(is_center):
-            assert self.center_k_dists_ is not None
+        if np.any(is_center) and self.center_k_dists_ is not None:
             out[is_center] = self.center_k_dists_[combined[is_center]]
         if np.any(~is_center):
             out[~is_center] = self.k_dists_[combined[~is_center] - c]
@@ -199,9 +198,22 @@ class MiLOF(IncrementalLOF):
                 k_dists[j] = fallback_k
                 reach_dists[j] = fallback_r
 
-        if self._merge_step > 0:
+        if (
+            self._merge_step > 0
+            and self._prev_centers is not None
+            and self._prev_weights is not None
+            and self._prev_k_dists is not None
+            and self._prev_reach_dists is not None
+        ):
             centers, weights, k_dists, reach_dists = self._merge(
-                centers, weights, k_dists, reach_dists
+                centers,
+                weights,
+                k_dists,
+                reach_dists,
+                self._prev_centers,
+                self._prev_weights,
+                self._prev_k_dists,
+                self._prev_reach_dists,
             )
 
         self.X_[:half] = new
@@ -230,6 +242,10 @@ class MiLOF(IncrementalLOF):
         weights: NDArray[np.float64],
         k_dists: NDArray[np.float64],
         reach_dists: NDArray[np.float64],
+        prev_centers: NDArray[np.float64],
+        prev_weights: NDArray[np.float64],
+        prev_k_dists: NDArray[np.float64],
+        prev_reach_dists: NDArray[np.float64],
     ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         # Merges the current and previous summaries with weighted c-means, minimizing the weighted
         # squared distance to the merged centers. The weight of a center is the number of raw points
@@ -237,14 +253,6 @@ class MiLOF(IncrementalLOF):
         # mean of its members' lrds, so its reachability distance is the weighted harmonic mean of
         # their reachability distances.
         num = self.num_summaries
-        prev_centers = self._prev_centers
-        prev_weights = self._prev_weights
-        prev_k_dists = self._prev_k_dists
-        prev_reach_dists = self._prev_reach_dists
-        assert prev_centers is not None
-        assert prev_weights is not None
-        assert prev_k_dists is not None
-        assert prev_reach_dists is not None
         points = np.vstack([centers, prev_centers])  # (2c, D)
         w = np.concatenate([weights, prev_weights])  # (2c,)
         k_all = np.concatenate([k_dists, prev_k_dists])  # (2c,)
@@ -298,11 +306,7 @@ class MiLOF(IncrementalLOF):
             return 0.0
 
         raw = self.X_[:n]
-        if c == 0:
-            cand = raw
-        else:
-            assert centers is not None
-            cand = np.vstack([raw, centers])
+        cand = raw if (c == 0 or centers is None) else np.vstack([raw, centers])
         dists = cdist(np.atleast_2d(X), cand)[0]  # (n + c,)
         neighbors = np.argpartition(dists, self.num_neighbors - 1)[: self.num_neighbors]
         dist_n = dists[neighbors]  # (num_neighbors,)
@@ -318,9 +322,7 @@ class MiLOF(IncrementalLOF):
         if raw_idx.size:
             reach[~is_center] = np.maximum(self.k_dists_[raw_idx], dist_n[~is_center])
             neighbor_reach[~is_center] = self.reach_dists_[raw_idx]
-        if center_idx.size:
-            assert center_k_dists is not None
-            assert center_reach_dists is not None
+        if center_idx.size and center_k_dists is not None and center_reach_dists is not None:
             reach[is_center] = np.maximum(center_k_dists[center_idx], dist_n[is_center])
             neighbor_reach[is_center] = center_reach_dists[center_idx]
 

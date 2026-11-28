@@ -198,7 +198,8 @@ class StreamKMPlusPlus(BaseModel):
             leaf.weights = None
             leaf.cost = leaf.left.cost + leaf.right.cost
             for ancestor in reversed(path[:-1]):
-                ancestor.cost = ancestor.left.cost + ancestor.right.cost  # type: ignore[union-attr]
+                if ancestor.left is not None and ancestor.right is not None:
+                    ancestor.cost = ancestor.left.cost + ancestor.right.cost
             splits_left -= 1
 
         leaves: list[_CoresetTreeNode] = []
@@ -345,16 +346,16 @@ class StreamKMPlusPlus(BaseModel):
         Returns:
             np.float64 array of shape (num_centers, num_features): The centers of the best run, with num_centers the smaller of `num_clusters` and the number of points.
         """
-        best_centers = None
-        best_cost = np.inf
-        for _ in range(5):
+        best_centers = self._kmeans_once(points, weights)
+        best_cost = self._weighted_cost(points, weights, best_centers)
+        for _ in range(4):
             centers = self._kmeans_once(points, weights)
             cost = self._weighted_cost(points, weights, centers)
             if cost < best_cost:
                 best_centers = centers
                 best_cost = cost
 
-        return best_centers  # type: ignore[return-value]
+        return best_centers
 
     def fit_partial(self, X: NDArray[np.float64], y: int | None = None) -> StreamKMPlusPlus:
         """Updates the model with the next instance and recomputes the centers.

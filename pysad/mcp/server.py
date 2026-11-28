@@ -16,6 +16,7 @@ Or via the console script:
 
 from __future__ import annotations
 
+import contextlib
 import json
 from dataclasses import dataclass, field
 from typing import Any
@@ -26,7 +27,14 @@ from numpy.typing import NDArray
 
 from pysad.mcp.tools import register_all_tools
 from pysad.models import __all__ as MODEL_NAMES
-from pysad.utils import ArrayStreamer, Data, generate_stream
+from pysad.utils import ArrayStreamer, CSVStreamer, Data, generate_stream
+
+_CALIBRATION_MODULE = "pysad.transform.probability_calibration"
+_BUNDLED_STREAM_SOURCES: dict[str, tuple[str, bool]] = {
+    "nyc_taxi": ("nab/realKnownCause/nyc_taxi.csv", True),
+    "arrhythmia": ("arrhythmia.mat", False),
+    "creditcard": ("creditcard/creditcard.arff", False),
+}
 
 
 def _class_name_to_key(name: str) -> str:
@@ -139,10 +147,8 @@ async def _log(ctx: Context[Any, Any] | None, message: str, level: str = "info")
     """Log *message* through the MCP context at *level* when a context is available."""
     if ctx is None:
         return
-    try:
+    with contextlib.suppress(Exception):
         await getattr(ctx, level)(message)
-    except Exception:
-        pass
 
 
 def _get_state(ctx: Context[Any, Any]) -> SessionState:
@@ -315,19 +321,13 @@ async def initialize_calibrator(
     await _log(ctx, f"Initializing calibrator: {calibrator_name}")
 
     calibrators = {
-        "conformal": ("pysad.transform.probability_calibration", "ConformalProbabilityCalibrator"),
-        "spot": ("pysad.transform.probability_calibration", "SPOTProbabilityCalibrator"),
-        "conformal_tsfm": ("pysad.transform.probability_calibration", "ConformalTSFMCalibrator"),
-        "gaussian_tail": (
-            "pysad.transform.probability_calibration",
-            "GaussianTailProbabilityCalibrator",
-        ),
-        "anomaly_likelihood": (
-            "pysad.transform.probability_calibration",
-            "AnomalyLikelihoodProbabilityCalibrator",
-        ),
+        "conformal": (_CALIBRATION_MODULE, "ConformalProbabilityCalibrator"),
+        "spot": (_CALIBRATION_MODULE, "SPOTProbabilityCalibrator"),
+        "conformal_tsfm": (_CALIBRATION_MODULE, "ConformalTSFMCalibrator"),
+        "gaussian_tail": (_CALIBRATION_MODULE, "GaussianTailProbabilityCalibrator"),
+        "anomaly_likelihood": (_CALIBRATION_MODULE, "AnomalyLikelihoodProbabilityCalibrator"),
         "group_conditional_conformal": (
-            "pysad.transform.probability_calibration",
+            _CALIBRATION_MODULE,
             "GroupConditionalConformalCalibrator",
         ),
     }
@@ -370,6 +370,52 @@ async def initialize_calibrator(
         return {"success": False, "error": str(e)}
 
 
+def _load_csv_stream(
+    state: SessionState,
+    source: str,
+    feature_columns: str | None,
+    label_column: str | None,
+    max_points: int | None,
+) -> None:
+    """Populate session stream state from a CSV file path."""
+    csv_feature_columns = (
+        [int(c.strip()) for c in feature_columns.split(",")] if feature_columns else None
+    )
+    csv_label_column = int(label_column) if label_column else None
+    csv_streamer = CSVStreamer(
+        feature_columns=csv_feature_columns,
+        label_column=csv_label_column,
+        has_header=True,
+    )
+    state.stream_data = []
+    state.stream_labels = []
+    for item in csv_streamer.iter(source):
+        if max_points and len(state.stream_data) >= max_points:
+            break
+        if isinstance(item, tuple):
+            x_arr, y_val = item
+            state.stream_labels.append(int(y_val) if y_val is not None else 0)
+        else:
+            x_arr = item
+            state.stream_labels.append(0)
+        state.stream_data.append(x_arr)
+    state.step = 0
+
+
+def _populate_named_stream(state: SessionState, source: str, max_points: int | None) -> bool:
+    """Populate session stream state from a named synthetic or bundled source."""
+    if source == "synthetic":
+        X_syn, y_syn = generate_stream(num_instances=max(max_points or 1000, 200))
+        _set_stream_data(state, X_syn, y_syn)
+        return True
+    if source not in _BUNDLED_STREAM_SOURCES:
+        return False
+    path, drop_first = _BUNDLED_STREAM_SOURCES[source]
+    X_bun, y_bun = _load_stream_data(path, max_points, drop_first_column=drop_first)
+    _set_stream_data(state, X_bun, y_bun)
+    return True
+
+
 async def initialize_stream(
     source: str = "synthetic",
     max_points: int | None = None,
@@ -389,68 +435,13 @@ async def initialize_stream(
     Returns:
         Dictionary with initialization status and stream info.
     """
-    if ctx:
-        state = _get_state(ctx)
-    else:
-        state = SessionState()
+    state = _get_state(ctx) if ctx else SessionState()
     await _log(ctx, f"Initializing stream from source: {source}")
 
     try:
-        csv_feature_columns: list[int] | None = None
-        csv_label_column: int | None = None
-        csv_has_header: bool = True
-        if feature_columns:
-            csv_feature_columns = [int(c.strip()) for c in feature_columns.split(",")]
-        if label_column:
-            csv_label_column = int(label_column)
-
-        X: NDArray[Any]
-        y: NDArray[Any] | None
-
-        if source == "synthetic":
-            n_instances = max(max_points or 1000, 200)
-            X, y = generate_stream(num_instances=n_instances)
-            _set_stream_data(state, X, y)
-
-        elif source == "nyc_taxi":
-            X, y = _load_stream_data(
-                "nab/realKnownCause/nyc_taxi.csv", max_points, drop_first_column=True
-            )
-            _set_stream_data(state, X, y)
-
-        elif source == "arrhythmia":
-            X, y = _load_stream_data("arrhythmia.mat", max_points)
-            _set_stream_data(state, X, y)
-
-        elif source == "creditcard":
-            X, y = _load_stream_data("creditcard/creditcard.arff", max_points)
-            _set_stream_data(state, X, y)
-
-        elif source.endswith(".csv"):
-            from pysad.utils import CSVStreamer
-
-            csv_streamer = CSVStreamer(
-                feature_columns=csv_feature_columns,
-                label_column=csv_label_column,
-                has_header=csv_has_header,
-            )
-            count = 0
-            state.stream_data = []
-            state.stream_labels = []
-            for item in csv_streamer.iter(source):
-                if max_points and count >= max_points:
-                    break
-                if isinstance(item, tuple):
-                    x_arr, y_val = item
-                    state.stream_labels.append(int(y_val) if y_val is not None else 0)
-                else:
-                    x_arr = item
-                    state.stream_labels.append(0)
-                state.stream_data.append(x_arr)
-                count += 1
-            state.step = 0
-
-        else:
+        if source.endswith(".csv"):
+            _load_csv_stream(state, source, feature_columns, label_column, max_points)
+        elif not _populate_named_stream(state, source, max_points):
             return {"success": False, "error": f"Unknown data source: {source}"}
 
         await _log(ctx, f"Stream initialized with {len(state.stream_data)} points")
@@ -458,11 +449,28 @@ async def initialize_stream(
             "success": True,
             "num_points": len(state.stream_data),
             "num_features": len(state.stream_data[0]) if state.stream_data else 0,
-            "has_labels": state.stream_labels is not None and len(state.stream_labels) > 0,
+            "has_labels": bool(state.stream_labels),
         }
     except Exception as e:
         await _log(ctx, f"Failed to initialize stream: {e}", level="error")
         return {"success": False, "error": str(e)}
+
+
+def _next_score_point(
+    state: SessionState,
+    features: list[float] | None,
+    use_stream: bool,
+) -> tuple[NDArray[Any], int | None]:
+    """Resolve the next feature vector and optional ground-truth label for scoring."""
+    if use_stream:
+        if not state.stream_data or state.step >= len(state.stream_data):
+            raise ValueError("No more data in stream")
+        x = state.stream_data[state.step]
+        label = state.stream_labels[state.step] if state.stream_labels else None
+        return x, label
+    if features is None:
+        raise ValueError("Features must be provided when not using stream")
+    return np.asarray(features, dtype=float), None
 
 
 async def score_point(
@@ -483,10 +491,7 @@ async def score_point(
     Returns:
         Dictionary with anomaly score, calibrated score, alert status, and metadata.
     """
-    if ctx:
-        state = _get_state(ctx)
-    else:
-        state = SessionState()
+    state = _get_state(ctx) if ctx else SessionState()
     await _log(ctx, "Scoring data point")
 
     if state.detector is None:
@@ -496,19 +501,7 @@ async def score_point(
         }
 
     try:
-        if use_stream:
-            if not state.stream_data or state.step >= len(state.stream_data):
-                return {"success": False, "error": "No more data in stream"}
-            x = state.stream_data[state.step]
-            label = state.stream_labels[state.step] if state.stream_labels else None
-        else:
-            if features is None:
-                return {
-                    "success": False,
-                    "error": "Features must be provided when not using stream",
-                }
-            x = np.asarray(features, dtype=float)
-            label = None
+        x, label = _next_score_point(state, features, use_stream)
 
         # Score the point
         score = state.detector.fit_score_partial(x)
@@ -529,17 +522,16 @@ async def score_point(
 
         state.step += 1
 
-        await _log(
-            ctx,
-            f"Score: {score:.4f}"
-            + (
-                f", Calibrated: {result.get('calibrated_score', 'N/A'):.4f}"
-                if "calibrated_score" in result
-                else ""
-            ),
+        cal_msg = (
+            f", Calibrated: {result.get('calibrated_score', 'N/A'):.4f}"
+            if "calibrated_score" in result
+            else ""
         )
+        await _log(ctx, f"Score: {score:.4f}{cal_msg}")
 
         return result
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
     except Exception as e:
         await _log(ctx, f"Failed to score point: {e}", level="error")
         return {"success": False, "error": str(e)}

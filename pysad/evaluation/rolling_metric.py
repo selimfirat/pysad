@@ -96,8 +96,7 @@ class RollingMetric(BaseMetric):
             if self._count == self.window_size:
                 self._update_brier(self._yt_buf[slot], self._yp_buf[slot], -1)
             self._update_brier(y_true, y_pred, 1)
-        if self._is_confusion:
-            assert self._bucket_buf is not None
+        if self._is_confusion and self._bucket_buf is not None:
             if self._count == self.window_size:
                 old_b = int(self._bucket_buf[slot])
                 if old_b < 0:
@@ -117,6 +116,32 @@ class RollingMetric(BaseMetric):
         if self._count < self.window_size:
             self._count += 1
         return self
+
+    def _replace_window_tail(
+        self, yt_tail: NDArray[np.float64], yp_tail: NDArray[np.float64]
+    ) -> None:
+        self._yt_buf[:] = yt_tail
+        self._yp_buf[:] = yp_tail
+        self._count = self.window_size
+        self._head = 0
+        if self._is_brier:
+            self._squared_error_sum = 0.0
+            self._invalid_count = 0
+            for yt, yp in zip(yt_tail, yp_tail, strict=True):
+                self._update_brier(yt, yp, 1)
+        if self._is_confusion and self._bucket_buf is not None:
+            self._counts = [0, 0, 0, 0]
+            self._invalid_count = 0
+            for idx in range(self.window_size):
+                yt_val = float(yt_tail[idx])
+                b = self._classify_pair(
+                    int(yt_val) if yt_val in (0.0, 1.0) else -1, float(yp_tail[idx])
+                )
+                self._bucket_buf[idx] = b
+                if b < 0:
+                    self._invalid_count += 1
+                else:
+                    self._counts[b] += 1
 
     def update_batch(self, y_true: Iterable[int], y_pred: Iterable[float]) -> RollingMetric:
         """Add batches of label-score pairs to the recent window.
@@ -146,29 +171,7 @@ class RollingMetric(BaseMetric):
         if n >= self.window_size:
             yt_tail = np.asarray(yt_arr[-self.window_size :], dtype=np.float64)
             yp_tail = np.asarray(yp_arr[-self.window_size :], dtype=np.float64)
-            self._yt_buf[:] = yt_tail
-            self._yp_buf[:] = yp_tail
-            self._count = self.window_size
-            self._head = 0
-            if self._is_brier:
-                self._squared_error_sum = 0.0
-                self._invalid_count = 0
-                for yt, yp in zip(yt_tail, yp_tail, strict=True):
-                    self._update_brier(yt, yp, 1)
-            if self._is_confusion:
-                assert self._bucket_buf is not None
-                self._counts = [0, 0, 0, 0]
-                self._invalid_count = 0
-                for idx in range(self.window_size):
-                    yt_val = float(yt_tail[idx])
-                    b = self._classify_pair(
-                        int(yt_val) if yt_val in (0.0, 1.0) else -1, float(yp_tail[idx])
-                    )
-                    self._bucket_buf[idx] = b
-                    if b < 0:
-                        self._invalid_count += 1
-                    else:
-                        self._counts[b] += 1
+            self._replace_window_tail(yt_tail, yp_tail)
             return self
 
         for yt, yp in zip(yt_arr.tolist(), yp_arr.tolist(), strict=True):
@@ -196,8 +199,7 @@ class RollingMetric(BaseMetric):
         metric = self.metric_cls(**self.metric_kwargs)
         if self._is_brier and self._invalid_count == 0:
             return max(0.0, self._squared_error_sum / self._count)
-        if self._is_confusion and self._invalid_count == 0:
-            assert isinstance(metric, _ConfusionMatrixMetric)
+        if isinstance(metric, _ConfusionMatrixMetric) and self._invalid_count == 0:
             metric.tp_, metric.fp_, metric.fn_, metric.tn_ = self._counts
             return metric.get()
 

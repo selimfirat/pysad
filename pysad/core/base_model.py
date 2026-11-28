@@ -125,7 +125,8 @@ def _returns_float_score(method: Callable[..., Any]) -> Callable[..., float]:
         return score if type(score) is float else _to_float_score(score)
 
     # Marks the method as wrapped, so that __init_subclass__ doesn't wrap it twice.
-    wrapper._returns_float_score = True  # type: ignore[attr-defined]
+    marked: Any = wrapper
+    marked._returns_float_score = True
     return wrapper
 
 
@@ -138,7 +139,8 @@ def _returns_int_decision(method: Callable[..., Any]) -> Callable[..., int]:
         return label if type(label) is int and label in (0, 1) else _to_int_decision(label)
 
     # Marks the method as wrapped, so that __init_subclass__ doesn't wrap it twice.
-    wrapper._returns_int_decision = True  # type: ignore[attr-defined]
+    marked: Any = wrapper
+    marked._returns_int_decision = True
     return wrapper
 
 
@@ -158,7 +160,8 @@ def _rejects_nan_input(method: Callable[..., Any]) -> Callable[..., Any]:
         return method(self, X, *args, **kwargs)
 
     # Marks the method as wrapped, so that __init_subclass__ doesn't wrap it twice.
-    wrapper._rejects_nan_input = True  # type: ignore[attr-defined]
+    marked: Any = wrapper
+    marked._rejects_nan_input = True
     return wrapper
 
 

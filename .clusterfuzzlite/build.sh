@@ -1,7 +1,7 @@
 #!/bin/bash -eu
 
-pip3 install --no-cache-dir --upgrade pyinstaller
-pip3 install --no-cache-dir .
+uv pip install --system --no-cache --upgrade pyinstaller
+uv pip install --system --no-cache .
 
 for fuzzer in "$SRC"/pysad/fuzz/*_fuzzer.py; do
   fuzzer_basename=$(basename -s .py "$fuzzer")

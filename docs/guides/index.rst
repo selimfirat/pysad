@@ -67,12 +67,6 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
    .. container:: card
 
-      :doc:`river_interoperability`
-
-      Run PySAD detectors in River pipelines, score before learning, detect drift, and keep state bounded.
-
-   .. container:: card
-
       :doc:`drift_aware_composition`
 
       Reset a detector on drift and chain stages into one pipeline.
@@ -111,19 +105,13 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
       :doc:`live_dashboard`
 
-      Open the pysad-live web dashboard and watch streaming scores and alerts as points arrive.
+      Open and customize the pysad-live web or terminal dashboard to watch streaming scores and alerts as points arrive.
 
    .. container:: card
 
       :doc:`authentication_and_multi_tenancy`
 
       Bind pysad-live to localhost, add a reverse proxy with authentication, and run one isolated dashboard per tenant.
-
-   .. container:: card
-
-      :doc:`customize_live_dashboard`
-
-      Customize the pysad-live dashboard: what it shows, its size and refresh rate, and its colors.
 
    .. container:: card
 
@@ -135,19 +123,7 @@ Choose a guide for the task you need to complete. These guides assume familiarit
 
       :doc:`mcp`
 
-      Run PySAD detectors, drift meters, and explainability from AI assistants via MCP.
-
-   .. container:: card
-
-      :doc:`mcp_hardening`
-
-      Harden the PySAD MCP server for production: dedicated user, authentication, rate limiting, TLS proxy, input limits, and monitoring.
-
-   .. container:: card
-
-      :doc:`mcp_monitoring`
-
-      Observe a running MCP server: session status, logs, tool calls, and health checks.
+      Run, monitor, and harden the PySAD MCP server to expose detectors and drift meters to AI assistants.
 
    .. container:: card
 

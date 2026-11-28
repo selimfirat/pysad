@@ -284,7 +284,7 @@ To compare detectors on your own stream, use this loop:
    River AUROC: 0.792
 
 The example counts every point. The harness leaves out the warm-up points. The features are
-dictionaries, as :doc:`/guides/river_interoperability` describes.
+dictionaries, as :doc:`/guides/migrate_river` describes.
 
 Performance badges
 ------------------

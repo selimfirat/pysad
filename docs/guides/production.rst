@@ -191,7 +191,7 @@ A session-based client keeps detector and calibrator state across calls. Use ``i
 
 Wrap the server in your own process to add metrics or logging. :doc:`serving` shows a Prometheus exporter that counts MCP tool calls.
 
-Each detector tool accepts a list of points and constructor arguments. Make sure that the feature order matches the history that the detector learned from. The server has no built-in authentication, rate limiting, or TLS; see :doc:`mcp_hardening` for dedicated-user isolation, auth, rate limiting, TLS, input limits, and monitoring.
+Each detector tool accepts a list of points and constructor arguments. Make sure that the feature order matches the history that the detector learned from. The server has no built-in authentication, rate limiting, or TLS; see :doc:`mcp` for dedicated-user isolation, auth, rate limiting, TLS, input limits, and monitoring.
 
 Next steps
 ----------

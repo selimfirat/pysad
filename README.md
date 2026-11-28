@@ -188,7 +188,7 @@ Use these guides to map your existing workflow to PySAD:
 - [Alibi Detect](https://pysad.readthedocs.io/en/stable/guides/migrate_alibi_detect.html)
 - [ADTK](https://pysad.readthedocs.io/en/stable/guides/migrate_adtk.html)
 - [StatsForecast and Nixtla](https://pysad.readthedocs.io/en/stable/guides/migrate_statsforecast.html)
-- [River](https://pysad.readthedocs.io/en/stable/guides/river_interoperability.html)
+- [River](https://pysad.readthedocs.io/en/stable/guides/migrate_river.html)
 
 ## Quick start
 

@@ -153,6 +153,69 @@ class TestBaseModel:
         for fitted_data in model.fitted_data:
             assert fitted_data[1] is None
 
+    def test_score_and_fit_score_accept_lists_generators_and_empty_inputs(self):
+        """score and fit_score accept lists, generators, and empty inputs with partial parity."""
+        instances = [[1.0, 2.0], [3.0, 4.0], [0.0, 5.0]]
+        expected = np.array(
+            [ConcreteModel().score_partial(np.array(row)) for row in instances], dtype=np.float64
+        )
+
+        list_scores = ConcreteModel().score(instances)
+        gen_scores = ConcreteModel().score(row for row in instances)
+        np.testing.assert_allclose(list_scores, expected)
+        np.testing.assert_allclose(gen_scores, expected)
+        assert list_scores.dtype == np.float64
+        assert gen_scores.dtype == np.float64
+
+        fit_list_scores = ConcreteModel().fit_score(instances, [0, 1, 0])
+        fit_gen_scores = ConcreteModel().fit_score(row for row in instances)
+        np.testing.assert_allclose(fit_list_scores, expected)
+        np.testing.assert_allclose(fit_gen_scores, expected)
+        assert fit_list_scores.dtype == np.float64
+        assert fit_gen_scores.dtype == np.float64
+
+        for empty in ([], (row for row in ()), np.empty((0, 2), dtype=np.float64)):
+            out_score = ConcreteModel().score(empty)
+            assert isinstance(out_score, np.ndarray)
+            assert out_score.dtype == np.float64
+            assert out_score.shape == (0,)
+
+        for empty in ([], (row for row in ()), np.empty((0, 2), dtype=np.float64)):
+            out_fit_score = ConcreteModel().fit_score(empty)
+            assert isinstance(out_fit_score, np.ndarray)
+            assert out_fit_score.dtype == np.float64
+            assert out_fit_score.shape == (0,)
+
+        with pytest.raises(ValueError, match="same length"):
+            ConcreteModel().fit_score(instances, [0, 1])
+
+        with pytest.raises(ValueError, match="same length"):
+            ConcreteModel().fit_score(np.array(instances), [0, 1])
+
+    def test_fit_score_list_parity_with_partial_prequential(self):
+        """Batch fit_score on list input matches calling fit_score_partial sequentially."""
+
+        class PrequentialModel(BaseModel):
+            def __init__(self):
+                self.total = 0.0
+
+            def fit_partial(self, X, y=None):
+                self.total += float(X[0])
+                return self
+
+            def score_partial(self, X):
+                return abs(float(X[0]) - self.total)
+
+        rows = [[1.0], [3.0], [6.0]]
+        partial_model = PrequentialModel()
+        expected = np.array(
+            [partial_model.fit_score_partial(row) for row in rows], dtype=np.float64
+        )
+
+        batch_scores = PrequentialModel().fit_score(rows)
+        np.testing.assert_allclose(batch_scores, expected)
+        assert batch_scores.dtype == np.float64
+
 
 def test_base_transformer_fit_method():
     """Test that fit passes each instance, not an (instance, label) pair, to fit_partial."""

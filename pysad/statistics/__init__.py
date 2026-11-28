@@ -12,6 +12,7 @@ from .basic import (
     SumSquaresMeter,
     VarianceMeter,
 )
+from .control_chart import EWMAControlChartMeter
 from .cusum import CUSUMMeter
 from .drift import (
     ADWINMeter,
@@ -45,6 +46,7 @@ __all__ = [
     "DDMMeter",
     "DDSketchMeter",
     "EDDMMeter",
+    "EWMAControlChartMeter",
     "ExponentialMovingAverageMeter",
     "ExponentialMovingVarianceMeter",
     "FHDDMMeter",
